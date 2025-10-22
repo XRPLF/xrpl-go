@@ -213,6 +213,23 @@ func (c *Client) GetLedgerIndex() (common.LedgerIndex, error) {
 	return lr.LedgerIndex, err
 }
 
+// GetLedgerEntry retrieves information about a specific ledger entry.
+// It takes a LedgerEntryRequest as input and returns a LedgerEntryResponse,
+// along with any error encountered.
+func (c *Client) GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse, error) {
+	res, err := c.Request(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var lr ledger.EntryResponse
+	err = res.GetResult(&lr)
+	if err != nil {
+		return nil, err
+	}
+	return &lr, nil
+}
+
 // GetClosedLedger retrieves information about the last closed ledger.
 // It returns a ClosedResponse containing the ledger information and any error encountered.
 func (c *Client) GetClosedLedger() (*ledger.ClosedResponse, error) {

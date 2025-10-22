@@ -752,6 +752,97 @@ func TestClient_GetLedgerIndex(t *testing.T) {
 	}
 }
 
+func TestClient_GetLedgerEntry(t *testing.T) {
+	tests := []struct {
+		name           string
+		serverMessages []map[string]any
+		request        *ledgerqueries.EntryRequest
+		expected       *ledgerqueries.EntryResponse
+		expectedErr    error
+	}{
+		{
+			name: "Valid ledger entry",
+			serverMessages: []map[string]any{
+				{
+					"id": 1,
+					"result": map[string]any{
+						"index": "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
+						"ledger_current_index": uint32(61809073),
+						"node_binary": "test",
+						"validated": true,
+						"deleted_ledger_index": uint32(0),
+					},
+				},
+			},
+			request: &ledgerqueries.EntryRequest{
+				Index: "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
+			},
+			expected: &ledgerqueries.EntryResponse{
+				Index: "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
+				LedgerCurrentIndex: 61809073,
+				NodeBinary: "test",
+				Validated: true,
+				DeletedLedgerIndex: 0,
+			},
+			expectedErr: nil,
+		},
+		{
+			name:           "Error response",
+			serverMessages: []map[string]any{{"error": "Entry not found"}},
+			request: &ledgerqueries.EntryRequest{
+				Index: "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
+			},
+			expected:    nil,
+			expectedErr: errors.New("incorrect id"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ws := &testutil.MockWebSocketServer{Msgs: tt.serverMessages}
+			s := ws.TestWebSocketServer(func(c *websocket.Conn) {
+				for _, m := range tt.serverMessages {
+					err := c.WriteJSON(m)
+					if err != nil {
+						t.Errorf("error writing message: %v", err)
+					}
+				}
+			})
+			defer s.Close()
+
+			url, _ := testutil.ConvertHTTPToWS(s.URL)
+			cl := &Client{
+				cfg: ClientConfig{
+					host: url,
+				},
+			}
+
+			if err := cl.Connect(); err != nil {
+				t.Errorf("Error connecting to server: %v", err)
+			}
+
+			result, err := cl.GetLedgerEntry(tt.request)
+
+			if tt.expectedErr != nil {
+				if err == nil || err.Error() != tt.expectedErr.Error() {
+					t.Errorf("Expected error %v, but got %v", tt.expectedErr, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+			}
+
+			if !reflect.DeepEqual(tt.expected, result) {
+				t.Errorf("Expected %+v, but got %+v", tt.expected, result)
+			}
+
+			cl.Disconnect()
+		})
+	}
+}
+
+
 func TestClient_GetAccountNFTs(t *testing.T) {
 	tests := []struct {
 		name           string

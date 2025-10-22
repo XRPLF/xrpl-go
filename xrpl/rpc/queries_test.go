@@ -1123,6 +1123,77 @@ func TestClient_GetLedgerIndex(t *testing.T) {
 	}
 }
 
+func TestClient_GetLedgerEntry(t *testing.T) {
+	tests := []struct {
+		name          string
+		mockResponse  string
+		mockStatus    int
+		request       *ledgerqueries.EntryRequest
+		expected      *ledgerqueries.EntryResponse
+		expectedError string
+	}{
+		{
+			name: "successful response",
+			mockResponse: `{
+				"result": {
+					"index": "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
+					"ledger_current_index": 61809073,
+					"node_binary": "test",
+					"validated": true,
+					"deleted_ledger_index": 0
+				}
+			}`,
+			mockStatus: 200,
+			request: &ledgerqueries.EntryRequest{
+				Index: "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
+			},
+			expected: &ledgerqueries.EntryResponse{
+				Index:              "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
+				LedgerCurrentIndex: 61809073,
+				NodeBinary:         "test",
+				Validated:          true,
+				DeletedLedgerIndex: 0,
+			},
+		},
+		{
+			name: "error response",
+			mockResponse: `{
+				"result": {
+					"error": "entryNotFound",
+					"status": "error"
+				}
+			}`,
+			mockStatus:    200,
+			request:       &ledgerqueries.EntryRequest{},
+			expectedError: "entryNotFound",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mc := testutil.JSONRPCMockClient{}
+			mc.DoFunc = testutil.MockResponse(tt.mockResponse, tt.mockStatus, &mc)
+
+			cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(&mc))
+			require.NoError(t, err)
+
+			client := NewClient(cfg)
+
+			resp, err := client.GetLedgerEntry(tt.request)
+
+			if tt.expectedError != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedError)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, resp)
+		})
+	}
+}
+
+
 func TestClient_GetClosedLedger(t *testing.T) {
 	tests := []struct {
 		name          string
