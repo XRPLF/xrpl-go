@@ -15,6 +15,7 @@ func TestMPTokenIssuanceCreate_TxType(t *testing.T) {
 
 func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
 	amount := types.XRPCurrencyAmount(10000)
+	metadata := "464F4F" // "FOO" in hex
 
 	tests := []struct {
 		name     string
@@ -44,7 +45,7 @@ func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
 				AssetScale:      types.AssetScale(2),
 				TransferFee:     types.TransferFee(314),
 				MaximumAmount:   &amount,
-				MPTokenMetadata: types.MPTokenMetadata("FOO"),
+				MPTokenMetadata: &metadata,
 			},
 			expected: `{
 				"Account": "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
@@ -52,7 +53,7 @@ func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
 				"AssetScale": 2,
 				"TransferFee": 314,
 				"MaximumAmount": "10000",
-				"MPTokenMetadata": "FOO"
+				"MPTokenMetadata": "464F4F"
 			}`,
 		},
 	}
@@ -68,6 +69,8 @@ func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
 
 func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 	amount := types.XRPCurrencyAmount(10000)
+	metadata := "464F4F" // "FOO" in hex
+
 	tests := []struct {
 		name       string
 		tx         *MPTokenIssuanceCreate
@@ -86,7 +89,7 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 				AssetScale:      types.AssetScale(2),
 				TransferFee:     types.TransferFee(314),
 				MaximumAmount:   &amount,
-				MPTokenMetadata: types.MPTokenMetadata("464f4f"),
+				MPTokenMetadata: &metadata,
 			},
 			wantValid: true,
 			wantErr:   false,
@@ -98,7 +101,7 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: MPTokenIssuanceCreateTx,
 				},
-				MPTokenMetadata: types.MPTokenMetadata("464f4f"),
+				MPTokenMetadata: &metadata,
 			},
 			wantValid: true,
 			wantErr:   false,
@@ -110,7 +113,7 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 					Account:         "invalid",
 					TransactionType: MPTokenIssuanceCreateTx,
 				},
-				MPTokenMetadata: types.MPTokenMetadata("464f4f"),
+				MPTokenMetadata: &metadata,
 			},
 			wantValid:  false,
 			wantErr:    true,
@@ -123,7 +126,7 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: MPTokenIssuanceCreateTx,
 				},
-				MPTokenMetadata: types.MPTokenMetadata("464f4f"),
+				MPTokenMetadata: &metadata,
 				TransferFee:     types.TransferFee(314),
 			},
 			wantValid:  false,
@@ -148,6 +151,7 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 }
 
 func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
+	metadata := "464F4F" // "FOO" in hex
 	tests := []struct {
 		name     string
 		setFlag  func(*MPTokenIssuanceCreate)
@@ -192,7 +196,7 @@ func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: MPTokenIssuanceCreateTx,
 				},
-				MPTokenMetadata: types.MPTokenMetadata("464f4f"),
+				MPTokenMetadata: &metadata,
 			}
 
 			tt.setFlag(tx)
@@ -206,7 +210,7 @@ func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
 			Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 			TransactionType: MPTokenIssuanceCreateTx,
 		},
-		MPTokenMetadata: types.MPTokenMetadata("464f4f"),
+		MPTokenMetadata: &metadata,
 	}
 
 	for _, tt := range tests {

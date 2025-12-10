@@ -71,6 +71,7 @@ func main() {
 	fmt.Println()
 
 	amount := types.XRPCurrencyAmount(10000)
+	metadata := "464F4F" // "FOO" in hex
 
 	fmt.Println("⏳ Issuing MPToken...")
 	// Create the MPTokenIssuanceCreate transaction.
@@ -81,7 +82,7 @@ func main() {
 		AssetScale:      types.AssetScale(2),
 		TransferFee:     types.TransferFee(314),
 		MaximumAmount:   &amount,
-		MPTokenMetadata: types.MPTokenMetadata("464F4F"), // "FOO" in hex
+		MPTokenMetadata: &metadata,
 	}
 	// Since TransferFee is provided, enable the tfMPTCanTransfer flag.
 	issuanceTx.SetMPTCanTransferFlag()
