@@ -97,18 +97,14 @@ func main() {
 
 	// Extract the NFT token offer ID from the transaction metadata
 	fmt.Println("⏳ Extracting offer ID...")
-	metaMap, ok := responseMint.Meta.(map[string]any)
-	if !ok {
-		fmt.Println("❌ Meta is not a map[string]any")
-		return
-	}
+	metaMap := responseMint.Meta.AsNFTokenMintMetadata()
 
-	offerID, ok := metaMap["offer_id"].(string)
-	if !ok {
+	if metaMap.OfferID == nil {
 		fmt.Println("❌ offer_id not found or not a string")
 		return
 	}
-	fmt.Println("🌎 offer_id:", offerID)
+
+	fmt.Println("🌎 offer_id:", *metaMap.OfferID)
 	fmt.Println()
 
 	// Accept the NFT offer
@@ -118,7 +114,7 @@ func main() {
 			Account:         nftBuyer.ClassicAddress,
 			TransactionType: transaction.NFTokenAcceptOfferTx,
 		},
-		NFTokenSellOffer: txnTypes.Hash256(offerID),
+		NFTokenSellOffer: txnTypes.Hash256(*metaMap.OfferID),
 	}
 
 	response, err := client.SubmitTxAndWait(nftAccept.Flatten(), &types.SubmitOptions{

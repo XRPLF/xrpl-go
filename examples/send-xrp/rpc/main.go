@@ -67,7 +67,7 @@ func main() {
 	fmt.Println("⏳ Sending 1 XRP to rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe...")
 	p := &transaction.Payment{
 		BaseTx: transaction.BaseTx{
-			Account: types.Address(w.GetAddress()),
+			Account: w.GetAddress(),
 		},
 		Destination: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
 		Amount:      types.XRPCurrencyAmount(xrpAmountInt),
@@ -93,9 +93,12 @@ func main() {
 		return
 	}
 
+	metadata := res.Meta.AsPaymentMetadata()
+
 	fmt.Println("✅ Payment submitted")
 	fmt.Printf("🌐 Hash: %s\n", res.Hash)
 	fmt.Printf("🌐 Validated: %t\n", res.Validated)
+	fmt.Printf("🌐 DeliveredAmount (drops): %s\n", metadata.DeliveredAmount)
 	fmt.Println()
 	fmt.Println("⏳ Using SubmitTxAndWait with wallet")
 	fmt.Println()
@@ -110,7 +113,10 @@ func main() {
 		return
 	}
 
+	metadata = res.Meta.AsPaymentMetadata()
+
 	fmt.Println("✅ Payment submitted via SubmitTxAndWait")
 	fmt.Printf("🌐 Hash: %s\n", resp.Hash)
 	fmt.Printf("🌐 Validated: %t\n", resp.Validated)
+	fmt.Printf("🌐 DeliveredAmount (drops): %s\n", metadata.DeliveredAmount)
 }

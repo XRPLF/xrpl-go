@@ -44,11 +44,10 @@ func (*TxRequest) Validate() error {
 // TxResponse is the response type returned by the tx command.
 // It includes transaction details, metadata, and validation status.
 type TxResponse struct {
-	Date        uint               `json:"date"`
-	Hash        types.Hash256      `json:"hash"`
-	LedgerIndex common.LedgerIndex `json:"ledger_index"`
-	// TODO: Improve Meta parsing
-	Meta      any                         `json:"meta"`
-	Validated bool                        `json:"validated"`
-	TxJSON    transaction.FlatTransaction `json:"tx_json,omitempty"`
+	Date        uint                          `json:"date"`
+	Hash        types.Hash256                 `json:"hash"`
+	LedgerIndex common.LedgerIndex            `json:"ledger_index"`
+	Meta        transaction.TxMetadataBuilder `json:"meta"`
+	Validated   bool                          `json:"validated"`
+	TxJSON      transaction.FlatTransaction   `json:"tx_json,omitempty"`
 }
