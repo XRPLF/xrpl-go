@@ -1,3 +1,7 @@
+---
+pagination_prev: keypairs
+---
+
 # currency
 
 ## Overview
