@@ -11,6 +11,7 @@
     "Amount": 6,
     "Blob": 7,
     "AccountID": 8,
+    "Number": 9,
     "STObject": 14,
     "STArray": 15,
     "UInt8": 16,
@@ -2213,6 +2214,16 @@
         "isSerialized": true,
         "isSigningField": true,
         "type": "AccountID"
+      }
+    ],
+    [
+      "ClosePaymentFee",
+      {
+        "nth": 12,
+        "isVLEncoded": false,
+        "isSerialized": true,
+        "isSigningField": true,
+        "type": "Number"
       }
     ],
     [
