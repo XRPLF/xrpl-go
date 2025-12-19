@@ -66,7 +66,11 @@ func TestAccountTransactionsResponse(t *testing.T) {
 			"hash": "def",
 			"ledger_hash": "ghi",
 			"ledger_index": 10,
-			"meta": {},
+			"meta": {
+				"AffectedNodes": null,
+				"TransactionIndex": 0,
+				"TransactionResult": ""
+			},
 			"tx_json": {
 				"Account": "abc",
 				"Amount": "100",

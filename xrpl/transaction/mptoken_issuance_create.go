@@ -25,6 +25,13 @@ const (
 	tfMPTCanClawback uint32 = 0x00000040
 )
 
+// MPTokenIssuanceCreateMetadata represents the resulting metadata of a succeeded MPTokenIssuanceCreate transaction.
+// It extends from TxObjMeta.
+type MPTokenIssuanceCreateMetadata struct {
+	TxObjMeta
+	MPTIssuanceID *types.MPTIssuanceID `json:"mpt_issuance_id,omitempty"`
+}
+
 // MPTokenIssuanceCreate represents a transaction to create a new MPTokenIssuance object.
 // This is the only opportunity an issuer has to specify immutable token fields.
 //

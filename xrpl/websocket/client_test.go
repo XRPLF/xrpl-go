@@ -16,34 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestClient_Connect(t *testing.T) {
-	ws := NewClient(NewClientConfig().WithHost("wss://s.altnet.rippletest.net"))
-	err := ws.Connect()
-	require.NoError(t, err)
-	require.True(t, ws.IsConnected())
-	ws.Disconnect()
-	require.False(t, ws.IsConnected())
-}
-
-func TestClient_Disconnect(t *testing.T) {
-	ws := NewClient(NewClientConfig().WithHost("wss://s.altnet.rippletest.net"))
-	ws.Connect()
-	require.True(t, ws.IsConnected())
-	ws.Disconnect()
-	require.False(t, ws.IsConnected())
-}
-
-func TestClient_IsConnected(t *testing.T) {
-	ws := NewClient(NewClientConfig().WithHost("wss://s.altnet.rippletest.net"))
-	require.False(t, ws.IsConnected())
-	err := ws.Connect()
-	require.NoError(t, err)
-	require.True(t, ws.IsConnected())
-	err = ws.Disconnect()
-	require.NoError(t, err)
-	require.False(t, ws.IsConnected())
-}
-
 func TestClient_SendRequest(t *testing.T) {
 	tt := []struct {
 		description    string
@@ -936,8 +908,6 @@ func TestClient_setLastLedgerSequence(t *testing.T) {
 					t.Errorf("Expected tx %v, but got %v", tt.expectedTx, tt.tx)
 				}
 			}
-
-			cl.Disconnect()
 		})
 	}
 }
@@ -999,8 +969,6 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 					t.Errorf("Unexpected error: %v", err)
 				}
 			}
-
-			cl.Disconnect()
 		})
 	}
 }

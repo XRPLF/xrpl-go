@@ -95,31 +95,20 @@ func main() {
 	fmt.Printf("🌐 Hash: %s\n", res.Hash.String())
 	fmt.Println()
 
-	meta, ok := res.Meta.(map[string]interface{})
-	if !ok {
-		fmt.Println("❌ Meta is not of type TxObjMeta")
-		return
-	}
+	meta := res.Meta.AsTxObjMeta()
 
 	var checkID string
 
-	affectedNodes := meta["AffectedNodes"].([]interface{})
+	affectedNodes := meta.AffectedNodes
 
-	for _, node := range affectedNodes {
-		affectedNode, ok := node.(map[string]interface{})
-		if !ok {
+	for _, affectedNode := range affectedNodes {
+		if affectedNode.CreatedNode == nil {
 			fmt.Println("❌ Node is not of type map[string]interface{}")
 			return
 		}
 
-		createdNode, ok := affectedNode["CreatedNode"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		if createdNode["LedgerEntryType"] == string(ledger.CheckEntry) {
-
-			checkID = createdNode["LedgerIndex"].(string)
+		if affectedNode.CreatedNode.LedgerEntryType == ledger.CheckEntry {
+			checkID = affectedNode.CreatedNode.LedgerIndex
 		}
 	}
 

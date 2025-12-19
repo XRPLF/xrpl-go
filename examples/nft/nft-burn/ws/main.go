@@ -86,19 +86,14 @@ func main() {
 	// Step 3: Retrieve the token ID
 	fmt.Println("⏳ Retrieving NFT ID...")
 
-	metaMap, ok := responseMint.Meta.(map[string]any)
-	if !ok {
-		fmt.Println("❌ Meta is not a map[string]any")
-		return
-	}
+	metaMap := responseMint.Meta.AsNFTokenMintMetadata()
 
-	nftokenID, ok := metaMap["nftoken_id"].(string)
-	if !ok {
+	if metaMap.NFTokenID == nil {
 		fmt.Println("❌ nftoken_id not found or not a string")
 		return
 	}
 
-	fmt.Println("🌎 nftoken_id:", nftokenID)
+	fmt.Println("🌎 nftoken_id:", metaMap.NFTokenID.String())
 	fmt.Println()
 
 	// Step 4: Burn the NFT
@@ -109,7 +104,7 @@ func main() {
 			Account:         nftMinter.ClassicAddress,
 			TransactionType: transaction.NFTokenAcceptOfferTx,
 		},
-		NFTokenID: txnTypes.NFTokenID(nftokenID),
+		NFTokenID: txnTypes.NFTokenID(metaMap.NFTokenID.String()),
 	}
 
 	responseBurn, err := client.SubmitTxAndWait(nftBurn.Flatten(), &types.SubmitOptions{

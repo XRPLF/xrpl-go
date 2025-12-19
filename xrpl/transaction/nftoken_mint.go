@@ -6,6 +6,18 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
+// NFTokenMintMetadata represents the resulting metadata of a succeeded NFTokenMint transaction.
+// It extends from TxObjMeta.
+type NFTokenMintMetadata struct {
+	TxObjMeta
+
+	// rippled 1.11.0 or later.
+	NFTokenID *types.NFTokenID `json:"nftoken_id,omitempty"`
+
+	// OfferID is a string of Amount is present.
+	OfferID *types.OfferID `json:"offer_id,omitempty"`
+}
+
 // NFTokenMint transaction creates a non-fungible token and adds it to the relevant NFTokenPage object of the NFTokenMinter as an NFToken object.
 // This transaction is the only opportunity the NFTokenMinter has to specify any token fields that are defined as immutable (for example, the TokenFlags).
 //

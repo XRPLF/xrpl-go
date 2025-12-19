@@ -80,19 +80,14 @@ func main() {
 	fmt.Println("✅ NFT minted successfully! - 🌎 Hash: ", responseMint.Hash)
 	fmt.Println()
 
-	metaMap, ok := responseMint.Meta.(map[string]any)
-	if !ok {
-		fmt.Println("❌ Meta is not a map[string]any")
-		return
-	}
+	metaMap := responseMint.Meta.AsNFTokenMintMetadata()
 
-	nftokenID, ok := metaMap["nftoken_id"].(string)
-	if !ok {
+	if metaMap.NFTokenID == nil {
 		fmt.Println("❌ nftoken_id not found or not a string")
 		return
 	}
 
-	fmt.Println("🌎 nftoken_id:", nftokenID)
+	fmt.Println("🌎 nftoken_id:", metaMap.NFTokenID.String())
 	fmt.Println()
 
 	// Update NFT
@@ -102,7 +97,7 @@ func main() {
 			TransactionType: transaction.NFTokenModifyTx,
 		},
 		URI:       "68747470733A2F2F7961686F6F2E636F6D", // https://yahoo.com
-		NFTokenID: txnTypes.NFTokenID(nftokenID),
+		NFTokenID: txnTypes.NFTokenID(metaMap.NFTokenID.String()),
 	}
 
 	responseModify, err := client.SubmitTxAndWait(nftModify.Flatten(), &types.SubmitOptions{

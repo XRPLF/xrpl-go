@@ -4,6 +4,15 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
+// NFTokenAcceptOfferMetadata represents the resulting metadata of a succeeded NFTokenAcceptOffer transaction.
+// It extends from TxObjMeta.
+type NFTokenAcceptOfferMetadata struct {
+	TxObjMeta
+
+	// rippled 1.11.0 or later.
+	NFTokenID *types.NFTokenID `json:"nftoken_id,omitempty"`
+}
+
 // NFTokenAcceptOffer transaction is used to accept offers to buy or sell an NFToken. It can either:
 //
 // - Allow one offer to be accepted. This is called direct mode.

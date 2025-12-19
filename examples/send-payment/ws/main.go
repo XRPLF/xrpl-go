@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strconv"
 
+	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	transactions "github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -14,13 +14,13 @@ import (
 )
 
 func main() {
-	w, err := wallet.FromSeed("sEdSMVV4dJ1JbdBxmakRR4Puu3XVZz2", "")
+	w, err := wallet.New(crypto.ED25519())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	receiverWallet, err := wallet.FromSeed("sEd7d8Ci9nevdLCeUMctF3uGXp9WQqJ", "")
+	receiverWallet, err := wallet.New(crypto.ED25519())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -61,6 +61,7 @@ func main() {
 	balance, _ = client.GetXrpBalance(w.GetAddress())
 
 	fmt.Printf("💸 Balance: %s\n", balance)
+	fmt.Println(w.GetAddress())
 
 	amount, err := currency.XrpToDrops("1")
 	if err != nil {
@@ -78,25 +79,10 @@ func main() {
 	payment := transactions.Payment{
 		BaseTx: transactions.BaseTx{
 			Account: types.Address(w.GetAddress()),
-			Memos: []types.MemoWrapper{
-				{
-					Memo: types.Memo{
-						MemoData:   hex.EncodeToString([]byte("Hello, World!")),
-						MemoFormat: hex.EncodeToString([]byte("plain")),
-						MemoType:   hex.EncodeToString([]byte("message")),
-					},
-				},
-				{
-					Memo: types.Memo{
-						MemoData:   hex.EncodeToString([]byte("Hello, World 2!")),
-						MemoFormat: hex.EncodeToString([]byte("text/plain")),
-						MemoType:   hex.EncodeToString([]byte("message2")),
-					},
-				},
-			},
 		},
 		Destination: types.Address(receiverWallet.GetAddress()),
 		Amount:      types.XRPCurrencyAmount(amountUint),
+		DeliverMax:  types.XRPCurrencyAmount(amountUint),
 	}
 
 	flatTx := payment.Flatten()
@@ -113,7 +99,7 @@ func main() {
 		return
 	}
 
-	response, err := client.SubmitTxBlobAndWait(txBlob, true)
+	response, err := client.SubmitTxBlobAndWait(txBlob, false)
 	if err != nil {
 		fmt.Println(err)
 		return

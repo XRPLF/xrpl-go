@@ -5,6 +5,11 @@ import (
 	"fmt"
 )
 
+const (
+	// txnNotFound is the error message returned by the xrpl node when requesting for a not found transaction.
+	txnNotFound = "txnNotFound"
+)
+
 var (
 	// transaction
 
@@ -76,11 +81,6 @@ var (
 
 	// ErrAmountAndDeliverMaxMustBeIdentical is returned when Amount and DeliverMax fields are not identical.
 	ErrAmountAndDeliverMaxMustBeIdentical = errors.New("payment transaction: Amount and DeliverMax fields must be identical when both are provided")
-
-	// tags
-
-	// ErrTagMustEqualAddressTag is returned when a tag must equal the address tag.
-	ErrTagMustEqualAddressTag = errors.New("tag, if present, must be equal to the tag of the address")
 
 	// connection
 

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bumped `golang.org/x/crypto` version to `v0.45.0`
 - Fix `websocket` client retrial mechanism on transaction await.
+- `TxResponse` `Meta` field type changed to `TxMetadataBuilder`, enabling custom parsing for specific transactions metadata such as `Payment`, `NFTokenMint`, etc.
 
 ## [v0.1.13]
 

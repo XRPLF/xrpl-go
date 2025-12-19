@@ -14,6 +14,15 @@ const (
 	tfSellNFToken uint32 = 1
 )
 
+// NFTokenCreateOfferMetadata represents the resulting metadata of a succeeded NFTokenCreateOffer transaction.
+// It extends from TxObjMeta.
+type NFTokenCreateOfferMetadata struct {
+	TxObjMeta
+
+	// OfferID is a string of Amount is present.
+	OfferID *types.OfferID `json:"offer_id,omitempty"`
+}
+
 // NFTokenCreateOffer creates either a new Sell offer for an NFToken owned by the account executing the transaction, or a new Buy offer for an NFToken owned by another account.
 //
 // If successful, the transaction creates a NFTokenOffer object. Each offer counts as one object towards the owner reserve of the account that placed the offer.

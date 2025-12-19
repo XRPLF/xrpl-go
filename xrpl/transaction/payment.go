@@ -20,6 +20,12 @@ const (
 	tfLimitQuality uint32 = 262144
 )
 
+// PaymentMetadata represents the resulting metadata of a succeeded Payment transaction.
+// It extends from TxObjMeta.
+type PaymentMetadata struct {
+	TxObjMeta
+}
+
 // A Payment transaction represents a transfer of value from one account to another.
 type Payment struct {
 	BaseTx
