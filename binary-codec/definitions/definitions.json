@@ -2198,6 +2198,26 @@
       }
     ],
     [
+      "Holder",
+      {
+        "nth": 11,
+        "isVLEncoded": true,
+        "isSerialized": true,
+        "isSigningField": true,
+        "type": "AccountID"
+      }
+    ],
+    [
+      "Delegate",
+      {
+        "nth": 12,
+        "isVLEncoded": true,
+        "isSerialized": true,
+        "isSigningField": true,
+        "type": "AccountID"
+      }
+    ],
+    [
       "HookAccount",
       {
         "nth": 16,
