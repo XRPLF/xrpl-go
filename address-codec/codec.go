@@ -88,11 +88,18 @@ func EncodeClassicAddressFromPublicKeyHex(pubkeyhex string) (string, error) {
 
 // DecodeClassicAddressToAccountID returns the prefix and accountID byte slice from a classic address.
 func DecodeClassicAddressToAccountID(cAddress string) (typePrefix, accountID []byte, err error) {
-	if len(DecodeBase58(cAddress)) != 25 {
+	// Use Base58CheckDecode to validate checksum
+	decoded, err := Base58CheckDecode(cAddress)
+	if err != nil {
 		return nil, nil, ErrInvalidClassicAddress
 	}
 
-	return DecodeBase58(cAddress)[:1], DecodeBase58(cAddress)[1:21], nil
+	// Expected length is 21 bytes (1 prefix + 20 accountID) after removing 4-byte checksum
+	if len(decoded) != 21 {
+		return nil, nil, ErrInvalidClassicAddress
+	}
+
+	return decoded[:1], decoded[1:21], nil
 }
 
 // EncodeAccountIDToClassicAddress returns the classic address encoding of the accountId.

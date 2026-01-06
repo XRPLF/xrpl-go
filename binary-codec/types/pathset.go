@@ -17,6 +17,15 @@ const (
 	pathSeparatorByte = 0xFF
 )
 
+// serializePathCurrency serializes a currency code for use in path steps.
+// Unlike serializeIssuedCurrencyCode, this allows "XRP" which serializes to 20 zero bytes.
+func serializePathCurrency(currency string) ([]byte, error) {
+	if currency == "XRP" {
+		return make([]byte, 20), nil
+	}
+	return serializeIssuedCurrencyCode(currency)
+}
+
 // PathSet type declaration
 type PathSet struct{}
 
@@ -68,14 +77,19 @@ func (p PathSet) ToJSON(parser interfaces.BinaryParser, _ ...int) (any, error) {
 				if !ok {
 					return nil, fmt.Errorf("step is not of type map[string]any")
 				}
+				// Calculate type by combining flags
+				stepType := 0
 				if _, ok := stepMap["account"]; ok {
-					stepMap["type"] = 1
-					stepMap["type_hex"] = "0000000000000001"
+					stepType |= typeAccount
 				}
 				if _, ok := stepMap["currency"]; ok {
-					stepMap["type"] = 16
-					stepMap["type_hex"] = "0000000000000010"
+					stepType |= typeCurrency
 				}
+				if _, ok := stepMap["issuer"]; ok {
+					stepType |= typeIssuer
+				}
+				stepMap["type"] = stepType
+				stepMap["type_hex"] = fmt.Sprintf("%016X", stepType)
 				path[i] = stepMap
 			}
 			pathSet = append(pathSet, path)
@@ -110,7 +124,7 @@ func newPathStep(v map[string]any) []byte {
 		dataType |= typeAccount
 	}
 	if v["currency"] != nil {
-		currency, _ := serializeIssuedCurrencyCode(v["currency"].(string))
+		currency, _ := serializePathCurrency(v["currency"].(string))
 		b = append(b, currency...)
 		dataType |= typeCurrency
 	}
@@ -135,15 +149,13 @@ func newPath(v []any) []byte {
 }
 
 // newPathSet constructs a path set from a slice of paths.
-// It generates a byte array representation of the path set, encoding each path and adding padding and path separators as appropriate.
+// It generates a byte array representation of the path set, encoding each path and adding path separators as appropriate.
 func newPathSet(v []any) []byte {
 
 	b := make([]byte, 0)
-	padding := make([]byte, 20)
 
 	for _, path := range v { // for each path in the path set (slice of paths)
 		b = append(b, newPath(path.([]any))...) // append the path to the byte array
-		b = append(b, padding...)               // append 20 empty bytes to the byte array between paths
 		b = append(b, pathSeparatorByte)        // between each path, append a path separator byte
 	}
 

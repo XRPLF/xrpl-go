@@ -63,7 +63,16 @@ func EncodeXAddress(accountID []byte, tag uint32, tagFlag, testnetFlag bool) (st
 // DecodeXAddress returns the accountId, tag, and testnet boolean decoding of the x-address.
 // If the x-address is invalid, it returns an error.
 func DecodeXAddress(xAddress string) (accountID []byte, tag uint32, testnet bool, err error) {
-	xAddressBytes := DecodeBase58(xAddress)
+	// Use Base58CheckDecode to validate checksum
+	xAddressBytes, err := Base58CheckDecode(xAddress)
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	// Verify length (2 prefix + 20 accountID + 1 flag + 8 tag bytes = 31)
+	if len(xAddressBytes) != 31 {
+		return nil, 0, false, ErrInvalidXAddress
+	}
 
 	switch {
 	case bytes.HasPrefix(xAddressBytes, MainnetXAddressPrefix):
@@ -74,7 +83,7 @@ func DecodeXAddress(xAddress string) (accountID []byte, tag uint32, testnet bool
 		return nil, 0, false, ErrInvalidXAddress
 	}
 
-	tag, err = decodeTag(xAddressBytes)
+	tag, _, err = decodeTag(xAddressBytes)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -113,13 +122,26 @@ func ClassicAddressToXAddress(address string, tag uint32, tagFlag, testnetFlag b
 
 // decodeTag returns the tag from the x-address.
 // If the tag is invalid, it returns an error.
-func decodeTag(xAddressBytes []byte) (uint32, error) {
-	switch {
-	case xAddressBytes[22] > 1:
-		return 0, ErrInvalidTag
-	case xAddressBytes[22] == 1:
-		return uint32(xAddressBytes[23]) + uint32(xAddressBytes[24])*256 + uint32(xAddressBytes[25])*65536, nil
-	default:
-		return 0, nil
+func decodeTag(xAddressBytes []byte) (uint32, bool, error) {
+	flag := xAddressBytes[22]
+	if flag >= 2 {
+		// No support for 64-bit tags at this time
+		return 0, false, ErrUnsupportedXAddress
 	}
+	if flag == 1 {
+		// Little-endian to big-endian (4 bytes for full 32-bit tag support)
+		tag := uint32(xAddressBytes[23]) +
+			uint32(xAddressBytes[24])*0x100 +
+			uint32(xAddressBytes[25])*0x10000 +
+			uint32(xAddressBytes[26])*0x1000000
+		return tag, true, nil
+	}
+	// flag == 0 means no tag
+	// Verify remaining bytes are zero (reserved for 64-bit tags)
+	for i := 23; i < 31; i++ {
+		if xAddressBytes[i] != 0 {
+			return 0, false, ErrInvalidTag
+		}
+	}
+	return 0, false, nil
 }

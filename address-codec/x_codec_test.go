@@ -134,12 +134,7 @@ func TestDecodeXAddress(t *testing.T) {
 		{
 			name:        "fail - invalid x-address",
 			input:       "invalid",
-			expectedErr: ErrInvalidXAddress,
-		},
-		{
-			name:        "fail - invalid tag",
-			input:       "T719a5UwUCnEs54UsxG9CJYYDhwmFgrRVXpDX5tdrUHz9j1",
-			expectedErr: ErrInvalidTag,
+			expectedErr: ErrInvalidFormat,
 		},
 		{
 			name:  "pass - valid testnet x-address",
@@ -168,7 +163,17 @@ func TestDecodeXAddress(t *testing.T) {
 			expectedErr:     nil,
 		},
 		{
-			name: "pass - valid mainnet x-address",
+			name:  "pass - valid mainnet x-address",
+			input: "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+			expectedAccountId: []byte{
+				94, 123, 17, 37, 35, 246,
+				141, 47, 94, 135, 157, 180,
+				234, 197, 28, 102, 152, 166,
+				147, 4,
+			},
+			expectedTag:     0,
+			expectedTestnet: false,
+			expectedErr:     nil,
 		},
 		{
 			name:  "pass - valid mainnet x-address with tag",
@@ -212,12 +217,7 @@ func TestXAddressToClassicAddress(t *testing.T) {
 		{
 			name:        "fail - invalid x-address",
 			input:       "invalid",
-			expectedErr: ErrInvalidXAddress,
-		},
-		{
-			name:        "fail - invalid tag",
-			input:       "T719a5UwUCnEs54UsxG9CJYYDhwmFgrRVXpDX5tdrUHz9j1",
-			expectedErr: ErrInvalidTag,
+			expectedErr: ErrInvalidFormat,
 		},
 		{
 			name:                   "pass - valid testnet x-address",
@@ -305,35 +305,47 @@ func TestDecodeTag(t *testing.T) {
 		name        string
 		input       []byte
 		expectedTag uint32
+		hasTag      bool
 		expectedErr error
 	}{
 		{
-			name:        "fail - invalid tag",
+			name:        "fail - unsupported 64-bit tag (flag >= 2)",
 			input:       []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-			expectedErr: ErrInvalidTag,
+			expectedErr: ErrUnsupportedXAddress,
 		},
 		{
 			name:        "pass - valid tag - 1",
 			input:       []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
 			expectedTag: 1,
+			hasTag:      true,
 			expectedErr: nil,
 		},
 		{
-			name:        "pass - valid tag - 0",
+			name:        "pass - no tag (flag = 0)",
 			input:       []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 			expectedTag: 0,
+			hasTag:      false,
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - large tag (32-bit max)",
+			input:       []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0},
+			expectedTag: 4294967295,
+			hasTag:      true,
 			expectedErr: nil,
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			actual, err := decodeTag(tc.input)
+			actual, hasTag, err := decodeTag(tc.input)
 			if tc.expectedErr != nil {
 				require.Error(t, err)
 				require.Equal(t, tc.expectedErr.Error(), err.Error())
 			} else {
+				require.NoError(t, err)
 				require.Equal(t, tc.expectedTag, actual)
+				require.Equal(t, tc.hasTag, hasTag)
 			}
 		})
 	}

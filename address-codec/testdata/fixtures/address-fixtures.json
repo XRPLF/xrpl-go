@@ -1,0 +1,216 @@
+{
+  "encodeDecodeAccountID": [
+    {
+      "hex": "BA8E78626EE42C41B46D46C3048DF3A1C3C87072",
+      "base58": "rJrRMgiRgrU6hDF4pgu5DXQdWyPbY35ErN"
+    }
+  ],
+  "encodeDecodeNodePublic": [
+    {
+      "hex": "0388E5BA87A000CB807240DF8C848EB0B5FFA5C8E5A521BC8E105C0F0A44217828",
+      "base58": "n9MXXueo837zYH36DvMc13BwHcqtfAWNJY5czWVbp7uYTj7x17TH"
+    }
+  ],
+  "encodeDecodeAccountPublic": [
+    {
+      "hex": "023693F15967AE357D0327974AD46FE3C127113B1110D6044FD41E723689F81CC6",
+      "base58": "aB44YfzW24VDEJQ2UuLPV2PvqcPCSoLnL7y5M1EzhdW4LnK5xMS3"
+    }
+  ],
+  "seeds": [
+    {
+      "hex": "4C3A1D213FBDFB14C7C28D609469B341",
+      "base58": "sEdTM1uX8pu2do5XvTnutH6HsouMaM2",
+      "type": "ed25519"
+    },
+    {
+      "hex": "CF2DE378FBDD7E2EE87D486DFB5A7BFF",
+      "base58": "sn259rEFXrQrWyx3Q7XneWcwV6dfL",
+      "type": "secp256k1"
+    },
+    {
+      "hex": "00000000000000000000000000000000",
+      "base58": "sp6JS7f14BuwFY8Mw6bTtLKWauoUs",
+      "type": "secp256k1"
+    },
+    {
+      "hex": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+      "base58": "saGwBRReqUNKuWNLpUAq8i8NkXEPN",
+      "type": "secp256k1"
+    },
+    {
+      "hex": "00000000000000000000000000000000",
+      "base58": "sEdSJHS4oiAdz7w2X2ni1gFiqtbJHqE",
+      "type": "ed25519"
+    },
+    {
+      "hex": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+      "base58": "sEdV19BLfeQeKdEXyYA4NhjPJe6XBfG",
+      "type": "ed25519"
+    }
+  ],
+  "validClassicAddresses": [
+    "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+    "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
+  ],
+  "invalidClassicAddresses": [
+    "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw2",
+    ""
+  ],
+  "xAddresses": [
+    {
+      "classicAddress": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+      "tag": null,
+      "mainnetAddress": "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+      "testnetAddress": "T719a5UwUCnEs54UsxG9CJYYDhwmFCqkr7wxCcNcfZ6p5GZ"
+    },
+    {
+      "classicAddress": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+      "tag": 1,
+      "mainnetAddress": "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGZMhc9YTE92ehJ2Fu",
+      "testnetAddress": "T719a5UwUCnEs54UsxG9CJYYDhwmFCvbJNZbi37gBGkRkbE"
+    },
+    {
+      "classicAddress": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+      "tag": 14,
+      "mainnetAddress": "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGo2K5VpXpmCqbV2gS",
+      "testnetAddress": "T719a5UwUCnEs54UsxG9CJYYDhwmFCvqXVCALUGJGSbNV3x"
+    },
+    {
+      "classicAddress": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+      "tag": 11747,
+      "mainnetAddress": "X7AcgcsBL6XDcUb289X4mJ8djcdyKaLFuhLRuNXPrDeJd9A",
+      "testnetAddress": "T719a5UwUCnEs54UsxG9CJYYDhwmFCziiNHtUukubF2Mg6t"
+    },
+    {
+      "classicAddress": "rLczgQHxPhWtjkaQqn3Q6UM8AbRbbRvs5K",
+      "tag": null,
+      "mainnetAddress": "XVZVpQj8YSVpNyiwXYSqvQoQqgBttTxAZwMcuJd4xteQHyt",
+      "testnetAddress": "TVVrSWtmQQssgVcmoMBcFQZKKf56QscyWLKnUyiuZW8ALU4"
+    },
+    {
+      "classicAddress": "rpZc4mVfWUif9CRoHRKKcmhu1nx2xktxBo",
+      "tag": null,
+      "mainnetAddress": "X7YenJqxv3L66CwhBSfd3N8RzGXxYqPopMGMsCcpho79rex",
+      "testnetAddress": "T77wVQzA8ntj9wvCTNiQpNYLT5hmhRsFyXDoMLqYC4BzQtV"
+    },
+    {
+      "classicAddress": "rpZc4mVfWUif9CRoHRKKcmhu1nx2xktxBo",
+      "tag": 58,
+      "mainnetAddress": "X7YenJqxv3L66CwhBSfd3N8RzGXxYqV56ZkTCa9UCzgaao1",
+      "testnetAddress": "T77wVQzA8ntj9wvCTNiQpNYLT5hmhR9kej6uxm4jGcQD7rZ"
+    },
+    {
+      "classicAddress": "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+      "tag": 23480,
+      "mainnetAddress": "X7d3eHCXzwBeWrZec1yT24iZerQjYL8m8zCJ16ACxu1BrBY",
+      "testnetAddress": "T7YChPFWifjCAXLEtg5N74c7fSAYsvSokwcmBPBUZWhxH5P"
+    },
+    {
+      "classicAddress": "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+      "tag": 11747,
+      "mainnetAddress": "X7d3eHCXzwBeWrZec1yT24iZerQjYLo2CJf8oVC5CMWey5m",
+      "testnetAddress": "T7YChPFWifjCAXLEtg5N74c7fSAYsvTcc7nEfwuEEvn5Q4w"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": null,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtV5fdx1mHp98tDMoQXb",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQn49b3qD26PK7FcGSKE"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": 0,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtV8AqEL4xcZj5whKbmc",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQnSy8RHqGHoGJ59spi2"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": 1,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtV8xvjGQTYPiAx6gwDC",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQnSz1uDimDdPYXzSpyw"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": 2,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtV8zpDURx7DzBCkrQE7",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQnTryP9tG9TW8GeMBmd"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": 32,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtVoYiC9UvKfjKar4LJe",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQnT2oqaCDzMEuCDAj1j"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": 276,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtVoKj3MnFGMXEFMnvJV",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQnTMgJJYfAbsiPsc6Zg"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": 65591,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtVozpjdhPQVdt3ghaWw",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQn7ryu2W6njw7mT1jmS"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": 16781933,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtVqrDUk2vDpkTjPsY73",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQnVsw45sDtGHhLi27Qa"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": 4294967294,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtV1kAsixQTdMjbWi39u",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQnX8tDFQ53itLNqs6vU"
+    },
+    {
+      "classicAddress": "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+      "tag": 4294967295,
+      "mainnetAddress": "XVLhHMPHU98es4dbozjVtdWzVrDjtV18pX8yuPT7y4xaEHi",
+      "testnetAddress": "TVE26TYGhfLC7tQDno7G8dGtxSkYQnXoy6kSDh6rZzApc69"
+    },
+    {
+      "classicAddress": "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
+      "tag": null,
+      "mainnetAddress": "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2gYsjNFQLKYW33DzBm",
+      "testnetAddress": "TVd2rqMkYL2AyS97NdELcpeiprNBjwLZzuUG5rZnaewsahi"
+    },
+    {
+      "classicAddress": "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
+      "tag": 0,
+      "mainnetAddress": "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2m4Er6SnvjVLpMWPjR",
+      "testnetAddress": "TVd2rqMkYL2AyS97NdELcpeiprNBjwRQUBetPbyrvXSTuxU"
+    },
+    {
+      "classicAddress": "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
+      "tag": 13371337,
+      "mainnetAddress": "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2qwGkhgc48zzcx6Gkr",
+      "testnetAddress": "TVd2rqMkYL2AyS97NdELcpeiprNBjwVUDvp3vhpXbNhLwJi"
+    }
+  ],
+  "invalidXAddresses": [
+    {
+      "address": "XVLhHMPHU98es4dbozjVtdWzVrDjtV5fdx1mHp98tDMoQXa",
+      "error": "checksum_invalid"
+    },
+    {
+      "address": "dGzKGt8CVpWoa8aWL1k18tAdy9Won3PxynvbbpkAqp3V47g",
+      "error": "Invalid X-address: bad prefix"
+    },
+    {
+      "address": "XVLhHMPHU98es4dbozjVtdWzVrDjtV18pX8zeUygYrCgrPh",
+      "error": "Unsupported X-address"
+    }
+  ],
+  "codecTests": [
+    {
+      "input": "123456789",
+      "version": 0,
+      "expectedLength": 9,
+      "encoded": "rnaC7gW34M77Kneb78s"
+    }
+  ]
+}

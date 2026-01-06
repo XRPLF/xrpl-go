@@ -29,12 +29,26 @@ type Vector256 struct{}
 // The input value is assumed to be an array of strings representing Hash256 values.
 // If the serialization fails, an error is returned.
 func (v *Vector256) FromJSON(json any) ([]byte, error) {
+	var strSlice []string
 
-	if _, ok := json.([]string); !ok {
+	switch val := json.(type) {
+	case []string:
+		strSlice = val
+	case []any:
+		// Convert []interface{} to []string (common when unmarshalling JSON)
+		strSlice = make([]string, len(val))
+		for i, item := range val {
+			s, ok := item.(string)
+			if !ok {
+				return nil, &ErrInvalidVector256Type{fmt.Sprintf("%T (element %d is %T)", json, i, item)}
+			}
+			strSlice[i] = s
+		}
+	default:
 		return nil, &ErrInvalidVector256Type{fmt.Sprintf("%T", json)}
 	}
 
-	b, err := vector256FromValue(json.([]string))
+	b, err := vector256FromValue(strSlice)
 
 	if err != nil {
 		return nil, err

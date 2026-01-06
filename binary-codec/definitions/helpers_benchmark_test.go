@@ -282,7 +282,7 @@ func BenchmarkGetLedgerEntryTypeCodeByLedgerEntryTypeName(b *testing.B) {
 		input string
 	}{
 		{
-			input: "Any",
+			input: "AccountRoot",
 		},
 		{
 			input: "yurt",

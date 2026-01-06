@@ -28,9 +28,25 @@ func (u *UInt16) FromJSON(value any) ([]byte, error) {
 		value = int(tc)
 	}
 
+	var val uint16
+	switch v := value.(type) {
+	case int:
+		val = uint16(v)
+	case int64:
+		val = uint16(v)
+	case uint16:
+		val = v
+	case uint32:
+		val = uint16(v)
+	case float64:
+		val = uint16(v)
+	default:
+		val = uint16(value.(int)) // will panic with meaningful error
+	}
+
 	buf := new(bytes.Buffer)
 	//nolint:gosec // G115: Potential hardcoded credentials (gosec)
-	err := binary.Write(buf, binary.BigEndian, uint16(value.(int)))
+	err := binary.Write(buf, binary.BigEndian, val)
 
 	if err != nil {
 		return nil, err
