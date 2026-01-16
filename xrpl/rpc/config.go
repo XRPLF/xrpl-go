@@ -43,6 +43,20 @@ func WithHTTPClient(cl HTTPClient) ConfigOpt {
 	}
 }
 
+// WithMaxRetries returns a ConfigOpt that sets the maximum number of retries.
+func WithMaxRetries(maxRetries int) ConfigOpt {
+	return func(c *Config) {
+		c.maxRetries = maxRetries
+	}
+}
+
+// WithRetryDelay returns a ConfigOpt that sets the delay between retry attempts.
+func WithRetryDelay(retryDelay time.Duration) ConfigOpt {
+	return func(c *Config) {
+		c.retryDelay = retryDelay
+	}
+}
+
 // WithMaxFeeXRP returns a ConfigOpt that sets the maximum fee in XRP.
 func WithMaxFeeXRP(maxFeeXRP float32) ConfigOpt {
 	return func(c *Config) {

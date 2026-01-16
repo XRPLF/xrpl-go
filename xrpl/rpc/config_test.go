@@ -85,3 +85,17 @@ func TestWithTimeout(t *testing.T) {
 
 	require.Equal(t, timeOut, cfg.timeout)
 }
+
+func TestWithMaxRetries(t *testing.T) {
+	maxRetries := 5
+	cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithMaxRetries(maxRetries))
+
+	require.Equal(t, maxRetries, cfg.maxRetries)
+}
+
+func TestWithRetryDelay(t *testing.T) {
+	retryDelay := 2 * time.Second
+	cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithRetryDelay(retryDelay))
+
+	require.Equal(t, retryDelay, cfg.retryDelay)
+}
