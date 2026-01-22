@@ -52,7 +52,7 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 	}
 
 	// add timeout context to prevent hanging
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), c.cfg.timeout)
 	defer cancel()
 	req = req.WithContext(ctx)
 
