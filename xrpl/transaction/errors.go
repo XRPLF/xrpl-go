@@ -16,8 +16,6 @@ var (
 	ErrDelegateAccountConflict = errors.New("addresses for Account and Delegate cannot be the same")
 	// ErrInvalidCheckID is returned when the CheckID is not a valid 64-character hexadecimal string.
 	ErrInvalidCheckID = errors.New("invalid CheckID, must be a valid 64-character hexadecimal string")
-	// ErrInvalidCredentialType is returned when the CredentialType is not a valid hexadecimal string between 1 and 64 bytes.
-	ErrInvalidCredentialType = errors.New("invalid credential type, must be a hexadecimal string between 1 and 64 bytes")
 	// ErrInvalidCredentialIDs is returned when the CredentialIDs field is empty or not a valid hexadecimal string array.
 	ErrInvalidCredentialIDs = errors.New("invalid credential IDs, must be a valid hexadecimal string array")
 	// ErrInvalidDestination is returned when the Destination field does not meet XRPL address standards.
@@ -111,10 +109,6 @@ var (
 
 	// ErrTrustSetMissingLimitAmount is returned when the LimitAmount field is not set on a TrustSet transaction.
 	ErrTrustSetMissingLimitAmount = errors.New("missing field LimitAmount")
-	// ErrTrustSetQualityInNotNumber is returned when QualityIn is not a valid number.
-	ErrTrustSetQualityInNotNumber = errors.New("qualityIn must be a number")
-	// ErrTrustSetQualityOutNotNumber is returned when QualityOut is not a valid number.
-	ErrTrustSetQualityOutNotNumber = errors.New("qualityOut must be a number")
 
 	// signer list set
 
@@ -152,8 +146,6 @@ var (
 
 	// offer
 
-	// ErrOfferCancelMissingOfferSequence is returned when the offer sequence is missing.
-	ErrOfferCancelMissingOfferSequence = errors.New("missing offer sequence")
 	// ErrTfHybridCannotBeSetWithoutDomainID is returned if a OfferCreate has tfHybrid enabled and no DomainID set.
 	ErrTfHybridCannotBeSetWithoutDomainID = errors.New("tfHybrid must have a valid DomainID")
 
@@ -196,12 +188,8 @@ var (
 
 	// ErrTransferFeeRequiresCanTransfer is returned when TransferFee is set without enabling tfMPTCanTransfer flag.
 	ErrTransferFeeRequiresCanTransfer = errors.New("mptoken issuance create: TransferFee cannot be provided without enabling tfMPTCanTransfer flag")
-	// ErrInvalidMaximumAmount is returned when the MaximumAmount is not a valid unsigned 64-bit integer.
-	ErrInvalidMaximumAmount = errors.New("mptoken issuance create: invalid MaximumAmount, must be a valid unsigned 64-bit integer")
 	// ErrInvalidMPTokenMetadata is returned when MPTokenMetadata is not a valid hex string or exceeds size limit.
 	ErrInvalidMPTokenMetadata = errors.New("mptoken issuance create: MPTokenMetadata must be a valid hex string and at most 1024 bytes")
-	// ErrInvalidMPTokenIssuanceCreateTransferFee is returned when the TransferFee is outside the allowed range.
-	ErrInvalidMPTokenIssuanceCreateTransferFee = errors.New("mptoken issuance create: TransferFee must be between 0 and 50000")
 
 	// ErrHolderAccountConflict is returned when the holder account is the same as the issuing account.
 	ErrHolderAccountConflict = errors.New("holder must be different from the account")
@@ -215,8 +203,6 @@ var (
 
 	// ErrEscrowCreateInvalidDestinationAddress is returned when the destination address for EscrowCreate is invalid.
 	ErrEscrowCreateInvalidDestinationAddress = errors.New("escrow create: invalid destination address")
-	// ErrEscrowCreateNoCancelOrFinishAfterSet is returned when neither CancelAfter nor FinishAfter is set.
-	ErrEscrowCreateNoCancelOrFinishAfterSet = errors.New("escrow create: either CancelAfter or FinishAfter must be set")
 	// ErrEscrowCreateNoConditionOrFinishAfterSet is returned when both Condition and FinishAfter are unset.
 	ErrEscrowCreateNoConditionOrFinishAfterSet = errors.New("escrow create: either Condition or FinishAfter must be specified")
 
@@ -288,38 +274,6 @@ var (
 	// ErrBatchRawTransactionsEmpty is returned when the RawTransactions array is empty or nil.
 	// This validates that a batch transaction contains at least one inner transaction to execute.
 	ErrBatchRawTransactionsEmpty = errors.New("rawTransactions must be a non-empty array")
-
-	// ErrBatchSignersNotArray is returned when BatchSigners field is present but not an array type.
-	// BatchSigners must be an array of signer objects for multi-signing validation.
-	ErrBatchSignersNotArray = errors.New("batchSigners must be an array")
-
-	// ErrBatchRawTransactionNotObject is returned when a RawTransaction array element is not an object.
-	// Each element in the RawTransactions array must be a valid transaction object.
-	ErrBatchRawTransactionNotObject = errors.New("batch RawTransaction element is not an object")
-
-	// ErrBatchRawTransactionFieldNotObject is returned when the RawTransaction field is not an object.
-	// The RawTransaction field must contain a valid transaction object structure.
-	ErrBatchRawTransactionFieldNotObject = errors.New("batch RawTransaction field is not an object")
-
-	// ErrBatchSignerNotObject is returned when a BatchSigner array element is not an object.
-	// Each element in the BatchSigners array must be a valid signer object.
-	ErrBatchSignerNotObject = errors.New("batch BatchSigner element is not an object")
-
-	// ErrBatchSignerMissing is returned when the BatchSigner field is missing from an array element.
-	// Each BatchSigners array element must contain a BatchSigner field.
-	ErrBatchSignerMissing = errors.New("batch BatchSigner field is missing")
-
-	// ErrBatchSignerFieldNotObject is returned when the BatchSigner field is not an object.
-	// The BatchSigner field must contain a valid signer object structure.
-	ErrBatchSignerFieldNotObject = errors.New("batch BatchSigner field is not an object")
-
-	// ErrBatchSignerAccountNotString is returned when a BatchSigner Account field is not a string.
-	// The Account field must be a valid string representing an XRPL account address.
-	ErrBatchSignerAccountNotString = errors.New("batch BatchSigner Account must be a string")
-
-	// ErrBatchSignerInvalid is returned when a BatchSigner fails its validation rules.
-	// Each BatchSigner must pass its individual validation requirements.
-	ErrBatchSignerInvalid = errors.New("batch signer validation failed")
 
 	// balance
 
