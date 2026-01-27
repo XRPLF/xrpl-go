@@ -12,6 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - `AuthorizeChannel` to authorize a payment channel.
+- Added `Loan` and `LoanBroker` ledger entry types for the lending protocol.
+- Added loan transaction types:
+  - `LoanSet` - Creates or updates a loan with terms including principal, interest rates, payment intervals, and fees.
+  - `LoanDelete` - Deletes an existing loan.
+  - `LoanManage` - Modifies loan state (default, impair, unimpair).
+  - `LoanPay` - Submits a payment on a loan.
+- Added loan broker transaction types:
+  - `LoanBrokerSet` - Creates or updates a loan broker with management fee rates, cover rates, and debt limits.
+  - `LoanBrokerDelete` - Deletes a loan broker.
+  - `LoanBrokerCoverDeposit` - Deposits first-loss capital into a loan broker.
+  - `LoanBrokerCoverWithdraw` - Withdraws first-loss capital from a loan broker.
+  - `LoanBrokerCoverClawback` - Claws back first-loss capital from a loan broker.
+- Added supporting types for loan transactions:
+  - `XRPLNumber` - Represents XRPL numbers as strings.
+  - `OwnerCount`, `CoverRate`, `InterestRate`, `PreviousPaymentDate` - Wrapper types for uint32 values.
+  - `Data`, `GracePeriod`, `PaymentInterval`, `PaymentTotal`, `LoanBrokerID` - Additional wrapper types for loan-related fields.
 
 ### Fixed
 
