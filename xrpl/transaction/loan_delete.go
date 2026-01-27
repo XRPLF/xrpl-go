@@ -48,11 +48,11 @@ func (tx *LoanDelete) Validate() (bool, error) {
 	}
 
 	if tx.LoanID == "" {
-		return false, errors.New("LoanDelete: LoanID is required")
+		return false, errors.New("loanDelete: LoanID is required")
 	}
 
 	if !IsLedgerEntryID(tx.LoanID) {
-		return false, errors.New("LoanDelete: LoanID must be 64 characters hexadecimal string")
+		return false, errors.New("loanDelete: LoanID must be 64 characters hexadecimal string")
 	}
 
 	return true, nil

@@ -59,26 +59,32 @@ type Loan struct {
 	LoanBrokerID types.Hash256
 	// The address of the account that is the borrower.
 	Borrower types.Address
+	// The principal amount requested by the Borrower.
+	PrincipalOutstanding types.XRPLNumber
+	// The calculated periodic payment amount for each payment interval.
+	PeriodicPayment types.XRPLNumber
+	// The total outstanding value of the Loan, including all fees and interest.
+	TotalValueOutstanding types.XRPLNumber
 	// A nominal fee amount paid to the LoanBroker.Owner when the Loan is created.
-	LoanOriginationFee string `json:",omitempty"`
+	LoanOriginationFee *types.XRPLNumber `json:",omitempty"`
 	// A nominal funds amount paid to the LoanBroker.Owner with every Loan payment.
-	LoanServiceFee string `json:",omitempty"`
+	LoanServiceFee *types.XRPLNumber `json:",omitempty"`
 	// A nominal funds amount paid to the LoanBroker.Owner when a payment is late.
-	LatePaymentFee string `json:",omitempty"`
+	LatePaymentFee *types.XRPLNumber `json:",omitempty"`
 	// A nominal funds amount paid to the LoanBroker.Owner when a full payment is made.
-	ClosePaymentFee string `json:",omitempty"`
+	ClosePaymentFee *types.XRPLNumber `json:",omitempty"`
 	// A fee charged on over-payments in 1/10th basis points. Valid values are between 0 and 100000 inclusive. (0 - 100%)
-	OverpaymentFee string `json:",omitempty"`
+	OverpaymentFee *types.XRPLNumber `json:",omitempty"`
 	// Annualized interest rate of the Loan in 1/10th basis points.
-	InterestRate uint32 `json:",omitempty"`
+	InterestRate *types.InterestRate `json:",omitempty"`
 	// A premium is added to the interest rate for late payments in 1/10th basis points.
 	// Valid values are between 0 and 100000 inclusive. (0 - 100%)
-	LateInterestRate uint32 `json:",omitempty"`
+	LateInterestRate *types.InterestRate `json:",omitempty"`
 	// An interest rate charged for repaying the Loan early in 1/10th basis points.
 	// Valid values are between 0 and 100000 inclusive. (0 - 100%)
-	CloseInterestRate uint32 `json:",omitempty"`
+	CloseInterestRate *types.InterestRate `json:",omitempty"`
 	// An interest rate charged on over-payments in 1/10th basis points. Valid values are between 0 and 100000 inclusive. (0 - 100%)
-	OverpaymentInterestRate uint32 `json:",omitempty"`
+	OverpaymentInterestRate *types.InterestRate `json:",omitempty"`
 	// The timestamp of when the Loan started Ripple Epoch.
 	StartDate uint32
 	// Number of seconds between Loan payments.
@@ -86,17 +92,11 @@ type Loan struct {
 	// The number of seconds after the Payment Due Date that the Loan can be Defaulted.
 	GracePeriod uint32
 	// The timestamp of when the previous payment was made in Ripple Epoch.
-	PreviousPaymentDate uint32 `json:",omitempty"`
+	PreviousPaymentDate *types.PreviousPaymentDate `json:",omitempty"`
 	// The timestamp of when the next payment is due in Ripple Epoch.
 	NextPaymentDueDate uint32
 	// The number of payments remaining on the Loan.
 	PaymentRemaining uint32
-	// The principal amount requested by the Borrower.
-	PrincipalOutstanding string
-	// The calculated periodic payment amount for each payment interval.
-	PeriodicPayment string
-	// The total outstanding value of the Loan, including all fees and interest.
-	TotalValueOutstanding string
 	// The identifying hash of the transaction that most recently modified this entry.
 	PreviousTxnID types.Hash256
 	// The index of the ledger that contains the transaction that most recently modified this entry.

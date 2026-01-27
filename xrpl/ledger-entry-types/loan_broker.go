@@ -48,19 +48,19 @@ type LoanBroker struct {
 	// The address of the Loan Broker account.
 	Owner types.Address
 	// The number of active Loans issued by the LoanBroker.
-	OwnerCount uint32 `json:",omitempty"`
+	OwnerCount *types.OwnerCount `json:",omitempty"`
 	// The total asset amount the protocol owes the Vault, including interest.
-	DebtTotal string `json:",omitempty"`
+	DebtTotal *types.XRPLNumber `json:",omitempty"`
 	// The maximum amount the protocol can owe the Vault. The default value of 0 means there is no limit to the debt.
-	DebtMaximum string
+	DebtMaximum types.XRPLNumber
 	// The total amount of first-loss capital deposited into the Lending Protocol.
-	CoverAvailable string `json:",omitempty"`
+	CoverAvailable *types.XRPLNumber `json:",omitempty"`
 	// The 1/10th basis point of the DebtTotal that the first loss capital must cover.
 	// Valid values are between 0 and 100000 inclusive. A value of 1 is equivalent to 1/10 bps or 0.001%.
-	CoverRateMinimum uint32 `json:",omitempty"`
+	CoverRateMinimum *types.CoverRate `json:",omitempty"`
 	// The 1/10th basis point of minimum required first loss capital that is liquidated to cover a Loan default.
 	// Valid values are between 0 and 100000 inclusive. A value of 1 is equivalent to 1/10 bps or 0.001%.
-	CoverRateLiquidation uint32 `json:",omitempty"`
+	CoverRateLiquidation *types.CoverRate `json:",omitempty"`
 	// The identifying hash of the transaction that most recently modified this entry.
 	PreviousTxnID types.Hash256
 	// The index of the ledger that contains the transaction that most recently modified this entry.

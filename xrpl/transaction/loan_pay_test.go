@@ -83,7 +83,7 @@ func TestLoanPay_Validate(t *testing.T) {
 				LoanID: "",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: errors.New("LoanPay: LoanID is required"),
+			expected: errors.New("loanPay: LoanID is required"),
 		},
 		{
 			name: "fail - Amount required",
@@ -95,7 +95,7 @@ func TestLoanPay_Validate(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: nil,
 			},
-			expected: errors.New("LoanPay: Amount is required"),
+			expected: errors.New("loanPay: Amount is required"),
 		},
 		{
 			name: "fail - LoanID invalid",
@@ -107,7 +107,7 @@ func TestLoanPay_Validate(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: errors.New("LoanPay: LoanID must be 64 characters hexadecimal string"),
+			expected: errors.New("loanPay: LoanID must be 64 characters hexadecimal string"),
 		},
 		{
 			name: "pass - complete",

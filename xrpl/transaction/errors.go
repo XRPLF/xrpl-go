@@ -112,9 +112,9 @@ var (
 	// ErrTrustSetMissingLimitAmount is returned when the LimitAmount field is not set on a TrustSet transaction.
 	ErrTrustSetMissingLimitAmount = errors.New("missing field LimitAmount")
 	// ErrTrustSetQualityInNotNumber is returned when QualityIn is not a valid number.
-	ErrTrustSetQualityInNotNumber = errors.New("QualityIn must be a number")
+	ErrTrustSetQualityInNotNumber = errors.New("qualityIn must be a number")
 	// ErrTrustSetQualityOutNotNumber is returned when QualityOut is not a valid number.
-	ErrTrustSetQualityOutNotNumber = errors.New("QualityOut must be a number")
+	ErrTrustSetQualityOutNotNumber = errors.New("qualityOut must be a number")
 
 	// signer list set
 
@@ -287,11 +287,11 @@ var (
 
 	// ErrBatchRawTransactionsEmpty is returned when the RawTransactions array is empty or nil.
 	// This validates that a batch transaction contains at least one inner transaction to execute.
-	ErrBatchRawTransactionsEmpty = errors.New("RawTransactions must be a non-empty array")
+	ErrBatchRawTransactionsEmpty = errors.New("rawTransactions must be a non-empty array")
 
 	// ErrBatchSignersNotArray is returned when BatchSigners field is present but not an array type.
 	// BatchSigners must be an array of signer objects for multi-signing validation.
-	ErrBatchSignersNotArray = errors.New("BatchSigners must be an array")
+	ErrBatchSignersNotArray = errors.New("batchSigners must be an array")
 
 	// ErrBatchRawTransactionNotObject is returned when a RawTransaction array element is not an object.
 	// Each element in the RawTransactions array must be a valid transaction object.

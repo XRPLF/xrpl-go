@@ -14,6 +14,8 @@ func TestLoanBrokerCoverClawback_TxType(t *testing.T) {
 }
 
 func TestLoanBrokerCoverClawback_Flatten(t *testing.T) {
+	id := types.LoanBrokerID("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430")
+
 	testcases := []struct {
 		name     string
 		tx       *LoanBrokerCoverClawback
@@ -35,7 +37,7 @@ func TestLoanBrokerCoverClawback_Flatten(t *testing.T) {
 					Sequence:           1,
 					LastLedgerSequence: 3000000,
 				},
-				LoanBrokerID: func() *string { v := "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"; return &v }(),
+				LoanBrokerID: &id,
 				Amount:       types.XRPCurrencyAmount(10000),
 			},
 			expected: map[string]interface{}{
@@ -79,10 +81,13 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 					TransactionType: LoanBrokerCoverClawbackTx,
 				},
-				LoanBrokerID: func() *string { v := "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43"; return &v }(),
-				Amount:       types.XRPCurrencyAmount(10000),
+				LoanBrokerID: func() *types.LoanBrokerID {
+					v := types.LoanBrokerID("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43")
+					return &v
+				}(),
+				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: errors.New("LoanBrokerCoverClawback: LoanBrokerID must be 64 characters hexadecimal string"),
+			expected: errors.New("loanBrokerCoverClawback: LoanBrokerID must be 64 characters hexadecimal string"),
 		},
 		{
 			name: "fail - both LoanBrokerID and Amount missing",
@@ -94,7 +99,7 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 				LoanBrokerID: nil,
 				Amount:       nil,
 			},
-			expected: errors.New("LoanBrokerCoverClawback: Either LoanBrokerID or Amount is required"),
+			expected: errors.New("loanBrokerCoverClawback: Either LoanBrokerID or Amount is required"),
 		},
 		{
 			name: "fail - LoanBrokerID empty string and Amount missing",
@@ -103,10 +108,10 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 					TransactionType: LoanBrokerCoverClawbackTx,
 				},
-				LoanBrokerID: func() *string { v := ""; return &v }(),
+				LoanBrokerID: func() *types.LoanBrokerID { v := types.LoanBrokerID(""); return &v }(),
 				Amount:       nil,
 			},
-			expected: errors.New("LoanBrokerCoverClawback: Either LoanBrokerID or Amount is required"),
+			expected: errors.New("loanBrokerCoverClawback: Either LoanBrokerID or Amount is required"),
 		},
 		{
 			name: "pass - complete",
@@ -115,8 +120,15 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 					TransactionType: LoanBrokerCoverClawbackTx,
 				},
-				LoanBrokerID: func() *string { v := "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"; return &v }(),
-				Amount:       types.XRPCurrencyAmount(10000),
+				LoanBrokerID: func() *types.LoanBrokerID {
+					v := types.LoanBrokerID("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430")
+					return &v
+				}(),
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   types.Address("rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds"),
+					Currency: "FOO",
+					Value:    "0",
+				},
 			},
 			expected: nil,
 		},
@@ -128,7 +140,11 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 					TransactionType: LoanBrokerCoverClawbackTx,
 				},
 				LoanBrokerID: nil,
-				Amount:       types.XRPCurrencyAmount(10000),
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   types.Address("rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds"),
+					Currency: "FOO",
+					Value:    "0",
+				},
 			},
 			expected: nil,
 		},

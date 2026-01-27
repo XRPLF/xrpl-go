@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,6 +15,9 @@ func TestLoanBrokerSet_TxType(t *testing.T) {
 }
 
 func TestLoanBrokerSet_Flatten(t *testing.T) {
+	managementFeeRate := types.InterestRate(1000)
+	coverRateMinimum := types.InterestRate(5000)
+
 	testcases := []struct {
 		name     string
 		tx       *LoanBrokerSet
@@ -37,8 +41,8 @@ func TestLoanBrokerSet_Flatten(t *testing.T) {
 					LastLedgerSequence: 3000000,
 				},
 				VaultID:           "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				ManagementFeeRate: func() *uint32 { v := uint32(1000); return &v }(),
-				CoverRateMinimum:  func() *uint32 { v := uint32(5000); return &v }(),
+				ManagementFeeRate: &managementFeeRate,
+				CoverRateMinimum:  &coverRateMinimum,
 			},
 			expected: map[string]interface{}{
 				"TransactionType":    LoanBrokerSetTx.String(),
@@ -84,7 +88,7 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 				},
 				VaultID: "",
 			},
-			expected: errors.New("LoanBrokerSet: VaultID is required"),
+			expected: errors.New("loanBrokerSet: VaultID is required"),
 		},
 		{
 			name: "fail - VaultID invalid",
@@ -95,7 +99,7 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 				},
 				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 			},
-			expected: errors.New("LoanBrokerSet: VaultID must be 64 characters hexadecimal string"),
+			expected: errors.New("loanBrokerSet: VaultID must be 64 characters hexadecimal string"),
 		},
 		{
 			name: "fail - Data too long",
@@ -105,9 +109,9 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 					TransactionType: LoanBrokerSetTx,
 				},
 				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				Data:    func() *string { v := "A" + strings.Repeat("B", 512); return &v }(),
+				Data:    func() *types.Data { v := types.Data("A" + strings.Repeat("B", 512)); return &v }(),
 			},
-			expected: errors.New("LoanBrokerSet: Data must be a valid non-empty hex string up to 512 characters"),
+			expected: errors.New("loanBrokerSet: Data must be a valid non-empty hex string up to 512 characters"),
 		},
 		{
 			name: "fail - ManagementFeeRate too high",
@@ -117,9 +121,9 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 					TransactionType: LoanBrokerSetTx,
 				},
 				VaultID:           "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				ManagementFeeRate: func() *uint32 { v := uint32(10001); return &v }(),
+				ManagementFeeRate: func() *types.InterestRate { v := types.InterestRate(10001); return &v }(),
 			},
-			expected: errors.New("LoanBrokerSet: ManagementFeeRate must be between 0 and 10000 inclusive"),
+			expected: errors.New("loanBrokerSet: ManagementFeeRate must be between 0 and 10000 inclusive"),
 		},
 		{
 			name: "fail - CoverRateMinimum too high",
@@ -129,9 +133,9 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 					TransactionType: LoanBrokerSetTx,
 				},
 				VaultID:          "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				CoverRateMinimum: func() *uint32 { v := uint32(100001); return &v }(),
+				CoverRateMinimum: func() *types.InterestRate { v := types.InterestRate(100001); return &v }(),
 			},
-			expected: errors.New("LoanBrokerSet: CoverRateMinimum must be between 0 and 100000 inclusive"),
+			expected: errors.New("loanBrokerSet: CoverRateMinimum must be between 0 and 100000 inclusive"),
 		},
 		{
 			name: "pass - complete",
@@ -140,9 +144,10 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 					TransactionType: LoanBrokerSetTx,
 				},
-				VaultID:           "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				ManagementFeeRate: func() *uint32 { v := uint32(1000); return &v }(),
-				CoverRateMinimum:  func() *uint32 { v := uint32(5000); return &v }(),
+				VaultID:              "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				ManagementFeeRate:    func() *types.InterestRate { v := types.InterestRate(1000); return &v }(),
+				CoverRateMinimum:     func() *types.InterestRate { v := types.InterestRate(5000); return &v }(),
+				CoverRateLiquidation: func() *types.InterestRate { v := types.InterestRate(1); return &v }(),
 			},
 			expected: nil,
 		},

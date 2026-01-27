@@ -81,7 +81,7 @@ func TestLoanManage_Validate(t *testing.T) {
 				},
 				LoanID: "",
 			},
-			expected: errors.New("LoanManage: LoanID is required"),
+			expected: errors.New("loanManage: LoanID is required"),
 		},
 		{
 			name: "fail - LoanID invalid",
@@ -92,7 +92,7 @@ func TestLoanManage_Validate(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 			},
-			expected: errors.New("LoanManage: LoanID must be 64 characters hexadecimal string"),
+			expected: errors.New("loanManage: LoanID must be 64 characters hexadecimal string"),
 		},
 		{
 			name: "fail - tfLoanImpair and tfLoanUnimpair both set",
@@ -104,7 +104,7 @@ func TestLoanManage_Validate(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
-			expected: errors.New("LoanManage: tfLoanImpair and tfLoanUnimpair cannot both be present"),
+			expected: errors.New("loanManage: tfLoanImpair and tfLoanUnimpair cannot both be present"),
 		},
 		{
 			name: "pass - complete",

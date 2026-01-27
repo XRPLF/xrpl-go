@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,10 +39,10 @@ func TestLoanSet_Flatten(t *testing.T) {
 					LastLedgerSequence: 3000000,
 				},
 				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				PrincipalRequested: "100000",
-				Counterparty:       "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
-				InterestRate:       5000,
-				PaymentInterval:    2592000,
+				PrincipalRequested: types.XRPLNumber("100000"),
+				Counterparty:       func() *types.Address { v := types.Address("rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds"); return &v }(),
+				InterestRate:       func() *types.InterestRate { v := types.InterestRate(5000); return &v }(),
+				PaymentInterval:    func() *types.PaymentInterval { v := types.PaymentInterval(2592000); return &v }(),
 			},
 			expected: map[string]interface{}{
 				"TransactionType":    LoanSetTx.String(),
@@ -87,9 +88,9 @@ func TestLoanSet_Validate(t *testing.T) {
 					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 					TransactionType: LoanSetTx,
 				},
-				PrincipalRequested: "100000",
+				PrincipalRequested: types.XRPLNumber("100000"),
 			},
-			expected: errors.New("LoanSet: LoanBrokerID is required"),
+			expected: errors.New("loanSet: LoanBrokerID is required"),
 		},
 		{
 			name: "fail - PrincipalRequested required",
@@ -100,7 +101,7 @@ func TestLoanSet_Validate(t *testing.T) {
 				},
 				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
-			expected: errors.New("LoanSet: PrincipalRequested is required"),
+			expected: errors.New("loanSet: PrincipalRequested is required"),
 		},
 		{
 			name: "fail - LoanBrokerID invalid",
@@ -110,9 +111,9 @@ func TestLoanSet_Validate(t *testing.T) {
 					TransactionType: LoanSetTx,
 				},
 				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
-				PrincipalRequested: "100000",
+				PrincipalRequested: types.XRPLNumber("100000"),
 			},
-			expected: errors.New("LoanSet: LoanBrokerID must be 64 characters hexadecimal string"),
+			expected: errors.New("loanSet: LoanBrokerID must be 64 characters hexadecimal string"),
 		},
 		{
 			name: "fail - PrincipalRequested invalid",
@@ -122,9 +123,9 @@ func TestLoanSet_Validate(t *testing.T) {
 					TransactionType: LoanSetTx,
 				},
 				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				PrincipalRequested: "invalid",
+				PrincipalRequested: types.XRPLNumber("invalid"),
 			},
-			expected: errors.New("LoanSet: PrincipalRequested must be a valid XRPL number"),
+			expected: errors.New("loanSet: PrincipalRequested must be a valid XRPL number"),
 		},
 		{
 			name: "fail - Data too long",
@@ -134,10 +135,10 @@ func TestLoanSet_Validate(t *testing.T) {
 					TransactionType: LoanSetTx,
 				},
 				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				PrincipalRequested: "100000",
-				Data:               "A" + strings.Repeat("B", 512),
+				PrincipalRequested: types.XRPLNumber("100000"),
+				Data:               func() *types.Data { v := types.Data("A" + strings.Repeat("B", 512)); return &v }(),
 			},
-			expected: errors.New("LoanSet: Data must be a valid non-empty hex string up to 512 characters"),
+			expected: errors.New("loanSet: Data must be a valid non-empty hex string up to 512 characters"),
 		},
 		{
 			name: "fail - OverpaymentFee too high",
@@ -147,10 +148,10 @@ func TestLoanSet_Validate(t *testing.T) {
 					TransactionType: LoanSetTx,
 				},
 				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				PrincipalRequested: "100000",
-				OverpaymentFee:     100001,
+				PrincipalRequested: types.XRPLNumber("100000"),
+				OverpaymentFee:     func() *uint32 { v := uint32(100001); return &v }(),
 			},
-			expected: errors.New("LoanSet: OverpaymentFee must be between 0 and 100000 inclusive"),
+			expected: errors.New("loanSet: OverpaymentFee must be between 0 and 100000 inclusive"),
 		},
 		{
 			name: "fail - PaymentInterval too low",
@@ -160,10 +161,10 @@ func TestLoanSet_Validate(t *testing.T) {
 					TransactionType: LoanSetTx,
 				},
 				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				PrincipalRequested: "100000",
-				PaymentInterval:    59,
+				PrincipalRequested: types.XRPLNumber("100000"),
+				PaymentInterval:    func() *types.PaymentInterval { v := types.PaymentInterval(59); return &v }(),
 			},
-			expected: errors.New("LoanSet: PaymentInterval must be greater than or equal to 60"),
+			expected: errors.New("loanSet: PaymentInterval must be greater than or equal to 60"),
 		},
 		{
 			name: "pass - complete",
@@ -173,9 +174,9 @@ func TestLoanSet_Validate(t *testing.T) {
 					TransactionType: LoanSetTx,
 				},
 				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				PrincipalRequested: "100000",
-				InterestRate:       5000,
-				PaymentInterval:    2592000,
+				PrincipalRequested: types.XRPLNumber("100000"),
+				InterestRate:       func() *types.InterestRate { v := types.InterestRate(5000); return &v }(),
+				PaymentInterval:    func() *types.PaymentInterval { v := types.PaymentInterval(2592000); return &v }(),
 			},
 			expected: nil,
 		},

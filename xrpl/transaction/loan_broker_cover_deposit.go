@@ -57,15 +57,15 @@ func (tx *LoanBrokerCoverDeposit) Validate() (bool, error) {
 	}
 
 	if tx.LoanBrokerID == "" {
-		return false, errors.New("LoanBrokerCoverDeposit: LoanBrokerID is required")
+		return false, errors.New("loanBrokerCoverDeposit: LoanBrokerID is required")
 	}
 
 	if !IsLedgerEntryID(tx.LoanBrokerID) {
-		return false, errors.New("LoanBrokerCoverDeposit: LoanBrokerID must be 64 characters hexadecimal string")
+		return false, errors.New("loanBrokerCoverDeposit: LoanBrokerID must be 64 characters hexadecimal string")
 	}
 
 	if tx.Amount == nil {
-		return false, errors.New("LoanBrokerCoverDeposit: Amount is required")
+		return false, errors.New("loanBrokerCoverDeposit: Amount is required")
 	}
 
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {

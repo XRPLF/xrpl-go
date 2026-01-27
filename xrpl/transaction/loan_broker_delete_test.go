@@ -79,7 +79,7 @@ func TestLoanBrokerDelete_Validate(t *testing.T) {
 				},
 				LoanBrokerID: "",
 			},
-			expected: errors.New("LoanBrokerDelete: LoanBrokerID is required"),
+			expected: errors.New("loanBrokerDelete: LoanBrokerID is required"),
 		},
 		{
 			name: "fail - LoanBrokerID invalid",
@@ -90,7 +90,7 @@ func TestLoanBrokerDelete_Validate(t *testing.T) {
 				},
 				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 			},
-			expected: errors.New("LoanBrokerDelete: LoanBrokerID must be 64 characters hexadecimal string"),
+			expected: errors.New("loanBrokerDelete: LoanBrokerID must be 64 characters hexadecimal string"),
 		},
 		{
 			name: "pass - complete",

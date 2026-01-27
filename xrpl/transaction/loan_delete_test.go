@@ -79,7 +79,7 @@ func TestLoanDelete_Validate(t *testing.T) {
 				},
 				LoanID: "",
 			},
-			expected: errors.New("LoanDelete: LoanID is required"),
+			expected: errors.New("loanDelete: LoanID is required"),
 		},
 		{
 			name: "fail - LoanID invalid length",
@@ -90,7 +90,7 @@ func TestLoanDelete_Validate(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 			},
-			expected: errors.New("LoanDelete: LoanID must be 64 characters hexadecimal string"),
+			expected: errors.New("loanDelete: LoanID must be 64 characters hexadecimal string"),
 		},
 		{
 			name: "fail - LoanID invalid hex",
@@ -101,7 +101,7 @@ func TestLoanDelete_Validate(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430G",
 			},
-			expected: errors.New("LoanDelete: LoanID must be 64 characters hexadecimal string"),
+			expected: errors.New("loanDelete: LoanID must be 64 characters hexadecimal string"),
 		},
 		{
 			name: "pass - complete",

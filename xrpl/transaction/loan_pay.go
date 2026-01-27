@@ -57,15 +57,15 @@ func (tx *LoanPay) Validate() (bool, error) {
 	}
 
 	if tx.LoanID == "" {
-		return false, errors.New("LoanPay: LoanID is required")
+		return false, errors.New("loanPay: LoanID is required")
 	}
 
 	if !IsLedgerEntryID(tx.LoanID) {
-		return false, errors.New("LoanPay: LoanID must be 64 characters hexadecimal string")
+		return false, errors.New("loanPay: LoanID must be 64 characters hexadecimal string")
 	}
 
 	if tx.Amount == nil {
-		return false, errors.New("LoanPay: Amount is required")
+		return false, errors.New("loanPay: Amount is required")
 	}
 
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {
