@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"strconv"
 
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
@@ -101,46 +100,46 @@ func (tx *LoanBrokerSet) Validate() (bool, error) {
 	}
 
 	if tx.VaultID == "" {
-		return false, errors.New("loanBrokerSet: VaultID is required")
+		return false, ErrLoanBrokerSetVaultIDRequired
 	}
 
 	if !IsLedgerEntryID(tx.VaultID) {
-		return false, errors.New("loanBrokerSet: VaultID must be 64 characters hexadecimal string")
+		return false, ErrLoanBrokerSetVaultIDInvalid
 	}
 
 	if tx.LoanBrokerID != nil && *tx.LoanBrokerID != "" {
 		if !IsLedgerEntryID(tx.LoanBrokerID.Value()) {
-			return false, errors.New("loanBrokerSet: LoanBrokerID must be 64 characters hexadecimal string")
+			return false, ErrLoanBrokerSetLoanBrokerIDInvalid
 		}
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
 		if !ValidateHexMetadata(tx.Data.Value(), LoanBrokerSetMaxDataLength) {
-			return false, errors.New("loanBrokerSet: Data must be a valid non-empty hex string up to 512 characters")
+			return false, ErrLoanBrokerSetDataInvalid
 		}
 	}
 
 	if tx.ManagementFeeRate != nil && *tx.ManagementFeeRate > LoanBrokerSetMaxManagementFeeRate {
-		return false, errors.New("loanBrokerSet: ManagementFeeRate must be between 0 and 10000 inclusive")
+		return false, ErrLoanBrokerSetManagementFeeRateInvalid
 	}
 
 	if tx.DebtMaximum != nil && *tx.DebtMaximum != "" {
 		if !typecheck.IsXRPLNumber(tx.DebtMaximum.String()) {
-			return false, errors.New("loanBrokerSet: DebtMaximum must be a valid XRPL number")
+			return false, ErrLoanBrokerSetDebtMaximumInvalid
 		}
 		// Check that DebtMaximum is non-negative
 		val, err := strconv.ParseFloat(tx.DebtMaximum.String(), 64)
 		if err != nil || val < 0 {
-			return false, errors.New("loanBrokerSet: DebtMaximum must be a non-negative value")
+			return false, ErrLoanBrokerSetDebtMaximumNegative
 		}
 	}
 
 	if tx.CoverRateMinimum != nil && *tx.CoverRateMinimum > LoanBrokerSetMaxCoverRateMinimum {
-		return false, errors.New("loanBrokerSet: CoverRateMinimum must be between 0 and 100000 inclusive")
+		return false, ErrLoanBrokerSetCoverRateMinimumInvalid
 	}
 
 	if tx.CoverRateLiquidation != nil && *tx.CoverRateLiquidation > LoanBrokerSetMaxCoverRateLiquidation {
-		return false, errors.New("loanBrokerSet: CoverRateLiquidation must be between 0 and 100000 inclusive")
+		return false, ErrLoanBrokerSetCoverRateLiquidationInvalid
 	}
 
 	// Validate that either both CoverRateMinimum and CoverRateLiquidation are zero,
@@ -156,7 +155,7 @@ func (tx *LoanBrokerSet) Validate() (bool, error) {
 
 	if (coverRateMinimumValue == 0 && coverRateLiquidationValue != 0) ||
 		(coverRateMinimumValue != 0 && coverRateLiquidationValue == 0) {
-		return false, errors.New("loanBrokerSet: CoverRateMinimum and CoverRateLiquidation must both be zero or both be non-zero")
+		return false, ErrLoanBrokerSetCoverRatesMismatch
 	}
 
 	return true, nil

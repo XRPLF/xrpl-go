@@ -1,8 +1,6 @@
 package transaction
 
 import (
-	"errors"
-
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -65,15 +63,15 @@ func (tx *LoanBrokerCoverWithdraw) Validate() (bool, error) {
 	}
 
 	if tx.LoanBrokerID == "" {
-		return false, errors.New("loanBrokerCoverWithdraw: LoanBrokerID is required")
+		return false, ErrLoanBrokerCoverWithdrawLoanBrokerIDRequired
 	}
 
 	if !IsLedgerEntryID(tx.LoanBrokerID) {
-		return false, errors.New("loanBrokerCoverWithdraw: LoanBrokerID must be 64 characters hexadecimal string")
+		return false, ErrLoanBrokerCoverWithdrawLoanBrokerIDInvalid
 	}
 
 	if tx.Amount == nil {
-		return false, errors.New("loanBrokerCoverWithdraw: Amount is required")
+		return false, ErrLoanBrokerCoverWithdrawAmountRequired
 	}
 
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {

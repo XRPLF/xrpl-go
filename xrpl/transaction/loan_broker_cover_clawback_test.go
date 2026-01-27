@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -87,7 +86,7 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 				}(),
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: errors.New("loanBrokerCoverClawback: LoanBrokerID must be 64 characters hexadecimal string"),
+			expected: ErrLoanBrokerCoverClawbackLoanBrokerIDInvalid,
 		},
 		{
 			name: "fail - both LoanBrokerID and Amount missing",
@@ -99,7 +98,7 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 				LoanBrokerID: nil,
 				Amount:       nil,
 			},
-			expected: errors.New("loanBrokerCoverClawback: Either LoanBrokerID or Amount is required"),
+			expected: ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired,
 		},
 		{
 			name: "fail - LoanBrokerID empty string and Amount missing",
@@ -111,7 +110,7 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 				LoanBrokerID: func() *types.LoanBrokerID { v := types.LoanBrokerID(""); return &v }(),
 				Amount:       nil,
 			},
-			expected: errors.New("loanBrokerCoverClawback: Either LoanBrokerID or Amount is required"),
+			expected: ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired,
 		},
 		{
 			name: "pass - complete",

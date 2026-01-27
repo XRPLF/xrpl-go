@@ -1,8 +1,6 @@
 package transaction
 
 import (
-	"errors"
-
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -57,15 +55,15 @@ func (tx *LoanPay) Validate() (bool, error) {
 	}
 
 	if tx.LoanID == "" {
-		return false, errors.New("loanPay: LoanID is required")
+		return false, ErrLoanPayLoanIDRequired
 	}
 
 	if !IsLedgerEntryID(tx.LoanID) {
-		return false, errors.New("loanPay: LoanID must be 64 characters hexadecimal string")
+		return false, ErrLoanPayLoanIDInvalid
 	}
 
 	if tx.Amount == nil {
-		return false, errors.New("loanPay: Amount is required")
+		return false, ErrLoanPayAmountRequired
 	}
 
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {

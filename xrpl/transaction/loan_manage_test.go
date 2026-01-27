@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -81,7 +80,7 @@ func TestLoanManage_Validate(t *testing.T) {
 				},
 				LoanID: "",
 			},
-			expected: errors.New("loanManage: LoanID is required"),
+			expected: ErrLoanManageLoanIDRequired,
 		},
 		{
 			name: "fail - LoanID invalid",
@@ -92,7 +91,7 @@ func TestLoanManage_Validate(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 			},
-			expected: errors.New("loanManage: LoanID must be 64 characters hexadecimal string"),
+			expected: ErrLoanManageLoanIDInvalid,
 		},
 		{
 			name: "fail - tfLoanImpair and tfLoanUnimpair both set",
@@ -104,7 +103,7 @@ func TestLoanManage_Validate(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
-			expected: errors.New("loanManage: tfLoanImpair and tfLoanUnimpair cannot both be present"),
+			expected: ErrLoanManageFlagsConflict,
 		},
 		{
 			name: "pass - complete",

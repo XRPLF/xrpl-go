@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -88,7 +87,7 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 				},
 				VaultID: "",
 			},
-			expected: errors.New("loanBrokerSet: VaultID is required"),
+			expected: ErrLoanBrokerSetVaultIDRequired,
 		},
 		{
 			name: "fail - VaultID invalid",
@@ -99,7 +98,7 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 				},
 				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 			},
-			expected: errors.New("loanBrokerSet: VaultID must be 64 characters hexadecimal string"),
+			expected: ErrLoanBrokerSetVaultIDInvalid,
 		},
 		{
 			name: "fail - Data too long",
@@ -111,7 +110,7 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Data:    func() *types.Data { v := types.Data("A" + strings.Repeat("B", 512)); return &v }(),
 			},
-			expected: errors.New("loanBrokerSet: Data must be a valid non-empty hex string up to 512 characters"),
+			expected: ErrLoanBrokerSetDataInvalid,
 		},
 		{
 			name: "fail - ManagementFeeRate too high",
@@ -123,7 +122,7 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 				VaultID:           "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				ManagementFeeRate: func() *types.InterestRate { v := types.InterestRate(10001); return &v }(),
 			},
-			expected: errors.New("loanBrokerSet: ManagementFeeRate must be between 0 and 10000 inclusive"),
+			expected: ErrLoanBrokerSetManagementFeeRateInvalid,
 		},
 		{
 			name: "fail - CoverRateMinimum too high",
@@ -135,7 +134,7 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 				VaultID:          "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				CoverRateMinimum: func() *types.InterestRate { v := types.InterestRate(100001); return &v }(),
 			},
-			expected: errors.New("loanBrokerSet: CoverRateMinimum must be between 0 and 100000 inclusive"),
+			expected: ErrLoanBrokerSetCoverRateMinimumInvalid,
 		},
 		{
 			name: "pass - complete",

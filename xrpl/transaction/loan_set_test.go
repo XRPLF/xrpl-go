@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -90,7 +89,7 @@ func TestLoanSet_Validate(t *testing.T) {
 				},
 				PrincipalRequested: types.XRPLNumber("100000"),
 			},
-			expected: errors.New("loanSet: LoanBrokerID is required"),
+			expected: ErrLoanSetLoanBrokerIDRequired,
 		},
 		{
 			name: "fail - PrincipalRequested required",
@@ -101,7 +100,7 @@ func TestLoanSet_Validate(t *testing.T) {
 				},
 				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
-			expected: errors.New("loanSet: PrincipalRequested is required"),
+			expected: ErrLoanSetPrincipalRequestedRequired,
 		},
 		{
 			name: "fail - LoanBrokerID invalid",
@@ -113,7 +112,7 @@ func TestLoanSet_Validate(t *testing.T) {
 				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 				PrincipalRequested: types.XRPLNumber("100000"),
 			},
-			expected: errors.New("loanSet: LoanBrokerID must be 64 characters hexadecimal string"),
+			expected: ErrLoanSetLoanBrokerIDInvalid,
 		},
 		{
 			name: "fail - PrincipalRequested invalid",
@@ -125,7 +124,7 @@ func TestLoanSet_Validate(t *testing.T) {
 				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				PrincipalRequested: types.XRPLNumber("invalid"),
 			},
-			expected: errors.New("loanSet: PrincipalRequested must be a valid XRPL number"),
+			expected: ErrLoanSetPrincipalRequestedInvalid,
 		},
 		{
 			name: "fail - Data too long",
@@ -138,7 +137,7 @@ func TestLoanSet_Validate(t *testing.T) {
 				PrincipalRequested: types.XRPLNumber("100000"),
 				Data:               func() *types.Data { v := types.Data("A" + strings.Repeat("B", 512)); return &v }(),
 			},
-			expected: errors.New("loanSet: Data must be a valid non-empty hex string up to 512 characters"),
+			expected: ErrLoanSetDataInvalid,
 		},
 		{
 			name: "fail - OverpaymentFee too high",
@@ -151,7 +150,7 @@ func TestLoanSet_Validate(t *testing.T) {
 				PrincipalRequested: types.XRPLNumber("100000"),
 				OverpaymentFee:     func() *uint32 { v := uint32(100001); return &v }(),
 			},
-			expected: errors.New("loanSet: OverpaymentFee must be between 0 and 100000 inclusive"),
+			expected: ErrLoanSetOverpaymentFeeInvalid,
 		},
 		{
 			name: "fail - PaymentInterval too low",
@@ -164,7 +163,7 @@ func TestLoanSet_Validate(t *testing.T) {
 				PrincipalRequested: types.XRPLNumber("100000"),
 				PaymentInterval:    func() *types.PaymentInterval { v := types.PaymentInterval(59); return &v }(),
 			},
-			expected: errors.New("loanSet: PaymentInterval must be greater than or equal to 60"),
+			expected: ErrLoanSetPaymentIntervalInvalid,
 		},
 		{
 			name: "pass - complete",

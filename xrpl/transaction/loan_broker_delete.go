@@ -1,9 +1,5 @@
 package transaction
 
-import (
-	"errors"
-)
-
 // LoanBrokerDelete deletes LoanBroker ledger object.
 //
 // ```json
@@ -48,11 +44,11 @@ func (tx *LoanBrokerDelete) Validate() (bool, error) {
 	}
 
 	if tx.LoanBrokerID == "" {
-		return false, errors.New("loanBrokerDelete: LoanBrokerID is required")
+		return false, ErrLoanBrokerDeleteLoanBrokerIDRequired
 	}
 
 	if !IsLedgerEntryID(tx.LoanBrokerID) {
-		return false, errors.New("loanBrokerDelete: LoanBrokerID must be 64 characters hexadecimal string")
+		return false, ErrLoanBrokerDeleteLoanBrokerIDInvalid
 	}
 
 	return true, nil

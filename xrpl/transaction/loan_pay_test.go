@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -83,7 +82,7 @@ func TestLoanPay_Validate(t *testing.T) {
 				LoanID: "",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: errors.New("loanPay: LoanID is required"),
+			expected: ErrLoanPayLoanIDRequired,
 		},
 		{
 			name: "fail - Amount required",
@@ -95,7 +94,7 @@ func TestLoanPay_Validate(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: nil,
 			},
-			expected: errors.New("loanPay: Amount is required"),
+			expected: ErrLoanPayAmountRequired,
 		},
 		{
 			name: "fail - LoanID invalid",
@@ -107,7 +106,7 @@ func TestLoanPay_Validate(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: errors.New("loanPay: LoanID must be 64 characters hexadecimal string"),
+			expected: ErrLoanPayLoanIDInvalid,
 		},
 		{
 			name: "pass - complete",

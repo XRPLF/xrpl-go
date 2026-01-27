@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -79,7 +78,7 @@ func TestLoanDelete_Validate(t *testing.T) {
 				},
 				LoanID: "",
 			},
-			expected: errors.New("loanDelete: LoanID is required"),
+			expected: ErrLoanDeleteLoanIDRequired,
 		},
 		{
 			name: "fail - LoanID invalid length",
@@ -90,7 +89,7 @@ func TestLoanDelete_Validate(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 			},
-			expected: errors.New("loanDelete: LoanID must be 64 characters hexadecimal string"),
+			expected: ErrLoanDeleteLoanIDInvalid,
 		},
 		{
 			name: "fail - LoanID invalid hex",
@@ -101,7 +100,7 @@ func TestLoanDelete_Validate(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430G",
 			},
-			expected: errors.New("loanDelete: LoanID must be 64 characters hexadecimal string"),
+			expected: ErrLoanDeleteLoanIDInvalid,
 		},
 		{
 			name: "pass - complete",

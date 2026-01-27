@@ -1,9 +1,5 @@
 package transaction
 
-import (
-	"errors"
-)
-
 // LoanManageFlags represents flags for LoanManage transactions.
 const (
 	// tfLoanDefault indicates that the Loan should be defaulted.
@@ -74,16 +70,16 @@ func (tx *LoanManage) Validate() (bool, error) {
 	}
 
 	if tx.LoanID == "" {
-		return false, errors.New("loanManage: LoanID is required")
+		return false, ErrLoanManageLoanIDRequired
 	}
 
 	if !IsLedgerEntryID(tx.LoanID) {
-		return false, errors.New("loanManage: LoanID must be 64 characters hexadecimal string")
+		return false, ErrLoanManageLoanIDInvalid
 	}
 
 	// Check that tfLoanImpair and tfLoanUnimpair are not both set
 	if (tx.Flags&tfLoanImpair) != 0 && (tx.Flags&tfLoanUnimpair) != 0 {
-		return false, errors.New("loanManage: tfLoanImpair and tfLoanUnimpair cannot both be present")
+		return false, ErrLoanManageFlagsConflict
 	}
 
 	return true, nil

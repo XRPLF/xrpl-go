@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"strconv"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -70,13 +69,13 @@ func (tx *LoanBrokerCoverClawback) Validate() (bool, error) {
 
 	if tx.LoanBrokerID != nil && *tx.LoanBrokerID != "" {
 		if !IsLedgerEntryID(tx.LoanBrokerID.Value()) {
-			return false, errors.New("loanBrokerCoverClawback: LoanBrokerID must be 64 characters hexadecimal string")
+			return false, ErrLoanBrokerCoverClawbackLoanBrokerIDInvalid
 		}
 	}
 
 	if tx.Amount != nil {
 		if !IsTokenAmount(tx.Amount) {
-			return false, errors.New("loanBrokerCoverClawback: Amount must be an IssuedCurrencyAmount or MPTCurrencyAmount")
+			return false, ErrLoanBrokerCoverClawbackAmountInvalidType
 		}
 
 		// Check that Amount value is >= 0
@@ -84,19 +83,19 @@ func (tx *LoanBrokerCoverClawback) Validate() (bool, error) {
 		case types.IssuedCurrencyAmount:
 			val, err := strconv.ParseFloat(amt.Value, 64)
 			if err != nil || val < 0 {
-				return false, errors.New("loanBrokerCoverClawback: Amount must be >= 0")
+				return false, ErrLoanBrokerCoverClawbackAmountNegative
 			}
 		case types.MPTCurrencyAmount:
 			val, err := strconv.ParseFloat(amt.Value, 64)
 			if err != nil || val < 0 {
-				return false, errors.New("loanBrokerCoverClawback: Amount must be >= 0")
+				return false, ErrLoanBrokerCoverClawbackAmountNegative
 			}
 		}
 	}
 
 	// At least one of LoanBrokerID or Amount must be provided
 	if (tx.LoanBrokerID == nil || *tx.LoanBrokerID == "") && tx.Amount == nil {
-		return false, errors.New("loanBrokerCoverClawback: Either LoanBrokerID or Amount is required")
+		return false, ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired
 	}
 
 	return true, nil

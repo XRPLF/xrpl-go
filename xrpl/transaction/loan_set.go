@@ -1,8 +1,6 @@
 package transaction
 
 import (
-	"errors"
-
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -205,24 +203,24 @@ func (tx *LoanSet) Validate() (bool, error) {
 	}
 
 	if tx.LoanBrokerID == "" {
-		return false, errors.New("loanSet: LoanBrokerID is required")
+		return false, ErrLoanSetLoanBrokerIDRequired
 	}
 
 	if !IsLedgerEntryID(tx.LoanBrokerID) {
-		return false, errors.New("loanSet: LoanBrokerID must be 64 characters hexadecimal string")
+		return false, ErrLoanSetLoanBrokerIDInvalid
 	}
 
 	if tx.PrincipalRequested == "" {
-		return false, errors.New("loanSet: PrincipalRequested is required")
+		return false, ErrLoanSetPrincipalRequestedRequired
 	}
 
 	if !typecheck.IsXRPLNumber(tx.PrincipalRequested.String()) {
-		return false, errors.New("loanSet: PrincipalRequested must be a valid XRPL number")
+		return false, ErrLoanSetPrincipalRequestedInvalid
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
 		if !ValidateHexMetadata(tx.Data.Value(), LoanSetMaxDataLength) {
-			return false, errors.New("loanSet: Data must be a valid non-empty hex string up to 512 characters")
+			return false, ErrLoanSetDataInvalid
 		}
 	}
 
@@ -233,48 +231,48 @@ func (tx *LoanSet) Validate() (bool, error) {
 	}
 
 	if tx.OverpaymentFee != nil && *tx.OverpaymentFee > LoanSetMaxOverPaymentFeeRate {
-		return false, errors.New("loanSet: OverpaymentFee must be between 0 and 100000 inclusive")
+		return false, ErrLoanSetOverpaymentFeeInvalid
 	}
 
 	if tx.InterestRate != nil && *tx.InterestRate > LoanSetMaxInterestRate {
-		return false, errors.New("loanSet: InterestRate must be between 0 and 100000 inclusive")
+		return false, ErrLoanSetInterestRateInvalid
 	}
 
 	if tx.LateInterestRate != nil && *tx.LateInterestRate > LoanSetMaxLateInterestRate {
-		return false, errors.New("loanSet: LateInterestRate must be between 0 and 100000 inclusive")
+		return false, ErrLoanSetLateInterestRateInvalid
 	}
 
 	if tx.CloseInterestRate != nil && *tx.CloseInterestRate > LoanSetMaxCloseInterestRate {
-		return false, errors.New("loanSet: CloseInterestRate must be between 0 and 100000 inclusive")
+		return false, ErrLoanSetCloseInterestRateInvalid
 	}
 
 	if tx.OverpaymentInterestRate != nil && *tx.OverpaymentInterestRate > LoanSetMaxOverPaymentInterestRate {
-		return false, errors.New("loanSet: OverpaymentInterestRate must be between 0 and 100000 inclusive")
+		return false, ErrLoanSetOverpaymentInterestRateInvalid
 	}
 
 	if tx.PaymentInterval != nil && *tx.PaymentInterval != 0 && *tx.PaymentInterval < LoanSetMinPaymentInterval {
-		return false, errors.New("loanSet: PaymentInterval must be greater than or equal to 60")
+		return false, ErrLoanSetPaymentIntervalInvalid
 	}
 
 	if tx.PaymentInterval != nil && tx.GracePeriod != nil && *tx.PaymentInterval != 0 && *tx.GracePeriod != 0 && tx.GracePeriod.Value() > tx.PaymentInterval.Value() {
-		return false, errors.New("loanSet: GracePeriod must not be greater than PaymentInterval")
+		return false, ErrLoanSetGracePeriodInvalid
 	}
 
 	// Validate optional XRPLNumber fields
 	if tx.LoanOriginationFee != nil && *tx.LoanOriginationFee != "" && !typecheck.IsXRPLNumber(tx.LoanOriginationFee.String()) {
-		return false, errors.New("loanSet: LoanOriginationFee must be a valid XRPL number")
+		return false, ErrLoanSetLoanOriginationFeeInvalid
 	}
 
 	if tx.LoanServiceFee != nil && *tx.LoanServiceFee != "" && !typecheck.IsXRPLNumber(tx.LoanServiceFee.String()) {
-		return false, errors.New("loanSet: LoanServiceFee must be a valid XRPL number")
+		return false, ErrLoanSetLoanServiceFeeInvalid
 	}
 
 	if tx.LatePaymentFee != nil && *tx.LatePaymentFee != "" && !typecheck.IsXRPLNumber(tx.LatePaymentFee.String()) {
-		return false, errors.New("loanSet: LatePaymentFee must be a valid XRPL number")
+		return false, ErrLoanSetLatePaymentFeeInvalid
 	}
 
 	if tx.ClosePaymentFee != nil && *tx.ClosePaymentFee != "" && !typecheck.IsXRPLNumber(tx.ClosePaymentFee.String()) {
-		return false, errors.New("loanSet: ClosePaymentFee must be a valid XRPL number")
+		return false, ErrLoanSetClosePaymentFeeInvalid
 	}
 
 	return true, nil

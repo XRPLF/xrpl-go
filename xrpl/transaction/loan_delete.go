@@ -1,9 +1,5 @@
 package transaction
 
-import (
-	"errors"
-)
-
 // LoanDelete deletes an existing Loan object.
 //
 // ```json
@@ -48,11 +44,11 @@ func (tx *LoanDelete) Validate() (bool, error) {
 	}
 
 	if tx.LoanID == "" {
-		return false, errors.New("loanDelete: LoanID is required")
+		return false, ErrLoanDeleteLoanIDRequired
 	}
 
 	if !IsLedgerEntryID(tx.LoanID) {
-		return false, errors.New("loanDelete: LoanID must be 64 characters hexadecimal string")
+		return false, ErrLoanDeleteLoanIDInvalid
 	}
 
 	return true, nil
