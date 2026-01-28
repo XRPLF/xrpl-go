@@ -152,39 +152,26 @@ func TestIssue_ToJson(t *testing.T) {
 		{
 			name: "pass - mpt issuance id",
 			expected: map[string]any{
+				// mpt_issuance_id = sequence BE (4 bytes) + issuerAccount (20 bytes)
+				// sequence BE = 0xBAADF00D, issuerAccount = BAADF00DBAADF00DBAADF00DBAADF00DBAADF00D
 				"mpt_issuance_id": "BAADF00DBAADF00DBAADF00DBAADF00DBAADF00DBAADF00D",
 			},
-			opts: []int{MPTIssuanceIDBytesLength},
+			opts: []int{}, // opts no longer required - length is self-determined
 			err:  nil,
 			setup: func(t *testing.T) (*Issue, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
 				mock := testutil.NewMockBinaryParser(ctrl)
-				mock.EXPECT().ReadBytes(MPTIssuanceIDBytesLength).Return([]byte{
-					186,
-					173,
-					240,
-					13,
-					186,
-					173,
-					240,
-					13,
-					186,
-					173,
-					240,
-					13,
-					186,
-					173,
-					240,
-					13,
-					186,
-					173,
-					240,
-					13,
-					186,
-					173,
-					240,
-					13,
+				// Wire format: issuerAccount (20) + NO_ACCOUNT (20) + sequence LE (4)
+				// First read: issuerAccount (20 bytes) - this becomes bytes 4-24 of mpt_issuance_id
+				mock.EXPECT().ReadBytes(20).Return([]byte{
+					0xBA, 0xAD, 0xF0, 0x0D, 0xBA, 0xAD, 0xF0, 0x0D, 0xBA, 0xAD,
+					0xF0, 0x0D, 0xBA, 0xAD, 0xF0, 0x0D, 0xBA, 0xAD, 0xF0, 0x0D,
 				}, nil)
+				// Second read: NO_ACCOUNT marker (20 bytes)
+				mock.EXPECT().ReadBytes(20).Return(NoAccountBytes, nil)
+				// Third read: sequence in little-endian (4 bytes)
+				// 0xBAADF00D in LE = [0x0D, 0xF0, 0xAD, 0xBA]
+				mock.EXPECT().ReadBytes(4).Return([]byte{0x0D, 0xF0, 0xAD, 0xBA}, nil)
 				return &Issue{}, mock
 			},
 		},

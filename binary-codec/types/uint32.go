@@ -14,8 +14,24 @@ type UInt32 struct{}
 // FromJSON converts a JSON value into a serialized byte slice representing a 32-bit unsigned integer.
 // The input value is assumed to be an integer. If the serialization fails, an error is returned.
 func (u *UInt32) FromJSON(value any) ([]byte, error) {
+	var val uint32
+	switch v := value.(type) {
+	case uint32:
+		val = v
+	case int:
+		val = uint32(v)
+	case int64:
+		val = uint32(v)
+	case uint64:
+		val = uint32(v)
+	case float64:
+		val = uint32(v)
+	default:
+		val = value.(uint32) // will panic with meaningful error
+	}
+
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.BigEndian, value.(uint32))
+	err := binary.Write(buf, binary.BigEndian, val)
 
 	if err != nil {
 		return nil, err

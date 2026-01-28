@@ -537,8 +537,8 @@ func TestGetLedgerEntryTypeCodeByLedgerEntryTypeName(t *testing.T) {
 	}{
 		{
 			description:   "correct LedgerEntryTypeCode",
-			input:         "Any",
-			expected:      -3,
+			input:         "AccountRoot",
+			expected:      97,
 			expectedError: nil,
 		},
 		{
@@ -576,8 +576,8 @@ func TestGetLedgerEntryTypeNameByLedgerEntryTypeCode(t *testing.T) {
 	}{
 		{
 			description:   "correct LedgerEntryTypeName",
-			input:         -3,
-			expected:      "Any",
+			input:         97,
+			expected:      "AccountRoot",
 			expectedError: nil,
 		},
 		{
