@@ -11,13 +11,13 @@ import (
 //
 //	{
 //	  "TransactionType": "PermissionedDomainSet",
-//	  "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//	  "Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	  "Fee": "10",
 //	  "Sequence": 390,
 //	  "AcceptedCredentials": [
 //	    {
 //	        "Credential": {
-//	            "Issuer": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+//	            "Issuer": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 //	            "CredentialType": "6D795F63726564656E7469616C"
 //	        }
 //	    }

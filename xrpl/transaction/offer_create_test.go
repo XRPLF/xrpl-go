@@ -23,7 +23,7 @@ func TestOfferCreateFlatten(t *testing.T) {
 			name: "pass - with Expiration and OfferSequence",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
@@ -39,7 +39,7 @@ func TestOfferCreateFlatten(t *testing.T) {
 				},
 			},
 			expected: `{
-				"Account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+				"Account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"TransactionType": "OfferCreate",
 				"Fee": "12",
 				"Sequence": 8,
@@ -58,7 +58,7 @@ func TestOfferCreateFlatten(t *testing.T) {
 			name: "pass - without Expiration and OfferSequence",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
@@ -72,7 +72,7 @@ func TestOfferCreateFlatten(t *testing.T) {
 				},
 			},
 			expected: `{
-				"Account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+				"Account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"TransactionType": "OfferCreate",
 				"Fee": "12",
 				"Sequence": 8,
@@ -89,7 +89,7 @@ func TestOfferCreateFlatten(t *testing.T) {
 			name: "pass - with DomainID",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
@@ -104,7 +104,7 @@ func TestOfferCreateFlatten(t *testing.T) {
 				DomainID: types.DomainID("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"),
 			},
 			expected: `{
-				"Account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+				"Account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"TransactionType": "OfferCreate",
 				"Fee": "12",
 				"Sequence": 8,
@@ -141,7 +141,7 @@ func TestOfferCreate_Validate(t *testing.T) {
 			name: "pass - valid OfferCreate",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
@@ -178,7 +178,7 @@ func TestOfferCreate_Validate(t *testing.T) {
 			name: "fail - invalid TakerGets",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
@@ -201,7 +201,7 @@ func TestOfferCreate_Validate(t *testing.T) {
 			name: "fail - invalid TakerPays",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
@@ -220,7 +220,7 @@ func TestOfferCreate_Validate(t *testing.T) {
 			name: "pass - valid OfferCreate with DomainID",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
@@ -240,7 +240,7 @@ func TestOfferCreate_Validate(t *testing.T) {
 			name: "fail - hybrid flag without DomainID",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
@@ -260,7 +260,7 @@ func TestOfferCreate_Validate(t *testing.T) {
 			name: "fail - invalid DomainID length",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
@@ -280,7 +280,7 @@ func TestOfferCreate_Validate(t *testing.T) {
 			name: "pass - hybrid flag with valid DomainID",
 			input: OfferCreate{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCreateTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,

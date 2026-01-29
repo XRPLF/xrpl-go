@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
@@ -17,6 +18,20 @@ type UInt64 struct{}
 // ErrInvalidUInt64String is returned when a value is not a valid string representation of a UInt64.
 var ErrInvalidUInt64String = errors.New("invalid UInt64 string, value should be a string representation of a UInt64")
 
+// checkRange validates that a numeric string represents a value that fits within the uint64 range.
+func (u *UInt64) checkRange(numericStr string) error {
+	// ParseUint with bitSize 64 already validates the range (0 to max uint64)
+	_, err := strconv.ParseUint(numericStr, 10, 64)
+	if err != nil {
+		// Check if it's an overflow/underflow error
+		if numErr, ok := err.(*strconv.NumError); ok && numErr.Err == strconv.ErrRange {
+			return ErrUInt64OutOfRange
+		}
+		return err
+	}
+	return nil
+}
+
 // FromJSON converts a JSON value into a serialized byte slice representing a 64-bit unsigned integer.
 // The input value is assumed to be a string representation of an integer. If the serialization fails, an error is returned.
 func (u *UInt64) FromJSON(value any) ([]byte, error) {
@@ -27,16 +42,34 @@ func (u *UInt64) FromJSON(value any) ([]byte, error) {
 		return nil, ErrInvalidUInt64String
 	}
 
-	if !isNumeric(value.(string)) {
-		hex, err := hex.DecodeString(value.(string))
+	strValue := value.(string)
+
+	if !isNumeric(strValue) {
+		// Handle hex strings - validate they don't exceed 16 hex characters (8 bytes)
+		hexStr := strings.ToUpper(strValue)
+		if len(hexStr) > 16 {
+			return nil, ErrUInt64OutOfRange
+		}
+		hexBytes, err := hex.DecodeString(hexStr)
 		if err != nil {
 			return nil, err
 		}
-		buf.Write(hex)
+		// Ensure the decoded hex doesn't exceed 8 bytes
+		if len(hexBytes) > 8 {
+			return nil, ErrUInt64OutOfRange
+		}
+		buf.Write(hexBytes)
 		return buf.Bytes(), nil
 	}
-	value = strings.Repeat("0", 16-len(value.(string))) + value.(string) // right justify the string
-	decoded, err := hex.DecodeString(value.(string))
+
+	// Validate numeric string fits in uint64 range
+	if err := u.checkRange(strValue); err != nil {
+		return nil, err
+	}
+
+	// Right justify the string to 16 hex characters (8 bytes)
+	strValue = strings.Repeat("0", 16-len(strValue)) + strValue
+	decoded, err := hex.DecodeString(strValue)
 	if err != nil {
 		return nil, err
 	}

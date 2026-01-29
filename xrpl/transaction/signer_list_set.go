@@ -26,7 +26,7 @@ const (
 //	{
 //	    "Flags": 0,
 //	    "TransactionType": "SignerListSet",
-//	    "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//	    "Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	    "Fee": "12",
 //	    "SignerQuorum": 3,
 //	    "SignerEntries": [

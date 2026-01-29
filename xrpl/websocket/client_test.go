@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
-	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -32,14 +32,14 @@ func TestClient_SendRequest(t *testing.T) {
 			res: &ClientResponse{
 				ID: 1,
 				Result: map[string]any{
-					"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"channels": []any{
 						map[string]any{
-							"account":             "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"account":             "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"amount":              "1000",
 							"balance":             "0",
 							"channel_id":          "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-							"destination_account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+							"destination_account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 							"public_key":          "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
 							"public_key_hex":      "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
 							"settle_delay":        float64(60),
@@ -55,14 +55,14 @@ func TestClient_SendRequest(t *testing.T) {
 				{
 					"id": 1,
 					"result": map[string]any{
-						"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						"channels": []any{
 							map[string]any{
-								"account":             "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+								"account":             "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 								"amount":              "1000",
 								"balance":             "0",
 								"channel_id":          "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-								"destination_account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+								"destination_account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 								"public_key":          "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
 								"public_key_hex":      "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
 								"settle_delay":        float64(60),
@@ -82,14 +82,14 @@ func TestClient_SendRequest(t *testing.T) {
 			},
 			res: &ClientResponse{
 				Result: map[string]any{
-					"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"channels": []any{
 						map[string]any{
-							"account":             "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"account":             "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"amount":              "1000",
 							"balance":             "0",
 							"channel_id":          "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-							"destination_account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+							"destination_account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 							"public_key":          "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
 							"public_key_hex":      "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
 							"settle_delay":        float64(60),
@@ -105,14 +105,14 @@ func TestClient_SendRequest(t *testing.T) {
 				{
 					"id": 2,
 					"result": map[string]any{
-						"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						"channels": []any{
 							map[string]any{
-								"account":             "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+								"account":             "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 								"amount":              "1000",
 								"balance":             "0",
 								"channel_id":          "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-								"destination_account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+								"destination_account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 								"public_key":          "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
 								"public_key_hex":      "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
 								"settle_delay":        float64(60),
@@ -133,14 +133,14 @@ func TestClient_SendRequest(t *testing.T) {
 			res: &ClientResponse{
 				ID: 1,
 				Result: map[string]any{
-					"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"channels": []any{
 						map[string]any{
-							"account":             "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"account":             "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"amount":              "1000",
 							"balance":             "0",
 							"channel_id":          "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-							"destination_account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+							"destination_account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 							"public_key":          "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
 							"public_key_hex":      "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
 							"settle_delay":        float64(60),

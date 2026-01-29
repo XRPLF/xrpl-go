@@ -536,7 +536,7 @@ func (c *Client) getFeeXrp(cushion float32) (string, error) {
 
 // Calculates the fee per transaction type.
 //
-// Enhanced implementation that replicates xrpl.js calculateFeePerTransactionType logic,
+// Enhanced implementation that replicates calculateFeePerTransactionType logic,
 // including special cases for EscrowFinish, AccountDelete, AMMCreate, Batch, and multi-signing.
 func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction, nSigners uint64) error {
 	// Get base network fee

@@ -2,7 +2,6 @@
 package types
 
 // Permission represents a transaction permission that can be delegated to another account.
-// This matches the xrpl.js Permission interface structure.
 type Permission struct {
 	Permission PermissionValue `json:"Permission"`
 }

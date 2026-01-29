@@ -23,20 +23,20 @@ func TestCredentialAccept_Flatten(t *testing.T) {
 			name: "pass - valid CredentialAccept",
 			input: &CredentialAccept{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: CredentialAcceptTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
 				},
-				Issuer:         "rsUiUMpnrgxQp24dJYZDhmV4bE3aBtQyt8",
+				Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				CredentialType: "6D795F63726564656E7469616C", // "my_credential" in hex
 			},
 			expected: FlatTransaction{
-				"Account":         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+				"Account":         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"TransactionType": "CredentialAccept",
 				"Fee":             "1",
 				"Sequence":        uint32(1234),
-				"Issuer":          "rsUiUMpnrgxQp24dJYZDhmV4bE3aBtQyt8",
+				"Issuer":          "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"CredentialType":  "6D795F63726564656E7469616C",
 			},
 		},
@@ -60,13 +60,13 @@ func TestCredentialAccept_Validate(t *testing.T) {
 			name: "pass - valid CredentialAccept",
 			input: &CredentialAccept{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
 					Sequence:        10,
 				},
-				Issuer:         "rJZdUoJnJb5q8tHb9cYfYh5vZg9G6z2v1d",
+				Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				CredentialType: "6D795F63726564656E7469616C",
 			},
 			expected: true,
@@ -75,7 +75,7 @@ func TestCredentialAccept_Validate(t *testing.T) {
 			name: "fail - CredentialAccept with an invalid Issuer",
 			input: &CredentialAccept{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -90,13 +90,13 @@ func TestCredentialAccept_Validate(t *testing.T) {
 			name: "fail - CredentialAccept with an invalid CredentialType (empty)",
 			input: &CredentialAccept{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
 					Sequence:        10,
 				},
-				Issuer:         "rJZdUoJnJb5q8tHb9cYfYh5vZg9G6z2v1d",
+				Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				CredentialType: types.CredentialType(""),
 			},
 			expected: false,
@@ -105,13 +105,13 @@ func TestCredentialAccept_Validate(t *testing.T) {
 			name: "fail - CredentialAccept with an invalid CredentialType (not hex)",
 			input: &CredentialAccept{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
 					Sequence:        10,
 				},
-				Issuer:         "rJZdUoJnJb5q8tHb9cYfYh5vZg9G6z2v1d",
+				Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				CredentialType: types.CredentialType("not hexadecimal value"),
 			},
 			expected: false,
@@ -120,13 +120,13 @@ func TestCredentialAccept_Validate(t *testing.T) {
 			name: "fail - CredentialCreate with an invalid CredentialType (too long)",
 			input: &CredentialAccept{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
 					Sequence:        10,
 				},
-				Issuer:         "rJZdUoJnJb5q8tHb9cYfYh5vZg9G6z2v1d",
+				Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				CredentialType: types.CredentialType(strings.Repeat("0", types.MaxCredentialTypeLength+1)),
 			},
 			expected: false,
@@ -135,13 +135,13 @@ func TestCredentialAccept_Validate(t *testing.T) {
 			name: "fail - CredentialCreate with an invalid CredentialType (too short)",
 			input: &CredentialAccept{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
 					Sequence:        10,
 				},
-				Issuer:         "rJZdUoJnJb5q8tHb9cYfYh5vZg9G6z2v1d",
+				Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				CredentialType: types.CredentialType(strings.Repeat("0", types.MinCredentialTypeLength-1)),
 			},
 			expected: false,
@@ -156,7 +156,7 @@ func TestCredentialAccept_Validate(t *testing.T) {
 					Flags:           1048576,
 					Sequence:        10,
 				},
-				Issuer:         "rJZdUoJnJb5q8tHb9cYfYh5vZg9G6z2v1d",
+				Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				CredentialType: types.CredentialType("6D795F63726564656E7469616C"),
 			},
 			expected: false,

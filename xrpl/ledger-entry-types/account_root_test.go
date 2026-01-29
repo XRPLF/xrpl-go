@@ -10,7 +10,7 @@ import (
 
 func TestAccountRoot(t *testing.T) {
 	var s Object = &AccountRoot{
-		Account:           "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+		Account:           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		AccountTxnID:      "0D5FB50FA65C9FE1538FD7E398FFFE9D1908DFA4576D8D7A020040686F93C77D",
 		Balance:           types.XRPCurrencyAmount(148446663),
 		Domain:            "6D64756F31332E636F6D",
@@ -27,7 +27,7 @@ func TestAccountRoot(t *testing.T) {
 	j := `{
 	"Flags": 8388608,
 	"LedgerEntryType": "AccountRoot",
-	"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AccountTxnID": "0D5FB50FA65C9FE1538FD7E398FFFE9D1908DFA4576D8D7A020040686F93C77D",
 	"Balance": "148446663",
 	"Domain": "6D64756F31332E636F6D",

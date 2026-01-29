@@ -47,7 +47,7 @@ func TestCheckCash_Flatten(t *testing.T) {
 				},
 				CheckID: types.Hash256("838766BA2B995C00744175F69A1B11E32C3DBC40E64801A4056FCBD657F57334"),
 				DeliverMin: types.IssuedCurrencyAmount{
-					Issuer:   "rB5TihdPbKgMrkFqrqUC3yLdE8hhv4BdeW",
+					Issuer:   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					Value:    "50000000",
 					Currency: "USD",
 				},
@@ -57,7 +57,7 @@ func TestCheckCash_Flatten(t *testing.T) {
 				"TransactionType": "CheckCash",
 				"CheckID":         "838766BA2B995C00744175F69A1B11E32C3DBC40E64801A4056FCBD657F57334",
 				"DeliverMin": map[string]interface{}{
-					"issuer":   "rB5TihdPbKgMrkFqrqUC3yLdE8hhv4BdeW",
+					"issuer":   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					"value":    "50000000",
 					"currency": "USD",
 				},
@@ -119,7 +119,7 @@ func TestCheckCash_Validate(t *testing.T) {
 				},
 				CheckID: "838766BA2B995C00744175F69A1B11E32C3DBC40E64801A4056FCBD657F57334",
 				DeliverMin: types.IssuedCurrencyAmount{
-					Issuer:   "rB5TihdPbKgMrkFqrqUC3yLdE8hhv4BdeW",
+					Issuer:   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					Value:    "50000000",
 					Currency: "USD",
 				},
@@ -138,7 +138,7 @@ func TestCheckCash_Validate(t *testing.T) {
 				CheckID: "838766BA2B995C00744175F69A1B11E32C3DBC40E64801A4056FCBD657F57334",
 				Amount:  types.XRPCurrencyAmount(100000000),
 				DeliverMin: types.IssuedCurrencyAmount{
-					Issuer:   "rB5TihdPbKgMrkFqrqUC3yLdE8hhv4BdeW",
+					Issuer:   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					Value:    "50000000",
 					Currency: "USD",
 				},
@@ -201,7 +201,7 @@ func TestCheckCash_Validate(t *testing.T) {
 				},
 				CheckID: "838766BA2B995C00744175F69A1B11E32C3DBC40E64801A4056FCBD657F57334",
 				Amount: types.IssuedCurrencyAmount{
-					Issuer:   "rB5TihdPbKgMrkFqrqUC3yLdE8hhv4BdeW",
+					Issuer:   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					Value:    "invalid",
 					Currency: "USD",
 				},
@@ -220,7 +220,7 @@ func TestCheckCash_Validate(t *testing.T) {
 				},
 				CheckID: "838766BA2B995C00744175F69A1B11E32C3DBC40E64801A4056FCBD657F57334",
 				DeliverMin: types.IssuedCurrencyAmount{
-					Issuer:   "rB5TihdPbKgMrkFqrqUC3yLdE8hhv4BdeW",
+					Issuer:   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					Value:    "invalid",
 					Currency: "USD",
 				},

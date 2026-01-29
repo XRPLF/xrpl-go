@@ -22,11 +22,11 @@ func TestXChainClaim_Flatten(t *testing.T) {
 			name: "pass - only base tx",
 			tx: &XChainClaim{
 				BaseTx: BaseTx{
-					Account: "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 			},
 			expected: FlatTransaction{
-				"Account":         "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": XChainClaimTx,
 			},
 		},
@@ -34,30 +34,30 @@ func TestXChainClaim_Flatten(t *testing.T) {
 			name: "pass - all fields set",
 			tx: &XChainClaim{
 				BaseTx: BaseTx{
-					Account: "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				Amount:         types.XRPCurrencyAmount(1000000000),
-				Destination:    "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+				Destination:    "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				DestinationTag: types.DestinationTag(1),
 				XChainBridge: types.XChainBridge{
-					LockingChainDoor:  "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
-					LockingChainIssue: "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
-					IssuingChainDoor:  "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
-					IssuingChainIssue: "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					LockingChainDoor:  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					LockingChainIssue: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					IssuingChainDoor:  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					IssuingChainIssue: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				XChainClaimID: "1234567890",
 			},
 			expected: FlatTransaction{
 				"TransactionType": XChainClaimTx,
-				"Account":         "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Amount":          types.XRPCurrencyAmount(1000000000).Flatten(),
-				"Destination":     "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+				"Destination":     "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"DestinationTag":  uint32(1),
 				"XChainBridge": types.FlatXChainBridge{
-					"LockingChainDoor":  "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
-					"LockingChainIssue": "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
-					"IssuingChainDoor":  "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
-					"IssuingChainIssue": "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					"LockingChainDoor":  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					"LockingChainIssue": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					"IssuingChainDoor":  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					"IssuingChainIssue": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				"XChainClaimID": "1234567890",
 			},
@@ -88,7 +88,7 @@ func TestXChainClaim_Validate(t *testing.T) {
 			name: "fail - invalid amount",
 			tx: &XChainClaim{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: XChainClaimTx,
 				},
 			},
@@ -99,7 +99,7 @@ func TestXChainClaim_Validate(t *testing.T) {
 			name: "fail - invalid destination",
 			tx: &XChainClaim{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: XChainClaimTx,
 				},
 				Amount:      types.XRPCurrencyAmount(1000000000),
@@ -112,11 +112,11 @@ func TestXChainClaim_Validate(t *testing.T) {
 			name: "fail - invalid xchain bridge",
 			tx: &XChainClaim{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: XChainClaimTx,
 				},
 				Amount:        types.XRPCurrencyAmount(1000000000),
-				Destination:   "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+				Destination:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				XChainClaimID: "1234567890",
 			},
 			expected:    false,
@@ -126,11 +126,11 @@ func TestXChainClaim_Validate(t *testing.T) {
 			name: "fail - missing xchain claim id",
 			tx: &XChainClaim{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: XChainClaimTx,
 				},
 				Amount:      types.XRPCurrencyAmount(1000000000),
-				Destination: "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+				Destination: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			expected:    false,
 			expectedErr: ErrMissingXChainClaimID,
@@ -139,17 +139,17 @@ func TestXChainClaim_Validate(t *testing.T) {
 			name: "pass - all fields set",
 			tx: &XChainClaim{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: XChainClaimTx,
 				},
 				Amount:         types.XRPCurrencyAmount(1000000000),
-				Destination:    "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+				Destination:    "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				DestinationTag: types.DestinationTag(1),
 				XChainBridge: types.XChainBridge{
-					LockingChainDoor:  "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
-					LockingChainIssue: "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
-					IssuingChainDoor:  "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
-					IssuingChainIssue: "r9cZA1mR1tMM4Gx5JqZxtFU1XxHtHa3gE3",
+					LockingChainDoor:  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					LockingChainIssue: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					IssuingChainDoor:  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					IssuingChainIssue: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				XChainClaimID: "1234567890",
 			},

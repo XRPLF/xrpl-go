@@ -129,7 +129,7 @@ func (d *DelegateSet) Validate() (bool, error) {
 		permissionValueSet[permissionValue] = 0
 	}
 
-	// Check for duplicates by comparing lengths (like JS implementation)
+	// Check for duplicates by comparing lengths.
 	if len(d.Permissions) != len(permissionValueSet) {
 		return false, ErrDelegateSetDuplicatePermissions
 	}

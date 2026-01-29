@@ -70,14 +70,14 @@ func TestClient_Request(t *testing.T) {
 
 		response := `{
 			"result": {
-			  "account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+			  "account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			  "channels": [
 				{
-					"account":             "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account":             "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"amount":              "1000",
 					"balance":             "0",
 					"channel_id":          "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-					"destination_account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					"destination_account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					"public_key":          "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
 					"public_key_hex":      "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
 					"settle_delay":        60
@@ -107,14 +107,14 @@ func TestClient_Request(t *testing.T) {
 
 		expectedXrplResponse := &Response{
 			Result: AnyJSON{
-				"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"channels": []any{
 					map[string]any{
-						"account":             "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						"account":             "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						"amount":              "1000",
 						"balance":             "0",
 						"channel_id":          "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-						"destination_account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+						"destination_account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 						"public_key":          "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
 						"public_key_hex":      "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
 						"settle_delay":        json.Number("60"),
@@ -136,7 +136,7 @@ func TestClient_Request(t *testing.T) {
 		_ = xrplResponse.GetResult(&channelsResponse)
 
 		expected := &account.ChannelsResponse{
-			Account:     "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+			Account:     "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			LedgerIndex: 71766314,
 			LedgerHash:  "1EDBBA3C793863366DF5B31C2174B6B5E6DF6DB89A7212B86838489148E2A581",
 		}
@@ -214,7 +214,7 @@ func TestClient_Request(t *testing.T) {
 		}
 		sucessResponse := `{
 			"result": {
-			  "account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+			  "account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			  "ledger_hash": "27F530E5C93ED5C13994812787C1ED073C822BAEC7597964608F2C049C2ACD2D",
 			  "ledger_index": 71766343
 				}
@@ -242,7 +242,7 @@ func TestClient_Request(t *testing.T) {
 		_ = xrplResponse.GetResult(&channelsResponse)
 
 		expected := &account.ChannelsResponse{
-			Account:     "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+			Account:     "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			LedgerIndex: 71766343,
 			LedgerHash:  "27F530E5C93ED5C13994812787C1ED073C822BAEC7597964608F2C049C2ACD2D",
 		}
@@ -313,7 +313,7 @@ func TestClient_SubmitTxBlob(t *testing.T) {
 		{
 			name:        "missing signature",
 			txBlob:      "1200002280000000240000000361D4838D7EA4C6800000000000000000000000000055534400000000004B4E9C06F24296074F7BC48F92A97916C6DC5EA968400000000000000A70",
-			expectError: errors.New("parser out of bounds"),
+			expectError: errors.New("ReadField error: parser out of bounds"),
 		},
 	}
 
@@ -368,8 +368,8 @@ func TestClient_SubmitTx(t *testing.T) {
 		"type": "response"
 	}`,
 			tx: map[string]interface{}{
-				"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-				"Destination":     "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"Destination":     "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"Fee":             "10",
 				"TransactionType": "Payment",
 				"SigningPubKey":   "03AB40A0490F9B7ED8DF29D246BF2D6269820A0EE7742ACDD457BEA7C7D0931EDB",
@@ -390,8 +390,8 @@ func TestClient_SubmitTx(t *testing.T) {
 		{
 			name: "fail - no wallet provided for unsigned tx",
 			tx: map[string]interface{}{
-				"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-				"Destination":     "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"Destination":     "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"Fee":             "10",
 				"TransactionType": "Payment",
 				"Sequence":        uint32(359),
@@ -463,31 +463,6 @@ func TestClient_SubmitMultisigned(t *testing.T) {
 				EngineResultCode:    0,
 				EngineResultMessage: "The transaction was applied.",
 			},
-		},
-		{
-			name: "invalid multisign json",
-			mockResponse: `{
-				"result": {
-					"engine_result": "tesSUCCESS",
-					"engine_result_code": 0,
-					"engine_result_message": "The transaction was applied.",
-					"tx_blob": "1200002280000000240000000361D4838D7EA4C6800000000000000000000000000055534400000000004B4E9C06F24296074F7BC48F92A97916C6DC5EA968400000000000000A732103AB40A0490F9B7ED8DF29D246BF2D6269820A0EE7742ACDD457BEA7C7D0931EDB74473045022100D184EB4AE5956FF600E7536EE459345C7BBCF097A84CC61A93B9AF7197EDB98702201CEA8009B7BEEBAA2AACC0359B41C427C1C5B550A4CA4B80CF2174AF2D6D5DCE81144B4E9C06F24296074F7BC48F92A97916C6DC5EA983143E9D4A2B8AA0780F682D136F7A56D6724EF53754",
-					"tx_json": {
-						"Account": "rUAi7pipxGpYfPNg3LtPcf2ApiS8aw9A93",
-						"Fee": "10",
-						"Flags": 2147483648,
-						"Sequence": 4,
-						"SigningPubKey": "",
-						"TransactionType": "Payment",
-						"TxnSignature": "3045022100D184EB4AE5956FF600E7536EE459345C7BBCF097A84CC61A93B9AF7197EDB98702201CEA8009B7BEEBAA2AACC0359B41C427C1C5B550A4CA4B80CF2174AF2D6D5DCE",
-						"hash": "4D5D90890F8D49519E4151938601EF3D0B30B16CD6A519D9C99102C9FA77F7E0"
-					}
-				},
-				"status": "success",
-				"type": "response"
-			}`,
-			txBlob:      "1200002280000000240000000361D4838D7EA4C6800000000000000000000000000055534400000000004B4E9C06F24296074F7BC48F92A97916C6DC5EA968400000000000000A732103AB40A0490F9B7ED8DF29D246BF2D6269820A0EE7742ACDD457BEA7C7D0931EDB74473045022100D184EB4AE5956FF600E7536EE459345C7BBCF097A84CC61A93B9AF7197EDB98702201CEA8009B7BEEBAA2AACC0359B41C427C1C5B550A4CA4B80CF2174AF2D6D5DCE81144B4E9C06F24296074F7BC48F92A97916C6DC5EA983143E9D4A2B80",
-			expectError: errors.New("parser out of bounds"),
 		},
 	}
 

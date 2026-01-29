@@ -15,7 +15,7 @@ func TestAuthorizeCredentials_IsValid(t *testing.T) {
 		{
 			name: "pass - valid authorize credentials",
 			credential: AuthorizeCredentials{
-				Issuer:         "rsUiUMpnrgxQp24dJYZDhmV4bE3aBtQyt8",
+				Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				CredentialType: "6D795F63726564656E7469616C",
 			},
 			expected: true,
@@ -23,7 +23,7 @@ func TestAuthorizeCredentials_IsValid(t *testing.T) {
 		{
 			name: "fail - invalid credential type",
 			credential: AuthorizeCredentials{
-				Issuer:         "rsUiUMpnrgxQp24dJYZDhmV4bE3aBtQyt8",
+				Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				CredentialType: "invalid",
 			},
 			expected: false,
@@ -56,13 +56,13 @@ func TestAuthorizeCredentials_Flatten(t *testing.T) {
 			name: "pass - valid authorize credentials",
 			credential: AuthorizeCredentialsWrapper{
 				Credential: AuthorizeCredentials{
-					Issuer:         "rsUiUMpnrgxQp24dJYZDhmV4bE3aBtQyt8",
+					Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					CredentialType: "6D795F63726564656E7469616C",
 				},
 			},
 			expected: map[string]interface{}{
 				"Credential": map[string]interface{}{
-					"Issuer":         "rsUiUMpnrgxQp24dJYZDhmV4bE3aBtQyt8",
+					"Issuer":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"CredentialType": "6D795F63726564656E7469616C",
 				},
 			},

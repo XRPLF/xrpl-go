@@ -22,32 +22,32 @@ func TestMPTokenIssuanceSet_Flatten(t *testing.T) {
 			name: "pass - with holder",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Flags:   1,
 				},
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:            types.Holder("rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn"),
+				Holder:            types.Holder("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 			},
 			expected: FlatTransaction{
 				"TransactionType":   "MPTokenIssuanceSet",
-				"Account":           "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Flags":             uint32(1),
 				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"Holder":            "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Holder":            "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 		},
 		{
 			name: "pass - without holder",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Flags:   1,
 				},
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 			},
 			expected: FlatTransaction{
 				"TransactionType":   "MPTokenIssuanceSet",
-				"Account":           "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Flags":             uint32(1),
 				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 			},
@@ -73,11 +73,11 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			name: "pass - valid transaction",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: MPTokenIssuanceSetTx,
 				},
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:            types.Holder("rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn"),
+				Holder:            types.Holder("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 			},
 			wantOk:  true,
 			wantErr: nil,
@@ -86,7 +86,7 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			name: "fail - invalid holder address",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: MPTokenIssuanceSetTx,
 				},
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
@@ -99,7 +99,7 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			name: "fail - conflicting flags",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: MPTokenIssuanceSetTx,
 					Flags:           tfMPTLock | tfMPTUnlock,
 				},

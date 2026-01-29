@@ -17,7 +17,7 @@ func TestAMMDelete_TxType(t *testing.T) {
 func TestAMMDelete_Flatten(t *testing.T) {
 	tx := &AMMDelete{
 		BaseTx: BaseTx{
-			Account:  "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+			Account:  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			Fee:      types.XRPCurrencyAmount(10),
 			Sequence: 9,
 		},
@@ -33,7 +33,7 @@ func TestAMMDelete_Flatten(t *testing.T) {
 	flattened := tx.Flatten()
 
 	expected := `{
-	"Account": "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"Fee": "10",
 	"Sequence": 9,
 	"TransactionType": "AMMDelete",
@@ -61,7 +61,7 @@ func TestAMMDelete_Validate(t *testing.T) {
 			name: "pass - valid AMMDelete",
 			tx: &AMMDelete{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: AMMDeleteTx,
 					Fee:             types.XRPCurrencyAmount(10),
 					Sequence:        9,
@@ -98,7 +98,7 @@ func TestAMMDelete_Validate(t *testing.T) {
 			name: "fail - invalid Asset",
 			tx: &AMMDelete{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: AMMDeleteTx,
 					Fee:             types.XRPCurrencyAmount(10),
 					Sequence:        9,
@@ -117,7 +117,7 @@ func TestAMMDelete_Validate(t *testing.T) {
 			name: "fail - invalid Asset2, empty currency",
 			tx: &AMMDelete{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: AMMDeleteTx,
 					Fee:             types.XRPCurrencyAmount(10),
 					Sequence:        9,
@@ -135,7 +135,7 @@ func TestAMMDelete_Validate(t *testing.T) {
 			name: "fail - invalid Asset2, invalid xrpl address as issuer",
 			tx: &AMMDelete{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: AMMDeleteTx,
 					Fee:             types.XRPCurrencyAmount(10),
 					Sequence:        9,
@@ -154,7 +154,7 @@ func TestAMMDelete_Validate(t *testing.T) {
 			name: "fail - invalid Asset2, empty issuer",
 			tx: &AMMDelete{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: AMMDeleteTx,
 					Fee:             types.XRPCurrencyAmount(10),
 					Sequence:        9,

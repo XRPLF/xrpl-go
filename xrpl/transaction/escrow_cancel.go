@@ -12,9 +12,9 @@ import (
 // ```json
 //
 //	{
-//	    "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//	    "Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	    "TransactionType": "EscrowCancel",
-//	    "Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//	    "Owner": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	    "OfferSequence": 7,
 //	}
 //

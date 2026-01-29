@@ -27,13 +27,13 @@ func TestPermissionedDomain(t *testing.T) {
 				LedgerEntryType: PermissionedDomainEntry,
 				Fee:             types.XRPCurrencyAmount(10),
 				Flags:           0,
-				Owner:           types.Address("rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn"),
+				Owner:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				OwnerNode:       "0000000000000000",
 				Sequence:        390,
 				AcceptedCredentials: types.AuthorizeCredentialList{
 					{
 						Credential: types.Credential{
-							Issuer:         types.Address("ra5nK24KXen9AHvsdFTKHSANinZseWnPcX"),
+							Issuer:         types.Address("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
 							CredentialType: types.CredentialType("6D795F63726564656E7469616C"),
 						},
 					},
@@ -46,13 +46,13 @@ func TestPermissionedDomain(t *testing.T) {
 	"LedgerEntryType": "PermissionedDomain",
 	"Fee": "10",
 	"Flags": 0,
-	"Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+	"Owner": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"OwnerNode": "0000000000000000",
 	"Sequence": 390,
 	"AcceptedCredentials": [
 		{
 			"Credential": {
-				"Issuer": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+				"Issuer": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"CredentialType": "6D795F63726564656E7469616C"
 			}
 		}
@@ -84,13 +84,13 @@ func TestPermissionedDomain_Flatten(t *testing.T) {
 				LedgerEntryType: PermissionedDomainEntry,
 				Fee:             types.XRPCurrencyAmount(10),
 				Flags:           0,
-				Owner:           types.Address("rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn"),
+				Owner:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				OwnerNode:       "0000000000000000",
 				Sequence:        390,
 				AcceptedCredentials: types.AuthorizeCredentialList{
 					{
 						Credential: types.Credential{
-							Issuer:         types.Address("ra5nK24KXen9AHvsdFTKHSANinZseWnPcX"),
+							Issuer:         types.Address("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
 							CredentialType: types.CredentialType("6D795F63726564656E7469616C"),
 						},
 					},
@@ -103,13 +103,13 @@ func TestPermissionedDomain_Flatten(t *testing.T) {
 				"LedgerEntryType": "PermissionedDomain",
 				"Fee": "10",
 				"Flags": 0,
-				"Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Owner": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"OwnerNode": "0000000000000000",
 				"Sequence": 390,
 				"AcceptedCredentials": [
 					{
 						"Credential": {
-							"Issuer": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+							"Issuer": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 							"CredentialType": "6D795F63726564656E7469616C"
 						}
 					}

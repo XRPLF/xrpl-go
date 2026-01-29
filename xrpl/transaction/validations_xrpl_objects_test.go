@@ -257,7 +257,7 @@ func TestIsAsset(t *testing.T) {
 	t.Run("fail - invalid Asset object with currency XRP and an issuer defined", func(t *testing.T) {
 		obj := ledger.Asset{
 			Currency: "xrP", // will be converted to XRP in the Validate function
-			Issuer:   "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		}
 
 		ok, err := IsAsset(obj)
@@ -282,7 +282,7 @@ func TestIsAsset(t *testing.T) {
 	t.Run("pass - valid Asset object with currency and issuer", func(t *testing.T) {
 		obj := ledger.Asset{
 			Currency: "USD",
-			Issuer:   "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		}
 
 		ok, err := IsAsset(obj)
@@ -294,7 +294,7 @@ func TestIsAsset(t *testing.T) {
 
 	t.Run("fail - Asset object with missing currency", func(t *testing.T) {
 		obj := ledger.Asset{
-			Issuer: "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+			Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		}
 
 		ok, err := IsAsset(obj)

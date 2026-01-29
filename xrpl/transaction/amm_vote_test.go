@@ -17,7 +17,7 @@ func TestAMMVote_TxType(t *testing.T) {
 func TestAMMVote_Flatten(t *testing.T) {
 	tx := &AMMVote{
 		BaseTx: BaseTx{
-			Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+			Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			TransactionType: "AMMVote",
 			Fee:             types.XRPCurrencyAmount(10),
 			Flags:           2147483648,
@@ -36,7 +36,7 @@ func TestAMMVote_Flatten(t *testing.T) {
 	flattened := tx.Flatten()
 
 	expected := `{
-		"Account":         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+		"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		"Fee":             "10",
 		"Flags":           2147483648,
 		"Sequence":        8,
@@ -67,7 +67,7 @@ func TestAMMVote_Validate(t *testing.T) {
 			name: "pass - valid AMMVote",
 			tx: &AMMVote{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMVote",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           2147483648,
@@ -88,7 +88,7 @@ func TestAMMVote_Validate(t *testing.T) {
 			name: "fail - invalid AMMVote BaseTx, TransactionType missing",
 			tx: &AMMVote{
 				BaseTx: BaseTx{
-					Account:  "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:      types.XRPCurrencyAmount(10),
 					Flags:    2147483648,
 					Sequence: 8,
@@ -108,7 +108,7 @@ func TestAMMVote_Validate(t *testing.T) {
 			name: "fail - invalid TradingFee",
 			tx: &AMMVote{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMVote",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           2147483648,
@@ -129,7 +129,7 @@ func TestAMMVote_Validate(t *testing.T) {
 			name: "fail - invalid Asset",
 			tx: &AMMVote{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMVote",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           2147483648,
@@ -150,7 +150,7 @@ func TestAMMVote_Validate(t *testing.T) {
 			name: "fail - invalid Asset2",
 			tx: &AMMVote{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMVote",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           2147483648,

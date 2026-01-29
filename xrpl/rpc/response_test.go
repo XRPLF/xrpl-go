@@ -14,7 +14,7 @@ func TestGetResult(t *testing.T) {
 
 		jr := Response{
 			Result: AnyJSON{
-				"account":      "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"account":      "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"ledger_hash":  "27F530E5C93ED5C13994812787C1ED073C822BAEC7597964608F2C049C2ACD2D",
 				"ledger_index": json.Number(strconv.FormatInt(71766343, 10)),
 			},
@@ -27,7 +27,7 @@ func TestGetResult(t *testing.T) {
 		}
 
 		expected := account.ChannelsResponse{
-			Account:     "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+			Account:     "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			LedgerHash:  "27F530E5C93ED5C13994812787C1ED073C822BAEC7597964608F2C049C2ACD2D",
 			LedgerIndex: 71766343,
 		}

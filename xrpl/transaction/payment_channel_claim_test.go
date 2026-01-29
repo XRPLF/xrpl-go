@@ -62,13 +62,13 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 			name: "pass - PaymentChannelClaim with Channel",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Channel: types.Hash256("ABC123"),
 			},
 			expected: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PaymentChannelClaim",
 				"Channel": "ABC123"
 			}`,
@@ -77,14 +77,14 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 			name: "pass - PaymentChannelClaim with Balance and Amount",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Balance: types.XRPCurrencyAmount(1000),
 				Amount:  types.XRPCurrencyAmount(2000),
 			},
 			expected: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PaymentChannelClaim",
 				"Balance": "1000",
 				"Amount": "2000"
@@ -94,14 +94,14 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 			name: "pass - PaymentChannelClaim with Signature and PublicKey",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Signature: "ABCDEF",
 				PublicKey: "123456",
 			},
 			expected: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PaymentChannelClaim",
 				"Signature": "ABCDEF",
 				"PublicKey": "123456"
@@ -111,7 +111,7 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 			name: "pass - PaymentChannelClaim with all fields",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Channel:       types.Hash256("ABC123"),
@@ -122,7 +122,7 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 				CredentialIDs: types.CredentialIDs{"1234567890abcdef"},
 			},
 			expected: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PaymentChannelClaim",
 				"Channel": "ABC123",
 				"Balance": "1000",
@@ -154,7 +154,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			name: "pass - all fields valid",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Balance:       types.XRPCurrencyAmount(1000),
@@ -185,7 +185,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			name: "fail - empty Channel",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 			},
@@ -197,7 +197,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			name: "fail - invalid Signature",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
@@ -211,7 +211,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			name: "pass - no Signature",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
@@ -223,7 +223,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			name: "fail - invalid PublicKey",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
@@ -237,7 +237,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			name: "fail - invalid CredentialIDs",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Channel:       "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",

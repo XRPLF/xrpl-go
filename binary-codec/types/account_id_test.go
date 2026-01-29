@@ -58,7 +58,7 @@ func TestAccountID_FromJson(t *testing.T) {
 			name:        "Invalid AccountID with invalid XAddress",
 			input:       "XVYRdEocC28DRx94ZFGP3qNJ1D5Ln7ecXFMd3vREB5PesjuA",
 			expected:    nil,
-			expectedErr: addresscodec.ErrInvalidXAddress,
+			expectedErr: addresscodec.ErrChecksum,
 		},
 		{
 			name:        "Invalid XRPL address",

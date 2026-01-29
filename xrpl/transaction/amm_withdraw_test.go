@@ -92,7 +92,7 @@ func TestAMMWithdraw_Flatten(t *testing.T) {
 			name: "pass - Full AMMWithdraw",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -128,7 +128,7 @@ func TestAMMWithdraw_Flatten(t *testing.T) {
 			},
 			expected: `{
 				"TransactionType": "AMMWithdraw",
-				"Account": "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee": "10",
 				"Flags": 1048576,
 				"Sequence": 10,
@@ -165,7 +165,7 @@ func TestAMMWithdraw_Flatten(t *testing.T) {
 			name: "pass - Minimal AMMWithdraw",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -181,7 +181,7 @@ func TestAMMWithdraw_Flatten(t *testing.T) {
 			},
 			expected: `{
 				"TransactionType": "AMMWithdraw",
-				"Account": "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee": "10",
 				"Flags": 1048576,
 				"Sequence": 10,
@@ -217,7 +217,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "pass - valid AMMWithdraw",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -257,7 +257,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "fail - invalid AMMWithdraw BaseTx, TransactionType missing",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:  "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:      types.XRPCurrencyAmount(10),
 					Flags:    1048576,
 					Sequence: 10,
@@ -296,7 +296,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "fail - invalid Asset",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -316,7 +316,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "fail - Amount2 without Amount",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -341,7 +341,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "fail - EPrice set without Amount",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -366,7 +366,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "fail - invalid Asset2",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -387,7 +387,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "fail - invalid Amount",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -412,7 +412,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "fail - invalid Amount2",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -441,7 +441,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "fail - invalid EPrice",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -475,7 +475,7 @@ func TestAMMWithdraw_Validate(t *testing.T) {
 			name: "fail - invalid LPTokenIn",
 			input: &AMMWithdraw{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMWithdraw",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,

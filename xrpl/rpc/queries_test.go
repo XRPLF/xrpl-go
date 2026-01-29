@@ -119,14 +119,14 @@ func TestClient_GetAccountChannels(t *testing.T) {
 			name: "successful response",
 			mockResponse: `{
 				"result": {
-					"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"channels": [
 						{
-							"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"amount": "1000",
 							"balance": "0",
 							"channel_id": "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-							"destination_account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+							"destination_account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 							"public_key": "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
 							"public_key_hex": "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
 							"settle_delay": 60
@@ -139,16 +139,16 @@ func TestClient_GetAccountChannels(t *testing.T) {
 			}`,
 			mockStatus: 200,
 			request: &account.ChannelsRequest{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			expected: account.ChannelsResponse{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				Channels: []accounttypes.ChannelResult{{
-					Account:            "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:            "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Amount:             "1000",
 					Balance:            "0",
 					ChannelID:          "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-					DestinationAccount: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					DestinationAccount: "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					PublicKey:          "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
 					PublicKeyHex:       "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
 					SettleDelay:        60,
@@ -216,18 +216,18 @@ func TestClient_GetAccountObjects(t *testing.T) {
 			name: "successful account objects request",
 			mockResponse: `{
 				"result": {
-					"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"account_objects": [
 						{
 							"Balance": {
 								"currency": "USD",
-								"issuer": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+								"issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 								"value": "100"
 							},
 							"Flags": 65536,
 							"HighLimit": {
 								"currency": "USD",
-								"issuer": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+								"issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 								"value": "0"
 							},
 							"LedgerEntryType": "RippleState",
@@ -245,21 +245,21 @@ func TestClient_GetAccountObjects(t *testing.T) {
 			}`,
 			mockStatus: 200,
 			request: &account.ObjectsRequest{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			expected: account.ObjectsResponse{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				AccountObjects: []ledger.FlatLedgerObject{
 					{
 						"Balance": map[string]any{
 							"currency": "USD",
-							"issuer":   "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"issuer":   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"value":    "100",
 						},
 						"Flags": json.Number("65536"),
 						"HighLimit": map[string]any{
 							"currency": "USD",
-							"issuer":   "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"issuer":   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"value":    "0",
 						},
 						"LedgerEntryType": "RippleState",
@@ -333,10 +333,10 @@ func TestClient_GetAccountLines(t *testing.T) {
 			name: "successful response",
 			mockResponse: `{
 				"result": {
-					"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"lines": [
 						{
-							"account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+							"account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 							"balance": "10",
 							"currency": "USD",
 							"limit": "100",
@@ -352,13 +352,13 @@ func TestClient_GetAccountLines(t *testing.T) {
 			}`,
 			mockStatus: 200,
 			request: &account.LinesRequest{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			expected: account.LinesResponse{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				Lines: []accounttypes.TrustLine{
 					{
-						Account:    "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+						Account:    "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 						Balance:    "10",
 						Currency:   "USD",
 						Limit:      "100",
@@ -493,11 +493,11 @@ func TestClient_GetAccountNFTs(t *testing.T) {
 			name: "successful response",
 			mockResponse: `{
 				"result": {
-					"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"account_nfts": [
 						{
 							"Flags": 0,
-							"Issuer": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"NFTokenID": "00080000B4F4AFC5FBCBD76873F18006173D2193467D3EE70000099B00000000",
 							"NFTokenTaxon": 0,
 							"URI": "697066733A2F2F516D516A447644686F686B6B6454716D78313959724D44697350"
@@ -510,14 +510,14 @@ func TestClient_GetAccountNFTs(t *testing.T) {
 			}`,
 			mockStatus: 200,
 			request: &account.NFTsRequest{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			expected: account.NFTsResponse{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				AccountNFTs: []accounttypes.NFT{
 					{
 						Flags:        0,
-						Issuer:       "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						Issuer:       "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						NFTokenID:    "00080000B4F4AFC5FBCBD76873F18006173D2193467D3EE70000099B00000000",
 						NFTokenTaxon: 0,
 						URI:          "697066733A2F2F516D516A447644686F686B6B6454716D78313959724D44697350",
@@ -595,7 +595,7 @@ func TestClient_GetAccountCurrencies(t *testing.T) {
 			}`,
 			mockStatus: 200,
 			request: &account.CurrenciesRequest{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			expected: account.CurrenciesResponse{
 				LedgerHash:        "27F530E5C93ED5C13994812787C1ED073C822BAEC7597964608F2C049C2ACD2D",
@@ -663,7 +663,7 @@ func TestClient_GetAccountOffers(t *testing.T) {
 			name: "successful response",
 			mockResponse: `{
 				"result": {
-					"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"offers": [
 						{
 							"flags": 0,
@@ -671,7 +671,7 @@ func TestClient_GetAccountOffers(t *testing.T) {
 							"seq": 1234,
 							"taker_gets": {
 								"currency": "USD",
-								"issuer": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+								"issuer": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 								"value": "100"
 							},
 							"taker_pays": "100000000"
@@ -684,10 +684,10 @@ func TestClient_GetAccountOffers(t *testing.T) {
 			}`,
 			mockStatus: 200,
 			request: &account.OffersRequest{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			expected: account.OffersResponse{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				Offers: []accounttypes.OfferResult{
 					{
 						Flags:    0,
@@ -695,7 +695,7 @@ func TestClient_GetAccountOffers(t *testing.T) {
 						Sequence: 1234,
 						TakerGets: map[string]any{
 							"currency": "USD",
-							"issuer":   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+							"issuer":   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 							"value":    "100",
 						},
 						TakerPays: "100000000",
@@ -763,13 +763,13 @@ func TestClient_GetAccountTransactions(t *testing.T) {
 			name: "successful response",
 			mockResponse: `{
 				"result": {
-					"account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"transactions": [
 						{
 							"tx_json": {
-								"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+								"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 								"Amount": "100000000",
-								"Destination": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+								"Destination": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 								"Fee": "12",
 								"Flags": 2147483648,
 								"Sequence": 1,
@@ -792,16 +792,16 @@ func TestClient_GetAccountTransactions(t *testing.T) {
 			}`,
 			mockStatus: 200,
 			request: &account.TransactionsRequest{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			expected: account.TransactionsResponse{
-				Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				Transactions: []account.Transaction{
 					{
 						Tx: map[string]any{
-							"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"Amount":          "100000000",
-							"Destination":     "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+							"Destination":     "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 							"Fee":             "12",
 							"Flags":           json.Number("2147483648"),
 							"Sequence":        json.Number("1"),
@@ -1707,21 +1707,21 @@ func TestClient_GetDepositAuthorized(t *testing.T) {
 					"deposit_authorized": true,
 					"destination_account": "rEhxGqkqPPSxQ3P25J66ft5TwpzV14k2de",
 					"ledger_current_index": 14,
-					"source_account": "rsUiUMpnrgxQp24dJYZDhmV4bE3aBtQyt8",
+					"source_account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"validated": false,
 					"status": "success"
 				}
 			}`,
 			mockStatus: 200,
 			request: &path.DepositAuthorizedRequest{
-				SourceAccount:      "rsUiUMpnrgxQp24dJYZDhmV4bE3aBtQyt8",
+				SourceAccount:      "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				DestinationAccount: "rEhxGqkqPPSxQ3P25J66ft5TwpzV14k2de",
 			},
 			expected: path.DepositAuthorizedResponse{
 				DepositAuthorized:  true,
 				DestinationAccount: "rEhxGqkqPPSxQ3P25J66ft5TwpzV14k2de",
 				LedgerCurrentIndex: 14,
-				SourceAccount:      "rsUiUMpnrgxQp24dJYZDhmV4bE3aBtQyt8",
+				SourceAccount:      "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				Validated:          false,
 			},
 		},

@@ -18,7 +18,7 @@ func TestRippleState(t *testing.T) {
 		Flags: 393216,
 		HighLimit: types.IssuedCurrencyAmount{
 			Currency: "USD",
-			Issuer:   "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			Value:    "110",
 		},
 		HighNode:        "0000000000000000",
@@ -41,7 +41,7 @@ func TestRippleState(t *testing.T) {
 	},
 	"Flags": 393216,
 	"HighLimit": {
-		"issuer": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+		"issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		"currency": "USD",
 		"value": "110"
 	},

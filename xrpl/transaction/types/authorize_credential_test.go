@@ -16,13 +16,13 @@ func TestAuthorizeCredential_Flatten(t *testing.T) {
 			name: "pass - valid credential",
 			ac: AuthorizeCredential{
 				Credential: Credential{
-					Issuer:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					CredentialType: CredentialType("1234"),
 				},
 			},
 			expected: `{
 				"Credential": {
-					"Issuer": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"CredentialType": "1234"
 				}
 			}`,
@@ -50,7 +50,7 @@ func TestAuthorizeCredential_Validate(t *testing.T) {
 			name: "pass - valid credential",
 			ac: AuthorizeCredential{
 				Credential: Credential{
-					Issuer:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					CredentialType: CredentialType("1234"),
 				},
 			},

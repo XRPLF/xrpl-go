@@ -17,7 +17,7 @@ import (
 //	{
 //	    "Flags": 0,
 //	    "TransactionType": "SetRegularKey",
-//	    "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//	    "Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	    "Fee": "12",
 //	    "RegularKey": "rAR8rR8sUkBoCZFawhkWzY4Y5YoyuznwD"
 //	}

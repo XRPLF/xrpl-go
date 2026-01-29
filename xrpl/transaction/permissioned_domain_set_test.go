@@ -25,7 +25,7 @@ func TestPermissionedDomainSet_Flatten(t *testing.T) {
 			name: "pass - without DomainID",
 			tx: &PermissionedDomainSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainSetTx,
 				},
 				AcceptedCredentials: []types.AuthorizeCredential{
@@ -39,7 +39,7 @@ func TestPermissionedDomainSet_Flatten(t *testing.T) {
 				},
 			},
 			expected: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"AcceptedCredentials": [
 					{
 						"Credential": {
@@ -55,7 +55,7 @@ func TestPermissionedDomainSet_Flatten(t *testing.T) {
 			name: "pass - with DomainID and multiple credentials",
 			tx: &PermissionedDomainSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainSetTx,
 				},
 				DomainID: "domain123",
@@ -75,7 +75,7 @@ func TestPermissionedDomainSet_Flatten(t *testing.T) {
 				},
 			},
 			expected: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PermissionedDomainSet",
 				"DomainID": "domain123",
 				"AcceptedCredentials": [
@@ -119,7 +119,7 @@ func TestPermissionedDomainSet_Validate(t *testing.T) {
 			name: "pass - valid transaction",
 			tx: &PermissionedDomainSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainSetTx,
 				},
 				AcceptedCredentials: []types.AuthorizeCredential{
@@ -158,7 +158,7 @@ func TestPermissionedDomainSet_Validate(t *testing.T) {
 			name: "fail - empty credentials list",
 			tx: &PermissionedDomainSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainSetTx,
 				},
 				AcceptedCredentials: types.AuthorizeCredentialList{},
@@ -171,7 +171,7 @@ func TestPermissionedDomainSet_Validate(t *testing.T) {
 			name: "fail - duplicate credentials",
 			tx: &PermissionedDomainSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainSetTx,
 				},
 				AcceptedCredentials: types.AuthorizeCredentialList{
@@ -197,7 +197,7 @@ func TestPermissionedDomainSet_Validate(t *testing.T) {
 			name: "fail - invalid credential (empty issuer)",
 			tx: &PermissionedDomainSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainSetTx,
 				},
 				AcceptedCredentials: []types.AuthorizeCredential{
@@ -217,7 +217,7 @@ func TestPermissionedDomainSet_Validate(t *testing.T) {
 			name: "fail - invalid credential type",
 			tx: &PermissionedDomainSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainSetTx,
 				},
 				AcceptedCredentials: []types.AuthorizeCredential{

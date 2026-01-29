@@ -17,7 +17,7 @@ func TestAuthorizeCredentialList_Validate(t *testing.T) {
 			ac: AuthorizeCredentialList{
 				AuthorizeCredential{
 					Credential: Credential{
-						Issuer:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						CredentialType: CredentialType("1234"),
 					},
 				},
@@ -38,7 +38,7 @@ func TestAuthorizeCredentialList_Validate(t *testing.T) {
 			ac: AuthorizeCredentialList{
 				AuthorizeCredential{
 					Credential: Credential{
-						Issuer:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						CredentialType: CredentialType("1234"),
 					},
 				},
@@ -52,13 +52,13 @@ func TestAuthorizeCredentialList_Validate(t *testing.T) {
 			ac: AuthorizeCredentialList{
 				AuthorizeCredential{
 					Credential: Credential{
-						Issuer:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						CredentialType: CredentialType("1234"),
 					},
 				},
 				AuthorizeCredential{
 					Credential: Credential{
-						Issuer:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						CredentialType: CredentialType("1234"),
 					},
 				},
@@ -92,7 +92,7 @@ func TestAuthorizeCredentialList_Flatten(t *testing.T) {
 			ac: AuthorizeCredentialList{
 				AuthorizeCredential{
 					Credential: Credential{
-						Issuer:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						Issuer:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						CredentialType: CredentialType("1234"),
 					},
 				},

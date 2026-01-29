@@ -97,7 +97,7 @@ func TestStObject_ToJson(t *testing.T) {
 				return parser
 			},
 			nil,
-			errors.New("read field error"),
+			errors.New("ReadField error: read field error"),
 		},
 		{
 			"pass - convert valid STObject",

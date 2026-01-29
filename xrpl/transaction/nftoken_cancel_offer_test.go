@@ -23,13 +23,13 @@ func TestNFTokenCancelOffer_Flatten(t *testing.T) {
 			name: "pass - Empty NFTokenOffers",
 			tx: &NFTokenCancelOffer{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: NFTokenCancelOfferTx,
 				},
 				NFTokenOffers: []types.NFTokenID{},
 			},
 			expected: `{
-				"Account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+				"Account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"TransactionType": "NFTokenCancelOffer"
 			}`,
 		},
@@ -37,14 +37,14 @@ func TestNFTokenCancelOffer_Flatten(t *testing.T) {
 			name: "pass - With NFTokenOffers",
 			tx: &NFTokenCancelOffer{
 				BaseTx: BaseTx{
-					Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account: "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				},
 				NFTokenOffers: []types.NFTokenID{
 					"9C92E061381C1EF37A8CDE0E8FC35188BFC30B1883825042A64309AC09F4C36D",
 				},
 			},
 			expected: `{
-				"Account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+				"Account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"TransactionType": "NFTokenCancelOffer",
 				"NFTokenOffers": [
 					"9C92E061381C1EF37A8CDE0E8FC35188BFC30B1883825042A64309AC09F4C36D"
@@ -75,7 +75,7 @@ func TestNFTokenCancelOffer_Validate(t *testing.T) {
 			name: "pass - Valid NFTokenCancelOffer",
 			tx: &NFTokenCancelOffer{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: NFTokenCancelOfferTx,
 				},
 				NFTokenOffers: []types.NFTokenID{
@@ -90,7 +90,7 @@ func TestNFTokenCancelOffer_Validate(t *testing.T) {
 			name: "fail - Invalid NFTokenCancelOffer - Empty NFTokenOffers",
 			tx: &NFTokenCancelOffer{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: NFTokenCancelOfferTx,
 				},
 			},
@@ -102,7 +102,7 @@ func TestNFTokenCancelOffer_Validate(t *testing.T) {
 			name: "fail - Invalid NFTokenCancelOffer - Empty NFTokenOffers",
 			tx: &NFTokenCancelOffer{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: NFTokenCancelOfferTx,
 				},
 				NFTokenOffers: []types.NFTokenID{},
@@ -115,7 +115,7 @@ func TestNFTokenCancelOffer_Validate(t *testing.T) {
 			name: "fail - Invalid NFTokenCancelOffer BaseTx - Missing TransactionType",
 			tx: &NFTokenCancelOffer{
 				BaseTx: BaseTx{
-					Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account: "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				},
 				NFTokenOffers: []types.NFTokenID{
 					"9C92E061381C1EF37A8CDE0E8FC35188BFC30B1883825042A64309AC09F4C36D",

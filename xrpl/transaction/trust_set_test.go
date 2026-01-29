@@ -10,7 +10,7 @@ import (
 func TestTrustSetFlatten(t *testing.T) {
 	s := TrustSet{
 		BaseTx: BaseTx{
-			Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+			Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 			TransactionType:    TrustSetTx,
 			Fee:                types.XRPCurrencyAmount(12),
 			Flags:              262144,
@@ -27,7 +27,7 @@ func TestTrustSetFlatten(t *testing.T) {
 	flattened := s.Flatten()
 
 	expected := FlatTransaction{
-		"Account":            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+		"Account":            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 		"TransactionType":    "TrustSet",
 		"Fee":                "12",
 		"Flags":              uint32(262144),
@@ -139,7 +139,7 @@ func TestTrustSetValidate(t *testing.T) {
 			name: "pass - valid TrustSet",
 			trustSet: &TrustSet{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    TrustSetTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Flags:              262144,
@@ -160,7 +160,7 @@ func TestTrustSetValidate(t *testing.T) {
 			name: "fail - missing LimitAmount",
 			trustSet: &TrustSet{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    TrustSetTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Flags:              262144,
@@ -176,7 +176,7 @@ func TestTrustSetValidate(t *testing.T) {
 			name: "fail - invalid LimitAmount",
 			trustSet: &TrustSet{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    TrustSetTx,
 					Fee:                types.XRPCurrencyAmount(12),
 					Flags:              262144,

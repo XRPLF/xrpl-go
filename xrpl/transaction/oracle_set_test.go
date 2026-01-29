@@ -33,7 +33,7 @@ func TestOracleSet_Flatten(t *testing.T) {
 			name: "pass - complete",
 			tx: &OracleSet{
 				BaseTx: BaseTx{
-					Account:            "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					Fee:                1000000,
 					Sequence:           1,
 					LastLedgerSequence: 3000000,
@@ -56,7 +56,7 @@ func TestOracleSet_Flatten(t *testing.T) {
 			},
 			expected: map[string]interface{}{
 				"TransactionType":    OracleSetTx.String(),
-				"Account":            "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+				"Account":            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"Fee":                "1000000",
 				"Sequence":           uint32(1),
 				"LastLedgerSequence": uint32(3000000),
@@ -105,7 +105,7 @@ func TestOracleSet_Validate(t *testing.T) {
 			name: "fail - provider length",
 			tx: &OracleSet{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
 				Provider: strings.Repeat("a", 257),
@@ -119,7 +119,7 @@ func TestOracleSet_Validate(t *testing.T) {
 			name: "fail - price data series items",
 			tx: &OracleSet{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
 				PriceDataSeries: make([]ledger.PriceDataWrapper, 100),
@@ -133,7 +133,7 @@ func TestOracleSet_Validate(t *testing.T) {
 			name: "fail - price data series item invalid",
 			tx: &OracleSet{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
 				PriceDataSeries: []ledger.PriceDataWrapper{
@@ -150,7 +150,7 @@ func TestOracleSet_Validate(t *testing.T) {
 			name: "fail - price data series item scale",
 			tx: &OracleSet{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
 				PriceDataSeries: []ledger.PriceDataWrapper{
@@ -172,7 +172,7 @@ func TestOracleSet_Validate(t *testing.T) {
 			name: "fail - price data series item asset price and scale",
 			tx: &OracleSet{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
 				PriceDataSeries: []ledger.PriceDataWrapper{
@@ -191,7 +191,7 @@ func TestOracleSet_Validate(t *testing.T) {
 			name: "pass - complete",
 			tx: &OracleSet{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
 				OracleDocumentID: 1,

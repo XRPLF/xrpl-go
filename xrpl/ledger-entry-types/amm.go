@@ -19,7 +19,7 @@ import (
 //	      "issuer" : "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd"
 //	    },
 //	    "AuctionSlot" : {
-//	      "Account" : "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+//	      "Account" : "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	      "AuthAccounts" : [
 //	          {
 //	            "AuthAccount" : {
@@ -50,7 +50,7 @@ import (
 //	    "VoteSlots" : [
 //	      {
 //	          "VoteEntry" : {
-//	            "Account" : "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+//	            "Account" : "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	            "TradingFee" : 600,
 //	            "VoteWeight" : 100000
 //	          }

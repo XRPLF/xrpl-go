@@ -23,10 +23,10 @@ func TestEscrowFinish_Flatten(t *testing.T) {
 			name: "pass - all fields set",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowFinishTx,
 				},
-				Owner:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 				Condition:     "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 				Fulfillment:   "A0028000",
@@ -34,8 +34,8 @@ func TestEscrowFinish_Flatten(t *testing.T) {
 			},
 			expected: `{
 				"TransactionType": "EscrowFinish",
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-				"Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"Owner": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"OfferSequence":   7,
 				"Condition": "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 				"Fulfillment": "A0028000",
@@ -46,16 +46,16 @@ func TestEscrowFinish_Flatten(t *testing.T) {
 			name: "pass - optional fields omitted",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowFinishTx,
 				},
-				Owner:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 			},
 			expected: `{
 				"TransactionType": "EscrowFinish",
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-				"Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"Owner": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"OfferSequence": 7
 			}`,
 		},
@@ -63,13 +63,13 @@ func TestEscrowFinish_Flatten(t *testing.T) {
 			name: "pass - only BaseTx fields",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowFinishTx,
 				},
 			},
 			expected: `{
 				"TransactionType": "EscrowFinish",
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn"
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
 			}`,
 		},
 	}
@@ -95,10 +95,10 @@ func TestEscrowFinish_Validate(t *testing.T) {
 			name: "pass - valid EscrowFinish",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowFinishTx,
 				},
-				Owner:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 			},
 			wantValid: true,
@@ -108,9 +108,9 @@ func TestEscrowFinish_Validate(t *testing.T) {
 			name: "fail - invalid EscrowFinish BaseTx",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
-				Owner:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 			},
 			wantValid: false,
@@ -120,7 +120,7 @@ func TestEscrowFinish_Validate(t *testing.T) {
 			name: "fail - invalid Owner Address",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowFinishTx,
 				},
 				Owner:         "invalidAddress",
@@ -133,10 +133,10 @@ func TestEscrowFinish_Validate(t *testing.T) {
 			name: "fail - missing OfferSequence",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowFinishTx,
 				},
-				Owner: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			wantValid: false,
 			wantErr:   true,
@@ -145,10 +145,10 @@ func TestEscrowFinish_Validate(t *testing.T) {
 			name: "fail - invalid CredentialIDs",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowFinishTx,
 				},
-				Owner:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 				CredentialIDs: types.CredentialIDs{"invalid"},
 			},

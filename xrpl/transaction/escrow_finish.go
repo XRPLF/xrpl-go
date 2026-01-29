@@ -12,9 +12,9 @@ import (
 // ```json
 //
 //	{
-//	    "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//	    "Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	    "TransactionType": "EscrowFinish",
-//	    "Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//	    "Owner": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	    "OfferSequence": 7,
 //	    "Condition": "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 //	    "Fulfillment": "A0028000"

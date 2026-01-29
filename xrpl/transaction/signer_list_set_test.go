@@ -25,7 +25,7 @@ func TestSignerListSet_Flatten(t *testing.T) {
 			name: "pass - with SignerEntries",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:     types.XRPCurrencyAmount(12),
 				},
 				SignerQuorum: uint32(3),
@@ -52,7 +52,7 @@ func TestSignerListSet_Flatten(t *testing.T) {
 			},
 			expected: `{
 				"TransactionType": "SignerListSet",
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee": "12",
 				"SignerQuorum": 3,
 				"SignerEntries": [
@@ -81,14 +81,14 @@ func TestSignerListSet_Flatten(t *testing.T) {
 			name: "pass - without SignerEntries",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:     types.XRPCurrencyAmount(12),
 				},
 				SignerQuorum: uint32(0),
 			},
 			expected: `{
 				"TransactionType": "SignerListSet",
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee": "12",
 				"SignerQuorum": 0
 			}`,
@@ -97,13 +97,13 @@ func TestSignerListSet_Flatten(t *testing.T) {
 			name: "pass - without SignerEntries and SignerQuorum",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:     types.XRPCurrencyAmount(12),
 				},
 			},
 			expected: `{
 				"TransactionType": "SignerListSet",
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee": "12"
 			}`,
 		},
@@ -129,7 +129,7 @@ func TestSignerListSet_Validate(t *testing.T) {
 			name: "pass - valid SignerListSet",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SignerListSetTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
@@ -165,7 +165,7 @@ func TestSignerListSet_Validate(t *testing.T) {
 			name: "fail - invalid SignerListSet BaseTx",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:     types.XRPCurrencyAmount(12),
 				},
 				SignerQuorum: uint32(3),
@@ -191,7 +191,7 @@ func TestSignerListSet_Validate(t *testing.T) {
 			name: "fail - invalid SignerListSet with no SignerEntries and quorum > 0",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SignerListSetTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
@@ -204,7 +204,7 @@ func TestSignerListSet_Validate(t *testing.T) {
 			name: "fail - invalid SignerListSet with too many SignerEntries",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SignerListSetTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
@@ -229,7 +229,7 @@ func TestSignerListSet_Validate(t *testing.T) {
 			name: "fail - invalid SignerListSet with invalid WalletLocator",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SignerListSetTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
@@ -251,7 +251,7 @@ func TestSignerListSet_Validate(t *testing.T) {
 			name: "fail - invalid SignerListSet with SignerQuorum greater than sum of SignerWeights",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SignerListSetTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
@@ -278,7 +278,7 @@ func TestSignerListSet_Validate(t *testing.T) {
 			name: "fail - invalid SignerEntry Account, not an xrpl address",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SignerListSetTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
@@ -305,7 +305,7 @@ func TestSignerListSet_Validate(t *testing.T) {
 			name: "pass - valid SignerListSet with SignerQuorum 0",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SignerListSetTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
@@ -318,7 +318,7 @@ func TestSignerListSet_Validate(t *testing.T) {
 			name: "fail - invalid SignerListSet with SignerQuorum 0 but a SignerEntries not empty",
 			entry: &SignerListSet{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SignerListSetTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},

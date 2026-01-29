@@ -521,7 +521,7 @@ func TestPayment_Flatten(t *testing.T) {
 						{
 							Account:  "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 							Currency: "USD",
-							Issuer:   "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 						{
 							Account:  "r4D6ptkGYmpNpUWTtc3MpKcdcEtsonrbVf",
@@ -568,7 +568,7 @@ func TestPayment_Flatten(t *testing.T) {
 						map[string]interface{}{
 							"account":  "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 							"currency": "USD",
-							"issuer":   "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"issuer":   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 						map[string]interface{}{
 							"account":  "r4D6ptkGYmpNpUWTtc3MpKcdcEtsonrbVf",

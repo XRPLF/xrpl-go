@@ -4,6 +4,7 @@ package types
 import (
 	"bytes"
 	"encoding/binary"
+	"math"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/definitions"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
@@ -11,6 +12,14 @@ import (
 
 // UInt8 represents an 8-bit unsigned integer.
 type UInt8 struct{}
+
+// checkRange validates that a value fits within the uint8 range (0-255).
+func (u *UInt8) checkRange(value int64) error {
+	if value < 0 || value > int64(math.MaxUint8) {
+		return ErrUInt8OutOfRange
+	}
+	return nil
+}
 
 // FromJSON converts a JSON value into a serialized byte slice representing an 8-bit unsigned integer.
 // If the input value is a string, it's assumed to be a transaction result name, and the method will
@@ -24,20 +33,35 @@ func (u *UInt8) FromJSON(value any) ([]byte, error) {
 		value = tc
 	}
 
-	var intValue int
+	var int64Value int64
 
 	switch v := value.(type) {
 	case int:
-		intValue = v
+		int64Value = int64(v)
 	case int32:
-		intValue = int(v)
+		int64Value = int64(v)
+	case int64:
+		int64Value = v
 	case uint8:
-		intValue = int(v)
+		int64Value = int64(v)
+	case float64:
+		// Check if float64 represents a whole number
+		if v != float64(int64(v)) {
+			return nil, ErrUInt8OutOfRange
+		}
+		int64Value = int64(v)
+	default:
+		return nil, ErrUInt8OutOfRange
+	}
+
+	// Check range before casting
+	if err := u.checkRange(int64Value); err != nil {
+		return nil, err
 	}
 
 	buf := new(bytes.Buffer)
 	// TODO: Check if this is still needed
-	err := binary.Write(buf, binary.BigEndian, byte(intValue))
+	err := binary.Write(buf, binary.BigEndian, byte(int64Value))
 	if err != nil {
 		return nil, err
 	}

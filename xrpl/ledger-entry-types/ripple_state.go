@@ -47,7 +47,7 @@ const (
 //	    "Flags": 393216,
 //	    "HighLimit": {
 //	        "currency": "USD",
-//	        "issuer": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//	        "issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	        "value": "110"
 //	    },
 //	    "HighNode": "0000000000000000",

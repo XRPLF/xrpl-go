@@ -16,7 +16,7 @@ func TestOfferCancel_TxType(t *testing.T) {
 func TestOfferCancel_Flatten(t *testing.T) {
 	tx := &OfferCancel{
 		BaseTx: BaseTx{
-			Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+			Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 			TransactionType:    OfferCancelTx,
 			Fee:                types.XRPCurrencyAmount(10),
 			Flags:              123,
@@ -27,7 +27,7 @@ func TestOfferCancel_Flatten(t *testing.T) {
 	}
 
 	expected := `{
-		"Account":            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+		"Account":            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 		"TransactionType":    "OfferCancel",
 		"Fee":                "10",
 		"Flags":              123,
@@ -51,7 +51,7 @@ func TestOfferCancel_Validate(t *testing.T) {
 			name: "pass - valid OfferCancel",
 			tx: &OfferCancel{
 				BaseTx: BaseTx{
-					Account:            "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType:    OfferCancelTx,
 					Fee:                types.XRPCurrencyAmount(10),
 					Flags:              123,

@@ -11,13 +11,13 @@ import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 //		"LedgerEntryType": "PermissionedDomain",
 //		"Fee": "10",
 //		"Flags": 0,
-//		"Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//		"Owner": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //		"OwnerNode": "0000000000000000",
 //		"Sequence": 390,
 //		"AcceptedCredentials": [
 //		  {
 //			  "Credential": {
-//				  "Issuer": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+//				  "Issuer": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 //				  "CredentialType": "6D795F63726564656E7469616C"
 //			  }
 //		  }

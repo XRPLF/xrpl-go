@@ -13,7 +13,9 @@ var (
 	// ErrInvalidSeed indicates an invalid seed; could not determine encoding algorithm.
 	ErrInvalidSeed = errors.New("invalid seed; could not determine encoding algorithm")
 	// ErrInvalidXAddress indicates an invalid x-address.
-	ErrInvalidXAddress = errors.New("invalid x-address")
+	ErrInvalidXAddress = errors.New("invalid X-address: bad prefix")
+	// ErrUnsupportedXAddress indicates an unsupported x-address (e.g., 64-bit tag).
+	ErrUnsupportedXAddress = errors.New("unsupported X-address")
 	// ErrInvalidTag indicates an invalid tag.
 	ErrInvalidTag = errors.New("invalid tag")
 	// ErrInvalidAccountID indicates an invalid account ID.

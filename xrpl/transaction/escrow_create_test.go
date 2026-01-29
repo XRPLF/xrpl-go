@@ -25,7 +25,7 @@ func TestEscrowCreate_Flatten(t *testing.T) {
 			name: "pass - all fields set",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				Amount:         types.XRPCurrencyAmount(10000),
 				Destination:    "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
@@ -36,7 +36,7 @@ func TestEscrowCreate_Flatten(t *testing.T) {
 			},
 			expected: `{
 				"TransactionType": "EscrowCreate",
-				"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Amount":          "10000",
 				"Destination":     "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				"CancelAfter":     533257958,
@@ -49,7 +49,7 @@ func TestEscrowCreate_Flatten(t *testing.T) {
 			name: "pass - all fields set with DestinationTag to 0",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				Amount:         types.XRPCurrencyAmount(10000),
 				Destination:    "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
@@ -60,7 +60,7 @@ func TestEscrowCreate_Flatten(t *testing.T) {
 			},
 			expected: `{
 				"TransactionType": "EscrowCreate",
-				"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Amount":          "10000",
 				"Destination":     "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				"CancelAfter":     533257958,
@@ -73,14 +73,14 @@ func TestEscrowCreate_Flatten(t *testing.T) {
 			name: "pass - optional fields omitted",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
 				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 			},
 			expected: `{
 				"TransactionType": "EscrowCreate",
-				"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Amount":          "10000",
 				"Destination":     "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW"
 			}`,
@@ -109,7 +109,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "fail - invalid transaction with only CancelAfter",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
@@ -123,7 +123,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "fail - invalid transaction with only Condition",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
@@ -137,7 +137,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "fail - invalid transaction with no Condition and FinishAfter",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
@@ -151,7 +151,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "fail - invalid transaction with invalid destination address",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
@@ -165,7 +165,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "fail - invalid BaseTx, missing TransactionType",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
 				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
@@ -178,7 +178,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "pass - valid transaction - Conditional with expiration",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
@@ -193,7 +193,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "pass - valid transaction - Time based",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
@@ -207,7 +207,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "pass - valid transaction - Time based with expiration",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
@@ -222,7 +222,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "pass - valid transaction - Timed conditional",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
@@ -237,7 +237,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			name: "pass - valid transaction - Timed conditional with Expiration",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),

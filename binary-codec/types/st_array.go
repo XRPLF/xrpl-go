@@ -59,30 +59,34 @@ func (t *STArray) FromJSON(json any) ([]byte, error) {
 // The method loops until the BinaryParser has no more data, and for each loop,
 // it calls the ToJSON method of an STObject, appending the resulting JSON value to a "value" slice.
 func (t *STArray) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
-	var value []any
-	count := 0
+	// Initialize as empty slice (not nil) so empty arrays marshal to [] not null
+	value := make([]any, 0)
 
 	for p.HasMore() {
-
-		stObj := make(map[string]any)
 		fi, err := p.ReadField()
 		if err != nil {
 			return nil, err
 		}
-		if count == 0 && fi.Type != "STObject" {
-			return nil, ErrNotSTObjectInSTArray
-		} else if fi.FieldName == "ArrayEndMarker" {
+
+		// Check for ArrayEndMarker FIRST (handles empty arrays)
+		if fi.FieldName == "ArrayEndMarker" {
 			break
 		}
-		fn := fi.FieldName
+
+		// All array elements must be STObjects
+		if fi.Type != "STObject" {
+			return nil, ErrNotSTObjectInSTArray
+		}
+
 		st := GetSerializedType(fi.Type)
 		res, err := st.ToJSON(p)
 		if err != nil {
 			return nil, err
 		}
-		stObj[fn] = res
+
+		stObj := make(map[string]any)
+		stObj[fi.FieldName] = res
 		value = append(value, stObj)
-		count++
 	}
 	return value, nil
 }

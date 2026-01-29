@@ -11,11 +11,11 @@ import (
 // ```json
 //
 //	{
-//	    "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+//	    "Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	    "Amount": "10000",
 //	    "CancelAfter": 545440232,
 //	    "Condition": "A0258020A82A88B2DF843A54F58772E4A3861866ECDB4157645DD9AE528C1D3AEEDABAB6810120",
-//	    "Destination": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+//	    "Destination": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 //	    "DestinationTag": 23480,
 //	    "FinishAfter": 545354132,
 //	    "Flags": 0,

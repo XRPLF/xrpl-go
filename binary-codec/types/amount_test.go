@@ -83,13 +83,17 @@ func TestVerifyIOUValue(t *testing.T) {
 			expErr: &OutOfRangeError{Type: "Precision"},
 		},
 		{
-			name:   "fail - invalid iou value - out of range exponent too large",
-			input:  "998000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+			name: "fail - invalid iou value - out of range exponent too large",
+			// Needs adjustedExp = Scale + Precision - 16 > 80
+			// 1e97: Scale=97, Precision=1, adjustedExp = 97+1-16 = 82 > 80
+			input:  "1e97",
 			expErr: &OutOfRangeError{Type: "Exponent"},
 		},
 		{
-			name:   "fail - invalid iou value - out of range exponent too small",
-			input:  "0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000998",
+			name: "fail - invalid iou value - out of range exponent too small",
+			// Needs adjustedExp = Scale + Precision - 16 < -96
+			// 1e-113: Scale=-113, Precision=1, adjustedExp = -113+1-16 = -128 < -96
+			input:  "1e-113",
 			expErr: &OutOfRangeError{Type: "Exponent"},
 		},
 	}

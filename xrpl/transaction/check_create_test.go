@@ -22,7 +22,7 @@ func TestCheckCreate_Flatten(t *testing.T) {
 			name: "pass - All fields",
 			tx: &CheckCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: CheckCreateTx,
 				},
 				Destination:    "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
@@ -32,7 +32,7 @@ func TestCheckCreate_Flatten(t *testing.T) {
 				InvoiceID:      "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 			},
 			expected: FlatTransaction{
-				"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "CheckCreate",
 				"Destination":     "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				"SendMax":         "10000",
@@ -45,14 +45,14 @@ func TestCheckCreate_Flatten(t *testing.T) {
 			name: "pass - Optional fields omitted",
 			tx: &CheckCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: CheckCreateTx,
 				},
 				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				SendMax:     types.XRPCurrencyAmount(10000),
 			},
 			expected: FlatTransaction{
-				"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "CheckCreate",
 				"Destination":     "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				"SendMax":         "10000",
@@ -79,7 +79,7 @@ func TestCheckCreate_Validate(t *testing.T) {
 			name: "pass - All fields valid",
 			tx: &CheckCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: CheckCreateTx,
 				},
 				Destination:    "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
@@ -96,7 +96,7 @@ func TestCheckCreate_Validate(t *testing.T) {
 			name: "fail - BaseTx missing TransactionType",
 			tx: &CheckCreate{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				Destination:    "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				SendMax:        types.XRPCurrencyAmount(10000),
@@ -112,7 +112,7 @@ func TestCheckCreate_Validate(t *testing.T) {
 			name: "fail - Invalid destination address",
 			tx: &CheckCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: CheckCreateTx,
 				},
 				Destination: "invalidAddress",
@@ -126,7 +126,7 @@ func TestCheckCreate_Validate(t *testing.T) {
 			name: "fail - Invalid SendMax amount, missing Issuer",
 			tx: &CheckCreate{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: CheckCreateTx,
 				},
 				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",

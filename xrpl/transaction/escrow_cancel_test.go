@@ -22,15 +22,15 @@ func TestEscrowCancel_Flatten(t *testing.T) {
 			name: "pass - complete EscrowCancel",
 			escrow: &EscrowCancel{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
-				Owner:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 			},
 			expected: `{
 				"TransactionType": "EscrowCancel",
-				"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-				"Owner":           "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"Owner":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"OfferSequence":   7
 			}`,
 		},
@@ -38,13 +38,13 @@ func TestEscrowCancel_Flatten(t *testing.T) {
 			name: "pass - EscrowCancel without Owner",
 			escrow: &EscrowCancel{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				OfferSequence: 7,
 			},
 			expected: `{
 				"TransactionType": "EscrowCancel",
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"OfferSequence": 7
 			}`,
 		},
@@ -52,26 +52,26 @@ func TestEscrowCancel_Flatten(t *testing.T) {
 			name: "pass - EscrowCancel without OfferSequence",
 			escrow: &EscrowCancel{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
-				Owner: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			expected: `{
 				"TransactionType": "EscrowCancel",
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
-				"Owner": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn"
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"Owner": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
 			}`,
 		},
 		{
 			name: "pass - EscrowCancel with only BaseTx",
 			escrow: &EscrowCancel{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 			},
 			expected: `{
 				"TransactionType": "EscrowCancel",
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn"
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
 			}`,
 		},
 	}
@@ -97,10 +97,10 @@ func TestEscrowCancel_Validate(t *testing.T) {
 			name: "pass - valid EscrowCancel",
 			escrow: &EscrowCancel{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCancelTx,
 				},
-				Owner:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 			},
 			wantValid: true,
@@ -112,7 +112,7 @@ func TestEscrowCancel_Validate(t *testing.T) {
 				BaseTx: BaseTx{
 					TransactionType: EscrowCancelTx,
 				},
-				Owner:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 			},
 			wantValid: false,
@@ -122,7 +122,7 @@ func TestEscrowCancel_Validate(t *testing.T) {
 			name: "fail - invalid Owner address",
 			escrow: &EscrowCancel{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCancelTx,
 				},
 				Owner:         "invalidAddress",
@@ -135,10 +135,10 @@ func TestEscrowCancel_Validate(t *testing.T) {
 			name: "fail - missing OfferSequence",
 			escrow: &EscrowCancel{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: EscrowCancelTx,
 				},
-				Owner: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				Owner: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			wantValid: false,
 			wantErr:   true,

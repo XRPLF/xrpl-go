@@ -12,26 +12,26 @@ import (
 func TestAMMBidFlatten(t *testing.T) {
 	s := AMMBid{
 		BaseTx: BaseTx{
-			Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+			Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 			TransactionType: AMMCreateTx,
 			Fee:             types.XRPCurrencyAmount(10),
 			Sequence:        1234,
 			SigningPubKey:   "ghijk",
 			TxnSignature:    "A1B2C3D4E5F6",
 		},
-		Asset:  ledger.Asset{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"},
+		Asset:  ledger.Asset{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"},
 		Asset2: ledger.Asset{Currency: "XRP"},
 		BidMin: types.XRPCurrencyAmount(100),
-		BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+		BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 		AuthAccounts: []ledger.AuthAccounts{
 			{
 				AuthAccount: ledger.AuthAccount{
-					Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 			},
 			{
 				AuthAccount: ledger.AuthAccount{
-					Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				}},
 		},
 	}
@@ -39,7 +39,7 @@ func TestAMMBidFlatten(t *testing.T) {
 	flattened := s.Flatten()
 
 	expected := `{
-	"Account":         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+	"Account":         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 	"TransactionType": "AMMBid",
 	"Fee":             "10",
 	"Sequence":        1234,
@@ -47,7 +47,7 @@ func TestAMMBidFlatten(t *testing.T) {
 	"TxnSignature":    "A1B2C3D4E5F6",
 	"Asset": {
 		"currency": "USD",
-		"issuer": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"
+		"issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
 	},
 	"Asset2": {
 		"currency": "XRP"
@@ -55,18 +55,18 @@ func TestAMMBidFlatten(t *testing.T) {
 	"BidMin": "100",
 	"BidMax": {
 		"currency": "USD",
-		"issuer": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ",
+		"issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		"value": "200"
 	},
 	"AuthAccounts": [
 		{
 			"AuthAccount": {
-				"Account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ"
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
 			}
 		},
 		{
 			"AuthAccount": {
-				"Account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ"
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
 			}
 		}
 	]
@@ -88,26 +88,26 @@ func TestAMMBid_Validate(t *testing.T) {
 			name: "pass - valid AMMBid",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMBidTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
 					SigningPubKey:   "ghijk",
 					TxnSignature:    "A1B2C3D4E5F6",
 				},
-				Asset:  ledger.Asset{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"},
+				Asset:  ledger.Asset{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"},
 				Asset2: ledger.Asset{Currency: "XRP"},
 				BidMin: types.XRPCurrencyAmount(100),
-				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 				AuthAccounts: []ledger.AuthAccounts{
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcE",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 				},
@@ -124,14 +124,14 @@ func TestAMMBid_Validate(t *testing.T) {
 					SigningPubKey:   "ghijk",
 					TxnSignature:    "A1B2C3D4E5F6",
 				},
-				Asset:  ledger.Asset{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"},
+				Asset:  ledger.Asset{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"},
 				Asset2: ledger.Asset{Currency: "XRP"},
 				BidMin: types.XRPCurrencyAmount(100),
-				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 				AuthAccounts: []ledger.AuthAccounts{
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 					{
@@ -147,21 +147,21 @@ func TestAMMBid_Validate(t *testing.T) {
 			name: "fail - invalid AMMBid with more than 4 AuthAccounts",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMBidTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
 					SigningPubKey:   "ghijk",
 					TxnSignature:    "A1B2C3D4E5F6",
 				},
-				Asset:  ledger.Asset{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"},
+				Asset:  ledger.Asset{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"},
 				Asset2: ledger.Asset{Currency: "XRP"},
 				BidMin: types.XRPCurrencyAmount(100),
-				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 				AuthAccounts: []ledger.AuthAccounts{
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 					{
@@ -192,21 +192,21 @@ func TestAMMBid_Validate(t *testing.T) {
 			name: "fail - invalid AMMBid with more an AuthAccount with invalid address",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMBidTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
 					SigningPubKey:   "ghijk",
 					TxnSignature:    "A1B2C3D4E5F6",
 				},
-				Asset:  ledger.Asset{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"},
+				Asset:  ledger.Asset{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"},
 				Asset2: ledger.Asset{Currency: "XRP"},
 				BidMin: types.XRPCurrencyAmount(100),
-				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 				AuthAccounts: []ledger.AuthAccounts{
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 					{
@@ -232,21 +232,21 @@ func TestAMMBid_Validate(t *testing.T) {
 			name: "fail - invalid AMMBid with invalid Asset, currency empty",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMBidTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
 					SigningPubKey:   "ghijk",
 					TxnSignature:    "A1B2C3D4E5F6",
 				},
-				Asset:  ledger.Asset{Currency: "", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"},
+				Asset:  ledger.Asset{Currency: "", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"},
 				Asset2: ledger.Asset{Currency: "XRP"},
 				BidMin: types.XRPCurrencyAmount(100),
-				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 				AuthAccounts: []ledger.AuthAccounts{
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 					{
@@ -262,7 +262,7 @@ func TestAMMBid_Validate(t *testing.T) {
 			name: "fail - invalid AMMBid with invalid Asset2, issuer empty with currency non empty",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMBidTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
@@ -272,11 +272,11 @@ func TestAMMBid_Validate(t *testing.T) {
 				Asset:  ledger.Asset{Currency: "XRP"},
 				Asset2: ledger.Asset{Currency: "USD", Issuer: ""},
 				BidMin: types.XRPCurrencyAmount(100),
-				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 				AuthAccounts: []ledger.AuthAccounts{
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 					{
@@ -292,7 +292,7 @@ func TestAMMBid_Validate(t *testing.T) {
 			name: "fail - invalid AMMBid with invalid Asset and Asset2, two XRP assets",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMBidTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
@@ -302,11 +302,11 @@ func TestAMMBid_Validate(t *testing.T) {
 				Asset:  ledger.Asset{Currency: "XRP"},
 				Asset2: ledger.Asset{Currency: "XRP"},
 				BidMin: types.XRPCurrencyAmount(100),
-				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 				AuthAccounts: []ledger.AuthAccounts{
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 					{
@@ -322,7 +322,7 @@ func TestAMMBid_Validate(t *testing.T) {
 			name: "fail - invalid AMMBid with invalid BidMin, missing value and issuer",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMBidTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
@@ -330,13 +330,13 @@ func TestAMMBid_Validate(t *testing.T) {
 					TxnSignature:    "A1B2C3D4E5F6",
 				},
 				Asset:  ledger.Asset{Currency: "XRP"},
-				Asset2: ledger.Asset{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"},
+				Asset2: ledger.Asset{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"},
 				BidMin: types.IssuedCurrencyAmount{Currency: "USD"}, // missing value and issuer
-				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 				AuthAccounts: []ledger.AuthAccounts{
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 					{
@@ -352,21 +352,21 @@ func TestAMMBid_Validate(t *testing.T) {
 			name: "fail - invalid AMMBid with invalid BidMax, missing value and issuer",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMBidTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
 					SigningPubKey:   "ghijk",
 					TxnSignature:    "A1B2C3D4E5F6",
 				},
-				Asset:  ledger.Asset{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"},
+				Asset:  ledger.Asset{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"},
 				Asset2: ledger.Asset{Currency: "XRP"},
-				BidMin: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ", Value: "200"},
+				BidMin: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", Value: "200"},
 				BidMax: types.IssuedCurrencyAmount{Currency: "USD"}, // missing value and issuer
 				AuthAccounts: []ledger.AuthAccounts{
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "ra5nK24KXen9AHvsdFTKHSANinZseWnPcZ",
+							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
 					},
 					{

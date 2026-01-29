@@ -250,7 +250,7 @@ func TestClient_GetAccountChannels(t *testing.T) {
 					"channels": []map[string]any{
 						{
 							"account":             "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
-							"destination_account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"destination_account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"amount":              "100",
 							"balance":             "0",
 							"channel_id":          "5DB01B7FFED6B67E6B0414DED11E051D2EE2B7619CE0EAA6286D67A3A4D5BDB3",
@@ -266,7 +266,7 @@ func TestClient_GetAccountChannels(t *testing.T) {
 				Channels: []accounttypes.ChannelResult{
 					{
 						Account:            "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
-						DestinationAccount: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						DestinationAccount: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						Amount:             "100",
 						Balance:            "0",
 						ChannelID:          "5DB01B7FFED6B67E6B0414DED11E051D2EE2B7619CE0EAA6286D67A3A4D5BDB3",
@@ -1935,7 +1935,7 @@ func TestClient_FindPathClose(t *testing.T) {
 						"alternatives":        []map[string]any{},
 						"destination_account": "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 						"destination_amount":  "100",
-						"source_account":      "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+						"source_account":      "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						"full_reply":          true,
 						"closed":              true,
 						"status":              true,
@@ -1946,7 +1946,7 @@ func TestClient_FindPathClose(t *testing.T) {
 				Alternatives:       []pathtypes.Alternative{},
 				DestinationAccount: "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				DestinationAmount:  "100",
-				SourceAccount:      "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				SourceAccount:      "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				FullReply:          true,
 				Closed:             true,
 				Status:             true,

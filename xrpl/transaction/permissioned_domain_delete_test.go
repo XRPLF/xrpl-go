@@ -23,13 +23,13 @@ func TestPermissionedDomainDelete_Flatten(t *testing.T) {
 			name: "valid transaction",
 			tx: &PermissionedDomainDelete{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainDeleteTx,
 				},
 				DomainID: "domain123",
 			},
 			expected: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PermissionedDomainDelete", 
 				"DomainID": "domain123"
 			}`,
@@ -58,7 +58,7 @@ func TestPermissionedDomainDelete_Validate(t *testing.T) {
 			name: "pass - valid transaction",
 			tx: &PermissionedDomainDelete{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainDeleteTx,
 				},
 				DomainID: "domain123",
@@ -71,7 +71,7 @@ func TestPermissionedDomainDelete_Validate(t *testing.T) {
 			name: "fail - missing DomainID",
 			tx: &PermissionedDomainDelete{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PermissionedDomainDeleteTx,
 				},
 				DomainID: "",

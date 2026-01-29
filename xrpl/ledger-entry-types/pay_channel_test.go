@@ -11,7 +11,7 @@ import (
 func TestPayChannel(t *testing.T) {
 	var s Object = &PayChannel{
 		Account:           "rBqb89MRQJnMPq8wTwEbtz4kvxrEDfcYvt",
-		Destination:       "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+		Destination:       "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		Amount:            types.XRPCurrencyAmount(4325800),
 		Balance:           types.XRPCurrencyAmount(2323423),
 		PublicKey:         "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
@@ -33,7 +33,7 @@ func TestPayChannel(t *testing.T) {
 	"Amount": "4325800",
 	"Balance": "2323423",
 	"CancelAfter": 536891313,
-	"Destination": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+	"Destination": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"DestinationTag": 1002341,
 	"DestinationNode": "0000000000000000",
 	"Expiration": 536027313,

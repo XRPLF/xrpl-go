@@ -22,13 +22,13 @@ func TestSetRegularKey_Flatten(t *testing.T) {
 			name: "pass - valid SetRegularKey",
 			regularKey: &SetRegularKey{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SetRegularKeyTx,
 				},
 				RegularKey: "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v",
 			},
 			want: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "SetRegularKey",
 				"RegularKey":      "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v"
 			}`,
@@ -37,12 +37,12 @@ func TestSetRegularKey_Flatten(t *testing.T) {
 			name: "pass - without RegularKey",
 			regularKey: &SetRegularKey{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SetRegularKeyTx,
 				},
 			},
 			want: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "SetRegularKey"
 			}`,
 		},
@@ -68,7 +68,7 @@ func TestSetRegularKey_Validate(t *testing.T) {
 			name: "pass - valid SetRegularKey",
 			regularKey: &SetRegularKey{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SetRegularKeyTx,
 				},
 				RegularKey: "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v",
@@ -80,7 +80,7 @@ func TestSetRegularKey_Validate(t *testing.T) {
 			name: "pass - valid SetRegularKey with X-address",
 			regularKey: &SetRegularKey{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SetRegularKeyTx,
 				},
 				RegularKey: "XVYRdEocC28DRx94ZFGP3qNJ1D5Ln7ecXFMd3vREB5Pesju",
@@ -92,7 +92,7 @@ func TestSetRegularKey_Validate(t *testing.T) {
 			name: "fail - invalid SetRegularKey BaseTx",
 			regularKey: &SetRegularKey{
 				BaseTx: BaseTx{
-					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				RegularKey: "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v",
 			},
@@ -103,10 +103,10 @@ func TestSetRegularKey_Validate(t *testing.T) {
 			name: "fail - RegularKey same as Account",
 			regularKey: &SetRegularKey{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SetRegularKeyTx,
 				},
-				RegularKey: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				RegularKey: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
 			wantValid: false,
 			wantErr:   true,
@@ -115,7 +115,7 @@ func TestSetRegularKey_Validate(t *testing.T) {
 			name: "fail - invalid RegularKey address",
 			regularKey: &SetRegularKey{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SetRegularKeyTx,
 				},
 				RegularKey: "invalidAddress",
@@ -127,7 +127,7 @@ func TestSetRegularKey_Validate(t *testing.T) {
 			name: "pass - without RegularKey",
 			regularKey: &SetRegularKey{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: SetRegularKeyTx,
 				},
 			},

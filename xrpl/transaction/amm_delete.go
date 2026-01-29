@@ -15,7 +15,7 @@ import (
 // ```json
 //
 //	{
-//	    "Account" : "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+//	    "Account" : "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 //	    "Asset" : {
 //	        "currency" : "XRP"
 //	    },

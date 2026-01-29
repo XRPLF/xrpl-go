@@ -16,7 +16,7 @@ func TestAMMDeposit_TxType(t *testing.T) {
 func TestAMMDeposit_Flatten(t *testing.T) {
 	tx := &AMMDeposit{
 		BaseTx: BaseTx{
-			Account:  "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+			Account:  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			Fee:      types.XRPCurrencyAmount(10),
 			Flags:    1048576,
 			Sequence: 7,
@@ -50,7 +50,7 @@ func TestAMMDeposit_Flatten(t *testing.T) {
 	flattened := tx.Flatten()
 
 	expected := `{
-	"Account":         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+	"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"Fee":             "10",
 	"Flags":           1048576,
 	"Sequence":        7,
@@ -157,7 +157,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "pass - valid AMMDeposit with Amount and Amount2",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -183,7 +183,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "fail - invalid AMMDeposit BaseTx without TransactionType",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:  "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:  "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:      types.XRPCurrencyAmount(10),
 					Flags:    1048576,
 					Sequence: 7,
@@ -208,7 +208,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "fail - invalid AMMDeposit with Amount2 but no Amount",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -229,7 +229,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "fail - invalid AMMDeposit with EPrice but no Amount",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -254,7 +254,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "fail - invalid AMMDeposit with no LPTokenOut or Amount",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -274,7 +274,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "pass - valid AMMDeposit with LPTokenOut",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -299,7 +299,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "fail - invalid AMMDeposit, invalid Asset",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -324,7 +324,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "fail - invalid AMMDeposit, invalid Asset2",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -350,7 +350,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "fail - invalid AMMDeposit, invalid Amount",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -378,7 +378,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "fail - invalid AMMDeposit, invalid Amount2",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,
@@ -411,7 +411,7 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name: "fail - invalid AMMDeposit, invalid EPrice",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{
-					Account:         "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: "AMMDeposit",
 					Fee:             types.XRPCurrencyAmount(10),
 					Flags:           1048576,

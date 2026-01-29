@@ -332,7 +332,7 @@ func TestBatch_Validate(t *testing.T) {
 				RawTransactions: []types.RawTransaction{
 					{
 						RawTransaction: FlatTransaction{
-							"Account":         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+							"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 							"TransactionType": "Batch", // Nested batch not allowed
 							"Fee":             "0",
 							"Flags":           uint32(types.TfInnerBatchTxn),

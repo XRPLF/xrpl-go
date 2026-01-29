@@ -11,7 +11,7 @@ import (
 func TestTicketCreate_Flatten(t *testing.T) {
 	s := TicketCreate{
 		BaseTx: BaseTx{
-			Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+			Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 			TransactionType: TicketCreateTx,
 			Fee:             types.XRPCurrencyAmount(10),
 			Sequence:        50,
@@ -22,7 +22,7 @@ func TestTicketCreate_Flatten(t *testing.T) {
 	flattened := s.Flatten()
 
 	expected := FlatTransaction{
-		"Account":         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+		"Account":         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 		"TransactionType": "TicketCreate",
 		"Fee":             "10",
 		"Sequence":        uint32(50),
@@ -49,7 +49,7 @@ func TestTicketCreate_Validate(t *testing.T) {
 			name: "pass - valid ticket count",
 			ticket: TicketCreate{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: TicketCreateTx,
 					Fee:             types.XRPCurrencyAmount(10),
 					Sequence:        50,
@@ -75,7 +75,7 @@ func TestTicketCreate_Validate(t *testing.T) {
 			name: "fail - ticket count zero",
 			ticket: TicketCreate{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: TicketCreateTx,
 					Fee:             types.XRPCurrencyAmount(10),
 					Sequence:        50,
@@ -88,7 +88,7 @@ func TestTicketCreate_Validate(t *testing.T) {
 			name: "fail - ticket count exceeds limit",
 			ticket: TicketCreate{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: TicketCreateTx,
 					Fee:             types.XRPCurrencyAmount(10),
 					Sequence:        50,

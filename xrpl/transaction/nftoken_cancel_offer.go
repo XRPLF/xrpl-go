@@ -21,7 +21,7 @@ type NFTokenCancelOfferMetadata struct {
 //
 //	{
 //		"TransactionType": "NFTokenCancelOffer",
-//		"Account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+//		"Account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 //		"NFTokenOffers": [
 //			"9C92E061381C1EF37A8CDE0E8FC35188BFC30B1883825042A64309AC09F4C36D"
 //		]

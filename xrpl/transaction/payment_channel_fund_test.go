@@ -25,14 +25,14 @@ func TestPaymentChannelFund_Flatten(t *testing.T) {
 			name: "pass - without Expiration",
 			tx: &PaymentChannelFund{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelFundTx,
 				},
 				Channel: "ABC123",
 				Amount:  types.XRPCurrencyAmount(200000),
 			},
 			expected: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PaymentChannelFund",
 				"Channel": "ABC123",
 				"Amount":  "200000"
@@ -42,7 +42,7 @@ func TestPaymentChannelFund_Flatten(t *testing.T) {
 			name: "pass - with Expiration",
 			tx: &PaymentChannelFund{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelFundTx,
 				},
 				Channel:    "DEF456",
@@ -50,7 +50,7 @@ func TestPaymentChannelFund_Flatten(t *testing.T) {
 				Expiration: 543171558,
 			},
 			expected: `{
-				"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PaymentChannelFund",
 				"Channel": "DEF456",
 				"Amount": "300000",
@@ -82,7 +82,7 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 			name: "pass - valid Transaction",
 			tx: &PaymentChannelFund{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelFundTx,
 				},
 				Channel: "ABC123",
@@ -115,7 +115,7 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 			name: "fail - invalid Expiration",
 			tx: &PaymentChannelFund{
 				BaseTx: BaseTx{
-					Account:         "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelFundTx,
 				},
 				Channel:    "DEF456",

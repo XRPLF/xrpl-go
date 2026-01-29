@@ -29,13 +29,13 @@ func TestOracleDelete_Flatten(t *testing.T) {
 			name: "pass - complete",
 			tx: &OracleDelete{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleDeleteTx,
 				},
 				OracleDocumentID: 34,
 			},
 			expected: FlatTransaction{
-				"Account":          "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+				"Account":          "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"TransactionType":  "OracleDelete",
 				"OracleDocumentID": uint32(34),
 			},
@@ -69,7 +69,7 @@ func TestOracleDelete_Validate(t *testing.T) {
 			name: "pass - complete",
 			tx: &OracleDelete{
 				BaseTx: BaseTx{
-					Account:         "r9cZA1mTh4KVPD5PXPBGVdqw9XRybCz6z",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleDeleteTx,
 				},
 			},

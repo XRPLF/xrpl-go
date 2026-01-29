@@ -8,7 +8,7 @@ package transaction
 //
 //	{
 //	    "TransactionType": "OfferCancel",
-//	    "Account": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+//	    "Account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 //	    "Fee": "12",
 //	    "Flags": 0,
 //	    "LastLedgerSequence": 7108629,

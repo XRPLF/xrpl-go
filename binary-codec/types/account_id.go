@@ -52,10 +52,16 @@ func (a *AccountID) FromJSON(value any) ([]byte, error) {
 // The method reads the bytes using the binary parser,
 // then encodes the result to an AccountID format.
 // If no length prefix size is given, it returns an ErrNoLengthPrefix error.
+// If the length is 0, it returns an empty string.
 func (a *AccountID) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 	if opts == nil {
 		return nil, ErrNoLengthPrefix
 	}
+
+	if opts[0] == 0 {
+		return "", nil
+	}
+
 	b, err := p.ReadBytes(opts[0])
 	if err != nil {
 		return nil, err

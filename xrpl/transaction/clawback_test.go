@@ -10,13 +10,13 @@ import (
 func TestClawback_Flatten(t *testing.T) {
 	s := Clawback{
 		BaseTx: BaseTx{
-			Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+			Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 			TransactionType: ClawbackTx,
 			Fee:             types.XRPCurrencyAmount(1),
 			Sequence:        1234,
 		},
 		Amount: types.IssuedCurrencyAmount{
-			Issuer:   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+			Issuer:   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 			Currency: "USD",
 			Value:    "1",
 		},
@@ -25,12 +25,12 @@ func TestClawback_Flatten(t *testing.T) {
 	flattened := s.Flatten()
 
 	expected := FlatTransaction{
-		"Account":         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+		"Account":         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 		"TransactionType": "Clawback",
 		"Fee":             "1",
 		"Sequence":        uint32(1234),
 		"Amount": map[string]interface{}{
-			"issuer":   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+			"issuer":   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 			"currency": "USD",
 			"value":    "1",
 		},

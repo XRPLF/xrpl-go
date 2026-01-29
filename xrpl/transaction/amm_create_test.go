@@ -11,7 +11,7 @@ import (
 func TestAMMCreateFlatten(t *testing.T) {
 	s := AMMCreate{
 		BaseTx: BaseTx{
-			Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+			Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 			TransactionType: AMMCreateTx,
 			Fee:             types.XRPCurrencyAmount(10),
 			Sequence:        1234,
@@ -22,7 +22,7 @@ func TestAMMCreateFlatten(t *testing.T) {
 		Amount2: types.IssuedCurrencyAmount{
 			Currency: "USD",
 			Value:    "200",
-			Issuer:   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ",
+			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		},
 		TradingFee: 10,
 	}
@@ -30,7 +30,7 @@ func TestAMMCreateFlatten(t *testing.T) {
 	flattened := s.Flatten()
 
 	expected := `{
-		"Account":         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+		"Account":         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 		"TransactionType": "AMMCreate",
 		"Fee":             "10",
 		"Sequence":        1234,
@@ -40,7 +40,7 @@ func TestAMMCreateFlatten(t *testing.T) {
 		"Amount2":         {
 			"currency": "USD",
 			"value":    "200",
-			"issuer":   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ"
+			"issuer":   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
 		},
 		"TradingFee":      10
 	}`
@@ -62,7 +62,7 @@ func TestAMMCreateValidate(t *testing.T) {
 			name: "pass - valid AMMCreate",
 			amm: AMMCreate{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMCreateTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
@@ -73,7 +73,7 @@ func TestAMMCreateValidate(t *testing.T) {
 				Amount2: types.IssuedCurrencyAmount{
 					Currency: "USD",
 					Value:    "200",
-					Issuer:   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ",
+					Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				TradingFee: 10,
 			},
@@ -93,7 +93,7 @@ func TestAMMCreateValidate(t *testing.T) {
 				Amount2: types.IssuedCurrencyAmount{
 					Currency: "USD",
 					Value:    "200",
-					Issuer:   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ",
+					Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				TradingFee: 10,
 			},
@@ -103,7 +103,7 @@ func TestAMMCreateValidate(t *testing.T) {
 			name: "fail - missing Amount",
 			amm: AMMCreate{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMCreateTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
@@ -113,7 +113,7 @@ func TestAMMCreateValidate(t *testing.T) {
 				Amount2: types.IssuedCurrencyAmount{
 					Currency: "USD",
 					Value:    "200",
-					Issuer:   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ",
+					Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				TradingFee: 10,
 			},
@@ -123,7 +123,7 @@ func TestAMMCreateValidate(t *testing.T) {
 			name: "fail - invalid Amount value",
 			amm: AMMCreate{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMCreateTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
@@ -133,12 +133,12 @@ func TestAMMCreateValidate(t *testing.T) {
 				Amount: types.IssuedCurrencyAmount{
 					Currency: "USD",
 					Value:    "-100",
-					Issuer:   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ",
+					Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				Amount2: types.IssuedCurrencyAmount{
 					Currency: "USD",
 					Value:    "200",
-					Issuer:   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ",
+					Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				TradingFee: 10,
 			},
@@ -148,7 +148,7 @@ func TestAMMCreateValidate(t *testing.T) {
 			name: "fail - missing Amount2",
 			amm: AMMCreate{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMCreateTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
@@ -164,7 +164,7 @@ func TestAMMCreateValidate(t *testing.T) {
 			name: "fail - invalid Amount2 value",
 			amm: AMMCreate{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMCreateTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
@@ -175,7 +175,7 @@ func TestAMMCreateValidate(t *testing.T) {
 				Amount2: types.IssuedCurrencyAmount{
 					Currency: "USD",
 					Value:    "-200",
-					Issuer:   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ",
+					Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				TradingFee: 10,
 			},
@@ -185,7 +185,7 @@ func TestAMMCreateValidate(t *testing.T) {
 			name: "fail - trading fee too high",
 			amm: AMMCreate{
 				BaseTx: BaseTx{
-					Account:         "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: AMMCreateTx,
 					Fee:             types.XRPCurrencyAmount(1),
 					Sequence:        1234,
@@ -196,7 +196,7 @@ func TestAMMCreateValidate(t *testing.T) {
 				Amount2: types.IssuedCurrencyAmount{
 					Currency: "USD",
 					Value:    "200",
-					Issuer:   "ra5nK24KXen9AHvsdFTKHSANinZseWnPcQ",
+					Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				TradingFee: 2000,
 			},
