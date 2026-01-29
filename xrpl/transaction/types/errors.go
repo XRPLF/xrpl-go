@@ -1,7 +1,11 @@
 //revive:disable:var-naming
 package types
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
 
 var (
 	// xchain bridge
@@ -55,4 +59,105 @@ var (
 	ErrInvalidCredentialCount = errors.New("accepted credentials list must contain at least one and no more than the maximum allowed number of items")
 	// ErrDuplicateCredentials is returned when duplicate credentials are present in the list.
 	ErrDuplicateCredentials = errors.New("credentials list cannot contain duplicate elements")
+
+	// mptoken metadata
+
+	// ErrInvalidMPTokenMetadataHex is returned when the MPTokenMetadata field is not a hex string.
+	ErrInvalidMPTokenMetadataHex = errors.New("mptoken metadata should be a hex string")
+
+	// ErrInvalidMPTokenMetadataJSON is returned when the MPTokenMetadata field is not a valid JSON object.
+	ErrInvalidMPTokenMetadataJSON = errors.New("mptoken metadata should be a valid JSON object")
+
+	// ErrInvalidMPTokenMetadataSize is returned when the MPTokenMetadata field is longer than 1024 bytes.
+	ErrInvalidMPTokenMetadataSize = errors.New("mptoken metadata byte length should be at most 1024 bytes")
+
+	// ErrInvalidMPTokenMetadataTicker is returned when the ticker does not match the required format (uppercase letters A-Z and digits 0-9, max 6 characters).
+	ErrInvalidMPTokenMetadataTicker = errors.New("mptoken metadata ticker should contain only uppercase letters (A-Z) and digits (0-9), max 6 characters")
+
+	// ErrInvalidMPTokenMetadataRWASubClassRequired is returned when the asset subclass is required when the asset class is rwa.
+	ErrInvalidMPTokenMetadataRWASubClassRequired = errors.New("mptoken metadata asset subclass is required when asset class is rwa")
+
+	// ErrInvalidMPTokenMetadataAdditionalInfo is returned when the additional info is not a string or a map.
+	ErrInvalidMPTokenMetadataAdditionalInfo = errors.New("mptoken metadata additional info must be a string or a map")
+
+	// ErrInvalidMPTokenMetadataURIs is returned when the URIs is not an array of objects each with uri/u, category/c, and title/t properties.
+	ErrInvalidMPTokenMetadataURIs = errors.New("mptoken metadata URIs should be an array of objects each with uri/u, category/c, and title/t properties")
 )
+
+// ErrInvalidMPTokenMetadataUnknownField is returned when a field is unknown in MPToken metadata.
+type ErrInvalidMPTokenMetadataUnknownField struct {
+	Field string
+}
+
+// Error implements the error interface for ErrInvalidMPTokenMetadataUnknownField
+func (e ErrInvalidMPTokenMetadataUnknownField) Error() string {
+	return fmt.Sprintf("mptoken metadata unknown field: %s", e.Field)
+}
+
+// ErrInvalidMPTokenMetadataFieldCount is returned when the MPToken metadata has an invalid field count.
+type ErrInvalidMPTokenMetadataFieldCount struct {
+	Count int
+}
+
+// Error implements the error interface for ErrMarshalPayload
+func (e ErrInvalidMPTokenMetadataFieldCount) Error() string {
+	return fmt.Sprintf("mptoken metadata field count should be at most %d", e.Count)
+}
+
+// ErrInvalidMPTokenMetadataFieldCollision is returned when both long and compact forms of a field are present in MPToken metadata.
+type ErrInvalidMPTokenMetadataFieldCollision struct {
+	Long    string
+	Compact string
+}
+
+// Error implements the error interface for ErrInvalidMPTokenMetadataFieldCollision
+func (e ErrInvalidMPTokenMetadataFieldCollision) Error() string {
+	return fmt.Sprintf("mptoken metadata field collision: %s and %s both present", e.Long, e.Compact)
+}
+
+// ErrInvalidMPTokenMetadataMissingField is returned when a required field is missing from MPToken metadata.
+type ErrInvalidMPTokenMetadataMissingField struct {
+	Field string
+}
+
+// Error implements the error interface for ErrInvalidMPTokenMetadataMissingField
+func (e ErrInvalidMPTokenMetadataMissingField) Error() string {
+	return fmt.Sprintf("mptoken metadata field missing: %s", e.Field)
+}
+
+type ErrInvalidMPTokenMetadataAssetClass struct {
+	AssetClassSet []string
+}
+
+// Error implements the error interface for ErrInvalidMPTokenMetadataAssetClass
+func (e ErrInvalidMPTokenMetadataAssetClass) Error() string {
+	return fmt.Sprintf("mptoken metadata asset class should be one of: %s", strings.Join(e.AssetClassSet, ", "))
+}
+
+type ErrInvalidMPTokenMetadataAssetSubClass struct {
+	AssetSubclassSet []string
+}
+
+// Error implements the error interface for ErrInvalidMPTokenMetadataAssetSubClass
+func (e ErrInvalidMPTokenMetadataAssetSubClass) Error() string {
+	return fmt.Sprintf("mptoken metadata asset subclass should be one of: %s", strings.Join(e.AssetSubclassSet, ", "))
+}
+
+// MPTokenMetadataValidationErrors is a custom error type that holds a list of validation failures.
+// It stores actual error objects to support wrapping/unwrapping.
+type MPTokenMetadataValidationErrors []error
+
+// Error implements the error interface.
+func (v MPTokenMetadataValidationErrors) Error() string {
+	var msgs []string
+	for _, err := range v {
+		msgs = append(msgs, err.Error())
+	}
+	return fmt.Sprintf("mptoken metadata validation failed with %d errors:\n- %s", len(v), strings.Join(msgs, "\n- "))
+}
+
+// Unwrap returns the list of errors, allowing "errors.Is" support for lists.
+// Example: errors.Is(err, types.ErrInvalidMPTokenMetadataTicker)
+func (v MPTokenMetadataValidationErrors) Unwrap() []error {
+	return v
+}
