@@ -13,15 +13,15 @@ import (
 
 // Fixtures represents the structure of address-fixtures.json
 type Fixtures struct {
-	EncodeDecodeAccountID     []EncodeDecodeTest   `json:"encodeDecodeAccountID"`
-	EncodeDecodeNodePublic    []EncodeDecodeTest   `json:"encodeDecodeNodePublic"`
-	EncodeDecodeAccountPublic []EncodeDecodeTest   `json:"encodeDecodeAccountPublic"`
-	Seeds                     []SeedTest           `json:"seeds"`
-	ValidClassicAddresses     []string             `json:"validClassicAddresses"`
-	InvalidClassicAddresses   []string             `json:"invalidClassicAddresses"`
-	XAddresses                []XAddressTest       `json:"xAddresses"`
-	InvalidXAddresses         []InvalidXAddress    `json:"invalidXAddresses"`
-	CodecTests                []CodecTest          `json:"codecTests"`
+	EncodeDecodeAccountID     []EncodeDecodeTest `json:"encodeDecodeAccountID"`
+	EncodeDecodeNodePublic    []EncodeDecodeTest `json:"encodeDecodeNodePublic"`
+	EncodeDecodeAccountPublic []EncodeDecodeTest `json:"encodeDecodeAccountPublic"`
+	Seeds                     []SeedTest         `json:"seeds"`
+	ValidClassicAddresses     []string           `json:"validClassicAddresses"`
+	InvalidClassicAddresses   []string           `json:"invalidClassicAddresses"`
+	XAddresses                []XAddressTest     `json:"xAddresses"`
+	InvalidXAddresses         []InvalidXAddress  `json:"invalidXAddresses"`
+	CodecTests                []CodecTest        `json:"codecTests"`
 }
 
 type EncodeDecodeTest struct {
@@ -36,10 +36,10 @@ type SeedTest struct {
 }
 
 type XAddressTest struct {
-	ClassicAddress  string `json:"classicAddress"`
-	Tag             *int64 `json:"tag"` // pointer to handle null
-	MainnetAddress  string `json:"mainnetAddress"`
-	TestnetAddress  string `json:"testnetAddress"`
+	ClassicAddress string `json:"classicAddress"`
+	Tag            *int64 `json:"tag"` // pointer to handle null
+	MainnetAddress string `json:"mainnetAddress"`
+	TestnetAddress string `json:"testnetAddress"`
 }
 
 type InvalidXAddress struct {
