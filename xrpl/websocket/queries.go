@@ -279,6 +279,22 @@ func (c *Client) GetLedger(req *ledger.Request) (*ledger.Response, error) {
 	return &lr, nil
 }
 
+// GetLedgerEntry retrieves a specific ledger entry by its index.
+// It takes an EntryRequest as input and returns an EntryResponse containing the ledger entry,
+// along with any error encountered.
+func (c *Client) GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse, error) {
+	res, err := c.Request(req)
+	if err != nil {
+		return nil, err
+	}
+	var ler ledger.EntryResponse
+	err = res.GetResult(&ler)
+	if err != nil {
+		return nil, err
+	}
+	return &ler, nil
+}
+
 // NFT queries
 
 // GetNFTBuyOffers retrieves all buy offers for a specific NFT.

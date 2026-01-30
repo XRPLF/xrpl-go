@@ -66,6 +66,15 @@ const (
 	XChainClaimTx                       TxType = "XChainClaim"
 	XChainCommitTx                      TxType = "XChainCommit"
 	XChainModifyBridgeTx                TxType = "XChainModifyBridge"
+	LoanSetTx                           TxType = "LoanSet"
+	LoanDeleteTx                        TxType = "LoanDelete"
+	LoanManageTx                        TxType = "LoanManage"
+	LoanPayTx                           TxType = "LoanPay"
+	LoanBrokerSetTx                     TxType = "LoanBrokerSet"
+	LoanBrokerDeleteTx                  TxType = "LoanBrokerDelete"
+	LoanBrokerCoverDepositTx            TxType = "LoanBrokerCoverDeposit"
+	LoanBrokerCoverWithdrawTx           TxType = "LoanBrokerCoverWithdraw"
+	LoanBrokerCoverClawbackTx           TxType = "LoanBrokerCoverClawback"
 )
 
 func (t TxType) String() string {
