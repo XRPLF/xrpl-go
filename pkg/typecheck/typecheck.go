@@ -72,3 +72,9 @@ func IsStringNumericUint(s string, base, bitSize int) bool {
 	_, err := strconv.ParseUint(s, base, bitSize)
 	return err == nil
 }
+
+// IsMap checks if the given interface is a map.
+func IsMap(m any) bool {
+	_, ok := m.(map[string]any)
+	return ok
+}
