@@ -125,13 +125,34 @@ func (e ErrInvalidMPTokenMetadataMissingField) Error() string {
 	return fmt.Sprintf("mptoken metadata field missing: %s", e.Field)
 }
 
+// ErrInvalidMPTokenMetadataInvalidString is returned when a string value is invalid.
+type ErrInvalidMPTokenMetadataInvalidString struct {
+	Key string
+}
+
+// Error implements the error interface for ErrInvalidMPTokenMetadataInvalidString
+func (e ErrInvalidMPTokenMetadataInvalidString) Error() string {
+	return fmt.Sprintf("mptoken metadata field %s must be a valid string", e.Key)
+}
+
+// ErrInvalidMPTokenMetadataEmptyString is returned when a string value is empty.
+type ErrInvalidMPTokenMetadataEmptyString struct {
+	Key string
+}
+
+// Error implements the error interface for ErrInvalidMPTokenMetadataEmptyString
+func (e ErrInvalidMPTokenMetadataEmptyString) Error() string {
+	return fmt.Sprintf("mptoken metadata field %s cannot be empty", e.Key)
+}
+
+// ErrInvalidMPTokenMetadataAssetClass is returned when the asset class is invalid.
 type ErrInvalidMPTokenMetadataAssetClass struct {
-	AssetClassSet []string
+	AssetClassSet [6]string
 }
 
 // Error implements the error interface for ErrInvalidMPTokenMetadataAssetClass
 func (e ErrInvalidMPTokenMetadataAssetClass) Error() string {
-	return fmt.Sprintf("mptoken metadata asset class should be one of: %s", strings.Join(e.AssetClassSet, ", "))
+	return fmt.Sprintf("mptoken metadata asset class should be one of: %s", strings.Join(e.AssetClassSet[:], ", "))
 }
 
 type ErrInvalidMPTokenMetadataAssetSubClass struct {

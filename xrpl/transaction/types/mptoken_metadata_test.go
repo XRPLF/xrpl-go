@@ -306,7 +306,7 @@ func TestValidateMPTokenMetadata(t *testing.T) {
 				"issuer_name":    "Issuer",
 			},
 			validationMessages: []error{
-				ErrInvalidMPTokenMetadataMissingField{Field: "icon"},
+				ErrInvalidMPTokenMetadataInvalidString{Key: "icon"},
 			},
 		},
 		{
@@ -334,7 +334,7 @@ func TestValidateMPTokenMetadata(t *testing.T) {
 				"issuer_name":    "Issuer",
 			},
 			validationMessages: []error{
-				ErrInvalidMPTokenMetadataAssetSubClass{AssetSubclassSet: MPTokenMetadataAssetSubClasses},
+				ErrInvalidMPTokenMetadataAssetSubClass{AssetSubclassSet: MPTokenMetadataAssetSubClasses[:]},
 			},
 		},
 		{
@@ -421,7 +421,7 @@ func TestValidateMPTokenMetadata(t *testing.T) {
 			validationMessages: []error{
 				ErrInvalidMPTokenMetadataTicker,
 				ErrInvalidMPTokenMetadataAssetClass{AssetClassSet: MPTokenMetadataAssetClasses},
-				ErrInvalidMPTokenMetadataAssetSubClass{AssetSubclassSet: MPTokenMetadataAssetSubClasses},
+				ErrInvalidMPTokenMetadataAssetSubClass{AssetSubclassSet: MPTokenMetadataAssetSubClasses[:]},
 				ErrInvalidMPTokenMetadataURIs,
 			},
 		},
@@ -509,6 +509,7 @@ func TestValidateMPTokenMetadata(t *testing.T) {
 				ErrInvalidMPTokenMetadataURIs,
 			},
 		},
+
 		{
 			name: "invalid uris structure",
 			mptMetadata: map[string]any{
@@ -545,9 +546,9 @@ func TestValidateMPTokenMetadata(t *testing.T) {
 			},
 			validationMessages: []error{
 				ErrInvalidMPTokenMetadataURIs,
-				ErrInvalidMPTokenMetadataURIs,
 			},
 		},
+
 		{
 			name: "conflicting uri long and compact forms",
 			mptMetadata: map[string]any{
@@ -571,7 +572,6 @@ func TestValidateMPTokenMetadata(t *testing.T) {
 			},
 			validationMessages: []error{
 				ErrInvalidMPTokenMetadataFieldCollision{Long: "uri", Compact: "u"},
-				ErrInvalidMPTokenMetadataURIs,
 			},
 		},
 		{
@@ -672,12 +672,13 @@ func TestValidateMPTokenMetadata(t *testing.T) {
 				"additional_info": nil,
 			},
 			validationMessages: []error{
-				ErrInvalidMPTokenMetadataTicker,
-				ErrInvalidMPTokenMetadataMissingField{Field: "name"},
-				ErrInvalidMPTokenMetadataMissingField{Field: "icon"},
-				ErrInvalidMPTokenMetadataMissingField{Field: "issuer_name"},
-				ErrInvalidMPTokenMetadataAssetClass{AssetClassSet: MPTokenMetadataAssetClasses},
-				ErrInvalidMPTokenMetadataAssetSubClass{AssetSubclassSet: MPTokenMetadataAssetSubClasses},
+				ErrInvalidMPTokenMetadataInvalidString{Key: "ticker"},
+				ErrInvalidMPTokenMetadataInvalidString{Key: "name"},
+				ErrInvalidMPTokenMetadataInvalidString{Key: "desc"},
+				ErrInvalidMPTokenMetadataInvalidString{Key: "icon"},
+				ErrInvalidMPTokenMetadataInvalidString{Key: "issuer_name"},
+				ErrInvalidMPTokenMetadataInvalidString{Key: "asset_class"},
+				ErrInvalidMPTokenMetadataInvalidString{Key: "asset_subclass"},
 				ErrInvalidMPTokenMetadataURIs,
 				ErrInvalidMPTokenMetadataAdditionalInfo,
 			},
@@ -698,8 +699,11 @@ func TestValidateMPTokenMetadata(t *testing.T) {
 					},
 				},
 			},
-			validationMessages: []error{}, // Empty strings are valid (validation only checks type, not content)
+			validationMessages: []error{
+				ErrInvalidMPTokenMetadataEmptyString{Key: "uri"},
+			},
 		},
+
 		{
 			name: "unknown field in URI object",
 			mptMetadata: map[string]any{
@@ -1065,6 +1069,54 @@ func TestDecodeMPTokenMetadata_EdgeCases(t *testing.T) {
 					assert.Equal(t, expectedURI.Title, decoded.URIs[i].Title)
 				}
 			}
+		})
+	}
+}
+
+func TestDecodeMPTokenMetadata_NotCompactKeys(t *testing.T) {
+	tests := []struct {
+		name     string
+		hex      string
+		expected ParsedMPTokenMetadata
+	}{
+		{
+			name: "not compact keys",
+			hex:  "7B226164646974696F6E616C5F696E666F223A7B226375736970223A22393132373936525830222C22696E7465726573745F72617465223A22352E303025222C22696E7465726573745F74797065223A227661726961626C65222C226D617475726974795F64617465223A22323034352D30362D3330222C227969656C645F736F75726365223A22552E532E2054726561737572792042696C6C73227D2C2261737365745F636C617373223A22727761222C2261737365745F737562636C617373223A227472656173757279222C2264657363223A2241207969656C642D62656172696E6720737461626C65636F696E206261636B65642062792073686F72742D7465726D20552E532E205472656173757269657320616E64206D6F6E6579206D61726B657420696E737472756D656E74732E222C2269636F6E223A2268747470733A2F2F6578616D706C652E6F72672F7462696C6C2D69636F6E2E706E67222C226973737565725F6E616D65223A224578616D706C65205969656C6420436F2E222C226E616D65223A22542D42696C6C205969656C6420546F6B656E222C227469636B6572223A225442494C4C222C2275726973223A5B7B2263617465676F7279223A2277656273697465222C227469746C65223A2250726F647563742050616765222C22757269223A2268747470733A2F2F6578616D706C657969656C642E636F2F7462696C6C227D2C7B2263617465676F7279223A22646F6373222C227469746C65223A225969656C6420546F6B656E20446F6373222C22757269223A2268747470733A2F2F6578616D706C657969656C642E636F2F646F6373227D5D7D",
+			expected: ParsedMPTokenMetadata{
+				Ticker:        "TBILL",
+				Name:          "T-Bill Yield Token",
+				Desc:          stringPtr("A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."),
+				Icon:          "https://example.org/tbill-icon.png",
+				AssetClass:    "rwa",
+				AssetSubclass: stringPtr("treasury"),
+				IssuerName:    "Example Yield Co.",
+				URIs: []ParsedMPTokenMetadataURI{
+					{
+						URI:      "https://exampleyield.co/tbill",
+						Category: "website",
+						Title:    "Product Page",
+					},
+					{
+						URI:      "https://exampleyield.co/docs",
+						Category: "docs",
+						Title:    "Yield Token Docs",
+					},
+				},
+				AdditionalInfo: map[string]any{
+					"interest_rate": "5.00%",
+					"interest_type": "variable",
+					"yield_source":  "U.S. Treasury Bills",
+					"maturity_date": "2045-06-30",
+					"cusip":         "912796RX0",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			decoded, err := DecodeMPTokenMetadata(tt.hex)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, decoded)
 		})
 	}
 }
