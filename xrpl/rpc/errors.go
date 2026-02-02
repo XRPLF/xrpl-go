@@ -58,6 +58,14 @@ var (
 	ErrCouldNotGetBaseFeeXrp = errors.New("get fee xrp: could not get BaseFeeXrp from ServerInfo")
 	// ErrCouldNotFetchOwnerReserve is returned when the owner reserve fee cannot be fetched.
 	ErrCouldNotFetchOwnerReserve = errors.New("could not fetch Owner Reserve")
+	// ErrLoanBrokerIDRequired is returned when LoanBrokerID is required but not provided.
+	ErrLoanBrokerIDRequired = errors.New("LoanBrokerID is required for LoanSet transaction")
+	// ErrCouldNotFetchLoanBroker is returned when the LoanBroker cannot be fetched.
+	ErrCouldNotFetchLoanBroker = errors.New("could not fetch LoanBroker")
+	// ErrCouldNotFetchLoanBrokerOwner is returned when the Owner field cannot be extracted from LoanBroker.
+	ErrCouldNotFetchLoanBrokerOwner = errors.New("could not fetch LoanBroker Owner")
+	// ErrCounterpartyRequired is returned when Counterparty is required but not provided.
+	ErrCounterpartyRequired = errors.New("field Counterparty is required")
 
 	// account
 

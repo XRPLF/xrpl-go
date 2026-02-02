@@ -15,6 +15,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	server "github.com/Peersyst/xrpl-go/xrpl/queries/server"
 	requests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -392,6 +393,13 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 			return err
 		}
 		baseFee = baseFeeUint*2 + rawTxFees
+	case "LoanSet":
+		// For LoanSet, account for counterparty signers
+		counterPartySignersCount, err := c.fetchCounterPartySignersCount(*tx)
+		if err != nil {
+			return err
+		}
+		baseFee = baseFeeUint + (baseFeeUint * counterPartySignersCount)
 	}
 
 	// Multi-signed Transaction: BaseFee × (1 + Number of Signatures Provided)
@@ -604,6 +612,66 @@ func (c *Client) fetchOwnerReserveFee() (uint64, error) {
 	}
 
 	return uint64(reserveInc), nil
+}
+
+// fetchCounterPartySignersCount fetches the number of signers for the counterparty account.
+// For LoanSet transactions, if Counterparty is not provided, it fetches the LoanBroker and uses its Owner.
+// Returns the number of signers in the counterparty's signer list, or 1 if no signer list exists.
+func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (uint64, error) {
+	var counterparty types.Address
+
+	// Extract Counterparty from transaction if present
+	if cp, ok := tx["Counterparty"]; ok {
+		if cpStr, ok := cp.(string); ok && cpStr != "" {
+			counterparty = types.Address(cpStr)
+		}
+	}
+
+	// If Counterparty is not provided and transaction has LoanBrokerID, fetch LoanBroker
+	if counterparty == "" {
+		loanBrokerID, ok := tx["LoanBrokerID"].(string)
+		if !ok || loanBrokerID == "" {
+			return 0, ErrLoanBrokerIDRequired
+		}
+
+		// Make ledger_entry request
+		res, err := c.GetLedgerEntry(&ledger.EntryRequest{
+			Index:       loanBrokerID,
+			LedgerIndex: common.LedgerTitle("validated"),
+		})
+		if err != nil {
+			return 0, err
+		}
+
+		// Extract Owner from the LoanBroker FlatLedgerObject
+		owner, ok := res.Node["Owner"].(string)
+		if !ok || owner == "" {
+			return 0, ErrCouldNotFetchLoanBrokerOwner
+		}
+		counterparty = types.Address(owner)
+	}
+
+	if counterparty == "" {
+		return 0, ErrCounterpartyRequired
+	}
+
+	// Fetch account info with signer lists
+	accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
+		Account:     counterparty,
+		LedgerIndex: common.LedgerTitle("validated"),
+		SignerLists: true,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	// Extract the first signer list's SignerEntries length
+	if len(accountInfo.SignerLists) > 0 {
+		return uint64(len(accountInfo.SignerLists[0].SignerEntries)), nil
+	}
+
+	// Default to 1 if no signer list exists
+	return 1, nil
 }
 
 // calculateBatchFees calculates the total fees for all inner transactions in a Batch.

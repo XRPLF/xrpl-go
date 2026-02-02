@@ -16,8 +16,6 @@ var (
 	ErrDelegateAccountConflict = errors.New("addresses for Account and Delegate cannot be the same")
 	// ErrInvalidCheckID is returned when the CheckID is not a valid 64-character hexadecimal string.
 	ErrInvalidCheckID = errors.New("invalid CheckID, must be a valid 64-character hexadecimal string")
-	// ErrInvalidCredentialType is returned when the CredentialType is not a valid hexadecimal string between 1 and 64 bytes.
-	ErrInvalidCredentialType = errors.New("invalid credential type, must be a hexadecimal string between 1 and 64 bytes")
 	// ErrInvalidCredentialIDs is returned when the CredentialIDs field is empty or not a valid hexadecimal string array.
 	ErrInvalidCredentialIDs = errors.New("invalid credential IDs, must be a valid hexadecimal string array")
 	// ErrInvalidDestination is returned when the Destination field does not meet XRPL address standards.
@@ -111,10 +109,6 @@ var (
 
 	// ErrTrustSetMissingLimitAmount is returned when the LimitAmount field is not set on a TrustSet transaction.
 	ErrTrustSetMissingLimitAmount = errors.New("missing field LimitAmount")
-	// ErrTrustSetQualityInNotNumber is returned when QualityIn is not a valid number.
-	ErrTrustSetQualityInNotNumber = errors.New("QualityIn must be a number")
-	// ErrTrustSetQualityOutNotNumber is returned when QualityOut is not a valid number.
-	ErrTrustSetQualityOutNotNumber = errors.New("QualityOut must be a number")
 
 	// signer list set
 
@@ -152,8 +146,6 @@ var (
 
 	// offer
 
-	// ErrOfferCancelMissingOfferSequence is returned when the offer sequence is missing.
-	ErrOfferCancelMissingOfferSequence = errors.New("missing offer sequence")
 	// ErrTfHybridCannotBeSetWithoutDomainID is returned if a OfferCreate has tfHybrid enabled and no DomainID set.
 	ErrTfHybridCannotBeSetWithoutDomainID = errors.New("tfHybrid must have a valid DomainID")
 
@@ -196,12 +188,8 @@ var (
 
 	// ErrTransferFeeRequiresCanTransfer is returned when TransferFee is set without enabling tfMPTCanTransfer flag.
 	ErrTransferFeeRequiresCanTransfer = errors.New("mptoken issuance create: TransferFee cannot be provided without enabling tfMPTCanTransfer flag")
-	// ErrInvalidMaximumAmount is returned when the MaximumAmount is not a valid unsigned 64-bit integer.
-	ErrInvalidMaximumAmount = errors.New("mptoken issuance create: invalid MaximumAmount, must be a valid unsigned 64-bit integer")
 	// ErrInvalidMPTokenMetadata is returned when MPTokenMetadata is not a valid hex string or exceeds size limit.
 	ErrInvalidMPTokenMetadata = errors.New("mptoken issuance create: MPTokenMetadata must be a valid hex string and at most 1024 bytes")
-	// ErrInvalidMPTokenIssuanceCreateTransferFee is returned when the TransferFee is outside the allowed range.
-	ErrInvalidMPTokenIssuanceCreateTransferFee = errors.New("mptoken issuance create: TransferFee must be between 0 and 50000")
 
 	// ErrHolderAccountConflict is returned when the holder account is the same as the issuing account.
 	ErrHolderAccountConflict = errors.New("holder must be different from the account")
@@ -215,8 +203,6 @@ var (
 
 	// ErrEscrowCreateInvalidDestinationAddress is returned when the destination address for EscrowCreate is invalid.
 	ErrEscrowCreateInvalidDestinationAddress = errors.New("escrow create: invalid destination address")
-	// ErrEscrowCreateNoCancelOrFinishAfterSet is returned when neither CancelAfter nor FinishAfter is set.
-	ErrEscrowCreateNoCancelOrFinishAfterSet = errors.New("escrow create: either CancelAfter or FinishAfter must be set")
 	// ErrEscrowCreateNoConditionOrFinishAfterSet is returned when both Condition and FinishAfter are unset.
 	ErrEscrowCreateNoConditionOrFinishAfterSet = errors.New("escrow create: either Condition or FinishAfter must be specified")
 
@@ -287,39 +273,7 @@ var (
 
 	// ErrBatchRawTransactionsEmpty is returned when the RawTransactions array is empty or nil.
 	// This validates that a batch transaction contains at least one inner transaction to execute.
-	ErrBatchRawTransactionsEmpty = errors.New("RawTransactions must be a non-empty array")
-
-	// ErrBatchSignersNotArray is returned when BatchSigners field is present but not an array type.
-	// BatchSigners must be an array of signer objects for multi-signing validation.
-	ErrBatchSignersNotArray = errors.New("BatchSigners must be an array")
-
-	// ErrBatchRawTransactionNotObject is returned when a RawTransaction array element is not an object.
-	// Each element in the RawTransactions array must be a valid transaction object.
-	ErrBatchRawTransactionNotObject = errors.New("batch RawTransaction element is not an object")
-
-	// ErrBatchRawTransactionFieldNotObject is returned when the RawTransaction field is not an object.
-	// The RawTransaction field must contain a valid transaction object structure.
-	ErrBatchRawTransactionFieldNotObject = errors.New("batch RawTransaction field is not an object")
-
-	// ErrBatchSignerNotObject is returned when a BatchSigner array element is not an object.
-	// Each element in the BatchSigners array must be a valid signer object.
-	ErrBatchSignerNotObject = errors.New("batch BatchSigner element is not an object")
-
-	// ErrBatchSignerMissing is returned when the BatchSigner field is missing from an array element.
-	// Each BatchSigners array element must contain a BatchSigner field.
-	ErrBatchSignerMissing = errors.New("batch BatchSigner field is missing")
-
-	// ErrBatchSignerFieldNotObject is returned when the BatchSigner field is not an object.
-	// The BatchSigner field must contain a valid signer object structure.
-	ErrBatchSignerFieldNotObject = errors.New("batch BatchSigner field is not an object")
-
-	// ErrBatchSignerAccountNotString is returned when a BatchSigner Account field is not a string.
-	// The Account field must be a valid string representing an XRPL account address.
-	ErrBatchSignerAccountNotString = errors.New("batch BatchSigner Account must be a string")
-
-	// ErrBatchSignerInvalid is returned when a BatchSigner fails its validation rules.
-	// Each BatchSigner must pass its individual validation requirements.
-	ErrBatchSignerInvalid = errors.New("batch signer validation failed")
+	ErrBatchRawTransactionsEmpty = errors.New("rawTransactions must be a non-empty array")
 
 	// balance
 
@@ -356,6 +310,109 @@ var (
 	ErrAccountSetInvalidSetFlag = errors.New("account set: SetFlag must be an integer between asfRequireDest (1) and asfAllowTrustLineClawback (16)")
 	// ErrAccountSetInvalidTickSize is returned when TickSize is outside the valid range (0 to 15 inclusive).
 	ErrAccountSetInvalidTickSize = errors.New("account set: TickSize must be an integer between 0 and 15 inclusive")
+
+	// loan
+
+	// ErrLoanSetLoanBrokerIDRequired is returned when LoanBrokerID is not set on a LoanSet transaction.
+	ErrLoanSetLoanBrokerIDRequired = errors.New("loanSet: LoanBrokerID is required")
+	// ErrLoanSetLoanBrokerIDInvalid is returned when LoanBrokerID is not a valid 64-character hexadecimal string.
+	ErrLoanSetLoanBrokerIDInvalid = errors.New("loanSet: LoanBrokerID must be 64 characters hexadecimal string")
+	// ErrLoanSetPrincipalRequestedRequired is returned when PrincipalRequested is not set on a LoanSet transaction.
+	ErrLoanSetPrincipalRequestedRequired = errors.New("loanSet: PrincipalRequested is required")
+	// ErrLoanSetPrincipalRequestedInvalid is returned when PrincipalRequested is not a valid XRPL number.
+	ErrLoanSetPrincipalRequestedInvalid = errors.New("loanSet: PrincipalRequested must be a valid XRPL number")
+	// ErrLoanSetDataInvalid is returned when Data is not a valid non-empty hex string up to 512 characters.
+	ErrLoanSetDataInvalid = errors.New("loanSet: Data must be a valid non-empty hex string up to 512 characters")
+	// ErrLoanSetOverpaymentFeeInvalid is returned when OverpaymentFee is outside the valid range (0 to 100000 inclusive).
+	ErrLoanSetOverpaymentFeeInvalid = errors.New("loanSet: OverpaymentFee must be between 0 and 100000 inclusive")
+	// ErrLoanSetInterestRateInvalid is returned when InterestRate is outside the valid range (0 to 100000 inclusive).
+	ErrLoanSetInterestRateInvalid = errors.New("loanSet: InterestRate must be between 0 and 100000 inclusive")
+	// ErrLoanSetLateInterestRateInvalid is returned when LateInterestRate is outside the valid range (0 to 100000 inclusive).
+	ErrLoanSetLateInterestRateInvalid = errors.New("loanSet: LateInterestRate must be between 0 and 100000 inclusive")
+	// ErrLoanSetCloseInterestRateInvalid is returned when CloseInterestRate is outside the valid range (0 to 100000 inclusive).
+	ErrLoanSetCloseInterestRateInvalid = errors.New("loanSet: CloseInterestRate must be between 0 and 100000 inclusive")
+	// ErrLoanSetOverpaymentInterestRateInvalid is returned when OverpaymentInterestRate is outside the valid range (0 to 100000 inclusive).
+	ErrLoanSetOverpaymentInterestRateInvalid = errors.New("loanSet: OverpaymentInterestRate must be between 0 and 100000 inclusive")
+	// ErrLoanSetPaymentIntervalInvalid is returned when PaymentInterval is less than 60.
+	ErrLoanSetPaymentIntervalInvalid = errors.New("loanSet: PaymentInterval must be greater than or equal to 60")
+	// ErrLoanSetGracePeriodInvalid is returned when GracePeriod is greater than PaymentInterval.
+	ErrLoanSetGracePeriodInvalid = errors.New("loanSet: GracePeriod must not be greater than PaymentInterval")
+	// ErrLoanSetLoanOriginationFeeInvalid is returned when LoanOriginationFee is not a valid XRPL number.
+	ErrLoanSetLoanOriginationFeeInvalid = errors.New("loanSet: LoanOriginationFee must be a valid XRPL number")
+	// ErrLoanSetLoanServiceFeeInvalid is returned when LoanServiceFee is not a valid XRPL number.
+	ErrLoanSetLoanServiceFeeInvalid = errors.New("loanSet: LoanServiceFee must be a valid XRPL number")
+	// ErrLoanSetLatePaymentFeeInvalid is returned when LatePaymentFee is not a valid XRPL number.
+	ErrLoanSetLatePaymentFeeInvalid = errors.New("loanSet: LatePaymentFee must be a valid XRPL number")
+	// ErrLoanSetClosePaymentFeeInvalid is returned when ClosePaymentFee is not a valid XRPL number.
+	ErrLoanSetClosePaymentFeeInvalid = errors.New("loanSet: ClosePaymentFee must be a valid XRPL number")
+
+	// ErrLoanDeleteLoanIDRequired is returned when LoanID is not set on a LoanDelete transaction.
+	ErrLoanDeleteLoanIDRequired = errors.New("loanDelete: LoanID is required")
+	// ErrLoanDeleteLoanIDInvalid is returned when LoanID is not a valid 64-character hexadecimal string.
+	ErrLoanDeleteLoanIDInvalid = errors.New("loanDelete: LoanID must be 64 characters hexadecimal string")
+
+	// ErrLoanManageLoanIDRequired is returned when LoanID is not set on a LoanManage transaction.
+	ErrLoanManageLoanIDRequired = errors.New("loanManage: LoanID is required")
+	// ErrLoanManageLoanIDInvalid is returned when LoanID is not a valid 64-character hexadecimal string.
+	ErrLoanManageLoanIDInvalid = errors.New("loanManage: LoanID must be 64 characters hexadecimal string")
+	// ErrLoanManageFlagsConflict is returned when tfLoanImpair and tfLoanUnimpair flags are both set.
+	ErrLoanManageFlagsConflict = errors.New("loanManage: tfLoanImpair and tfLoanUnimpair cannot both be present")
+
+	// ErrLoanPayLoanIDRequired is returned when LoanID is not set on a LoanPay transaction.
+	ErrLoanPayLoanIDRequired = errors.New("loanPay: LoanID is required")
+	// ErrLoanPayLoanIDInvalid is returned when LoanID is not a valid 64-character hexadecimal string.
+	ErrLoanPayLoanIDInvalid = errors.New("loanPay: LoanID must be 64 characters hexadecimal string")
+	// ErrLoanPayAmountRequired is returned when Amount is not set on a LoanPay transaction.
+	ErrLoanPayAmountRequired = errors.New("loanPay: Amount is required")
+
+	// ErrLoanBrokerSetVaultIDRequired is returned when VaultID is not set on a LoanBrokerSet transaction.
+	ErrLoanBrokerSetVaultIDRequired = errors.New("loanBrokerSet: VaultID is required")
+	// ErrLoanBrokerSetVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
+	ErrLoanBrokerSetVaultIDInvalid = errors.New("loanBrokerSet: VaultID must be 64 characters hexadecimal string")
+	// ErrLoanBrokerSetLoanBrokerIDInvalid is returned when LoanBrokerID is not a valid 64-character hexadecimal string.
+	ErrLoanBrokerSetLoanBrokerIDInvalid = errors.New("loanBrokerSet: LoanBrokerID must be 64 characters hexadecimal string")
+	// ErrLoanBrokerSetDataInvalid is returned when Data is not a valid non-empty hex string up to 512 characters.
+	ErrLoanBrokerSetDataInvalid = errors.New("loanBrokerSet: Data must be a valid non-empty hex string up to 512 characters")
+	// ErrLoanBrokerSetManagementFeeRateInvalid is returned when ManagementFeeRate is outside the valid range (0 to 10000 inclusive).
+	ErrLoanBrokerSetManagementFeeRateInvalid = errors.New("loanBrokerSet: ManagementFeeRate must be between 0 and 10000 inclusive")
+	// ErrLoanBrokerSetDebtMaximumInvalid is returned when DebtMaximum is not a valid XRPL number.
+	ErrLoanBrokerSetDebtMaximumInvalid = errors.New("loanBrokerSet: DebtMaximum must be a valid XRPL number")
+	// ErrLoanBrokerSetDebtMaximumNegative is returned when DebtMaximum is negative.
+	ErrLoanBrokerSetDebtMaximumNegative = errors.New("loanBrokerSet: DebtMaximum must be a non-negative value")
+	// ErrLoanBrokerSetCoverRateMinimumInvalid is returned when CoverRateMinimum is outside the valid range (0 to 100000 inclusive).
+	ErrLoanBrokerSetCoverRateMinimumInvalid = errors.New("loanBrokerSet: CoverRateMinimum must be between 0 and 100000 inclusive")
+	// ErrLoanBrokerSetCoverRateLiquidationInvalid is returned when CoverRateLiquidation is outside the valid range (0 to 100000 inclusive).
+	ErrLoanBrokerSetCoverRateLiquidationInvalid = errors.New("loanBrokerSet: CoverRateLiquidation must be between 0 and 100000 inclusive")
+	// ErrLoanBrokerSetCoverRatesMismatch is returned when CoverRateMinimum and CoverRateLiquidation are not both zero or both non-zero.
+	ErrLoanBrokerSetCoverRatesMismatch = errors.New("loanBrokerSet: CoverRateMinimum and CoverRateLiquidation must both be zero or both be non-zero")
+
+	// ErrLoanBrokerDeleteLoanBrokerIDRequired is returned when LoanBrokerID is not set on a LoanBrokerDelete transaction.
+	ErrLoanBrokerDeleteLoanBrokerIDRequired = errors.New("loanBrokerDelete: LoanBrokerID is required")
+	// ErrLoanBrokerDeleteLoanBrokerIDInvalid is returned when LoanBrokerID is not a valid 64-character hexadecimal string.
+	ErrLoanBrokerDeleteLoanBrokerIDInvalid = errors.New("loanBrokerDelete: LoanBrokerID must be 64 characters hexadecimal string")
+
+	// ErrLoanBrokerCoverDepositLoanBrokerIDRequired is returned when LoanBrokerID is not set on a LoanBrokerCoverDeposit transaction.
+	ErrLoanBrokerCoverDepositLoanBrokerIDRequired = errors.New("loanBrokerCoverDeposit: LoanBrokerID is required")
+	// ErrLoanBrokerCoverDepositLoanBrokerIDInvalid is returned when LoanBrokerID is not a valid 64-character hexadecimal string.
+	ErrLoanBrokerCoverDepositLoanBrokerIDInvalid = errors.New("loanBrokerCoverDeposit: LoanBrokerID must be 64 characters hexadecimal string")
+	// ErrLoanBrokerCoverDepositAmountRequired is returned when Amount is not set on a LoanBrokerCoverDeposit transaction.
+	ErrLoanBrokerCoverDepositAmountRequired = errors.New("loanBrokerCoverDeposit: Amount is required")
+
+	// ErrLoanBrokerCoverWithdrawLoanBrokerIDRequired is returned when LoanBrokerID is not set on a LoanBrokerCoverWithdraw transaction.
+	ErrLoanBrokerCoverWithdrawLoanBrokerIDRequired = errors.New("loanBrokerCoverWithdraw: LoanBrokerID is required")
+	// ErrLoanBrokerCoverWithdrawLoanBrokerIDInvalid is returned when LoanBrokerID is not a valid 64-character hexadecimal string.
+	ErrLoanBrokerCoverWithdrawLoanBrokerIDInvalid = errors.New("loanBrokerCoverWithdraw: LoanBrokerID must be 64 characters hexadecimal string")
+	// ErrLoanBrokerCoverWithdrawAmountRequired is returned when Amount is not set on a LoanBrokerCoverWithdraw transaction.
+	ErrLoanBrokerCoverWithdrawAmountRequired = errors.New("loanBrokerCoverWithdraw: Amount is required")
+
+	// ErrLoanBrokerCoverClawbackLoanBrokerIDInvalid is returned when LoanBrokerID is not a valid 64-character hexadecimal string.
+	ErrLoanBrokerCoverClawbackLoanBrokerIDInvalid = errors.New("loanBrokerCoverClawback: LoanBrokerID must be 64 characters hexadecimal string")
+	// ErrLoanBrokerCoverClawbackAmountInvalidType is returned when Amount is not an IssuedCurrencyAmount or MPTCurrencyAmount.
+	ErrLoanBrokerCoverClawbackAmountInvalidType = errors.New("loanBrokerCoverClawback: Amount must be an IssuedCurrencyAmount or MPTCurrencyAmount")
+	// ErrLoanBrokerCoverClawbackAmountNegative is returned when Amount is negative.
+	ErrLoanBrokerCoverClawbackAmountNegative = errors.New("loanBrokerCoverClawback: Amount must be >= 0")
+	// ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired is returned when neither LoanBrokerID nor Amount is provided.
+	ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired = errors.New("loanBrokerCoverClawback: Either LoanBrokerID or Amount is required")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.

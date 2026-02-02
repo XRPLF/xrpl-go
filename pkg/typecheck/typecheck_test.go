@@ -523,11 +523,305 @@ func TestIsMap(t *testing.T) {
 			want: false,
 		}
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsMap(tt.m); got != tt.want {
 				t.Errorf("IsMap(%v) = %v, want %v", tt.m, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsXRPLNumber(t *testing.T) {
+	tests := []struct {
+		name  string
+		value interface{}
+		want  bool
+	}{
+		// Valid cases - integers
+		{
+			name:  "pass - Valid positive integer",
+			value: "123",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid negative integer",
+			value: "-456",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid integer with plus sign",
+			value: "+789",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid zero",
+			value: "0",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid integer with leading zeros",
+			value: "007",
+			want:  true,
+		},
+		// Valid cases - decimals
+		{
+			name:  "pass - Valid positive decimal",
+			value: "123.456",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid negative decimal",
+			value: "-987.654",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid decimal with plus sign",
+			value: "+3.14",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid decimal with trailing dot",
+			value: "123.",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid decimal starting with dot",
+			value: ".5",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid negative decimal starting with dot",
+			value: "-.5",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid positive decimal starting with dot",
+			value: "+.5",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid zero decimal",
+			value: "0.0",
+			want:  true,
+		},
+		// Valid cases - scientific notation
+		{
+			name:  "pass - Valid positive scientific notation lowercase e",
+			value: "+3.14e10",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid negative scientific notation lowercase e",
+			value: "-7.2e-9",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid scientific notation uppercase E",
+			value: "123E5",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid scientific notation with positive exponent",
+			value: "123e+5",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid scientific notation with negative exponent",
+			value: "123e-5",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid scientific notation integer base",
+			value: "123e10",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid scientific notation decimal base",
+			value: "1.5e10",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid scientific notation starting with dot",
+			value: ".5e10",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid scientific notation with trailing dot",
+			value: "123.e10",
+			want:  true,
+		},
+		// Valid cases - whitespace handling (should be trimmed)
+		{
+			name:  "pass - Valid number with leading whitespace",
+			value: "  123",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid number with trailing whitespace",
+			value: "123  ",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid number with both leading and trailing whitespace",
+			value: "  123.456  ",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid number with tab whitespace",
+			value: "\t123\t",
+			want:  true,
+		},
+		{
+			name:  "pass - Valid number with newline whitespace",
+			value: "\n123\n",
+			want:  true,
+		},
+		// Invalid cases - non-string types
+		{
+			name:  "fail - Non-string type (int)",
+			value: 123,
+			want:  false,
+		},
+		{
+			name:  "fail - Non-string type (float64)",
+			value: 123.456,
+			want:  false,
+		},
+		{
+			name:  "fail - Non-string type (bool)",
+			value: true,
+			want:  false,
+		},
+		{
+			name:  "fail - Non-string type (nil)",
+			value: nil,
+			want:  false,
+		},
+		// Invalid cases - empty strings
+		{
+			name:  "fail - Empty string",
+			value: "",
+			want:  false,
+		},
+		{
+			name:  "fail - Whitespace only string",
+			value: "   ",
+			want:  false,
+		},
+		{
+			name:  "fail - Tab only string",
+			value: "\t",
+			want:  false,
+		},
+		{
+			name:  "fail - Newline only string",
+			value: "\n",
+			want:  false,
+		},
+		// Invalid cases - just signs
+		{
+			name:  "fail - Just plus sign",
+			value: "+",
+			want:  false,
+		},
+		{
+			name:  "fail - Just minus sign",
+			value: "-",
+			want:  false,
+		},
+		{
+			name:  "fail - Just plus sign with whitespace",
+			value: "  +  ",
+			want:  false,
+		},
+		// Invalid cases - invalid formats
+		{
+			name:  "fail - Multiple decimal points",
+			value: "123.45.67",
+			want:  false,
+		},
+		{
+			name:  "fail - Non-numeric characters",
+			value: "123abc",
+			want:  false,
+		},
+		{
+			name:  "fail - Non-numeric characters in decimal",
+			value: "123.45abc",
+			want:  false,
+		},
+		{
+			name:  "fail - Invalid exponent format (missing digits)",
+			value: "123e",
+			want:  false,
+		},
+		{
+			name:  "fail - Invalid exponent format (just e)",
+			value: "e10",
+			want:  false,
+		},
+		{
+			name:  "fail - Invalid exponent format (double e)",
+			value: "123ee10",
+			want:  false,
+		},
+		{
+			name:  "fail - Invalid exponent format (missing exponent digits)",
+			value: "123e+",
+			want:  false,
+		},
+		{
+			name:  "fail - Invalid exponent format (missing exponent digits negative)",
+			value: "123e-",
+			want:  false,
+		},
+		{
+			name:  "fail - Spaces in middle of number",
+			value: "12 3",
+			want:  false,
+		},
+		{
+			name:  "fail - Spaces in middle of decimal",
+			value: "12. 3",
+			want:  false,
+		},
+		{
+			name:  "fail - Spaces in middle of exponent",
+			value: "123e 10",
+			want:  false,
+		},
+		{
+			name:  "fail - Special characters",
+			value: "123!",
+			want:  false,
+		},
+		{
+			name:  "fail - Special characters in decimal",
+			value: "123.45@",
+			want:  false,
+		},
+		{
+			name:  "fail - Invalid decimal format (just dot)",
+			value: ".",
+			want:  false,
+		},
+		{
+			name:  "fail - Invalid decimal format (dot with sign only)",
+			value: "+.",
+			want:  false,
+		},
+		{
+			name:  "fail - Invalid decimal format (dot with sign only negative)",
+			value: "-.",
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsXRPLNumber(tt.value); got != tt.want {
+				t.Errorf("IsXRPLNumber(%v) = %v, want %v", tt.value, got, tt.want)
 			}
 		})
 	}
