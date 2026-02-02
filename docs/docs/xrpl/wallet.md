@@ -8,6 +8,7 @@ This package enables you to do the following actions:
 
 - Generate new wallets using a seed, mnemonic or random.
 - Sign and multisign transactions.
+- Authorize payment channel redemptions.
 - Access to wallet's public and private keys and address.
 
 ## Generating a wallet
@@ -60,6 +61,56 @@ There's also the `SignMultiBatch` package function that signs each `RawTransacti
 
 ```go
 func SignMultiBatch(wallet Wallet, tx *transaction.FlatTransaction, opts *SignMultiBatchOptions) error
+```
+
+## Authorizing payment channel redemptions
+
+The `AuthorizeChannel` function allows you to create a signature that authorizes the redemption of a specific amount of XRP from a payment channel. This is useful for payment channels where the source account needs to authorize claims before they can be redeemed.
+
+```go
+func AuthorizeChannel(channelID, amount string, wallet Wallet) (string, error)
+```
+
+- `channelID` identifies the payment channel (hex-encoded string).
+- `amount` is the amount to redeem, expressed in drops (XRP's smallest unit).
+- Returns the signature string that can be used to authorize the channel claim.
+
+:::info
+
+Payment channels allow for off-ledger transactions between two parties. The `AuthorizeChannel` function creates a signature that authorizes a specific amount to be claimed from the channel. Learn more about payment channels in the [official documentation](https://xrpl.org/docs/concepts/payment-types/payment-channels).
+
+:::
+
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/Peersyst/xrpl-go/xrpl/wallet"
+)
+
+func main() {
+	// Create a wallet from a seed
+	wallet, err := wallet.FromSeed("snGHNrPbHrdUcszeuDEigMdC1Lyyd", "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Authorize redemption of 1 XRP (1,000,000 drops) from a payment channel
+	channelID := "5DB01B7FFED6B67E6B0414DED11E051D2EE2B7619CE0EAA6286D67A3A4D5BDB3"
+	amount := "1000000" // 1 XRP in drops
+
+	signature, err := wallet.AuthorizeChannel(channelID, amount, wallet)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Authorization signature:", signature)
+}
 ```
 
 ## Usage

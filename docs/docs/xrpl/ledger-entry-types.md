@@ -17,6 +17,8 @@ The `ledger-entry-types` package contains types and functions to handle ledger o
 - [`Escrow`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/escrow)
 - [`FeeSettings`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/feesettings)
 - [`Hashes`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/ledgerhashes)
+- [`Loan`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/loan)
+- [`LoanBroker`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/loanbroker)
 - [`NegativeUNL`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/negativeunl)
 - [`NFTokenOffer`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/nftokenoffer)
 - [`NFTokenPage`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/nftokenpage)
