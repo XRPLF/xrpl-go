@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.1.15]
 
 ### Added
 
@@ -36,10 +36,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `rpc` client timeout fetched from config.
 
-### Refactored
+
+## [v0.1.14]
+
+### Fixed
 
 #### xrpl
 
+- Bumped `golang.org/x/crypto` version to `v0.45.0`
+- Fix `websocket` client retrial mechanism on transaction await.
 - `TxResponse` `Meta` field type changed to `TxMetadataBuilder`, enabling custom parsing for specific transactions metadata such as `Payment`, `NFTokenMint`, etc.
 
 ## [v0.1.13]
