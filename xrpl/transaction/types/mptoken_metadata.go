@@ -87,8 +87,8 @@ var mptMetadataURIFields = []uriFieldDef{
 // Each field has a long form, compact form, required flag, and validation function.
 var mptMetadataFields = []fieldDef{
 	{
-		long:     tickerLongKey,
-		compact:  tickerCompactKey,
+		long:    tickerLongKey,
+		compact: tickerCompactKey,
 		validate: func(meta map[string]any) error {
 			v, exists, err := getStringField(meta, tickerLongKey, tickerCompactKey)
 			if err != nil {
@@ -104,8 +104,8 @@ var mptMetadataFields = []fieldDef{
 		},
 	},
 	{
-		long:     nameLongKey,
-		compact:  nameCompactKey,
+		long:    nameLongKey,
+		compact: nameCompactKey,
 		validate: func(meta map[string]any) error {
 			_, exists, err := getStringField(meta, nameLongKey, nameCompactKey)
 			if err != nil {
@@ -118,16 +118,16 @@ var mptMetadataFields = []fieldDef{
 		},
 	},
 	{
-		long:     descLongKey,
-		compact:  descCompactKey,
+		long:    descLongKey,
+		compact: descCompactKey,
 		validate: func(meta map[string]any) error {
 			_, _, err := getStringField(meta, descLongKey, descCompactKey)
 			return err
 		},
 	},
 	{
-		long:     iconLongKey,
-		compact:  iconCompactKey,
+		long:    iconLongKey,
+		compact: iconCompactKey,
 		validate: func(meta map[string]any) error {
 			_, exists, err := getStringField(meta, iconLongKey, iconCompactKey)
 			if err != nil {
@@ -140,8 +140,8 @@ var mptMetadataFields = []fieldDef{
 		},
 	},
 	{
-		long:     assetClassLongKey,
-		compact:  assetClassCompactKey,
+		long:    assetClassLongKey,
+		compact: assetClassCompactKey,
 		validate: func(meta map[string]any) error {
 			v, exists, err := getStringField(meta, assetClassLongKey, assetClassCompactKey)
 			if err != nil {
@@ -157,8 +157,8 @@ var mptMetadataFields = []fieldDef{
 		},
 	},
 	{
-		long:     assetSubclassLongKey,
-		compact:  assetSubclassCompactKey,
+		long:    assetSubclassLongKey,
+		compact: assetSubclassCompactKey,
 		validate: func(meta map[string]any) error {
 			v, exists, err := getStringField(meta, assetSubclassLongKey, assetSubclassCompactKey)
 			if err != nil {
@@ -175,8 +175,8 @@ var mptMetadataFields = []fieldDef{
 		},
 	},
 	{
-		long:     issuerNameLongKey,
-		compact:  issuerNameCompactKey,
+		long:    issuerNameLongKey,
+		compact: issuerNameCompactKey,
 		validate: func(meta map[string]any) error {
 			_, exists, err := getStringField(meta, issuerNameLongKey, issuerNameCompactKey)
 			if err != nil {
@@ -189,8 +189,8 @@ var mptMetadataFields = []fieldDef{
 		},
 	},
 	{
-		long:     urisLongKey,
-		compact:  urisCompactKey,
+		long:    urisLongKey,
+		compact: urisCompactKey,
 		validate: func(meta map[string]any) error {
 			val, exists, err := getField(meta, urisLongKey, urisCompactKey)
 			if err != nil {
@@ -230,8 +230,8 @@ var mptMetadataFields = []fieldDef{
 		},
 	},
 	{
-		long:     additionalInfoLongKey,
-		compact:  additionalInfoCompactKey,
+		long:    additionalInfoLongKey,
+		compact: additionalInfoCompactKey,
 		validate: func(meta map[string]any) error {
 			val, exists, err := getField(meta, additionalInfoLongKey, additionalInfoCompactKey)
 			if err != nil {
@@ -322,24 +322,20 @@ func (u *ParsedMPTokenMetadataURI) UnmarshalJSON(data []byte) error {
 	}
 
 	for _, f := range mptMetadataURIFields {
-		if v, ok := raw[f.compact]; ok {
-			switch f.long {
-			case uriLongKey:
-				u.URI = v
-			case categoryLongKey:
-				u.Category = v
-			case titleLongKey:
-				u.Title = v
-			}
-		} else if v, ok := raw[f.long]; ok {
-			switch f.long {
-			case uriLongKey:
-				u.URI = v
-			case categoryLongKey:
-				u.Category = v
-			case titleLongKey:
-				u.Title = v
-			}
+		v, ok := raw[f.compact]
+		if !ok {
+			v, ok = raw[f.long]
+		}
+		if !ok {
+			continue
+		}
+		switch f.long {
+		case uriLongKey:
+			u.URI = v
+		case categoryLongKey:
+			u.Category = v
+		case titleLongKey:
+			u.Title = v
 		}
 	}
 

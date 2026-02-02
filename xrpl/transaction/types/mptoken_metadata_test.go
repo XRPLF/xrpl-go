@@ -38,114 +38,6 @@ func extractValidationErrors(err error) []error {
 	return []error{err}
 }
 
-// convertToCompactKeys converts long field names to compact equivalents
-func convertToCompactKeys(m map[string]any) map[string]any {
-	fieldMap := map[string]string{
-		"ticker":          "t",
-		"name":            "n",
-		"desc":            "d",
-		"icon":            "i",
-		"asset_class":     "ac",
-		"asset_subclass":  "as",
-		"issuer_name":     "in",
-		"uris":            "us",
-		"additional_info": "ai",
-	}
-
-	uriFieldMap := map[string]string{
-		"uri":      "u",
-		"category": "c",
-		"title":    "t",
-	}
-
-	result := make(map[string]any)
-	for k, v := range m {
-		if compact, ok := fieldMap[k]; ok {
-			// Special handling for uris array
-			if k == "uris" {
-				if uris, ok := v.([]any); ok {
-					var newURIs []any
-					for _, uri := range uris {
-						if uriMap, ok := uri.(map[string]any); ok {
-							compactURI := make(map[string]any)
-							for uk, uv := range uriMap {
-								if uCompact, uOk := uriFieldMap[uk]; uOk {
-									compactURI[uCompact] = uv
-								} else {
-									compactURI[uk] = uv
-								}
-							}
-							newURIs = append(newURIs, compactURI)
-						} else {
-							newURIs = append(newURIs, uri)
-						}
-					}
-					result[compact] = newURIs
-					continue
-				}
-			}
-			result[compact] = v
-		} else {
-			result[k] = v
-		}
-	}
-	return result
-}
-
-// convertToLongKeys converts compact field names to long equivalents
-func convertToLongKeys(m map[string]any) map[string]any {
-	fieldMap := map[string]string{
-		"t":  "ticker",
-		"n":  "name",
-		"d":  "desc",
-		"i":  "icon",
-		"ac": "asset_class",
-		"as": "asset_subclass",
-		"in": "issuer_name",
-		"us": "uris",
-		"ai": "additional_info",
-	}
-
-	uriFieldMap := map[string]string{
-		"u": "uri",
-		"c": "category",
-		"t": "title",
-	}
-
-	result := make(map[string]any)
-	for k, v := range m {
-		if long, ok := fieldMap[k]; ok {
-			// Special handling for uris array
-			if k == "us" {
-				if uris, ok := v.([]any); ok {
-					var newURIs []any
-					for _, uri := range uris {
-						if uriMap, ok := uri.(map[string]any); ok {
-							longURI := make(map[string]any)
-							for uk, uv := range uriMap {
-								if uLong, uOk := uriFieldMap[uk]; uOk {
-									longURI[uLong] = uv
-								} else {
-									longURI[uk] = uv
-								}
-							}
-							newURIs = append(newURIs, longURI)
-						} else {
-							newURIs = append(newURIs, uri)
-						}
-					}
-					result[long] = newURIs
-					continue
-				}
-			}
-			result[long] = v
-		} else {
-			result[k] = v
-		}
-	}
-	return result
-}
-
 func TestValidateMPTokenMetadata(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -751,62 +643,25 @@ func TestValidateMPTokenMetadata(t *testing.T) {
 
 func TestEncodeDecodeMPTokenMetadata(t *testing.T) {
 	tests := []struct {
-		name             string
-		mptMetadata      map[string]any
-		expectedLongForm map[string]any
-		hex              string
+		name     string
+		metadata ParsedMPTokenMetadata
+		hex      string
 	}{
 		{
 			name: "valid long MPTokenMetadata",
-			mptMetadata: map[string]any{
-				"ticker":         "TBILL",
-				"name":           "T-Bill Yield Token",
-				"desc":           "A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments.",
-				"icon":           "https://example.org/tbill-icon.png",
-				"asset_class":    "rwa",
-				"asset_subclass": "treasury",
-				"issuer_name":    "Example Yield Co.",
-				"uris": []any{
-					map[string]any{
-						"uri":      "https://exampleyield.co/tbill",
-						"category": "website",
-						"title":    "Product Page",
-					},
-					map[string]any{
-						"uri":      "https://exampleyield.co/docs",
-						"category": "docs",
-						"title":    "Yield Token Docs",
-					},
+			metadata: ParsedMPTokenMetadata{
+				Ticker:        "TBILL",
+				Name:          "T-Bill Yield Token",
+				Desc:          stringPtr("A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."),
+				Icon:          "https://example.org/tbill-icon.png",
+				AssetClass:    "rwa",
+				AssetSubclass: stringPtr("treasury"),
+				IssuerName:    "Example Yield Co.",
+				URIs: []ParsedMPTokenMetadataURI{
+					{URI: "https://exampleyield.co/tbill", Category: "website", Title: "Product Page"},
+					{URI: "https://exampleyield.co/docs", Category: "docs", Title: "Yield Token Docs"},
 				},
-				"additional_info": map[string]any{
-					"interest_rate": "5.00%",
-					"interest_type": "variable",
-					"yield_source":  "U.S. Treasury Bills",
-					"maturity_date": "2045-06-30",
-					"cusip":         "912796RX0",
-				},
-			},
-			expectedLongForm: map[string]any{
-				"ticker":         "TBILL",
-				"name":           "T-Bill Yield Token",
-				"desc":           "A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments.",
-				"icon":           "https://example.org/tbill-icon.png",
-				"asset_class":    "rwa",
-				"asset_subclass": "treasury",
-				"issuer_name":    "Example Yield Co.",
-				"uris": []any{
-					map[string]any{
-						"uri":      "https://exampleyield.co/tbill",
-						"category": "website",
-						"title":    "Product Page",
-					},
-					map[string]any{
-						"uri":      "https://exampleyield.co/docs",
-						"category": "docs",
-						"title":    "Yield Token Docs",
-					},
-				},
-				"additional_info": map[string]any{
+				AdditionalInfo: map[string]any{
 					"interest_rate": "5.00%",
 					"interest_type": "variable",
 					"yield_source":  "U.S. Treasury Bills",
@@ -818,55 +673,19 @@ func TestEncodeDecodeMPTokenMetadata(t *testing.T) {
 		},
 		{
 			name: "valid MPTokenMetadata with all short field names",
-			mptMetadata: map[string]any{
-				"t":  "TBILL",
-				"n":  "T-Bill Yield Token",
-				"d":  "A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments.",
-				"i":  "https://example.org/tbill-icon.png",
-				"ac": "rwa",
-				"as": "treasury",
-				"in": "Example Yield Co.",
-				"us": []any{
-					map[string]any{
-						"u": "https://exampleyield.co/tbill",
-						"c": "website",
-						"t": "Product Page",
-					},
-					map[string]any{
-						"u": "https://exampleyield.co/docs",
-						"c": "docs",
-						"t": "Yield Token Docs",
-					},
+			metadata: ParsedMPTokenMetadata{
+				Ticker:        "TBILL",
+				Name:          "T-Bill Yield Token",
+				Desc:          stringPtr("A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."),
+				Icon:          "https://example.org/tbill-icon.png",
+				AssetClass:    "rwa",
+				AssetSubclass: stringPtr("treasury"),
+				IssuerName:    "Example Yield Co.",
+				URIs: []ParsedMPTokenMetadataURI{
+					{URI: "https://exampleyield.co/tbill", Category: "website", Title: "Product Page"},
+					{URI: "https://exampleyield.co/docs", Category: "docs", Title: "Yield Token Docs"},
 				},
-				"ai": map[string]any{
-					"interest_rate": "5.00%",
-					"interest_type": "variable",
-					"yield_source":  "U.S. Treasury Bills",
-					"maturity_date": "2045-06-30",
-					"cusip":         "912796RX0",
-				},
-			},
-			expectedLongForm: map[string]any{
-				"ticker":         "TBILL",
-				"name":           "T-Bill Yield Token",
-				"desc":           "A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments.",
-				"icon":           "https://example.org/tbill-icon.png",
-				"asset_class":    "rwa",
-				"asset_subclass": "treasury",
-				"issuer_name":    "Example Yield Co.",
-				"uris": []any{
-					map[string]any{
-						"uri":      "https://exampleyield.co/tbill",
-						"category": "website",
-						"title":    "Product Page",
-					},
-					map[string]any{
-						"uri":      "https://exampleyield.co/docs",
-						"category": "docs",
-						"title":    "Yield Token Docs",
-					},
-				},
-				"additional_info": map[string]any{
+				AdditionalInfo: map[string]any{
 					"interest_rate": "5.00%",
 					"interest_type": "variable",
 					"yield_source":  "U.S. Treasury Bills",
@@ -878,49 +697,19 @@ func TestEncodeDecodeMPTokenMetadata(t *testing.T) {
 		},
 		{
 			name: "valid MPTokenMetadata with mixed short and long field names",
-			mptMetadata: map[string]any{
-				"ticker":      "CRYPTO",
-				"n":           "Crypto Token",
-				"icon":        "https://example.org/crypto-icon.png",
-				"asset_class": "gaming",
-				"d":           "A gaming token for virtual worlds.",
-				"issuer_name": "Gaming Studios Inc.",
-				"as":          "equity",
-				"uris": []any{
-					map[string]any{
-						"uri":   "https://gamingstudios.com",
-						"c":     "website",
-						"title": "Main Website",
-					},
-					map[string]any{
-						"uri":      "https://gamingstudios.com",
-						"category": "website",
-						"t":        "Main Website",
-					},
+			metadata: ParsedMPTokenMetadata{
+				Ticker:         "CRYPTO",
+				Name:           "Crypto Token",
+				Desc:           stringPtr("A gaming token for virtual worlds."),
+				Icon:           "https://example.org/crypto-icon.png",
+				AssetClass:     "gaming",
+				AssetSubclass:  stringPtr("equity"),
+				IssuerName:     "Gaming Studios Inc.",
+				AdditionalInfo: "Gaming ecosystem token",
+				URIs: []ParsedMPTokenMetadataURI{
+					{URI: "https://gamingstudios.com", Category: "website", Title: "Main Website"},
+					{URI: "https://gamingstudios.com", Category: "website", Title: "Main Website"},
 				},
-				"ai": "Gaming ecosystem token",
-			},
-			expectedLongForm: map[string]any{
-				"ticker":         "CRYPTO",
-				"name":           "Crypto Token",
-				"icon":           "https://example.org/crypto-icon.png",
-				"asset_class":    "gaming",
-				"desc":           "A gaming token for virtual worlds.",
-				"issuer_name":    "Gaming Studios Inc.",
-				"asset_subclass": "equity",
-				"uris": []any{
-					map[string]any{
-						"uri":      "https://gamingstudios.com",
-						"category": "website",
-						"title":    "Main Website",
-					},
-					map[string]any{
-						"uri":      "https://gamingstudios.com",
-						"category": "website",
-						"title":    "Main Website",
-					},
-				},
-				"additional_info": "Gaming ecosystem token",
 			},
 			hex: "7B226163223A2267616D696E67222C226169223A2247616D696E672065636F73797374656D20746F6B656E222C226173223A22657175697479222C2264223A22412067616D696E6720746F6B656E20666F72207669727475616C20776F726C64732E222C2269223A2268747470733A2F2F6578616D706C652E6F72672F63727970746F2D69636F6E2E706E67222C22696E223A2247616D696E672053747564696F7320496E632E222C226E223A2243727970746F20546F6B656E222C2274223A2243525950544F222C227573223A5B7B2263223A2277656273697465222C2274223A224D61696E2057656273697465222C2275223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D2C7B2263223A2277656273697465222C2274223A224D61696E2057656273697465222C2275223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D5D7D",
 		},
@@ -928,39 +717,17 @@ func TestEncodeDecodeMPTokenMetadata(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Convert map with long field names to compact field names for struct unmarshaling
-			compactMap := convertToCompactKeys(tt.mptMetadata)
-
-			// Convert compact map to ParsedMPTokenMetadata struct
-			jsonBytes, err := json.Marshal(compactMap)
+			encoded, err := EncodeMPTokenMetadata(tt.metadata)
 			require.NoError(t, err)
+			assert.Equal(t, tt.hex, encoded)
 
-			var meta ParsedMPTokenMetadata
-			err = json.Unmarshal(jsonBytes, &meta)
+			decoded, err := DecodeMPTokenMetadata(tt.hex)
 			require.NoError(t, err)
+			assert.Equal(t, tt.metadata, decoded)
 
-			// Test encoding
-			encodedHex, err := EncodeMPTokenMetadata(meta)
+			encodedAgain, err := EncodeMPTokenMetadata(decoded)
 			require.NoError(t, err)
-			assert.Equal(t, tt.hex, encodedHex, "Encoded hex does not match")
-
-			// Test decoding
-			decoded, err := DecodeMPTokenMetadata(encodedHex)
-			require.NoError(t, err)
-
-			// Convert decoded struct back to map for comparison
-			decodedBytes, err := json.Marshal(decoded)
-			require.NoError(t, err)
-
-			var decodedMap map[string]any
-			err = json.Unmarshal(decodedBytes, &decodedMap)
-			require.NoError(t, err)
-
-			// Convert decoded map (which has compact keys) back to long form for comparison
-			decodedLongForm := convertToLongKeys(decodedMap)
-
-			// Compare
-			assert.Equal(t, tt.expectedLongForm, decodedLongForm, "Decoded metadata does not match expected long form")
+			assert.Equal(t, tt.hex, encodedAgain)
 		})
 	}
 }
@@ -977,8 +744,7 @@ func TestDecodeMPTokenMetadata_EdgeCases(t *testing.T) {
 	}{
 		{
 			name: "with extra fields",
-			// JSON contains: {"extra":{"extra":"extra"}, ...valid fields...} - extra field is ignored
-			hex: "7B226163223A2267616D696E67222C226169223A2247616D696E672065636F73797374656D20746F6B656E222C226173223A22657175697479222C2264223A22412067616D696E6720746F6B656E20666F72207669727475616C20776F726C64732E222C226578747261223A7B226578747261223A226578747261227D2C2269223A2268747470733A2F2F6578616D706C652E6F72672F63727970746F2D69636F6E2E706E67222C22696E223A2247616D696E672053747564696F7320496E632E222C226E223A2243727970746F20546F6B656E222C2274223A2243525950544F222C227573223A5B7B2263223A2277656273697465222C2274223A224D61696E2057656273697465222C2275223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D5D7D",
+			hex:  "7B226163223A2267616D696E67222C226169223A2247616D696E672065636F73797374656D20746F6B656E222C226173223A22657175697479222C2264223A22412067616D696E6720746F6B656E20666F72207669727475616C20776F726C64732E222C226578747261223A7B226578747261223A226578747261227D2C2269223A2268747470733A2F2F6578616D706C652E6F72672F63727970746F2D69636F6E2E706E67222C22696E223A2247616D696E672053747564696F7320496E632E222C226E223A2243727970746F20546F6B656E222C2274223A2243525950544F222C227573223A5B7B2263223A2277656273697465222C2274223A224D61696E2057656273697465222C2275223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D5D7D",
 			expected: ParsedMPTokenMetadata{
 				Ticker:         "CRYPTO",
 				Name:           "Crypto Token",
@@ -1000,15 +766,13 @@ func TestDecodeMPTokenMetadata_EdgeCases(t *testing.T) {
 		{
 			name: "with unknown null fields",
 			hex:  "7B226578747261223A6E756C6C2C2274223A2243525950544F227D",
-			// JSON contains: {"extra":null,"t":"CRYPTO"} - null extra field is ignored
 			expected: ParsedMPTokenMetadata{
 				Ticker: "CRYPTO",
 			},
 		},
 		{
 			name: "multiple uris and us",
-			// JSON contains: {"t":"CRYPTO","uris":[...],"us":[...]} - both forms present, compactKeys resolves collision
-			hex: "7B2274223A2243525950544F222C2275726973223A5B7B2263223A2277656273697465222C2274223A224D61696E2057656273697465222C2275223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D5D2C227573223A5B7B2263223A2277656273697465222C2274223A224D61696E2057656273697465222C2275223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D5D7D",
+			hex:  "7B2274223A2243525950544F222C2275726973223A5B7B2263223A2277656273697465222C2274223A224D61696E2057656273697465222C2275223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D5D2C227573223A5B7B2263223A2277656273697465222C2274223A224D61696E2057656273697465222C2275223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D5D7D",
 			expected: ParsedMPTokenMetadata{
 				Ticker: "CRYPTO",
 				URIs: []ParsedMPTokenMetadataURI{
@@ -1022,8 +786,7 @@ func TestDecodeMPTokenMetadata_EdgeCases(t *testing.T) {
 		},
 		{
 			name: "multiple keys in uri",
-			// JSON contains: {"us":[{"uri":"https://...","u":"website","category":"Main","c":"Main"}]} - nested collisions
-			hex: "7B227573223A5B7B2263223A224D61696E2057656273697465222C2263617465676F7279223A224D61696E2057656273697465222C2275223A2277656273697465222C22757269223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D5D7D",
+			hex:  "7B227573223A5B7B2263223A224D61696E2057656273697465222C2263617465676F7279223A224D61696E2057656273697465222C2275223A2277656273697465222C22757269223A2268747470733A2F2F67616D696E6773747564696F732E636F6D227D5D7D",
 			expected: ParsedMPTokenMetadata{
 				URIs: []ParsedMPTokenMetadataURI{
 					{
@@ -1041,34 +804,7 @@ func TestDecodeMPTokenMetadata_EdgeCases(t *testing.T) {
 			// Test decoding from hex (these cases cannot be encoded through struct)
 			decoded, err := DecodeMPTokenMetadata(tt.hex)
 			require.NoError(t, err)
-
-			// Compare struct fields directly
-			assert.Equal(t, tt.expected.Ticker, decoded.Ticker)
-			assert.Equal(t, tt.expected.Name, decoded.Name)
-			assert.Equal(t, tt.expected.Icon, decoded.Icon)
-			assert.Equal(t, tt.expected.AssetClass, decoded.AssetClass)
-			if tt.expected.AssetSubclass != nil {
-				require.NotNil(t, decoded.AssetSubclass)
-				assert.Equal(t, *tt.expected.AssetSubclass, *decoded.AssetSubclass)
-			} else {
-				assert.Nil(t, decoded.AssetSubclass)
-			}
-			assert.Equal(t, tt.expected.IssuerName, decoded.IssuerName)
-			if tt.expected.Desc != nil {
-				require.NotNil(t, decoded.Desc)
-				assert.Equal(t, *tt.expected.Desc, *decoded.Desc)
-			} else {
-				assert.Nil(t, decoded.Desc)
-			}
-			assert.Equal(t, tt.expected.AdditionalInfo, decoded.AdditionalInfo)
-			assert.Equal(t, len(tt.expected.URIs), len(decoded.URIs))
-			for i, expectedURI := range tt.expected.URIs {
-				if i < len(decoded.URIs) {
-					assert.Equal(t, expectedURI.URI, decoded.URIs[i].URI)
-					assert.Equal(t, expectedURI.Category, decoded.URIs[i].Category)
-					assert.Equal(t, expectedURI.Title, decoded.URIs[i].Title)
-				}
-			}
+			assert.Equal(t, tt.expected, decoded, "Decoded metadata does not match expected")
 		})
 	}
 }
