@@ -155,6 +155,7 @@ func (e ErrInvalidMPTokenMetadataAssetClass) Error() string {
 	return fmt.Sprintf("mptoken metadata asset class should be one of: %s", strings.Join(e.AssetClassSet[:], ", "))
 }
 
+// ErrInvalidMPTokenMetadataAssetSubClass is returned when the asset subclass is invalid.
 type ErrInvalidMPTokenMetadataAssetSubClass struct {
 	AssetSubclassSet []string
 }
