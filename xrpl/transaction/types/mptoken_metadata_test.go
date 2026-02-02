@@ -10,34 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Helper function to convert JSON data to hex string
-func toHexString(t *testing.T, data any) string {
-	var jsonBytes []byte
-	var err error
-
-	if str, ok := data.(string); ok {
-		jsonBytes = []byte(str)
-	} else {
-		jsonBytes, err = json.Marshal(data)
-		require.NoError(t, err)
-	}
-
-	return strings.ToUpper(hex.EncodeToString(jsonBytes))
-}
-
-// Helper function to extract errors from validation errors
-func extractValidationErrors(err error) []error {
-	if err == nil {
-		return []error{}
-	}
-
-	if validationErrs, ok := err.(MPTokenMetadataValidationErrors); ok {
-		return []error(validationErrs)
-	}
-
-	return []error{err}
-}
-
 func TestValidateMPTokenMetadata(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -857,11 +829,6 @@ func TestDecodeMPTokenMetadata_NotCompactKeys(t *testing.T) {
 	}
 }
 
-// Helper function to create string pointer
-func stringPtr(s string) *string {
-	return &s
-}
-
 func TestDecodeMPTokenMetadata_Errors(t *testing.T) {
 	t.Run("invalid hex", func(t *testing.T) {
 		_, err := DecodeMPTokenMetadata("invalid")
@@ -874,4 +841,37 @@ func TestDecodeMPTokenMetadata_Errors(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, ErrInvalidMPTokenMetadataJSON, err)
 	})
+}
+
+// Helper function to convert JSON data to hex string
+func toHexString(t *testing.T, data any) string {
+	var jsonBytes []byte
+	var err error
+
+	if str, ok := data.(string); ok {
+		jsonBytes = []byte(str)
+	} else {
+		jsonBytes, err = json.Marshal(data)
+		require.NoError(t, err)
+	}
+
+	return strings.ToUpper(hex.EncodeToString(jsonBytes))
+}
+
+// Helper function to extract errors from validation errors
+func extractValidationErrors(err error) []error {
+	if err == nil {
+		return []error{}
+	}
+
+	if validationErrs, ok := err.(MPTokenMetadataValidationErrors); ok {
+		return []error(validationErrs)
+	}
+
+	return []error{err}
+}
+
+// Helper function to create string pointer
+func stringPtr(s string) *string {
+	return &s
 }

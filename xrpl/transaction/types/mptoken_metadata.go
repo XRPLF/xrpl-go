@@ -245,16 +245,6 @@ var mptMetadataFields = []fieldDef{
 	},
 }
 
-// buildValidKeySet creates a set of all valid keys (both long and compact).
-func buildValidKeySet() map[string]bool {
-	validKeys := make(map[string]bool, len(mptMetadataFields)*2)
-	for _, f := range mptMetadataFields {
-		validKeys[f.long] = true
-		validKeys[f.compact] = true
-	}
-	return validKeys
-}
-
 // ParsedMPTokenMetadata represents the MPToken metadata defined as per the XLS-89 standard.
 // Fields are ordered alphabetically by JSON key for consistent encoding.
 type ParsedMPTokenMetadata struct {
@@ -345,13 +335,6 @@ func (u *ParsedMPTokenMetadataURI) UnmarshalJSON(data []byte) error {
 // MPTokenMetadata returns a pointer to a string containing metadata for an MPToken.
 func MPTokenMetadata(value string) *string {
 	return &value
-}
-
-func getValue(raw map[string]json.RawMessage, compact, long string) json.RawMessage {
-	if v, ok := raw[compact]; ok {
-		return v
-	}
-	return raw[long]
 }
 
 // UnmarshalJSON implements custom JSON unmarshaling for ParsedMPTokenMetadata.
@@ -519,4 +502,22 @@ func getStringField(meta map[string]any, longKey, compactKey string) (string, bo
 	}
 
 	return val, true, nil
+}
+
+// buildValidKeySet creates a set of all valid keys (both long and compact).
+func buildValidKeySet() map[string]bool {
+	validKeys := make(map[string]bool, len(mptMetadataFields)*2)
+	for _, f := range mptMetadataFields {
+		validKeys[f.long] = true
+		validKeys[f.compact] = true
+	}
+	return validKeys
+}
+
+// getValue retrieves a value from a map using either the compact-form or long-form key (if compact is not present).
+func getValue(raw map[string]json.RawMessage, compact, long string) json.RawMessage {
+	if v, ok := raw[compact]; ok {
+		return v
+	}
+	return raw[long]
 }

@@ -500,3 +500,35 @@ func TestIsStringNumericUint(t *testing.T) {
 		})
 	}
 }
+
+func TestIsMap(t *testing.T) {
+	tests := []struct {
+		name string
+		m    interface{}
+		want bool
+	}{
+		{
+			name: "pass - Valid map",
+			m:    map[string]interface{}{},
+			want: true,
+		}
+		{
+			name: "pass - Invalid map",
+			m:    "Invalid map",
+			want: false,
+		}
+		{
+			name: "pass - Invalid map (2)",
+			m:    int(2),
+			want: false,
+		}
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsMap(tt.m); got != tt.want {
+				t.Errorf("IsMap(%v) = %v, want %v", tt.m, got, tt.want)
+			}
+		})
+	}
+}
