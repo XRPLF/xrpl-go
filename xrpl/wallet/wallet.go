@@ -227,6 +227,12 @@ func (w *Wallet) computeSignature(encodedTx string) (string, error) {
 	return txHash, nil
 }
 
+// ComputeSignature is the public wrapper for computeSignature, exposed for
+// external dual-signing use cases (e.g., XLS-66 LoanSet transactions).
+func (w *Wallet) ComputeSignature(encodedTx string) (string, error) {
+	return w.computeSignature(encodedTx)
+}
+
 // Ensures that the address is a classic address.
 // If the address is an x-address with a tag of 0 (no tag), it will be converted to a classic address.
 // If the address is not a classic address, it will be returned as is.
