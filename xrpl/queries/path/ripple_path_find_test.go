@@ -43,8 +43,7 @@ func TestRipplePathFindRequest(t *testing.T) {
 		{
 			"currency": "USD"
 		}
-	],
-	"domain": null
+	]
 }`
 	if err := testutil.Serialize(t, s, j); err != nil {
 		t.Error(err)
