@@ -13,13 +13,13 @@ const (
 )
 
 var (
-	_ Algorithm = &ED25519CryptoAlgorithm{}
+	_                       Algorithm = &ED25519CryptoAlgorithm{}
+	ed25519FamilySeedPrefix           = []byte{0x01, 0xe1, 0x4b}
 )
 
 // ED25519CryptoAlgorithm is the implementation of the ED25519 cryptographic algorithm.
 type ED25519CryptoAlgorithm struct {
-	prefix           byte
-	familySeedPrefix byte
+	prefix byte
 }
 
 // ED25519 returns the ED25519 cryptographic algorithm.
@@ -35,8 +35,8 @@ func (c ED25519CryptoAlgorithm) Prefix() byte {
 }
 
 // FamilySeedPrefix returns the family seed prefix for the ED25519 cryptographic algorithm.
-func (c ED25519CryptoAlgorithm) FamilySeedPrefix() byte {
-	return c.familySeedPrefix
+func (c ED25519CryptoAlgorithm) FamilySeedPrefix() []byte {
+	return ed25519FamilySeedPrefix
 }
 
 // DeriveKeypair derives a keypair from a seed.
