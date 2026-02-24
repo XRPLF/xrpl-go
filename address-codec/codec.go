@@ -118,12 +118,10 @@ func EncodeSeed(entropy []byte, encodingType interfaces.CryptoImplementation) (s
 		return "", &EncodeLengthError{Instance: "Entropy", Input: len(entropy), Expected: FamilySeedLength}
 	}
 
-	if encodingType == crypto.ED25519() {
-		prefix := []byte{0x01, 0xe1, 0x4b}
-		return Encode(entropy, prefix, FamilySeedLength)
+	if ed25519 := crypto.ED25519(); encodingType == ed25519 {
+		return Encode(entropy, ed25519.FamilySeedPrefix(), FamilySeedLength)
 	} else if secp256k1 := crypto.SECP256K1(); encodingType == secp256k1 {
-		prefix := []byte{secp256k1.FamilySeedPrefix()}
-		return Encode(entropy, prefix, FamilySeedLength)
+		return Encode(entropy, secp256k1.FamilySeedPrefix(), FamilySeedLength)
 	}
 	return "", errors.New("encoding type must be `ed25519` or `secp256k1`")
 
