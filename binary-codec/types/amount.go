@@ -16,6 +16,7 @@ import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 	bigdecimal "github.com/Peersyst/xrpl-go/pkg/big-decimal"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 const (
@@ -278,7 +279,7 @@ func deserializeCurrencyCode(data []byte) (string, error) {
 	ok, _ := regexp.MatchString(IOUCodeRegex, iso)
 
 	if !ok {
-		return strings.ToUpper(hex.EncodeToString(data)), nil
+		return hexutil.EncodeToUpperHex(data), nil
 	}
 	return iso, nil
 }
