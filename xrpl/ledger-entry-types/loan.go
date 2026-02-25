@@ -6,12 +6,12 @@ import (
 
 // LoanFlags represents flags for Loan ledger entries.
 const (
-	// lsfLoanDefault indicates that the Loan is defaulted.
-	lsfLoanDefault uint32 = 0x00010000
-	// lsfLoanImpaired indicates that the Loan is impaired.
-	lsfLoanImpaired uint32 = 0x00020000
-	// lsfLoanOverpayment indicates that the Loan supports overpayments.
-	lsfLoanOverpayment uint32 = 0x00040000
+	// LsfLoanDefault indicates that the Loan is defaulted.
+	LsfLoanDefault uint32 = 0x00010000
+	// LsfLoanImpaired indicates that the Loan is impaired.
+	LsfLoanImpaired uint32 = 0x00020000
+	// LsfLoanOverpayment indicates that the Loan supports overpayments.
+	LsfLoanOverpayment uint32 = 0x00040000
 )
 
 // Loan represents a Loan ledger entry that captures various Loan terms on-chain.
@@ -108,17 +108,17 @@ func (*Loan) EntryType() EntryType {
 	return LoanEntry
 }
 
-// SetLsfLoanDefault sets the lsfLoanDefault flag, indicating that the Loan is defaulted.
+// SetLsfLoanDefault sets the LsfLoanDefault flag, indicating that the Loan is defaulted.
 func (l *Loan) SetLsfLoanDefault() {
-	l.Flags |= lsfLoanDefault
+	l.Flags |= LsfLoanDefault
 }
 
-// SetLsfLoanImpaired sets the lsfLoanImpaired flag, indicating that the Loan is impaired.
+// SetLsfLoanImpaired sets the LsfLoanImpaired flag, indicating that the Loan is impaired.
 func (l *Loan) SetLsfLoanImpaired() {
-	l.Flags |= lsfLoanImpaired
+	l.Flags |= LsfLoanImpaired
 }
 
-// SetLsfLoanOverpayment sets the lsfLoanOverpayment flag, indicating that the Loan supports overpayments.
+// SetLsfLoanOverpayment sets the LsfLoanOverpayment flag, indicating that the Loan supports overpayments.
 func (l *Loan) SetLsfLoanOverpayment() {
-	l.Flags |= lsfLoanOverpayment
+	l.Flags |= LsfLoanOverpayment
 }

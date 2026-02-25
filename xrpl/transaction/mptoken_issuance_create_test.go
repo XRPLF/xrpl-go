@@ -81,7 +81,7 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 				BaseTx: BaseTx{
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: MPTokenIssuanceCreateTx,
-					Flags:           tfMPTCanTransfer,
+					Flags:           TfMPTCanTransfer,
 				},
 				AssetScale:      types.AssetScale(2),
 				TransferFee:     types.TransferFee(314),
@@ -156,32 +156,32 @@ func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
 		{
 			name:     "MPTCanLock",
 			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanLockFlag,
-			flagMask: tfMPTCanLock,
+			flagMask: TfMPTCanLock,
 		},
 		{
 			name:     "MPTRequireAuth",
 			setFlag:  (*MPTokenIssuanceCreate).SetMPTRequireAuthFlag,
-			flagMask: tfMPTRequireAuth,
+			flagMask: TfMPTRequireAuth,
 		},
 		{
 			name:     "MPTCanEscrow",
 			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanEscrowFlag,
-			flagMask: tfMPTCanEscrow,
+			flagMask: TfMPTCanEscrow,
 		},
 		{
 			name:     "MPTCanTrade",
 			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanTradeFlag,
-			flagMask: tfMPTCanTrade,
+			flagMask: TfMPTCanTrade,
 		},
 		{
 			name:     "MPTCanTransfer",
 			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanTransferFlag,
-			flagMask: tfMPTCanTransfer,
+			flagMask: TfMPTCanTransfer,
 		},
 		{
 			name:     "MPTCanClawback",
 			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanClawbackFlag,
-			flagMask: tfMPTCanClawback,
+			flagMask: TfMPTCanClawback,
 		},
 	}
 
@@ -213,6 +213,6 @@ func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
 		tt.setFlag(tx)
 	}
 
-	expectedFlags := tfMPTCanLock | tfMPTRequireAuth | tfMPTCanEscrow | tfMPTCanTrade | tfMPTCanTransfer | tfMPTCanClawback
+	expectedFlags := TfMPTCanLock | TfMPTRequireAuth | TfMPTCanEscrow | TfMPTCanTrade | TfMPTCanTransfer | TfMPTCanClawback
 	require.Equal(t, uint32(expectedFlags), tx.Flags)
 }

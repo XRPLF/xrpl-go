@@ -24,14 +24,14 @@ func TestPaymentChannelClaimFlags(t *testing.T) {
 			setter: func(p *PaymentChannelClaim) {
 				p.SetRenewFlag()
 			},
-			expected: tfRenew,
+			expected: TfRenew,
 		},
 		{
 			name: "pass - SetCloseFlag",
 			setter: func(p *PaymentChannelClaim) {
 				p.SetCloseFlag()
 			},
-			expected: tfClose,
+			expected: TfClose,
 		},
 		{
 			name: "pass - SetRenewFlag and SetCloseFlag",
@@ -39,7 +39,7 @@ func TestPaymentChannelClaimFlags(t *testing.T) {
 				p.SetRenewFlag()
 				p.SetCloseFlag()
 			},
-			expected: tfRenew | tfClose,
+			expected: TfRenew | TfClose,
 		},
 	}
 

@@ -92,7 +92,7 @@ const (
 	// An invariant check failed when executing this transaction. (EnforceInvariants amendment)
 	TecINVARIANT_FAILED TxResult = "tecINVARIANT_FAILED"
 
-	// The OfferCreate transaction specified tfFillOrKill and could not be filled.
+	// The OfferCreate transaction specified TfFillOrKill and could not be filled.
 	TecKILLED TxResult = "tecKILLED"
 
 	// A sequence number field is already at its maximum. (Added by NonFungibleTokensV1_1 amendment)
@@ -110,7 +110,7 @@ const (
 	// The transaction tried to remove the only available method of authorizing transactions. (Prior to rippled 0.30.0, this was called tecMASTER_DISABLED.)
 	TecNO_ALTERNATIVE_KEY TxResult = "tecNO_ALTERNATIVE_KEY"
 
-	// The transaction failed because it needs to add a balance on a trust line to an account with the lsfRequireAuth flag enabled, and that trust line has not been authorized.
+	// The transaction failed because it needs to add a balance on a trust line to an account with the LsfRequireAuth flag enabled, and that trust line has not been authorized.
 	TecNO_AUTH TxResult = "tecNO_AUTH"
 
 	// The account on the receiving end of the transaction does not exist.
@@ -293,7 +293,7 @@ const (
 	// NetworkID field specified incorrectly based on current network rules.
 	TelNETWORK_ID_MAKES_TX_NON_CANONICAL TxResult = "telNETWORK_ID_MAKES_TX_NON_CANONICAL"
 
-	// tfPartialPayment improperly used in an XRP payment funding a new account.
+	// TfPartialPayment improperly used in an XRP payment funding a new account.
 	TelNO_DST_PARTIAL TxResult = "telNO_DST_PARTIAL"
 
 	// Transaction missing required NetworkID field.
@@ -345,16 +345,16 @@ const (
 	// Payment Paths flagged as a loop.
 	TemBAD_PATH_LOOP TxResult = "temBAD_PATH_LOOP"
 
-	// tfLimitQuality improperly used in direct XRP-to-XRP payment.
+	// TfLimitQuality improperly used in direct XRP-to-XRP payment.
 	TemBAD_SEND_XRP_LIMIT TxResult = "temBAD_SEND_XRP_LIMIT"
 
 	// SendMax improperly included in direct XRP-to-XRP payment.
 	TemBAD_SEND_XRP_MAX TxResult = "temBAD_SEND_XRP_MAX"
 
-	// tfNoDirectRipple improperly used in direct XRP-to-XRP payment.
+	// TfRippleNotDirect improperly used in direct XRP-to-XRP payment.
 	TemBAD_SEND_XRP_NO_DIRECT TxResult = "temBAD_SEND_XRP_NO_DIRECT"
 
-	// tfPartialPayment improperly used in direct XRP-to-XRP payment.
+	// TfPartialPayment improperly used in direct XRP-to-XRP payment.
 	TemBAD_SEND_XRP_PARTIAL TxResult = "temBAD_SEND_XRP_PARTIAL"
 
 	// Paths improperly included in direct XRP-to-XRP payment.

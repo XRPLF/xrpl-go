@@ -1,11 +1,13 @@
 package transaction
 
 import (
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
 const (
-	tfClearAccountCreateAmount uint32 = 0x00010000
+	// TfClearAccountCreateAmount if enabled, indicates that the MinAccountCreateAmount field should be cleared from the bridge.
+	TfClearAccountCreateAmount uint32 = 0x00010000
 )
 
 // XChainModifyBridge modifies an existing Bridge ledger object, updating its flags, minimum account create amount, and signature reward.
@@ -54,7 +56,7 @@ func (x *XChainModifyBridge) TxType() TxType {
 
 // SetClearAccountCreateAmount enables the flag to clear the minimum account create amount.
 func (x *XChainModifyBridge) SetClearAccountCreateAmount() {
-	x.Flags |= tfClearAccountCreateAmount
+	x.Flags |= TfClearAccountCreateAmount
 }
 
 // Flatten returns a flat map representation of the XChainModifyBridge transaction.
@@ -89,7 +91,7 @@ func (x *XChainModifyBridge) Validate() (bool, error) {
 		return false, err
 	}
 
-	if !types.IsFlagEnabled(x.Flags, tfClearAccountCreateAmount) {
+	if !flag.Contains(x.Flags, TfClearAccountCreateAmount) {
 		return false, ErrInvalidFlags
 	}
 

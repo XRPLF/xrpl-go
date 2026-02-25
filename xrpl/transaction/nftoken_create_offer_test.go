@@ -24,7 +24,7 @@ func TestNFTokenCreateOffer_Flags(t *testing.T) {
 			setter: func(n *NFTokenCreateOffer) {
 				n.SetSellNFTokenFlag()
 			},
-			expected: tfSellNFToken,
+			expected: TfSellNFToken,
 		},
 	}
 

@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	// Clear the channel's Expiration time. (Expiration is different from the
+	// TfRenew clears the channel's Expiration time. (Expiration is different from the
 	// channel's immutable CancelAfter time.) Only the source address of the
 	// payment channel can use this flag.
-	tfRenew uint32 = 65536 // 0x00010000
-	// Request to close the channel. Only the channel source and destination
+	TfRenew uint32 = 65536 // 0x00010000
+	// TfClose requests to close the channel. Only the channel source and destination
 	// addresses can use this flag. This flag closes the channel immediately if it
 	// has no more XRP allocated to it after processing the current claim, or if
 	// the destination address uses it. If the source address uses this flag when
@@ -21,7 +21,7 @@ const (
 	// time.) If the destination address uses this flag when the channel still
 	// holds XRP, any XRP that remains after processing the claim is returned to
 	// the source address.
-	tfClose uint32 = 131072 // 0x00020000
+	TfClose uint32 = 131072 // 0x00020000
 )
 
 // PaymentChannelClaim claims XRP from a payment channel, adjusts the payment channel's expiration, or both.
@@ -117,7 +117,7 @@ func (p *PaymentChannelClaim) Flatten() FlatTransaction {
 // channel's immutable CancelAfter time.) Only the source address of the
 // payment channel can use this flag.
 func (p *PaymentChannelClaim) SetRenewFlag() {
-	p.Flags |= tfRenew
+	p.Flags |= TfRenew
 }
 
 // SetCloseFlag sets the Close flag.
@@ -134,7 +134,7 @@ func (p *PaymentChannelClaim) SetRenewFlag() {
 // holds XRP, any XRP that remains after processing the claim is returned to
 // the source address.
 func (p *PaymentChannelClaim) SetCloseFlag() {
-	p.Flags |= tfClose
+	p.Flags |= TfClose
 }
 
 // Validate validates the PaymentChannelFund fields.

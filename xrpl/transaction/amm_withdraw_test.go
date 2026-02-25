@@ -25,49 +25,49 @@ func TestAMMWithdraw_Flags(t *testing.T) {
 			setter: func(a *AMMWithdraw) {
 				a.SetLPTokentFlag()
 			},
-			expected: tfLPToken,
+			expected: TfLPToken,
 		},
 		{
 			name: "pass - SetWithdrawAllFlag",
 			setter: func(a *AMMWithdraw) {
 				a.SetWithdrawAllFlag()
 			},
-			expected: tfWithdrawAll,
+			expected: TfWithdrawAll,
 		},
 		{
 			name: "pass - SetOneAssetWithdrawAllFlag",
 			setter: func(a *AMMWithdraw) {
 				a.SetOneAssetWithdrawAllFlag()
 			},
-			expected: tfOneAssetWithdrawAll,
+			expected: TfOneAssetWithdrawAll,
 		},
 		{
 			name: "pass - SetSingleAssetFlag",
 			setter: func(a *AMMWithdraw) {
 				a.SetSingleAssetFlag()
 			},
-			expected: tfSingleAsset,
+			expected: TfSingleAsset,
 		},
 		{
 			name: "pass - SetTwoAssetFlag",
 			setter: func(a *AMMWithdraw) {
 				a.SetTwoAssetFlag()
 			},
-			expected: tfTwoAsset,
+			expected: TfTwoAsset,
 		},
 		{
 			name: "pass - SetOneAssetLPTokenFlag",
 			setter: func(a *AMMWithdraw) {
 				a.SetOneAssetLPTokenFlag()
 			},
-			expected: tfOneAssetLPToken,
+			expected: TfOneAssetLPToken,
 		},
 		{
 			name: "pass - SetLimitLPTokenFlag",
 			setter: func(a *AMMWithdraw) {
 				a.SetLimitLPTokenFlag()
 			},
-			expected: tfLimitLPToken,
+			expected: TfLimitLPToken,
 		},
 	}
 

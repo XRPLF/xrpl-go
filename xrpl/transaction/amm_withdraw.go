@@ -54,45 +54,45 @@ type AMMWithdraw struct {
 // ****************************
 
 const (
-	// Perform a double-asset withdrawal returning all your LP Tokens.
-	tfWithdrawAll uint32 = 131072
-	// Perform a single-asset withdrawal returning all of your LP Tokens.
-	tfOneAssetWithdrawAll uint32 = 262144
+	// TfWithdrawAll performs a double-asset withdrawal returning all your LP Tokens.
+	TfWithdrawAll uint32 = 131072
+	// TfOneAssetWithdrawAll performs a single-asset withdrawal returning all of your LP Tokens.
+	TfOneAssetWithdrawAll uint32 = 262144
 )
 
 // SetLPTokentFlag performs a double-asset withdrawal and receives the specified amount of LP Tokens.
 func (a *AMMWithdraw) SetLPTokentFlag() {
-	a.Flags |= tfLPToken
+	a.Flags |= TfLPToken
 }
 
 // SetWithdrawAllFlag performs a double-asset withdrawal returning all your LP Tokens.
 func (a *AMMWithdraw) SetWithdrawAllFlag() {
-	a.Flags |= tfWithdrawAll
+	a.Flags |= TfWithdrawAll
 }
 
 // SetOneAssetWithdrawAllFlag performs a single-asset withdrawal returning all of your LP Tokens.
 func (a *AMMWithdraw) SetOneAssetWithdrawAllFlag() {
-	a.Flags |= tfOneAssetWithdrawAll
+	a.Flags |= TfOneAssetWithdrawAll
 }
 
 // SetSingleAssetFlag performs a single-asset withdrawal with a specified amount of the asset to withdraw.
 func (a *AMMWithdraw) SetSingleAssetFlag() {
-	a.Flags |= tfSingleAsset
+	a.Flags |= TfSingleAsset
 }
 
 // SetTwoAssetFlag performs a double-asset withdrawal with specified amounts of both assets.
 func (a *AMMWithdraw) SetTwoAssetFlag() {
-	a.Flags |= tfTwoAsset
+	a.Flags |= TfTwoAsset
 }
 
 // SetOneAssetLPTokenFlag performs a single-asset withdrawal and receives the specified amount of LP Tokens.
 func (a *AMMWithdraw) SetOneAssetLPTokenFlag() {
-	a.Flags |= tfOneAssetLPToken
+	a.Flags |= TfOneAssetLPToken
 }
 
 // SetLimitLPTokenFlag performs a single-asset withdrawal with a specified effective price.
 func (a *AMMWithdraw) SetLimitLPTokenFlag() {
-	a.Flags |= tfLimitLPToken
+	a.Flags |= TfLimitLPToken
 }
 
 // TxType returns the type of the transaction (AMMWithdraw).

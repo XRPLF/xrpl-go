@@ -6,36 +6,36 @@ import (
 )
 
 const (
-	// Enable Clawback for this account. (Requires the Clawback amendment.)
-	lsfAllowTrustLineClawback uint32 = 0x80000000
-	// Allow IOUs to be used as escrow amounts for an issuer
-	lsfAllowTrustLineLocking uint32 = 0x40000000
-	// Enable rippling on this addresses's trust lines by default. Required for issuing addresses; discouraged for others.
-	lsfDefaultRipple uint32 = 0x00800000
-	// This account has DepositAuth enabled, meaning it can only receive funds from transactions it sends, and from preauthorized accounts. (Added by the DepositAuth amendment)
-	lsfDepositAuth uint32 = 0x01000000
-	// Disallows use of the master key to sign transactions for this account.
-	lsfDisableMaster uint32 = 0x00100000
-	// This account blocks incoming Checks. (Added by the DisallowIncoming amendment.)
-	lsfDisallowIncomingCheck uint32 = 0x08000000
-	// This account blocks incoming NFTokenOffers. (Added by the DisallowIncoming amendment.)
-	lsfDisallowIncomingNFTokenOffer uint32 = 0x04000000
-	// This account blocks incoming Payment Channels. (Added by the DisallowIncoming amendment.)
-	lsfDisallowIncomingPayChan uint32 = 0x10000000
-	// This account blocks incoming trust lines. (Added by the DisallowIncoming amendment.)
-	lsfDisallowIncomingTrustline uint32 = 0x20000000
-	// Client applications should not send XRP to this account. (Advisory; not enforced by the protocol.)
-	lsfDisallowXRP uint32 = 0x00080000
-	// All assets issued by this account are frozen.
-	lsfGlobalFreeze uint32 = 0x00400000
-	// This account cannot freeze trust lines connected to it. Once enabled, cannot be disabled.
-	lsfNoFreeze uint32 = 0x00200000
-	// This account has used its free SetRegularKey transaction.
-	lsfPasswordSpent uint32 = 0x00010000
-	// This account must individually approve other users for those users to hold this account's tokens.
-	lsfRequireAuth uint32 = 0x00040000
-	// Requires incoming payments to specify a Destination Tag.
-	lsfRequireDestTag uint32 = 0x00020000
+	// LsfAllowTrustLineClawback enables Clawback for this account. (Requires the Clawback amendment.)
+	LsfAllowTrustLineClawback uint32 = 0x80000000
+	// LsfAllowTrustLineLocking allows IOUs to be used as escrow amounts for an issuer
+	LsfAllowTrustLineLocking uint32 = 0x40000000
+	// LsfDefaultRipple enables rippling on this addresses's trust lines by default. Required for issuing addresses; discouraged for others.
+	LsfDefaultRipple uint32 = 0x00800000
+	// LsfDepositAuth this account has DepositAuth enabled, meaning it can only receive funds from transactions it sends, and from preauthorized accounts. (Added by the DepositAuth amendment)
+	LsfDepositAuth uint32 = 0x01000000
+	// LsfDisableMaster disallows use of the master key to sign transactions for this account.
+	LsfDisableMaster uint32 = 0x00100000
+	// LsfDisallowIncomingCheck this account blocks incoming Checks. (Added by the DisallowIncoming amendment.)
+	LsfDisallowIncomingCheck uint32 = 0x08000000
+	// LsfDisallowIncomingNFTokenOffer this account blocks incoming NFTokenOffers. (Added by the DisallowIncoming amendment.)
+	LsfDisallowIncomingNFTokenOffer uint32 = 0x04000000
+	// LsfDisallowIncomingPayChan this account blocks incoming Payment Channels. (Added by the DisallowIncoming amendment.)
+	LsfDisallowIncomingPayChan uint32 = 0x10000000
+	// LsfDisallowIncomingTrustline this account blocks incoming trust lines. (Added by the DisallowIncoming amendment.)
+	LsfDisallowIncomingTrustline uint32 = 0x20000000
+	// LsfDisallowXRP client applications should not send XRP to this account. (Advisory; not enforced by the protocol.)
+	LsfDisallowXRP uint32 = 0x00080000
+	// LsfGlobalFreeze all assets issued by this account are frozen.
+	LsfGlobalFreeze uint32 = 0x00400000
+	// LsfNoFreeze this account cannot freeze trust lines connected to it. Once enabled, cannot be disabled.
+	LsfNoFreeze uint32 = 0x00200000
+	// LsfPasswordSpent this account has used its free SetRegularKey transaction.
+	LsfPasswordSpent uint32 = 0x00010000
+	// LsfRequireAuth this account must individually approve other users for those users to hold this account's tokens.
+	LsfRequireAuth uint32 = 0x00040000
+	// LsfRequireDestTag requires incoming payments to specify a Destination Tag.
+	LsfRequireDestTag uint32 = 0x00020000
 )
 
 // AccountRoot ledger entry type describes a single account, its settings, and XRP balance.
@@ -73,7 +73,7 @@ type AccountRoot struct {
 	Account types.Address
 	// The identifying hash of the transaction most recently sent by this account.
 	// This field must be enabled to use the AccountTxnID transaction field.
-	// To enable it, send an AccountSet transaction with the asfAccountTxnID flag enabled.
+	// To enable it, send an AccountSet transaction with the AsfAccountTxnID flag enabled.
 	AccountTxnID types.Hash256 `json:",omitempty"`
 	// (Added by the AMM amendment) The ledger entry ID of the corresponding AMM ledger entry.
 	// Set during account creation; cannot be modified. If present, indicates that this is a
@@ -135,75 +135,75 @@ func (*AccountRoot) EntryType() EntryType {
 
 // SetLsfAllowTrustLineClawback sets the AllowTrustLineClawback flag.
 func (a *AccountRoot) SetLsfAllowTrustLineClawback() {
-	a.Flags |= lsfAllowTrustLineClawback
+	a.Flags |= LsfAllowTrustLineClawback
 }
 
 // SetLsfAllowTrustLineLocking sets the AllowTrustLineLocking flag.
 func (a *AccountRoot) SetLsfAllowTrustLineLocking() {
-	a.Flags |= lsfAllowTrustLineLocking
+	a.Flags |= LsfAllowTrustLineLocking
 }
 
 // SetLsfDefaultRipple sets the DefaultRipple flag.
 func (a *AccountRoot) SetLsfDefaultRipple() {
-	a.Flags |= lsfDefaultRipple
+	a.Flags |= LsfDefaultRipple
 }
 
 // SetLsfDepositAuth sets the DepositAuth flag.
 func (a *AccountRoot) SetLsfDepositAuth() {
-	a.Flags |= lsfDepositAuth
+	a.Flags |= LsfDepositAuth
 }
 
 // SetLsfDisableMaster sets the DisableMaster flag.
 func (a *AccountRoot) SetLsfDisableMaster() {
-	a.Flags |= lsfDisableMaster
+	a.Flags |= LsfDisableMaster
 }
 
 // SetLsfDisallowIncomingCheck sets the DisallowIncomingCheck flag.
 func (a *AccountRoot) SetLsfDisallowIncomingCheck() {
-	a.Flags |= lsfDisallowIncomingCheck
+	a.Flags |= LsfDisallowIncomingCheck
 }
 
 // SetLsfDisallowIncomingNFTokenOffer sets the DisallowIncomingNFTokenOffer flag.
 func (a *AccountRoot) SetLsfDisallowIncomingNFTokenOffer() {
-	a.Flags |= lsfDisallowIncomingNFTokenOffer
+	a.Flags |= LsfDisallowIncomingNFTokenOffer
 }
 
 // SetLsfDisallowIncomingPayChan sets the DisallowIncomingPayChan flag.
 func (a *AccountRoot) SetLsfDisallowIncomingPayChan() {
-	a.Flags |= lsfDisallowIncomingPayChan
+	a.Flags |= LsfDisallowIncomingPayChan
 }
 
 // SetLsfDisallowIncomingTrustline sets the DisallowIncomingTrustline flag.
 func (a *AccountRoot) SetLsfDisallowIncomingTrustline() {
-	a.Flags |= lsfDisallowIncomingTrustline
+	a.Flags |= LsfDisallowIncomingTrustline
 }
 
 // SetLsfDisallowXRP sets the DisallowXRP flag.
 func (a *AccountRoot) SetLsfDisallowXRP() {
-	a.Flags |= lsfDisallowXRP
+	a.Flags |= LsfDisallowXRP
 }
 
 // SetLsfGlobalFreeze sets the GlobalFreeze flag.
 func (a *AccountRoot) SetLsfGlobalFreeze() {
-	a.Flags |= lsfGlobalFreeze
+	a.Flags |= LsfGlobalFreeze
 }
 
 // SetLsfNoFreeze sets the NoFreeze flag.
 func (a *AccountRoot) SetLsfNoFreeze() {
-	a.Flags |= lsfNoFreeze
+	a.Flags |= LsfNoFreeze
 }
 
 // SetLsfPasswordSpent sets the PasswordSpent flag.
 func (a *AccountRoot) SetLsfPasswordSpent() {
-	a.Flags |= lsfPasswordSpent
+	a.Flags |= LsfPasswordSpent
 }
 
 // SetLsfRequireAuth sets the RequireAuth flag.
 func (a *AccountRoot) SetLsfRequireAuth() {
-	a.Flags |= lsfRequireAuth
+	a.Flags |= LsfRequireAuth
 }
 
 // SetLsfRequireDestTag sets the RequireDestTag flag.
 func (a *AccountRoot) SetLsfRequireDestTag() {
-	a.Flags |= lsfRequireDestTag
+	a.Flags |= LsfRequireDestTag
 }

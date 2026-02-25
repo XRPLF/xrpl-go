@@ -6,13 +6,13 @@ import (
 )
 
 const (
-	// If set and transaction is submitted by a holder, it indicates that the holder no
+	// TfMPTUnauthorize if set and transaction is submitted by a holder, it indicates that the holder no
 	// longer wants to hold the MPToken, which will be deleted as a result. If the the holder's
 	// MPToken has non-zero balance while trying to set this flag, the transaction will fail. On
 	// the other hand, if set and transaction is submitted by an issuer, it would mean that the
 	// issuer wants to unauthorize the holder (only applicable for allow-listing),
-	// which would unset the lsfMPTAuthorized flag on the MPToken.
-	tfMPTUnauthorize uint32 = 1
+	// which would unset the LsfMPTAuthorized flag on the MPToken.
+	TfMPTUnauthorize uint32 = 1
 )
 
 // MPTokenAuthorize transaction is used to globally lock/unlock a MPTokenIssuance,
@@ -28,7 +28,7 @@ type MPTokenAuthorize struct {
 
 // SetMPTUnauthorizeFlag toggles the unauthorize flag on the transaction to indicate that the holder no longer wants to hold the token or that the issuer wants to unauthorize a holder.
 func (m *MPTokenAuthorize) SetMPTUnauthorizeFlag() {
-	m.Flags |= tfMPTUnauthorize
+	m.Flags |= TfMPTUnauthorize
 }
 
 // TxType returns the type of the transaction (MPTokenAuthorize).

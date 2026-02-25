@@ -20,28 +20,28 @@ func TestAccountSetTfFlags(t *testing.T) {
 			setter: func(s *AccountSet) {
 				s.SetRequireDestTag()
 			},
-			expected: tfRequireDestTag,
+			expected: TfRequireDestTag,
 		},
 		{
 			name: "pass - SetRequireAuth",
 			setter: func(s *AccountSet) {
 				s.SetRequireAuth()
 			},
-			expected: tfRequireAuth,
+			expected: TfRequireAuth,
 		},
 		{
 			name: "pass - SetDisallowXRP",
 			setter: func(s *AccountSet) {
 				s.SetDisallowXRP()
 			},
-			expected: tfDisallowXRP,
+			expected: TfDisallowXRP,
 		},
 		{
 			name: "pass - SetOptionalDestTag",
 			setter: func(s *AccountSet) {
 				s.SetOptionalDestTag()
 			},
-			expected: tfOptionalDestTag,
+			expected: TfOptionalDestTag,
 		},
 		{
 			name: "pass - SetRequireDestTag and SetRequireAuth",
@@ -49,7 +49,7 @@ func TestAccountSetTfFlags(t *testing.T) {
 				s.SetRequireDestTag()
 				s.SetRequireAuth()
 			},
-			expected: tfRequireDestTag | tfRequireAuth,
+			expected: TfRequireDestTag | TfRequireAuth,
 		},
 		{
 			name: "pass - SetDisallowXRP and SetOptionalDestTag",
@@ -57,7 +57,7 @@ func TestAccountSetTfFlags(t *testing.T) {
 				s.SetDisallowXRP()
 				s.SetOptionalDestTag()
 			},
-			expected: tfDisallowXRP | tfOptionalDestTag,
+			expected: TfDisallowXRP | TfOptionalDestTag,
 		},
 		{
 			name: "pass - SetRequireDestTag, SetRequireAuth, and SetDisallowXRP",
@@ -66,7 +66,7 @@ func TestAccountSetTfFlags(t *testing.T) {
 				s.SetRequireAuth()
 				s.SetDisallowXRP()
 			},
-			expected: tfRequireDestTag | tfRequireAuth | tfDisallowXRP,
+			expected: TfRequireDestTag | TfRequireAuth | TfDisallowXRP,
 		},
 		{
 			name: "pass - All flags",
@@ -78,7 +78,7 @@ func TestAccountSetTfFlags(t *testing.T) {
 				s.SetOptionalAuth()
 				s.SetAllowXRP()
 			},
-			expected: tfRequireDestTag | tfRequireAuth | tfDisallowXRP | tfOptionalDestTag | tfOptionalAuth | tfAllowXRP,
+			expected: TfRequireDestTag | TfRequireAuth | TfDisallowXRP | TfOptionalDestTag | TfOptionalAuth | TfAllowXRP,
 		},
 	}
 
@@ -104,112 +104,112 @@ func TestAccountSetAsfFlags(t *testing.T) {
 			setter: func(s *AccountSet) {
 				s.SetAsfRequireDest()
 			},
-			expected: asfRequireDest,
+			expected: AsfRequireDest,
 		},
 		{
 			name: "pass - SetAsfRequireAuth",
 			setter: func(s *AccountSet) {
 				s.SetAsfRequireAuth()
 			},
-			expected: asfRequireAuth,
+			expected: AsfRequireAuth,
 		},
 		{
 			name: "pass - SetAsfDisallowXRP",
 			setter: func(s *AccountSet) {
 				s.SetAsfDisallowXRP()
 			},
-			expected: asfDisallowXRP,
+			expected: AsfDisallowXRP,
 		},
 		{
 			name: "pass - SetAsfDisableMaster",
 			setter: func(s *AccountSet) {
 				s.SetAsfDisableMaster()
 			},
-			expected: asfDisableMaster,
+			expected: AsfDisableMaster,
 		},
 		{
 			name: "pass - SetAsfAccountTxnID",
 			setter: func(s *AccountSet) {
 				s.SetAsfAccountTxnID()
 			},
-			expected: asfAccountTxnID,
+			expected: AsfAccountTxnID,
 		},
 		{
 			name: "pass - SetAsfNoFreeze",
 			setter: func(s *AccountSet) {
 				s.SetAsfNoFreeze()
 			},
-			expected: asfNoFreeze,
+			expected: AsfNoFreeze,
 		},
 		{
 			name: "pass - SetAsfGlobalFreeze",
 			setter: func(s *AccountSet) {
 				s.SetAsfGlobalFreeze()
 			},
-			expected: asfGlobalFreeze,
+			expected: AsfGlobalFreeze,
 		},
 		{
 			name: "pass - SetAsfDefaultRipple",
 			setter: func(s *AccountSet) {
 				s.SetAsfDefaultRipple()
 			},
-			expected: asfDefaultRipple,
+			expected: AsfDefaultRipple,
 		},
 		{
 			name: "pass - SetAsfDepositAuth",
 			setter: func(s *AccountSet) {
 				s.SetAsfDepositAuth()
 			},
-			expected: asfDepositAuth,
+			expected: AsfDepositAuth,
 		},
 		{
 			name: "pass - SetAsfAuthorizedNFTokenMinter",
 			setter: func(s *AccountSet) {
 				s.SetAsfAuthorizedNFTokenMinter()
 			},
-			expected: asfAuthorizedNFTokenMinter,
+			expected: AsfAuthorizedNFTokenMinter,
 		},
 		{
 			name: "pass - SetAsfDisallowIncomingNFTokenOffer",
 			setter: func(s *AccountSet) {
 				s.SetAsfDisallowIncomingNFTokenOffer()
 			},
-			expected: asfDisallowIncomingNFTokenOffer,
+			expected: AsfDisallowIncomingNFTokenOffer,
 		},
 		{
 			name: "pass - SetAsfDisallowIncomingCheck",
 			setter: func(s *AccountSet) {
 				s.SetAsfDisallowIncomingCheck()
 			},
-			expected: asfDisallowIncomingCheck,
+			expected: AsfDisallowIncomingCheck,
 		},
 		{
 			name: "pass - SetAsfDisallowIncomingPayChan",
 			setter: func(s *AccountSet) {
 				s.SetAsfDisallowIncomingPayChan()
 			},
-			expected: asfDisallowIncomingPayChan,
+			expected: AsfDisallowIncomingPayChan,
 		},
 		{
 			name: "pass - SetAsfDisallowIncomingTrustLine",
 			setter: func(s *AccountSet) {
 				s.SetAsfDisallowIncomingTrustLine()
 			},
-			expected: asfDisallowIncomingTrustLine,
+			expected: AsfDisallowIncomingTrustLine,
 		},
 		{
 			name: "pass - SetAsfAllowTrustLineClawback",
 			setter: func(s *AccountSet) {
 				s.SetAsfAllowTrustLineClawback()
 			},
-			expected: asfAllowTrustLineClawback,
+			expected: AsfAllowTrustLineClawback,
 		},
 		{
 			name: "pass - SetAsfAllowTrustLineLocking",
 			setter: func(s *AccountSet) {
 				s.SetAsfAllowTrustLineLocking()
 			},
-			expected: asfAllowTrustLineLocking,
+			expected: AsfAllowTrustLineLocking,
 		},
 	}
 
@@ -235,112 +235,112 @@ func TestAccountClearAsfFlags(t *testing.T) {
 			setter: func(s *AccountSet) {
 				s.ClearAsfRequireDest()
 			},
-			expected: asfRequireDest,
+			expected: AsfRequireDest,
 		},
 		{
 			name: "pass - ClearAsfRequireAuth",
 			setter: func(s *AccountSet) {
 				s.ClearAsfRequireAuth()
 			},
-			expected: asfRequireAuth,
+			expected: AsfRequireAuth,
 		},
 		{
 			name: "pass - ClearAsfDisallowXRP",
 			setter: func(s *AccountSet) {
 				s.ClearAsfDisallowXRP()
 			},
-			expected: asfDisallowXRP,
+			expected: AsfDisallowXRP,
 		},
 		{
 			name: "pass - ClearAsfDisableMaster",
 			setter: func(s *AccountSet) {
 				s.ClearAsfDisableMaster()
 			},
-			expected: asfDisableMaster,
+			expected: AsfDisableMaster,
 		},
 		{
 			name: "pass - ClearAsfAccountTxnID",
 			setter: func(s *AccountSet) {
 				s.ClearAsfAccountTxnID()
 			},
-			expected: asfAccountTxnID,
+			expected: AsfAccountTxnID,
 		},
 		{
-			name: "pass - asfNoFreeze",
+			name: "pass - AsfNoFreeze",
 			setter: func(s *AccountSet) {
 				s.ClearAsfNoFreeze()
 			},
-			expected: asfNoFreeze,
+			expected: AsfNoFreeze,
 		},
 		{
-			name: "pass - asfGlobalFreeze",
+			name: "pass - AsfGlobalFreeze",
 			setter: func(s *AccountSet) {
 				s.ClearAsfGlobalFreeze()
 			},
-			expected: asfGlobalFreeze,
+			expected: AsfGlobalFreeze,
 		},
 		{
 			name: "pass - ClearAsfDefaultRipple",
 			setter: func(s *AccountSet) {
 				s.ClearAsfDefaultRipple()
 			},
-			expected: asfDefaultRipple,
+			expected: AsfDefaultRipple,
 		},
 		{
 			name: "pass - ClearAsfDepositAuth",
 			setter: func(s *AccountSet) {
 				s.ClearAsfDepositAuth()
 			},
-			expected: asfDepositAuth,
+			expected: AsfDepositAuth,
 		},
 		{
 			name: "pass - ClearAsfAuthorizedNFTokenMinter",
 			setter: func(s *AccountSet) {
 				s.ClearAsfAuthorizedNFTokenMinter()
 			},
-			expected: asfAuthorizedNFTokenMinter,
+			expected: AsfAuthorizedNFTokenMinter,
 		},
 		{
 			name: "pass - ClearAsfDisallowIncomingNFTokenOffer",
 			setter: func(s *AccountSet) {
 				s.ClearAsfDisallowIncomingNFTokenOffer()
 			},
-			expected: asfDisallowIncomingNFTokenOffer,
+			expected: AsfDisallowIncomingNFTokenOffer,
 		},
 		{
 			name: "pass - ClearAsfDisallowIncomingCheck",
 			setter: func(s *AccountSet) {
 				s.ClearAsfDisallowIncomingCheck()
 			},
-			expected: asfDisallowIncomingCheck,
+			expected: AsfDisallowIncomingCheck,
 		},
 		{
 			name: "pass - ClearAsfDisallowIncomingPayChan",
 			setter: func(s *AccountSet) {
 				s.ClearAsfDisallowIncomingPayChan()
 			},
-			expected: asfDisallowIncomingPayChan,
+			expected: AsfDisallowIncomingPayChan,
 		},
 		{
 			name: "pass - ClearAsfDisallowIncomingTrustLine",
 			setter: func(s *AccountSet) {
 				s.ClearAsfDisallowIncomingTrustLine()
 			},
-			expected: asfDisallowIncomingTrustLine,
+			expected: AsfDisallowIncomingTrustLine,
 		},
 		{
 			name: "pass - ClearAsfAllowTrustLineClawback",
 			setter: func(s *AccountSet) {
 				s.ClearAsfAllowTrustLineClawback()
 			},
-			expected: asfAllowTrustLineClawback,
+			expected: AsfAllowTrustLineClawback,
 		},
 		{
 			name: "pass - ClearAsfAllowTrustLineLocking",
 			setter: func(s *AccountSet) {
 				s.ClearAsfAllowTrustLineLocking()
 			},
-			expected: asfAllowTrustLineLocking,
+			expected: AsfAllowTrustLineLocking,
 		},
 	}
 
@@ -491,12 +491,12 @@ func TestAccountSet_Flatten(t *testing.T) {
 					SigningPubKey:   "ghijk",
 					TxnSignature:    "A1B2C3D4E5F6",
 				},
-				ClearFlag:     asfRequireDest,
+				ClearFlag:     AsfRequireDest,
 				Domain:        types.Domain("A5B21758D2318FA2C"),
 				EmailHash:     types.EmailHash("1234567890abcdef"),
 				MessageKey:    types.MessageKey("messagekey"),
 				NFTokenMinter: types.NFTokenMinter("nftokenminter"),
-				SetFlag:       asfRequireAuth,
+				SetFlag:       AsfRequireAuth,
 				TransferRate:  types.TransferRate(1000000001),
 				TickSize:      types.TickSize(5),
 				WalletLocator: types.WalletLocator("walletLocator"),
@@ -509,12 +509,12 @@ func TestAccountSet_Flatten(t *testing.T) {
 				"Sequence":        uint32(1234),
 				"SigningPubKey":   "ghijk",
 				"TxnSignature":    "A1B2C3D4E5F6",
-				"ClearFlag":       asfRequireDest,
+				"ClearFlag":       AsfRequireDest,
 				"Domain":          "A5B21758D2318FA2C",
 				"EmailHash":       "1234567890abcdef",
 				"MessageKey":      "messagekey",
 				"NFTokenMinter":   "nftokenminter",
-				"SetFlag":         asfRequireAuth,
+				"SetFlag":         AsfRequireAuth,
 				"TransferRate":    uint32(1000000001),
 				"TickSize":        uint8(5),
 				"WalletLocator":   "walletLocator",
