@@ -134,7 +134,7 @@ var (
 	// payment
 
 	// ErrPartialPaymentFlagRequired is returned when the TfPartialPayment flag is required but not set.
-	ErrPartialPaymentFlagRequired = errors.New("TfPartialPayment flag required with DeliverMin")
+	ErrPartialPaymentFlagRequired = errors.New("flag TfPartialPayment required with DeliverMin")
 
 	// ErrInvalidExpiration indicates the expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel.
 	ErrInvalidExpiration = errors.New("expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel")
@@ -147,7 +147,7 @@ var (
 	// offer
 
 	// ErrTfHybridCannotBeSetWithoutDomainID is returned if a OfferCreate has TfHybrid enabled and no DomainID set.
-	ErrTfHybridCannotBeSetWithoutDomainID = errors.New("TfHybrid must have a valid DomainID")
+	ErrTfHybridCannotBeSetWithoutDomainID = errors.New("flag TfHybrid must have a valid DomainID")
 
 	// nft
 
