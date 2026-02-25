@@ -101,7 +101,7 @@ func TestBatchFlatten(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: BatchTx,
 					Fee:             types.XRPCurrencyAmount(12),
-					Flags:           tfAllOrNothing,
+					Flags:           TfAllOrNothing,
 				},
 				RawTransactions: []types.RawTransaction{
 					{
@@ -135,7 +135,7 @@ func TestBatchFlatten(t *testing.T) {
 					Account:         "rUserBSM7T3b6nHX3Jjua62wgX9unH8s9b",
 					TransactionType: BatchTx,
 					Fee:             types.XRPCurrencyAmount(40),
-					Flags:           tfAllOrNothing,
+					Flags:           TfAllOrNothing,
 					Sequence:        3,
 					SigningPubKey:   "022D40673B44C82DEE1DDB8B9BB53DCCE4F97B27404DB850F068DD91D685E337EA",
 					TxnSignature:    "3045022100EC5D367FAE2B461679AD446FBBE7BA260506579AF4ED5EFC3EC25F4DD1885B38022018C2327DB281743B12553C7A6DC0E45B07D3FC6983F261D7BCB474D89A0EC5B8",
@@ -192,7 +192,7 @@ func TestBatchFlatten(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: BatchTx,
 					Fee:             types.XRPCurrencyAmount(12),
-					Flags:           tfAllOrNothing,
+					Flags:           TfAllOrNothing,
 				},
 				RawTransactions: []types.RawTransaction{
 					{
@@ -263,7 +263,7 @@ func TestBatch_Validate(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: BatchTx,
 					Fee:             types.XRPCurrencyAmount(12),
-					Flags:           tfAllOrNothing,
+					Flags:           TfAllOrNothing,
 				},
 				RawTransactions: []types.RawTransaction{
 					{
@@ -280,7 +280,7 @@ func TestBatch_Validate(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: BatchTx,
 					Fee:             types.XRPCurrencyAmount(12),
-					Flags:           tfIndependent,
+					Flags:           TfIndependent,
 				},
 				RawTransactions: []types.RawTransaction{
 					{
@@ -421,28 +421,28 @@ func TestBatch_Flags(t *testing.T) {
 			setter: func(b *Batch) {
 				b.SetAllOrNothingFlag()
 			},
-			expected: tfAllOrNothing,
+			expected: TfAllOrNothing,
 		},
 		{
 			name: "pass - SetOnlyOneFlag",
 			setter: func(b *Batch) {
 				b.SetOnlyOneFlag()
 			},
-			expected: tfOnlyOne,
+			expected: TfOnlyOne,
 		},
 		{
 			name: "pass - SetUntilFailureFlag",
 			setter: func(b *Batch) {
 				b.SetUntilFailureFlag()
 			},
-			expected: tfUntilFailure,
+			expected: TfUntilFailure,
 		},
 		{
 			name: "pass - SetIndependentFlag",
 			setter: func(b *Batch) {
 				b.SetIndependentFlag()
 			},
-			expected: tfIndependent,
+			expected: TfIndependent,
 		},
 		{
 			name: "pass - SetAllOrNothingFlag and SetOnlyOneFlag",
@@ -450,7 +450,7 @@ func TestBatch_Flags(t *testing.T) {
 				b.SetAllOrNothingFlag()
 				b.SetOnlyOneFlag()
 			},
-			expected: tfAllOrNothing | tfOnlyOne,
+			expected: TfAllOrNothing | TfOnlyOne,
 		},
 		{
 			name: "pass - all flags",
@@ -460,7 +460,7 @@ func TestBatch_Flags(t *testing.T) {
 				b.SetUntilFailureFlag()
 				b.SetIndependentFlag()
 			},
-			expected: tfAllOrNothing | tfOnlyOne | tfUntilFailure | tfIndependent,
+			expected: TfAllOrNothing | TfOnlyOne | TfUntilFailure | TfIndependent,
 		},
 	}
 

@@ -1,6 +1,8 @@
 //revive:disable:var-naming
 package types
 
+import "github.com/Peersyst/xrpl-go/xrpl/flag"
+
 const (
 	// TfInnerBatchTxn flag that must be set on inner transactions within a batch
 	TfInnerBatchTxn uint32 = 0x40000000
@@ -35,7 +37,7 @@ func validateRawTransaction(rawTx map[string]any) (bool, error) {
 	}
 
 	// Check for the TfInnerBatchTxn flag in the inner transactions
-	if flags, ok := rawTx["Flags"].(uint32); !ok || !IsFlagEnabled(flags, TfInnerBatchTxn) {
+	if flags, ok := rawTx["Flags"].(uint32); !ok || !flag.Contains(flags, TfInnerBatchTxn) {
 		return false, ErrBatchMissingInnerFlag
 	}
 

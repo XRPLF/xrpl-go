@@ -24,21 +24,21 @@ func TestPaymentFlags(t *testing.T) {
 			setter: func(p *Payment) {
 				p.SetRippleNotDirectFlag()
 			},
-			expected: tfRippleNotDirect,
+			expected: TfRippleNotDirect,
 		},
 		{
 			name: "pass - SetPartialPaymentFlag",
 			setter: func(p *Payment) {
 				p.SetPartialPaymentFlag()
 			},
-			expected: tfPartialPayment,
+			expected: TfPartialPayment,
 		},
 		{
 			name: "pass - SetLimitQualityFlag",
 			setter: func(p *Payment) {
 				p.SetLimitQualityFlag()
 			},
-			expected: tfLimitQuality,
+			expected: TfLimitQuality,
 		},
 		{
 			name: "pass - SetRippleNotDirectFlag and SetPartialPaymentFlag",
@@ -46,7 +46,7 @@ func TestPaymentFlags(t *testing.T) {
 				p.SetRippleNotDirectFlag()
 				p.SetPartialPaymentFlag()
 			},
-			expected: tfRippleNotDirect | tfPartialPayment,
+			expected: TfRippleNotDirect | TfPartialPayment,
 		},
 		{
 			name: "pass - SetRippleNotDirectFlag and SetLimitQualityFlag",
@@ -54,7 +54,7 @@ func TestPaymentFlags(t *testing.T) {
 				p.SetRippleNotDirectFlag()
 				p.SetLimitQualityFlag()
 			},
-			expected: tfRippleNotDirect | tfLimitQuality,
+			expected: TfRippleNotDirect | TfLimitQuality,
 		},
 		{
 			name: "pass - SetPartialPaymentFlag and SetLimitQualityFlag",
@@ -62,7 +62,7 @@ func TestPaymentFlags(t *testing.T) {
 				p.SetPartialPaymentFlag()
 				p.SetLimitQualityFlag()
 			},
-			expected: tfPartialPayment | tfLimitQuality,
+			expected: TfPartialPayment | TfLimitQuality,
 		},
 		{
 			name: "pass - all flags",
@@ -71,7 +71,7 @@ func TestPaymentFlags(t *testing.T) {
 				p.SetPartialPaymentFlag()
 				p.SetLimitQualityFlag()
 			},
-			expected: tfRippleNotDirect | tfPartialPayment | tfLimitQuality,
+			expected: TfRippleNotDirect | TfPartialPayment | TfLimitQuality,
 		},
 	}
 
@@ -341,7 +341,7 @@ func TestPayment_Validate(t *testing.T) {
 					Account:         "rLs9Pa3CwsoJTnXf4RzzbGsnD9GeCPAUpj",
 					TransactionType: PaymentTx,
 					Fee:             types.XRPCurrencyAmount(1000),
-					Flags:           tfPartialPayment,
+					Flags:           TfPartialPayment,
 				},
 				Amount: types.IssuedCurrencyAmount{
 					Issuer:   "r3EeETxLb1JwmN2xWuZZdKrrEkqw7qgeYf",
@@ -496,7 +496,7 @@ func TestPayment_Flatten(t *testing.T) {
 					Account:         "rJwjoukM94WwKwxM428V7b9npHjpkSvif",
 					TransactionType: PaymentTx,
 					Fee:             types.XRPCurrencyAmount(1000),
-					Flags:           tfRippleNotDirect | tfPartialPayment,
+					Flags:           TfRippleNotDirect | TfPartialPayment,
 				},
 				Amount: types.IssuedCurrencyAmount{
 					Currency: "USD",

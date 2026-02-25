@@ -70,65 +70,65 @@ func TestRippleState_EntryType(t *testing.T) {
 func TestRippleState_SetLsfAMMNode(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfAMMNode()
-	require.Equal(t, s.Flags&lsfAMMNode, lsfAMMNode)
+	require.Equal(t, s.Flags&LsfAMMNode, LsfAMMNode)
 }
 
 func TestRippleState_SetLsfLowReserve(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfLowReserve()
-	require.Equal(t, s.Flags&lsfLowReserve, lsfLowReserve)
+	require.Equal(t, s.Flags&LsfLowReserve, LsfLowReserve)
 }
 
 func TestRippleState_SetLsfHighReserve(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfHighReserve()
-	require.Equal(t, s.Flags&lsfHighReserve, lsfHighReserve)
+	require.Equal(t, s.Flags&LsfHighReserve, LsfHighReserve)
 }
 
 func TestRippleState_SetLsfLowAuth(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfLowAuth()
-	require.Equal(t, s.Flags&lsfLowAuth, lsfLowAuth)
+	require.Equal(t, s.Flags&LsfLowAuth, LsfLowAuth)
 }
 
 func TestRippleState_SetLsfHighAuth(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfHighAuth()
-	require.Equal(t, s.Flags&lsfHighAuth, lsfHighAuth)
+	require.Equal(t, s.Flags&LsfHighAuth, LsfHighAuth)
 }
 
 func TestRippleState_SetLsfLowNoRipple(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfLowNoRipple()
-	require.Equal(t, s.Flags&lsfLowNoRipple, lsfLowNoRipple)
+	require.Equal(t, s.Flags&LsfLowNoRipple, LsfLowNoRipple)
 }
 
 func TestRippleState_SetLsfHighNoRipple(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfHighNoRipple()
-	require.Equal(t, s.Flags&lsfHighNoRipple, lsfHighNoRipple)
+	require.Equal(t, s.Flags&LsfHighNoRipple, LsfHighNoRipple)
 }
 
 func TestRippleState_SetLsfLowFreeze(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfLowFreeze()
-	require.Equal(t, s.Flags&lsfLowFreeze, lsfLowFreeze)
+	require.Equal(t, s.Flags&LsfLowFreeze, LsfLowFreeze)
 }
 
 func TestRippleState_SetLsfHighFreeze(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfHighFreeze()
-	require.Equal(t, s.Flags&lsfHighFreeze, lsfHighFreeze)
+	require.Equal(t, s.Flags&LsfHighFreeze, LsfHighFreeze)
 }
 
 func TestRippleState_SetLsfLowDeepFreeze(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfLowDeepFreeze()
-	require.Equal(t, s.Flags&lsfLowDeepFreeze, lsfLowDeepFreeze)
+	require.Equal(t, s.Flags&LsfLowDeepFreeze, LsfLowDeepFreeze)
 }
 
 func TestRippleState_SetLsfHighDeepFreeze(t *testing.T) {
 	s := &RippleState{}
 	s.SetLsfHighDeepFreeze()
-	require.Equal(t, s.Flags&lsfHighDeepFreeze, lsfHighDeepFreeze)
+	require.Equal(t, s.Flags&LsfHighDeepFreeze, LsfHighDeepFreeze)
 }

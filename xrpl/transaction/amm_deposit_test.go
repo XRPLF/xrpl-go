@@ -98,42 +98,42 @@ func TestAMMDeposit_Flags(t *testing.T) {
 			setter: func(a *AMMDeposit) {
 				a.SetLPTokentFlag()
 			},
-			expected: tfLPToken,
+			expected: TfLPToken,
 		},
 		{
 			name: "pass - SetSingleAssetFlag",
 			setter: func(a *AMMDeposit) {
 				a.SetSingleAssetFlag()
 			},
-			expected: tfSingleAsset,
+			expected: TfSingleAsset,
 		},
 		{
 			name: "pass - SetTwoAssetFlag",
 			setter: func(a *AMMDeposit) {
 				a.SetTwoAssetFlag()
 			},
-			expected: tfTwoAsset,
+			expected: TfTwoAsset,
 		},
 		{
 			name: "pass - SetOneAssetLPTokenFlag",
 			setter: func(a *AMMDeposit) {
 				a.SetOneAssetLPTokenFlag()
 			},
-			expected: tfOneAssetLPToken,
+			expected: TfOneAssetLPToken,
 		},
 		{
 			name: "pass - SetLimitLPTokenFlag",
 			setter: func(a *AMMDeposit) {
 				a.SetLimitLPTokenFlag()
 			},
-			expected: tfLimitLPToken,
+			expected: TfLimitLPToken,
 		},
 		{
 			name: "pass - SetTwoAssetIfEmptyFlag",
 			setter: func(a *AMMDeposit) {
 				a.SetTwoAssetIfEmptyFlag()
 			},
-			expected: tfTwoAssetIfEmpty,
+			expected: TfTwoAssetIfEmpty,
 		},
 	}
 

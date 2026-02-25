@@ -410,7 +410,7 @@ func TestCombineBatchSigners(t *testing.T) {
 			BaseTx: transaction.BaseTx{
 				Account:            types.Address(submitWallet.ClassicAddress.String()),
 				TransactionType:    transaction.BatchTx,
-				Flags:              1, // tfAllOrNothing
+				Flags:              1, // TfAllOrNothing
 				LastLedgerSequence: 14973,
 				NetworkID:          21336,
 				Sequence:           215,
@@ -679,7 +679,7 @@ func TestCombineBatchSigners(t *testing.T) {
 				tx2 := createOriginalBatchTx()
 
 				// Change flags on tx2
-				tx2.Flags = 4 // tfIndependent
+				tx2.Flags = 4 // TfIndependent
 
 				tx1Flat := tx1.Flatten()
 				tx2Flat := tx2.Flatten()

@@ -16,7 +16,7 @@ func TestCredential_EntryType(t *testing.T) {
 func TestCredential_SetLsfAccepted(t *testing.T) {
 	credential := &Credential{}
 	credential.SetLsfAccepted()
-	require.Equal(t, credential.Flags, lsfAccepted)
+	require.Equal(t, credential.Flags, LsfAccepted)
 }
 
 func TestCredential_Flatten(t *testing.T) {
@@ -30,7 +30,7 @@ func TestCredential_Flatten(t *testing.T) {
 			credential: &Credential{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   CredentialEntry,
-				Flags:             lsfAccepted,
+				Flags:             LsfAccepted,
 				CredentialType:    types.CredentialType("6D795F63726564656E7469616C"),
 				Subject:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				Issuer:            types.Address("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),

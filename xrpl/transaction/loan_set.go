@@ -25,8 +25,8 @@ const (
 
 // LoanSetFlags represents flags for LoanSet transactions.
 const (
-	// tfLoanOverpayment indicates that the loan supports over payments.
-	tfLoanOverpayment uint32 = 0x00010000
+	// TfLoanOverpayment indicates that the loan supports over payments.
+	TfLoanOverpayment uint32 = 0x00010000
 )
 
 // CounterpartySignature represents the signature of the counterparty over the transaction.
@@ -115,9 +115,9 @@ func (tx *LoanSet) TxType() TxType {
 	return LoanSetTx
 }
 
-// SetLoanOverpaymentFlag sets the tfLoanOverpayment flag, indicating that the loan supports over payments.
+// SetLoanOverpaymentFlag sets the TfLoanOverpayment flag, indicating that the loan supports over payments.
 func (tx *LoanSet) SetLoanOverpaymentFlag() {
-	tx.Flags |= tfLoanOverpayment
+	tx.Flags |= TfLoanOverpayment
 }
 
 // Flatten returns a map representation of the LoanSet transaction for JSON-RPC submission.

@@ -15,7 +15,7 @@ func TestXChainModifyBridge_TxType(t *testing.T) {
 func TestXChainModifyBridge_SetClearAccountCreateAmount(t *testing.T) {
 	tx := &XChainModifyBridge{}
 	tx.SetClearAccountCreateAmount()
-	require.Equal(t, tx.Flags, tfClearAccountCreateAmount)
+	require.Equal(t, tx.Flags, TfClearAccountCreateAmount)
 }
 
 func TestXChainModifyBridge_Flatten(t *testing.T) {
@@ -30,7 +30,7 @@ func TestXChainModifyBridge_Flatten(t *testing.T) {
 				BaseTx: BaseTx{
 					Account: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 				},
-				Flags:                  tfClearAccountCreateAmount,
+				Flags:                  TfClearAccountCreateAmount,
 				MinAccountCreateAmount: types.XRPCurrencyAmount(100),
 				SignatureReward:        types.XRPCurrencyAmount(10),
 				XChainBridge: types.XChainBridge{
@@ -43,7 +43,7 @@ func TestXChainModifyBridge_Flatten(t *testing.T) {
 			expected: FlatTransaction{
 				"Account":                "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 				"TransactionType":        "XChainModifyBridge",
-				"Flags":                  uint32(tfClearAccountCreateAmount),
+				"Flags":                  uint32(TfClearAccountCreateAmount),
 				"MinAccountCreateAmount": "100",
 				"SignatureReward":        "10",
 				"XChainBridge": types.FlatXChainBridge{
@@ -94,7 +94,7 @@ func TestXChainModifyBridge_Validate(t *testing.T) {
 					Account:         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 					TransactionType: XChainModifyBridgeTx,
 				},
-				Flags: tfClearAccountCreateAmount,
+				Flags: TfClearAccountCreateAmount,
 				MinAccountCreateAmount: types.IssuedCurrencyAmount{
 					Currency: "XRP",
 					Value:    "100",
@@ -110,7 +110,7 @@ func TestXChainModifyBridge_Validate(t *testing.T) {
 					Account:         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 					TransactionType: XChainModifyBridgeTx,
 				},
-				Flags:                  tfClearAccountCreateAmount,
+				Flags:                  TfClearAccountCreateAmount,
 				MinAccountCreateAmount: types.XRPCurrencyAmount(100),
 				SignatureReward: types.IssuedCurrencyAmount{
 					Currency: "XRP",
@@ -127,7 +127,7 @@ func TestXChainModifyBridge_Validate(t *testing.T) {
 					Account:         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 					TransactionType: XChainModifyBridgeTx,
 				},
-				Flags: tfClearAccountCreateAmount,
+				Flags: TfClearAccountCreateAmount,
 			},
 			expected:    false,
 			expectedErr: types.ErrInvalidIssuingChainDoorAddress,
@@ -139,7 +139,7 @@ func TestXChainModifyBridge_Validate(t *testing.T) {
 					Account:         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 					TransactionType: XChainModifyBridgeTx,
 				},
-				Flags: tfClearAccountCreateAmount,
+				Flags: TfClearAccountCreateAmount,
 				XChainBridge: types.XChainBridge{
 					LockingChainDoor:  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
 					IssuingChainDoor:  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",

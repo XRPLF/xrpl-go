@@ -72,7 +72,7 @@ func TestOwnerDirectoryNode(t *testing.T) {
 
 func TestNFTTokenBuyOffersDirectoryNode(t *testing.T) {
 	var s Object = &DirectoryNode{
-		Flags: lsfNFTokenBuyOffers,
+		Flags: LsfNFTokenBuyOffers,
 		Indexes: []types.Hash256{
 			"68227B203065DED9EEB8B73FC952494A1DA6A69CEABEAA99923836EB5E77C95A",
 		},
@@ -102,7 +102,7 @@ func TestNFTTokenBuyOffersDirectoryNode(t *testing.T) {
 
 func TestNFTTokenSellOffersDirectoryNode(t *testing.T) {
 	var s Object = &DirectoryNode{
-		Flags: lsfNFTokenSellOffers,
+		Flags: LsfNFTokenSellOffers,
 		Indexes: []types.Hash256{
 			"68227B203065DED9EEB8B73FC952494A1DA6A69CEABEAA99923836EB5E77C95A",
 		},
@@ -138,11 +138,11 @@ func TestDirectoryNode_LedgerEntryType(t *testing.T) {
 func TestDirectoryNode_SetNFTokenBuyOffers(t *testing.T) {
 	s := &DirectoryNode{}
 	s.SetNFTokenBuyOffers()
-	require.Equal(t, s.Flags, lsfNFTokenBuyOffers)
+	require.Equal(t, s.Flags, LsfNFTokenBuyOffers)
 }
 
 func TestDirectoryNode_SetNFTokenSellOffers(t *testing.T) {
 	s := &DirectoryNode{}
 	s.SetNFTokenSellOffers()
-	require.Equal(t, s.Flags, lsfNFTokenSellOffers)
+	require.Equal(t, s.Flags, LsfNFTokenSellOffers)
 }

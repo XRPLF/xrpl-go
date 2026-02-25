@@ -33,7 +33,7 @@ func TestLoanManage_Flatten(t *testing.T) {
 					Fee:                1000000,
 					Sequence:           1,
 					LastLedgerSequence: 3000000,
-					Flags:              uint32(tfLoanDefault),
+					Flags:              uint32(TfLoanDefault),
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
@@ -43,7 +43,7 @@ func TestLoanManage_Flatten(t *testing.T) {
 				"Fee":                "1000000",
 				"Sequence":           uint32(1),
 				"LastLedgerSequence": uint32(3000000),
-				"Flags":              uint32(tfLoanDefault),
+				"Flags":              uint32(TfLoanDefault),
 				"LoanID":             "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
 		},
@@ -94,12 +94,12 @@ func TestLoanManage_Validate(t *testing.T) {
 			expected: ErrLoanManageLoanIDInvalid,
 		},
 		{
-			name: "fail - tfLoanImpair and tfLoanUnimpair both set",
+			name: "fail - TfLoanImpair and TfLoanUnimpair both set",
 			tx: &LoanManage{
 				BaseTx: BaseTx{
 					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 					TransactionType: LoanManageTx,
-					Flags:           uint32(tfLoanImpair | tfLoanUnimpair),
+					Flags:           uint32(TfLoanImpair | TfLoanUnimpair),
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
@@ -111,7 +111,7 @@ func TestLoanManage_Validate(t *testing.T) {
 				BaseTx: BaseTx{
 					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 					TransactionType: LoanManageTx,
-					Flags:           uint32(tfLoanDefault),
+					Flags:           uint32(TfLoanDefault),
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
@@ -143,21 +143,21 @@ func TestLoanManage_Flags(t *testing.T) {
 			setter: func(lm *LoanManage) {
 				lm.SetLoanDefaultFlag()
 			},
-			expected: tfLoanDefault,
+			expected: TfLoanDefault,
 		},
 		{
 			name: "pass - SetLoanImpairFlag",
 			setter: func(lm *LoanManage) {
 				lm.SetLoanImpairFlag()
 			},
-			expected: tfLoanImpair,
+			expected: TfLoanImpair,
 		},
 		{
 			name: "pass - SetLoanUnimpairFlag",
 			setter: func(lm *LoanManage) {
 				lm.SetLoanUnimpairFlag()
 			},
-			expected: tfLoanUnimpair,
+			expected: TfLoanUnimpair,
 		},
 		{
 			name: "pass - SetLoanDefaultFlag and SetLoanImpairFlag",
@@ -165,7 +165,7 @@ func TestLoanManage_Flags(t *testing.T) {
 				lm.SetLoanDefaultFlag()
 				lm.SetLoanImpairFlag()
 			},
-			expected: tfLoanDefault | tfLoanImpair,
+			expected: TfLoanDefault | TfLoanImpair,
 		},
 		{
 			name: "pass - SetLoanDefaultFlag and SetLoanUnimpairFlag",
@@ -173,7 +173,7 @@ func TestLoanManage_Flags(t *testing.T) {
 				lm.SetLoanDefaultFlag()
 				lm.SetLoanUnimpairFlag()
 			},
-			expected: tfLoanDefault | tfLoanUnimpair,
+			expected: TfLoanDefault | TfLoanUnimpair,
 		},
 	}
 

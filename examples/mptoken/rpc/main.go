@@ -72,7 +72,7 @@ func main() {
 		MaximumAmount:   &amount,
 		MPTokenMetadata: types.MPTokenMetadata("464F4F"), // "FOO" in hex
 	}
-	// Since TransferFee is provided, enable the tfMPTCanTransfer flag.
+	// Since TransferFee is provided, enable the TfMPTCanTransfer flag.
 	issuanceTx.SetMPTCanTransferFlag()
 
 	// Flatten, autofill, sign, and submit the transaction.

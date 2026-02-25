@@ -5,20 +5,20 @@ import (
 )
 
 const (
-	// (Only applicable for allow-listing) If set, indicates that the issuer has authorized the holder for the MPT.
-	// This flag can be set using a MPTokenAuthorize transaction; it can also be "un-set" using a MPTokenAuthorize transaction specifying the tfMPTUnauthorize flag.
-	lsfMPTCanLock uint32 = 0x00000002
-	// If set, indicates that individual holders must be authorized. This enables issuers to limit who can hold their assets.
-	lsfMPTRequireAuth uint32 = 0x00000004
-	// If set, indicates that individual holders can place their balances into an escrow.
-	lsfMPTCanEscrow uint32 = 0x00000008
-	// If set, indicates that individual holders can trade their balances using the XRP Ledger DEX or AMM.
-	lsfMPTCanTrade uint32 = 0x00000010
-	// If set, indicates that tokens held by non-issuers can be transferred to other accounts.
+	// LsfMPTCanLock if set, indicates that the issuer has authorized the holder for the MPT. (Only applicable for allow-listing).
+	// This flag can be set using a MPTokenAuthorize transaction; it can also be "un-set" using a MPTokenAuthorize transaction specifying the TfMPTUnauthorize flag.
+	LsfMPTCanLock uint32 = 0x00000002
+	// LsfMPTRequireAuth if set, indicates that individual holders must be authorized. This enables issuers to limit who can hold their assets.
+	LsfMPTRequireAuth uint32 = 0x00000004
+	// LsfMPTCanEscrow if set, indicates that individual holders can place their balances into an escrow.
+	LsfMPTCanEscrow uint32 = 0x00000008
+	// LsfMPTCanTrade if set, indicates that individual holders can trade their balances using the XRP Ledger DEX or AMM.
+	LsfMPTCanTrade uint32 = 0x00000010
+	// LsfMPTCanTransfer if set, indicates that tokens held by non-issuers can be transferred to other accounts.
 	// If not set, indicates that tokens held by non-issuers cannot be transferred except back to the issuer; this enables use cases such as store credit.
-	lsfMPTCanTransfer uint32 = 0x00000020
-	// If set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
-	lsfMPTCanClawback uint32 = 0x00000040
+	LsfMPTCanTransfer uint32 = 0x00000020
+	// LsfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
+	LsfMPTCanClawback uint32 = 0x00000040
 )
 
 // An MPTokenIssuance entry represents a single MPT issuance and holds data associated with the issuance itself.
@@ -68,37 +68,37 @@ func (*MPTokenIssuance) EntryType() EntryType {
 	return MPTokenIssuanceEntry
 }
 
-// SetLsfMPTLocked sets the lsfMPTLocked flag.
+// SetLsfMPTLocked sets the LsfMPTLocked flag.
 func (c *MPTokenIssuance) SetLsfMPTLocked() {
-	c.Flags |= lsfMPTLocked
+	c.Flags |= LsfMPTLocked
 }
 
-// SetLsfMPTCanLock sets the lsfMPTCanLock flag.
+// SetLsfMPTCanLock sets the LsfMPTCanLock flag.
 func (c *MPTokenIssuance) SetLsfMPTCanLock() {
-	c.Flags |= lsfMPTCanLock
+	c.Flags |= LsfMPTCanLock
 }
 
-// SetLsfMPTRequireAuth sets the lsfMPTRequireAuth flag.
+// SetLsfMPTRequireAuth sets the LsfMPTRequireAuth flag.
 func (c *MPTokenIssuance) SetLsfMPTRequireAuth() {
-	c.Flags |= lsfMPTRequireAuth
+	c.Flags |= LsfMPTRequireAuth
 }
 
-// SetLsfMPTCanEscrow sets the lsfMPTCanEscrow flag.
+// SetLsfMPTCanEscrow sets the LsfMPTCanEscrow flag.
 func (c *MPTokenIssuance) SetLsfMPTCanEscrow() {
-	c.Flags |= lsfMPTCanEscrow
+	c.Flags |= LsfMPTCanEscrow
 }
 
-// SetLsfMPTCanTrade sets the lsfMPTCanTrade flag.
+// SetLsfMPTCanTrade sets the LsfMPTCanTrade flag.
 func (c *MPTokenIssuance) SetLsfMPTCanTrade() {
-	c.Flags |= lsfMPTCanTrade
+	c.Flags |= LsfMPTCanTrade
 }
 
-// SetLsfMPTCanTransfer sets the lsfMPTCanTransfer flag.
+// SetLsfMPTCanTransfer sets the LsfMPTCanTransfer flag.
 func (c *MPTokenIssuance) SetLsfMPTCanTransfer() {
-	c.Flags |= lsfMPTCanTransfer
+	c.Flags |= LsfMPTCanTransfer
 }
 
-// SetLsfMPTCanClawback sets the lsfMPTCanClawback flag.
+// SetLsfMPTCanClawback sets the LsfMPTCanClawback flag.
 func (c *MPTokenIssuance) SetLsfMPTCanClawback() {
-	c.Flags |= lsfMPTCanClawback
+	c.Flags |= LsfMPTCanClawback
 }

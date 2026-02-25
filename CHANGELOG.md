@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### xrpl
+
+- Added `flag` package with `Contains` utility function to check if a flag is fully set within a combined flag value.
+
 ### Fixed
 
 #### xrpl
