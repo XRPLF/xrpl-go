@@ -3,10 +3,8 @@ package hash
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"strings"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
-	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -55,7 +53,7 @@ func encodeSignedTxBlob(txBlob string) (string, error) {
 		return "", err
 	}
 
-	return strings.ToUpper(hex.EncodeToString(crypto.Sha512Half(payload))), nil
+	return EncodeToHashString(payload), nil
 }
 
 func isTxValid(tx map[string]interface{}) (bool, error) {
