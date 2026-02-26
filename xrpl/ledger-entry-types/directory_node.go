@@ -5,10 +5,10 @@ import (
 )
 
 const (
-	// Flag: This directory contains NFT buy offers.
-	lsfNFTokenBuyOffers uint32 = 0x00000001
-	// Flag: This directory contains NFT sell offers.
-	lsfNFTokenSellOffers uint32 = 0x00000002
+	// LsfNFTokenBuyOffers this directory contains NFT buy offers.
+	LsfNFTokenBuyOffers uint32 = 0x00000001
+	// LsfNFTokenSellOffers this directory contains NFT sell offers.
+	LsfNFTokenSellOffers uint32 = 0x00000002
 )
 
 // DirectoryNode ledger entry type provides a list of links to other entries in the ledger's state data.
@@ -17,8 +17,8 @@ const (
 // The first DirectoryNode entry is called the root of the directory, and all entries other than the root can be added or deleted as necessary.
 //
 // DirectoryNode entries can have the following values in the Flags field:
-// - lsfNFTokenBuyOffers: This directory contains NFT buy offers.
-// - lsfNFTokenSellOffers: This directory contains NFT sell offers.
+// - LsfNFTokenBuyOffers: This directory contains NFT buy offers.
+// - LsfNFTokenSellOffers: This directory contains NFT sell offers.
 //
 // Owner directories and offer directories for fungible tokens do not use flags; their Flags value is always 0.
 //
@@ -89,10 +89,10 @@ func (*DirectoryNode) EntryType() EntryType {
 
 // SetNFTokenBuyOffers sets the directory to contain NFT buy offers.
 func (d *DirectoryNode) SetNFTokenBuyOffers() {
-	d.Flags |= lsfNFTokenBuyOffers
+	d.Flags |= LsfNFTokenBuyOffers
 }
 
 // SetNFTokenSellOffers sets the directory to contain NFT sell offers.
 func (d *DirectoryNode) SetNFTokenSellOffers() {
-	d.Flags |= lsfNFTokenSellOffers
+	d.Flags |= LsfNFTokenSellOffers
 }

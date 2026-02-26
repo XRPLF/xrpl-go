@@ -2,15 +2,16 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
 // MPTokenIssuanceSet Flags
 const (
-	// If set, indicates that all MPT balances for this asset should be locked.
-	tfMPTLock uint32 = 0x00000001
-	// If set, indicates that all MPT balances for this asset should be unlocked.
-	tfMPTUnlock uint32 = 0x00000002
+	// TfMPTLock if set, indicates that all MPT balances for this asset should be locked.
+	TfMPTLock uint32 = 0x00000001
+	// TfMPTUnlock if set, indicates that all MPT balances for this asset should be unlocked.
+	TfMPTUnlock uint32 = 0x00000002
 )
 
 // MPTokenIssuanceSet transaction is used to globally lock/unlock a MPTokenIssuance,
@@ -54,16 +55,16 @@ func (m *MPTokenIssuanceSet) Flatten() FlatTransaction {
 	return flattened
 }
 
-// SetMPTLockFlag sets the tfMPTLock flag on the transaction.
+// SetMPTLockFlag sets the TfMPTLock flag on the transaction.
 // Indicates that all MPT balances for this asset should be locked.
 func (m *MPTokenIssuanceSet) SetMPTLockFlag() {
-	m.Flags |= tfMPTLock
+	m.Flags |= TfMPTLock
 }
 
-// SetMPTUnlockFlag sets the tfMPTUnlock flag on the transaction.
+// SetMPTUnlockFlag sets the TfMPTUnlock flag on the transaction.
 // Indicates that all MPT balances for this asset should be unlocked.
 func (m *MPTokenIssuanceSet) SetMPTUnlockFlag() {
-	m.Flags |= tfMPTUnlock
+	m.Flags |= TfMPTUnlock
 }
 
 // Validate validates the MPTokenIssuanceSet transaction ensuring all fields are correct.
@@ -78,9 +79,9 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrInvalidAccount
 	}
 
-	// Check flag conflict: tfMPTLock and tfMPTUnlock cannot both be enabled
-	isLock := types.IsFlagEnabled(m.Flags, tfMPTLock)
-	isUnlock := types.IsFlagEnabled(m.Flags, tfMPTUnlock)
+	// Check flag conflict: TfMPTLock and TfMPTUnlock cannot both be enabled
+	isLock := flag.Contains(m.Flags, TfMPTLock)
+	isUnlock := flag.Contains(m.Flags, TfMPTUnlock)
 
 	if isLock && isUnlock {
 		return false, ErrMPTokenIssuanceSetFlags

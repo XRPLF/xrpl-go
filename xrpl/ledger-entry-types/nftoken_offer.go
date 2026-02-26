@@ -34,7 +34,7 @@ type NFTokenOffer struct {
 	Flags uint32
 	// The value 0x0037, mapped to the string NFTokenOffer, indicates that this is an offer to trade a NFToken.
 	LedgerEntryType EntryType
-	// Amount expected or offered for the NFToken. If the token has the lsfOnlyXRP flag set,
+	// Amount expected or offered for the NFToken. If the token has the LsfOnlyXRP flag set,
 	// the amount must be specified in XRP. Sell offers that specify assets other than XRP
 	// must specify a non-zero amount. Sell offers that specify XRP can be 'free' (that is,
 	// the Amount field can be equal to "0").

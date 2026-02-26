@@ -53,88 +53,88 @@ func TestAccountRoot_EntryType(t *testing.T) {
 func TestAccountRoot_SetLsfAllowTrustLineClawback(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfAllowTrustLineClawback()
-	require.Equal(t, ar.Flags, lsfAllowTrustLineClawback)
+	require.Equal(t, ar.Flags, LsfAllowTrustLineClawback)
 }
 func TestAccountRoot_SetLsfDefaultRipple(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfDefaultRipple()
-	require.Equal(t, ar.Flags, lsfDefaultRipple)
+	require.Equal(t, ar.Flags, LsfDefaultRipple)
 }
 
 func TestAccountRoot_SetLsfDepositAuth(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfDepositAuth()
-	require.Equal(t, ar.Flags, lsfDepositAuth)
+	require.Equal(t, ar.Flags, LsfDepositAuth)
 }
 
 func TestAccountRoot_SetLsfDisableMaster(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfDisableMaster()
-	require.Equal(t, ar.Flags, lsfDisableMaster)
+	require.Equal(t, ar.Flags, LsfDisableMaster)
 }
 
 func TestAccountRoot_SetLsfDisallowIncomingCheck(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfDisallowIncomingCheck()
-	require.Equal(t, ar.Flags, lsfDisallowIncomingCheck)
+	require.Equal(t, ar.Flags, LsfDisallowIncomingCheck)
 }
 
 func TestAccountRoot_SetLsfDisallowIncomingNFTokenOffer(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfDisallowIncomingNFTokenOffer()
-	require.Equal(t, ar.Flags, lsfDisallowIncomingNFTokenOffer)
+	require.Equal(t, ar.Flags, LsfDisallowIncomingNFTokenOffer)
 }
 
 func TestAccountRoot_SetLsfDisallowIncomingPayChan(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfDisallowIncomingPayChan()
-	require.Equal(t, ar.Flags, lsfDisallowIncomingPayChan)
+	require.Equal(t, ar.Flags, LsfDisallowIncomingPayChan)
 }
 
 func TestAccountRoot_SetLsfDisallowIncomingTrustline(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfDisallowIncomingTrustline()
-	require.Equal(t, ar.Flags, lsfDisallowIncomingTrustline)
+	require.Equal(t, ar.Flags, LsfDisallowIncomingTrustline)
 }
 
 func TestAccountRoot_SetLsfDisallowXRP(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfDisallowXRP()
-	require.Equal(t, ar.Flags, lsfDisallowXRP)
+	require.Equal(t, ar.Flags, LsfDisallowXRP)
 }
 
 func TestAccountRoot_SetLsfGlobalFreeze(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfGlobalFreeze()
-	require.Equal(t, ar.Flags, lsfGlobalFreeze)
+	require.Equal(t, ar.Flags, LsfGlobalFreeze)
 }
 
 func TestAccountRoot_SetLsfNoFreeze(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfNoFreeze()
-	require.Equal(t, ar.Flags, lsfNoFreeze)
+	require.Equal(t, ar.Flags, LsfNoFreeze)
 }
 
 func TestAccountRoot_SetLsfPasswordSpent(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfPasswordSpent()
-	require.Equal(t, ar.Flags, lsfPasswordSpent)
+	require.Equal(t, ar.Flags, LsfPasswordSpent)
 }
 
 func TestAccountRoot_SetLsfRequireAuth(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfRequireAuth()
-	require.Equal(t, ar.Flags, lsfRequireAuth)
+	require.Equal(t, ar.Flags, LsfRequireAuth)
 }
 
 func TestAccountRoot_SetLsfRequireDestTag(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfRequireDestTag()
-	require.Equal(t, ar.Flags, lsfRequireDestTag)
+	require.Equal(t, ar.Flags, LsfRequireDestTag)
 }
 
 func TestAccountRoot_SetLsfAllowTrustLineLocking(t *testing.T) {
 	ar := &AccountRoot{}
 	ar.SetLsfAllowTrustLineLocking()
-	require.Equal(t, ar.Flags, lsfAllowTrustLineLocking)
+	require.Equal(t, ar.Flags, LsfAllowTrustLineLocking)
 }

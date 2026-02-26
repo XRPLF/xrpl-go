@@ -3,9 +3,9 @@ package ledger
 import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 
 const (
-	// If enabled, the subject of the credential has accepted the credential.
+	// LsfAccepted if enabled, the subject of the credential has accepted the credential.
 	// Otherwise, the issuer created the credential but the subject has not yet accepted it, meaning it is not yet valid.
-	lsfAccepted uint32 = 0x00010000
+	LsfAccepted uint32 = 0x00010000
 )
 
 // Credential entry represents a credential, which contains an attestation about a subject account from a credential issuer account.
@@ -47,5 +47,5 @@ func (*Credential) EntryType() EntryType {
 
 // SetLsfAccepted sets the one owner count flag.
 func (c *Credential) SetLsfAccepted() {
-	c.Flags |= lsfAccepted
+	c.Flags |= LsfAccepted
 }

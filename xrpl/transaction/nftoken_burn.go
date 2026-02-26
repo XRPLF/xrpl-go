@@ -8,7 +8,7 @@ import (
 
 // The NFTokenBurn transaction is used to remove a NFToken object from the NFTokenPage in which it is being held, effectively removing the token from the ledger (burning it).
 //
-// The sender of this transaction must be the owner of the NFToken to burn; or, if the NFToken has the lsfBurnable flag enabled, can be the issuer or the issuer's authorized NFTokenMinter account instead.
+// The sender of this transaction must be the owner of the NFToken to burn; or, if the NFToken has the LsfBurnable flag enabled, can be the issuer or the issuer's authorized NFTokenMinter account instead.
 //
 // If this operation succeeds, the corresponding NFToken is removed.
 // If this operation empties the NFTokenPage holding the NFToken or results in consolidation, thus removing a NFTokenPage, the owner’s reserve requirement is reduced by one.
@@ -31,7 +31,7 @@ type NFTokenBurn struct {
 	// The NFToken to be removed by this transaction.
 	NFTokenID types.NFTokenID
 	// (Optional) The owner of the NFToken to burn. Only used if that owner is different than the account sending this transaction.
-	// The issuer or authorized minter can use this field to burn NFTs that have the lsfBurnable flag enabled.
+	// The issuer or authorized minter can use this field to burn NFTs that have the LsfBurnable flag enabled.
 	Owner types.Address `json:",omitempty"`
 }
 

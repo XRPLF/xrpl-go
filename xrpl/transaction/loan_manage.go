@@ -2,12 +2,12 @@ package transaction
 
 // LoanManageFlags represents flags for LoanManage transactions.
 const (
-	// tfLoanDefault indicates that the Loan should be defaulted.
-	tfLoanDefault uint32 = 0x00010000
-	// tfLoanImpair indicates that the Loan should be impaired.
-	tfLoanImpair uint32 = 0x00020000
-	// tfLoanUnimpair indicates that the Loan should be un-impaired.
-	tfLoanUnimpair uint32 = 0x00040000
+	// TfLoanDefault indicates that the Loan should be defaulted.
+	TfLoanDefault uint32 = 0x00010000
+	// TfLoanImpair indicates that the Loan should be impaired.
+	TfLoanImpair uint32 = 0x00020000
+	// TfLoanUnimpair indicates that the Loan should be un-impaired.
+	TfLoanUnimpair uint32 = 0x00040000
 )
 
 // LoanManage modifies an existing Loan object.
@@ -33,19 +33,19 @@ func (tx *LoanManage) TxType() TxType {
 	return LoanManageTx
 }
 
-// SetLoanDefaultFlag sets the tfLoanDefault flag, indicating that the Loan should be defaulted.
+// SetLoanDefaultFlag sets the TfLoanDefault flag, indicating that the Loan should be defaulted.
 func (tx *LoanManage) SetLoanDefaultFlag() {
-	tx.Flags |= tfLoanDefault
+	tx.Flags |= TfLoanDefault
 }
 
-// SetLoanImpairFlag sets the tfLoanImpair flag, indicating that the Loan should be impaired.
+// SetLoanImpairFlag sets the TfLoanImpair flag, indicating that the Loan should be impaired.
 func (tx *LoanManage) SetLoanImpairFlag() {
-	tx.Flags |= tfLoanImpair
+	tx.Flags |= TfLoanImpair
 }
 
-// SetLoanUnimpairFlag sets the tfLoanUnimpair flag, indicating that the Loan should be un-impaired.
+// SetLoanUnimpairFlag sets the TfLoanUnimpair flag, indicating that the Loan should be un-impaired.
 func (tx *LoanManage) SetLoanUnimpairFlag() {
-	tx.Flags |= tfLoanUnimpair
+	tx.Flags |= TfLoanUnimpair
 }
 
 // Flatten returns a map representation of the LoanManage transaction for JSON-RPC submission.
@@ -77,8 +77,8 @@ func (tx *LoanManage) Validate() (bool, error) {
 		return false, ErrLoanManageLoanIDInvalid
 	}
 
-	// Check that tfLoanImpair and tfLoanUnimpair are not both set
-	if (tx.Flags&tfLoanImpair) != 0 && (tx.Flags&tfLoanUnimpair) != 0 {
+	// Check that TfLoanImpair and TfLoanUnimpair are not both set
+	if (tx.Flags&TfLoanImpair) != 0 && (tx.Flags&TfLoanUnimpair) != 0 {
 		return false, ErrLoanManageFlagsConflict
 	}
 

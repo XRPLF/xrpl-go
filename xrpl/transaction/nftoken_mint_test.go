@@ -24,35 +24,35 @@ func TestNFTokenMint_Flags(t *testing.T) {
 			setter: func(n *NFTokenMint) {
 				n.SetBurnableFlag()
 			},
-			expected: tfBurnable,
+			expected: TfBurnable,
 		},
 		{
 			name: "pass - SetOnlyXRPFlag",
 			setter: func(n *NFTokenMint) {
 				n.SetOnlyXRPFlag()
 			},
-			expected: tfOnlyXRP,
+			expected: TfOnlyXRP,
 		},
 		{
 			name: "pass - SetTrustlineFlag",
 			setter: func(n *NFTokenMint) {
 				n.SetTrustlineFlag()
 			},
-			expected: tfTrustLine,
+			expected: TfTrustLine,
 		},
 		{
 			name: "pass - SetTransferableFlag",
 			setter: func(n *NFTokenMint) {
 				n.SetTransferableFlag()
 			},
-			expected: tfTransferable,
+			expected: TfTransferable,
 		},
 		{
 			name: "pass - SetMutableFlag",
 			setter: func(n *NFTokenMint) {
 				n.SetMutableFlag()
 			},
-			expected: tfMutable,
+			expected: TfMutable,
 		},
 		{
 			name: "pass - SetBurnableFlag and SetTransferableFlag",
@@ -60,7 +60,7 @@ func TestNFTokenMint_Flags(t *testing.T) {
 				n.SetBurnableFlag()
 				n.SetTransferableFlag()
 			},
-			expected: tfBurnable | tfTransferable,
+			expected: TfBurnable | TfTransferable,
 		},
 		{
 			name: "pass - SetBurnableFlag and SetTransferableFlag and SetOnlyXRPFlag",
@@ -69,7 +69,7 @@ func TestNFTokenMint_Flags(t *testing.T) {
 				n.SetTransferableFlag()
 				n.SetOnlyXRPFlag()
 			},
-			expected: tfBurnable | tfTransferable | tfOnlyXRP,
+			expected: TfBurnable | TfTransferable | TfOnlyXRP,
 		},
 	}
 

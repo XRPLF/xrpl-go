@@ -62,19 +62,19 @@ func TestLoan_EntryType(t *testing.T) {
 func TestLoan_SetLsfLoanDefault(t *testing.T) {
 	l := &Loan{}
 	l.SetLsfLoanDefault()
-	require.Equal(t, l.Flags, lsfLoanDefault)
+	require.Equal(t, l.Flags, LsfLoanDefault)
 }
 
 func TestLoan_SetLsfLoanImpaired(t *testing.T) {
 	l := &Loan{}
 	l.SetLsfLoanImpaired()
-	require.Equal(t, l.Flags, lsfLoanImpaired)
+	require.Equal(t, l.Flags, LsfLoanImpaired)
 }
 
 func TestLoan_SetLsfLoanOverpayment(t *testing.T) {
 	l := &Loan{}
 	l.SetLsfLoanOverpayment()
-	require.Equal(t, l.Flags, lsfLoanOverpayment)
+	require.Equal(t, l.Flags, LsfLoanOverpayment)
 }
 
 func TestLoan_WithOptionalFields(t *testing.T) {

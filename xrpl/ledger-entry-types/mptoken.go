@@ -3,12 +3,12 @@ package ledger
 import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 
 const (
-	// If enabled, indicates that the MPT owned by this account is currently locked and cannot be used in any XRP transactions other than sending value back to the issuer.
-	lsfMPTLocked uint32 = 0x00000001
+	// LsfMPTLocked if enabled, indicates that the MPT owned by this account is currently locked and cannot be used in any XRP transactions other than sending value back to the issuer.
+	LsfMPTLocked uint32 = 0x00000001
 
-	// (Only applicable for allow-listing) If set, indicates that the issuer has authorized the holder for the MPT.
-	// This flag can be set using a MPTokenAuthorize transaction; it can also be "un-set" using a MPTokenAuthorize transaction specifying the tfMPTUnauthorize flag.
-	lsfMPTAuthorized uint32 = 0x00000002
+	// LsfMPTAuthorized if set, indicates that the issuer has authorized the holder for the MPT. (Only applicable for allow-listing).
+	// This flag can be set using a MPTokenAuthorize transaction; it can also be "un-set" using a MPTokenAuthorize transaction specifying the TfMPTUnauthorize flag.
+	LsfMPTAuthorized uint32 = 0x00000002
 )
 
 // An MPToken entry tracks MPTs held by an account that is not the token issuer. You can create or delete an empty MPToken entry by sending an MPTokenAuthorize transaction.
@@ -43,12 +43,12 @@ func (*MPToken) EntryType() EntryType {
 	return MPTokenEntry
 }
 
-// SetLsfMPTLocked sets the lsfMPTLocked flag.
+// SetLsfMPTLocked sets the LsfMPTLocked flag.
 func (c *MPToken) SetLsfMPTLocked() {
-	c.Flags |= lsfMPTLocked
+	c.Flags |= LsfMPTLocked
 }
 
-// SetLsfMPTAuthorized sets the lsfMPTAuthorized flag.
+// SetLsfMPTAuthorized sets the LsfMPTAuthorized flag.
 func (c *MPToken) SetLsfMPTAuthorized() {
-	c.Flags |= lsfMPTAuthorized
+	c.Flags |= LsfMPTAuthorized
 }

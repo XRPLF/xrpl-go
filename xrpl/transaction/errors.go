@@ -133,8 +133,8 @@ var (
 
 	// payment
 
-	// ErrPartialPaymentFlagRequired is returned when the tfPartialPayment flag is required but not set.
-	ErrPartialPaymentFlagRequired = errors.New("tfPartialPayment flag required with DeliverMin")
+	// ErrPartialPaymentFlagRequired is returned when the TfPartialPayment flag is required but not set.
+	ErrPartialPaymentFlagRequired = errors.New("flag TfPartialPayment required with DeliverMin")
 
 	// ErrInvalidExpiration indicates the expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel.
 	ErrInvalidExpiration = errors.New("expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel")
@@ -146,8 +146,8 @@ var (
 
 	// offer
 
-	// ErrTfHybridCannotBeSetWithoutDomainID is returned if a OfferCreate has tfHybrid enabled and no DomainID set.
-	ErrTfHybridCannotBeSetWithoutDomainID = errors.New("tfHybrid must have a valid DomainID")
+	// ErrTfHybridCannotBeSetWithoutDomainID is returned if a OfferCreate has TfHybrid enabled and no DomainID set.
+	ErrTfHybridCannotBeSetWithoutDomainID = errors.New("flag TfHybrid must have a valid DomainID")
 
 	// nft
 
@@ -155,8 +155,8 @@ var (
 	ErrInvalidTransferFee = errors.New("transferFee must be between 0 and 50000 inclusive")
 	// ErrIssuerAccountConflict is returned when the issuer is the same as the account.
 	ErrIssuerAccountConflict = errors.New("issuer cannot be the same as the account")
-	// ErrTransferFeeRequiresTransferableFlag is returned when the transferFee is set without the tfTransferable flag.
-	ErrTransferFeeRequiresTransferableFlag = errors.New("transferFee can only be set if the tfTransferable flag is enabled")
+	// ErrTransferFeeRequiresTransferableFlag is returned when the transferFee is set without the TfTransferable flag.
+	ErrTransferFeeRequiresTransferableFlag = errors.New("transferFee can only be set if the TfTransferable flag is enabled")
 	// ErrAmountRequiredWithExpirationOrDestination is returned when Expiration or Destination is set without Amount.
 	ErrAmountRequiredWithExpirationOrDestination = errors.New("amount is required when Expiration or Destination is present")
 
@@ -180,14 +180,14 @@ var (
 
 	// mpt
 
-	// ErrMPTokenIssuanceSetFlags is returned when both tfMPTLock and tfMPTUnlock flags are enabled simultaneously.
-	ErrMPTokenIssuanceSetFlags = errors.New("mptoken issuance set: tfMPTLock and tfMPTUnlock flags cannot both be enabled")
+	// ErrMPTokenIssuanceSetFlags is returned when both TfMPTLock and TfMPTUnlock flags are enabled simultaneously.
+	ErrMPTokenIssuanceSetFlags = errors.New("mptoken issuance set: TfMPTLock and TfMPTUnlock flags cannot both be enabled")
 
 	// ErrInvalidMPTokenIssuanceID is returned when the MPTokenIssuanceID is empty or invalid.
 	ErrInvalidMPTokenIssuanceID = errors.New("mptoken issuance destroy: invalid MPTokenIssuanceID")
 
-	// ErrTransferFeeRequiresCanTransfer is returned when TransferFee is set without enabling tfMPTCanTransfer flag.
-	ErrTransferFeeRequiresCanTransfer = errors.New("mptoken issuance create: TransferFee cannot be provided without enabling tfMPTCanTransfer flag")
+	// ErrTransferFeeRequiresCanTransfer is returned when TransferFee is set without enabling TfMPTCanTransfer flag.
+	ErrTransferFeeRequiresCanTransfer = errors.New("mptoken issuance create: TransferFee cannot be provided without enabling TfMPTCanTransfer flag")
 	// ErrInvalidMPTokenMetadata is returned when MPTokenMetadata is not a valid hex string or exceeds size limit.
 	ErrInvalidMPTokenMetadata = errors.New("mptoken issuance create: MPTokenMetadata must be a valid hex string and at most 1024 bytes")
 
@@ -307,7 +307,7 @@ var (
 	// account
 
 	// ErrAccountSetInvalidSetFlag is returned when SetFlag is outside the valid range (1 to 16).
-	ErrAccountSetInvalidSetFlag = errors.New("account set: SetFlag must be an integer between asfRequireDest (1) and asfAllowTrustLineClawback (16)")
+	ErrAccountSetInvalidSetFlag = errors.New("account set: SetFlag must be an integer between AsfRequireDest (1) and AsfAllowTrustLineClawback (16)")
 	// ErrAccountSetInvalidTickSize is returned when TickSize is outside the valid range (0 to 15 inclusive).
 	ErrAccountSetInvalidTickSize = errors.New("account set: TickSize must be an integer between 0 and 15 inclusive")
 
@@ -355,8 +355,8 @@ var (
 	ErrLoanManageLoanIDRequired = errors.New("loanManage: LoanID is required")
 	// ErrLoanManageLoanIDInvalid is returned when LoanID is not a valid 64-character hexadecimal string.
 	ErrLoanManageLoanIDInvalid = errors.New("loanManage: LoanID must be 64 characters hexadecimal string")
-	// ErrLoanManageFlagsConflict is returned when tfLoanImpair and tfLoanUnimpair flags are both set.
-	ErrLoanManageFlagsConflict = errors.New("loanManage: tfLoanImpair and tfLoanUnimpair cannot both be present")
+	// ErrLoanManageFlagsConflict is returned when TfLoanImpair and TfLoanUnimpair flags are both set.
+	ErrLoanManageFlagsConflict = errors.New("loanManage: TfLoanImpair and TfLoanUnimpair cannot both be present")
 
 	// ErrLoanPayLoanIDRequired is returned when LoanID is not set on a LoanPay transaction.
 	ErrLoanPayLoanIDRequired = errors.New("loanPay: LoanID is required")

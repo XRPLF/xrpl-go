@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	// Claw back the specified amount of Asset, and a corresponding amount of Asset2 based on
+	// TfClawTwoAssets claws back the specified amount of Asset, and a corresponding amount of Asset2 based on
 	// the AMM pool's asset proportion; both assets must be issued by the issuer in the Account
 	// field. If this flag isn't enabled, the issuer claws back the specified amount of Asset,
 	// while a corresponding proportion of Asset2 goes back to the Holder.
-	tfClawTwoAssets uint32 = 0x00000001
+	TfClawTwoAssets uint32 = 0x00000001
 )
 
 // AMMClawback claws back tokens from a holder who has deposited issued tokens into an AMM pool.
@@ -110,7 +110,7 @@ func (a *AMMClawback) Validate() (bool, error) {
 	return true, nil
 }
 
-// SetClawTwoAssets sets the tfClawTwoAssets flag to claw back both assets based on the AMM pool proportions.
+// SetClawTwoAssets sets the TfClawTwoAssets flag to claw back both assets based on the AMM pool proportions.
 func (a *AMMClawback) SetClawTwoAssets() {
-	a.Flags |= tfClawTwoAssets
+	a.Flags |= TfClawTwoAssets
 }

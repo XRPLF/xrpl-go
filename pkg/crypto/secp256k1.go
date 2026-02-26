@@ -14,25 +14,23 @@ import (
 const (
 	// SECP256K1 prefix - value is 0
 	secp256K1Prefix byte = 0x00
-	// SECP256K1 family seed prefix - value is 33
-	secp256K1FamilySeedPrefix byte = 0x21
 )
 
 var (
 	_ Algorithm = SECP256K1CryptoAlgorithm{}
+	// SECP256K1 family seed prefix - value is 33
+	secp256K1FamilySeedPrefix = []byte{0x21}
 )
 
 // SECP256K1CryptoAlgorithm is the implementation of the SECP256K1 algorithm.
 type SECP256K1CryptoAlgorithm struct {
-	prefix           byte
-	familySeedPrefix byte
+	prefix byte
 }
 
 // SECP256K1 returns a new SECP256K1CryptoAlgorithm instance.
 func SECP256K1() SECP256K1CryptoAlgorithm {
 	return SECP256K1CryptoAlgorithm{
-		prefix:           secp256K1Prefix,
-		familySeedPrefix: secp256K1FamilySeedPrefix,
+		prefix: secp256K1Prefix,
 	}
 }
 
@@ -42,8 +40,8 @@ func (c SECP256K1CryptoAlgorithm) Prefix() byte {
 }
 
 // FamilySeedPrefix returns the family seed prefix for the SECP256K1 algorithm.
-func (c SECP256K1CryptoAlgorithm) FamilySeedPrefix() byte {
-	return c.familySeedPrefix
+func (c SECP256K1CryptoAlgorithm) FamilySeedPrefix() []byte {
+	return secp256K1FamilySeedPrefix
 }
 
 // deriveScalar derives a scalar from a seed.

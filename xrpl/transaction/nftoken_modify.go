@@ -7,7 +7,7 @@ import (
 )
 
 // NFTokenModify is used to change the URI field of an NFT to point to a different URI in order to update the supporting data for the NFT.
-// The NFT must have been minted with the tfMutable flag set. See Dynamic Non-Fungible Tokens (https://xrpl.org/docs/concepts/tokens/nfts/dynamic-nfts).
+// The NFT must have been minted with the TfMutable flag set. See Dynamic Non-Fungible Tokens (https://xrpl.org/docs/concepts/tokens/nfts/dynamic-nfts).
 //
 // # Example
 //

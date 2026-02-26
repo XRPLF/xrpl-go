@@ -58,38 +58,38 @@ type AMMDeposit struct {
 
 // You must specify exactly one of these flags, plus any global flags.
 const (
-	// Perform a special double-asset deposit to an AMM with an empty pool.
-	tfTwoAssetIfEmpty uint32 = 8388608
+	// TfTwoAssetIfEmpty performs a special double-asset deposit to an AMM with an empty pool.
+	TfTwoAssetIfEmpty uint32 = 8388608
 )
 
 // SetLPTokentFlag performs a double-asset deposit and receives the specified amount of LP Tokens.
 func (a *AMMDeposit) SetLPTokentFlag() {
-	a.Flags |= tfLPToken
+	a.Flags |= TfLPToken
 }
 
 // SetSingleAssetFlag performs a single-asset deposit with a specified asset amount.
 func (a *AMMDeposit) SetSingleAssetFlag() {
-	a.Flags |= tfSingleAsset
+	a.Flags |= TfSingleAsset
 }
 
 // SetTwoAssetFlag performs a double-asset deposit with specified amounts of both assets.
 func (a *AMMDeposit) SetTwoAssetFlag() {
-	a.Flags |= tfTwoAsset
+	a.Flags |= TfTwoAsset
 }
 
 // SetOneAssetLPTokenFlag performs a single-asset deposit and receives the specified amount of LP Tokens.
 func (a *AMMDeposit) SetOneAssetLPTokenFlag() {
-	a.Flags |= tfOneAssetLPToken
+	a.Flags |= TfOneAssetLPToken
 }
 
 // SetLimitLPTokenFlag performs a single-asset deposit with a specified effective price.
 func (a *AMMDeposit) SetLimitLPTokenFlag() {
-	a.Flags |= tfLimitLPToken
+	a.Flags |= TfLimitLPToken
 }
 
 // SetTwoAssetIfEmptyFlag performs a special double-asset deposit into an empty AMM pool.
 func (a *AMMDeposit) SetTwoAssetIfEmptyFlag() {
-	a.Flags |= tfTwoAssetIfEmpty
+	a.Flags |= TfTwoAssetIfEmpty
 }
 
 // TxType implements the TxType method for the AMMDeposit struct.

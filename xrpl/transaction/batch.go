@@ -5,11 +5,14 @@ import (
 )
 
 const (
-	// Batch transaction flags
-	tfAllOrNothing uint32 = 0x00010000
-	tfOnlyOne      uint32 = 0x00020000
-	tfUntilFailure uint32 = 0x00040000
-	tfIndependent  uint32 = 0x00080000
+	// TfAllOrNothing if this flag is set, all transactions in the batch must succeed for any of them to be applied.
+	TfAllOrNothing uint32 = 0x00010000
+	// TfOnlyOne if this flag is set, at most one transaction in the batch will be applied.
+	TfOnlyOne uint32 = 0x00020000
+	// TfUntilFailure if this flag is set, transactions in the batch are applied in order until one fails.
+	TfUntilFailure uint32 = 0x00040000
+	// TfIndependent if this flag is set, each transaction in the batch is applied independently.
+	TfIndependent uint32 = 0x00080000
 )
 
 // Batch represents a Batch transaction that can execute multiple transactions atomically.
@@ -57,36 +60,36 @@ func (*Batch) TxType() TxType {
 // Batch Flags
 // **********************************
 
-// SetAllOrNothingFlag sets the AllOrNothing flag.
+// SetAllOrNothingFlag sets the TfAllOrNothing flag.
 //
 // AllOrNothing: Execute all transactions in the batch or none at all.
 // If any transaction fails, the entire batch fails.
 func (b *Batch) SetAllOrNothingFlag() {
-	b.Flags |= tfAllOrNothing
+	b.Flags |= TfAllOrNothing
 }
 
-// SetOnlyOneFlag sets the OnlyOne flag.
+// SetOnlyOneFlag sets the TfOnlyOne flag.
 //
 // OnlyOne: Execute only the first transaction that succeeds.
 // Stop execution after the first successful transaction.
 func (b *Batch) SetOnlyOneFlag() {
-	b.Flags |= tfOnlyOne
+	b.Flags |= TfOnlyOne
 }
 
-// SetUntilFailureFlag sets the UntilFailure flag.
+// SetUntilFailureFlag sets the TfUntilFailure flag.
 //
 // UntilFailure: Execute transactions until one fails.
 // Stop execution at the first failed transaction.
 func (b *Batch) SetUntilFailureFlag() {
-	b.Flags |= tfUntilFailure
+	b.Flags |= TfUntilFailure
 }
 
-// SetIndependentFlag sets the Independent flag.
+// SetIndependentFlag sets the TfIndependent flag.
 //
 // Independent: Execute all transactions independently.
 // The failure of one transaction does not affect others.
 func (b *Batch) SetIndependentFlag() {
-	b.Flags |= tfIndependent
+	b.Flags |= TfIndependent
 }
 
 // Flatten returns the flattened map of the Batch transaction.

@@ -2,6 +2,7 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -10,8 +11,8 @@ import (
 // **********************************
 
 const (
-	// If enabled, indicates that the offer is a sell offer. Otherwise, it is a buy offer.
-	tfSellNFToken uint32 = 1
+	// TfSellNFToken if enabled, indicates that the offer is a sell offer. Otherwise, it is a buy offer.
+	TfSellNFToken uint32 = 1
 )
 
 // NFTokenCreateOfferMetadata represents the resulting metadata of a succeeded NFTokenCreateOffer transaction.
@@ -59,7 +60,7 @@ type NFTokenCreateOffer struct {
 
 // SetSellNFTokenFlag sets the flag indicating the offer is a sell offer.
 func (n *NFTokenCreateOffer) SetSellNFTokenFlag() {
-	n.Flags |= tfSellNFToken
+	n.Flags |= TfSellNFToken
 }
 
 // TxType returns the type of the transaction (NFTokenCreateOffer).
@@ -119,12 +120,12 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 	}
 
 	// validate Sell Offer Cases
-	if types.IsFlagEnabled(n.Flags, tfSellNFToken) && n.Owner != "" {
+	if flag.Contains(n.Flags, TfSellNFToken) && n.Owner != "" {
 		return false, ErrOwnerPresentForSellOffer
 	}
 
 	// validate Buy Offer Cases
-	if !types.IsFlagEnabled(n.Flags, tfSellNFToken) && n.Owner == "" {
+	if !flag.Contains(n.Flags, TfSellNFToken) && n.Owner == "" {
 		return false, ErrOwnerNotPresentForBuyOffer
 	}
 

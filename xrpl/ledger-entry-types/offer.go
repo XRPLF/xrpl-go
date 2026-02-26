@@ -7,16 +7,16 @@ import (
 )
 
 const (
-	// The offer was placed as "passive". This has no effect after the offer is placed into
+	// LsfPassive the offer was placed as "passive". This has no effect after the offer is placed into
 	// the ledger.
-	lsfPassive uint32 = 0x00010000
-	// The offer was placed as a "Sell" offer. This has no effect after the offer is placed
-	// in the ledger, because tfSell only matters if you get a better rate than you asked for
+	LsfPassive uint32 = 0x00010000
+	// LsfSell the offer was placed as a "Sell" offer. This has no effect after the offer is placed
+	// in the ledger, because TfSell only matters if you get a better rate than you asked for
 	// which can only happen when the offer is initially placed.
-	lsfSell uint32 = 0x00020000
-	// Indicates the offer is hybrid. (meaning it is part of both a domain and open order book)
+	LsfSell uint32 = 0x00020000
+	// LsfHybrid indicates the offer is hybrid. (meaning it is part of both a domain and open order book)
 	// This flag cannot be set if the offer doesn't have a DomainID.
-	lsfHybrid uint32 = 0x00040000
+	LsfHybrid uint32 = 0x00040000
 )
 
 // Book represents an offer book.
@@ -116,17 +116,17 @@ func (*Offer) EntryType() EntryType {
 
 // SetLsfPassive sets the offer as passive.
 func (o *Offer) SetLsfPassive() {
-	o.Flags |= lsfPassive
+	o.Flags |= LsfPassive
 }
 
 // SetLsfSell sets the offer as a sell offer.
 func (o *Offer) SetLsfSell() {
-	o.Flags |= lsfSell
+	o.Flags |= LsfSell
 }
 
 // SetLsfHybrid sets the hybrid flag.
 func (o *Offer) SetLsfHybrid() {
-	o.Flags |= lsfHybrid
+	o.Flags |= LsfHybrid
 }
 
 // UnmarshalJSON unmarshals the offer from a JSON byte slice.

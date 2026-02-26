@@ -11,7 +11,7 @@ func TestED25519_Prefix(t *testing.T) {
 }
 
 func TestED25519_FamilySeedPrefix(t *testing.T) {
-	require.Zero(t, ED25519().FamilySeedPrefix())
+	require.Equal(t, ed25519FamilySeedPrefix, ED25519().FamilySeedPrefix())
 }
 
 func TestED25519DeriveKeypair(t *testing.T) {
