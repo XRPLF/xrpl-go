@@ -25,6 +25,10 @@ func TestIssue_FromJson(t *testing.T) {
 				0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, 0, 0, 0, 0,
 				0, 0, 0, 0, 0, 0,
+				// issuer zeros (20 bytes)
+				0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0, 0,
 			},
 			expectedErr: nil,
 		},
@@ -140,12 +144,13 @@ func TestIssue_ToJson(t *testing.T) {
 			expected: map[string]any{
 				"currency": "XRP",
 			},
-			opts: []int{20},
+			opts: []int{40}, // 40 bytes for XRP (currency + issuer zeros)
 			err:  nil,
 			setup: func(t *testing.T) (*Issue, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
 				mock := testutil.NewMockBinaryParser(ctrl)
 				mock.EXPECT().ReadBytes(20).Return(XRPBytes, nil)
+				mock.EXPECT().ReadBytes(20).Return(XRPBytes, nil) // issuer zeros
 				return &Issue{}, mock
 			},
 		},
