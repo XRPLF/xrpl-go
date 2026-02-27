@@ -1,7 +1,17 @@
 package transaction
 
 import (
+	flag "github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+)
+
+const (
+	// TfLoanPayOverpayment indicates that remaining payment amount should be treated as an overpayment.
+	TfLoanPayOverpayment uint32 = 0x00010000
+	// TfLoanPayFullPayment indicates that the borrower is making a full early repayment.
+	TfLoanPayFullPayment uint32 = 0x00020000
+	// TfLoanPayLatePayment indicates that the borrower is making a late loan payment.
+	TfLoanPayLatePayment uint32 = 0x00040000
 )
 
 // LoanPay allows the Borrower to submit a payment on the Loan.
@@ -68,6 +78,18 @@ func (tx *LoanPay) Validate() (bool, error) {
 
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {
 		return false, err
+	}
+
+	// Validate mutually exclusive flags: at most one of the three payment type flags can be set.
+	paymentFlags := []uint32{TfLoanPayOverpayment, TfLoanPayFullPayment, TfLoanPayLatePayment}
+	setCount := 0
+	for _, f := range paymentFlags {
+		if flag.Contains(tx.Flags, f) {
+			setCount++
+		}
+	}
+	if setCount > 1 {
+		return false, ErrLoanPayMutuallyExclusiveFlags
 	}
 
 	return true, nil

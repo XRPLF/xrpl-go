@@ -48,6 +48,60 @@ func TestLoanPay_Flatten(t *testing.T) {
 				"Amount":             "10000",
 			},
 		},
+		{
+			name: "pass - with TfLoanPayOverpayment flag",
+			tx: &LoanPay{
+				BaseTx: BaseTx{
+					Account: "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					Flags:   TfLoanPayOverpayment,
+				},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: map[string]interface{}{
+				"TransactionType": LoanPayTx.String(),
+				"Account":         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+				"Flags":           TfLoanPayOverpayment,
+				"LoanID":          "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				"Amount":          "10000",
+			},
+		},
+		{
+			name: "pass - with TfLoanPayFullPayment flag",
+			tx: &LoanPay{
+				BaseTx: BaseTx{
+					Account: "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					Flags:   TfLoanPayFullPayment,
+				},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: map[string]interface{}{
+				"TransactionType": LoanPayTx.String(),
+				"Account":         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+				"Flags":           TfLoanPayFullPayment,
+				"LoanID":          "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				"Amount":          "10000",
+			},
+		},
+		{
+			name: "pass - with TfLoanPayLatePayment flag",
+			tx: &LoanPay{
+				BaseTx: BaseTx{
+					Account: "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					Flags:   TfLoanPayLatePayment,
+				},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: map[string]interface{}{
+				"TransactionType": LoanPayTx.String(),
+				"Account":         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+				"Flags":           TfLoanPayLatePayment,
+				"LoanID":          "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				"Amount":          "10000",
+			},
+		},
 	}
 
 	for _, testcase := range testcases {
@@ -119,6 +173,71 @@ func TestLoanPay_Validate(t *testing.T) {
 				Amount: types.XRPCurrencyAmount(10000),
 			},
 			expected: nil,
+		},
+		{
+			name: "pass - with TfLoanPayOverpayment flag",
+			tx: &LoanPay{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanPayTx,
+					Flags:           TfLoanPayOverpayment,
+				},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - with TfLoanPayFullPayment flag",
+			tx: &LoanPay{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanPayTx,
+					Flags:           TfLoanPayFullPayment,
+				},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - with TfLoanPayLatePayment flag",
+			tx: &LoanPay{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanPayTx,
+					Flags:           TfLoanPayLatePayment,
+				},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: nil,
+		},
+		{
+			name: "fail - mutually exclusive flags (Overpayment + FullPayment)",
+			tx: &LoanPay{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanPayTx,
+					Flags:           TfLoanPayOverpayment | TfLoanPayFullPayment,
+				},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: ErrLoanPayMutuallyExclusiveFlags,
+		},
+		{
+			name: "fail - mutually exclusive flags (all three set)",
+			tx: &LoanPay{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanPayTx,
+					Flags:           TfLoanPayOverpayment | TfLoanPayFullPayment | TfLoanPayLatePayment,
+				},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: ErrLoanPayMutuallyExclusiveFlags,
 		},
 	}
 

@@ -364,6 +364,8 @@ var (
 	ErrLoanPayLoanIDInvalid = errors.New("loanPay: LoanID must be 64 characters hexadecimal string")
 	// ErrLoanPayAmountRequired is returned when Amount is not set on a LoanPay transaction.
 	ErrLoanPayAmountRequired = errors.New("loanPay: Amount is required")
+	// ErrLoanPayMutuallyExclusiveFlags is returned when more than one mutually exclusive LoanPay flag is set.
+	ErrLoanPayMutuallyExclusiveFlags = errors.New("loanPay: at most one of TfLoanOverpayment, TfLoanFullPayment, TfLoanLatePayment flags can be set")
 
 	// ErrLoanBrokerSetVaultIDRequired is returned when VaultID is not set on a LoanBrokerSet transaction.
 	ErrLoanBrokerSetVaultIDRequired = errors.New("loanBrokerSet: VaultID is required")

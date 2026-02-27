@@ -26,6 +26,8 @@ type LoanBrokerCoverWithdraw struct {
 	Amount types.CurrencyAmount
 	// An account to receive the assets. It must be able to receive the asset.
 	Destination *types.Address `json:",omitempty"`
+	// An arbitrary tag to further specify the destination for this withdrawal.
+	DestinationTag *uint32 `json:",omitempty"`
 }
 
 // TxType returns the TxType for LoanBrokerCoverWithdraw transactions.
@@ -51,6 +53,10 @@ func (tx *LoanBrokerCoverWithdraw) Flatten() map[string]interface{} {
 
 	if tx.Destination != nil {
 		flattened["Destination"] = tx.Destination.String()
+	}
+
+	if tx.DestinationTag != nil {
+		flattened["DestinationTag"] = *tx.DestinationTag
 	}
 
 	return flattened
