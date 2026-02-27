@@ -10,6 +10,7 @@ import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/keypairs"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/Peersyst/xrpl-go/pkg/random"
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/interfaces"
@@ -121,7 +122,7 @@ func FromMnemonic(mnemonic string) (*Wallet, error) {
 	}
 
 	privKey := strings.ToUpper(ecPriv.Hex())
-	pubKey := strings.ToUpper(hex.EncodeToString(ecPriv.PubKey().Compressed()))
+	pubKey := hexutil.EncodeToUpperHex(ecPriv.PubKey().Compressed())
 
 	// Derive classic address
 	classicAddr, err := keypairs.DeriveClassicAddress(pubKey)

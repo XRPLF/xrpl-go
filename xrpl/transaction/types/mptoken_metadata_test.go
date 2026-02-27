@@ -1,11 +1,10 @@
 package types
 
 import (
-	"encoding/hex"
 	"encoding/json"
-	"strings"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -855,7 +854,7 @@ func toHexString(t *testing.T, data any) string {
 		require.NoError(t, err)
 	}
 
-	return strings.ToUpper(hex.EncodeToString(jsonBytes))
+	return hexutil.EncodeToUpperHex(jsonBytes)
 }
 
 // Helper function to extract errors from validation errors

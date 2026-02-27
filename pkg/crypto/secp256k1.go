@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	ecdsa "github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
@@ -100,13 +101,13 @@ func (c SECP256K1CryptoAlgorithm) DeriveKeypair(seed []byte, validator bool) (st
 	privateKey := scalarWithPrivateGen.Mod(scalarWithPrivateGen, order)
 
 	privKeyBytes := privateKey.Bytes()
-	private := strings.ToUpper(hex.EncodeToString(privKeyBytes))
+	private := hexutil.EncodeToUpperHex(privKeyBytes)
 
 	_, pubKey := btcec.PrivKeyFromBytes(privKeyBytes)
 
 	pubKeyBytes := pubKey.SerializeCompressed()
 
-	return "00" + private, strings.ToUpper(hex.EncodeToString(pubKeyBytes)), nil
+	return "00" + private, hexutil.EncodeToUpperHex(pubKeyBytes), nil
 }
 
 // Sign signs a message with a private key.

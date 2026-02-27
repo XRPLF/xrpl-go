@@ -4,10 +4,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"strconv"
-	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/definitions"
 	"github.com/Peersyst/xrpl-go/binary-codec/serdes"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 // LedgerData represents the data of a ledger.
@@ -53,21 +53,21 @@ func DecodeLedgerData(data string) (LedgerData, error) {
 		return LedgerData{}, err
 	}
 
-	ledgerData.ParentHash = strings.ToUpper(hex.EncodeToString(parentHash))
+	ledgerData.ParentHash = hexutil.EncodeToUpperHex(parentHash)
 
 	transactionHash, err := parser.ReadBytes(32)
 	if err != nil {
 		return LedgerData{}, err
 	}
 
-	ledgerData.TransactionHash = strings.ToUpper(hex.EncodeToString(transactionHash))
+	ledgerData.TransactionHash = hexutil.EncodeToUpperHex(transactionHash)
 
 	accountHash, err := parser.ReadBytes(32)
 	if err != nil {
 		return LedgerData{}, err
 	}
 
-	ledgerData.AccountHash = strings.ToUpper(hex.EncodeToString(accountHash))
+	ledgerData.AccountHash = hexutil.EncodeToUpperHex(accountHash)
 
 	parentCloseTime, err := parser.ReadBytes(4)
 	if err != nil {

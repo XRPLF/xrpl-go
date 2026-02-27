@@ -2,11 +2,10 @@
 package types
 
 import (
-	"encoding/hex"
 	"fmt"
-	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 // HashLengthBytes is the byte length of a hash in Vector256.
@@ -86,7 +85,7 @@ func (v *Vector256) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) 
 	var value []string
 
 	for i := 0; i < len(b); i += HashLengthBytes {
-		value = append(value, strings.ToUpper(hex.EncodeToString(b[i:i+HashLengthBytes])))
+		value = append(value, hexutil.EncodeToUpperHex(b[i:i+HashLengthBytes]))
 	}
 
 	return value, nil
