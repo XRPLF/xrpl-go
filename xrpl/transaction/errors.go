@@ -459,6 +459,13 @@ var (
 	ErrVaultDepositVaultIDInvalid = errors.New("vaultDeposit: VaultID must be a valid 64-character hexadecimal string")
 	// ErrVaultDepositAmountRequired is returned when Amount is not set on a VaultDeposit transaction.
 	ErrVaultDepositAmountRequired = errors.New("vaultDeposit: Amount is required")
+
+	// ErrVaultWithdrawVaultIDRequired is returned when VaultID is not set on a VaultWithdraw transaction.
+	ErrVaultWithdrawVaultIDRequired = errors.New("vaultWithdraw: VaultID is required")
+	// ErrVaultWithdrawVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
+	ErrVaultWithdrawVaultIDInvalid = errors.New("vaultWithdraw: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultWithdrawAmountRequired is returned when Amount is not set on a VaultWithdraw transaction.
+	ErrVaultWithdrawAmountRequired = errors.New("vaultWithdraw: Amount is required")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.
