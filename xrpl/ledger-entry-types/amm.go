@@ -87,31 +87,6 @@ type AMM struct {
 	PreviousTxnLgrSeq uint32 `json:",omitempty"`
 }
 
-// ---------------------------------------------
-// Asset Object
-// ---------------------------------------------
-
-// Asset defines one of the two assets held by the AMM, with currency and optional issuer fields.
-type Asset struct {
-	Currency string        `json:"currency"`
-	Issuer   types.Address `json:"issuer,omitempty"`
-}
-
-// Flatten returns the flattened representation of the Asset.
-func (a *Asset) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
-
-	if a.Issuer.String() != "" {
-		flattened["issuer"] = a.Issuer
-	}
-
-	if a.Currency != "" {
-		flattened["currency"] = a.Currency
-	}
-
-	return flattened
-}
-
 // AuctionSlot represents the auction slot details for AMM fee discounts, including account, auth accounts, fee, price, and expiration.
 type AuctionSlot struct {
 	// The current owner of this auction slot.
