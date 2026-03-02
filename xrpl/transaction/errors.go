@@ -437,6 +437,16 @@ var (
 	// ErrVaultCreateDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
 	ErrVaultCreateDomainIDInvalid = errors.New("vaultCreate: DomainID must be a valid 64-character hexadecimal string")
 
+	// ErrVaultSetVaultIDRequired is returned when VaultID is not set on a VaultSet transaction.
+	ErrVaultSetVaultIDRequired = errors.New("vaultSet: VaultID is required")
+	// ErrVaultSetVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
+	ErrVaultSetVaultIDInvalid = errors.New("vaultSet: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultSetAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number.
+	ErrVaultSetAssetsMaximumInvalid = errors.New("vaultSet: AssetsMaximum must be a valid XRPL number")
+	// ErrVaultSetDataInvalid is returned when Data is not a valid hex string or exceeds 512 characters (256 bytes).
+	ErrVaultSetDataInvalid = errors.New("vaultSet: Data must be a valid hex string and at most 512 characters (256 bytes)")
+	// ErrVaultSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
+	ErrVaultSetDomainIDInvalid = errors.New("vaultSet: DomainID must be a valid 64-character hexadecimal string")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.
