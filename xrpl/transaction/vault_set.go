@@ -44,10 +44,6 @@ func (tx *VaultSet) Flatten() map[string]interface{} {
 
 	flattened["TransactionType"] = tx.TxType().String()
 
-	if tx.Account != "" {
-		flattened["Account"] = tx.Account.String()
-	}
-
 	flattened["VaultID"] = tx.VaultID
 
 	if tx.Data != nil && *tx.Data != "" {
