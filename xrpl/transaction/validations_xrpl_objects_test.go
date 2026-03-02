@@ -317,6 +317,56 @@ func TestIsAsset(t *testing.T) {
 			t.Errorf("Expected an error, but got nil")
 		}
 	})
+
+	t.Run("pass - valid MPT asset", func(t *testing.T) {
+		obj := ledger.Asset{
+			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+		}
+
+		ok, err := IsAsset(obj)
+
+		if !ok {
+			t.Errorf("Expected IsAsset to return true, but got false with error: %v", err)
+		}
+	})
+
+	t.Run("fail - MPT asset with currency set", func(t *testing.T) {
+		obj := ledger.Asset{
+			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+			Currency:      "USD",
+		}
+
+		ok, _ := IsAsset(obj)
+
+		if ok {
+			t.Errorf("Expected IsAsset to return false, but got true")
+		}
+	})
+
+	t.Run("fail - MPT asset with issuer set", func(t *testing.T) {
+		obj := ledger.Asset{
+			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+			Issuer:        "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+		}
+
+		ok, _ := IsAsset(obj)
+
+		if ok {
+			t.Errorf("Expected IsAsset to return false, but got true")
+		}
+	})
+
+	t.Run("fail - MPT asset with non-hex ID", func(t *testing.T) {
+		obj := ledger.Asset{
+			MPTIssuanceID: "not-a-hex-string",
+		}
+
+		ok, _ := IsAsset(obj)
+
+		if ok {
+			t.Errorf("Expected IsAsset to return false, but got true")
+		}
+	})
 }
 func TestIsPath(t *testing.T) {
 	tests := []struct {

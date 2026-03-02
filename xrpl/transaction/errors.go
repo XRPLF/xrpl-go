@@ -83,6 +83,8 @@ var (
 	ErrMissingAssetCurrency = errors.New("currency field is required for an asset")
 	// ErrInvalidAssetIssuer is returned when the issuer field is invalid for an asset.
 	ErrInvalidAssetIssuer = errors.New("issuer field must be a valid XRPL classic address")
+	// ErrInvalidMPTIssuanceIDAsset is returned when an MPT asset has invalid fields (non-hex ID, or currency/issuer set).
+	ErrInvalidMPTIssuanceIDAsset = errors.New("MPT asset must have only a valid hex mpt_issuance_id, with no currency or issuer")
 
 	// validations_xrpl_objects
 

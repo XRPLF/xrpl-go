@@ -199,6 +199,17 @@ func IsPaths(pathsteps [][]PathStep) (bool, error) {
 
 // IsAsset checks if the given object is a valid Asset object.
 func IsAsset(asset ledger.Asset) (bool, error) {
+	// MPT asset: only MPTIssuanceID should be set
+	if asset.MPTIssuanceID != "" {
+		if asset.Currency != "" || asset.Issuer != "" {
+			return false, ErrInvalidMPTIssuanceIDAsset
+		}
+		if !typecheck.IsHex(asset.MPTIssuanceID) {
+			return false, ErrInvalidMPTIssuanceIDAsset
+		}
+		return true, nil
+	}
+
 	// Get the size of the Asset object.
 	lenKeys := len(maputils.GetKeys(asset.Flatten()))
 
