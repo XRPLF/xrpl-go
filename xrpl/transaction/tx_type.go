@@ -75,6 +75,7 @@ const (
 	LoanBrokerCoverDepositTx            TxType = "LoanBrokerCoverDeposit"
 	LoanBrokerCoverWithdrawTx           TxType = "LoanBrokerCoverWithdraw"
 	LoanBrokerCoverClawbackTx           TxType = "LoanBrokerCoverClawback"
+	VaultCreateTx                       TxType = "VaultCreate"
 )
 
 func (t TxType) String() string {

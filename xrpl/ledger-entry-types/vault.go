@@ -7,6 +7,10 @@ import (
 const (
 	// LsfVaultPrivate if set, indicates that the vault is private.
 	LsfVaultPrivate uint32 = 0x00010000
+
+	// VaultStrategyFirstComeFirstServe is the default withdrawal policy.
+	// Withdrawals are processed on a first-come, first-served basis.
+	VaultStrategyFirstComeFirstServe uint8 = 0x01
 )
 
 // Vault represents a Single Asset Vault instance.

@@ -417,6 +417,26 @@ var (
 	ErrLoanBrokerCoverClawbackAmountNegative = errors.New("loanBrokerCoverClawback: Amount must be >= 0")
 	// ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired is returned when neither LoanBrokerID nor Amount is provided.
 	ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired = errors.New("loanBrokerCoverClawback: Either LoanBrokerID or Amount is required")
+
+	// vault
+
+	// ErrVaultCreateAssetRequired is returned when Asset is not set on a VaultCreate transaction.
+	ErrVaultCreateAssetRequired = errors.New("vaultCreate: Asset is required")
+	// ErrVaultCreateAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number.
+	ErrVaultCreateAssetsMaximumInvalid = errors.New("vaultCreate: AssetsMaximum must be a valid XRPL number")
+	// ErrVaultCreateDataInvalid is returned when Data is not a valid hex string or exceeds 512 characters (256 bytes).
+	ErrVaultCreateDataInvalid = errors.New("vaultCreate: Data must be a valid hex string and at most 512 characters (256 bytes)")
+	// ErrVaultCreateMPTokenMetadataInvalid is returned when MPTokenMetadata is not a valid hex string or exceeds 2048 characters (1024 bytes).
+	ErrVaultCreateMPTokenMetadataInvalid = errors.New("vaultCreate: MPTokenMetadata must be a valid hex string and at most 2048 characters (1024 bytes)")
+	// ErrVaultCreateScaleInvalid is returned when Scale is not between 0 and 18 inclusive.
+	ErrVaultCreateScaleInvalid = errors.New("vaultCreate: Scale must be between 0 and 18 inclusive")
+	// ErrVaultCreateScaleRequiresIOU is returned when Scale is set for a non-IOU asset.
+	ErrVaultCreateScaleRequiresIOU = errors.New("vaultCreate: Scale is only valid for IOU assets")
+	// ErrVaultCreateDomainIDRequiresPrivateFlag is returned when DomainID is set without the TfVaultPrivate flag.
+	ErrVaultCreateDomainIDRequiresPrivateFlag = errors.New("vaultCreate: DomainID requires the TfVaultPrivate flag to be set")
+	// ErrVaultCreateDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
+	ErrVaultCreateDomainIDInvalid = errors.New("vaultCreate: DomainID must be a valid 64-character hexadecimal string")
+
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.
