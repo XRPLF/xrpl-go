@@ -7,10 +7,10 @@ The `ledger-entry-types` package contains types and functions to handle ledger o
 - [`AccountRoot`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/accountroot)
 - [`Amendments`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/amendments)
 - [`AMM`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/amm)
-- [`Credential`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/credential)
-- `Delegate`
 - [`Bridge`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/bridge)
 - [`Check`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/check)
+- [`Credential`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/credential)
+- `Delegate`
 - [`DepositPreauth`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/depositpreauth)
 - [`Did`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/did)
 - [`DirectoryNode`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/directorynode)
@@ -19,6 +19,8 @@ The `ledger-entry-types` package contains types and functions to handle ledger o
 - [`Hashes`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/ledgerhashes)
 - [`Loan`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/loan)
 - [`LoanBroker`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/loanbroker)
+- [`MPToken`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/mptoken)
+- [`MPTokenIssuance`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/mptokenissuance)
 - [`NegativeUNL`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/negativeunl)
 - [`NFTokenOffer`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/nftokenoffer)
 - [`NFTokenPage`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/nftokenpage)
@@ -29,6 +31,7 @@ The `ledger-entry-types` package contains types and functions to handle ledger o
 - [`RippleState`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/ripplestate)
 - [`SignerList`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/signerlist)
 - [`Ticket`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/ticket)
+- [`Vault`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/vault)
 - [`XChainOwnedClaimID`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/xchainownedclaimid)
 - [`XChainOwnedCreateAccountClaimID`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/xchainownedcreateaccountclaimid)
 
