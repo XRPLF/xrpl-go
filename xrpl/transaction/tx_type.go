@@ -80,6 +80,7 @@ const (
 	VaultDeleteTx                       TxType = "VaultDelete"
 	VaultDepositTx                      TxType = "VaultDeposit"
 	VaultWithdrawTx                     TxType = "VaultWithdraw"
+	VaultClawbackTx                     TxType = "VaultClawback"
 )
 
 func (t TxType) String() string {

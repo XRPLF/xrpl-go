@@ -77,6 +77,14 @@ var (
 	ErrInvalidTokenType = errors.New("an issued currency cannot be of type XRP")
 	// ErrMissingTokenCurrency is returned when the currency field is missing for an issued currency.
 	ErrMissingTokenCurrency = errors.New("currency field is missing for the issued currency")
+	// ErrInvalidMPTType is returned when an MPT currency amount is not of type MPT.
+	ErrInvalidMPTType = errors.New("an MPT currency amount must be of type MPT")
+	// ErrMissingMPTIssuanceID is returned when the MPTIssuanceID field is missing for an MPT currency amount.
+	ErrMissingMPTIssuanceID = errors.New("mpt_issuance_id field is missing for the MPT currency amount")
+	// ErrInvalidMPTIssuanceID is returned when the MPTIssuanceID field is not a valid hex string.
+	ErrInvalidMPTIssuanceID = errors.New("mpt_issuance_id field must be a valid hex string")
+	// ErrInvalidMPTValue is returned when the value field is not a valid positive integer in the range 0 to 0x7FFFFFFFFFFFFFFF.
+	ErrInvalidMPTValue = errors.New("value field should be a valid positive integer in the range 0 to 0x7FFFFFFFFFFFFFFF for MPT currency amount")
 	// ErrInvalidAssetFields is returned when the asset object does not have the required fields (currency, or currency and issuer).
 	ErrInvalidAssetFields = errors.New("asset object should have at least one field 'currency', or two fields 'currency' and 'issuer'")
 	// ErrMissingAssetCurrency is returned when the currency field is missing for an asset.
@@ -466,6 +474,17 @@ var (
 	ErrVaultWithdrawVaultIDInvalid = errors.New("vaultWithdraw: VaultID must be a valid 64-character hexadecimal string")
 	// ErrVaultWithdrawAmountRequired is returned when Amount is not set on a VaultWithdraw transaction.
 	ErrVaultWithdrawAmountRequired = errors.New("vaultWithdraw: Amount is required")
+
+	// ErrVaultClawbackVaultIDRequired is returned when VaultID is not set on a VaultClawback transaction.
+	ErrVaultClawbackVaultIDRequired = errors.New("vaultClawback: VaultID is required")
+	// ErrVaultClawbackVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
+	ErrVaultClawbackVaultIDInvalid = errors.New("vaultClawback: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultClawbackAmountInvalidType is returned when Amount is XRP on a VaultClawback transaction.
+	ErrVaultClawbackAmountInvalidType = errors.New("vaultClawback: Amount must be an IssuedCurrencyAmount or MPTCurrencyAmount")
+	// ErrVaultClawbackHolderRequired is returned when Holder is not set on a VaultClawback transaction.
+	ErrVaultClawbackHolderRequired = errors.New("vaultClawback: Holder is required")
+	// ErrVaultClawbackHolderInvalid is returned when Holder is not a valid XRPL address.
+	ErrVaultClawbackHolderInvalid = errors.New("vaultClawback: Holder must be a valid XRPL address")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.
