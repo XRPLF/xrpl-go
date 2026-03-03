@@ -39,6 +39,21 @@ func (tx *LoanPay) TxType() TxType {
 	return LoanPayTx
 }
 
+// SetOverpaymentFlag sets the Overpayment flag, indicating that remaining payment amount should be treated as an overpayment.
+func (tx *LoanPay) SetOverpaymentFlag() {
+	tx.Flags |= TfLoanPayOverpayment
+}
+
+// SetFullPaymentFlag sets the FullPayment flag, indicating that the borrower is making a full early repayment.
+func (tx *LoanPay) SetFullPaymentFlag() {
+	tx.Flags |= TfLoanPayFullPayment
+}
+
+// SetLatePaymentFlag sets the LatePayment flag, indicating that the borrower is making a late loan payment.
+func (tx *LoanPay) SetLatePaymentFlag() {
+	tx.Flags |= TfLoanPayLatePayment
+}
+
 // Flatten returns a map representation of the LoanPay transaction for JSON-RPC submission.
 func (tx *LoanPay) Flatten() map[string]interface{} {
 	flattened := tx.BaseTx.Flatten()
