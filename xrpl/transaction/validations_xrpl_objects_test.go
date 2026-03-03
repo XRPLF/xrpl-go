@@ -81,6 +81,97 @@ func TestIsSigner(t *testing.T) {
 		})
 	}
 }
+func TestIsAmount(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           types.CurrencyAmount
+		fieldName       string
+		isFieldRequired bool
+		expected        bool
+	}{
+		{
+			name:            "pass - valid XRP amount",
+			input:           types.XRPCurrencyAmount(1000000),
+			fieldName:       "Amount",
+			isFieldRequired: true,
+			expected:        true,
+		},
+		{
+			name: "pass - valid IssuedCurrency amount",
+			input: types.IssuedCurrencyAmount{
+				Value:    "100",
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+			},
+			fieldName:       "Amount",
+			isFieldRequired: true,
+			expected:        true,
+		},
+		{
+			name: "pass - valid MPT amount",
+			input: types.MPTCurrencyAmount{
+				MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+				Value:         "100",
+			},
+			fieldName:       "Amount",
+			isFieldRequired: true,
+			expected:        true,
+		},
+		{
+			name:            "fail - required field is nil",
+			input:           nil,
+			fieldName:       "Amount",
+			isFieldRequired: true,
+			expected:        false,
+		},
+		{
+			name:            "pass - optional field is nil",
+			input:           nil,
+			fieldName:       "Amount",
+			isFieldRequired: false,
+			expected:        true,
+		},
+		{
+			name: "fail - invalid MPT amount with non-hex issuance ID",
+			input: types.MPTCurrencyAmount{
+				MPTIssuanceID: "not-hex",
+				Value:         "100",
+			},
+			fieldName:       "Amount",
+			isFieldRequired: true,
+			expected:        false,
+		},
+		{
+			name: "fail - invalid MPT amount with missing value",
+			input: types.MPTCurrencyAmount{
+				MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+			},
+			fieldName:       "Amount",
+			isFieldRequired: true,
+			expected:        false,
+		},
+		{
+			name: "fail - invalid IssuedCurrency with XRP currency",
+			input: types.IssuedCurrencyAmount{
+				Value:    "100",
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "XRP",
+			},
+			fieldName:       "Amount",
+			isFieldRequired: true,
+			expected:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if ok, err := IsAmount(tt.input, tt.fieldName, tt.isFieldRequired); ok != tt.expected {
+				t.Errorf("Expected IsAmount to return %v, but got %v with error: %v", tt.expected, ok, err)
+			}
+		})
+	}
+}
+
 func TestIsIssuedCurrency(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -169,6 +260,96 @@ func TestIsIssuedCurrency(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if ok, err := IsIssuedCurrency(tt.input); ok != tt.expected {
 				t.Errorf("Expected IsIssuedCurrency to return %v, but got %v with error: %v", tt.expected, ok, err)
+			}
+		})
+	}
+}
+
+func TestIsMPTCurrency(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    types.CurrencyAmount
+		expected bool
+	}{
+		{
+			name: "pass - valid MPTCurrencyAmount",
+			input: types.MPTCurrencyAmount{
+				MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+				Value:         "100",
+			},
+			expected: true,
+		},
+		{
+			name:     "fail - non-MPT type (XRP)",
+			input:    types.XRPCurrencyAmount(100),
+			expected: false,
+		},
+		{
+			name: "fail - non-MPT type (IssuedCurrency)",
+			input: types.IssuedCurrencyAmount{
+				Value:    "100",
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+			},
+			expected: false,
+		},
+		{
+			name: "fail - missing MPTIssuanceID",
+			input: types.MPTCurrencyAmount{
+				Value: "100",
+			},
+			expected: false,
+		},
+		{
+			name: "fail - non-hex MPTIssuanceID",
+			input: types.MPTCurrencyAmount{
+				MPTIssuanceID: "not-a-hex-string",
+				Value:         "100",
+			},
+			expected: false,
+		},
+		{
+			name: "fail - empty value",
+			input: types.MPTCurrencyAmount{
+				MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+			},
+			expected: false,
+		},
+		{
+			name: "fail - negative value",
+			input: types.MPTCurrencyAmount{
+				MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+				Value:         "-5",
+			},
+			expected: false,
+		},
+		{
+			name: "fail - fractional value",
+			input: types.MPTCurrencyAmount{
+				MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+				Value:         "10.5",
+			},
+			expected: false,
+		},
+		{
+			name: "fail - value exceeds max int64",
+			input: types.MPTCurrencyAmount{
+				MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+				Value:         "9223372036854775808",
+			},
+			expected: false,
+		},
+		{
+			name:     "fail - empty object",
+			input:    types.MPTCurrencyAmount{},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if ok, err := IsMPTCurrency(tt.input); ok != tt.expected {
+				t.Errorf("Expected IsMPTCurrency to return %v, but got %v with error: %v", tt.expected, ok, err)
 			}
 		})
 	}
@@ -315,6 +496,56 @@ func TestIsAsset(t *testing.T) {
 			t.Errorf("Expected IsAsset to return false, but got true")
 		} else if err == nil {
 			t.Errorf("Expected an error, but got nil")
+		}
+	})
+
+	t.Run("pass - valid MPT asset", func(t *testing.T) {
+		obj := ledger.Asset{
+			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+		}
+
+		ok, err := IsAsset(obj)
+
+		if !ok {
+			t.Errorf("Expected IsAsset to return true, but got false with error: %v", err)
+		}
+	})
+
+	t.Run("fail - MPT asset with currency set", func(t *testing.T) {
+		obj := ledger.Asset{
+			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+			Currency:      "USD",
+		}
+
+		ok, _ := IsAsset(obj)
+
+		if ok {
+			t.Errorf("Expected IsAsset to return false, but got true")
+		}
+	})
+
+	t.Run("fail - MPT asset with issuer set", func(t *testing.T) {
+		obj := ledger.Asset{
+			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+			Issuer:        "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+		}
+
+		ok, _ := IsAsset(obj)
+
+		if ok {
+			t.Errorf("Expected IsAsset to return false, but got true")
+		}
+	})
+
+	t.Run("fail - MPT asset with non-hex ID", func(t *testing.T) {
+		obj := ledger.Asset{
+			MPTIssuanceID: "not-a-hex-string",
+		}
+
+		ok, _ := IsAsset(obj)
+
+		if ok {
+			t.Errorf("Expected IsAsset to return false, but got true")
 		}
 	})
 }

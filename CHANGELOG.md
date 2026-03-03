@@ -9,9 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### binary-codec
+
+- Added `Int32` serialized type with two's complement encoding for signed 32-bit integers.
+
 #### xrpl
 
 - Added `flag` package with `Contains` utility function to check if a flag is fully set within a combined flag value.
+- Added `Vault` ledger entry type with support for XRP, IOU, and MPT assets.
+- Added vault transaction types:
+  - `VaultCreate` - Creates a new vault with asset configuration, optional scale, and privacy/transferability flags.
+  - `VaultSet` - Updates an existing vault's settings.
+  - `VaultDelete` - Deletes an existing vault.
+  - `VaultDeposit` - Deposits assets into a vault.
+  - `VaultWithdraw` - Withdraws assets from a vault, with optional `Destination` and `DestinationTag`.
+  - `VaultClawback` - Claws back assets from a vault holder.
+- Added `vault_info` query for both RPC and WebSocket clients with lookup by `VaultID` or `Owner`+`Seq`, including `AssetsMaximum`, `Data`, and `Scale` fields in the response.
+- Added `ManagementFeeOutstanding` and `LoanScale` fields to `Loan` ledger entry type.
+- Added `ManagementFeeRate` and `Data` fields to `LoanBroker` ledger entry type.
+- Added `LoanPay` transaction flags: `TfLoanPayOverpayment`, `TfLoanPayFullPayment`, `TfLoanPayLatePayment` with mutual exclusivity validation and flag setter methods.
+- Added `DestinationTag` field to `LoanBrokerCoverWithdraw` transaction.
+- Added `IsMPTCurrency` validation helper for MPT currency amounts, and updated `IsAmount` to support MPT amounts.
+- Extracted `Asset` to its own file and added MPT asset support in `IsAsset` validation.
 
 ### Fixed
 

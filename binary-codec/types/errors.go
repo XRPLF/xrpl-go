@@ -13,6 +13,8 @@ var (
 	ErrUInt16OutOfRange = errors.New("value out of uint16 range (0-65535)")
 	// ErrUInt32OutOfRange is returned when a value is outside the uint32 range (0-4294967295).
 	ErrUInt32OutOfRange = errors.New("value out of uint32 range (0-4294967295)")
+	// ErrInt32OutOfRange is returned when a value is outside the int32 range (-2147483648 to 2147483647).
+	ErrInt32OutOfRange = errors.New("value out of int32 range (-2147483648 to 2147483647)")
 	// ErrUInt64OutOfRange is returned when a value is outside the uint64 range.
 	ErrUInt64OutOfRange = errors.New("value out of uint64 range")
 )

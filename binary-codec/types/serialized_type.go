@@ -30,6 +30,8 @@ func GetSerializedType(t string) SerializedType {
 		return &UInt16{}
 	case "UInt32":
 		return &UInt32{}
+	case "Int32":
+		return &Int32{}
 	case "UInt64":
 		return &UInt64{}
 	case "Hash128":

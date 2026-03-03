@@ -77,12 +77,22 @@ var (
 	ErrInvalidTokenType = errors.New("an issued currency cannot be of type XRP")
 	// ErrMissingTokenCurrency is returned when the currency field is missing for an issued currency.
 	ErrMissingTokenCurrency = errors.New("currency field is missing for the issued currency")
+	// ErrInvalidMPTType is returned when an MPT currency amount is not of type MPT.
+	ErrInvalidMPTType = errors.New("an MPT currency amount must be of type MPT")
+	// ErrMissingMPTIssuanceID is returned when the MPTIssuanceID field is missing for an MPT currency amount.
+	ErrMissingMPTIssuanceID = errors.New("mpt_issuance_id field is missing for the MPT currency amount")
+	// ErrInvalidMPTIssuanceID is returned when the MPTIssuanceID field is not a valid hex string.
+	ErrInvalidMPTIssuanceID = errors.New("mpt_issuance_id field must be a valid hex string")
+	// ErrInvalidMPTValue is returned when the value field is not a valid positive integer in the range 0 to 0x7FFFFFFFFFFFFFFF.
+	ErrInvalidMPTValue = errors.New("value field should be a valid positive integer in the range 0 to 0x7FFFFFFFFFFFFFFF for MPT currency amount")
 	// ErrInvalidAssetFields is returned when the asset object does not have the required fields (currency, or currency and issuer).
 	ErrInvalidAssetFields = errors.New("asset object should have at least one field 'currency', or two fields 'currency' and 'issuer'")
 	// ErrMissingAssetCurrency is returned when the currency field is missing for an asset.
 	ErrMissingAssetCurrency = errors.New("currency field is required for an asset")
 	// ErrInvalidAssetIssuer is returned when the issuer field is invalid for an asset.
 	ErrInvalidAssetIssuer = errors.New("issuer field must be a valid XRPL classic address")
+	// ErrInvalidMPTIssuanceIDAsset is returned when an MPT asset has invalid fields (non-hex ID, or currency/issuer set).
+	ErrInvalidMPTIssuanceIDAsset = errors.New("MPT asset must have only a valid hex mpt_issuance_id, with no currency or issuer")
 
 	// validations_xrpl_objects
 
@@ -364,6 +374,8 @@ var (
 	ErrLoanPayLoanIDInvalid = errors.New("loanPay: LoanID must be 64 characters hexadecimal string")
 	// ErrLoanPayAmountRequired is returned when Amount is not set on a LoanPay transaction.
 	ErrLoanPayAmountRequired = errors.New("loanPay: Amount is required")
+	// ErrLoanPayMutuallyExclusiveFlags is returned when more than one mutually exclusive LoanPay flag is set.
+	ErrLoanPayMutuallyExclusiveFlags = errors.New("loanPay: at most one of TfLoanOverpayment, TfLoanFullPayment, TfLoanLatePayment flags can be set")
 
 	// ErrLoanBrokerSetVaultIDRequired is returned when VaultID is not set on a LoanBrokerSet transaction.
 	ErrLoanBrokerSetVaultIDRequired = errors.New("loanBrokerSet: VaultID is required")
@@ -413,6 +425,66 @@ var (
 	ErrLoanBrokerCoverClawbackAmountNegative = errors.New("loanBrokerCoverClawback: Amount must be >= 0")
 	// ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired is returned when neither LoanBrokerID nor Amount is provided.
 	ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired = errors.New("loanBrokerCoverClawback: Either LoanBrokerID or Amount is required")
+
+	// vault
+
+	// ErrVaultCreateAssetRequired is returned when Asset is not set on a VaultCreate transaction.
+	ErrVaultCreateAssetRequired = errors.New("vaultCreate: Asset is required")
+	// ErrVaultCreateAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number.
+	ErrVaultCreateAssetsMaximumInvalid = errors.New("vaultCreate: AssetsMaximum must be a valid XRPL number")
+	// ErrVaultCreateDataInvalid is returned when Data is not a valid hex string or exceeds 512 characters (256 bytes).
+	ErrVaultCreateDataInvalid = errors.New("vaultCreate: Data must be a valid hex string and at most 512 characters (256 bytes)")
+	// ErrVaultCreateMPTokenMetadataInvalid is returned when MPTokenMetadata is not a valid hex string or exceeds 2048 characters (1024 bytes).
+	ErrVaultCreateMPTokenMetadataInvalid = errors.New("vaultCreate: MPTokenMetadata must be a valid hex string and at most 2048 characters (1024 bytes)")
+	// ErrVaultCreateScaleInvalid is returned when Scale is not between 0 and 18 inclusive.
+	ErrVaultCreateScaleInvalid = errors.New("vaultCreate: Scale must be between 0 and 18 inclusive")
+	// ErrVaultCreateScaleRequiresIOU is returned when Scale is set for a non-IOU asset.
+	ErrVaultCreateScaleRequiresIOU = errors.New("vaultCreate: Scale is only valid for IOU assets")
+	// ErrVaultCreateDomainIDRequiresPrivateFlag is returned when DomainID is set without the TfVaultPrivate flag.
+	ErrVaultCreateDomainIDRequiresPrivateFlag = errors.New("vaultCreate: DomainID requires the TfVaultPrivate flag to be set")
+	// ErrVaultCreateDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
+	ErrVaultCreateDomainIDInvalid = errors.New("vaultCreate: DomainID must be a valid 64-character hexadecimal string")
+
+	// ErrVaultSetVaultIDRequired is returned when VaultID is not set on a VaultSet transaction.
+	ErrVaultSetVaultIDRequired = errors.New("vaultSet: VaultID is required")
+	// ErrVaultSetVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
+	ErrVaultSetVaultIDInvalid = errors.New("vaultSet: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultSetAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number.
+	ErrVaultSetAssetsMaximumInvalid = errors.New("vaultSet: AssetsMaximum must be a valid XRPL number")
+	// ErrVaultSetDataInvalid is returned when Data is not a valid hex string or exceeds 512 characters (256 bytes).
+	ErrVaultSetDataInvalid = errors.New("vaultSet: Data must be a valid hex string and at most 512 characters (256 bytes)")
+	// ErrVaultSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
+	ErrVaultSetDomainIDInvalid = errors.New("vaultSet: DomainID must be a valid 64-character hexadecimal string")
+
+	// ErrVaultDeleteVaultIDRequired is returned when VaultID is not set on a VaultDelete transaction.
+	ErrVaultDeleteVaultIDRequired = errors.New("vaultDelete: VaultID is required")
+	// ErrVaultDeleteVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
+	ErrVaultDeleteVaultIDInvalid = errors.New("vaultDelete: VaultID must be a valid 64-character hexadecimal string")
+
+	// ErrVaultDepositVaultIDRequired is returned when VaultID is not set on a VaultDeposit transaction.
+	ErrVaultDepositVaultIDRequired = errors.New("vaultDeposit: VaultID is required")
+	// ErrVaultDepositVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
+	ErrVaultDepositVaultIDInvalid = errors.New("vaultDeposit: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultDepositAmountRequired is returned when Amount is not set on a VaultDeposit transaction.
+	ErrVaultDepositAmountRequired = errors.New("vaultDeposit: Amount is required")
+
+	// ErrVaultWithdrawVaultIDRequired is returned when VaultID is not set on a VaultWithdraw transaction.
+	ErrVaultWithdrawVaultIDRequired = errors.New("vaultWithdraw: VaultID is required")
+	// ErrVaultWithdrawVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
+	ErrVaultWithdrawVaultIDInvalid = errors.New("vaultWithdraw: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultWithdrawAmountRequired is returned when Amount is not set on a VaultWithdraw transaction.
+	ErrVaultWithdrawAmountRequired = errors.New("vaultWithdraw: Amount is required")
+
+	// ErrVaultClawbackVaultIDRequired is returned when VaultID is not set on a VaultClawback transaction.
+	ErrVaultClawbackVaultIDRequired = errors.New("vaultClawback: VaultID is required")
+	// ErrVaultClawbackVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
+	ErrVaultClawbackVaultIDInvalid = errors.New("vaultClawback: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultClawbackAmountInvalidType is returned when Amount is XRP on a VaultClawback transaction.
+	ErrVaultClawbackAmountInvalidType = errors.New("vaultClawback: Amount must be an IssuedCurrencyAmount or MPTCurrencyAmount")
+	// ErrVaultClawbackHolderRequired is returned when Holder is not set on a VaultClawback transaction.
+	ErrVaultClawbackHolderRequired = errors.New("vaultClawback: Holder is required")
+	// ErrVaultClawbackHolderInvalid is returned when Holder is not a valid XRPL address.
+	ErrVaultClawbackHolderInvalid = errors.New("vaultClawback: Holder must be a valid XRPL address")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.

@@ -27,9 +27,9 @@ const (
 //	  "LoanBrokerNode": "0000000000000000",
 //	  "LoanBrokerID": "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 //	  "Borrower": "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+//	  "TotalValueOutstanding": "150000",
 //	  "PrincipalOutstanding": "100000",
 //	  "PeriodicPayment": "10000",
-//	  "TotalValueOutstanding": "150000",
 //	  "StartDate": 1724871860,
 //	  "PaymentInterval": 2592000,
 //	  "GracePeriod": 604800,
@@ -59,12 +59,17 @@ type Loan struct {
 	LoanBrokerID types.Hash256
 	// The address of the account that is the borrower.
 	Borrower types.Address
-	// The principal amount requested by the Borrower.
-	PrincipalOutstanding types.XRPLNumber
-	// The calculated periodic payment amount for each payment interval.
-	PeriodicPayment types.XRPLNumber
 	// The total outstanding value of the Loan, including all fees and interest.
 	TotalValueOutstanding types.XRPLNumber
+	// The principal amount requested by the Borrower.
+	PrincipalOutstanding types.XRPLNumber
+	// The remaining Management Fee owed to the LoanBroker.
+	ManagementFeeOutstanding *types.XRPLNumber `json:",omitempty"`
+	// The calculated periodic payment amount for each payment interval.
+	PeriodicPayment types.XRPLNumber
+	// The scale factor (Int32 type - can be negative) that ensures all computed amounts are rounded
+	// to the same number of decimal places. It is determined based on the total loan value at creation time.
+	LoanScale *int32 `json:",omitempty"`
 	// A nominal fee amount paid to the LoanBroker.Owner when the Loan is created.
 	LoanOriginationFee *types.XRPLNumber `json:",omitempty"`
 	// A nominal funds amount paid to the LoanBroker.Owner with every Loan payment.
