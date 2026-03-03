@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,7 +83,7 @@ func TestCompat_EncodeDecodeAccountID(t *testing.T) {
 			// Test decoding
 			_, decoded, err := DecodeClassicAddressToAccountID(tc.Base58)
 			require.NoError(t, err)
-			require.Equal(t, strings.ToUpper(tc.Hex), strings.ToUpper(hex.EncodeToString(decoded)), "Decoding mismatch for base58: %s", tc.Base58)
+			require.Equal(t, strings.ToUpper(tc.Hex), hexutil.EncodeToUpperHex(decoded), "Decoding mismatch for base58: %s", tc.Base58)
 		})
 	}
 }
@@ -104,7 +105,7 @@ func TestCompat_EncodeDecodeNodePublic(t *testing.T) {
 			// Test decoding
 			decoded, err := DecodeNodePublicKey(tc.Base58)
 			require.NoError(t, err)
-			require.Equal(t, strings.ToUpper(tc.Hex), strings.ToUpper(hex.EncodeToString(decoded)), "Decoding mismatch for base58: %s", tc.Base58)
+			require.Equal(t, strings.ToUpper(tc.Hex), hexutil.EncodeToUpperHex(decoded), "Decoding mismatch for base58: %s", tc.Base58)
 		})
 	}
 }
@@ -126,7 +127,7 @@ func TestCompat_EncodeDecodeAccountPublic(t *testing.T) {
 			// Test decoding
 			decoded, err := DecodeAccountPublicKey(tc.Base58)
 			require.NoError(t, err)
-			require.Equal(t, strings.ToUpper(tc.Hex), strings.ToUpper(hex.EncodeToString(decoded)), "Decoding mismatch for base58: %s", tc.Base58)
+			require.Equal(t, strings.ToUpper(tc.Hex), hexutil.EncodeToUpperHex(decoded), "Decoding mismatch for base58: %s", tc.Base58)
 		})
 	}
 }
@@ -160,7 +161,7 @@ func TestCompat_DecodeSeed(t *testing.T) {
 		t.Run(tc.Base58, func(t *testing.T) {
 			decoded, cryptoType, err := DecodeSeed(tc.Base58)
 			require.NoError(t, err)
-			require.Equal(t, strings.ToUpper(tc.Hex), strings.ToUpper(hex.EncodeToString(decoded)), "Seed decoding mismatch for base58: %s", tc.Base58)
+			require.Equal(t, strings.ToUpper(tc.Hex), hexutil.EncodeToUpperHex(decoded), "Seed decoding mismatch for base58: %s", tc.Base58)
 
 			// Check type by comparing with known implementations
 			if tc.Type == "ed25519" {

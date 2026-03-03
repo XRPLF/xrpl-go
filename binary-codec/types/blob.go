@@ -4,9 +4,9 @@ package types
 import (
 	"encoding/hex"
 	"errors"
-	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 // ErrNoLengthPrefix error is raised when no length prefix size is given.
@@ -41,5 +41,5 @@ func (b *Blob) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 		return nil, err
 	}
 	// Convert the bytes to a hexadecimal string and return it.
-	return strings.ToUpper(hex.EncodeToString(val)), nil
+	return hexutil.EncodeToUpperHex(val), nil
 }

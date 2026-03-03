@@ -12,6 +12,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/binary-codec/serdes"
 	"github.com/Peersyst/xrpl-go/binary-codec/types"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 var (
@@ -64,7 +65,7 @@ func Encode(json map[string]any) (string, error) {
 		return "", err
 	}
 
-	return strings.ToUpper(hex.EncodeToString(b)), nil
+	return hexutil.EncodeToUpperHex(b), nil
 }
 
 // EncodeForMultisigning encodes a transaction into binary format in preparation for providing one

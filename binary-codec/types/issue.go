@@ -5,10 +5,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 const (
@@ -137,7 +137,7 @@ func (i *Issue) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 		// mpt_issuance_id = sequence (BE) + issuer account
 		seqBE = append(seqBE, currencyOrAccount...)
 		return map[string]any{
-			"mpt_issuance_id": strings.ToUpper(hex.EncodeToString(seqBE)),
+			"mpt_issuance_id": hexutil.EncodeToUpperHex(seqBE),
 		}, nil
 	}
 
@@ -183,7 +183,7 @@ func decodeCurrencyBytes(currencyBytes []byte) string {
 	}
 
 	// Return hex-encoded currency for non-standard codes
-	return strings.ToUpper(hex.EncodeToString(currencyBytes))
+	return hexutil.EncodeToUpperHex(currencyBytes)
 }
 
 func (i *Issue) isIssueObject(obj any) bool {

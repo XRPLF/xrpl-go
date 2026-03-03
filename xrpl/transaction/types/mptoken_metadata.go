@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"regexp"
 	"slices"
-	"strings"
 
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
 
@@ -388,7 +388,7 @@ func EncodeMPTokenMetadata(meta ParsedMPTokenMetadata) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.ToUpper(hex.EncodeToString(bytes)), nil
+	return hexutil.EncodeToUpperHex(bytes), nil
 }
 
 // DecodeMPTokenMetadata decodes a hex string into a ParsedMPTokenMetadata struct.

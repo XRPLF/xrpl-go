@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 // UInt64 represents a 64-bit unsigned integer.
@@ -86,7 +87,7 @@ func (u *UInt64) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return strings.ToUpper(hex.EncodeToString(b)), nil
+	return hexutil.EncodeToUpperHex(b), nil
 }
 
 // isNumeric checks if a string only contains numerical values.

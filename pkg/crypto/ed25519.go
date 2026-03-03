@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/hex"
-	"strings"
+
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 const (
@@ -50,9 +51,9 @@ func (c ED25519CryptoAlgorithm) DeriveKeypair(decodedSeed []byte, validator bool
 		return "", "", err
 	}
 	pubKey = append([]byte{c.prefix}, pubKey...)
-	public := strings.ToUpper(hex.EncodeToString(pubKey))
+	public := hexutil.EncodeToUpperHex(pubKey)
 	privKey = append([]byte{c.prefix}, privKey...)
-	private := strings.ToUpper(hex.EncodeToString(privKey[:32+len([]byte{c.prefix})]))
+	private := hexutil.EncodeToUpperHex(privKey[:32+len([]byte{c.prefix})])
 	return private, public, nil
 }
 
@@ -64,7 +65,7 @@ func (c ED25519CryptoAlgorithm) Sign(msg, privKey string) (string, error) {
 	}
 	rawPriv := ed25519.NewKeyFromSeed(b[1:])
 	signedMsg := ed25519.Sign(rawPriv, []byte(msg))
-	return strings.ToUpper(hex.EncodeToString(signedMsg)), nil
+	return hexutil.EncodeToUpperHex(signedMsg), nil
 }
 
 // Validate validates a signature for a message with a public key.

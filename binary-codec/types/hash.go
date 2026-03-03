@@ -4,9 +4,9 @@ package types
 import (
 	"encoding/hex"
 	"fmt"
-	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 // ErrInvalidHashLength struct is used when the hash length does not meet the expected value.
@@ -84,5 +84,5 @@ func (h hash) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return strings.ToUpper(hex.EncodeToString(b)), nil
+	return hexutil.EncodeToUpperHex(b), nil
 }
