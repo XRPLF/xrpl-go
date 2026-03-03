@@ -61,7 +61,7 @@ type Vault struct {
 	// The potential loss amount that is not yet realized expressed as the vault's asset.
 	LossUnrealized *types.XRPLNumber `json:",omitempty"`
 	// The identifier of the share MPTokenIssuance object.
-	ShareMPTID string
+	ShareMPTID types.Hash192
 	// Indicates the withdrawal strategy used by the Vault.
 	WithdrawalPolicy uint8
 	// The maximum asset amount that can be held in the vault. Zero value 0 indicates there is no cap.
