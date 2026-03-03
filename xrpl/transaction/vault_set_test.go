@@ -17,12 +17,12 @@ func TestVaultSet_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *VaultSet
-		expected map[string]interface{}
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
 			tx:   &VaultSet{},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType": VaultSetTx.String(),
 				"VaultID":         "",
 			},
@@ -38,7 +38,7 @@ func TestVaultSet_Flatten(t *testing.T) {
 				},
 				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType":    VaultSetTx.String(),
 				"Account":            "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Fee":                "1000000",

@@ -72,7 +72,7 @@ func (tx *VaultCreate) SetVaultShareNonTransferableFlag() {
 }
 
 // Flatten returns a map representation of the VaultCreate transaction for JSON-RPC submission.
-func (tx *VaultCreate) Flatten() map[string]interface{} {
+func (tx *VaultCreate) Flatten() FlatTransaction {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

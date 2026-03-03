@@ -18,12 +18,12 @@ func TestVaultCreate_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *VaultCreate
-		expected map[string]interface{}
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
 			tx:   &VaultCreate{},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType": VaultCreateTx.String(),
 			},
 		},
@@ -38,7 +38,7 @@ func TestVaultCreate_Flatten(t *testing.T) {
 				},
 				Asset: ledger.Asset{Currency: "XRP"},
 			},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType":    VaultCreateTx.String(),
 				"Account":            "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Fee":                "1000000",
@@ -60,7 +60,7 @@ func TestVaultCreate_Flatten(t *testing.T) {
 				AssetsMaximum:    func() *types.XRPLNumber { v := types.XRPLNumber("1000000"); return &v }(),
 				WithdrawalPolicy: func() *uint8 { v := ledger.VaultStrategyFirstComeFirstServe; return &v }(),
 			},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType":  VaultCreateTx.String(),
 				"Account":          "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Asset":            map[string]interface{}{"currency": "USD", "issuer": types.Address("rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb")},
@@ -84,7 +84,7 @@ func TestVaultCreate_Flatten(t *testing.T) {
 				DomainID:        func() *string { v := "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"; return &v }(),
 				MPTokenMetadata: func() *string { v := "AABBCCDD"; return &v }(),
 			},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType": VaultCreateTx.String(),
 				"Account":         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Flags":           TfVaultPrivate,
@@ -105,7 +105,7 @@ func TestVaultCreate_Flatten(t *testing.T) {
 					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
 				},
 			},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType": VaultCreateTx.String(),
 				"Account":         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Asset":           map[string]interface{}{"mpt_issuance_id": "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF"},

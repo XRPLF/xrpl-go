@@ -38,7 +38,7 @@ func (tx *VaultClawback) TxType() TxType {
 }
 
 // Flatten returns a map representation of the VaultClawback transaction for JSON-RPC submission.
-func (tx *VaultClawback) Flatten() map[string]interface{} {
+func (tx *VaultClawback) Flatten() FlatTransaction {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

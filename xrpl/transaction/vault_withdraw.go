@@ -35,7 +35,7 @@ func (tx *VaultWithdraw) TxType() TxType {
 }
 
 // Flatten returns a map representation of the VaultWithdraw transaction for JSON-RPC submission.
-func (tx *VaultWithdraw) Flatten() map[string]interface{} {
+func (tx *VaultWithdraw) Flatten() FlatTransaction {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

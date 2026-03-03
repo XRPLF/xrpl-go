@@ -16,12 +16,12 @@ func TestVaultClawback_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *VaultClawback
-		expected map[string]interface{}
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
 			tx:   &VaultClawback{},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType": VaultClawbackTx.String(),
 				"VaultID":         "",
 				"Holder":          "",
@@ -40,7 +40,7 @@ func TestVaultClawback_Flatten(t *testing.T) {
 				Holder:  "rwCNM7SeUHTajEBQDiNqxDG8p1Mreizw85",
 				Amount:  types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType":    VaultClawbackTx.String(),
 				"Account":            "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Fee":                "1000000",

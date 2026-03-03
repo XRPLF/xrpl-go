@@ -19,12 +19,12 @@ func TestVaultWithdraw_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *VaultWithdraw
-		expected map[string]interface{}
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
 			tx:   &VaultWithdraw{},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType": VaultWithdrawTx.String(),
 				"VaultID":         "",
 			},
@@ -43,7 +43,7 @@ func TestVaultWithdraw_Flatten(t *testing.T) {
 				Destination:    &dest,
 				DestinationTag: &destTag,
 			},
-			expected: map[string]interface{}{
+			expected: FlatTransaction{
 				"TransactionType":    VaultWithdrawTx.String(),
 				"Account":            "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Fee":                "1000000",
