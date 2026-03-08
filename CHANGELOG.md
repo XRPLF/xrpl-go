@@ -12,12 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - Added `flag` package with `Contains` utility function to check if a flag is fully set within a combined flag value.
+- Added public `ComputeSignature` in `wallet` for dual-signing (XLS-66).
 
 ### Fixed
+
+#### binary-codec
+
+- XRP Issues now return 40 bytes (currency + issuer zeros) for consistency.
 
 #### xrpl
 
 - Add missing `omitempty` tag to `RipplePathFindRequest.Domain`
+- Added nil guards for `opts` in `SubmitTx` and `SubmitTxAndWait` client methods.
 
 ## [v0.1.15]
 
