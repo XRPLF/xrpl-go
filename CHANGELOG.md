@@ -32,12 +32,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `DestinationTag` field to `LoanBrokerCoverWithdraw` transaction.
 - Added `IsMPTCurrency` validation helper for MPT currency amounts, and updated `IsAmount` to support MPT amounts.
 - Extracted `Asset` to its own file and added MPT asset support in `IsAsset` validation.
+- Make `ComputeSignature` public
 
 ### Fixed
+
+#### binary-codec
+
+- XRP Issues now return 40 bytes (currency + issuer zeros) for consistency.
 
 #### xrpl
 
 - Add missing `omitempty` tag to `RipplePathFindRequest.Domain`
+- Added nil guards for `opts` in `SubmitTx` and `SubmitTxAndWait` client methods.
 
 ## [v0.1.15]
 
