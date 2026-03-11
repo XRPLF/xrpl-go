@@ -3,6 +3,7 @@ package transaction
 import (
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,7 +35,7 @@ func TestVaultDelete_Flatten(t *testing.T) {
 					Sequence:           1,
 					LastLedgerSequence: 3000000,
 				},
-				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				VaultID: types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
 			},
 			expected: FlatTransaction{
 				"TransactionType":    VaultDeleteTx.String(),
@@ -76,7 +77,7 @@ func TestVaultDelete_Validate(t *testing.T) {
 					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 					TransactionType: VaultDeleteTx,
 				},
-				VaultID: "",
+				VaultID: types.Hash256(""),
 			},
 			expected: ErrVaultDeleteVaultIDRequired,
 		},
@@ -87,7 +88,7 @@ func TestVaultDelete_Validate(t *testing.T) {
 					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 					TransactionType: VaultDeleteTx,
 				},
-				VaultID: "INVALIDID",
+				VaultID: types.Hash256("INVALIDID"),
 			},
 			expected: ErrVaultDeleteVaultIDInvalid,
 		},
@@ -98,7 +99,7 @@ func TestVaultDelete_Validate(t *testing.T) {
 					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 					TransactionType: VaultDeleteTx,
 				},
-				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				VaultID: types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
 			},
 			expected: nil,
 		},

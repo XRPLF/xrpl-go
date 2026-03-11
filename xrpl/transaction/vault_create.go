@@ -82,7 +82,7 @@ func (tx *VaultCreate) Flatten() FlatTransaction {
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
-		flattened["Data"] = string(*tx.Data)
+		flattened["Data"] = tx.Data.Value()
 	}
 
 	if tx.AssetsMaximum != nil && *tx.AssetsMaximum != "" {

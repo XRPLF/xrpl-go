@@ -20,7 +20,7 @@ import (
 type VaultWithdraw struct {
 	BaseTx
 	// The ID of the vault from which assets are withdrawn.
-	VaultID string
+	VaultID types.Hash256
 	// The exact amount of Vault asset to withdraw.
 	Amount types.CurrencyAmount
 	// An account to receive the assets. It must be able to receive the asset.
@@ -40,7 +40,7 @@ func (tx *VaultWithdraw) Flatten() FlatTransaction {
 
 	flattened["TransactionType"] = tx.TxType().String()
 
-	flattened["VaultID"] = tx.VaultID
+	flattened["VaultID"] = tx.VaultID.String()
 
 	if tx.Amount != nil {
 		flattened["Amount"] = tx.Amount.Flatten()
@@ -67,7 +67,7 @@ func (tx *VaultWithdraw) Validate() (bool, error) {
 		return false, ErrVaultWithdrawVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID) {
+	if !IsLedgerEntryID(tx.VaultID.String()) {
 		return false, ErrVaultWithdrawVaultIDInvalid
 	}
 

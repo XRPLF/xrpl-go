@@ -88,7 +88,7 @@ type Shares struct {
 	// Total outstanding shares issued.
 	OutstandingAmount string `json:"OutstandingAmount"`
 	// Transaction ID of the last modification to the shares' issuance.
-	PreviousTxnID string `json:"PreviousTxnID"`
+	PreviousTxnID types.Hash256 `json:"PreviousTxnID"`
 	// Ledger sequence number of the last transaction modifying the shares' issuance.
 	PreviousTxnLgrSeq uint32 `json:"PreviousTxnLgrSeq"`
 	// Sequence number of the shares issuance entry.
@@ -120,7 +120,7 @@ type Vault struct {
 	// ID of the Vault Owner account.
 	Owner types.Address `json:"Owner"`
 	// Transaction ID of the last modification to this vault.
-	PreviousTxnID string `json:"PreviousTxnID"`
+	PreviousTxnID types.Hash256 `json:"PreviousTxnID"`
 	// Ledger sequence number of the last transaction modifying this vault.
 	PreviousTxnLgrSeq uint32 `json:"PreviousTxnLgrSeq"`
 	// Sequence number of the vault entry.

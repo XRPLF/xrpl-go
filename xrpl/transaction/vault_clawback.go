@@ -25,7 +25,7 @@ import (
 type VaultClawback struct {
 	BaseTx
 	// The ID of the vault from which assets are withdrawn.
-	VaultID string
+	VaultID types.Hash256
 	// The account ID from which to clawback the assets.
 	Holder types.Address
 	// The asset amount to clawback. When Amount is 0 clawback all funds, up to the total shares the Holder owns.
@@ -43,7 +43,7 @@ func (tx *VaultClawback) Flatten() FlatTransaction {
 
 	flattened["TransactionType"] = tx.TxType().String()
 
-	flattened["VaultID"] = tx.VaultID
+	flattened["VaultID"] = tx.VaultID.String()
 	flattened["Holder"] = tx.Holder.String()
 
 	if tx.Amount != nil {
@@ -63,7 +63,7 @@ func (tx *VaultClawback) Validate() (bool, error) {
 		return false, ErrVaultClawbackVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID) {
+	if !IsLedgerEntryID(tx.VaultID.String()) {
 		return false, ErrVaultClawbackVaultIDInvalid
 	}
 

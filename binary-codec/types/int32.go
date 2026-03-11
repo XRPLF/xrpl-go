@@ -20,14 +20,6 @@ func (i *Int32) checkRange(value int64) error {
 	return nil
 }
 
-// checkRangeFloat validates that a float64 value fits within the int32 range.
-func (i *Int32) checkRangeFloat(value float64) error {
-	if value < math.MinInt32 || value > math.MaxInt32 {
-		return ErrInt32OutOfRange
-	}
-	return nil
-}
-
 // FromJSON converts a JSON value into a serialized byte slice representing a 32-bit signed integer.
 // The input value can be int, int32, int64, or float64 (if it represents a whole number).
 // Negative values are encoded using two's complement representation.
@@ -67,14 +59,15 @@ func (i *Int32) FromJSON(value any) ([]byte, error) {
 		val = int32(v)
 	case float64:
 		// Check if float64 represents a whole number
-		if v != float64(int64(v)) {
+		intV := int64(v)
+		if v != float64(intV) {
 			return nil, ErrInt32OutOfRange
 		}
-		if err := i.checkRangeFloat(v); err != nil {
+		if err := i.checkRange(intV); err != nil {
 			return nil, err
 		}
-		//nolint:gosec // G115: integer overflow conversion float64 -> int32 (gosec)
-		val = int32(v)
+		//nolint:gosec // G115: integer overflow conversion int64 -> int32 (gosec)
+		val = int32(intV)
 	default:
 		return nil, ErrInt32OutOfRange
 	}

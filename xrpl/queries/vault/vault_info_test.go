@@ -5,6 +5,7 @@ import (
 
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -132,7 +133,7 @@ func TestVaultInfoResponse(t *testing.T) {
 			AssetsTotal:       "1000000",
 			LedgerEntryType:   "Vault",
 			Owner:             "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
-			PreviousTxnID:     "C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7",
+			PreviousTxnID:     types.Hash256("C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7"),
 			PreviousTxnLgrSeq: 28991004,
 			Sequence:          1,
 			Index:             "20B136D7BF6D2E3D610E28E3E6BE09F5C8F4F0241BBF6E2D072AE1BACB1388F5",
@@ -140,7 +141,7 @@ func TestVaultInfoResponse(t *testing.T) {
 				Issuer:            "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				LedgerEntryType:   "MPTokenIssuance",
 				OutstandingAmount: "1000000",
-				PreviousTxnID:     "C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7",
+				PreviousTxnID:     types.Hash256("C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7"),
 				PreviousTxnLgrSeq: 28991004,
 				Sequence:          1,
 				Index:             "5A92F6ED33FDA68FB4B9FD140EA38C056CD2BA9673ECA5B4CEF40F2166BB6F0C",

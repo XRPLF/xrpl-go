@@ -50,6 +50,9 @@ func main() {
 		Wallet:   &w,
 	}
 
+	//
+	// Create an XRP vault
+	//
 	fmt.Println("Creating XRP vault...")
 	vaultCreate := &transactions.VaultCreate{
 		BaseTx: transactions.BaseTx{
@@ -75,6 +78,7 @@ func main() {
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
+	// Extract VaultID from metadata
 	meta := response.Meta.AsTxObjMeta()
 	var vaultID string
 	for _, node := range meta.AffectedNodes {
@@ -90,12 +94,15 @@ func main() {
 	fmt.Printf("VaultID: %s\n", vaultID)
 	fmt.Println()
 
+	//
+	// Deposit into the vault
+	//
 	fmt.Println("Depositing 1000000 drops into vault...")
 	vaultDeposit := &transactions.VaultDeposit{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
 		},
-		VaultID: vaultID,
+		VaultID: types.Hash256(vaultID),
 		Amount:  types.XRPCurrencyAmount(1000000),
 	}
 
@@ -114,13 +121,16 @@ func main() {
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
+	//
+	// Update vault settings
+	//
 	fmt.Println("Updating vault settings...")
 	data := types.Data("DEADBEEF")
 	vaultSet := &transactions.VaultSet{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
 		},
-		VaultID: vaultID,
+		VaultID: types.Hash256(vaultID),
 		Data:    &data,
 	}
 
@@ -139,12 +149,15 @@ func main() {
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
+	//
+	// Withdraw from the vault
+	//
 	fmt.Println("Withdrawing 1000000 drops from vault...")
 	vaultWithdraw := &transactions.VaultWithdraw{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
 		},
-		VaultID: vaultID,
+		VaultID: types.Hash256(vaultID),
 		Amount:  types.XRPCurrencyAmount(1000000),
 	}
 
@@ -163,12 +176,15 @@ func main() {
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
+	//
+	// Delete the vault
+	//
 	fmt.Println("Deleting vault...")
 	vaultDelete := &transactions.VaultDelete{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
 		},
-		VaultID: vaultID,
+		VaultID: types.Hash256(vaultID),
 	}
 
 	response, err = client.SubmitTxAndWait(vaultDelete.Flatten(), submitOpts)

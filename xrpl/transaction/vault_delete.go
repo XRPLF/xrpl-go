@@ -1,5 +1,7 @@
 package transaction
 
+import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+
 // VaultDelete deletes an existing Vault object.
 //
 // ```json
@@ -14,7 +16,7 @@ package transaction
 type VaultDelete struct {
 	BaseTx
 	// The ID of the Vault to be deleted.
-	VaultID string
+	VaultID types.Hash256
 }
 
 // TxType returns the TxType for VaultDelete transactions.
@@ -28,7 +30,7 @@ func (tx *VaultDelete) Flatten() FlatTransaction {
 
 	flattened["TransactionType"] = tx.TxType().String()
 
-	flattened["VaultID"] = tx.VaultID
+	flattened["VaultID"] = tx.VaultID.String()
 
 	return flattened
 }
@@ -43,7 +45,7 @@ func (tx *VaultDelete) Validate() (bool, error) {
 		return false, ErrVaultDeleteVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID) {
+	if !IsLedgerEntryID(tx.VaultID.String()) {
 		return false, ErrVaultDeleteVaultIDInvalid
 	}
 

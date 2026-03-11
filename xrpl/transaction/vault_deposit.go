@@ -19,7 +19,7 @@ import (
 type VaultDeposit struct {
 	BaseTx
 	// The ID of the vault to which the assets are deposited.
-	VaultID string
+	VaultID types.Hash256
 	// Asset amount to deposit.
 	Amount types.CurrencyAmount
 }
@@ -35,7 +35,7 @@ func (tx *VaultDeposit) Flatten() FlatTransaction {
 
 	flattened["TransactionType"] = tx.TxType().String()
 
-	flattened["VaultID"] = tx.VaultID
+	flattened["VaultID"] = tx.VaultID.String()
 
 	if tx.Amount != nil {
 		flattened["Amount"] = tx.Amount.Flatten()
@@ -54,7 +54,7 @@ func (tx *VaultDeposit) Validate() (bool, error) {
 		return false, ErrVaultDepositVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID) {
+	if !IsLedgerEntryID(tx.VaultID.String()) {
 		return false, ErrVaultDepositVaultIDInvalid
 	}
 

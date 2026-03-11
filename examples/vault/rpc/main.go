@@ -95,7 +95,7 @@ func main() {
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
 		},
-		VaultID: vaultID,
+		VaultID: types.Hash256(vaultID),
 		Amount:  types.XRPCurrencyAmount(1000000),
 	}
 
@@ -123,7 +123,7 @@ func main() {
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
 		},
-		VaultID: vaultID,
+		VaultID: types.Hash256(vaultID),
 		Data:    &data,
 	}
 
@@ -150,7 +150,7 @@ func main() {
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
 		},
-		VaultID: vaultID,
+		VaultID: types.Hash256(vaultID),
 		Amount:  types.XRPCurrencyAmount(1000000),
 	}
 
@@ -177,7 +177,7 @@ func main() {
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
 		},
-		VaultID: vaultID,
+		VaultID: types.Hash256(vaultID),
 	}
 
 	response, err = client.SubmitTxAndWait(vaultDelete.Flatten(), submitOpts)

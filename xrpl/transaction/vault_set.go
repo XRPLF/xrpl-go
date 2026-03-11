@@ -24,7 +24,7 @@ const (
 type VaultSet struct {
 	BaseTx
 	// The ID of the Vault to be modified. Must be included when updating the Vault.
-	VaultID string
+	VaultID types.Hash256
 	// Arbitrary metadata in hex format. The field is limited to 256 bytes (512 hex chars).
 	Data *types.Data `json:",omitempty"`
 	// The maximum asset amount that can be held in a vault.
@@ -44,10 +44,10 @@ func (tx *VaultSet) Flatten() FlatTransaction {
 
 	flattened["TransactionType"] = tx.TxType().String()
 
-	flattened["VaultID"] = tx.VaultID
+	flattened["VaultID"] = tx.VaultID.String()
 
 	if tx.Data != nil && *tx.Data != "" {
-		flattened["Data"] = string(*tx.Data)
+		flattened["Data"] = tx.Data.Value()
 	}
 
 	if tx.AssetsMaximum != nil && *tx.AssetsMaximum != "" {
@@ -71,7 +71,7 @@ func (tx *VaultSet) Validate() (bool, error) {
 		return false, ErrVaultSetVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID) {
+	if !IsLedgerEntryID(tx.VaultID.String()) {
 		return false, ErrVaultSetVaultIDInvalid
 	}
 
