@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `VaultDeposit` - Deposits assets into a vault.
   - `VaultWithdraw` - Withdraws assets from a vault, with optional `Destination` and `DestinationTag`.
   - `VaultClawback` - Claws back assets from a vault holder.
+- Added `VaultWithdrawalPolicy` type with `VaultStrategyFirstComeFirstServe` constant for specifying vault withdrawal strategies.
 - Added `vault_info` query for both RPC and WebSocket clients with lookup by `VaultID` or `Owner`+`Seq`, including `AssetsMaximum`, `Data`, and `Scale` fields in the response.
 - Added `ManagementFeeOutstanding` and `LoanScale` fields to `Loan` ledger entry type.
 - Added `ManagementFeeRate` and `Data` fields to `LoanBroker` ledger entry type.
