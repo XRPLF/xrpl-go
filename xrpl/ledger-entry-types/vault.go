@@ -7,10 +7,6 @@ import (
 const (
 	// LsfVaultPrivate if set, indicates that the vault is private.
 	LsfVaultPrivate uint32 = 0x00010000
-
-	// VaultStrategyFirstComeFirstServe is the default withdrawal policy.
-	// Withdrawals are processed on a first-come, first-served basis.
-	VaultStrategyFirstComeFirstServe uint8 = 0x01
 )
 
 // Vault represents a Single Asset Vault instance.
@@ -63,7 +59,7 @@ type Vault struct {
 	// The identifier of the share MPTokenIssuance object.
 	ShareMPTID types.Hash192
 	// Indicates the withdrawal strategy used by the Vault.
-	WithdrawalPolicy uint8
+	WithdrawalPolicy types.VaultWithdrawalPolicy
 	// The maximum asset amount that can be held in the vault. Zero value 0 indicates there is no cap.
 	AssetsMaximum *types.XRPLNumber `json:",omitempty"`
 	// Arbitrary metadata about the Vault. Limited to 256 bytes.

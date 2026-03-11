@@ -136,7 +136,7 @@ type Vault struct {
 	// Multi-Purpose token ID associated with this vault.
 	ShareMPTID string `json:"ShareMPTID,omitempty"`
 	// Policy defining withdrawal conditions.
-	WithdrawalPolicy *uint8 `json:"WithdrawalPolicy,omitempty"`
+	WithdrawalPolicy *types.VaultWithdrawalPolicy `json:"WithdrawalPolicy,omitempty"`
 	// The maximum asset amount that can be held in the vault. Zero value indicates there is no cap.
 	AssetsMaximum string `json:"AssetsMaximum,omitempty"`
 	// Arbitrary metadata about the Vault. Limited to 256 bytes.

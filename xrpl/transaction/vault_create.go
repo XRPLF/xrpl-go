@@ -48,7 +48,7 @@ type VaultCreate struct {
 	// may not be discoverable by ecosystem tools such as explorers and indexers.
 	MPTokenMetadata *string `json:",omitempty"`
 	// Indicates the withdrawal strategy used by the Vault.
-	WithdrawalPolicy *uint8 `json:",omitempty"`
+	WithdrawalPolicy *types.VaultWithdrawalPolicy `json:",omitempty"`
 	// The PermissionedDomain object ID associated with the shares of this Vault.
 	DomainID *string `json:",omitempty"`
 	// The scaling factor for vault shares. Only applicable for IOU assets.
@@ -94,7 +94,7 @@ func (tx *VaultCreate) Flatten() FlatTransaction {
 	}
 
 	if tx.WithdrawalPolicy != nil {
-		flattened["WithdrawalPolicy"] = *tx.WithdrawalPolicy
+		flattened["WithdrawalPolicy"] = tx.WithdrawalPolicy.Value()
 	}
 
 	if tx.DomainID != nil && *tx.DomainID != "" {

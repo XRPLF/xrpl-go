@@ -119,7 +119,7 @@ func TestInfoRequest_Validate(t *testing.T) {
 }
 
 func TestVaultInfoResponse(t *testing.T) {
-	withdrawalPolicy := uint8(0)
+	withdrawalPolicy := types.VaultWithdrawalPolicy(0)
 	flags := uint32(0)
 
 	s := Response{

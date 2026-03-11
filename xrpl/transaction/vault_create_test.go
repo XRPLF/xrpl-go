@@ -58,14 +58,14 @@ func TestVaultCreate_Flatten(t *testing.T) {
 					Issuer:   "rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb",
 				},
 				AssetsMaximum:    func() *types.XRPLNumber { v := types.XRPLNumber("1000000"); return &v }(),
-				WithdrawalPolicy: func() *uint8 { v := ledger.VaultStrategyFirstComeFirstServe; return &v }(),
+				WithdrawalPolicy: func() *types.VaultWithdrawalPolicy { v := types.VaultStrategyFirstComeFirstServe; return &v }(),
 			},
 			expected: FlatTransaction{
 				"TransactionType":  VaultCreateTx.String(),
 				"Account":          "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Asset":            map[string]interface{}{"currency": "USD", "issuer": types.Address("rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb")},
 				"AssetsMaximum":    "1000000",
-				"WithdrawalPolicy": ledger.VaultStrategyFirstComeFirstServe,
+				"WithdrawalPolicy": types.VaultStrategyFirstComeFirstServe.Value(),
 			},
 		},
 		{
