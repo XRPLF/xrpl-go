@@ -197,6 +197,24 @@ func TestInt32_FromJSON(t *testing.T) {
 			expectedErr: ErrInt32OutOfRange,
 		},
 		{
+			name:        "Error - float64 MaxFloat64",
+			input:       math.MaxFloat64,
+			expected:    nil,
+			expectedErr: ErrInt32OutOfRange,
+		},
+		{
+			name:        "Error - float64 -MaxFloat64",
+			input:       -math.MaxFloat64,
+			expected:    nil,
+			expectedErr: ErrInt32OutOfRange,
+		},
+		{
+			name:        "Error - float64 SmallestNonzeroFloat64",
+			input:       math.SmallestNonzeroFloat64,
+			expected:    nil,
+			expectedErr: ErrInt32OutOfRange,
+		},
+		{
 			name:        "Error - invalid type (string)",
 			input:       "not a number",
 			expected:    nil,
