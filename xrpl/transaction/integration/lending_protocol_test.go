@@ -158,3 +158,236 @@ func TestIntegrationLoanSetWithSingleSigning_Websocket(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "tesSUCCESS", submitResp.EngineResult)
 }
+
+// TestIntegrationLoanSetWithMultisignCounterparty_Websocket tests the lending protocol lifecycle
+// where the counterparty (borrower) is a multisig account. Two signers each sign the LoanSet
+// as counterparty, and their signatures are combined using CombineLoanSetCounterpartySigners.
+func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
+	env := integration.GetWebsocketEnv(t)
+	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
+
+	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
+		WalletCount: 6,
+	})
+
+	err := runner.Setup()
+	require.NoError(t, err)
+	defer runner.Teardown()
+
+	// Wallet 0: Vault Owner / Loan Broker
+	vaultOwner := runner.GetWallet(0)
+	loanBroker := vaultOwner
+	// Wallet 1: MPT issuer
+	mptIssuer := runner.GetWallet(1)
+	// Wallet 2: Depositor
+	depositor := runner.GetWallet(2)
+	// Wallet 3: Borrower (multisig account)
+	borrower := runner.GetWallet(3)
+	// Wallet 4 & 5: Signers for the borrower's multisig
+	signer1 := runner.GetWallet(4)
+	signer2 := runner.GetWallet(5)
+
+	// Step 0: Set up SignerList on borrower account (quorum = 2, each signer weight = 1)
+	signerListSetTx := &transaction.SignerListSet{
+		BaseTx: transaction.BaseTx{
+			Account: borrower.GetAddress(),
+		},
+		SignerQuorum: uint32(2),
+		SignerEntries: []ledger.SignerEntryWrapper{
+			{
+				SignerEntry: ledger.SignerEntry{
+					Account:      types.Address(signer1.GetAddress()),
+					SignerWeight: 1,
+				},
+			},
+			{
+				SignerEntry: ledger.SignerEntry{
+					Account:      types.Address(signer2.GetAddress()),
+					SignerWeight: 1,
+				},
+			},
+		},
+	}
+
+	signerListFlat := signerListSetTx.Flatten()
+	_, err = runner.TestTransaction(&signerListFlat, borrower, "tesSUCCESS", nil)
+	require.NoError(t, err)
+
+	// Create MPT token
+	mpttoken := &transaction.MPTokenIssuanceCreate{
+		BaseTx: transaction.BaseTx{
+			Account: mptIssuer.GetAddress(),
+		},
+	}
+	mpttoken.SetMPTCanTransferFlag()
+	mpttoken.SetMPTCanClawbackFlag()
+
+	mptTokenFlat := transaction.FlatTransaction(mpttoken.Flatten())
+	err = client.Autofill(&mptTokenFlat)
+	require.NoError(t, err)
+
+	mptTokenBlob, _, err := mptIssuer.Sign(mptTokenFlat)
+	require.NoError(t, err)
+
+	mptTokenTxResp, err := client.SubmitTxBlobAndWait(mptTokenBlob, true)
+	require.NoError(t, err)
+
+	mptTokenIssuanceId := mptTokenTxResp.Meta.MPTIssuanceID.String()
+	require.NotEqual(t, nil, mptTokenIssuanceId)
+
+	vaultCreateTx := &transaction.VaultCreate{
+		BaseTx: transaction.BaseTx{
+			Account: vaultOwner.GetAddress(),
+		},
+		Asset: ledger.Asset{
+			MPTIssuanceID: mptTokenIssuanceId,
+		},
+	}
+
+	vaultCreateFlat := vaultCreateTx.Flatten()
+	vaultCreateResp, err := runner.TestTransaction(&vaultCreateFlat, vaultOwner, "tesSUCCESS", nil)
+	require.NoError(t, err)
+	require.NotNil(t, vaultCreateResp)
+
+	vaultCreateAccount, ok := vaultCreateResp.Tx["Account"].(string)
+	require.True(t, ok)
+	vaultCreateSequence, err := sequenceFromTx(vaultCreateResp.Tx)
+	require.NoError(t, err)
+
+	vaultObjectID, err := xrplhash.Vault(vaultCreateAccount, vaultCreateSequence)
+	require.NoError(t, err)
+
+	// TODO: check loan objects
+	mptAuthorizeTx := &transaction.MPTokenAuthorize{
+		BaseTx: transaction.BaseTx{
+			Account: depositor.GetAddress(),
+		},
+		MPTokenIssuanceID: mptTokenIssuanceId,
+	}
+	mptAuthorizeTxFlat := mptAuthorizeTx.Flatten()
+	_, err = runner.TestTransaction(&mptAuthorizeTxFlat, depositor, "tesSUCCESS", nil)
+
+	paymentTx := &transaction.Payment{
+		BaseTx: transaction.BaseTx{
+			Account: mptIssuer.GetAddress(),
+		},
+		Destination: depositor.GetAddress(),
+		Amount: types.MPTCurrencyAmount{
+			MPTIssuanceID: mptTokenIssuanceId,
+			Value:         "500000",
+		},
+	}
+	paymentTxFlat := paymentTx.Flatten()
+	_, err = runner.TestTransaction(&paymentTxFlat, mptIssuer, "tesSUCCESS", nil)
+
+	loanBrokerMptAuthorizeTx := &transaction.MPTokenAuthorize{
+		BaseTx: transaction.BaseTx{
+			Account: loanBroker.GetAddress(),
+		},
+		MPTokenIssuanceID: mptTokenIssuanceId,
+	}
+	loanBrokerMptAuthorizeTxFlat := loanBrokerMptAuthorizeTx.Flatten()
+	_, err = runner.TestTransaction(&loanBrokerMptAuthorizeTxFlat, loanBroker, "tesSUCCESS", nil)
+
+	loanBrokerPaymentTx := &transaction.Payment{
+		BaseTx: transaction.BaseTx{
+			Account: mptIssuer.GetAddress(),
+		},
+		Destination: loanBroker.GetAddress(),
+		Amount: types.MPTCurrencyAmount{
+			MPTIssuanceID: mptTokenIssuanceId,
+			Value:         "500000",
+		},
+	}
+	loanBrokerPaymentTxFlat := loanBrokerPaymentTx.Flatten()
+	_, err = runner.TestTransaction(&loanBrokerPaymentTxFlat, mptIssuer, "tesSUCCESS", nil)
+
+	depositAmount := "200000"
+	vaultDepositTx := &transaction.VaultDeposit{
+		BaseTx: transaction.BaseTx{
+			Account: depositor.GetAddress(),
+		},
+		VaultID: types.Hash256(vaultObjectID),
+		Amount: types.MPTCurrencyAmount{
+			MPTIssuanceID: mptTokenIssuanceId,
+			Value:         depositAmount,
+		},
+	}
+	vaultDepositFlat := vaultDepositTx.Flatten()
+	_, err = runner.TestTransaction(&vaultDepositFlat, depositor, "tesSUCCESS", nil)
+
+	debtMaximum := types.XRPLNumber("100000")
+	loanBrokerSetTx := &transaction.LoanBrokerSet{
+		BaseTx: transaction.BaseTx{
+			Account: loanBroker.GetAddress(),
+		},
+		VaultID:     vaultObjectID,
+		DebtMaximum: &debtMaximum,
+	}
+
+	loanBrokerFlat := transaction.FlatTransaction(loanBrokerSetTx.Flatten())
+	err = client.Autofill(&loanBrokerFlat)
+	require.NoError(t, err)
+
+	loanBrokerBlob, _, err := loanBroker.Sign(loanBrokerFlat)
+	require.NoError(t, err)
+
+	loanBrokerTxResp, err := client.SubmitTxBlobAndWait(loanBrokerBlob, true)
+	require.NoError(t, err)
+
+	loanBrokerAccount, ok := loanBrokerTxResp.TxJSON["Account"].(string)
+	require.True(t, ok)
+	loanBrokerSequence, err := sequenceFromTx(loanBrokerTxResp.TxJSON)
+	require.NoError(t, err)
+
+	loanBrokerObjectID, err := xrplhash.LoanBroker(loanBrokerAccount, loanBrokerSequence)
+	require.NoError(t, err)
+
+	// Step 4: Broker initiates the Loan with multisig counterparty
+	counterparty := borrower.GetAddress()
+	paymentTotal := types.PaymentTotal(1)
+	interestRate := types.InterestRate(0)
+	loanSetTx := &transaction.LoanSet{
+		BaseTx: transaction.BaseTx{
+			Account: loanBroker.GetAddress(),
+		},
+		LoanBrokerID:       loanBrokerObjectID,
+		PrincipalRequested: types.XRPLNumber("100000"),
+		InterestRate:       &interestRate,
+		Counterparty:       &counterparty,
+		PaymentTotal:       &paymentTotal,
+	}
+
+	// Autofill + Sign by broker
+	loanSetFlat := transaction.FlatTransaction(loanSetTx.Flatten())
+	_, err = runner.TestTransaction(&loanSetFlat, loanBroker, "temBAD_SIGNER", nil)
+	err = client.Autofill(&loanSetFlat)
+	require.NoError(t, err)
+
+	brokerBlob, _, err := loanBroker.Sign(loanSetFlat)
+	require.NoError(t, err)
+
+	// Each signer signs the LoanSet as counterparty multisig
+	multisignOpts := &wallet.SignLoanSetByCounterpartyOptions{
+		Multisign: true,
+	}
+
+	signer1Tx, signer1Blob, _, err := wallet.SignLoanSetByCounterpartyBlob(*signer1, brokerBlob, multisignOpts)
+	require.NoError(t, err)
+	require.NotEmpty(t, signer1Blob)
+
+	signer2Tx, signer2Blob, _, err := wallet.SignLoanSetByCounterpartyBlob(*signer2, brokerBlob, multisignOpts)
+	require.NoError(t, err)
+	require.NotEmpty(t, signer2Blob)
+
+	// Combine the two counterparty multisig signatures
+	combinedTx, combinedBlob, err := wallet.CombineLoanSetCounterpartySigners([]transaction.FlatTransaction{signer1Tx, signer2Tx})
+	require.NoError(t, err)
+	require.NotNil(t, combinedTx)
+	require.NotEmpty(t, combinedBlob)
+
+	// Submit the combined transaction blob
+	submitResp, err := client.SubmitTxBlob(combinedBlob, true)
+	require.NoError(t, err)
+	require.Equal(t, "tesSUCCESS", submitResp.EngineResult)
+}
