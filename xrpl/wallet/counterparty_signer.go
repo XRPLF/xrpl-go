@@ -67,7 +67,10 @@ func SignLoanSetByCounterparty(
 	}
 	(*tx)["CounterpartySignature"] = counterpartySignatureMap
 
-	txBlob, err = binarycodec.Encode(*tx)
+	// Encode a copy because binarycodec.Encode mutates the map (deletes unknown fields).
+	encodeCopy := make(transaction.FlatTransaction, len(*tx))
+	maps.Copy(encodeCopy, *tx)
+	txBlob, err = binarycodec.Encode(encodeCopy)
 	if err != nil {
 		return "", "", err
 	}
@@ -128,18 +131,23 @@ func CombineLoanSetCounterpartySigners(transactions []transaction.FlatTransactio
 		return nil, "", err
 	}
 
-	// Sort all signers by Account descending.
+	// Sort signers ascending by numeric account ID.
 	xrpl.SortSigners(allSigners)
 
-	firstTx := transactions[0]
-	firstTx["CounterpartySignature"].(map[string]any)["Signers"] = allSigners
+	// Create a new transaction with all signers.
+	combined := make(transaction.FlatTransaction, len(transactions[0]))
+	maps.Copy(combined, transactions[0])
+	combined["CounterpartySignature"] = map[string]any{"Signers": allSigners}
 
-	encoded, err := binarycodec.Encode(firstTx)
+	// Encode a copy because binarycodec.Encode mutates the map (deletes unknown fields).
+	encodeCopy := make(transaction.FlatTransaction, len(combined))
+	maps.Copy(encodeCopy, combined)
+	encoded, err := binarycodec.Encode(encodeCopy)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return firstTx, encoded, nil
+	return combined, encoded, nil
 }
 
 // CombineLoanSetCounterpartySignersBlob decodes hex-encoded transaction blobs and combines

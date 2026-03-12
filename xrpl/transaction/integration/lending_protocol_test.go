@@ -257,7 +257,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	vaultObjectID, err := xrplhash.Vault(vaultCreateAccount, vaultCreateSequence)
 	require.NoError(t, err)
 
-	// TODO: check loan objects
+	// MPTokenAuthorize for depositor
 	mptAuthorizeTx := &transaction.MPTokenAuthorize{
 		BaseTx: transaction.BaseTx{
 			Account: depositor.GetAddress(),
@@ -266,7 +266,9 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	}
 	mptAuthorizeTxFlat := mptAuthorizeTx.Flatten()
 	_, err = runner.TestTransaction(&mptAuthorizeTxFlat, depositor, "tesSUCCESS", nil)
+	require.NoError(t, err)
 
+	// Payment of MPT to depositor
 	paymentTx := &transaction.Payment{
 		BaseTx: transaction.BaseTx{
 			Account: mptIssuer.GetAddress(),
@@ -279,7 +281,9 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	}
 	paymentTxFlat := paymentTx.Flatten()
 	_, err = runner.TestTransaction(&paymentTxFlat, mptIssuer, "tesSUCCESS", nil)
+	require.NoError(t, err)
 
+	// MPTokenAuthorize for loanBroker
 	loanBrokerMptAuthorizeTx := &transaction.MPTokenAuthorize{
 		BaseTx: transaction.BaseTx{
 			Account: loanBroker.GetAddress(),
@@ -288,7 +292,9 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	}
 	loanBrokerMptAuthorizeTxFlat := loanBrokerMptAuthorizeTx.Flatten()
 	_, err = runner.TestTransaction(&loanBrokerMptAuthorizeTxFlat, loanBroker, "tesSUCCESS", nil)
+	require.NoError(t, err)
 
+	// Payment of MPT to loanBroker
 	loanBrokerPaymentTx := &transaction.Payment{
 		BaseTx: transaction.BaseTx{
 			Account: mptIssuer.GetAddress(),
@@ -301,7 +307,9 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	}
 	loanBrokerPaymentTxFlat := loanBrokerPaymentTx.Flatten()
 	_, err = runner.TestTransaction(&loanBrokerPaymentTxFlat, mptIssuer, "tesSUCCESS", nil)
+	require.NoError(t, err)
 
+	// Deposit MPT into vault
 	depositAmount := "200000"
 	vaultDepositTx := &transaction.VaultDeposit{
 		BaseTx: transaction.BaseTx{
@@ -315,6 +323,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	}
 	vaultDepositFlat := vaultDepositTx.Flatten()
 	_, err = runner.TestTransaction(&vaultDepositFlat, depositor, "tesSUCCESS", nil)
+	require.NoError(t, err)
 
 	debtMaximum := types.XRPLNumber("100000")
 	loanBrokerSetTx := &transaction.LoanBrokerSet{
@@ -358,9 +367,13 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 		PaymentTotal:       &paymentTotal,
 	}
 
-	// Autofill + Sign by broker
+	// Negative test: submit LoanSet without counterparty signature, expect temBAD_SIGNER
+	negTestFlat := transaction.FlatTransaction(loanSetTx.Flatten())
+	_, err = runner.TestTransaction(&negTestFlat, loanBroker, "temBAD_SIGNER", nil)
+	require.NoError(t, err)
+
+	// Autofill + Sign by broker (fresh flat to avoid stale fields from negative test)
 	loanSetFlat := transaction.FlatTransaction(loanSetTx.Flatten())
-	_, err = runner.TestTransaction(&loanSetFlat, loanBroker, "temBAD_SIGNER", nil)
 	err = client.Autofill(&loanSetFlat)
 	require.NoError(t, err)
 
