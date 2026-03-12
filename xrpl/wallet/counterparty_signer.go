@@ -163,13 +163,18 @@ func CombineLoanSetCounterpartySignersBlob(blobs []string) (transaction.FlatTran
 }
 
 // encodeAndSign encodes tx for signing (multisig or single) and returns the hex signature.
+// A shallow copy of tx is used because EncodeForSigning/EncodeForMultisigning mutate the map
+// by removing non-signing fields, and the caller still needs the original fields (e.g. TxnSignature).
 func encodeAndSign(w *Wallet, tx transaction.FlatTransaction, multisign bool, addr string) (string, error) {
+	txCopy := make(transaction.FlatTransaction, len(tx))
+	maps.Copy(txCopy, tx)
+
 	var encoded string
 	var err error
 	if multisign {
-		encoded, err = binarycodec.EncodeForMultisigning(tx, addr)
+		encoded, err = binarycodec.EncodeForMultisigning(txCopy, addr)
 	} else {
-		encoded, err = binarycodec.EncodeForSigning(tx)
+		encoded, err = binarycodec.EncodeForSigning(txCopy)
 	}
 	if err != nil {
 		return "", err

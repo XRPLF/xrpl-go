@@ -96,8 +96,8 @@ type Loan struct {
 	PaymentInterval uint32
 	// The number of seconds after the Payment Due Date that the Loan can be Defaulted.
 	GracePeriod uint32
-	// The timestamp of when the previous payment was made in Ripple Epoch.
-	PreviousPaymentDate *types.PreviousPaymentDate `json:",omitempty"`
+	// The timestamp of when the previous payment was due in Ripple Epoch.
+	PreviousPaymentDueDate *types.PreviousPaymentDueDate `json:",omitempty"`
 	// The timestamp of when the next payment is due in Ripple Epoch.
 	NextPaymentDueDate uint32
 	// The number of payments remaining on the Loan.

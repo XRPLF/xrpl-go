@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### binary-codec
 
 - Added `Int32` serialized type with two's complement encoding for signed 32-bit integers.
+- Added comprehensive tests for `Number` type covering roundtrip encoding/decoding, error cases, hex roundtrip, zero handling, and parser errors.
 
 #### xrpl
 
@@ -36,6 +37,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `CombineLoanSetCounterpartySigners` to merge multiple counterparty multisig transactions into one.
 - Added `CombineLoanSetCounterpartySignersBlob` convenience wrapper that accepts hex-encoded transaction blobs.
 - Extracted `Asset` to its own file and added MPT asset support in `IsAsset` validation.
+- Added integration test for full lending protocol lifecycle (VaultCreate → VaultDeposit → LoanBrokerSet → LoanSet with counterparty signing).
+
+### Changed
+
+#### binary-codec
+
+- Refactored `Number` (STNumber) serialization to use `big.Int` mantissa instead of `int64`, supporting values that exceed the `int64` range. Updated mantissa bounds from 10^15–(10^16-1) to 10^18–(10^19-1), added rounding for mantissa truncation, underflow detection, and trailing-zero stripping in scientific/decimal formatting.
+- Renamed `PreviousPaymentDate` to `PreviousPaymentDueDate` in `definitions.json`.
+
+#### xrpl
+
+- Renamed `PreviousPaymentDate` type to `PreviousPaymentDueDate` to align with protocol field naming.
+- Updated `Loan` ledger entry `PreviousPaymentDate` field to `PreviousPaymentDueDate`.
 
 ### Fixed
 
