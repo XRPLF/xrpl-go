@@ -70,9 +70,29 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 			return nil, err
 		}
 
-		i.length = MPTIssuanceIDBytesLength
+		// mpt_issuance_id is 24 bytes: 4 bytes sequence (BE) + 20 bytes issuer account
+		// Binary format for MPT Issue is 44 bytes: issuer account (20) + NO_ACCOUNT marker (20) + sequence (LE 4)
+		if len(mptIssuanceIDBytes) != MPTIssuanceIDBytesLength {
+			return nil, ErrInvalidIssueObject
+		}
 
-		return mptIssuanceIDBytes, nil
+		seqBE := mptIssuanceIDBytes[:4]
+		issuerAccount := mptIssuanceIDBytes[4:]
+
+		// Convert sequence from big-endian to little-endian
+		seq := binary.BigEndian.Uint32(seqBE)
+		seqLE := make([]byte, 4)
+		binary.LittleEndian.PutUint32(seqLE, seq)
+
+		// Encode as: issuer account (20) + NO_ACCOUNT marker (20) + sequence LE (4)
+		result := make([]byte, 0, 44)
+		result = append(result, issuerAccount...)
+		result = append(result, NoAccountBytes...)
+		result = append(result, seqLE...)
+
+		i.length = len(result)
+
+		return result, nil
 	}
 
 	currencyCodec := &Currency{}
