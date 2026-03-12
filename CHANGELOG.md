@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `LoanPay` transaction flags: `TfLoanPayOverpayment`, `TfLoanPayFullPayment`, `TfLoanPayLatePayment` with mutual exclusivity validation and flag setter methods.
 - Added `DestinationTag` field to `LoanBrokerCoverWithdraw` transaction.
 - Added `IsMPTCurrency` validation helper for MPT currency amounts, and updated `IsAmount` to support MPT amounts.
+- Added `SignLoanSetByCounterparty` to sign a LoanSet transaction as the counterparty (single-sign or multisign).
+- Added `SignLoanSetByCounterpartyBlob` convenience wrapper that accepts a hex-encoded transaction blob.
+- Added `CombineLoanSetCounterpartySigners` to merge multiple counterparty multisig transactions into one.
+- Added `CombineLoanSetCounterpartySignersBlob` convenience wrapper that accepts hex-encoded transaction blobs.
 - Extracted `Asset` to its own file and added MPT asset support in `IsAsset` validation.
 
 ### Fixed

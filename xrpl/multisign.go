@@ -32,7 +32,8 @@ func Multisign(blobs ...string) (string, error) {
 		return "", err
 	}
 
-	tx["Signers"] = sortSigners(signers)
+	SortSigners(signers)
+	tx["Signers"] = signers
 
 	blob, err := binarycodec.Encode(tx)
 	if err != nil {
@@ -42,14 +43,13 @@ func Multisign(blobs ...string) (string, error) {
 	return blob, nil
 }
 
-// sortSigners sorts the signers of a transaction.
+// SortSigners sorts the signers of a transaction.
 // It sorts the signers by account.
-func sortSigners(signers []interface{}) []interface{} {
+func SortSigners(signers []any) {
 	sort.Slice(signers, func(i, j int) bool {
-		iSigner := signers[i].(map[string]interface{})["Signer"].(map[string]interface{})
-		jSigner := signers[j].(map[string]interface{})["Signer"].(map[string]interface{})
+		iSigner := signers[i].(map[string]any)["Signer"].(map[string]any)
+		jSigner := signers[j].(map[string]any)["Signer"].(map[string]any)
 
 		return iSigner["Account"].(string) > jSigner["Account"].(string)
 	})
-	return signers
 }
