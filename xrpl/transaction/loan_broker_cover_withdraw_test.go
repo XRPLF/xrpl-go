@@ -13,6 +13,8 @@ func TestLoanBrokerCoverWithdraw_TxType(t *testing.T) {
 }
 
 func TestLoanBrokerCoverWithdraw_Flatten(t *testing.T) {
+	destTag := uint32(42)
+
 	testcases := []struct {
 		name     string
 		tx       *LoanBrokerCoverWithdraw
@@ -57,9 +59,10 @@ func TestLoanBrokerCoverWithdraw_Flatten(t *testing.T) {
 					Sequence:           1,
 					LastLedgerSequence: 3000000,
 				},
-				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				Amount:       types.XRPCurrencyAmount(10000),
-				Destination:  func() *types.Address { v := types.Address("rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5"); return &v }(),
+				LoanBrokerID:   "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount:         types.XRPCurrencyAmount(10000),
+				Destination:    func() *types.Address { v := types.Address("rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5"); return &v }(),
+				DestinationTag: &destTag,
 			},
 			expected: map[string]interface{}{
 				"TransactionType":    LoanBrokerCoverWithdrawTx.String(),
@@ -70,6 +73,7 @@ func TestLoanBrokerCoverWithdraw_Flatten(t *testing.T) {
 				"LoanBrokerID":       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				"Amount":             "10000",
 				"Destination":        "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+				"DestinationTag":     uint32(42),
 			},
 		},
 	}
@@ -145,15 +149,16 @@ func TestLoanBrokerCoverWithdraw_Validate(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name: "pass - with Destination",
+			name: "pass - with Destination and DestinationTag",
 			tx: &LoanBrokerCoverWithdraw{
 				BaseTx: BaseTx{
 					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 					TransactionType: LoanBrokerCoverWithdrawTx,
 				},
-				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				Amount:       types.XRPCurrencyAmount(10000),
-				Destination:  func() *types.Address { v := types.Address("rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5"); return &v }(),
+				LoanBrokerID:   "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount:         types.XRPCurrencyAmount(10000),
+				Destination:    func() *types.Address { v := types.Address("rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5"); return &v }(),
+				DestinationTag: func() *uint32 { v := uint32(42); return &v }(),
 			},
 			expected: nil,
 		},

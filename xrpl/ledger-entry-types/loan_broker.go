@@ -49,6 +49,11 @@ type LoanBroker struct {
 	Owner types.Address
 	// The number of active Loans issued by the LoanBroker.
 	OwnerCount *types.OwnerCount `json:",omitempty"`
+	// Arbitrary metadata in hex format. The field is limited to 256 bytes.
+	Data string `json:",omitempty"`
+	// The 1/10th basis point fee charged by the Lending Protocol. Valid values are between 0 and 10000 inclusive.
+	// A value of 1 is equivalent to 1/10 bps or 0.001%
+	ManagementFeeRate *uint16 `json:",omitempty"`
 	// The total asset amount the protocol owes the Vault, including interest.
 	DebtTotal *types.XRPLNumber `json:",omitempty"`
 	// The maximum amount the protocol can owe the Vault. The default value of 0 means there is no limit to the debt.

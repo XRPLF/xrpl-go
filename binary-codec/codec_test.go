@@ -446,6 +446,62 @@ func TestDecode(t *testing.T) {
 
 }
 
+func TestEncodeDecodeInt32_LoanScale(t *testing.T) {
+	tt := []struct {
+		description string
+		input       map[string]any
+	}{
+		{
+			description: "negative LoanScale",
+			input: map[string]any{
+				"Borrower":              "rs5fUokF7Y5bxNkstM4p4JYHgqzYkFamCg",
+				"GracePeriod":           uint32(60),
+				"LoanBrokerID":          "18F91BD8009DAF09B5E4663BE7A395F5F193D0657B12F8D1E781EB3D449E8151",
+				"LoanScale":             int32(-11),
+				"LoanSequence":          uint32(1),
+				"NextPaymentDueDate":    uint32(822779431),
+				"PaymentInterval":       uint32(400),
+				"PaymentRemaining":      uint32(1),
+				"PeriodicPayment":       "10000",
+				"PrincipalOutstanding":  "10000",
+				"StartDate":             uint32(822779031),
+				"TotalValueOutstanding": "10000",
+				"LedgerEntryType":       "Loan",
+			},
+		},
+		{
+			description: "positive LoanScale",
+			input: map[string]any{
+				"Borrower":              "rs5fUokF7Y5bxNkstM4p4JYHgqzYkFamCg",
+				"GracePeriod":           uint32(60),
+				"LoanBrokerID":          "18F91BD8009DAF09B5E4663BE7A395F5F193D0657B12F8D1E781EB3D449E8151",
+				"LoanScale":             int32(5),
+				"LoanSequence":          uint32(1),
+				"NextPaymentDueDate":    uint32(822779431),
+				"PaymentInterval":       uint32(400),
+				"PaymentRemaining":      uint32(1),
+				"PeriodicPayment":       "10000",
+				"PrincipalOutstanding":  "10000",
+				"StartDate":             uint32(822779031),
+				"TotalValueOutstanding": "10000",
+				"LedgerEntryType":       "Loan",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.description, func(t *testing.T) {
+			encoded, err := Encode(tc.input)
+			require.NoError(t, err)
+			require.NotEmpty(t, encoded)
+
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.EqualValues(t, tc.input, decoded)
+		})
+	}
+}
+
 func TestEncodeForMultisigning(t *testing.T) {
 	tt := []struct {
 		description string

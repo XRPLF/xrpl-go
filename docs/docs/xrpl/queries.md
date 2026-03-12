@@ -19,6 +19,7 @@ Queries are grouped by different categories or packages:
 - `path`: Methods to use paths and order books.
 - `nft`: Methods to work with NFTs.
 - `oracle`: Methods to work with oracles.
+- `vault`: Methods to work with vaults.
 - `clio`: Methods to use the Clio API, not [`rippled`](https://github.com/XRPLF/rippled).
 - `server`: Methods to retrieve information about the current state of the [`rippled`](https://github.com/XRPLF/rippled) server.
 - `utility`: Perform convenient tasks, such as ping and random number generation.
@@ -191,6 +192,26 @@ To use the `nft` package, you need to import it in your project:
 
 ```go
 import "github.com/Peersyst/xrpl-go/xrpl/queries/nft"
+```
+
+### vault
+
+The `vault` package contains methods to interact with XRPL vaults. These methods allow you to:
+
+- Retrieve vault information by vault ID or owner and sequence number.
+
+The `vault` subpackage provides the following queries requests:
+
+| Request       | Method name                                                                                                                  | V1 support | V2 support |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
+| `InfoRequest` | [vault_info](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/vault-methods/vault_info)               | ❌         | ✅         |
+
+#### Usage
+
+To use the `vault` package, you need to import it in your project:
+
+```go
+import "github.com/Peersyst/xrpl-go/xrpl/queries/vault"
 ```
 
 ### clio

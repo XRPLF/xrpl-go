@@ -83,7 +83,7 @@ func IsSigner(signerData types.SignerData) (bool, error) {
 }
 
 // IsAmount checks if the given object is a valid Amount object.
-// It is a string for an XRP amount or a map for an IssuedCurrency amount.
+// It is a string for an XRP amount, a map for an IssuedCurrency amount, or an MPT amount.
 func IsAmount(field types.CurrencyAmount, fieldName string, isFieldRequired bool) (bool, error) {
 	if isFieldRequired && field == nil {
 		return false, ErrMissingField{
@@ -97,6 +97,13 @@ func IsAmount(field types.CurrencyAmount, fieldName string, isFieldRequired bool
 	}
 
 	if field.Kind() == types.XRP {
+		return true, nil
+	}
+
+	if field.Kind() == types.MPT {
+		if ok, err := IsMPTCurrency(field); !ok {
+			return false, err
+		}
 		return true, nil
 	}
 
@@ -136,6 +143,31 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 	value, err := strconv.ParseFloat(issuedAmount.Value, 64)
 	if err != nil || value < 0 {
 		return false, ErrInvalidTokenValue
+	}
+
+	return true, nil
+}
+
+// IsMPTCurrency checks if the given object is a valid MPTCurrencyAmount object.
+func IsMPTCurrency(input types.CurrencyAmount) (bool, error) {
+	if input.Kind() != types.MPT {
+		return false, ErrInvalidMPTType
+	}
+
+	mptAmount, _ := input.(types.MPTCurrencyAmount)
+
+	if strings.TrimSpace(mptAmount.MPTIssuanceID) == "" {
+		return false, ErrMissingMPTIssuanceID
+	}
+
+	if !typecheck.IsHex(mptAmount.MPTIssuanceID) {
+		return false, ErrInvalidMPTIssuanceID
+	}
+
+	// Check if the value is a valid positive integer in the range 0 to 0x7FFFFFFFFFFFFFFF
+	value, err := strconv.ParseInt(mptAmount.Value, 10, 64)
+	if err != nil || value < 0 {
+		return false, ErrInvalidMPTValue
 	}
 
 	return true, nil
@@ -199,6 +231,17 @@ func IsPaths(pathsteps [][]PathStep) (bool, error) {
 
 // IsAsset checks if the given object is a valid Asset object.
 func IsAsset(asset ledger.Asset) (bool, error) {
+	// MPT asset: only MPTIssuanceID should be set
+	if asset.MPTIssuanceID != "" {
+		if asset.Currency != "" || asset.Issuer != "" {
+			return false, ErrInvalidMPTIssuanceIDAsset
+		}
+		if !typecheck.IsHex(asset.MPTIssuanceID) {
+			return false, ErrInvalidMPTIssuanceIDAsset
+		}
+		return true, nil
+	}
+
 	// Get the size of the Asset object.
 	lenKeys := len(maputils.GetKeys(asset.Flatten()))
 
