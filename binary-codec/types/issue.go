@@ -102,7 +102,7 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 		return nil, err
 	}
 
-	if issuerString, okstring := mapObj["issuer"].(string); ok && okstring {
+	if issuerString, ok := mapObj["issuer"].(string); ok {
 		_, issuerBytes, err := addresscodec.DecodeClassicAddressToAccountID(issuerString)
 		if err != nil {
 			return nil, err
@@ -118,7 +118,7 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 
 // ToJSON converts a binary Issue representation back to a JSON object.
 // It self-determines the length by progressively reading and checking the data:
-// - XRP: 20 bytes (currency only, all zeros)
+// - XRP: 40 bytes (currency only, all zeros)
 // - IOU: 40 bytes (currency + issuer)
 // - MPT: 44 bytes (issuer account + NO_ACCOUNT marker + sequence)
 // The opts parameter is ignored as length is determined automatically.
