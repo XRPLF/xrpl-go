@@ -36,7 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `SignLoanSetByCounterpartyBlob` convenience wrapper that accepts a hex-encoded transaction blob.
 - Added `CombineLoanSetCounterpartySigners` to merge multiple counterparty multisig transactions into one.
 - Added `CombineLoanSetCounterpartySignersBlob` convenience wrapper that accepts hex-encoded transaction blobs.
-- Extracted `Asset` to its own file and added MPT asset support in `IsAsset` validation.
 - Added integration test for full lending protocol lifecycle (VaultCreate → VaultDeposit → LoanBrokerSet → LoanSet with counterparty signing).
 
 ### Changed
@@ -48,14 +47,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl
 
+- Extracted `Asset` to its own file and added MPT asset support in `IsAsset` validation.
 - Renamed `PreviousPaymentDate` type to `PreviousPaymentDueDate` to align with protocol field naming.
 - Updated `Loan` ledger entry `PreviousPaymentDate` field to `PreviousPaymentDueDate`.
+- Make `ComputeSignature` public
 
 ### Fixed
+
+#### binary-codec
+
+- Fixed `FromJSON` returning `ErrInvalidCurrency` instead of `ErrInvalidIssueObject` when `mpt_issuance_id` value is not a string.
+- Moved `ErrInvalidCurrency` to `currency.go` where it belongs.
 
 #### xrpl
 
 - Add missing `omitempty` tag to `RipplePathFindRequest.Domain`
+- Added nil guards for `opts` in `SubmitTx` and `SubmitTxAndWait` client methods.
 
 ## [v0.1.15]
 
@@ -87,7 +94,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - `rpc` client timeout fetched from config.
-
 
 ## [v0.1.14]
 
@@ -287,7 +293,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - Updates some fields in AccountSet and Payment related transactions to a pointer to allow 0 or "" values. For example:
-
   - `DestinationTag`
   - `TickSize`
   - `Domain`

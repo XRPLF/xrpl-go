@@ -58,23 +58,19 @@ func TestIssue_FromJson(t *testing.T) {
 		{
 			name: "pass - valid mpt issuance id",
 			input: map[string]any{
+				// mpt_issuance_id = sequence BE (4 bytes) + issuerAccount (20 bytes)
+				// sequence BE = 0xBAADF00D, issuerAccount = BAADF00DBAADF00DBAADF00DBAADF00DBAADF00D
 				"mpt_issuance_id": "BAADF00DBAADF00DBAADF00DBAADF00DBAADF00DBAADF00D",
 			},
-			// Binary format: issuer account (20) + NO_ACCOUNT marker (20) + sequence LE (4)
-			// mpt_issuance_id = BAADF00D (seq BE) + BAADF00DBAADF00DBAADF00DBAADF00DBAADF00D (issuer)
-			expected: append(append(
-				// issuer account (20 bytes)
-				[]byte{
-					0xBA, 0xAD, 0xF0, 0x0D, 0xBA, 0xAD, 0xF0, 0x0D, 0xBA, 0xAD,
-					0xF0, 0x0D, 0xBA, 0xAD, 0xF0, 0x0D, 0xBA, 0xAD, 0xF0, 0x0D,
-				},
-				// NO_ACCOUNT marker (20 bytes)
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-			),
-				// sequence LE (4 bytes) - 0xBAADF00D in LE
-				0x0D, 0xF0, 0xAD, 0xBA,
-			),
+			expected: []byte{
+				// issuerAccount (20 bytes): BAADF00DBAADF00DBAADF00DBAADF00DBAADF00D
+				186, 173, 240, 13, 186, 173, 240, 13, 186, 173,
+				240, 13, 186, 173, 240, 13, 186, 173, 240, 13,
+				// NoAccountBytes (20 bytes): 0000000000000000000000000000000000000001
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+				// sequence LE (4 bytes): 0xBAADF00D in LE = [0x0D, 0xF0, 0xAD, 0xBA]
+				13, 240, 173, 186,
+			},
 		},
 		{
 			name:        "fail - invalid Issue",

@@ -24,14 +24,9 @@ var (
 
 var (
 	// ErrInvalidIssueObject is returned when the JSON object is not a valid Issue.
-	// ErrInvalidIssueObject is returned when the JSON object is not a valid Issue.
 	ErrInvalidIssueObject = errors.New("invalid issue object")
-	// ErrInvalidCurrency is returned when the currency field is missing or invalid in the Issue JSON.
-	ErrInvalidCurrency = errors.New("invalid currency")
 	// ErrInvalidIssuer is returned when the issuer field is missing or invalid in the Issue JSON.
 	ErrInvalidIssuer = errors.New("invalid issuer")
-	// ErrMissingIssueLengthOption is returned when no length option is provided to Issue.ToJSON.
-	ErrMissingIssueLengthOption = errors.New("missing length option for Issue.ToJSON")
 	// XRPBytes is the serialized byte representation for native XRP (zero-value currency issuer).
 	XRPBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 )
@@ -41,9 +36,7 @@ var (
 // The FromJson method converts a classic address string to an AccountID byte slice.
 // The ToJson method converts an AccountID byte slice back to a classic address string.
 // This type is crucial for handling currency issuers in XRPL transactions and ledger entries.
-type Issue struct {
-	length int
-}
+type Issue struct{}
 
 // FromJSON parses a classic address string and returns the corresponding AccountID byte slice.
 // It uses the addresscodec package to decode the classic address.
@@ -62,7 +55,7 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 	if !ok {
 		mptIssuanceID, ok := mapObj["mpt_issuance_id"].(string)
 		if !ok {
-			return nil, ErrInvalidCurrency
+			return nil, ErrInvalidIssueObject
 		}
 
 		mptIssuanceIDBytes, err := hex.DecodeString(mptIssuanceID)
@@ -76,21 +69,20 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 			return nil, ErrInvalidIssueObject
 		}
 
-		seqBE := mptIssuanceIDBytes[:4]
-		issuerAccount := mptIssuanceIDBytes[4:]
+		// Extract sequence (first 4 bytes, big-endian) and issuer account (last 20 bytes)
+		sequenceBE := mptIssuanceIDBytes[0:4]
+		issuerAccount := mptIssuanceIDBytes[4:24]
 
-		// Convert sequence from big-endian to little-endian
-		seq := binary.BigEndian.Uint32(seqBE)
-		seqLE := make([]byte, 4)
-		binary.LittleEndian.PutUint32(seqLE, seq)
+		// Convert sequence from big-endian to little-endian for internal storage
+		sequence := binary.BigEndian.Uint32(sequenceBE)
+		sequenceLE := make([]byte, 4)
+		binary.LittleEndian.PutUint32(sequenceLE, sequence)
 
-		// Encode as: issuer account (20) + NO_ACCOUNT marker (20) + sequence LE (4)
+		// Encode as: issuerAccount(20) + NO_ACCOUNT(20) + sequence(4, little-endian) = 44 bytes
 		result := make([]byte, 0, 44)
 		result = append(result, issuerAccount...)
 		result = append(result, NoAccountBytes...)
-		result = append(result, seqLE...)
-
-		i.length = len(result)
+		result = append(result, sequenceLE...)
 
 		return result, nil
 	}
@@ -102,13 +94,11 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 		return nil, err
 	}
 
-	issuer, ok := mapObj["issuer"]
-	if issuerString, okstring := issuer.(string); ok && okstring {
-		_, issuerBytes, err := addresscodec.DecodeClassicAddressToAccountID(issuerString)
+	if issuer, ok := mapObj["issuer"].(string); ok {
+		_, issuerBytes, err := addresscodec.DecodeClassicAddressToAccountID(issuer)
 		if err != nil {
 			return nil, err
 		}
-
 		return append(currencyBytes, issuerBytes...), nil
 	}
 
@@ -151,13 +141,17 @@ func (i *Issue) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 
 		// Convert sequence from little-endian to big-endian for mpt_issuance_id
 		sequence := binary.LittleEndian.Uint32(sequenceBytes)
-		seqBE := make([]byte, 4)
-		binary.BigEndian.PutUint32(seqBE, sequence)
+		sequenceBE := make([]byte, 4)
+		binary.BigEndian.PutUint32(sequenceBE, sequence)
 
 		// mpt_issuance_id = sequence (BE) + issuer account
-		seqBE = append(seqBE, currencyOrAccount...)
+		// currencyOrAccount contains the issuer account (first 20 bytes we read)
+		mptIssuanceID := make([]byte, 0, MPTIssuanceIDBytesLength)
+		mptIssuanceID = append(mptIssuanceID, sequenceBE...)
+		mptIssuanceID = append(mptIssuanceID, currencyOrAccount...)
+
 		return map[string]any{
-			"mpt_issuance_id": hexutil.EncodeToUpperHex(seqBE),
+			"mpt_issuance_id": hexutil.EncodeToUpperHex(mptIssuanceID),
 		}, nil
 	}
 
@@ -186,7 +180,7 @@ func decodeCurrencyBytes(currencyBytes []byte) string {
 	// Check if bytes has exactly 3 non-zero bytes at positions 12-14 (standard currency code)
 	nonZeroCount := 0
 	var currencyStr string
-	for i := 0; i < len(currencyBytes); i++ {
+	for i := range currencyBytes {
 		if currencyBytes[i] != 0 {
 			if i >= 12 && i <= 14 {
 				nonZeroCount++
