@@ -7,7 +7,7 @@ RUN go mod download
 COPY . .
 
 FROM install AS lint
-RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.2.2
+RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.3
 RUN make lint
 
 FROM lint AS test
