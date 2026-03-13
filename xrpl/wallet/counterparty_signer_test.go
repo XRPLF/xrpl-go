@@ -1,9 +1,11 @@
 package wallet
 
 import (
+	"bytes"
 	"maps"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/stretchr/testify/assert"
@@ -229,7 +231,9 @@ func TestCombineLoanSetCounterpartySigners(t *testing.T) {
 
 		acc0 := signers[0].(map[string]any)["Signer"].(map[string]any)["Account"].(string)
 		acc1 := signers[1].(map[string]any)["Signer"].(map[string]any)["Account"].(string)
-		assert.True(t, acc0 > acc1, "signers should be sorted descending by account")
+		_, bytes0, _ := addresscodec.DecodeClassicAddressToAccountID(acc0)
+		_, bytes1, _ := addresscodec.DecodeClassicAddressToAccountID(acc1)
+		assert.True(t, bytes.Compare(bytes0, bytes1) < 0, "signers should be sorted ascending by account ID bytes")
 	})
 
 	t.Run("fail - empty slice", func(t *testing.T) {

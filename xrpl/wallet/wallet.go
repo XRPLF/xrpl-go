@@ -180,6 +180,7 @@ func (w *Wallet) GetAddress() types.Address {
 }
 
 // Multisign signs a multisigned transaction offline, returning the signed transaction blob and its transaction hash.
+// Note: this method sets tx["SigningPubKey"] = "" directly on the provided map (XRPL protocol requirement).
 func (w *Wallet) Multisign(tx map[string]interface{}) (string, string, error) {
 	// For regular multisigning, SigningPubKey must be empty per XRPL protocol.
 	tx["SigningPubKey"] = ""
