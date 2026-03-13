@@ -36,8 +36,7 @@ var (
 // The FromJson method converts a classic address string to an AccountID byte slice.
 // The ToJson method converts an AccountID byte slice back to a classic address string.
 // This type is crucial for handling currency issuers in XRPL transactions and ledger entries.
-type Issue struct {
-}
+type Issue struct{}
 
 // FromJSON parses a classic address string and returns the corresponding AccountID byte slice.
 // It uses the addresscodec package to decode the classic address.
@@ -100,9 +99,7 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		result := append(currencyBytes, issuerBytes...)
-		return result, nil
+		return append(currencyBytes, issuerBytes...), nil
 	}
 
 	return currencyBytes, nil
@@ -149,8 +146,10 @@ func (i *Issue) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 
 		// mpt_issuance_id = sequence (BE) + issuer account
 		// currencyOrAccount contains the issuer account (first 20 bytes we read)
-		mptIssuanceID := append(sequenceBE, currencyOrAccount...)
-		
+		mptIssuanceID := make([]byte, 0, MPTIssuanceIDBytesLength)
+		mptIssuanceID = append(mptIssuanceID, sequenceBE...)
+		mptIssuanceID = append(mptIssuanceID, currencyOrAccount...)
+
 		return map[string]any{
 			"mpt_issuance_id": hexutil.EncodeToUpperHex(mptIssuanceID),
 		}, nil
