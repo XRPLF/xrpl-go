@@ -49,7 +49,7 @@ func TestIntegrationLoanSetWithSingleSigning_Websocket(t *testing.T) {
 	require.NoError(t, err)
 	defer runner.Teardown()
 
-	// Wallet 0: Vault Owner / Loan Broker (same account as in the JS test)
+	// Wallet 0: Vault Owner / Loan Broker
 	vaultOwner := runner.GetWallet(0)
 	loanBroker := vaultOwner
 	// Wallet 1: Depositor
@@ -57,7 +57,7 @@ func TestIntegrationLoanSetWithSingleSigning_Websocket(t *testing.T) {
 	// Wallet 2: Borrower
 	borrower := runner.GetWallet(2)
 
-	// Step 1: Create an XRP vault
+	// Create an XRP vault
 	assetsMaximum := types.XRPLNumber("1e17")
 	vaultCreateTx := &transaction.VaultCreate{
 		BaseTx: transaction.BaseTx{
@@ -83,7 +83,7 @@ func TestIntegrationLoanSetWithSingleSigning_Websocket(t *testing.T) {
 	vaultObjectID, err := xrplhash.Vault(vaultCreateAccount, vaultCreateSequence)
 	require.NoError(t, err)
 
-	// Step 2: Depositor deposits 10 XRP into the vault
+	// Depositor deposits 10 XRP into the vault
 	vaultDepositTx := &transaction.VaultDeposit{
 		BaseTx: transaction.BaseTx{
 			Account: depositor.GetAddress(),
@@ -96,7 +96,7 @@ func TestIntegrationLoanSetWithSingleSigning_Websocket(t *testing.T) {
 	_, err = runner.TestTransaction(&vaultDepositFlat, depositor, "tesSUCCESS", nil)
 	require.NoError(t, err)
 
-	// Step 3: Create LoanBroker (Vault Owner == Loan Broker)
+	// Create the LoanBroker (Vault Owner acts as Loan Broker)
 	debtMaximum := types.XRPLNumber("25000000")
 	loanBrokerSetTx := &transaction.LoanBrokerSet{
 		BaseTx: transaction.BaseTx{
@@ -127,7 +127,7 @@ func TestIntegrationLoanSetWithSingleSigning_Websocket(t *testing.T) {
 	loanBrokerObjectID, err := xrplhash.LoanBroker(loanBrokerAccount, loanBrokerSequence)
 	require.NoError(t, err)
 
-	// Step 4: Broker initiates the Loan with counterparty signing
+	// Broker initiates the LoanSet with counterparty single-signing
 	counterparty := types.Address(borrower.GetAddress())
 	paymentTotal := types.PaymentTotal(1)
 	loanSetTx := &transaction.LoanSet{
@@ -187,7 +187,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	signer1 := runner.GetWallet(4)
 	signer2 := runner.GetWallet(5)
 
-	// Step 0: Set up SignerList on borrower account (quorum = 2, each signer weight = 1)
+	// Set up SignerList on borrower account (quorum = 2, each signer weight = 1)
 	signerListSetTx := &transaction.SignerListSet{
 		BaseTx: transaction.BaseTx{
 			Account: borrower.GetAddress(),
@@ -213,7 +213,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	_, err = runner.TestTransaction(&signerListFlat, borrower, "tesSUCCESS", nil)
 	require.NoError(t, err)
 
-	// Create MPT token
+	// Create the MPT issuance
 	mpttoken := &transaction.MPTokenIssuanceCreate{
 		BaseTx: transaction.BaseTx{
 			Account: mptIssuer.GetAddress(),
@@ -235,6 +235,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	mptTokenIssuanceId := mptTokenTxResp.Meta.MPTIssuanceID.String()
 	require.NotEqual(t, nil, mptTokenIssuanceId)
 
+	// Create an MPT-collateralized vault
 	vaultCreateTx := &transaction.VaultCreate{
 		BaseTx: transaction.BaseTx{
 			Account: vaultOwner.GetAddress(),
@@ -249,6 +250,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, vaultCreateResp)
 
+	// Compute the Vault hash from the response
 	vaultCreateAccount, ok := vaultCreateResp.Tx["Account"].(string)
 	require.True(t, ok)
 	vaultCreateSequence, err := sequenceFromTx(vaultCreateResp.Tx)
@@ -268,7 +270,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	_, err = runner.TestTransaction(&mptAuthorizeTxFlat, depositor, "tesSUCCESS", nil)
 	require.NoError(t, err)
 
-	// Payment of MPT to depositor
+	// Fund the depositor with MPT tokens so they can deposit into the vault
 	paymentTx := &transaction.Payment{
 		BaseTx: transaction.BaseTx{
 			Account: mptIssuer.GetAddress(),
@@ -294,7 +296,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	_, err = runner.TestTransaction(&loanBrokerMptAuthorizeTxFlat, loanBroker, "tesSUCCESS", nil)
 	require.NoError(t, err)
 
-	// Payment of MPT to loanBroker
+	// Fund the loan broker with MPT tokens to cover the loan principal
 	loanBrokerPaymentTx := &transaction.Payment{
 		BaseTx: transaction.BaseTx{
 			Account: mptIssuer.GetAddress(),
@@ -325,6 +327,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	_, err = runner.TestTransaction(&vaultDepositFlat, depositor, "tesSUCCESS", nil)
 	require.NoError(t, err)
 
+	// Create the LoanBroker (Vault Owner acts as Loan Broker)
 	debtMaximum := types.XRPLNumber("100000")
 	loanBrokerSetTx := &transaction.LoanBrokerSet{
 		BaseTx: transaction.BaseTx{
@@ -344,6 +347,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	loanBrokerTxResp, err := client.SubmitTxBlobAndWait(loanBrokerBlob, true)
 	require.NoError(t, err)
 
+	// Compute the LoanBroker hash from the response
 	loanBrokerAccount, ok := loanBrokerTxResp.TxJSON["Account"].(string)
 	require.True(t, ok)
 	loanBrokerSequence, err := sequenceFromTx(loanBrokerTxResp.TxJSON)
@@ -352,7 +356,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	loanBrokerObjectID, err := xrplhash.LoanBroker(loanBrokerAccount, loanBrokerSequence)
 	require.NoError(t, err)
 
-	// Step 4: Broker initiates the Loan with multisig counterparty
+	// Broker initiates the LoanSet with multisig counterparty signing
 	counterparty := borrower.GetAddress()
 	paymentTotal := types.PaymentTotal(1)
 	interestRate := types.InterestRate(0)
