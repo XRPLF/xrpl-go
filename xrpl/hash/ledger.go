@@ -3,10 +3,10 @@ package hash
 import (
 	"encoding/hex"
 	"fmt"
-	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 // Vault computes the hash of a Vault ledger entry.
@@ -80,5 +80,5 @@ func Loan(loanBrokerID string, loanSequence uint32) (string, error) {
 
 // EncodeToHashString computes SHA-512Half of the given bytes and returns it as an uppercase hex string.
 func EncodeToHashString(bytes []byte) string {
-	return strings.ToUpper(hex.EncodeToString(crypto.Sha512Half(bytes)))
+	return hexutil.EncodeToUpperHex(crypto.Sha512Half(bytes))
 }

@@ -169,6 +169,9 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 // via a submission request. It applies the provided submit options to decide whether
 // to autofill missing fields and enforce failHard mode during submission.
 func (c *Client) SubmitTx(tx transaction.FlatTransaction, opts *rpctypes.SubmitOptions) (*requests.SubmitResponse, error) {
+	if opts == nil {
+		opts = &rpctypes.SubmitOptions{}
+	}
 	txBlob, err := c.getSignedTx(tx, opts.Autofill, opts.Wallet)
 	if err != nil {
 		return nil, err
@@ -185,6 +188,9 @@ func (c *Client) SubmitTx(tx transaction.FlatTransaction, opts *rpctypes.SubmitO
 // It validates that the transaction's EngineResult is successful before returning
 // the transaction response.
 func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *rpctypes.SubmitOptions) (*requests.TxResponse, error) {
+	if opts == nil {
+		opts = &rpctypes.SubmitOptions{}
+	}
 	// Get the signed transaction blob.
 	txBlob, err := c.getSignedTx(tx, opts.Autofill, opts.Wallet)
 	if err != nil {

@@ -16,43 +16,43 @@ func TestMPTokenIssuance_EntryType(t *testing.T) {
 func TestMPTokenIssuance_SetLsfMPTLocked(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTLocked()
-	require.Equal(t, mpTokenIssuance.Flags, lsfMPTLocked)
+	require.Equal(t, mpTokenIssuance.Flags, LsfMPTLocked)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanLock(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanLock()
-	require.Equal(t, mpTokenIssuance.Flags, lsfMPTCanLock)
+	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanLock)
 }
 
 func TestMPTokenIssuance_SetLsfMPTRequireAuth(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTRequireAuth()
-	require.Equal(t, mpTokenIssuance.Flags, lsfMPTRequireAuth)
+	require.Equal(t, mpTokenIssuance.Flags, LsfMPTRequireAuth)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanEscrow(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanEscrow()
-	require.Equal(t, mpTokenIssuance.Flags, lsfMPTCanEscrow)
+	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanEscrow)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanTrade(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanTrade()
-	require.Equal(t, mpTokenIssuance.Flags, lsfMPTCanTrade)
+	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanTrade)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanTransfer(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanTransfer()
-	require.Equal(t, mpTokenIssuance.Flags, lsfMPTCanTransfer)
+	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanTransfer)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanClawback(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanClawback()
-	require.Equal(t, mpTokenIssuance.Flags, lsfMPTCanClawback)
+	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanClawback)
 }
 
 func TestMPTokenIssuanceSerialization(t *testing.T) {
@@ -62,11 +62,11 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 		expected        string
 	}{
 		{
-			name: "pass - valid MPToken with lsfMPTLocked",
+			name: "pass - valid MPToken with LsfMPTLocked",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
-				Flags:             lsfMPTLocked,
+				Flags:             LsfMPTLocked,
 				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:        2,
 				MaximumAmount:     1000,
@@ -95,11 +95,11 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPToken with lsfMPTCanLock",
+			name: "pass - valid MPToken with LsfMPTCanLock",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
-				Flags:             lsfMPTCanLock,
+				Flags:             LsfMPTCanLock,
 				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:        2,
 				MaximumAmount:     1000,
@@ -128,11 +128,11 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPToken with lsfMPTCanLock",
+			name: "pass - valid MPToken with LsfMPTCanLock",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
-				Flags:             lsfMPTRequireAuth,
+				Flags:             LsfMPTRequireAuth,
 				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:        2,
 				MaximumAmount:     1000,
@@ -161,11 +161,11 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPToken with lsfMPTCanEscrow",
+			name: "pass - valid MPToken with LsfMPTCanEscrow",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
-				Flags:             lsfMPTCanEscrow,
+				Flags:             LsfMPTCanEscrow,
 				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:        2,
 				MaximumAmount:     1000,
@@ -194,11 +194,11 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPToken with lsfMPTCanTrade",
+			name: "pass - valid MPToken with LsfMPTCanTrade",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
-				Flags:             lsfMPTCanTrade,
+				Flags:             LsfMPTCanTrade,
 				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:        2,
 				MaximumAmount:     1000,
@@ -227,11 +227,11 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPToken with lsfMPTCanTransfer",
+			name: "pass - valid MPToken with LsfMPTCanTransfer",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
-				Flags:             lsfMPTCanTransfer,
+				Flags:             LsfMPTCanTransfer,
 				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:        2,
 				MaximumAmount:     1000,
@@ -260,11 +260,11 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPToken with lsfMPTCanClawback",
+			name: "pass - valid MPToken with LsfMPTCanClawback",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
-				Flags:             lsfMPTCanClawback,
+				Flags:             LsfMPTCanClawback,
 				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:        2,
 				MaximumAmount:     1000,

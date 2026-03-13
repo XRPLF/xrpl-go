@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/hex"
-	"strings"
+
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 const (
@@ -13,13 +14,13 @@ const (
 )
 
 var (
-	_ Algorithm = &ED25519CryptoAlgorithm{}
+	_                       Algorithm = &ED25519CryptoAlgorithm{}
+	ed25519FamilySeedPrefix           = []byte{0x01, 0xe1, 0x4b}
 )
 
 // ED25519CryptoAlgorithm is the implementation of the ED25519 cryptographic algorithm.
 type ED25519CryptoAlgorithm struct {
-	prefix           byte
-	familySeedPrefix byte
+	prefix byte
 }
 
 // ED25519 returns the ED25519 cryptographic algorithm.
@@ -35,8 +36,8 @@ func (c ED25519CryptoAlgorithm) Prefix() byte {
 }
 
 // FamilySeedPrefix returns the family seed prefix for the ED25519 cryptographic algorithm.
-func (c ED25519CryptoAlgorithm) FamilySeedPrefix() byte {
-	return c.familySeedPrefix
+func (c ED25519CryptoAlgorithm) FamilySeedPrefix() []byte {
+	return ed25519FamilySeedPrefix
 }
 
 // DeriveKeypair derives a keypair from a seed.
@@ -50,9 +51,9 @@ func (c ED25519CryptoAlgorithm) DeriveKeypair(decodedSeed []byte, validator bool
 		return "", "", err
 	}
 	pubKey = append([]byte{c.prefix}, pubKey...)
-	public := strings.ToUpper(hex.EncodeToString(pubKey))
+	public := hexutil.EncodeToUpperHex(pubKey)
 	privKey = append([]byte{c.prefix}, privKey...)
-	private := strings.ToUpper(hex.EncodeToString(privKey[:32+len([]byte{c.prefix})]))
+	private := hexutil.EncodeToUpperHex(privKey[:32+len([]byte{c.prefix})])
 	return private, public, nil
 }
 
@@ -64,7 +65,7 @@ func (c ED25519CryptoAlgorithm) Sign(msg, privKey string) (string, error) {
 	}
 	rawPriv := ed25519.NewKeyFromSeed(b[1:])
 	signedMsg := ed25519.Sign(rawPriv, []byte(msg))
-	return strings.ToUpper(hex.EncodeToString(signedMsg)), nil
+	return hexutil.EncodeToUpperHex(signedMsg), nil
 }
 
 // Validate validates a signature for a message with a public key.

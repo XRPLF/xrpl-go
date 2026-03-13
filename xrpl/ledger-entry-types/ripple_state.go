@@ -3,32 +3,31 @@ package ledger
 import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 
 const (
-	// This entry consumed AMM liquidity to complete a Payment transaction.
-	lsfAMMNode uint32 = 0x01000000
-	// This entry contributes to the low account's owner reserve.
-	lsfLowReserve uint32 = 0x00010000
-	// This entry contributes to the high account's owner reserve.
-	lsfHighReserve uint32 = 0x00020000
-	// The low account has authorized the high account to hold tokens issued by the low account.
-	lsfLowAuth uint32 = 0x00040000
-	// The high account has authorized the low account to hold tokens issued by the high account.
-	lsfHighAuth uint32 = 0x00080000
-	// The low account has disabled rippling from this trust line.
-	lsfLowNoRipple uint32 = 0x00100000
-	// The high account has disabled rippling from this trust line.
-	lsfHighNoRipple uint32 = 0x00200000
-	// The low account has frozen the trust line, preventing the high account from transferring the asset.
-	lsfLowFreeze uint32 = 0x00400000
-	// The high account has frozen the trust line, preventing the low account from transferring the asset.
-	lsfHighFreeze uint32 = 0x00800000
+	// LsfAMMNode this entry consumed AMM liquidity to complete a Payment transaction.
+	LsfAMMNode uint32 = 0x01000000
+	// LsfLowReserve this entry contributes to the low account's owner reserve.
+	LsfLowReserve uint32 = 0x00010000
+	// LsfHighReserve this entry contributes to the high account's owner reserve.
+	LsfHighReserve uint32 = 0x00020000
+	// LsfLowAuth the low account has authorized the high account to hold tokens issued by the low account.
+	LsfLowAuth uint32 = 0x00040000
+	// LsfHighAuth the high account has authorized the low account to hold tokens issued by the high account.
+	LsfHighAuth uint32 = 0x00080000
+	// LsfLowNoRipple the low account has disabled rippling from this trust line.
+	LsfLowNoRipple uint32 = 0x00100000
+	// LsfHighNoRipple the high account has disabled rippling from this trust line.
+	LsfHighNoRipple uint32 = 0x00200000
+	// LsfLowFreeze the low account has frozen the trust line, preventing the high account from transferring the asset.
+	LsfLowFreeze uint32 = 0x00400000
+	// LsfHighFreeze the high account has frozen the trust line, preventing the low account from transferring the asset.
+	LsfHighFreeze uint32 = 0x00800000
 
-	// XLS-77d Deep freeze
-	// The low account has deep-frozen the trust line, preventing the high account from sending and
+	// LsfLowDeepFreeze (XLS-77d Deep freeze) the low account has deep-frozen the trust line, preventing the high account from sending and
 	// receiving the asset.
-	lsfLowDeepFreeze uint32 = 0x02000000
-	// The high account has deep-frozen the trust line, preventing the low account from sending and
+	LsfLowDeepFreeze uint32 = 0x02000000
+	// LsfHighDeepFreeze the high account has deep-frozen the trust line, preventing the low account from sending and
 	// receiving the asset.
-	lsfHighDeepFreeze uint32 = 0x04000000
+	LsfHighDeepFreeze uint32 = 0x04000000
 )
 
 // RippleState ledger entry represents a trust line between two accounts.
@@ -113,55 +112,55 @@ func (*RippleState) EntryType() EntryType {
 
 // SetLsfAMMNode sets the AMM node flag.
 func (r *RippleState) SetLsfAMMNode() {
-	r.Flags |= lsfAMMNode
+	r.Flags |= LsfAMMNode
 }
 
 // SetLsfLowReserve sets the low reserve flag.
 func (r *RippleState) SetLsfLowReserve() {
-	r.Flags |= lsfLowReserve
+	r.Flags |= LsfLowReserve
 }
 
 // SetLsfHighReserve sets the high reserve flag.
 func (r *RippleState) SetLsfHighReserve() {
-	r.Flags |= lsfHighReserve
+	r.Flags |= LsfHighReserve
 }
 
 // SetLsfLowAuth sets the low auth flag.
 func (r *RippleState) SetLsfLowAuth() {
-	r.Flags |= lsfLowAuth
+	r.Flags |= LsfLowAuth
 }
 
 // SetLsfHighAuth sets the high auth flag.
 func (r *RippleState) SetLsfHighAuth() {
-	r.Flags |= lsfHighAuth
+	r.Flags |= LsfHighAuth
 }
 
 // SetLsfLowNoRipple sets the low no ripple flag.
 func (r *RippleState) SetLsfLowNoRipple() {
-	r.Flags |= lsfLowNoRipple
+	r.Flags |= LsfLowNoRipple
 }
 
 // SetLsfHighNoRipple sets the high no ripple flag.
 func (r *RippleState) SetLsfHighNoRipple() {
-	r.Flags |= lsfHighNoRipple
+	r.Flags |= LsfHighNoRipple
 }
 
 // SetLsfLowFreeze sets the low freeze flag.
 func (r *RippleState) SetLsfLowFreeze() {
-	r.Flags |= lsfLowFreeze
+	r.Flags |= LsfLowFreeze
 }
 
 // SetLsfHighFreeze sets the high freeze flag.
 func (r *RippleState) SetLsfHighFreeze() {
-	r.Flags |= lsfHighFreeze
+	r.Flags |= LsfHighFreeze
 }
 
 // SetLsfLowDeepFreeze sets the low deep freeze flag.
 func (r *RippleState) SetLsfLowDeepFreeze() {
-	r.Flags |= lsfLowDeepFreeze
+	r.Flags |= LsfLowDeepFreeze
 }
 
 // SetLsfHighDeepFreeze sets the high deep freeze flag.
 func (r *RippleState) SetLsfHighDeepFreeze() {
-	r.Flags |= lsfHighDeepFreeze
+	r.Flags |= LsfHighDeepFreeze
 }

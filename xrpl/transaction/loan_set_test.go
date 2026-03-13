@@ -205,7 +205,7 @@ func TestLoanSet_Flags(t *testing.T) {
 			setter: func(ls *LoanSet) {
 				ls.SetLoanOverpaymentFlag()
 			},
-			expected: tfLoanOverpayment,
+			expected: TfLoanOverpayment,
 		},
 	}
 

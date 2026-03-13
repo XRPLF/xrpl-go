@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.16]
+
+### Added
+
+#### binary-codec
+
+- Added `Int32` serialized type with two's complement encoding for signed 32-bit integers.
+- Added comprehensive tests for `Number` type covering roundtrip encoding/decoding, error cases, hex roundtrip, zero handling, and parser errors.
+
+#### xrpl
+
+- Added `flag` package with `Contains` utility function to check if a flag is fully set within a combined flag value.
+- Added `Vault` ledger entry type with support for XRP, IOU, and MPT assets.
+- Added vault transaction types:
+  - `VaultCreate` - Creates a new vault with asset configuration, optional scale, and privacy/transferability flags.
+  - `VaultSet` - Updates an existing vault's settings.
+  - `VaultDelete` - Deletes an existing vault.
+  - `VaultDeposit` - Deposits assets into a vault.
+  - `VaultWithdraw` - Withdraws assets from a vault, with optional `Destination` and `DestinationTag`.
+  - `VaultClawback` - Claws back assets from a vault holder.
+- Added `VaultWithdrawalPolicy` type with `VaultStrategyFirstComeFirstServe` constant for specifying vault withdrawal strategies.
+- Added `vault_info` query for both RPC and WebSocket clients with lookup by `VaultID` or `Owner`+`Seq`, including `AssetsMaximum`, `Data`, and `Scale` fields in the response.
+- Added `ManagementFeeOutstanding` and `LoanScale` fields to `Loan` ledger entry type.
+- Added `ManagementFeeRate` and `Data` fields to `LoanBroker` ledger entry type.
+- Added `LoanPay` transaction flags: `TfLoanPayOverpayment`, `TfLoanPayFullPayment`, `TfLoanPayLatePayment` with mutual exclusivity validation and flag setter methods.
+- Added `DestinationTag` field to `LoanBrokerCoverWithdraw` transaction.
+- Added `IsMPTCurrency` validation helper for MPT currency amounts, and updated `IsAmount` to support MPT amounts.
+- Added `SignLoanSetByCounterparty` to sign a LoanSet transaction as the counterparty (single-sign or multisign).
+- Added `SignLoanSetByCounterpartyBlob` convenience wrapper that accepts a hex-encoded transaction blob.
+- Added `CombineLoanSetCounterpartySigners` to merge multiple counterparty multisig transactions into one.
+- Added `CombineLoanSetCounterpartySignersBlob` convenience wrapper that accepts hex-encoded transaction blobs.
+- Added integration test for full lending protocol lifecycle (VaultCreate → VaultDeposit → LoanBrokerSet → LoanSet with counterparty signing).
+
+### Changed
+
+#### binary-codec
+
+- Refactored `Number` (STNumber) serialization to use `big.Int` mantissa instead of `int64`, supporting values that exceed the `int64` range. Updated mantissa bounds from 10^15–(10^16-1) to 10^18–(10^19-1), added rounding for mantissa truncation, underflow detection, and trailing-zero stripping in scientific/decimal formatting.
+- Renamed `PreviousPaymentDate` to `PreviousPaymentDueDate` in `definitions.json`.
+
+#### xrpl
+
+- Extracted `Asset` to its own file and added MPT asset support in `IsAsset` validation.
+- Renamed `PreviousPaymentDate` type to `PreviousPaymentDueDate` to align with protocol field naming.
+- Updated `Loan` ledger entry `PreviousPaymentDate` field to `PreviousPaymentDueDate`.
+- Make `ComputeSignature` public
+
+### Fixed
+
+#### binary-codec
+
+- Fixed `FromJSON` returning `ErrInvalidCurrency` instead of `ErrInvalidIssueObject` when `mpt_issuance_id` value is not a string.
+- Moved `ErrInvalidCurrency` to `currency.go` where it belongs.
+
+#### xrpl
+
+- Add missing `omitempty` tag to `RipplePathFindRequest.Domain`
+- Added nil guards for `opts` in `SubmitTx` and `SubmitTxAndWait` client methods.
+
 ## [v0.1.15]
 
 ### Added
@@ -35,7 +94,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - `rpc` client timeout fetched from config.
-
 
 ## [v0.1.14]
 
@@ -235,7 +293,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - Updates some fields in AccountSet and Payment related transactions to a pointer to allow 0 or "" values. For example:
-
   - `DestinationTag`
   - `TickSize`
   - `Domain`

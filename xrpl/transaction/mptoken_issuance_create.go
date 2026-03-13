@@ -2,27 +2,25 @@ package transaction
 
 import (
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
 const (
-	// If set, indicates that the MPT can be locked both individually and globally.
+	// TfMPTCanLock if set, indicates that the MPT can be locked both individually and globally.
 	// If not set, the MPT cannot be locked in any way.
-	tfMPTCanLock uint32 = 0x00000002
-	// If set, indicates that individual holders must be authorized.
+	TfMPTCanLock uint32 = 0x00000002
+	// TfMPTRequireAuth if set, indicates that individual holders must be authorized.
 	// This enables issuers to limit who can hold their assets.
-	tfMPTRequireAuth uint32 = 0x00000004
-	// If set, indicates that individual holders can place their balances into an escrow.
-	tfMPTCanEscrow uint32 = 0x00000008
-	// If set, indicates that individual holders can trade their balances
-	//  using the XRP Ledger DEX or AMM.
-	tfMPTCanTrade uint32 = 0x00000010
-	// If set, indicates that tokens may be transferred to other accounts
-	//  that are not the issuer.
-	tfMPTCanTransfer uint32 = 0x00000020
-	// If set, indicates that the issuer may use the Clawback transaction
-	// to clawback value from individual holders.
-	tfMPTCanClawback uint32 = 0x00000040
+	TfMPTRequireAuth uint32 = 0x00000004
+	// TfMPTCanEscrow if set, indicates that individual holders can place their balances into an escrow.
+	TfMPTCanEscrow uint32 = 0x00000008
+	// TfMPTCanTrade if set, indicates that individual holders can trade their balances using the XRP Ledger DEX or AMM.
+	TfMPTCanTrade uint32 = 0x00000010
+	// TfMPTCanTransfer if set, indicates that tokens may be transferred to other accounts that are not the issuer.
+	TfMPTCanTransfer uint32 = 0x00000020
+	// TfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
+	TfMPTCanClawback uint32 = 0x00000040
 )
 
 // MPTokenIssuanceCreateMetadata represents the resulting metadata of a succeeded MPTokenIssuanceCreate transaction.
@@ -62,7 +60,7 @@ type MPTokenIssuanceCreate struct {
 	// Specifies the fee to charged by the issuer for secondary sales of the Token,
 	// if such sales are allowed. Valid values for this field are between 0 and 50,000 inclusive,
 	// allowing transfer rates of between 0.000% and 50.000% in increments of 0.001.
-	// The field must NOT be present if the `tfMPTCanTransfer` flag is not set.
+	// The field must NOT be present if the `TfMPTCanTransfer` flag is not set.
 	TransferFee *uint16 `json:",omitempty"`
 	// Specifies the maximum asset amount of this token that should ever be issued.
 	// It is a non-negative integer string that can store a range of up to 63 bits. If not set, the max
@@ -108,34 +106,34 @@ func (m *MPTokenIssuanceCreate) Flatten() FlatTransaction {
 	return flattened
 }
 
-// SetMPTCanLockFlag sets the tfMPTCanLock flag to allow the MPT to be locked both individually and globally.
+// SetMPTCanLockFlag sets the TfMPTCanLock flag to allow the MPT to be locked both individually and globally.
 func (m *MPTokenIssuanceCreate) SetMPTCanLockFlag() {
-	m.Flags |= tfMPTCanLock
+	m.Flags |= TfMPTCanLock
 }
 
-// SetMPTRequireAuthFlag sets the tfMPTRequireAuth flag to require individual holders to be authorized.
+// SetMPTRequireAuthFlag sets the TfMPTRequireAuth flag to require individual holders to be authorized.
 func (m *MPTokenIssuanceCreate) SetMPTRequireAuthFlag() {
-	m.Flags |= tfMPTRequireAuth
+	m.Flags |= TfMPTRequireAuth
 }
 
-// SetMPTCanEscrowFlag sets the tfMPTCanEscrow flag to allow individual holders to place their balances into an escrow.
+// SetMPTCanEscrowFlag sets the TfMPTCanEscrow flag to allow individual holders to place their balances into an escrow.
 func (m *MPTokenIssuanceCreate) SetMPTCanEscrowFlag() {
-	m.Flags |= tfMPTCanEscrow
+	m.Flags |= TfMPTCanEscrow
 }
 
-// SetMPTCanTradeFlag sets the tfMPTCanTrade flag to allow individual holders to trade their balances via DEX or AMM.
+// SetMPTCanTradeFlag sets the TfMPTCanTrade flag to allow individual holders to trade their balances via DEX or AMM.
 func (m *MPTokenIssuanceCreate) SetMPTCanTradeFlag() {
-	m.Flags |= tfMPTCanTrade
+	m.Flags |= TfMPTCanTrade
 }
 
-// SetMPTCanTransferFlag sets the tfMPTCanTransfer flag to allow tokens to be transferred to non-issuer accounts.
+// SetMPTCanTransferFlag sets the TfMPTCanTransfer flag to allow tokens to be transferred to non-issuer accounts.
 func (m *MPTokenIssuanceCreate) SetMPTCanTransferFlag() {
-	m.Flags |= tfMPTCanTransfer
+	m.Flags |= TfMPTCanTransfer
 }
 
-// SetMPTCanClawbackFlag sets the tfMPTCanClawback flag to allow the issuer to claw back tokens from individual holders.
+// SetMPTCanClawbackFlag sets the TfMPTCanClawback flag to allow the issuer to claw back tokens from individual holders.
 func (m *MPTokenIssuanceCreate) SetMPTCanClawbackFlag() {
-	m.Flags |= tfMPTCanClawback
+	m.Flags |= TfMPTCanClawback
 }
 
 // Validate validates the MPTokenIssuanceCreate transaction ensuring all fields are correct.
@@ -145,12 +143,12 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 		return false, err
 	}
 
-	// Validate TransferFee: must not exceed MAX_TRANSFER_FEE and requires tfMPTCanTransfer flag.
+	// Validate TransferFee: must not exceed MAX_TRANSFER_FEE and requires TfMPTCanTransfer flag.
 	if m.TransferFee != nil && *m.TransferFee > 0 {
 		if *m.TransferFee > MaxTransferFee {
 			return false, ErrInvalidTransferFee
 		}
-		if !types.IsFlagEnabled(m.Flags, tfMPTCanTransfer) {
+		if !flag.Contains(m.Flags, TfMPTCanTransfer) {
 			return false, ErrTransferFeeRequiresCanTransfer
 		}
 	}

@@ -6,12 +6,12 @@ import (
 
 // LoanFlags represents flags for Loan ledger entries.
 const (
-	// lsfLoanDefault indicates that the Loan is defaulted.
-	lsfLoanDefault uint32 = 0x00010000
-	// lsfLoanImpaired indicates that the Loan is impaired.
-	lsfLoanImpaired uint32 = 0x00020000
-	// lsfLoanOverpayment indicates that the Loan supports overpayments.
-	lsfLoanOverpayment uint32 = 0x00040000
+	// LsfLoanDefault indicates that the Loan is defaulted.
+	LsfLoanDefault uint32 = 0x00010000
+	// LsfLoanImpaired indicates that the Loan is impaired.
+	LsfLoanImpaired uint32 = 0x00020000
+	// LsfLoanOverpayment indicates that the Loan supports overpayments.
+	LsfLoanOverpayment uint32 = 0x00040000
 )
 
 // Loan represents a Loan ledger entry that captures various Loan terms on-chain.
@@ -27,9 +27,9 @@ const (
 //	  "LoanBrokerNode": "0000000000000000",
 //	  "LoanBrokerID": "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 //	  "Borrower": "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+//	  "TotalValueOutstanding": "150000",
 //	  "PrincipalOutstanding": "100000",
 //	  "PeriodicPayment": "10000",
-//	  "TotalValueOutstanding": "150000",
 //	  "StartDate": 1724871860,
 //	  "PaymentInterval": 2592000,
 //	  "GracePeriod": 604800,
@@ -59,12 +59,17 @@ type Loan struct {
 	LoanBrokerID types.Hash256
 	// The address of the account that is the borrower.
 	Borrower types.Address
-	// The principal amount requested by the Borrower.
-	PrincipalOutstanding types.XRPLNumber
-	// The calculated periodic payment amount for each payment interval.
-	PeriodicPayment types.XRPLNumber
 	// The total outstanding value of the Loan, including all fees and interest.
 	TotalValueOutstanding types.XRPLNumber
+	// The principal amount requested by the Borrower.
+	PrincipalOutstanding types.XRPLNumber
+	// The remaining Management Fee owed to the LoanBroker.
+	ManagementFeeOutstanding *types.XRPLNumber `json:",omitempty"`
+	// The calculated periodic payment amount for each payment interval.
+	PeriodicPayment types.XRPLNumber
+	// The scale factor (Int32 type - can be negative) that ensures all computed amounts are rounded
+	// to the same number of decimal places. It is determined based on the total loan value at creation time.
+	LoanScale *int32 `json:",omitempty"`
 	// A nominal fee amount paid to the LoanBroker.Owner when the Loan is created.
 	LoanOriginationFee *types.XRPLNumber `json:",omitempty"`
 	// A nominal funds amount paid to the LoanBroker.Owner with every Loan payment.
@@ -91,8 +96,8 @@ type Loan struct {
 	PaymentInterval uint32
 	// The number of seconds after the Payment Due Date that the Loan can be Defaulted.
 	GracePeriod uint32
-	// The timestamp of when the previous payment was made in Ripple Epoch.
-	PreviousPaymentDate *types.PreviousPaymentDate `json:",omitempty"`
+	// The timestamp of when the previous payment was due in Ripple Epoch.
+	PreviousPaymentDueDate *types.PreviousPaymentDueDate `json:",omitempty"`
 	// The timestamp of when the next payment is due in Ripple Epoch.
 	NextPaymentDueDate uint32
 	// The number of payments remaining on the Loan.
@@ -108,17 +113,17 @@ func (*Loan) EntryType() EntryType {
 	return LoanEntry
 }
 
-// SetLsfLoanDefault sets the lsfLoanDefault flag, indicating that the Loan is defaulted.
+// SetLsfLoanDefault sets the LsfLoanDefault flag, indicating that the Loan is defaulted.
 func (l *Loan) SetLsfLoanDefault() {
-	l.Flags |= lsfLoanDefault
+	l.Flags |= LsfLoanDefault
 }
 
-// SetLsfLoanImpaired sets the lsfLoanImpaired flag, indicating that the Loan is impaired.
+// SetLsfLoanImpaired sets the LsfLoanImpaired flag, indicating that the Loan is impaired.
 func (l *Loan) SetLsfLoanImpaired() {
-	l.Flags |= lsfLoanImpaired
+	l.Flags |= LsfLoanImpaired
 }
 
-// SetLsfLoanOverpayment sets the lsfLoanOverpayment flag, indicating that the Loan supports overpayments.
+// SetLsfLoanOverpayment sets the LsfLoanOverpayment flag, indicating that the Loan supports overpayments.
 func (l *Loan) SetLsfLoanOverpayment() {
-	l.Flags |= lsfLoanOverpayment
+	l.Flags |= LsfLoanOverpayment
 }

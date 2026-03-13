@@ -2,22 +2,23 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
 const (
-	// Do not use the default path; only use paths included in the Paths field.
+	// TfRippleNotDirect do not use the default path; only use paths included in the Paths field.
 	// This is intended to force the transaction to take arbitrage opportunities.
 	// Most clients do not need this.
-	tfRippleNotDirect uint32 = 65536
-	// If the specified Amount cannot be sent without spending more than SendMax,
+	TfRippleNotDirect uint32 = 65536
+	// TfPartialPayment if the specified Amount cannot be sent without spending more than SendMax,
 	// reduce the received amount instead of failing outright. See Partial
 	// Payments for more details.
-	tfPartialPayment uint32 = 131072
-	// Only take paths where all the conversions have an input:output ratio that
+	TfPartialPayment uint32 = 131072
+	// TfLimitQuality only take paths where all the conversions have an input:output ratio that
 	// is equal or better than the ratio of Amount:SendMax. See Limit Quality for
 	// details.
-	tfLimitQuality uint32 = 262144
+	TfLimitQuality uint32 = 262144
 )
 
 // PaymentMetadata represents the resulting metadata of a succeeded Payment transaction.
@@ -32,7 +33,7 @@ type Payment struct {
 	// API v1: Only available in API v1.
 	// The maximum amount of currency to deliver.
 	// For non-XRP amounts, the nested field names MUST be lower-case.
-	// If the tfPartialPayment flag is set, deliver up to this amount instead.
+	// If the TfPartialPayment flag is set, deliver up to this amount instead.
 	Amount types.CurrencyAmount
 
 	// Set of Credentials to authorize a deposit made by this transaction.
@@ -43,7 +44,7 @@ type Payment struct {
 	// API v2: Only available in API v2.
 	// The maximum amount of currency to deliver.
 	// For non-XRP amounts, the nested field names MUST be lower-case.
-	// If the tfPartialPayment flag is set, deliver up to this amount instead.
+	// If the TfPartialPayment flag is set, deliver up to this amount instead.
 	DeliverMax types.CurrencyAmount `json:",omitempty"`
 
 	// (Optional) Minimum amount of destination currency this transaction should deliver.
@@ -156,7 +157,7 @@ func (p *Payment) Flatten() FlatTransaction {
 // This is intended to force the transaction to take arbitrage opportunities.
 // Most clients do not need this.
 func (p *Payment) SetRippleNotDirectFlag() {
-	p.Flags |= tfRippleNotDirect
+	p.Flags |= TfRippleNotDirect
 }
 
 // SetPartialPaymentFlag sets the PartialPayment flag.
@@ -165,7 +166,7 @@ func (p *Payment) SetRippleNotDirectFlag() {
 // reduce the received amount instead of failing outright. See Partial
 // Payments for more details.
 func (p *Payment) SetPartialPaymentFlag() {
-	p.Flags |= tfPartialPayment
+	p.Flags |= TfPartialPayment
 }
 
 // SetLimitQualityFlag sets the LimitQuality flag.
@@ -174,7 +175,7 @@ func (p *Payment) SetPartialPaymentFlag() {
 // is equal or better than the ratio of Amount:SendMax. See Limit Quality for
 // details.
 func (p *Payment) SetLimitQualityFlag() {
-	p.Flags |= tfLimitQuality
+	p.Flags |= TfLimitQuality
 }
 
 // Validate validates the Payment struct and make sure all the fields are correct.
@@ -245,7 +246,7 @@ func checkPartialPayment(tx *Payment) (bool, error) {
 		return false, ErrPartialPaymentFlagRequired
 	}
 
-	if !types.IsFlagEnabled(tx.Flags, tfPartialPayment) {
+	if !flag.Contains(tx.Flags, TfPartialPayment) {
 		return false, ErrPartialPaymentFlagRequired
 	}
 

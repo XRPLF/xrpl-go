@@ -2,8 +2,10 @@
 package xrpl
 
 import (
+	"bytes"
 	"sort"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 )
 
@@ -23,6 +25,9 @@ func Multisign(blobs ...string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if pk, ok := tx["SigningPubKey"].(string); ok && pk != "" {
+			return "", ErrMultisignNonEmptySigningPubKey
+		}
 
 		signers = append(signers, tx["Signers"].([]interface{})...)
 	}
@@ -32,7 +37,8 @@ func Multisign(blobs ...string) (string, error) {
 		return "", err
 	}
 
-	tx["Signers"] = sortSigners(signers)
+	SortSigners(signers)
+	tx["Signers"] = signers
 
 	blob, err := binarycodec.Encode(tx)
 	if err != nil {
@@ -42,14 +48,16 @@ func Multisign(blobs ...string) (string, error) {
 	return blob, nil
 }
 
-// sortSigners sorts the signers of a transaction.
-// It sorts the signers by account.
-func sortSigners(signers []interface{}) []interface{} {
+// SortSigners sorts signers ascending by their decoded account ID bytes.
+// This matches xrpl.js's compareSigners which sorts by addressToBigNumber ascending.
+func SortSigners(signers []any) {
 	sort.Slice(signers, func(i, j int) bool {
-		iSigner := signers[i].(map[string]interface{})["Signer"].(map[string]interface{})
-		jSigner := signers[j].(map[string]interface{})["Signer"].(map[string]interface{})
+		iAccount := signers[i].(map[string]any)["Signer"].(map[string]any)["Account"].(string)
+		jAccount := signers[j].(map[string]any)["Signer"].(map[string]any)["Account"].(string)
 
-		return iSigner["Account"].(string) > jSigner["Account"].(string)
+		_, iBytes, _ := addresscodec.DecodeClassicAddressToAccountID(iAccount)
+		_, jBytes, _ := addresscodec.DecodeClassicAddressToAccountID(jAccount)
+
+		return bytes.Compare(iBytes, jBytes) < 0
 	})
-	return signers
 }

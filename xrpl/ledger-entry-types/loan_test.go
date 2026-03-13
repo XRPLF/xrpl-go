@@ -37,9 +37,9 @@ func TestLoan(t *testing.T) {
 	"LoanBrokerNode": "0000000000000000",
 	"LoanBrokerID": "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 	"Borrower": "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+	"TotalValueOutstanding": "150000",
 	"PrincipalOutstanding": "100000",
 	"PeriodicPayment": "10000",
-	"TotalValueOutstanding": "150000",
 	"StartDate": 1724871860,
 	"PaymentInterval": 2592000,
 	"GracePeriod": 604800,
@@ -62,19 +62,19 @@ func TestLoan_EntryType(t *testing.T) {
 func TestLoan_SetLsfLoanDefault(t *testing.T) {
 	l := &Loan{}
 	l.SetLsfLoanDefault()
-	require.Equal(t, l.Flags, lsfLoanDefault)
+	require.Equal(t, l.Flags, LsfLoanDefault)
 }
 
 func TestLoan_SetLsfLoanImpaired(t *testing.T) {
 	l := &Loan{}
 	l.SetLsfLoanImpaired()
-	require.Equal(t, l.Flags, lsfLoanImpaired)
+	require.Equal(t, l.Flags, LsfLoanImpaired)
 }
 
 func TestLoan_SetLsfLoanOverpayment(t *testing.T) {
 	l := &Loan{}
 	l.SetLsfLoanOverpayment()
-	require.Equal(t, l.Flags, lsfLoanOverpayment)
+	require.Equal(t, l.Flags, LsfLoanOverpayment)
 }
 
 func TestLoan_WithOptionalFields(t *testing.T) {
@@ -87,36 +87,41 @@ func TestLoan_WithOptionalFields(t *testing.T) {
 	lateInterestRate := types.InterestRate(1000)
 	closeInterestRate := types.InterestRate(2000)
 	overpaymentInterestRate := types.InterestRate(500)
-	previousPaymentDate := types.PreviousPaymentDate(1724871860)
+	previousPaymentDueDate := types.PreviousPaymentDueDate(1724871860)
+
+	loanScale := int32(-11)
+	managementFeeOutstanding := types.XRPLNumber("2500")
 
 	var s Object = &Loan{
-		LedgerEntryType:         LoanEntry,
-		Flags:                   0,
-		LoanSequence:            1,
-		OwnerNode:               "0000000000000000",
-		LoanBrokerNode:          "0000000000000000",
-		LoanBrokerID:            "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-		Borrower:                "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
-		LoanOriginationFee:      &loanOriginationFee,
-		LoanServiceFee:          &loanServiceFee,
-		LatePaymentFee:          &latePaymentFee,
-		ClosePaymentFee:         &closePaymentFee,
-		OverpaymentFee:          &overpaymentFee,
-		InterestRate:            &interestRate,
-		LateInterestRate:        &lateInterestRate,
-		CloseInterestRate:       &closeInterestRate,
-		OverpaymentInterestRate: &overpaymentInterestRate,
-		StartDate:               1724871860,
-		PaymentInterval:         2592000,
-		GracePeriod:             604800,
-		PreviousPaymentDate:     &previousPaymentDate,
-		NextPaymentDueDate:      1727463860,
-		PaymentRemaining:        10,
-		PrincipalOutstanding:    types.XRPLNumber("100000"),
-		PeriodicPayment:         types.XRPLNumber("10000"),
-		TotalValueOutstanding:   types.XRPLNumber("150000"),
-		PreviousTxnID:           "C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7",
-		PreviousTxnLgrSeq:       28991004,
+		LedgerEntryType:          LoanEntry,
+		Flags:                    0,
+		LoanSequence:             1,
+		OwnerNode:                "0000000000000000",
+		LoanBrokerNode:           "0000000000000000",
+		LoanBrokerID:             "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+		Borrower:                 "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+		TotalValueOutstanding:    types.XRPLNumber("150000"),
+		PrincipalOutstanding:     types.XRPLNumber("100000"),
+		ManagementFeeOutstanding: &managementFeeOutstanding,
+		PeriodicPayment:          types.XRPLNumber("10000"),
+		LoanScale:                &loanScale,
+		LoanOriginationFee:       &loanOriginationFee,
+		LoanServiceFee:           &loanServiceFee,
+		LatePaymentFee:           &latePaymentFee,
+		ClosePaymentFee:          &closePaymentFee,
+		OverpaymentFee:           &overpaymentFee,
+		InterestRate:             &interestRate,
+		LateInterestRate:         &lateInterestRate,
+		CloseInterestRate:        &closeInterestRate,
+		OverpaymentInterestRate:  &overpaymentInterestRate,
+		StartDate:                1724871860,
+		PaymentInterval:          2592000,
+		GracePeriod:              604800,
+		PreviousPaymentDueDate:      &previousPaymentDueDate,
+		NextPaymentDueDate:       1727463860,
+		PaymentRemaining:         10,
+		PreviousTxnID:            "C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7",
+		PreviousTxnLgrSeq:        28991004,
 	}
 
 	j := `{
@@ -127,9 +132,11 @@ func TestLoan_WithOptionalFields(t *testing.T) {
 	"LoanBrokerNode": "0000000000000000",
 	"LoanBrokerID": "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 	"Borrower": "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
-	"PrincipalOutstanding": "100000",
-	"PeriodicPayment": "10000",
 	"TotalValueOutstanding": "150000",
+	"PrincipalOutstanding": "100000",
+	"ManagementFeeOutstanding": "2500",
+	"PeriodicPayment": "10000",
+	"LoanScale": -11,
 	"LoanOriginationFee": "1000",
 	"LoanServiceFee": "500",
 	"LatePaymentFee": "2000",
@@ -142,7 +149,7 @@ func TestLoan_WithOptionalFields(t *testing.T) {
 	"StartDate": 1724871860,
 	"PaymentInterval": 2592000,
 	"GracePeriod": 604800,
-	"PreviousPaymentDate": 1724871860,
+	"PreviousPaymentDueDate": 1724871860,
 	"NextPaymentDueDate": 1727463860,
 	"PaymentRemaining": 10,
 	"PreviousTxnID": "C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7",

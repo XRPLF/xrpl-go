@@ -245,7 +245,7 @@ func TestOfferCreate_Validate(t *testing.T) {
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
 					LastLedgerSequence: 7108682,
-					Flags:              tfHybrid,
+					Flags:              TfHybrid,
 				},
 				TakerGets: types.XRPCurrencyAmount(6000000),
 				TakerPays: types.IssuedCurrencyAmount{
@@ -285,7 +285,7 @@ func TestOfferCreate_Validate(t *testing.T) {
 					Fee:                types.XRPCurrencyAmount(12),
 					Sequence:           8,
 					LastLedgerSequence: 7108682,
-					Flags:              tfHybrid,
+					Flags:              TfHybrid,
 				},
 				TakerGets: types.XRPCurrencyAmount(6000000),
 				TakerPays: types.IssuedCurrencyAmount{
@@ -320,35 +320,35 @@ func TestOfferCreate_Flags(t *testing.T) {
 			setter: func(a *OfferCreate) {
 				a.SetPassiveFlag()
 			},
-			expected: tfPassive,
+			expected: TfPassive,
 		},
 		{
 			name: "pass - SetImmediateOrCancelFlag",
 			setter: func(a *OfferCreate) {
 				a.SetImmediateOrCancelFlag()
 			},
-			expected: tfImmediateOrCancel,
+			expected: TfImmediateOrCancel,
 		},
 		{
 			name: "pass - SetFillOrKillFlag",
 			setter: func(a *OfferCreate) {
 				a.SetFillOrKillFlag()
 			},
-			expected: tfFillOrKill,
+			expected: TfFillOrKill,
 		},
 		{
 			name: "pass - SetSellFlag",
 			setter: func(a *OfferCreate) {
 				a.SetSellFlag()
 			},
-			expected: tfSell,
+			expected: TfSell,
 		},
 		{
 			name: "pass - SetHybridFlag",
 			setter: func(a *OfferCreate) {
 				a.SetHybridFlag()
 			},
-			expected: tfHybrid,
+			expected: TfHybrid,
 		},
 	}
 

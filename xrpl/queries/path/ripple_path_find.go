@@ -21,7 +21,7 @@ type RipplePathFindRequest struct {
 	SourceCurrencies   []pathtypes.RipplePathFindCurrency `json:"source_currencies,omitempty"`
 	LedgerHash         common.LedgerHash                  `json:"ledger_hash,omitempty"`
 	LedgerIndex        common.LedgerSpecifier             `json:"ledger_index,omitempty"`
-	Domain             *string                            `json:"domain"`
+	Domain             *string                            `json:"domain,omitempty"`
 }
 
 // Method returns the JSON-RPC method name for the RipplePathFindRequest.

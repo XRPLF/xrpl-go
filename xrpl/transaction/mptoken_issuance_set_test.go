@@ -101,7 +101,7 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 				BaseTx: BaseTx{
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: MPTokenIssuanceSetTx,
-					Flags:           tfMPTLock | tfMPTUnlock,
+					Flags:           TfMPTLock | TfMPTUnlock,
 				},
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 			},
@@ -130,14 +130,14 @@ func TestMPTokenIssuanceSet_Flags(t *testing.T) {
 			setFlags: func(tx *MPTokenIssuanceSet) {
 				tx.SetMPTLockFlag()
 			},
-			want: tfMPTLock,
+			want: TfMPTLock,
 		},
 		{
 			name: "pass - set MPTUnlock flag",
 			setFlags: func(tx *MPTokenIssuanceSet) {
 				tx.SetMPTUnlockFlag()
 			},
-			want: tfMPTUnlock,
+			want: TfMPTUnlock,
 		},
 		{
 			name: "pass - set both flags",
@@ -145,7 +145,7 @@ func TestMPTokenIssuanceSet_Flags(t *testing.T) {
 				tx.SetMPTLockFlag()
 				tx.SetMPTUnlockFlag()
 			},
-			want: tfMPTLock | tfMPTUnlock,
+			want: TfMPTLock | TfMPTUnlock,
 		},
 	}
 

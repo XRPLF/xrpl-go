@@ -11,6 +11,7 @@ import (
 	path "github.com/Peersyst/xrpl-go/xrpl/queries/path"
 	server "github.com/Peersyst/xrpl-go/xrpl/queries/server"
 	utility "github.com/Peersyst/xrpl-go/xrpl/queries/utility"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/vault"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -532,6 +533,24 @@ func (c *Client) GetAggregatePrice(req *oracle.GetAggregatePriceRequest) (*oracl
 		return nil, err
 	}
 	var lr oracle.GetAggregatePriceResponse
+	err = res.GetResult(&lr)
+	if err != nil {
+		return nil, err
+	}
+	return &lr, nil
+}
+
+// Vault queries
+
+// GetVaultInfo retrieves information about a Vault instance.
+// It takes a InfoRequest as input and returns a Response,
+// along with any error encountered.
+func (c *Client) GetVaultInfo(req *vault.InfoRequest) (*vault.Response, error) {
+	res, err := c.Request(req)
+	if err != nil {
+		return nil, err
+	}
+	var lr vault.Response
 	err = res.GetResult(&lr)
 	if err != nil {
 		return nil, err

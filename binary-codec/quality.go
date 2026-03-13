@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	bigdecimal "github.com/Peersyst/xrpl-go/pkg/big-decimal"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 const (
@@ -68,7 +69,7 @@ func EncodeQuality(quality string) (string, error) {
 	serialized := make([]byte, 8)
 	binary.BigEndian.PutUint64(serialized, mantissa)
 	serialized[0] += byte(exp) + 100
-	return strings.ToUpper(hex.EncodeToString(serialized)), nil
+	return hexutil.EncodeToUpperHex(serialized), nil
 }
 
 // DecodeQuality decodes a quality amount from a hex string to a string.

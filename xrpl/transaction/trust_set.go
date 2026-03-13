@@ -5,27 +5,26 @@ import (
 )
 
 const (
-	// Authorize the other party to hold currency issued by this account. (No
-	// effect unless using the asfRequireAuth AccountSet flag.) Cannot be unset.
-	tfSetAuth uint32 = 0x00010000
-	// Enable the No Ripple flag, which blocks rippling between two trust lines.
+	// TfSetAuth authorizes the other party to hold currency issued by this account. (No
+	// effect unless using the AsfRequireAuth AccountSet flag.) Cannot be unset.
+	TfSetAuth uint32 = 0x00010000
+	// TfSetNoRipple enables the No Ripple flag, which blocks rippling between two trust lines.
 	// of the same currency if this flag is enabled on both.
-	tfSetNoRipple uint32 = 0x00020000
-	// Disable the No Ripple flag, allowing rippling on this trust line.
-	tfClearNoRipple uint32 = 0x00040000
-	// Freeze the trust line.
-	tfSetFreeze uint32 = 0x00100000
-	// Unfreeze the trust line.
-	tfClearFreeze uint32 = 0x00200000
+	TfSetNoRipple uint32 = 0x00020000
+	// TfClearNoRipple disables the No Ripple flag, allowing rippling on this trust line.
+	TfClearNoRipple uint32 = 0x00040000
+	// TfSetFreeze freezes the trust line.
+	TfSetFreeze uint32 = 0x00100000
+	// TfClearFreeze unfreezes the trust line.
+	TfClearFreeze uint32 = 0x00200000
 
-	// XLS-77d Deep freeze
-	// Freeze the trust line, preventing the high account from sending and
+	// TfSetDeepFreeze (XLS-77d Deep freeze) freezes the trust line, preventing the high account from sending and
 	// receiving the asset. Allowed only if the trustline is already regularly
-	// frozen, or if tfSetFreeze is set in the same transaction.
-	tfSetDeepFreeze uint32 = 0x00400000
-	// Unfreeze the trust line, allowing the high account to send and
+	// frozen, or if TfSetFreeze is set in the same transaction.
+	TfSetDeepFreeze uint32 = 0x00400000
+	// TfClearDeepFreeze unfreezes the trust line, allowing the high account to send and
 	// receive the asset.
-	tfClearDeepFreeze uint32 = 0x00800000
+	TfClearDeepFreeze uint32 = 0x00800000
 )
 
 // TrustSet creates or modifies a trust line linking two accounts.
@@ -69,39 +68,39 @@ func (t *TrustSet) Flatten() FlatTransaction {
 	return flattened
 }
 
-// SetSetAuthFlag sets the SetAuth flag, authorizing the other party to hold currency issued by this account. Cannot be unset.
+// SetSetAuthFlag sets the TfSetAuth flag, authorizing the other party to hold currency issued by this account. Cannot be unset.
 func (t *TrustSet) SetSetAuthFlag() {
-	t.Flags |= tfSetAuth
+	t.Flags |= TfSetAuth
 }
 
-// SetSetNoRippleFlag sets the SetNoRipple flag, enabling the No Ripple feature on the trust line.
+// SetSetNoRippleFlag sets the TfSetNoRipple flag, enabling the No Ripple feature on the trust line.
 func (t *TrustSet) SetSetNoRippleFlag() {
-	t.Flags |= tfSetNoRipple
+	t.Flags |= TfSetNoRipple
 }
 
-// SetClearNoRippleFlag sets the ClearNoRipple flag, disabling the No Ripple feature on the trust line.
+// SetClearNoRippleFlag sets the TfClearNoRipple flag, disabling the No Ripple feature on the trust line.
 func (t *TrustSet) SetClearNoRippleFlag() {
-	t.Flags |= tfClearNoRipple
+	t.Flags |= TfClearNoRipple
 }
 
-// SetSetFreezeFlag sets the SetFreeze flag to freeze the trust line.
+// SetSetFreezeFlag sets the TfSetFreeze flag to freeze the trust line.
 func (t *TrustSet) SetSetFreezeFlag() {
-	t.Flags |= tfSetFreeze
+	t.Flags |= TfSetFreeze
 }
 
-// SetClearFreezeFlag sets the ClearFreeze flag to unfreeze the trust line.
+// SetClearFreezeFlag sets the TfClearFreeze flag to unfreeze the trust line.
 func (t *TrustSet) SetClearFreezeFlag() {
-	t.Flags |= tfClearFreeze
+	t.Flags |= TfClearFreeze
 }
 
-// SetSetDeepFreezeFlag sets the SetDeepFreeze flag to deep freeze the trust line (XLS-77d).
+// SetSetDeepFreezeFlag sets the TfSetDeepFreeze flag to deep freeze the trust line (XLS-77d).
 func (t *TrustSet) SetSetDeepFreezeFlag() {
-	t.Flags |= tfSetDeepFreeze
+	t.Flags |= TfSetDeepFreeze
 }
 
-// SetClearDeepFreezeFlag sets the ClearDeepFreeze flag to remove deep freeze on the trust line.
+// SetClearDeepFreezeFlag sets the TfClearDeepFreeze flag to remove deep freeze on the trust line.
 func (t *TrustSet) SetClearDeepFreezeFlag() {
-	t.Flags |= tfClearDeepFreeze
+	t.Flags |= TfClearDeepFreeze
 }
 
 // Validate checks that the TrustSet transaction has valid fields and flags.

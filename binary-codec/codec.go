@@ -12,6 +12,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/binary-codec/serdes"
 	"github.com/Peersyst/xrpl-go/binary-codec/types"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 var (
@@ -64,18 +65,17 @@ func Encode(json map[string]any) (string, error) {
 		return "", err
 	}
 
-	return strings.ToUpper(hex.EncodeToString(b)), nil
+	return hexutil.EncodeToUpperHex(b), nil
 }
 
 // EncodeForMultisigning encodes a transaction into binary format in preparation for providing one
 // signature towards a multi-signed transaction.
 // Only encodes fields that are intended to be signed.
+// NOTE: The caller is responsible for setting SigningPubKey to "" for regular multisigning.
+// For counterparty signing (e.g. LoanSet), SigningPubKey must remain set to the first signer's
+// public key, so this function must not overwrite it.
 func EncodeForMultisigning(json map[string]any, xrpAccountID string) (string, error) {
 	st := &types.AccountID{}
-
-	// SigningPubKey is required for multi-signing but should be set to empty string.
-
-	json["SigningPubKey"] = ""
 
 	suffix, err := st.FromJSON(xrpAccountID)
 	if err != nil {

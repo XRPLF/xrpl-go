@@ -3,10 +3,10 @@ package ledger
 import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 
 const (
-	// If this flag is enabled, this SignerList counts as one item for purposes of the owner reserve
+	// LsfOneOwnerCount if this flag is enabled, this SignerList counts as one item for purposes of the owner reserve
 	// Otherwise, this list counts as N+2 items, where N is the number of signers it contains. This
 	// flag is automatically enabled if you add or update a signer list after the MultiSignReserve amendment is enabled.
-	lsfOneOwnerCount uint32 = 0x00010000
+	LsfOneOwnerCount uint32 = 0x00010000
 )
 
 // SignerList entry represents a list of parties that, as a group, are authorized to sign a transaction in place of an individual account.
@@ -118,5 +118,5 @@ func (*SignerList) EntryType() EntryType {
 
 // SetLsfOneOwnerCount sets the one owner count flag.
 func (s *SignerList) SetLsfOneOwnerCount() {
-	s.Flags |= lsfOneOwnerCount
+	s.Flags |= LsfOneOwnerCount
 }

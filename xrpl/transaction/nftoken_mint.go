@@ -3,6 +3,7 @@ package transaction
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -55,7 +56,7 @@ type NFTokenMint struct {
 	Issuer types.Address `json:",omitempty"`
 	// (Optional) The value specifies the fee charged by the issuer for secondary sales of the NFToken, if such sales are allowed.
 	// Valid values for this field are between 0 and 50000 inclusive, allowing transfer rates of between 0.00% and 50.00% in increments of 0.001.
-	// If this field is provided, the transaction MUST have the tfTransferable flag enabled.
+	// If this field is provided, the transaction MUST have the TfTransferable flag enabled.
 	TransferFee *uint16 `json:",omitempty"`
 	// (Optional) Up to 256 bytes of arbitrary data. In JSON, this should be encoded as a string of hexadecimal.
 	// You can use the xrpl.convertStringToHex utility to convert a URI to its hexadecimal equivalent.
@@ -81,41 +82,41 @@ type NFTokenMint struct {
 // **********************************
 
 const (
-	// Allow the issuer (or an entity authorized by the issuer) to destroy the minted NFToken. (The NFToken's owner can always do so.)
-	tfBurnable uint32 = 1
-	// The minted NFToken can only be bought or sold for XRP. This can be desirable if the token has a transfer fee and the issuer does not want to receive fees in non-XRP currencies.
-	tfOnlyXRP uint32 = 2
-	// DEPRECATED Automatically create trust lines from the issuer to hold transfer fees received from transferring the minted NFToken. The fixRemoveNFTokenAutoTrustLine amendment makes it invalid to set this flag.
-	tfTrustLine uint32 = 4
-	// The minted NFToken can be transferred to others. If this flag is not enabled, the token can still be transferred from or to the issuer, but a transfer to the issuer must be made based on a buy offer from the issuer and not a sell offer from the NFT holder.
-	tfTransferable uint32 = 8
-	// The URI field of the minted NFToken can be updated using the NFTokenModify transaction.
-	tfMutable uint32 = 16
+	// TfBurnable allows the issuer (or an entity authorized by the issuer) to destroy the minted NFToken. (The NFToken's owner can always do so.)
+	TfBurnable uint32 = 1
+	// TfOnlyXRP the minted NFToken can only be bought or sold for XRP. This can be desirable if the token has a transfer fee and the issuer does not want to receive fees in non-XRP currencies.
+	TfOnlyXRP uint32 = 2
+	// TfTrustLine DEPRECATED Automatically create trust lines from the issuer to hold transfer fees received from transferring the minted NFToken. The fixRemoveNFTokenAutoTrustLine amendment makes it invalid to set this flag.
+	TfTrustLine uint32 = 4
+	// TfTransferable the minted NFToken can be transferred to others. If this flag is not enabled, the token can still be transferred from or to the issuer, but a transfer to the issuer must be made based on a buy offer from the issuer and not a sell offer from the NFT holder.
+	TfTransferable uint32 = 8
+	// TfMutable the URI field of the minted NFToken can be updated using the NFTokenModify transaction.
+	TfMutable uint32 = 16
 )
 
 // SetBurnableFlag allows the issuer (or an entity authorized by the issuer) to destroy the minted NFToken. (The NFToken's owner can always do so.)
 func (n *NFTokenMint) SetBurnableFlag() {
-	n.Flags |= tfBurnable
+	n.Flags |= TfBurnable
 }
 
 // SetOnlyXRPFlag restricts the minted NFToken to be bought or sold only for XRP.
 func (n *NFTokenMint) SetOnlyXRPFlag() {
-	n.Flags |= tfOnlyXRP
+	n.Flags |= TfOnlyXRP
 }
 
-// SetTrustlineFlag is deprecated and was used to auto-create trust lines for transfer fees. (Invalid with fixRemoveNFTokenAutoTrustLine amendment.) Deprecated in favor of tfTransferable.
+// SetTrustlineFlag is deprecated and was used to auto-create trust lines for transfer fees. (Invalid with fixRemoveNFTokenAutoTrustLine amendment.) Deprecated in favor of TfTransferable.
 func (n *NFTokenMint) SetTrustlineFlag() {
-	n.Flags |= tfTrustLine
+	n.Flags |= TfTrustLine
 }
 
 // SetTransferableFlag allows the minted NFToken to be transferred to others.
 func (n *NFTokenMint) SetTransferableFlag() {
-	n.Flags |= tfTransferable
+	n.Flags |= TfTransferable
 }
 
 // SetMutableFlag allows the URI field of the minted NFToken to be updated using the NFTokenModify transaction.
 func (n *NFTokenMint) SetMutableFlag() {
-	n.Flags |= tfMutable
+	n.Flags |= TfMutable
 }
 
 // TxType returns the type of the transaction (NFTokenMint).
@@ -189,8 +190,8 @@ func (n *NFTokenMint) Validate() (bool, error) {
 		return false, ErrInvalidURI
 	}
 
-	// check transfer fee can only be set if the tfTransferable flag is enabled
-	if n.TransferFee != nil && *n.TransferFee > 0 && !types.IsFlagEnabled(n.Flags, tfTransferable) {
+	// check transfer fee can only be set if the TfTransferable flag is enabled
+	if n.TransferFee != nil && *n.TransferFee > 0 && !flag.Contains(n.Flags, TfTransferable) {
 		return false, ErrTransferFeeRequiresTransferableFlag
 	}
 

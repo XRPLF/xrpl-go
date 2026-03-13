@@ -16,13 +16,13 @@ func TestMPToken_EntryType(t *testing.T) {
 func TestMPToken_SetLsfMPTLocked(t *testing.T) {
 	mpToken := &MPToken{}
 	mpToken.SetLsfMPTLocked()
-	require.Equal(t, mpToken.Flags, lsfMPTLocked)
+	require.Equal(t, mpToken.Flags, LsfMPTLocked)
 }
 
 func TestMPToken_SetLsfMPTAuthorized(t *testing.T) {
 	mpToken := &MPToken{}
 	mpToken.SetLsfMPTAuthorized()
-	require.Equal(t, mpToken.Flags, lsfMPTAuthorized)
+	require.Equal(t, mpToken.Flags, LsfMPTAuthorized)
 }
 
 func TestMPTokenSerialization(t *testing.T) {
@@ -32,11 +32,11 @@ func TestMPTokenSerialization(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "pass - valid MPToken with lsfMPTLocked",
+			name: "pass - valid MPToken with LsfMPTLocked",
 			mpToken: &MPToken{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenEntry,
-				Flags:             lsfMPTLocked,
+				Flags:             LsfMPTLocked,
 				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				MPTokenIssuanceID: types.Hash192("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
 				MPTAmount:         1000000,
@@ -59,11 +59,11 @@ func TestMPTokenSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPToken with lsfMPTAuthorized",
+			name: "pass - valid MPToken with LsfMPTAuthorized",
 			mpToken: &MPToken{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenEntry,
-				Flags:             lsfMPTAuthorized,
+				Flags:             LsfMPTAuthorized,
 				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				MPTokenIssuanceID: types.Hash192("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
 				MPTAmount:         1000000,
@@ -86,11 +86,11 @@ func TestMPTokenSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPToken with lsfMPTLocked and lsfMPTAuthorized",
+			name: "pass - valid MPToken with LsfMPTLocked and LsfMPTAuthorized",
 			mpToken: &MPToken{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenEntry,
-				Flags:             lsfMPTLocked | lsfMPTAuthorized,
+				Flags:             LsfMPTLocked | LsfMPTAuthorized,
 				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				MPTokenIssuanceID: types.Hash192("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
 				MPTAmount:         1000000,
@@ -117,7 +117,7 @@ func TestMPTokenSerialization(t *testing.T) {
 			mpToken: &MPToken{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenEntry,
-				Flags:             lsfMPTLocked,
+				Flags:             LsfMPTLocked,
 				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				MPTokenIssuanceID: types.Hash192("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
 				MPTAmount:         1000000,

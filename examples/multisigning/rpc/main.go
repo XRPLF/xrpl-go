@@ -1,11 +1,10 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 	"maps"
-	"strings"
 
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/Peersyst/xrpl-go/xrpl"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
@@ -123,7 +122,7 @@ func main() {
 		BaseTx: transaction.BaseTx{
 			Account: master.GetAddress(),
 		},
-		Domain: types.Domain(strings.ToUpper(hex.EncodeToString([]byte("example.com")))),
+		Domain: types.Domain(hexutil.EncodeToUpperHex([]byte("example.com"))),
 	}
 
 	flatAs := as.Flatten()

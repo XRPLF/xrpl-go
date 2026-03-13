@@ -55,6 +55,7 @@ func TestLoanBroker_WithOptionalFields(t *testing.T) {
 	coverAvailable := types.XRPLNumber("100000")
 	coverRateMinimum := types.CoverRate(5000)
 	coverRateLiquidation := types.CoverRate(1000)
+	managementFeeRate := uint16(100)
 
 	var s Object = &LoanBroker{
 		LedgerEntryType:      LoanBrokerEntry,
@@ -67,6 +68,8 @@ func TestLoanBroker_WithOptionalFields(t *testing.T) {
 		Account:              "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 		Owner:                "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 		OwnerCount:           &ownerCount,
+		Data:                 "DEADBEEF",
+		ManagementFeeRate:    &managementFeeRate,
 		DebtTotal:            &debtTotal,
 		DebtMaximum:          types.XRPLNumber("1000000"),
 		CoverAvailable:       &coverAvailable,
@@ -87,6 +90,8 @@ func TestLoanBroker_WithOptionalFields(t *testing.T) {
 	"Account": "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 	"Owner": "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 	"OwnerCount": 5,
+	"Data": "DEADBEEF",
+	"ManagementFeeRate": 100,
 	"DebtTotal": "500000",
 	"DebtMaximum": "1000000",
 	"CoverAvailable": "100000",

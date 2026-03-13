@@ -75,7 +75,7 @@ func TestSignerList(t *testing.T) {
 func TestSignerList_SetLsfOneOwnerCount(t *testing.T) {
 	s := &SignerList{}
 	s.SetLsfOneOwnerCount()
-	require.Equal(t, s.Flags&lsfOneOwnerCount, lsfOneOwnerCount)
+	require.Equal(t, s.Flags&LsfOneOwnerCount, LsfOneOwnerCount)
 }
 
 func TestSignerList_EntryType(t *testing.T) {
