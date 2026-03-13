@@ -1,4 +1,3 @@
-// nolint
 package types
 
 // VaultWithdrawalPolicy represents the withdrawal strategy used by a Vault.

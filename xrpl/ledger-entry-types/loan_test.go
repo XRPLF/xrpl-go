@@ -87,7 +87,7 @@ func TestLoan_WithOptionalFields(t *testing.T) {
 	lateInterestRate := types.InterestRate(1000)
 	closeInterestRate := types.InterestRate(2000)
 	overpaymentInterestRate := types.InterestRate(500)
-	previousPaymentDate := types.PreviousPaymentDate(1724871860)
+	previousPaymentDueDate := types.PreviousPaymentDueDate(1724871860)
 
 	loanScale := int32(-11)
 	managementFeeOutstanding := types.XRPLNumber("2500")
@@ -117,7 +117,7 @@ func TestLoan_WithOptionalFields(t *testing.T) {
 		StartDate:                1724871860,
 		PaymentInterval:          2592000,
 		GracePeriod:              604800,
-		PreviousPaymentDate:      &previousPaymentDate,
+		PreviousPaymentDueDate:      &previousPaymentDueDate,
 		NextPaymentDueDate:       1727463860,
 		PaymentRemaining:         10,
 		PreviousTxnID:            "C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7",
@@ -149,7 +149,7 @@ func TestLoan_WithOptionalFields(t *testing.T) {
 	"StartDate": 1724871860,
 	"PaymentInterval": 2592000,
 	"GracePeriod": 604800,
-	"PreviousPaymentDate": 1724871860,
+	"PreviousPaymentDueDate": 1724871860,
 	"NextPaymentDueDate": 1727463860,
 	"PaymentRemaining": 10,
 	"PreviousTxnID": "C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7",

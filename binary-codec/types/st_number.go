@@ -17,11 +17,13 @@ type Number struct{}
 
 // Constants for mantissa and exponent normalization per XRPL Number spec.
 var (
-	minMantissa        = big.NewInt(1000000000000000) // 10^15
-	maxMantissa        = big.NewInt(9999999999999999) // 10^16 - 1
+	minMantissa, _     = big.NewInt(0).SetString("1000000000000000000", 10) // 10^18
+	maxMantissa, _     = big.NewInt(0).SetString("9999999999999999999", 10) // 10^19 - 1
+	maxInt64, _        = big.NewInt(0).SetString("9223372036854775807", 10) // 2^63 - 1
 	minExponent        = int32(-32768)
 	maxExponent        = int32(32768)
 	defaultZeroExp     = int32(-2147483648) // 0x80000000
+	rangeLog           = 18
 	ErrInvalidNumber   = errors.New("invalid Number string")
 	ErrNumberOverflow  = errors.New("mantissa and exponent are too large")
 	ErrInvalidExponent = errors.New("exponent out of range")
@@ -57,25 +59,36 @@ func (n *Number) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 		return nil, err
 	}
 
-	mantissa := readInt64BE(b, 0)
+	mantissaRaw := readInt64BE(b, 0)
 	exponent := readInt32BE(b, 8)
 
+	mantissa := big.NewInt(mantissaRaw)
+
 	// Special zero case
-	if mantissa == 0 && exponent == defaultZeroExp {
+	if mantissa.Sign() == 0 && exponent == defaultZeroExp {
 		return "0", nil
 	}
 
-	if exponent == 0 {
-		return big.NewInt(mantissa).String(), nil
+	isNegative := mantissa.Sign() < 0
+	mantissaAbs := new(big.Int).Abs(mantissa)
+	ten := big.NewInt(10)
+
+	// If mantissa < MIN_MANTISSA, it was shrunk for int64 serialization (mantissa > 2^63-1).
+	// Restore it for proper string rendering to match rippled's internal representation.
+	if mantissaAbs.Sign() != 0 && mantissaAbs.Cmp(minMantissa) < 0 {
+		mantissaAbs.Mul(mantissaAbs, ten)
+		exponent--
 	}
 
-	// Use scientific notation for very small/large exponents
-	if exponent < -25 || exponent > -5 {
-		return formatScientific(mantissa, exponent), nil
+	// Use scientific notation for exponents that are too small or too large
+
+	//nolint:gosec // G115: integer overflow conversion int -> uint32 (gosec)
+	if exponent != 0 && (exponent < -int32(rangeLog+10) || exponent > -int32(rangeLog-10)) {
+		return formatScientificBig(mantissaAbs, exponent, isNegative), nil
 	}
 
-	// Decimal rendering for -25 <= exp <= -5
-	return formatDecimal(mantissa, exponent), nil
+	// Decimal rendering
+	return formatDecimalBig(mantissaAbs, exponent, isNegative), nil
 }
 
 // parseAndNormalize extracts mantissa, exponent from a string and normalizes them.
@@ -115,6 +128,12 @@ func parseAndNormalize(s string) (*big.Int, int32, error) {
 		exponent += int32(expVal)
 	}
 
+	// Remove trailing zeros from mantissa and adjust exponent
+	for len(mantissaStr) > 1 && mantissaStr[len(mantissaStr)-1] == '0' {
+		mantissaStr = mantissaStr[:len(mantissaStr)-1]
+		exponent++
+	}
+
 	mantissa := new(big.Int)
 	mantissa.SetString(mantissaStr, 10)
 
@@ -141,20 +160,65 @@ func normalize(mantissa *big.Int, exponent int32) (*big.Int, int32, error) {
 	isNegative := mantissa.Sign() < 0
 	m := new(big.Int).Abs(mantissa)
 	ten := big.NewInt(10)
+	five := big.NewInt(5)
+
+	// Handle zero
+	if m.Sign() == 0 {
+		return big.NewInt(0), defaultZeroExp, nil
+	}
 
 	// Scale up if too small
-	for m.Sign() != 0 && m.Cmp(minMantissa) < 0 && exponent > minExponent {
+	for m.Cmp(minMantissa) < 0 && exponent > minExponent {
 		exponent--
 		m.Mul(m, ten)
 	}
 
-	// Scale down if too large
+	// Scale down if too large, tracking last digit for rounding
+	var lastDigit *big.Int
 	for m.Cmp(maxMantissa) > 0 {
 		if exponent >= maxExponent {
 			return nil, 0, ErrNumberOverflow
 		}
 		exponent++
+		lastDigit = new(big.Int).Mod(m, ten)
 		m.Div(m, ten)
+	}
+
+	// Underflow check
+	if exponent < minExponent || m.Cmp(minMantissa) < 0 {
+		return nil, 0, errors.New("underflow: value too small to represent")
+	}
+
+	// Exponent overflow check
+	if exponent > maxExponent {
+		return nil, 0, ErrInvalidExponent
+	}
+
+	// MAX_INT64 check: mantissa must fit in signed int64
+	if m.Cmp(maxInt64) > 0 {
+		if exponent >= maxExponent {
+			return nil, 0, ErrInvalidExponent
+		}
+		exponent++
+		lastDigit = new(big.Int).Mod(m, ten)
+		m.Div(m, ten)
+	}
+
+	// Rounding: if last discarded digit >= 5, round up
+	if lastDigit != nil && lastDigit.Cmp(five) >= 0 {
+		m.Add(m, big.NewInt(1))
+		// Re-check after rounding may push mantissa over MAX_INT64
+		if m.Cmp(maxInt64) > 0 {
+			if exponent >= maxExponent {
+				return nil, 0, ErrInvalidExponent
+			}
+			lastDigit = new(big.Int).Mod(m, ten)
+			exponent++
+			m.Div(m, ten)
+			if lastDigit.Cmp(five) >= 0 {
+				m.Add(m, big.NewInt(1))
+			}
+		}
 	}
 
 	if isNegative {
@@ -164,30 +228,36 @@ func normalize(mantissa *big.Int, exponent int32) (*big.Int, int32, error) {
 	return m, exponent, nil
 }
 
-// formatScientific formats mantissa and exponent as scientific notation string.
-func formatScientific(mantissa int64, exponent int32) string {
-	m := big.NewInt(mantissa)
-	if exponent >= 0 {
-		return m.String() + "e" + itoa(int(exponent))
+// formatScientificBig formats mantissa and exponent as scientific notation string.
+// Strips trailing zeros from mantissa to match rippled behavior.
+func formatScientificBig(mantissaAbs *big.Int, exponent int32, isNegative bool) string {
+	m := new(big.Int).Set(mantissaAbs)
+	ten := big.NewInt(10)
+	zero := big.NewInt(0)
+	exp := exponent
+
+	// Strip trailing zeros from mantissa
+	for m.Cmp(zero) != 0 && new(big.Int).Mod(m, ten).Sign() == 0 && exp < maxExponent {
+		m.Div(m, ten)
+		exp++
 	}
-	return m.String() + "e" + itoa(int(exponent))
+
+	sign := ""
+	if isNegative {
+		sign = "-"
+	}
+	return sign + m.String() + "e" + itoa(int(exp))
 }
 
-// formatDecimal formats mantissa and exponent as a decimal string.
-func formatDecimal(mantissa int64, exponent int32) string {
-	isNegative := mantissa < 0
-	if isNegative {
-		mantissa = -mantissa
-	}
+// formatDecimalBig formats mantissa and exponent as a decimal string.
+func formatDecimalBig(mantissaAbs *big.Int, exponent int32, isNegative bool) string {
+	mantissaStr := mantissaAbs.String()
 
-	mantissaStr := big.NewInt(mantissa).String()
-
-	// Pad with zeros for proper decimal placement
-	const padPrefix = 27
-	const padSuffix = 23
+	padPrefix := rangeLog + 12 // 30
+	padSuffix := rangeLog + 8  // 26
 	rawValue := strings.Repeat("0", padPrefix) + mantissaStr + strings.Repeat("0", padSuffix)
 
-	offset := int(exponent) + 43
+	offset := int(exponent) + padPrefix + rangeLog + 1 // exponent + 49
 	if offset < 0 {
 		offset = 0
 	}

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPreviousPaymentDate_Value(t *testing.T) {
+func TestPreviousPaymentDueDate_Value(t *testing.T) {
 	tests := []struct {
 		name  string
 		value uint32
@@ -31,7 +31,7 @@ func TestPreviousPaymentDate_Value(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := PreviousPaymentDate(tt.value)
+			result := PreviousPaymentDueDate(tt.value)
 			require.Equal(t, tt.want, (&result).Value())
 		})
 	}
