@@ -2,16 +2,16 @@ version: "2"
 
 linters:
   enable:
-    - govet
     - errcheck
-    - staticcheck
-    - ineffassign
-    - unused
     - gocritic
     - gosec
+    - govet
+    - ineffassign
     - misspell
-    - unparam
     - revive
+    - staticcheck
+    - unparam
+    - unused
   exclusions:
     rules:
       - path: examples/

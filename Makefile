@@ -26,7 +26,7 @@ lint:
 lint-fix:
 	@echo "Fixing Go code..."
 	@go install github.com/golangci/golangci-lint/v$(GOLANGCI_LINT_MAJOR_VERSION)/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
-	@gofmt -w -s .
+	@golangci-lint run --fix
 	@echo "Fixing complete!"
 
 ################################################################################
