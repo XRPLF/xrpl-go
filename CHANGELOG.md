@@ -32,12 +32,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `DestinationTag` field to `LoanBrokerCoverWithdraw` transaction.
 - Added `IsMPTCurrency` validation helper for MPT currency amounts, and updated `IsAmount` to support MPT amounts.
 - Extracted `Asset` to its own file and added MPT asset support in `IsAsset` validation.
+- Make `ComputeSignature` public
 
 ### Fixed
+
+#### binary-codec
+
+- Fixed `FromJSON` returning `ErrInvalidCurrency` instead of `ErrInvalidIssueObject` when `mpt_issuance_id` value is not a string.
+- Moved `ErrInvalidCurrency` to `currency.go` where it belongs.
 
 #### xrpl
 
 - Add missing `omitempty` tag to `RipplePathFindRequest.Domain`
+- Added nil guards for `opts` in `SubmitTx` and `SubmitTxAndWait` client methods.
 
 ## [v0.1.15]
 
@@ -69,7 +76,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - `rpc` client timeout fetched from config.
-
 
 ## [v0.1.14]
 
@@ -269,7 +275,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - Updates some fields in AccountSet and Payment related transactions to a pointer to allow 0 or "" values. For example:
-
   - `DestinationTag`
   - `TickSize`
   - `Domain`
