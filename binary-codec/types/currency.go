@@ -13,6 +13,8 @@ var (
 	// ErrMissingCurrencyLengthOption is returned when no length option is
 	// provided to Currency.ToJSON.
 	ErrMissingCurrencyLengthOption = errors.New("missing length option for Currency.ToJSON")
+	// ErrInvalidCurrency is returned when the currency field is missing or invalid.
+	ErrInvalidCurrency = errors.New("invalid currency")
 )
 
 // Currency handles encoding and decoding of currency values in the binary codec.

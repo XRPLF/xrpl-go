@@ -38,7 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
-- XRP Issues now return 40 bytes (currency + issuer zeros) for consistency.
+- Fixed `FromJSON` returning `ErrInvalidCurrency` instead of `ErrInvalidIssueObject` when `mpt_issuance_id` value is not a string.
+- Moved `ErrInvalidCurrency` to `currency.go` where it belongs.
 
 #### xrpl
 
@@ -75,7 +76,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - `rpc` client timeout fetched from config.
-
 
 ## [v0.1.14]
 
@@ -275,7 +275,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - Updates some fields in AccountSet and Payment related transactions to a pointer to allow 0 or "" values. For example:
-
   - `DestinationTag`
   - `TickSize`
   - `Domain`
