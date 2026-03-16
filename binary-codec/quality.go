@@ -65,6 +65,7 @@ func EncodeQuality(quality string) (string, error) {
 
 	serialized := make([]byte, 8)
 	binary.BigEndian.PutUint64(serialized, mantissa)
+	//nolint:gosec // G115: exp is bounded by IOU exponent range (-96 to 80), fits in byte
 	serialized[0] += byte(exp) + 100
 	return hexutil.EncodeToUpperHex(serialized), nil
 }

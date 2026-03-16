@@ -81,7 +81,7 @@ func GetBalanceChanges(meta *TxObjMeta) ([]AccountBalanceChanges, error) {
 	balanceChanges := make([]balanceChange, 0, len(nodes))
 
 	for _, node := range nodes {
-		switch node.LedgerEntryType {
+		switch node.LedgerEntryType { //nolint:exhaustive // only AccountRoot and RippleState affect balances
 		case ledger.AccountRootEntry:
 			xrpBalance, err := getXRPQuantity(node)
 			if err != nil {

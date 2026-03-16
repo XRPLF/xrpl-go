@@ -81,7 +81,7 @@ func (b *BatchSignable) Equals(other *BatchSignable) bool {
 	return b.Flags == other.Flags && slices.Equal(b.TxIDs, other.TxIDs)
 }
 
-// Flatten returns the BatchSignable as a map[string]interface{} for encoding.
+// Flatten returns the BatchSignable as a map[string]any for encoding.
 func (b *BatchSignable) Flatten() map[string]any {
 	flattened := make(map[string]any)
 

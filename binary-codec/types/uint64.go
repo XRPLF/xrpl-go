@@ -25,7 +25,8 @@ func (u *UInt64) checkRange(numericStr string) error {
 	_, err := strconv.ParseUint(numericStr, 10, 64)
 	if err != nil {
 		// Check if it's an overflow/underflow error
-		if numErr, ok := err.(*strconv.NumError); ok && numErr.Err == strconv.ErrRange {
+		var numErr *strconv.NumError
+		if errors.As(err, &numErr) && errors.Is(numErr.Err, strconv.ErrRange) {
 			return ErrUInt64OutOfRange
 		}
 		return err

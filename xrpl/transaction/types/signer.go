@@ -23,7 +23,7 @@ type SignerData struct {
 // FlatSignerData is a flattened map representation of SignerData for JSON serialization.
 type FlatSignerData map[string]any
 
-// Flatten returns a map[string]interface{} containing the populated SignerData fields.
+// Flatten returns a map[string]any containing the populated SignerData fields.
 func (sd *SignerData) Flatten() map[string]any {
 	flattened := make(map[string]any)
 	if sd.Account != "" {

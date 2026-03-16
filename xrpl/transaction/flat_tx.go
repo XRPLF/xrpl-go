@@ -6,7 +6,7 @@ import (
 
 var _ Tx = (*FlatTransaction)(nil)
 
-// FlatTransaction is a flattened transaction represented as a map from field names to interface{} values.
+// FlatTransaction is a flattened transaction represented as a map from field names to any values.
 // It satisfies the Tx interface for generic transaction handling.
 type FlatTransaction map[string]any
 

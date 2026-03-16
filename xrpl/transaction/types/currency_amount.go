@@ -71,7 +71,7 @@ func (IssuedCurrencyAmount) Kind() CurrencyKind {
 	return ISSUED
 }
 
-// Flatten returns a map[string]interface{} representation of the issued currency amount.
+// Flatten returns a map[string]any representation of the issued currency amount.
 func (i IssuedCurrencyAmount) Flatten() any {
 	json := make(map[string]any)
 
@@ -157,7 +157,7 @@ func (MPTCurrencyAmount) Kind() CurrencyKind {
 	return MPT
 }
 
-// Flatten returns a map[string]interface{} representation of the MPT currency amount.
+// Flatten returns a map[string]any representation of the MPT currency amount.
 func (m MPTCurrencyAmount) Flatten() any {
 	json := make(map[string]any)
 	if m.MPTIssuanceID != "" {

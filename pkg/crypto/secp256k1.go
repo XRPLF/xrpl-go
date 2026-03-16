@@ -55,10 +55,10 @@ func (c SECP256K1CryptoAlgorithm) deriveScalar(bytes []byte, discrim *big.Int) *
 
 		if discrim != nil {
 			discrimBytes := make([]byte, 4)
-			bytes[0] = byte(discrim.Uint64())
-			bytes[1] = byte(discrim.Uint64() >> 8)
-			bytes[2] = byte(discrim.Uint64() >> 16)
-			bytes[3] = byte(discrim.Uint64() >> 24)
+			bytes[0] = byte(discrim.Uint64())       //nolint:gosec // G115: intentional byte extraction via bit shifting
+			bytes[1] = byte(discrim.Uint64() >> 8)  //nolint:gosec // G115: intentional byte extraction via bit shifting
+			bytes[2] = byte(discrim.Uint64() >> 16) //nolint:gosec // G115: intentional byte extraction via bit shifting
+			bytes[3] = byte(discrim.Uint64() >> 24) //nolint:gosec // G115: intentional byte extraction via bit shifting
 
 			hash.Write(discrimBytes)
 		}

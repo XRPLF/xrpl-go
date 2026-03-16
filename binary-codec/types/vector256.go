@@ -34,7 +34,7 @@ func (v *Vector256) FromJSON(json any) ([]byte, error) {
 	case []string:
 		strSlice = val
 	case []any:
-		// Convert []interface{} to []string (common when unmarshalling JSON)
+		// Convert any to []string (common when unmarshalling JSON)
 		strSlice = make([]string, len(val))
 		for i, item := range val {
 			s, ok := item.(string)

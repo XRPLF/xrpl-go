@@ -73,7 +73,7 @@ type AMM struct {
 	// The definition for the other asset this AMM holds. In JSON, this is an object with currency and issuer fields.
 	Asset2 Asset
 	// Details of the current owner of the auction slot, as an Auction Slot object.
-	AuctionSlot AuctionSlot `json:",omitempty"`
+	AuctionSlot AuctionSlot `json:",omitzero"`
 	// The total outstanding balance of liquidity provider tokens from this AMM instance.
 	// The holders of these tokens can vote on the AMM's trading fee in proportion to their holdings, or redeem the tokens for a share of the AMM's assets which grows with the trading fees collected.
 	LPTokenBalance types.CurrencyAmount
@@ -111,8 +111,8 @@ type AuthAccounts struct {
 }
 
 // Flatten returns the flattened representation of AuthAccounts.
-func (a *AuthAccounts) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (a *AuthAccounts) Flatten() map[string]any {
+	flattened := make(map[string]any)
 	flattened["AuthAccount"] = a.AuthAccount.Flatten()
 	return flattened
 }
@@ -124,8 +124,8 @@ type AuthAccount struct {
 }
 
 // Flatten returns the flattened representation of AuthAccount.
-func (a *AuthAccount) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (a *AuthAccount) Flatten() map[string]any {
+	flattened := make(map[string]any)
 	flattened["Account"] = a.Account
 	return flattened
 }

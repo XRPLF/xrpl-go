@@ -65,7 +65,7 @@ func (u *UInt16) FromJSON(value any) ([]byte, error) {
 	//nolint:gosec // G115: integer overflow conversion int64 -> uint16 (gosec)
 	val := uint16(int64Value)
 	buf := new(bytes.Buffer)
-	//nolint:gosec // G115 false positive — binary.Write with uint16 value
+	//nolint:gosec // G115 false positive, binary.Write with uint16 value
 	err := binary.Write(buf, binary.BigEndian, val)
 	if err != nil {
 		return nil, err

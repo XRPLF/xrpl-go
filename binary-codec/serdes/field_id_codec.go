@@ -33,15 +33,15 @@ func (f *FieldIDCodec) Encode(fieldName string) ([]byte, error) {
 	}
 	var b []byte
 	if fh.TypeCode < 16 && fh.FieldCode < 16 {
-		return append(b, (byte(fh.TypeCode<<4))|byte(fh.FieldCode)), nil
+		return append(b, (byte(fh.TypeCode<<4))|byte(fh.FieldCode)), nil //nolint:gosec // G115: TypeCode/FieldCode are small protocol field codes
 	}
 	if fh.TypeCode >= 16 && fh.FieldCode < 16 {
-		return append(b, (byte(fh.FieldCode)), byte(fh.TypeCode)), nil
+		return append(b, (byte(fh.FieldCode)), byte(fh.TypeCode)), nil //nolint:gosec // G115: TypeCode/FieldCode are small protocol field codes
 	}
 	if fh.TypeCode < 16 && fh.FieldCode >= 16 {
-		return append(b, byte(fh.TypeCode<<4), byte(fh.FieldCode)), nil
+		return append(b, byte(fh.TypeCode<<4), byte(fh.FieldCode)), nil //nolint:gosec // G115: TypeCode/FieldCode are small protocol field codes
 	}
-	return append(b, 0, byte(fh.TypeCode), byte(fh.FieldCode)), nil
+	return append(b, 0, byte(fh.TypeCode), byte(fh.FieldCode)), nil //nolint:gosec // G115: TypeCode/FieldCode are small protocol field codes
 }
 
 // Decode returns the field name represented by the given field ID in hex string form.
