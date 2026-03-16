@@ -31,7 +31,6 @@ func (t *STObject) FromJSON(json any) ([]byte, error) {
 		return nil, errNotValidJSON
 	}
 	fimap, err := createFieldInstanceMapFromJson(json.(map[string]any))
-
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +166,6 @@ func createFieldInstanceMapFromJson(json map[string]any) (map[definitions.FieldI
 
 	for k, v := range processedJSON {
 		fi, err := definitions.Get().GetFieldInstanceByFieldName(k)
-
 		if err != nil {
 			return nil, err
 		}

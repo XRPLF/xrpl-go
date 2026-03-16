@@ -35,7 +35,6 @@ var ErrInvalidPathSet = errors.New("invalid type to construct PathSet from. Expe
 // FromJSON attempts to serialize a path set from a JSON representation of a slice of paths to a byte array.
 // It returns the byte array representation of the path set, or an error if the provided json does not represent a valid path set.
 func (p PathSet) FromJSON(json any) ([]byte, error) {
-
 	if _, ok := json.([]any)[0].([]any); !ok {
 		return nil, ErrInvalidPathSet
 	}
@@ -114,7 +113,6 @@ func isPathStep(v map[string]any) bool {
 // newPathStep creates a path step from a map representation.
 // It generates a byte array representation of the path step, encoding account, currency, and issuer information as appropriate.
 func newPathStep(v map[string]any) []byte {
-
 	dataType := 0x00
 	b := make([]byte, 0)
 
@@ -151,7 +149,6 @@ func newPath(v []any) []byte {
 // newPathSet constructs a path set from a slice of paths.
 // It generates a byte array representation of the path set, encoding each path and adding path separators as appropriate.
 func newPathSet(v []any) []byte {
-
 	b := make([]byte, 0)
 
 	for _, path := range v { // for each path in the path set (slice of paths)
@@ -162,7 +159,6 @@ func newPathSet(v []any) []byte {
 	b[len(b)-1] = pathsetEndByte // replace last path separator with path set end byte
 
 	return b
-
 }
 
 // parsePathStep decodes a path step from a binary representation using a provided binary parser.

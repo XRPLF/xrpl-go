@@ -45,5 +45,4 @@ func (*UnsubscribeRequest) APIVersion() int {
 // ############################################################################
 
 // UnsubscribeResponse represents the response from the unsubscribe method.
-type UnsubscribeResponse struct {
-}
+type UnsubscribeResponse struct{}

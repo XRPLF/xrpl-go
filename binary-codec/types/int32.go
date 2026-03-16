@@ -76,7 +76,6 @@ func (i *Int32) FromJSON(value any) ([]byte, error) {
 	// Two's complement representation handles negative numbers automatically
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, val)
-
 	if err != nil {
 		return nil, err
 	}

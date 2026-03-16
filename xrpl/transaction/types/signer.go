@@ -7,8 +7,8 @@ type Signer struct {
 }
 
 // Flatten returns a JSON-like map for the Signer, embedding its SignerData.
-func (s *Signer) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (s *Signer) Flatten() map[string]any {
+	flattened := make(map[string]any)
 	flattened["Signer"] = s.SignerData.Flatten()
 	return flattened
 }
@@ -21,11 +21,11 @@ type SignerData struct {
 }
 
 // FlatSignerData is a flattened map representation of SignerData for JSON serialization.
-type FlatSignerData map[string]interface{}
+type FlatSignerData map[string]any
 
 // Flatten returns a map[string]interface{} containing the populated SignerData fields.
-func (sd *SignerData) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (sd *SignerData) Flatten() map[string]any {
+	flattened := make(map[string]any)
 	if sd.Account != "" {
 		flattened["Account"] = sd.Account.String()
 	}

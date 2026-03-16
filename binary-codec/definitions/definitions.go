@@ -3,6 +3,7 @@ package definitions
 
 import (
 	_ "embed"
+	"maps"
 
 	"github.com/ugorji/go/codec"
 )
@@ -45,7 +46,6 @@ type definitionsDoc struct {
 // canonical binary serialization format:
 // `Serialization <https://xrpl.org/serialization.html>`_
 func loadDefinitions() {
-
 	var jh codec.JsonHandle
 
 	jh.MapKeyAsString = true
@@ -68,7 +68,7 @@ func loadDefinitions() {
 	initializePermissions()
 }
 
-func convertToFieldInstanceMap(m [][]interface{}) map[string]*FieldInstance {
+func convertToFieldInstanceMap(m [][]any) map[string]*FieldInstance {
 	nm := make(map[string]*FieldInstance, len(m))
 
 	for _, j := range m {
@@ -83,8 +83,8 @@ func convertToFieldInstanceMap(m [][]interface{}) map[string]*FieldInstance {
 	return nm
 }
 
-func castFieldInfo(v interface{}) (FieldInfo, error) {
-	if fi, ok := v.(map[string]interface{}); ok {
+func castFieldInfo(v any) (FieldInfo, error) {
+	if fi, ok := v.(map[string]any); ok {
 		return FieldInfo{
 			// TODO: Check if this is still needed
 			//nolint:gosec // G115: integer overflow conversion int64 -> int32, nth is a small field ordinal
@@ -140,9 +140,7 @@ func initializePermissions() {
 
 	definitions.DelegatablePermissions = make(map[string]int32)
 
-	for name, value := range definitions.GranularPermissions {
-		definitions.DelegatablePermissions[name] = value
-	}
+	maps.Copy(definitions.DelegatablePermissions, definitions.GranularPermissions)
 
 	for txType, value := range definitions.TransactionTypes {
 		definitions.DelegatablePermissions[txType] = value + 1

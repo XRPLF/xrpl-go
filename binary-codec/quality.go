@@ -22,12 +22,10 @@ const (
 	maxIOUExponent = 80
 )
 
-var (
-	// Static errors
+// Static errors
 
-	// ErrInvalidQuality is returned when the quality is invalid.
-	ErrInvalidQuality = errors.New("invalid quality")
-)
+// ErrInvalidQuality is returned when the quality is invalid.
+var ErrInvalidQuality = errors.New("invalid quality")
 
 // EncodeQuality encodes a quality amount to a hex string.
 func EncodeQuality(quality string) (string, error) {
@@ -58,7 +56,6 @@ func EncodeQuality(quality string) (string, error) {
 
 	// convert the unscaled value to an unsigned integer
 	mantissa, err := strconv.ParseUint(bigDecimal.UnscaledValue, 10, 64)
-
 	if err != nil {
 		return "", err
 	}

@@ -8,12 +8,10 @@ import (
 	"github.com/Peersyst/xrpl-go/binary-codec/serdes/interfaces"
 )
 
-var (
-	// Static errors
+// Static errors
 
-	// ErrInvalidFieldIDLength is returned when the field ID length is invalid.
-	ErrInvalidFieldIDLength = errors.New("invalid field ID length")
-)
+// ErrInvalidFieldIDLength is returned when the field ID length is invalid.
+var ErrInvalidFieldIDLength = errors.New("invalid field ID length")
 
 // FieldIDCodec is a struct that represents the field ID codec.
 type FieldIDCodec struct {

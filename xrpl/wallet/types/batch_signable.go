@@ -45,7 +45,6 @@ func FromFlatBatchTransaction(transaction *transaction.FlatTransaction) (*BatchS
 			return nil, ErrFailedToGetTxIDFromRawTransaction{
 				Err: err,
 			}
-
 		}
 		batchSignable.TxIDs[i] = txID
 	}
@@ -83,8 +82,8 @@ func (b *BatchSignable) Equals(other *BatchSignable) bool {
 }
 
 // Flatten returns the BatchSignable as a map[string]interface{} for encoding.
-func (b *BatchSignable) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (b *BatchSignable) Flatten() map[string]any {
+	flattened := make(map[string]any)
 
 	flattened["flags"] = b.Flags
 

@@ -47,7 +47,6 @@ func (c SECP256K1CryptoAlgorithm) FamilySeedPrefix() []byte {
 
 // deriveScalar derives a scalar from a seed.
 func (c SECP256K1CryptoAlgorithm) deriveScalar(bytes []byte, discrim *big.Int) *big.Int {
-
 	order := btcec.S256().N
 	for i := 0; i <= 0xffffffff; i++ {
 		hash := sha512.New()

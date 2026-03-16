@@ -40,8 +40,8 @@ type CounterpartySignature struct {
 }
 
 // Flatten returns a map representation of the CounterpartySignature for JSON-RPC submission.
-func (cs *CounterpartySignature) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (cs *CounterpartySignature) Flatten() map[string]any {
+	flattened := make(map[string]any)
 	if cs.SigningPubKey != "" {
 		flattened["SigningPubKey"] = cs.SigningPubKey
 	}
@@ -49,7 +49,7 @@ func (cs *CounterpartySignature) Flatten() map[string]interface{} {
 		flattened["TxnSignature"] = cs.TxnSignature
 	}
 	if len(cs.Signers) > 0 {
-		flattenedSigners := make([]map[string]interface{}, len(cs.Signers))
+		flattenedSigners := make([]map[string]any, len(cs.Signers))
 		for i, signer := range cs.Signers {
 			flattenedSigners[i] = signer.Flatten()
 		}
@@ -121,7 +121,7 @@ func (tx *LoanSet) SetLoanOverpaymentFlag() {
 }
 
 // Flatten returns a map representation of the LoanSet transaction for JSON-RPC submission.
-func (tx *LoanSet) Flatten() map[string]interface{} {
+func (tx *LoanSet) Flatten() map[string]any {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

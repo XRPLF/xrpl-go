@@ -48,7 +48,6 @@ func (v *Vector256) FromJSON(json any) ([]byte, error) {
 	}
 
 	b, err := vector256FromValue(strSlice)
-
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +61,6 @@ func vector256FromValue(value []string) ([]byte, error) {
 	b := make([]byte, 0)
 	for _, s := range value {
 		hash256, err := NewHash256().FromJSON(s)
-
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +75,6 @@ func vector256FromValue(value []string) ([]byte, error) {
 // back into an array of JSON string values representing Hash256 values.
 // If the parsing fails, an error is returned.
 func (v *Vector256) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
-
 	b, err := p.ReadBytes(opts[0])
 	if err != nil {
 		return nil, err

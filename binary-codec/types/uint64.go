@@ -36,8 +36,7 @@ func (u *UInt64) checkRange(numericStr string) error {
 // FromJSON converts a JSON value into a serialized byte slice representing a 64-bit unsigned integer.
 // The input value is assumed to be a string representation of an integer. If the serialization fails, an error is returned.
 func (u *UInt64) FromJSON(value any) ([]byte, error) {
-
-	var buf = new(bytes.Buffer)
+	buf := new(bytes.Buffer)
 
 	if _, ok := value.(string); !ok {
 		return nil, ErrInvalidUInt64String
