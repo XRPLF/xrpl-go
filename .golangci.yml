@@ -2,14 +2,21 @@ version: "2"
 
 linters:
   enable:
+    - bodyclose
     - errcheck
+    - errorlint
+    - exhaustive
+    - exptostd
     - gocritic
     - gosec
     - govet
     - ineffassign
     - misspell
+    - modernize
+    - nilerr
     - revive
     - staticcheck
+    - testifylint
     - unparam
     - unused
   exclusions:
@@ -24,7 +31,7 @@ linters:
 
 formatters:
   enable:
-    - gofmt
+    - gofumpt
 
 run:
   tests: false
