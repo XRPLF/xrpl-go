@@ -11,7 +11,6 @@ import (
 
 func TestGetResult(t *testing.T) {
 	t.Run("correctly decodes", func(t *testing.T) {
-
 		jr := Response{
 			Result: AnyJSON{
 				"account":      "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -19,10 +18,11 @@ func TestGetResult(t *testing.T) {
 				"ledger_index": json.Number(strconv.FormatInt(71766343, 10)),
 			},
 			Warning: "none",
-			Warnings: []XRPLResponseWarning{{
-				ID:      1,
-				Message: "message",
-			},
+			Warnings: []XRPLResponseWarning{
+				{
+					ID:      1,
+					Message: "message",
+				},
 			},
 		}
 
@@ -39,7 +39,6 @@ func TestGetResult(t *testing.T) {
 		assert.Equal(t, expected, acr)
 	})
 	t.Run("throws error for incorrect mapping", func(t *testing.T) {
-
 		jr := Response{
 			Result: AnyJSON{
 				"account":      123,
@@ -47,10 +46,11 @@ func TestGetResult(t *testing.T) {
 				"ledger_index": json.Number(strconv.FormatInt(71766343, 10)),
 			},
 			Warning: "none",
-			Warnings: []XRPLResponseWarning{{
-				ID:      1,
-				Message: "message",
-			},
+			Warnings: []XRPLResponseWarning{
+				{
+					ID:      1,
+					Message: "message",
+				},
 			},
 		}
 

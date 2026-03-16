@@ -13,6 +13,6 @@ func TestBatchAccount_String(t *testing.T) {
 		value: value,
 	}
 
-	require.Equal(t, empty.String(), "")
+	require.Equal(t, "", empty.String())
 	require.Equal(t, ba.String(), value)
 }

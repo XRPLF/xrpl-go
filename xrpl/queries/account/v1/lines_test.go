@@ -15,7 +15,7 @@ func TestAccountLinesRequest(t *testing.T) {
 		LedgerHash:  "1EDBBA3C793863366DF5B31C2174B6B5E6DF6DB89A7212B86838489148E2A581",
 		LedgerIndex: common.LedgerIndex(256),
 		Limit:       10,
-		Marker:      map[string]interface{}{"abc": "def"},
+		Marker:      map[string]any{"abc": "def"},
 	}
 
 	j := `{

@@ -58,7 +58,7 @@ func TestPriceData_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.priceData.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.priceData.Flatten())
 		})
 	}
 }
@@ -116,7 +116,7 @@ func TestPriceDataWrapper_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.priceData.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.priceData.Flatten())
 		})
 	}
 }

@@ -10,7 +10,7 @@ import (
 
 func TestVaultSet_TxType(t *testing.T) {
 	tx := &VaultSet{}
-	assert.Equal(t, tx.TxType(), VaultSetTx)
+	assert.Equal(t, VaultSetTx, tx.TxType())
 }
 
 func TestVaultSet_Flatten(t *testing.T) {
@@ -51,7 +51,7 @@ func TestVaultSet_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -173,7 +173,7 @@ func TestVaultSet_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}

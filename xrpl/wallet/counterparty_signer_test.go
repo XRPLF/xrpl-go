@@ -122,9 +122,9 @@ func TestSignLoanSetByCounterparty(t *testing.T) {
 		{
 			name: "fail - CounterpartySignature already set",
 			tx: transaction.FlatTransaction{
-				"TransactionType":      "LoanSet",
-				"TxnSignature":         "AABBCC",
-				"SigningPubKey":        "DEADBEEF",
+				"TransactionType":       "LoanSet",
+				"TxnSignature":          "AABBCC",
+				"SigningPubKey":         "DEADBEEF",
 				"CounterpartySignature": map[string]any{"TxnSignature": "AA"},
 			},
 			err: ErrCounterpartyAlreadySigned,
@@ -233,7 +233,7 @@ func TestCombineLoanSetCounterpartySigners(t *testing.T) {
 		acc1 := signers[1].(map[string]any)["Signer"].(map[string]any)["Account"].(string)
 		_, bytes0, _ := addresscodec.DecodeClassicAddressToAccountID(acc0)
 		_, bytes1, _ := addresscodec.DecodeClassicAddressToAccountID(acc1)
-		assert.True(t, bytes.Compare(bytes0, bytes1) < 0, "signers should be sorted ascending by account ID bytes")
+		assert.Negative(t, bytes.Compare(bytes0, bytes1), "signers should be sorted ascending by account ID bytes")
 	})
 
 	t.Run("fail - empty slice", func(t *testing.T) {
@@ -243,7 +243,7 @@ func TestCombineLoanSetCounterpartySigners(t *testing.T) {
 
 	t.Run("fail - not a LoanSet", func(t *testing.T) {
 		tx := transaction.FlatTransaction{
-			"TransactionType":      "Payment",
+			"TransactionType": "Payment",
 			"CounterpartySignature": map[string]any{
 				"Signers": []any{map[string]any{"Signer": map[string]any{"Account": "rXXX"}}},
 			},

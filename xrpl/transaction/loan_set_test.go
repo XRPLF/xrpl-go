@@ -10,19 +10,19 @@ import (
 
 func TestLoanSet_TxType(t *testing.T) {
 	tx := &LoanSet{}
-	assert.Equal(t, tx.TxType(), LoanSetTx)
+	assert.Equal(t, LoanSetTx, tx.TxType())
 }
 
 func TestLoanSet_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanSet
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanSet{},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    LoanSetTx.String(),
 				"LoanBrokerID":       "",
 				"PrincipalRequested": "",
@@ -43,7 +43,7 @@ func TestLoanSet_Flatten(t *testing.T) {
 				InterestRate:       func() *types.InterestRate { v := types.InterestRate(5000); return &v }(),
 				PaymentInterval:    func() *types.PaymentInterval { v := types.PaymentInterval(2592000); return &v }(),
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    LoanSetTx.String(),
 				"Account":            "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Fee":                "1000000",
@@ -60,7 +60,7 @@ func TestLoanSet_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -188,7 +188,7 @@ func TestLoanSet_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}

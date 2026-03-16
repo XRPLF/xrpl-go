@@ -8,19 +8,19 @@ import (
 
 func TestLoanDelete_TxType(t *testing.T) {
 	tx := &LoanDelete{}
-	assert.Equal(t, tx.TxType(), LoanDeleteTx)
+	assert.Equal(t, LoanDeleteTx, tx.TxType())
 }
 
 func TestLoanDelete_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanDelete
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanDelete{},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType": LoanDeleteTx.String(),
 				"LoanID":          "",
 			},
@@ -36,7 +36,7 @@ func TestLoanDelete_Flatten(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    LoanDeleteTx.String(),
 				"Account":            "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Fee":                "1000000",
@@ -49,7 +49,7 @@ func TestLoanDelete_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -122,7 +122,7 @@ func TestLoanDelete_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}

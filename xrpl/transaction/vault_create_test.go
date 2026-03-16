@@ -11,7 +11,7 @@ import (
 
 func TestVaultCreate_TxType(t *testing.T) {
 	tx := &VaultCreate{}
-	assert.Equal(t, tx.TxType(), VaultCreateTx)
+	assert.Equal(t, VaultCreateTx, tx.TxType())
 }
 
 func TestVaultCreate_Flatten(t *testing.T) {
@@ -44,7 +44,7 @@ func TestVaultCreate_Flatten(t *testing.T) {
 				"Fee":                "1000000",
 				"Sequence":           uint32(1),
 				"LastLedgerSequence": uint32(3000000),
-				"Asset":              map[string]interface{}{"currency": "XRP"},
+				"Asset":              map[string]any{"currency": "XRP"},
 			},
 		},
 		{
@@ -63,7 +63,7 @@ func TestVaultCreate_Flatten(t *testing.T) {
 			expected: FlatTransaction{
 				"TransactionType":  VaultCreateTx.String(),
 				"Account":          "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
-				"Asset":            map[string]interface{}{"currency": "USD", "issuer": types.Address("rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb")},
+				"Asset":            map[string]any{"currency": "USD", "issuer": types.Address("rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb")},
 				"AssetsMaximum":    "1000000",
 				"WithdrawalPolicy": types.VaultStrategyFirstComeFirstServe.Value(),
 			},
@@ -88,7 +88,7 @@ func TestVaultCreate_Flatten(t *testing.T) {
 				"TransactionType": VaultCreateTx.String(),
 				"Account":         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Flags":           TfVaultPrivate,
-				"Asset":           map[string]interface{}{"currency": "USD", "issuer": types.Address("rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb")},
+				"Asset":           map[string]any{"currency": "USD", "issuer": types.Address("rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb")},
 				"Scale":           uint8(6),
 				"Data":            "DEADBEEF",
 				"DomainID":        "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
@@ -108,14 +108,14 @@ func TestVaultCreate_Flatten(t *testing.T) {
 			expected: FlatTransaction{
 				"TransactionType": VaultCreateTx.String(),
 				"Account":         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
-				"Asset":           map[string]interface{}{"mpt_issuance_id": "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF"},
+				"Asset":           map[string]any{"mpt_issuance_id": "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF"},
 			},
 		},
 	}
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -429,7 +429,7 @@ func TestVaultCreate_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}

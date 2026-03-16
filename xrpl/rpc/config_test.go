@@ -18,7 +18,6 @@ func (c customHttpClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func TestConfigCreation(t *testing.T) {
-
 	t.Run("Set config with valid port + ip", func(t *testing.T) {
 		cfg, _ := NewClientConfig("http://s1.ripple.com:51234/")
 
@@ -44,7 +43,6 @@ func TestConfigCreation(t *testing.T) {
 		assert.NoError(t, err)
 	})
 	t.Run("Pass in custom HTTP client", func(t *testing.T) {
-
 		c := customHttpClient{}
 		cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithHTTPClient(c))
 

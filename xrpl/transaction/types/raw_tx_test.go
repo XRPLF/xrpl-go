@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -287,7 +288,7 @@ func TestRawTransaction_Validate(t *testing.T) {
 				t.Errorf("Validate() returned valid = %v, expected %v", valid, tt.expectedValid)
 			}
 
-			if err != tt.expectedError {
+			if !errors.Is(err, tt.expectedError) {
 				t.Errorf("Validate() returned error = %v, expected %v", err, tt.expectedError)
 			}
 		})

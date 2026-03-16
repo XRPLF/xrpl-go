@@ -89,7 +89,7 @@ func TestGenerateEncodeSeed(t *testing.T) {
 			a, err := GenerateSeed(tc.entropy, tc.algorithm, randomizer)
 
 			if tc.expectedErr != nil {
-				require.Zero(t, a)
+				require.Empty(t, a)
 				require.Error(t, err, tc.expectedErr.Error())
 			} else {
 				require.NoError(t, err)
@@ -143,8 +143,8 @@ func TestDeriveKeypair(t *testing.T) {
 			priv, pub, err := DeriveKeypair(tc.inputSeed, tc.inputValidator)
 
 			if tc.expectedErr != nil {
-				require.Zero(t, pub)
-				require.Zero(t, priv)
+				require.Empty(t, pub)
+				require.Empty(t, priv)
 				require.Error(t, err, tc.expectedErr.Error())
 			} else {
 				require.NoError(t, err)
@@ -174,7 +174,7 @@ func TestDeriveClassicAddress(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := DeriveClassicAddress(tc.input)
 			if tc.expectedErr != nil {
-				require.Zero(t, actual)
+				require.Empty(t, actual)
 				require.Error(t, err, tc.expectedErr.Error())
 			} else {
 				require.NoError(t, err)
@@ -211,7 +211,7 @@ func TestSign(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := Sign(tc.inputMsg, tc.inputPrivKey)
 			if tc.expectedErr != nil {
-				require.Zero(t, actual)
+				require.Empty(t, actual)
 				require.Error(t, err, tc.expectedErr.Error())
 			} else {
 				require.NoError(t, err)

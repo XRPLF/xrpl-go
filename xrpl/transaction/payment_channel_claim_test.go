@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -254,7 +255,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			valid, err := tt.claim.Validate()
 			assert.Equal(t, tt.wantValid, valid)
 			assert.Equal(t, tt.wantErr, err != nil)
-			if err != nil && err != tt.expectedErr {
+			if err != nil && !errors.Is(err, tt.expectedErr) {
 				t.Errorf("Validate() error = %v, expectedErr %v", err, tt.expectedErr)
 			}
 		})

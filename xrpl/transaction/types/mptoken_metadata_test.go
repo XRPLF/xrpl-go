@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
@@ -863,7 +864,8 @@ func extractValidationErrors(err error) []error {
 		return []error{}
 	}
 
-	if validationErrs, ok := err.(MPTokenMetadataValidationErrors); ok {
+	var validationErrs MPTokenMetadataValidationErrors
+	if errors.As(err, &validationErrs) {
 		return []error(validationErrs)
 	}
 

@@ -9,7 +9,7 @@ import (
 
 func TestLoanBrokerCoverWithdraw_TxType(t *testing.T) {
 	tx := &LoanBrokerCoverWithdraw{}
-	assert.Equal(t, tx.TxType(), LoanBrokerCoverWithdrawTx)
+	assert.Equal(t, LoanBrokerCoverWithdrawTx, tx.TxType())
 }
 
 func TestLoanBrokerCoverWithdraw_Flatten(t *testing.T) {
@@ -18,12 +18,12 @@ func TestLoanBrokerCoverWithdraw_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanBrokerCoverWithdraw
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanBrokerCoverWithdraw{},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType": LoanBrokerCoverWithdrawTx.String(),
 				"LoanBrokerID":    "",
 			},
@@ -40,7 +40,7 @@ func TestLoanBrokerCoverWithdraw_Flatten(t *testing.T) {
 				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount:       types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    LoanBrokerCoverWithdrawTx.String(),
 				"Account":            "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 				"Fee":                "1000000",
@@ -64,7 +64,7 @@ func TestLoanBrokerCoverWithdraw_Flatten(t *testing.T) {
 				Destination:    func() *types.Address { v := types.Address("rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5"); return &v }(),
 				DestinationTag: &destTag,
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    LoanBrokerCoverWithdrawTx.String(),
 				"Account":            "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 				"Fee":                "1000000",
@@ -80,7 +80,7 @@ func TestLoanBrokerCoverWithdraw_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -171,7 +171,7 @@ func TestLoanBrokerCoverWithdraw_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}

@@ -10,19 +10,19 @@ import (
 
 func TestMPToken_EntryType(t *testing.T) {
 	mpToken := &MPToken{}
-	require.Equal(t, mpToken.EntryType(), MPTokenEntry)
+	require.Equal(t, MPTokenEntry, mpToken.EntryType())
 }
 
 func TestMPToken_SetLsfMPTLocked(t *testing.T) {
 	mpToken := &MPToken{}
 	mpToken.SetLsfMPTLocked()
-	require.Equal(t, mpToken.Flags, LsfMPTLocked)
+	require.Equal(t, LsfMPTLocked, mpToken.Flags)
 }
 
 func TestMPToken_SetLsfMPTAuthorized(t *testing.T) {
 	mpToken := &MPToken{}
 	mpToken.SetLsfMPTAuthorized()
-	require.Equal(t, mpToken.Flags, LsfMPTAuthorized)
+	require.Equal(t, LsfMPTAuthorized, mpToken.Flags)
 }
 
 func TestMPTokenSerialization(t *testing.T) {

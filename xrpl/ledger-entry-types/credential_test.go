@@ -10,13 +10,13 @@ import (
 
 func TestCredential_EntryType(t *testing.T) {
 	credential := &Credential{}
-	require.Equal(t, credential.EntryType(), CredentialEntry)
+	require.Equal(t, CredentialEntry, credential.EntryType())
 }
 
 func TestCredential_SetLsfAccepted(t *testing.T) {
 	credential := &Credential{}
 	credential.SetLsfAccepted()
-	require.Equal(t, credential.Flags, LsfAccepted)
+	require.Equal(t, LsfAccepted, credential.Flags)
 }
 
 func TestCredential_Flatten(t *testing.T) {

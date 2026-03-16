@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"errors"
+	"maps"
 	"reflect"
 	"testing"
 
@@ -180,7 +181,7 @@ func TestClient_SendRequest(t *testing.T) {
 				require.EqualError(t, err, tc.expectedErr.Error())
 			} else {
 				require.NoError(t, err)
-				require.EqualValues(t, tc.res, res)
+				require.Equal(t, tc.res, res)
 			}
 		})
 	}
@@ -738,7 +739,8 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 			expectedFee: "40", // 2*10 + 10 + 10
 			expectedErr: nil,
 			feeCushion:  1,
-		}, {
+		},
+		{
 			name: "Batch transaction with multisign",
 			tx: transaction.FlatTransaction{
 				"TransactionType": "Batch",
@@ -1574,9 +1576,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 
 			// Make a copy of the original tx for comparison
 			originalTx := make(transaction.FlatTransaction)
-			for k, v := range tt.tx {
-				originalTx[k] = v
-			}
+			maps.Copy(originalTx, tt.tx)
 
 			err := cl.autofillRawTransactions(&tt.tx)
 

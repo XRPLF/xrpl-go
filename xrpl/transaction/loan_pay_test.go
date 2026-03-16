@@ -9,19 +9,19 @@ import (
 
 func TestLoanPay_TxType(t *testing.T) {
 	tx := &LoanPay{}
-	assert.Equal(t, tx.TxType(), LoanPayTx)
+	assert.Equal(t, LoanPayTx, tx.TxType())
 }
 
 func TestLoanPay_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanPay
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanPay{},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType": LoanPayTx.String(),
 				"LoanID":          "",
 			},
@@ -38,7 +38,7 @@ func TestLoanPay_Flatten(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    LoanPayTx.String(),
 				"Account":            "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Fee":                "1000000",
@@ -58,7 +58,7 @@ func TestLoanPay_Flatten(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType": LoanPayTx.String(),
 				"Account":         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Flags":           TfLoanPayOverpayment,
@@ -76,7 +76,7 @@ func TestLoanPay_Flatten(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType": LoanPayTx.String(),
 				"Account":         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Flags":           TfLoanPayFullPayment,
@@ -94,7 +94,7 @@ func TestLoanPay_Flatten(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType": LoanPayTx.String(),
 				"Account":         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Flags":           TfLoanPayLatePayment,
@@ -106,7 +106,7 @@ func TestLoanPay_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -248,7 +248,7 @@ func TestLoanPay_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}

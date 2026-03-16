@@ -85,6 +85,7 @@ func TestPaymentFlags(t *testing.T) {
 		})
 	}
 }
+
 func TestPayment_Validate(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -545,17 +546,17 @@ func TestPayment_Flatten(t *testing.T) {
 				"TransactionType": "Payment",
 				"Fee":             "1000",
 				"Flags":           uint32(196608),
-				"Amount": map[string]interface{}{
+				"Amount": map[string]any{
 					"currency": "USD",
 					"issuer":   "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 					"value":    "1",
 				},
-				"DeliverMax": map[string]interface{}{
+				"DeliverMax": map[string]any{
 					"currency": "USD",
 					"issuer":   "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 					"value":    "2",
 				},
-				"DeliverMin": map[string]interface{}{
+				"DeliverMin": map[string]any{
 					"currency": "USD",
 					"issuer":   "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 					"value":    "0.5",
@@ -563,21 +564,21 @@ func TestPayment_Flatten(t *testing.T) {
 				"Destination":    "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 				"DestinationTag": uint32(12345),
 				"InvoiceID":      "ABC123",
-				"Paths": [][]interface{}{
+				"Paths": [][]any{
 					{
-						map[string]interface{}{
+						map[string]any{
 							"account":  "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 							"currency": "USD",
 							"issuer":   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 						},
-						map[string]interface{}{
+						map[string]any{
 							"account":  "r4D6ptkGYmpNpUWTtc3MpKcdcEtsonrbVf",
 							"currency": "USD",
 							"issuer":   "rJwrc4W71kVUNTJX77qGHySRJj7BxSgQqt",
 						},
 					},
 				},
-				"SendMax": map[string]interface{}{
+				"SendMax": map[string]any{
 					"currency": "USD",
 					"issuer":   "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 					"value":    "3",
@@ -607,7 +608,7 @@ func TestPayment_Flatten(t *testing.T) {
 				"Account":         "rJwjoukM94WwKwxM428V7b9npHjpkSvif",
 				"TransactionType": "Payment",
 				"Fee":             "1000",
-				"Amount": map[string]interface{}{
+				"Amount": map[string]any{
 					"currency": "USD",
 					"issuer":   "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 					"value":    "1",
@@ -620,7 +621,6 @@ func TestPayment_Flatten(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			require.Equal(t, test.expected, test.payment.Flatten())
-
 		})
 	}
 }

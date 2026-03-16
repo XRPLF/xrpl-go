@@ -15,7 +15,6 @@ import (
 )
 
 func TestUint32_FromJson(t *testing.T) {
-
 	tt := []struct {
 		name        string
 		input       any
@@ -153,7 +152,7 @@ func TestUint32_ToJson(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name:  "fail - invalid uint32",
+			name: "fail - invalid uint32",
 			malleate: func(t *testing.T) interfaces.BinaryParser {
 				parserMock := testutil.NewMockBinaryParser(gomock.NewController(t))
 				parserMock.EXPECT().ReadBytes(gomock.Any()).Return([]byte{}, errors.New("binary parser has no data"))
@@ -163,7 +162,7 @@ func TestUint32_ToJson(t *testing.T) {
 			expectedErr: fmt.Errorf("binary parser has no data"),
 		},
 		{
-			name:  "pass - valid uint32",
+			name: "pass - valid uint32",
 			malleate: func(t *testing.T) interfaces.BinaryParser {
 				return serdes.NewBinaryParser([]byte{0, 0, 0, 1}, defs)
 			},
@@ -171,7 +170,7 @@ func TestUint32_ToJson(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:  "pass - valid uint32 (2)",
+			name: "pass - valid uint32 (2)",
 			malleate: func(t *testing.T) interfaces.BinaryParser {
 				return serdes.NewBinaryParser([]byte{0, 0, 0, 100}, defs)
 			},
@@ -179,7 +178,7 @@ func TestUint32_ToJson(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:  "pass - valid uint32 (3)",
+			name: "pass - valid uint32 (3)",
 			malleate: func(t *testing.T) interfaces.BinaryParser {
 				return serdes.NewBinaryParser([]byte{0, 0, 0, 255}, defs)
 			},
@@ -200,5 +199,4 @@ func TestUint32_ToJson(t *testing.T) {
 			}
 		})
 	}
-
 }

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -73,7 +74,7 @@ func TestAuthorizeCredentialList_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.ac.Validate()
 			if err != nil {
-				if err != tt.expectedErr {
+				if !errors.Is(err, tt.expectedErr) {
 					t.Errorf("expected error %v, got %v", tt.expectedErr, err)
 				}
 			}
