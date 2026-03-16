@@ -21,20 +21,39 @@ linters:
     - unused
   exclusions:
     rules:
+      - linters:
+          - revive
+        text: "var-naming: avoid meaningless package names"
       - path: examples/
         linters:
           - revive
         text: "package-comments"
-      - linters:
+      # Only testifylint and modernize run on test files.
+      # All other linters are excluded from tests to reduce noise.
+      - path: _test\.go
+        linters:
+          - bodyclose
+          - errcheck
+          - errorlint
+          - exhaustive
+          - exptostd
+          - gocritic
+          - gosec
+          - govet
+          - ineffassign
+          - misspell
+          - nilerr
           - revive
-        text: "var-naming: avoid meaningless package names"
+          - staticcheck
+          - unparam
+          - unused
 
 formatters:
   enable:
     - gofumpt
 
 run:
-  tests: false
+  tests: true
   timeout: 1m
 
 output:
