@@ -832,13 +832,13 @@ func TestDecodeMPTokenMetadata_NotCompactKeys(t *testing.T) {
 func TestDecodeMPTokenMetadata_Errors(t *testing.T) {
 	t.Run("invalid hex", func(t *testing.T) {
 		_, err := DecodeMPTokenMetadata("invalid")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, ErrInvalidMPTokenMetadataHex, err)
 	})
 
 	t.Run("invalid JSON underneath hex", func(t *testing.T) {
 		_, err := DecodeMPTokenMetadata("464F4F")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, ErrInvalidMPTokenMetadataJSON, err)
 	})
 }

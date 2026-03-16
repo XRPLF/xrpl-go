@@ -44,14 +44,14 @@ func TestClient_Request(t *testing.T) {
 		}
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
 		_, err = jsonRpcClient.Request(req)
 
 		assert.NotNil(t, capturedRequest)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "POST", capturedRequest.Method)
 		assert.Equal(t, "http://testnode/", capturedRequest.URL.String())
 		assert.Equal(t, "application/json", capturedRequest.Header.Get("Content-Type"))
@@ -95,7 +95,7 @@ func TestClient_Request(t *testing.T) {
 		mc.DoFunc = testutil.MockResponse(response, 200, mc)
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
@@ -138,7 +138,7 @@ func TestClient_Request(t *testing.T) {
 			LedgerHash:  "1EDBBA3C793863366DF5B31C2174B6B5E6DF6DB89A7212B86838489148E2A581",
 		}
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assert.Equal(t, expectedXrplResponse, xrplResponse)
 
@@ -168,7 +168,7 @@ func TestClient_Request(t *testing.T) {
 		mc.DoFunc = testutil.MockResponse(response, 200, mc)
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
@@ -190,7 +190,7 @@ func TestClient_Request(t *testing.T) {
 		}
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
@@ -225,7 +225,7 @@ func TestClient_Request(t *testing.T) {
 		}
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
@@ -243,7 +243,7 @@ func TestClient_Request(t *testing.T) {
 		// Check that only 2 extra requests were made
 		assert.Equal(t, 3, mc.RequestCount)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expected.Account, channelsResponse.Account)
 		assert.Equal(t, expected.LedgerIndex, channelsResponse.LedgerIndex)
 		assert.Equal(t, expected.LedgerHash, channelsResponse.LedgerHash)
@@ -262,14 +262,14 @@ func TestClient_Request(t *testing.T) {
 		}
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
 		_, err = jsonRpcClient.Request(req)
 
 		// Check that the expected timeout error occurred
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "timeout")
 	})
 }
@@ -319,18 +319,18 @@ func TestClient_SubmitTxBlob(t *testing.T) {
 			}
 
 			cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			jsonRpcClient := NewClient(cfg)
 
 			response, err := jsonRpcClient.SubmitTxBlob(tt.txBlob, false)
 			if tt.expectError != nil {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tt.expectError.Error(), err.Error())
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectResult.EngineResult, response.EngineResult)
 			assert.Equal(t, tt.expectResult.EngineResultCode, response.EngineResultCode)
 			assert.Equal(t, tt.expectResult.EngineResultMessage, response.EngineResultMessage)
@@ -401,16 +401,16 @@ func TestClient_SubmitTx(t *testing.T) {
 			}
 
 			cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			jsonRpcClient := NewClient(cfg)
 
 			response, err := jsonRpcClient.SubmitTx(tt.tx, tt.opts)
 			if tt.expectError != nil {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tt.expectError.Error(), err.Error())
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectResult.EngineResult, response.EngineResult)
 			assert.Equal(t, tt.expectResult.EngineResultCode, response.EngineResultCode)
 			assert.Equal(t, tt.expectResult.EngineResultMessage, response.EngineResultMessage)

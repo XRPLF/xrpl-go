@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOracle_EntryType(t *testing.T) {
@@ -176,7 +177,7 @@ func TestPriceData_Validate(t *testing.T) {
 		t.Run(testcase.name, func(t *testing.T) {
 			err := testcase.priceData.Validate()
 			if testcase.expected == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
 				assert.ErrorIs(t, err, testcase.expected)
 			}

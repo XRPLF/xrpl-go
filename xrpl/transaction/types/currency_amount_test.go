@@ -63,13 +63,11 @@ func TestMPTCurrencyAmount_Kind(t *testing.T) {
 		name     string
 		mpt      MPTCurrencyAmount
 		expected CurrencyKind
-		expPass  bool
 	}{
 		{
 			name:     "pass - mpt kind",
 			mpt:      MPTCurrencyAmount{},
 			expected: MPT,
-			expPass:  true,
 		},
 	}
 
@@ -77,11 +75,6 @@ func TestMPTCurrencyAmount_Kind(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual := tc.mpt.Kind()
 			require.Equal(t, tc.expected, actual)
-			if tc.expPass {
-				require.NoError(t, nil)
-			} else {
-				require.Error(t, nil)
-			}
 		})
 	}
 }

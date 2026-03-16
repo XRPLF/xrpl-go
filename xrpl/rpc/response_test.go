@@ -7,6 +7,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetResult(t *testing.T) {
@@ -35,7 +36,7 @@ func TestGetResult(t *testing.T) {
 		var acr account.ChannelsResponse
 		err := jr.GetResult(&acr)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expected, acr)
 	})
 	t.Run("throws error for incorrect mapping", func(t *testing.T) {
@@ -57,6 +58,6 @@ func TestGetResult(t *testing.T) {
 		var acr account.ChannelsResponse
 		err := jr.GetResult(&acr)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }

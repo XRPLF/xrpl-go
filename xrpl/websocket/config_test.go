@@ -14,8 +14,8 @@ func TestNewClientConfig(t *testing.T) {
 	require.Equal(t, common.DefaultMaxRetries, config.maxRetries)
 	require.Equal(t, common.DefaultRetryDelay, config.retryDelay)
 	require.Equal(t, common.DefaultHost, config.host)
-	require.Equal(t, config.feeCushion, common.DefaultFeeCushion)
-	require.Equal(t, config.maxFeeXRP, common.DefaultMaxFeeXRP)
+	require.InEpsilon(t, common.DefaultFeeCushion, config.feeCushion, 0)
+	require.InEpsilon(t, common.DefaultMaxFeeXRP, config.maxFeeXRP, 0)
 	require.Equal(t, common.DefaultTimeout, config.timeout)
 }
 
@@ -31,12 +31,12 @@ func TestWithRetryDelay(t *testing.T) {
 
 func TestWithFeeCushion(t *testing.T) {
 	config := NewClientConfig().WithFeeCushion(1.5)
-	require.Equal(t, config.feeCushion, float32(1.5))
+	require.InEpsilon(t, float32(1.5), config.feeCushion, 0)
 }
 
 func TestWithMaxFeeXRP(t *testing.T) {
 	config := NewClientConfig().WithMaxFeeXRP(3.0)
-	require.Equal(t, config.maxFeeXRP, float32(3.0))
+	require.InEpsilon(t, float32(3.0), config.maxFeeXRP, 0)
 }
 
 func TestWithFaucetProvider(t *testing.T) {

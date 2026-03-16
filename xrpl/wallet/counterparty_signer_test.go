@@ -204,7 +204,7 @@ func TestSignLoanSetByCounterpartyBlob(t *testing.T) {
 
 	t.Run("fail - invalid blob", func(t *testing.T) {
 		_, _, _, err := SignLoanSetByCounterpartyBlob(counterparty, "not-a-valid-hex", nil)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -309,6 +309,6 @@ func TestCombineLoanSetCounterpartySignersBlob(t *testing.T) {
 
 	t.Run("fail - invalid blob", func(t *testing.T) {
 		_, _, err := CombineLoanSetCounterpartySignersBlob([]string{"not-valid-hex"})
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }

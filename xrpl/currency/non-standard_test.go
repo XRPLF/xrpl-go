@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConvertStringToHex(t *testing.T) {
@@ -86,6 +87,6 @@ func TestConvertHexToString(t *testing.T) {
 		hex := "41424344G"
 
 		_, err := ConvertHexToString(hex)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }

@@ -11,6 +11,7 @@ import (
 	utility "github.com/Peersyst/xrpl-go/xrpl/queries/utility"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateRequest(t *testing.T) {
@@ -31,7 +32,7 @@ func TestCreateRequest(t *testing.T) {
 
 		byteRequest, err := createRequest(req)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// assert bytes equal
 		assert.Equal(t, expectedRequestBytes, byteRequest)
 		// assert json equal
@@ -50,7 +51,7 @@ func TestCreateRequest(t *testing.T) {
 
 		byteRequest, err := createRequest(req)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// assert bytes equal
 		assert.Equal(t, expectedRequestBytes, byteRequest)
 		// assert json equal
@@ -70,7 +71,7 @@ func TestCreateRequest(t *testing.T) {
 
 		byteRequest, err := createRequest(req)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// assert bytes equal
 		assert.Equal(t, expectedRequestBytes, byteRequest)
 		// assert json equal
@@ -151,7 +152,7 @@ func TestCheckForError(t *testing.T) {
 
 		bodyBytes, err := checkForError(res)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, bodyBytes)
 	})
 }

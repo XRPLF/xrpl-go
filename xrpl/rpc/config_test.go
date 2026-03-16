@@ -25,7 +25,7 @@ func TestConfigCreation(t *testing.T) {
 
 		req.Header = cfg.Headers
 		assert.Equal(t, "http://s1.ripple.com:51234/", cfg.URL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	t.Run("No port + IP provided", func(t *testing.T) {
 		cfg, err := NewClientConfig("")
@@ -40,7 +40,7 @@ func TestConfigCreation(t *testing.T) {
 
 		req.Header = cfg.Headers
 		assert.Equal(t, "http://s1.ripple.com:51234/", cfg.URL)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	t.Run("Pass in custom HTTP client", func(t *testing.T) {
 		c := customHttpClient{}
@@ -52,7 +52,7 @@ func TestConfigCreation(t *testing.T) {
 		}
 		req.Header = cfg.Headers
 		assert.Equal(t, &Config{HTTPClient: customHttpClient{}, URL: "http://s1.ripple.com:51234/", Headers: headers, maxRetries: common.DefaultMaxRetries, retryDelay: common.DefaultRetryDelay, feeCushion: common.DefaultFeeCushion, maxFeeXRP: common.DefaultMaxFeeXRP, faucetProvider: nil}, cfg)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -60,14 +60,14 @@ func TestWithMaxFeeXRP(t *testing.T) {
 	maxFee := float32(5.0)
 	cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithMaxFeeXRP(maxFee))
 
-	require.Equal(t, maxFee, cfg.maxFeeXRP)
+	require.InEpsilon(t, maxFee, cfg.maxFeeXRP, 0)
 }
 
 func TestWithFeeCushion(t *testing.T) {
 	feeCushion := float32(1.5)
 	cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithFeeCushion(feeCushion))
 
-	require.Equal(t, feeCushion, cfg.feeCushion)
+	require.InEpsilon(t, feeCushion, cfg.feeCushion, 0)
 }
 
 func TestWithFaucetProvider(t *testing.T) {
