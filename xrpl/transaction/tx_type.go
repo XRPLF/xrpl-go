@@ -3,7 +3,6 @@ package transaction
 // TxType represents the type of an XRPL transaction.
 type TxType string
 
-// nolint // otherwise issues with the Credential transaction types
 const (
 	AccountSetTx       TxType = "AccountSet"
 	AccountDeleteTx    TxType = "AccountDelete"
@@ -19,9 +18,9 @@ const (
 	CheckCashTx        TxType = "CheckCash"
 	CheckCreateTx      TxType = "CheckCreate"
 	ClawbackTx         TxType = "Clawback"
-	CredentialAcceptTx TxType = "CredentialAccept"
-	CredentialCreateTx TxType = "CredentialCreate"
-	CredentialDeleteTx TxType = "CredentialDelete"
+	CredentialAcceptTx TxType = "CredentialAccept" //nolint:gosec // G101 false positive — not credentials
+	CredentialCreateTx TxType = "CredentialCreate" //nolint:gosec // G101 false positive — not credentials
+	CredentialDeleteTx TxType = "CredentialDelete" //nolint:gosec // G101 false positive — not credentials
 	DelegateSetTx      TxType = "DelegateSet"
 	DepositPreauthTx   TxType = "DepositPreauth"
 	DIDDeleteTx        TxType = "DIDDelete"
@@ -30,12 +29,9 @@ const (
 	EscrowCreateTx     TxType = "EscrowCreate"
 	EscrowFinishTx     TxType = "EscrowFinish"
 	MPTokenAuthorizeTx TxType = "MPTokenAuthorize"
-	//nolint:gosec
-	MPTokenIssuanceCreateTx TxType = "MPTokenIssuanceCreate"
-	//nolint:gosec
-	MPTokenIssuanceDestroyTx TxType = "MPTokenIssuanceDestroy"
-	//nolint:gosec
-	MPTokenIssuanceSetTx                TxType = "MPTokenIssuanceSet"
+	MPTokenIssuanceCreateTx  TxType = "MPTokenIssuanceCreate"  //nolint:gosec // G101 false positive — not credentials
+	MPTokenIssuanceDestroyTx TxType = "MPTokenIssuanceDestroy" //nolint:gosec // G101 false positive — not credentials
+	MPTokenIssuanceSetTx     TxType = "MPTokenIssuanceSet"     //nolint:gosec // G101 false positive — not credentials
 	NFTokenAcceptOfferTx                TxType = "NFTokenAcceptOffer"
 	NFTokenBurnTx                       TxType = "NFTokenBurn"
 	NFTokenCancelOfferTx                TxType = "NFTokenCancelOffer"

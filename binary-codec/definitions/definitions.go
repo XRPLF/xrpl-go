@@ -87,7 +87,7 @@ func castFieldInfo(v interface{}) (FieldInfo, error) {
 	if fi, ok := v.(map[string]interface{}); ok {
 		return FieldInfo{
 			// TODO: Check if this is still needed
-			//nolint:gosec // G115: Potential hardcoded credentials (gosec)
+			//nolint:gosec // G115: integer overflow conversion int64 -> int32, nth is a small field ordinal
 			Nth:            int32(fi["nth"].(int64)),
 			IsVLEncoded:    fi["isVLEncoded"].(bool),
 			IsSerialized:   fi["isSerialized"].(bool),

@@ -519,7 +519,7 @@ func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
 		serial |= PosSignBitMask // if the sign is positive, set the sign (second) bit to 1
 	}
 	// TODO: Check if this is still needed
-	//nolint:gosec // G115: Potential hardcoded credentials (gosec)
+	//nolint:gosec // G115: integer overflow conversion int32 -> uint64, exp+97 is always positive and small
 	serial |= (uint64(exp+97) << 54) // if the exponent is positive, set the exponent bits to the exponent + 97
 	serial |= uint64(mantissa)       // last 54 bits are mantissa
 
