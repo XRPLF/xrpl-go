@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+#### pkg/crypto
+
+- **Fixed a bug in secp256k1 `deriveScalar` where the discriminator and iteration counter were written to the input seed slice instead of their own buffers.** The old code wrote `discrim` and `i` values into `bytes[0..3]` (the caller's seed) rather than into `discrimBytes[0..3]` and `shiftBytes[0..3]`, causing two problems:
+  1. **Input mutation**: the seed passed by the caller was silently corrupted on every call.
+  2. **Zero-hashing**: the actual `discrimBytes` and `shiftBytes` arrays were never populated, so the hash always received zeros regardless of the discriminator or iteration values.
+- **Practical impact was limited**: because the hash of the seed is written *before* the mutation, and the first iteration (`i = 0`) with `discrim = 0` produces the same zeros in both the buggy and fixed code paths, the bug was invisible for the overwhelmingly common case (a valid scalar is found on the first try, which happens with probability ~1 − 2⁻²⁵⁶). The bug would only produce incorrect results in the astronomically rare scenario where the first hash overflows the curve order or is zero, triggering a retry with the now-corrupted seed. No real-world keypair derivation is believed to have been affected.
+- Replaced manual DER signature encoding/decoding with the `dcrec/secp256k1` library's `Serialize()` and `ParseDERSignature()`, and replaced `btcsuite/btcd/btcec/v2` with `decred/dcrd/dcrec/secp256k1/v4` (v4.4.1).
+
 ## [v0.1.16]
 
 ### Added
