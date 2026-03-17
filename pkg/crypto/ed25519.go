@@ -1,3 +1,5 @@
+// Package crypto provides cryptographic utilities for XRPL key management,
+// including Ed25519 and secp256k1 key derivation, signing, and verification.
 package crypto
 
 import (
