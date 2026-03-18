@@ -204,6 +204,27 @@ var (
 	// ErrHolderAccountConflict is returned when the holder account is the same as the issuing account.
 	ErrHolderAccountConflict = errors.New("holder must be different from the account")
 
+	// ErrMPTIssuanceCreateMutableFlagsZero is returned when MutableFlags is set to zero in MPTokenIssuanceCreate.
+	ErrMPTIssuanceCreateMutableFlagsZero = errors.New("mptoken issuance create: MutableFlags cannot be zero")
+	// ErrMPTIssuanceCreateDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
+	ErrMPTIssuanceCreateDomainIDInvalid = errors.New("mptoken issuance create: DomainID must be a valid 64-character hexadecimal string")
+	// ErrMPTIssuanceCreateDomainIDRequiresRequireAuth is returned when DomainID is set without enabling TfMPTRequireAuth flag.
+	ErrMPTIssuanceCreateDomainIDRequiresRequireAuth = errors.New("mptoken issuance create: DomainID requires TfMPTRequireAuth flag to be set")
+	// ErrMPTIssuanceSetEmpty is returned when no operation is specified (no Flags, Holder, or DynamicMPT fields).
+	ErrMPTIssuanceSetEmpty = errors.New("mptoken issuance set: at least one of Flags, Holder, MutableFlags, MPTokenMetadata, TransferFee, or DomainID must be set")
+	// ErrMPTIssuanceSetHolderMutuallyExclusive is returned when Holder is set together with DynamicMPT fields.
+	ErrMPTIssuanceSetHolderMutuallyExclusive = errors.New("mptoken issuance set: Holder is mutually exclusive with MutableFlags/MPTokenMetadata/TransferFee/DomainID")
+	// ErrMPTIssuanceSetFlagsMutuallyExclusive is returned when non-zero Flags are set together with DynamicMPT fields.
+	ErrMPTIssuanceSetFlagsMutuallyExclusive = errors.New("mptoken issuance set: Flags is mutually exclusive with MutableFlags/MPTokenMetadata/TransferFee")
+	// ErrMPTIssuanceSetMutableFlagsZero is returned when MutableFlags is set to zero.
+	ErrMPTIssuanceSetMutableFlagsZero = errors.New("mptoken issuance set: MutableFlags cannot be zero")
+	// ErrMPTIssuanceSetMutableFlagsConflict is returned when MutableFlags has both set and clear for the same flag.
+	ErrMPTIssuanceSetMutableFlagsConflict = errors.New("mptoken issuance set: cannot set and clear the same flag simultaneously")
+	// ErrMPTIssuanceSetTransferFeeWithClearCanTransfer is returned when a non-zero TransferFee is set together with tmfMPTClearCanTransfer.
+	ErrMPTIssuanceSetTransferFeeWithClearCanTransfer = errors.New("mptoken issuance set: non-zero TransferFee cannot be set together with tmfMPTClearCanTransfer")
+	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string (and not empty).
+	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string or empty")
+
 	// escrow
 
 	// ErrEscrowFinishMissingOwner is returned when the Owner field is missing in an EscrowFinish transaction.

@@ -744,6 +744,11 @@ func TestIsDomainID(t *testing.T) {
 			input:    "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd",
 			expected: true,
 		},
+		{
+			name:     "fail - 64 character non-hex DomainID",
+			input:    "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### xrpl
+
+- Added Dynamic MPT support for `MPTokenIssuanceCreate`:
+  - `MutableFlags` field to declare which properties can be mutated after creation.
+  - `DomainID` field to associate a permissioned domain (requires `TfMPTRequireAuth` flag).
+  - MutableFlags constants: `TmfMPTCanMutateCanLock`, `TmfMPTCanMutateRequireAuth`, `TmfMPTCanMutateCanEscrow`, `TmfMPTCanMutateCanTrade`, `TmfMPTCanMutateCanTransfer`, `TmfMPTCanMutateCanClawback`, `TmfMPTCanMutateMetadata`, `TmfMPTCanMutateTransferFee`.
+  - Flag setter methods for all mutable flags.
+- Added Dynamic MPT support for `MPTokenIssuanceSet`:
+  - `MutableFlags`, `MPTokenMetadata`, `TransferFee`, and `DomainID` fields for post-creation mutation.
+  - MutableFlags set/clear constant pairs: `TmfMPTSetCanLock`/`TmfMPTClearCanLock`, `TmfMPTSetRequireAuth`/`TmfMPTClearRequireAuth`, `TmfMPTSetCanEscrow`/`TmfMPTClearCanEscrow`, `TmfMPTSetCanTrade`/`TmfMPTClearCanTrade`, `TmfMPTSetCanTransfer`/`TmfMPTClearCanTransfer`, `TmfMPTSetCanClawback`/`TmfMPTClearCanClawback`.
+  - Flag setter methods for all set/clear mutable flags.
+  - Validation: mutual exclusivity between `Holder`/`Flags` and DynamicMPT fields, set/clear conflict detection, `TransferFee` + `ClearCanTransfer` conflict, `DomainID` format validation, no-op transaction detection.
+- Added `MutableFlags` and `DomainID` fields to `MPTokenIssuance` ledger entry type with ledger-state mutable flags constants (`Lsmf` prefix) and flag setter methods.
+- Added `MutableFlags` helper function in `types` package.
+
+### Fixed
+
+#### xrpl
+
+- Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
+- Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
+- Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
+
 ## [v0.1.16]
 
 ### Added

@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -53,6 +54,36 @@ func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
 				"TransferFee": 314,
 				"MaximumAmount": "10000",
 				"MPTokenMetadata": "FOO"
+			}`,
+		},
+		{
+			name: "pass - MPTokenIssuanceCreate with MutableFlags",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account: "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+				},
+				MutableFlags: types.MutableFlags(TmfMPTCanMutateCanLock | TmfMPTCanMutateMetadata),
+			},
+			expected: `{
+				"Account": "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+				"TransactionType": "MPTokenIssuanceCreate",
+				"MutableFlags": 65538
+			}`,
+		},
+		{
+			name: "pass - MPTokenIssuanceCreate with DomainID",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account: "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					Flags:   TfMPTRequireAuth,
+				},
+				DomainID: types.DomainID("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
+			},
+			expected: `{
+				"Account": "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+				"TransactionType": "MPTokenIssuanceCreate",
+				"Flags": 4,
+				"DomainID": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"
 			}`,
 		},
 	}
@@ -129,6 +160,123 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 			wantValid:  false,
 			wantErr:    true,
 			errMessage: ErrTransferFeeRequiresCanTransfer,
+		},
+		{
+			name: "pass - TransferFee zero without TfMPTCanTransfer flag",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				TransferFee: types.TransferFee(0),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - MPTokenMetadata not valid hex",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MPTokenMetadata: types.MPTokenMetadata("not-hex!"),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidMPTokenMetadata,
+		},
+		{
+			name: "fail - MPTokenMetadata exceeds 1024 bytes",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MPTokenMetadata: types.MPTokenMetadata(strings.Repeat("AB", 1025)),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidMPTokenMetadata,
+		},
+		{
+			name: "pass - valid with MutableFlags",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MutableFlags: types.MutableFlags(TmfMPTCanMutateCanLock | TmfMPTCanMutateMetadata),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - MutableFlags cannot be zero",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MutableFlags: types.MutableFlags(0),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrMPTIssuanceCreateMutableFlagsZero,
+		},
+		{
+			name: "pass - valid with DomainID and TfMPTRequireAuth",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+					Flags:           TfMPTRequireAuth,
+				},
+				DomainID: types.DomainID("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - DomainID without TfMPTRequireAuth",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				DomainID: types.DomainID("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrMPTIssuanceCreateDomainIDRequiresRequireAuth,
+		},
+		{
+			name: "fail - DomainID invalid hex",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+					Flags:           TfMPTRequireAuth,
+				},
+				DomainID: types.DomainID("not-valid"),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrMPTIssuanceCreateDomainIDInvalid,
+		},
+		{
+			name: "fail - TransferFee exceeds MaxTransferFee",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+					Flags:           TfMPTCanTransfer,
+				},
+				TransferFee: types.TransferFee(50001),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidTransferFee,
 		},
 	}
 
@@ -215,4 +363,73 @@ func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
 
 	expectedFlags := TfMPTCanLock | TfMPTRequireAuth | TfMPTCanEscrow | TfMPTCanTrade | TfMPTCanTransfer | TfMPTCanClawback
 	require.Equal(t, uint32(expectedFlags), tx.Flags)
+}
+
+func TestMPTokenIssuanceCreate_MutableFlags(t *testing.T) {
+	tests := []struct {
+		name     string
+		setFlag  func(*MPTokenIssuanceCreate)
+		flagMask uint32
+	}{
+		{
+			name:     "MPTCanMutateCanLock",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanLockFlag,
+			flagMask: TmfMPTCanMutateCanLock,
+		},
+		{
+			name:     "MPTCanMutateRequireAuth",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateRequireAuthFlag,
+			flagMask: TmfMPTCanMutateRequireAuth,
+		},
+		{
+			name:     "MPTCanMutateCanEscrow",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanEscrowFlag,
+			flagMask: TmfMPTCanMutateCanEscrow,
+		},
+		{
+			name:     "MPTCanMutateCanTrade",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanTradeFlag,
+			flagMask: TmfMPTCanMutateCanTrade,
+		},
+		{
+			name:     "MPTCanMutateCanTransfer",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanTransferFlag,
+			flagMask: TmfMPTCanMutateCanTransfer,
+		},
+		{
+			name:     "MPTCanMutateCanClawback",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanClawbackFlag,
+			flagMask: TmfMPTCanMutateCanClawback,
+		},
+		{
+			name:     "MPTCanMutateMetadata",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateMetadataFlag,
+			flagMask: TmfMPTCanMutateMetadata,
+		},
+		{
+			name:     "MPTCanMutateTransferFee",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateTransferFeeFlag,
+			flagMask: TmfMPTCanMutateTransferFee,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := &MPTokenIssuanceCreate{}
+			tt.setFlag(tx)
+			require.NotNil(t, tx.MutableFlags)
+			require.Equal(t, tt.flagMask, *tx.MutableFlags)
+		})
+	}
+
+	// Test all mutable flags together
+	tx := &MPTokenIssuanceCreate{}
+	for _, tt := range tests {
+		tt.setFlag(tx)
+	}
+
+	expectedMutableFlags := TmfMPTCanMutateCanLock | TmfMPTCanMutateRequireAuth | TmfMPTCanMutateCanEscrow |
+		TmfMPTCanMutateCanTrade | TmfMPTCanMutateCanTransfer | TmfMPTCanMutateCanClawback |
+		TmfMPTCanMutateMetadata | TmfMPTCanMutateTransferFee
+	require.Equal(t, expectedMutableFlags, *tx.MutableFlags)
 }

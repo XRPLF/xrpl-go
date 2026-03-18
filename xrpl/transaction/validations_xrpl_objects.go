@@ -270,7 +270,7 @@ func IsAsset(asset ledger.Asset) (bool, error) {
 
 // IsDomainID checks if the given domain ID is valid.
 func IsDomainID(id string) bool {
-	return len(id) == DomainIDLength
+	return len(id) == DomainIDLength && typecheck.IsHex(id)
 }
 
 // IsLedgerEntryID checks if the input is a valid ledger entry id.
