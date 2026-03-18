@@ -103,6 +103,18 @@ func TestMPTokenIssuance_SetLsmfMPTCanMutateTransferFee(t *testing.T) {
 	require.Equal(t, LsmfMPTCanMutateTransferFee, mpTokenIssuance.MutableFlags)
 }
 
+func TestMPTokenIssuance_SetLsmfMPTCannotMutatePrivacy(t *testing.T) {
+	mpTokenIssuance := &MPTokenIssuance{}
+	mpTokenIssuance.SetLsmfMPTCannotMutatePrivacy()
+	require.Equal(t, LsmfMPTCannotMutatePrivacy, mpTokenIssuance.MutableFlags)
+}
+
+func TestMPTokenIssuance_SetLsfMPTCanPrivacy(t *testing.T) {
+	mpTokenIssuance := &MPTokenIssuance{}
+	mpTokenIssuance.SetLsfMPTCanPrivacy()
+	require.Equal(t, LsfMPTCanPrivacy, mpTokenIssuance.Flags)
+}
+
 func TestMPTokenIssuanceSerialization(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -409,6 +421,78 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"PreviousTxnLgrSeq": 234644,
 	"Sequence": 1,
 	"MutableFlags": 65538
+}`,
+		},
+		{
+			name: "pass - valid MPTokenIssuance with LsfMPTCanPrivacy",
+			mpTokenIssuance: &MPTokenIssuance{
+				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
+				LedgerEntryType:   MPTokenIssuanceEntry,
+				Flags:             LsfMPTCanPrivacy,
+				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
+				AssetScale:        2,
+				MaximumAmount:     1000,
+				OutstandingAmount: 100,
+				TransferFee:       100,
+				MPTokenMetadata:   "7B227469636B6572",
+				OwnerNode:         1,
+				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
+				PreviousTxnLgrSeq: 234644,
+				Sequence:          1,
+			},
+			expected: `{
+	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+	"LedgerEntryType": "MPTokenIssuance",
+	"Flags": 128,
+	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+	"AssetScale": 2,
+	"MaximumAmount": 1000,
+	"OutstandingAmount": 100,
+	"TransferFee": 100,
+	"MPTokenMetadata": "7B227469636B6572",
+	"OwnerNode": 1,
+	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
+	"PreviousTxnLgrSeq": 234644,
+	"Sequence": 1
+}`,
+		},
+		{
+			name: "pass - valid MPTokenIssuance with confidential transfer fields",
+			mpTokenIssuance: &MPTokenIssuance{
+				Index:                        types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
+				LedgerEntryType:              MPTokenIssuanceEntry,
+				Flags:                        LsfMPTCanPrivacy | LsfMPTCanTransfer,
+				Issuer:                       types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
+				AssetScale:                   2,
+				MaximumAmount:                1000,
+				OutstandingAmount:            100,
+				TransferFee:                  100,
+				MPTokenMetadata:              "7B227469636B6572",
+				OwnerNode:                    1,
+				PreviousTxnID:                types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
+				PreviousTxnLgrSeq:            234644,
+				Sequence:                     1,
+				IssuerElGamalPublicKey:       "AABBCCDD",
+				AuditorElGamalPublicKey:      "EEFF0011",
+				ConfidentialOutstandingAmount: 500,
+			},
+			expected: `{
+	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+	"LedgerEntryType": "MPTokenIssuance",
+	"Flags": 160,
+	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+	"AssetScale": 2,
+	"MaximumAmount": 1000,
+	"OutstandingAmount": 100,
+	"TransferFee": 100,
+	"MPTokenMetadata": "7B227469636B6572",
+	"OwnerNode": 1,
+	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
+	"PreviousTxnLgrSeq": 234644,
+	"Sequence": 1,
+	"IssuerElGamalPublicKey": "AABBCCDD",
+	"AuditorElGamalPublicKey": "EEFF0011",
+	"ConfidentialOutstandingAmount": 500
 }`,
 		},
 	}

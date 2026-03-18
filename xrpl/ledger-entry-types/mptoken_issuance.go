@@ -19,6 +19,9 @@ const (
 	LsfMPTCanTransfer uint32 = 0x00000020
 	// LsfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
 	LsfMPTCanClawback uint32 = 0x00000040
+	// LsfMPTCanPrivacy if set, indicates that confidential (privacy-preserving) transfers are enabled.
+	// This allows holders to send/receive tokens without revealing amounts publicly.
+	LsfMPTCanPrivacy uint32 = 0x00000080
 )
 
 // Ledger-state mutable flags for MPTokenIssuance (Lsmf prefix).
@@ -39,6 +42,8 @@ const (
 	LsmfMPTCanMutateMetadata uint32 = 0x00010000
 	// LsmfMPTCanMutateTransferFee indicates the TransferFee can be mutated.
 	LsmfMPTCanMutateTransferFee uint32 = 0x00020000
+	// LsmfMPTCannotMutatePrivacy if set, the lsfMPTCanPrivacy flag can never be changed after the token is issued.
+	LsmfMPTCannotMutatePrivacy uint32 = 0x00040000
 )
 
 // An MPTokenIssuance entry represents a single MPT issuance and holds data associated with the issuance itself.
@@ -85,6 +90,15 @@ type MPTokenIssuance struct {
 	DomainID string `json:",omitempty"`
 	// MutableFlags indicates which properties of this MPT can be mutated after creation.
 	MutableFlags uint32 `json:",omitempty"`
+	// The issuer's ElGamal public key for confidential transfers.
+	// Required if confidential transfers are enabled.
+	IssuerElGamalPublicKey string `json:",omitempty"`
+	// The auditor's ElGamal public key for confidential transfers.
+	// Optional; allows an auditor to decrypt confidential balances.
+	AuditorElGamalPublicKey string `json:",omitempty"`
+	// The encrypted outstanding amount for confidential transfers.
+	// Tracks total confidential MPT in circulation.
+	ConfidentialOutstandingAmount uint64 `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.
@@ -127,6 +141,11 @@ func (c *MPTokenIssuance) SetLsfMPTCanClawback() {
 	c.Flags |= LsfMPTCanClawback
 }
 
+// SetLsfMPTCanPrivacy sets the LsfMPTCanPrivacy flag.
+func (c *MPTokenIssuance) SetLsfMPTCanPrivacy() {
+	c.Flags |= LsfMPTCanPrivacy
+}
+
 // SetLsmfMPTCanMutateCanLock sets the LsmfMPTCanMutateCanLock flag on MutableFlags.
 func (c *MPTokenIssuance) SetLsmfMPTCanMutateCanLock() {
 	c.MutableFlags |= LsmfMPTCanMutateCanLock
@@ -165,4 +184,10 @@ func (c *MPTokenIssuance) SetLsmfMPTCanMutateMetadata() {
 // SetLsmfMPTCanMutateTransferFee sets the LsmfMPTCanMutateTransferFee flag on MutableFlags.
 func (c *MPTokenIssuance) SetLsmfMPTCanMutateTransferFee() {
 	c.MutableFlags |= LsmfMPTCanMutateTransferFee
+}
+
+// SetLsmfMPTCannotMutatePrivacy sets the LsmfMPTCannotMutatePrivacy flag on MutableFlags.
+// When set, the lsfMPTCanPrivacy flag can never be changed after the token is issued.
+func (c *MPTokenIssuance) SetLsmfMPTCannotMutatePrivacy() {
+	c.MutableFlags |= LsmfMPTCannotMutatePrivacy
 }
