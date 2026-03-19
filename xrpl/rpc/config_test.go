@@ -53,7 +53,7 @@ func TestConfigCreation(t *testing.T) {
 			"Content-Type": {"application/json"},
 		}
 		req.Header = cfg.Headers
-		assert.Equal(t, &Config{HTTPClient: customHttpClient{}, URL: "http://s1.ripple.com:51234/", Headers: headers, maxRetries: common.DefaultMaxRetries, retryDelay: common.DefaultRetryDelay, feeCushion: common.DefaultFeeCushion, maxFeeXRP: common.DefaultMaxFeeXRP, faucetProvider: nil}, cfg)
+		assert.Equal(t, &Config{HTTPClient: customHttpClient{}, URL: "http://s1.ripple.com:51234/", Headers: headers, maxRetries: common.DefaultMaxRetries, retryDelay: common.DefaultRetryDelay, feeCushion: common.DefaultFeeCushion, maxFeeXRP: common.DefaultMaxFeeXRP, faucetProvider: nil, timeout: common.DefaultTimeout}, cfg)
 		assert.NoError(t, err)
 	})
 }
@@ -84,6 +84,12 @@ func TestWithTimeout(t *testing.T) {
 	cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithTimeout(timeOut))
 
 	require.Equal(t, timeOut, cfg.timeout)
+}
+
+func TestDefaultTimeout(t *testing.T) {
+	cfg, _ := NewClientConfig("http://s1.ripple.com:51234")
+
+	require.Equal(t, common.DefaultTimeout, cfg.timeout)
 }
 
 func TestWithMaxRetries(t *testing.T) {

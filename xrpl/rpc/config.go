@@ -109,18 +109,18 @@ func NewClientConfig(url string, opts ...ConfigOpt) (*Config, error) {
 
 		maxRetries: common.DefaultMaxRetries,
 		retryDelay: common.DefaultRetryDelay,
-
 		maxFeeXRP:  common.DefaultMaxFeeXRP,
 		feeCushion: common.DefaultFeeCushion,
+		timeout:    common.DefaultTimeout,
 	}
 
 	for _, opt := range opts {
 		opt(cfg)
 	}
 
-	// Ensure the HTTPClient has the correct timeout if user did not set one
-	if hc, ok := cfg.HTTPClient.(*http.Client); ok && cfg.timeout == 0 {
-		hc.Timeout = common.DefaultTimeout
+	// Keep the default HTTP client aligned with the config timeout.
+	if hc, ok := cfg.HTTPClient.(*http.Client); ok {
+		hc.Timeout = cfg.timeout
 	}
 
 	return cfg, nil
