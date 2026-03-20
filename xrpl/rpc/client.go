@@ -35,7 +35,6 @@ func NewClient(cfg *Config) *Client {
 
 // Request sends a request to the XRPL server and returns the response and any error encountered.
 func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
-
 	err := reqParams.Validate()
 	if err != nil {
 		return nil, err
@@ -75,7 +74,7 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 		maxRetries := 3
 		backoffDuration := 1 * time.Second
 
-		for i := 0; i < maxRetries; i++ {
+		for range maxRetries {
 			time.Sleep(backoffDuration)
 
 			// Make request again after waiting
@@ -143,9 +142,7 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 
 	lastLedgerSequence, ok := tx["LastLedgerSequence"].(uint32)
 	if !ok {
-
 		return nil, ErrMissingLastLedgerSequenceInTransaction
-
 	}
 
 	txResponse, err := c.SubmitTxBlob(txBlob, failHard)
@@ -208,7 +205,7 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 	if err != nil {
 		return nil, err
 	}
-	signers, okSigners := tx["Signers"].([]interface{})
+	signers, okSigners := tx["Signers"].([]any)
 
 	if okSigners && len(signers) > 0 {
 		for _, sig := range signers {

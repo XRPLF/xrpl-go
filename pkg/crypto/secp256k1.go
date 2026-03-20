@@ -4,6 +4,7 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
+	"math/big"
 
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"

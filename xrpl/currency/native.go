@@ -18,7 +18,7 @@ const (
 
 // XrpToDrops converts an amount in XRP to an amount in drops.
 func XrpToDrops(value string) (string, error) {
-	if i := strings.IndexByte(value, '.'); i != -1 && len(value[i+1:]) > int(MaxFractionLength) {
+	if _, after, ok := strings.Cut(value, "."); ok && len(after) > int(MaxFractionLength) {
 		return "", errors.New("xrp to drops: value has too many decimals")
 	}
 
@@ -29,7 +29,6 @@ func XrpToDrops(value string) (string, error) {
 
 	dropsFloat := xrpFloat * DropsPerXrp
 	return strconv.FormatFloat(dropsFloat, 'f', -1, 64), nil
-
 }
 
 // DropsToXrp converts an amount of drops into an amount of XRP.

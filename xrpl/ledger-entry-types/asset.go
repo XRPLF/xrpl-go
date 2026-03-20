@@ -35,8 +35,8 @@ func (a Asset) Kind() AssetKind {
 }
 
 // Flatten returns the flattened representation of the Asset.
-func (a *Asset) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (a *Asset) Flatten() map[string]any {
+	flattened := make(map[string]any)
 
 	if a.MPTIssuanceID != "" {
 		flattened["mpt_issuance_id"] = a.MPTIssuanceID

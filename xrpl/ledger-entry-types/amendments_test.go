@@ -58,5 +58,5 @@ func TestAmmendments(t *testing.T) {
 
 func TestAmendments_EntryType(t *testing.T) {
 	am := &Amendments{}
-	require.Equal(t, am.EntryType(), AmendmentsEntry)
+	require.Equal(t, AmendmentsEntry, am.EntryType())
 }

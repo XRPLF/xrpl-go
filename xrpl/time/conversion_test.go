@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTimeConversion_RippleTimeToUnixTime(t *testing.T) {
@@ -134,9 +135,9 @@ func TestTimeConversion_IsoTimeToRippleTime(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := IsoTimeToRippleTime(tc.isoTime)
 			if tc.wantErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tc.rippleTime, actual)
 			}
 		})
@@ -180,9 +181,9 @@ func TestTimeConversion_ParseISO8601(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := parseISO8601(tc.input)
 			if tc.hasError {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, tc.expected, actual)
 			}
 		})

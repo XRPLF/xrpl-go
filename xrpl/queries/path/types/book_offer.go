@@ -35,9 +35,9 @@ type BookOffer struct {
 	// Used in combination with the Account to identify this offer.
 	Sequence uint32
 	// The remaining amount and type of currency requested by the Offer creator.
-	TakerPays interface{}
+	TakerPays any
 	// The remaining amount and type of currency being provided by the Offer creator.
-	TakerGets  interface{}
+	TakerGets  any
 	OwnerFunds string `json:"owner_funds,omitempty"`
 	// TakerGetsFunded types.CurrencyAmount `json:"taker_gets_funded,omitempty"`
 	TakerGetsFunded any `json:"taker_gets_funded,omitempty"`

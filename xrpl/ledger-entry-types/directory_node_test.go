@@ -132,17 +132,17 @@ func TestNFTTokenSellOffersDirectoryNode(t *testing.T) {
 
 func TestDirectoryNode_LedgerEntryType(t *testing.T) {
 	var s Object = &DirectoryNode{}
-	require.Equal(t, s.EntryType(), DirectoryNodeEntry)
+	require.Equal(t, DirectoryNodeEntry, s.EntryType())
 }
 
 func TestDirectoryNode_SetNFTokenBuyOffers(t *testing.T) {
 	s := &DirectoryNode{}
 	s.SetNFTokenBuyOffers()
-	require.Equal(t, s.Flags, LsfNFTokenBuyOffers)
+	require.Equal(t, LsfNFTokenBuyOffers, s.Flags)
 }
 
 func TestDirectoryNode_SetNFTokenSellOffers(t *testing.T) {
 	s := &DirectoryNode{}
 	s.SetNFTokenSellOffers()
-	require.Equal(t, s.Flags, LsfNFTokenSellOffers)
+	require.Equal(t, LsfNFTokenSellOffers, s.Flags)
 }

@@ -9,12 +9,12 @@ type Info struct {
 	AmendmentBlocked         bool                 `json:"amendment_blocked,omitempty"`
 	BuildVersion             string               `json:"build_version"`
 	CompleteLedgers          string               `json:"complete_ledgers"`
-	ClosedLedger             ClosedLedger         `json:"closed_ledger,omitempty"`
+	ClosedLedger             ClosedLedger         `json:"closed_ledger,omitzero"`
 	HostID                   string               `json:"hostid"`
 	IOLatencyMS              uint                 `json:"io_latency_ms"`
 	JQTransOverflow          string               `json:"jq_trans_overflow"`
 	LastClose                ServerClose          `json:"last_close"`
-	Load                     ServerLoad           `json:"load,omitempty"`
+	Load                     ServerLoad           `json:"load,omitzero"`
 	LoadFactor               uint                 `json:"load_factor"`
 	NetworkID                uint                 `json:"network_id,omitempty"`
 	LoadFactorLocal          uint                 `json:"load_factor_local,omitempty"`
@@ -35,10 +35,10 @@ type Info struct {
 	StateAccounting          StateAccountingFinal `json:"state_accounting"`
 	Time                     string               `json:"time"`
 	Uptime                   uint                 `json:"uptime"`
-	ValidatedLedger          ClosedLedger         `json:"validated_ledger,omitempty"`
+	ValidatedLedger          ClosedLedger         `json:"validated_ledger,omitzero"`
 	ValidationQuorum         uint                 `json:"validation_quorum"`
 	ValidatorListExpires     string               `json:"validator_list_expires,omitempty"`
-	ValidatorList            ServerValidatorList  `json:"validator_list,omitempty"`
+	ValidatorList            ServerValidatorList  `json:"validator_list,omitzero"`
 }
 
 // ServerValidatorList holds the count, expiration, and status of the server's validator list.
@@ -65,11 +65,11 @@ type State struct {
 	AmendmentBlocked        bool                 `json:"amendment_blocked,omitempty"`
 	BuildVersion            string               `json:"build_version"`
 	CompleteLedgers         string               `json:"complete_ledgers"`
-	ClosedLedger            ClosedLedgerState    `json:"closed_ledger,omitempty"`
+	ClosedLedger            ClosedLedgerState    `json:"closed_ledger,omitzero"`
 	IOLatencyMS             uint                 `json:"io_latency_ms"`
 	JQTransOverflow         string               `json:"jq_trans_overflow"`
 	LastClose               CloseState           `json:"last_close"`
-	Load                    ServerLoad           `json:"load,omitempty"`
+	Load                    ServerLoad           `json:"load,omitzero"`
 	LoadBase                int                  `json:"load_base"`
 	LoadFactor              uint                 `json:"load_factor"`
 	LoadFactorFeeEscelation uint                 `json:"load_factor_fee_escalation,omitempty"`
@@ -84,7 +84,7 @@ type State struct {
 	StateAccounting         StateAccountingFinal `json:"state_accounting"`
 	Time                    string               `json:"time"`
 	Uptime                  uint                 `json:"uptime"`
-	ValidatedLedger         LedgerState          `json:"validated_ledger,omitempty"`
+	ValidatedLedger         LedgerState          `json:"validated_ledger,omitzero"`
 	ValidationQuorum        uint                 `json:"validation_quorum"`
 	ValidatorListExpires    string               `json:"validator_list_expires,omitempty"`
 }

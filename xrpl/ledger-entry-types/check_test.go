@@ -46,5 +46,5 @@ func TestCheck(t *testing.T) {
 
 func TestCheck_EntryType(t *testing.T) {
 	s := &Check{}
-	require.Equal(t, s.EntryType(), CheckEntry)
+	require.Equal(t, CheckEntry, s.EntryType())
 }

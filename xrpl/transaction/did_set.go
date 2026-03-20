@@ -53,7 +53,6 @@ func (tx *DIDSet) Flatten() FlatTransaction {
 
 // Validate checks DIDSet transaction fields and returns false with an error if invalid.
 func (tx *DIDSet) Validate() (bool, error) {
-
 	if ok, err := tx.BaseTx.Validate(); !ok {
 		return false, err
 	}

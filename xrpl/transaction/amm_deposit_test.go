@@ -13,6 +13,7 @@ func TestAMMDeposit_TxType(t *testing.T) {
 	tx := &AMMDeposit{}
 	assert.Equal(t, AMMDepositTx, tx.TxType())
 }
+
 func TestAMMDeposit_Flatten(t *testing.T) {
 	tx := &AMMDeposit{
 		BaseTx: BaseTx{
@@ -147,6 +148,7 @@ func TestAMMDeposit_Flags(t *testing.T) {
 		})
 	}
 }
+
 func TestAMMDeposit_Validate(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -41,5 +41,5 @@ func TestNFTokenPage(t *testing.T) {
 
 func TestNFTokenPage_EntryType(t *testing.T) {
 	s := &NFTokenPage{}
-	require.Equal(t, s.EntryType(), NFTokenPageEntry)
+	require.Equal(t, NFTokenPageEntry, s.EntryType())
 }

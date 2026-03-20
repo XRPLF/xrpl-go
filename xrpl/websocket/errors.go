@@ -110,7 +110,7 @@ func (e *ClientError) Error() string {
 
 // ErrUnknownStreamType is returned when an unknown stream type is encountered.
 type ErrUnknownStreamType struct {
-	Type interface{}
+	Type any
 }
 
 // Error implements the error interface for ErrUnknownStreamType

@@ -118,7 +118,8 @@ func main() {
 			Currency: currency.ConvertStringToHex(currencyCode),
 			Issuer:   types.Address(issuer.ClassicAddress),
 			Value:    "1000000000",
-		}}
+		},
+	}
 	trustSet.SetSetNoRippleFlag()
 	submitAndWait(client, trustSet, holderWallet1)
 

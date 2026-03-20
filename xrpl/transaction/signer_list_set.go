@@ -56,7 +56,7 @@ type SignerListSet struct {
 	BaseTx
 	// A target number for the signer weights. A multi-signature from this list is valid only if the sum weights of the signatures provided is greater than or equal to this value.
 	// To delete a signer list, use the value 0. Needs to be an uint32.
-	SignerQuorum interface{}
+	SignerQuorum any
 	// (Omitted when deleting) Array of SignerEntry objects, indicating the addresses and weights of signers in this list.
 	// This signer list must have at least 1 member and no more than 32 members.
 	// No address may appear more than once in the list, nor may the Account submitting the transaction appear in the list.
@@ -79,9 +79,9 @@ func (s *SignerListSet) Flatten() FlatTransaction {
 	}
 
 	if len(s.SignerEntries) > 0 {
-		signerEntries := make([]interface{}, len(s.SignerEntries))
+		signerEntries := make([]any, len(s.SignerEntries))
 		for i, entry := range s.SignerEntries {
-			signerEntry := make(map[string]interface{})
+			signerEntry := make(map[string]any)
 
 			signerEntry["SignerEntry"] = entry.SignerEntry.Flatten()
 			signerEntries[i] = signerEntry

@@ -9,7 +9,7 @@ func TestCredential_Flatten(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    Credential
-		expected interface{}
+		expected any
 	}{
 		{
 			name: "pass - empty credential",

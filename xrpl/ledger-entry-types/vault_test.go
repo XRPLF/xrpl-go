@@ -213,11 +213,11 @@ func TestVault_Serialization(t *testing.T) {
 
 func TestVault_EntryType(t *testing.T) {
 	s := &Vault{}
-	require.Equal(t, s.EntryType(), VaultEntry)
+	require.Equal(t, VaultEntry, s.EntryType())
 }
 
 func TestVault_SetLsfVaultPrivate(t *testing.T) {
 	v := &Vault{}
 	v.SetLsfVaultPrivate()
-	require.Equal(t, v.Flags, LsfVaultPrivate)
+	require.Equal(t, LsfVaultPrivate, v.Flags)
 }

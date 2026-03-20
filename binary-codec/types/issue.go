@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
@@ -16,11 +17,9 @@ const (
 	MPTIssuanceIDBytesLength = 24
 )
 
-var (
-	// NoAccountBytes is the marker used to identify MPT issues in the binary format.
-	// This is the special account ID "0000000000000000000000000000000000000001".
-	NoAccountBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}
-)
+// NoAccountBytes is the marker used to identify MPT issues in the binary format.
+// This is the special account ID "0000000000000000000000000000000000000001".
+var NoAccountBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}
 
 var (
 	// ErrInvalidIssueObject is returned when the JSON object is not a valid Issue.
@@ -179,12 +178,12 @@ func decodeCurrencyBytes(currencyBytes []byte) string {
 
 	// Check if bytes has exactly 3 non-zero bytes at positions 12-14 (standard currency code)
 	nonZeroCount := 0
-	var currencyStr string
+	var currencyStr strings.Builder
 	for i := range currencyBytes {
 		if currencyBytes[i] != 0 {
 			if i >= 12 && i <= 14 {
 				nonZeroCount++
-				currencyStr += string(currencyBytes[i])
+				currencyStr.WriteString(string(currencyBytes[i]))
 			} else {
 				nonZeroCount = 0
 				break
@@ -193,7 +192,7 @@ func decodeCurrencyBytes(currencyBytes []byte) string {
 	}
 
 	if nonZeroCount == 3 {
-		return currencyStr
+		return currencyStr.String()
 	}
 
 	// Return hex-encoded currency for non-standard codes

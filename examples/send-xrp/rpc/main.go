@@ -19,7 +19,6 @@ const (
 )
 
 func main() {
-
 	cfg, err := rpc.NewClientConfig(
 		"https://s.altnet.rippletest.net:51234/",
 		rpc.WithMaxFeeXRP(5.0),

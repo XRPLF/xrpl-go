@@ -81,6 +81,7 @@ func TestIsSigner(t *testing.T) {
 		})
 	}
 }
+
 func TestIsAmount(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -422,6 +423,7 @@ func TestIsMemo(t *testing.T) {
 		}
 	})
 }
+
 func TestIsAsset(t *testing.T) {
 	t.Run("pass - valid Asset object with currency XRP only", func(t *testing.T) {
 		obj := ledger.Asset{
@@ -549,6 +551,7 @@ func TestIsAsset(t *testing.T) {
 		}
 	})
 }
+
 func TestIsPath(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -619,6 +622,7 @@ func TestIsPath(t *testing.T) {
 		})
 	}
 }
+
 func TestIsPaths(t *testing.T) {
 	tests := []struct {
 		name     string
