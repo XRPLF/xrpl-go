@@ -9,7 +9,7 @@ import (
 
 func TestAMMClawback_TxType(t *testing.T) {
 	tx := &AMMClawback{}
-	require.Equal(t, tx.TxType(), AMMClawbackTx)
+	require.Equal(t, AMMClawbackTx, tx.TxType())
 }
 
 func TestAMMClawback_Flatten(t *testing.T) {
@@ -55,7 +55,7 @@ func TestAMMClawback_Flatten(t *testing.T) {
 			},
 			expected: FlatTransaction{
 				"TransactionType": AMMClawbackTx.String(),
-				"Asset": map[string]interface{}{
+				"Asset": map[string]any{
 					"currency": "USD",
 					"issuer":   "rWYkbWkCeg8dP6rXALnjgZSjjLyih5NXm",
 				},
@@ -88,7 +88,7 @@ func TestAMMClawback_Flatten(t *testing.T) {
 			},
 			expected: FlatTransaction{
 				"TransactionType": AMMClawbackTx.String(),
-				"Asset2": map[string]interface{}{
+				"Asset2": map[string]any{
 					"currency": "USD",
 					"issuer":   "rWYkbWkCeg8dP6rXALnjgZSjjLyih5NXm",
 					"value":    "100",
@@ -109,7 +109,7 @@ func TestAMMClawback_Flatten(t *testing.T) {
 			},
 			expected: FlatTransaction{
 				"TransactionType": AMMClawbackTx.String(),
-				"Amount": map[string]interface{}{
+				"Amount": map[string]any{
 					"currency": "USD",
 					"issuer":   "rWYkbWkCeg8dP6rXALnjgZSjjLyih5NXm",
 					"value":    "100",

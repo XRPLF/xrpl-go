@@ -27,7 +27,7 @@ func SignTxBlob(txBlob string) (string, error) {
 // SignTx hashes a signed transaction
 // It takes a signed transaction and returns the hash of the signed transaction.
 // It returns an error if the transaction is invalid.
-func SignTx(tx map[string]interface{}) (string, error) {
+func SignTx(tx map[string]any) (string, error) {
 	if valid, err := isTxValid(tx); !valid {
 		return "", err
 	}
@@ -56,7 +56,7 @@ func encodeSignedTxBlob(txBlob string) (string, error) {
 	return EncodeToHashString(payload), nil
 }
 
-func isTxValid(tx map[string]interface{}) (bool, error) {
+func isTxValid(tx map[string]any) (bool, error) {
 	isInnerBatchTxn := false
 	if flags, ok := tx["Flags"].(uint32); ok {
 		isInnerBatchTxn = (flags & types.TfInnerBatchTxn) != 0

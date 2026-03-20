@@ -68,23 +68,11 @@ func TestServerStateResponse(t *testing.T) {
 	"state": {
 		"build_version": "1.7.2",
 		"complete_ledgers": "64572720-65887201",
-		"closed_ledger": {
-			"age": 0,
-			"base_fee": 0,
-			"hash": "",
-			"reserve_base": 0,
-			"reserve_inc": 0,
-			"seq": 0
-		},
 		"io_latency_ms": 1,
 		"jq_trans_overflow": "0",
 		"last_close": {
 			"converge_time": 3005,
 			"proposers": 41
-		},
-		"load": {
-			"job_types": null,
-			"threads": 0
 		},
 		"load_base": 256,
 		"load_factor": 256,

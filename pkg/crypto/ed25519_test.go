@@ -45,8 +45,8 @@ func TestED25519DeriveKeypair(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			priv, pub, err := ED25519().DeriveKeypair(tc.seedBytes, tc.validator)
 			if tc.expErr != nil {
-				require.Zero(t, pub)
-				require.Zero(t, priv)
+				require.Empty(t, pub)
+				require.Empty(t, priv)
 				require.Error(t, err, tc.expErr.Error())
 			} else {
 				require.Equal(t, tc.expPrivKey, priv)
@@ -99,7 +99,7 @@ func TestED25519Sign(t *testing.T) {
 			actual, err := ED25519().Sign(tc.inputMsg, tc.inputPrivKey)
 
 			if tc.expectedErr != nil {
-				require.Zero(t, actual)
+				require.Empty(t, actual)
 				require.Error(t, err, tc.expectedErr.Error())
 			} else {
 				require.NoError(t, err)

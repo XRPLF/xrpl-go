@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
 - Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
 - Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
+- Fixed struct-typed JSON fields not being omitted from JSON output when zero-valued. Previously, `omitempty` was used but had no effect on struct types, causing empty structs to always be serialized. Replaced with `omitzero` (Go 1.24+) to match the original intent.
 
 ## [v0.1.16]
 

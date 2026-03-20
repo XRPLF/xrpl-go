@@ -173,7 +173,7 @@ func TestFieldIDCodec_Decode(t *testing.T) {
 
 			if tc.expectedErr != nil {
 				require.Error(t, err, tc.expectedErr.Error())
-				require.Zero(t, actual)
+				require.Empty(t, actual)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)

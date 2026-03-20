@@ -43,7 +43,7 @@ func (m *MockDefinitions) CreateFieldHeader(typecode, fieldcode int32) definitio
 }
 
 // CreateFieldHeader indicates an expected call of CreateFieldHeader.
-func (mr *MockDefinitionsMockRecorder) CreateFieldHeader(typecode, fieldcode interface{}) *gomock.Call {
+func (mr *MockDefinitionsMockRecorder) CreateFieldHeader(typecode, fieldcode any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFieldHeader", reflect.TypeOf((*MockDefinitions)(nil).CreateFieldHeader), typecode, fieldcode)
 }
@@ -58,7 +58,7 @@ func (m *MockDefinitions) GetFieldHeaderByFieldName(fieldName string) (*definiti
 }
 
 // GetFieldHeaderByFieldName indicates an expected call of GetFieldHeaderByFieldName.
-func (mr *MockDefinitionsMockRecorder) GetFieldHeaderByFieldName(fieldName interface{}) *gomock.Call {
+func (mr *MockDefinitionsMockRecorder) GetFieldHeaderByFieldName(fieldName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFieldHeaderByFieldName", reflect.TypeOf((*MockDefinitions)(nil).GetFieldHeaderByFieldName), fieldName)
 }
@@ -73,7 +73,7 @@ func (m *MockDefinitions) GetFieldInstanceByFieldName(fieldName string) (*defini
 }
 
 // GetFieldInstanceByFieldName indicates an expected call of GetFieldInstanceByFieldName.
-func (mr *MockDefinitionsMockRecorder) GetFieldInstanceByFieldName(fieldName interface{}) *gomock.Call {
+func (mr *MockDefinitionsMockRecorder) GetFieldInstanceByFieldName(fieldName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFieldInstanceByFieldName", reflect.TypeOf((*MockDefinitions)(nil).GetFieldInstanceByFieldName), fieldName)
 }
@@ -88,7 +88,7 @@ func (m *MockDefinitions) GetFieldNameByFieldHeader(fh definitions.FieldHeader) 
 }
 
 // GetFieldNameByFieldHeader indicates an expected call of GetFieldNameByFieldHeader.
-func (mr *MockDefinitionsMockRecorder) GetFieldNameByFieldHeader(fh interface{}) *gomock.Call {
+func (mr *MockDefinitionsMockRecorder) GetFieldNameByFieldHeader(fh any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFieldNameByFieldHeader", reflect.TypeOf((*MockDefinitions)(nil).GetFieldNameByFieldHeader), fh)
 }

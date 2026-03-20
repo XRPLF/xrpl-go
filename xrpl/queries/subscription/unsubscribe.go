@@ -8,8 +8,8 @@ import (
 
 // UnsubscribeOrderBook represents an order book subscription filter to stop receiving updates.
 type UnsubscribeOrderBook struct {
-	TakerGets types.IssuedCurrencyAmount `json:"taker_gets,omitempty"`
-	TakerPays types.IssuedCurrencyAmount `json:"taker_pays,omitempty"`
+	TakerGets types.IssuedCurrencyAmount `json:"taker_gets,omitzero"`
+	TakerPays types.IssuedCurrencyAmount `json:"taker_pays,omitzero"`
 	Both      bool                       `json:"both,omitempty"`
 }
 
@@ -46,5 +46,4 @@ func (*UnsubscribeRequest) APIVersion() int {
 // ############################################################################
 
 // UnsubscribeResponse is the expected response from the unsubscribe method.
-type UnsubscribeResponse struct {
-}
+type UnsubscribeResponse struct{}

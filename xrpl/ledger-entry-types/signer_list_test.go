@@ -75,12 +75,12 @@ func TestSignerList(t *testing.T) {
 func TestSignerList_SetLsfOneOwnerCount(t *testing.T) {
 	s := &SignerList{}
 	s.SetLsfOneOwnerCount()
-	require.Equal(t, s.Flags&LsfOneOwnerCount, LsfOneOwnerCount)
+	require.Equal(t, LsfOneOwnerCount, s.Flags&LsfOneOwnerCount)
 }
 
 func TestSignerList_EntryType(t *testing.T) {
 	s := &SignerList{}
-	require.Equal(t, s.EntryType(), SignerListEntry)
+	require.Equal(t, SignerListEntry, s.EntryType())
 }
 
 func TestSignerEntryWrapper_Flatten(t *testing.T) {

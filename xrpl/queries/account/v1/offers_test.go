@@ -21,5 +21,4 @@ func TestAccountOffersRequest(t *testing.T) {
 	if err := testutil.Serialize(t, s, j); err != nil {
 		t.Error(err)
 	}
-
 }

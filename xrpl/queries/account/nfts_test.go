@@ -31,7 +31,8 @@ func TestAccountNFTsResponse(t *testing.T) {
 	s := NFTsResponse{
 		Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		AccountNFTs: []accounttypes.NFT{
-			{Flags: accounttypes.Burnable | accounttypes.OnlyXRP,
+			{
+				Flags:        accounttypes.Burnable | accounttypes.OnlyXRP,
 				Issuer:       "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 				NFTokenID:    "abc",
 				NFTokenTaxon: 123,

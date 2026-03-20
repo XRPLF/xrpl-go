@@ -76,7 +76,6 @@ func (i *Int32) FromJSON(value any) ([]byte, error) {
 	// Two's complement representation handles negative numbers automatically
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, val)
-
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +105,7 @@ func (i *Int32) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 	// [0x80, 0x00, 0x00, 0x00] | 2147483648   | -2147483648   | INT32_MIN
 	// [0xFF, 0xFF, 0xFF, 0xFF] | 4294967295   | -1            | Negative 1
 	// [0xFF, 0xFF, 0xFF, 0x9C] | 4294967196   | -100          | Negative 100
-	//nolint:gosec // G115: integer overflow conversion float64 -> int32 (gosec)
+	//nolint:gosec // G115: integer overflow conversion uint32 -> int32 (gosec)
 	val := int32(binary.BigEndian.Uint32(b))
 
 	return val, nil

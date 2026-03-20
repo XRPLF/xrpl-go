@@ -4,23 +4,24 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoanBrokerDelete_TxType(t *testing.T) {
 	tx := &LoanBrokerDelete{}
-	assert.Equal(t, tx.TxType(), LoanBrokerDeleteTx)
+	assert.Equal(t, LoanBrokerDeleteTx, tx.TxType())
 }
 
 func TestLoanBrokerDelete_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanBrokerDelete
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanBrokerDelete{},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType": LoanBrokerDeleteTx.String(),
 				"LoanBrokerID":    "",
 			},
@@ -36,7 +37,7 @@ func TestLoanBrokerDelete_Flatten(t *testing.T) {
 				},
 				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    LoanBrokerDeleteTx.String(),
 				"Account":            "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 				"Fee":                "1000000",
@@ -49,7 +50,7 @@ func TestLoanBrokerDelete_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -111,7 +112,7 @@ func TestLoanBrokerDelete_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

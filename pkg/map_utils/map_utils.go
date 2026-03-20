@@ -2,7 +2,7 @@
 package maputils
 
 // GetKeys returns the keys of the given map.
-func GetKeys(m map[string]interface{}) []string {
+func GetKeys(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
 	for key := range m {
 		keys = append(keys, key)
