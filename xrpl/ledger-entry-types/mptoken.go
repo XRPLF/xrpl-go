@@ -36,9 +36,9 @@ type MPToken struct {
 	PreviousTxnLgrSeq uint32
 	// A hint indicating which page of the owner directory links to this entry, in case the directory consists of multiple pages.
 	OwnerNode uint64
-	// The holder's ElGamal public key for confidential transfers.
+	// The holder's encryption key for confidential transfers.
 	// Required for participating in confidential transfers.
-	HolderElGamalPublicKey string `json:",omitempty"`
+	HolderEncryptionKey string `json:",omitempty"`
 	// Encrypted balance value for issuer tracking purposes.
 	// This allows the issuer to track confidential balances.
 	IssuerEncryptedBalance string `json:",omitempty"`

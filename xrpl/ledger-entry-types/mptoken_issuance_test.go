@@ -103,16 +103,16 @@ func TestMPTokenIssuance_SetLsmfMPTCanMutateTransferFee(t *testing.T) {
 	require.Equal(t, LsmfMPTCanMutateTransferFee, mpTokenIssuance.MutableFlags)
 }
 
-func TestMPTokenIssuance_SetLsmfMPTCannotMutatePrivacy(t *testing.T) {
+func TestMPTokenIssuance_SetLsmfMPTCannotMutateCanConfidentialAmount(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCannotMutatePrivacy()
-	require.Equal(t, LsmfMPTCannotMutatePrivacy, mpTokenIssuance.MutableFlags)
+	mpTokenIssuance.SetLsmfMPTCannotMutateCanConfidentialAmount()
+	require.Equal(t, LsmfMPTCannotMutateCanConfidentialAmount, mpTokenIssuance.MutableFlags)
 }
 
-func TestMPTokenIssuance_SetLsfMPTCanPrivacy(t *testing.T) {
+func TestMPTokenIssuance_SetLsfMPTCanConfidentialAmount(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsfMPTCanPrivacy()
-	require.Equal(t, LsfMPTCanPrivacy, mpTokenIssuance.Flags)
+	mpTokenIssuance.SetLsfMPTCanConfidentialAmount()
+	require.Equal(t, LsfMPTCanConfidentialAmount, mpTokenIssuance.Flags)
 }
 
 func TestMPTokenIssuanceSerialization(t *testing.T) {
@@ -424,11 +424,11 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPTokenIssuance with LsfMPTCanPrivacy",
+			name: "pass - valid MPTokenIssuance with LsfMPTCanConfidentialAmount",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
-				Flags:             LsfMPTCanPrivacy,
+				Flags:             LsfMPTCanConfidentialAmount,
 				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:        2,
 				MaximumAmount:     1000,
@@ -461,7 +461,7 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:                        types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:              MPTokenIssuanceEntry,
-				Flags:                        LsfMPTCanPrivacy | LsfMPTCanTransfer,
+				Flags:                        LsfMPTCanConfidentialAmount | LsfMPTCanTransfer,
 				Issuer:                       types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:                   2,
 				MaximumAmount:                1000,
@@ -472,8 +472,8 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 				PreviousTxnID:                types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
 				PreviousTxnLgrSeq:            234644,
 				Sequence:                     1,
-				IssuerElGamalPublicKey:       "AABBCCDD",
-				AuditorElGamalPublicKey:      "EEFF0011",
+				IssuerEncryptionKey:          "AABBCCDD",
+				AuditorEncryptionKey:         "EEFF0011",
 				ConfidentialOutstandingAmount: 500,
 			},
 			expected: `{
@@ -490,8 +490,8 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
 	"Sequence": 1,
-	"IssuerElGamalPublicKey": "AABBCCDD",
-	"AuditorElGamalPublicKey": "EEFF0011",
+	"IssuerEncryptionKey": "AABBCCDD",
+	"AuditorEncryptionKey": "EEFF0011",
 	"ConfidentialOutstandingAmount": 500
 }`,
 		},
