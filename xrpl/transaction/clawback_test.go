@@ -29,7 +29,7 @@ func TestClawback_Flatten(t *testing.T) {
 		"TransactionType": "Clawback",
 		"Fee":             "1",
 		"Sequence":        uint32(1234),
-		"Amount": map[string]interface{}{
+		"Amount": map[string]any{
 			"issuer":   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 			"currency": "USD",
 			"value":    "1",
@@ -40,6 +40,7 @@ func TestClawback_Flatten(t *testing.T) {
 		t.Errorf("Flatten result differs from expected: %v, %v", flattened, expected)
 	}
 }
+
 func TestClawback_Validate(t *testing.T) {
 	tests := []struct {
 		name       string

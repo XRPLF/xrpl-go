@@ -49,6 +49,6 @@ type InfoResponse struct {
 	SignerLists        []ledger.SignerList    `json:"signer_lists,omitempty"`
 	LedgerCurrentIndex common.LedgerIndex     `json:"ledger_current_index,omitempty"`
 	LedgerIndex        common.LedgerIndex     `json:"ledger_index,omitempty"`
-	QueueData          accounttypes.QueueData `json:"queue_data,omitempty"`
+	QueueData          accounttypes.QueueData `json:"queue_data,omitzero"`
 	Validated          bool                   `json:"validated"`
 }

@@ -79,7 +79,6 @@ func IsSigner(signerData types.SignerData) (bool, error) {
 	}
 
 	return true, nil
-
 }
 
 // IsAmount checks if the given object is a valid Amount object.
@@ -123,7 +122,7 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 	// Get the size of the IssuedCurrency object.
 	issuedAmount, _ := input.(types.IssuedCurrencyAmount)
 
-	numOfKeys := len(maputils.GetKeys(issuedAmount.Flatten().(map[string]interface{})))
+	numOfKeys := len(maputils.GetKeys(issuedAmount.Flatten().(map[string]any)))
 	if numOfKeys != IssuedCurrencySize {
 		return false, ErrInvalidTokenFields
 	}

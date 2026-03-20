@@ -527,16 +527,16 @@ func TestCombineBatchSigners(t *testing.T) {
 				decoded, err := binarycodec.Decode(result)
 				require.NoError(t, err)
 
-				batchSigners, ok := decoded["BatchSigners"].([]interface{})
+				batchSigners, ok := decoded["BatchSigners"].([]any)
 				require.True(t, ok)
 				require.Len(t, batchSigners, 2)
 
 				// Extract the account addresses from the signers
 				accounts := make([]string, len(batchSigners))
 				for i, signerInterface := range batchSigners {
-					signer, ok := signerInterface.(map[string]interface{})
+					signer, ok := signerInterface.(map[string]any)
 					require.True(t, ok)
-					batchSigner, ok := signer["BatchSigner"].(map[string]interface{})
+					batchSigner, ok := signer["BatchSigner"].(map[string]any)
 					require.True(t, ok)
 					account, ok := batchSigner["Account"].(string)
 					require.True(t, ok)
@@ -544,7 +544,7 @@ func TestCombineBatchSigners(t *testing.T) {
 				}
 
 				// Verify that the accounts are sorted
-				require.True(t, accounts[0] < accounts[1], "Accounts should be sorted: %v", accounts)
+				require.Less(t, accounts[0], accounts[1], "Accounts should be sorted: %v", accounts)
 			},
 		},
 		{
@@ -595,7 +595,7 @@ func TestCombineBatchSigners(t *testing.T) {
 				decoded, err := binarycodec.Decode(result)
 				require.NoError(t, err)
 
-				batchSigners, ok := decoded["BatchSigners"].([]interface{})
+				batchSigners, ok := decoded["BatchSigners"].([]any)
 				require.True(t, ok)
 				require.Len(t, batchSigners, 2) // Should exclude the submitter's signer
 			},

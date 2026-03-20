@@ -10,7 +10,7 @@ func TestPermission_Flatten(t *testing.T) {
 	tests := []struct {
 		name       string
 		permission Permission
-		expected   map[string]interface{}
+		expected   map[string]any
 	}{
 		{
 			name: "pass - valid permission",
@@ -19,8 +19,8 @@ func TestPermission_Flatten(t *testing.T) {
 					PermissionValue: "Payment",
 				},
 			},
-			expected: map[string]interface{}{
-				"Permission": map[string]interface{}{
+			expected: map[string]any{
+				"Permission": map[string]any{
 					"PermissionValue": "Payment",
 				},
 			},
@@ -32,8 +32,8 @@ func TestPermission_Flatten(t *testing.T) {
 					PermissionValue: "",
 				},
 			},
-			expected: map[string]interface{}{
-				"Permission": map[string]interface{}{
+			expected: map[string]any{
+				"Permission": map[string]any{
 					"PermissionValue": "",
 				},
 			},
@@ -52,14 +52,14 @@ func TestPermissionValue_Flatten(t *testing.T) {
 	tests := []struct {
 		name            string
 		permissionValue PermissionValue
-		expected        map[string]interface{}
+		expected        map[string]any
 	}{
 		{
 			name: "pass - valid permission value",
 			permissionValue: PermissionValue{
 				PermissionValue: "Payment",
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"PermissionValue": "Payment",
 			},
 		},
@@ -68,7 +68,7 @@ func TestPermissionValue_Flatten(t *testing.T) {
 			permissionValue: PermissionValue{
 				PermissionValue: "",
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"PermissionValue": "",
 			},
 		},

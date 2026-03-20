@@ -233,7 +233,7 @@ func TestIntegrationLoanSetWithMultisignCounterparty_Websocket(t *testing.T) {
 	require.NoError(t, err)
 
 	mptTokenIssuanceId := mptTokenTxResp.Meta.MPTIssuanceID.String()
-	require.NotEqual(t, nil, mptTokenIssuanceId)
+	require.NotNil(t, mptTokenIssuanceId)
 
 	// Create an MPT-collateralized vault
 	vaultCreateTx := &transaction.VaultCreate{

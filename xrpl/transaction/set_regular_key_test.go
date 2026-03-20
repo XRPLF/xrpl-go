@@ -57,6 +57,7 @@ func TestSetRegularKey_Flatten(t *testing.T) {
 		})
 	}
 }
+
 func TestSetRegularKey_Validate(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -9,7 +9,7 @@ import (
 
 func TestXChainCommit_TxType(t *testing.T) {
 	tx := &XChainCommit{}
-	require.Equal(t, tx.TxType(), XChainCommitTx)
+	require.Equal(t, XChainCommitTx, tx.TxType())
 }
 
 func TestXChainCommit_Flatten(t *testing.T) {
@@ -82,7 +82,7 @@ func TestXChainCommit_Flatten(t *testing.T) {
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
 			flattened := testcase.tx.Flatten()
-			require.Equal(t, flattened, testcase.expected)
+			require.Equal(t, testcase.expected, flattened)
 		})
 	}
 }
@@ -166,7 +166,7 @@ func TestXChainCommit_Validate(t *testing.T) {
 			valid, err := testcase.tx.Validate()
 			if testcase.expectedErr != nil {
 				require.Error(t, err)
-				require.Equal(t, err, testcase.expectedErr)
+				require.Equal(t, testcase.expectedErr, err)
 			} else {
 				require.NoError(t, err)
 				require.True(t, valid)

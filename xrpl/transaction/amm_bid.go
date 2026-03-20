@@ -85,7 +85,7 @@ func (a *AMMBid) Flatten() FlatTransaction {
 	}
 
 	if len(a.AuthAccounts) > 0 {
-		authAccountsFlattened := make([]map[string]interface{}, 0, len(a.AuthAccounts))
+		authAccountsFlattened := make([]map[string]any, 0, len(a.AuthAccounts))
 
 		for _, authAccount := range a.AuthAccounts {
 			authAccountsFlattened = append(authAccountsFlattened, authAccount.Flatten())

@@ -28,7 +28,7 @@ func TestStObject_FromJson(t *testing.T) {
 		// {}
 		{
 			name: "fail - not found error",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"IncorrectField": 89,
 				"Flags":          525288,
 				"OfferSequence":  1752791,
@@ -38,7 +38,7 @@ func TestStObject_FromJson(t *testing.T) {
 		},
 		{
 			name: "pass - convert valid Json",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"Fee":           "10",
 				"Flags":         uint32(524288),
 				"OfferSequence": uint32(1752791),
@@ -49,7 +49,7 @@ func TestStObject_FromJson(t *testing.T) {
 		},
 		{
 			name: "pass - convert valid STObject with variable length",
-			input: map[string]interface{}{
+			input: map[string]any{
 				"TransactionType":   "Payment",
 				"TransactionResult": 0,
 				"Fee":               "10",
@@ -76,7 +76,6 @@ func TestStObject_FromJson(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestStObject_ToJson(t *testing.T) {
@@ -104,7 +103,7 @@ func TestStObject_ToJson(t *testing.T) {
 			func(t *testing.T) interfaces.BinaryParser {
 				return serdes.NewBinaryParser([]byte{0x22, 0x0, 0x8, 0x0, 0x0, 0x20, 0x19, 0x0, 0x1a, 0xbe, 0xd7, 0x65, 0x40, 0x0, 0x0, 0x22, 0xec, 0xb2, 0x5c, 0x0, 0x68, 0x40, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa}, defs)
 			},
-			map[string]interface{}{
+			map[string]any{
 				"Fee":           "10",
 				"Flags":         uint32(524288),
 				"OfferSequence": uint32(1752791),
@@ -117,7 +116,7 @@ func TestStObject_ToJson(t *testing.T) {
 			func(t *testing.T) interfaces.BinaryParser {
 				return serdes.NewBinaryParser([]byte{0x12, 0x0, 0x0, 0x22, 0x0, 0x8, 0x0, 0x0, 0x20, 0x19, 0x0, 0x1a, 0xbe, 0xd7, 0x65, 0x40, 0x0, 0x0, 0x22, 0xec, 0xb2, 0x5c, 0x0, 0x68, 0x40, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x3, 0x10, 0x0}, defs)
 			},
-			map[string]interface{}{
+			map[string]any{
 				"TransactionType":   "Payment",
 				"TransactionResult": "tesSUCCESS",
 				"Fee":               "10",
@@ -147,12 +146,12 @@ func TestStObject_ToJson(t *testing.T) {
 func TestGetSortedKeys(t *testing.T) {
 	tt := []struct {
 		name   string
-		input  map[definitions.FieldInstance]interface{}
+		input  map[definitions.FieldInstance]any
 		output []definitions.FieldInstance
 	}{
 		{
 			name: "pass - get sorted keys",
-			input: map[definitions.FieldInstance]interface{}{
+			input: map[definitions.FieldInstance]any{
 				testutil.GetFieldInstance(t, "TransactionType"):   1,
 				testutil.GetFieldInstance(t, "TransactionResult"): 0,
 				testutil.GetFieldInstance(t, "IndexNext"):         5100000,
@@ -169,7 +168,7 @@ func TestGetSortedKeys(t *testing.T) {
 		},
 		{
 			name: "pass - get sorted keys",
-			input: map[definitions.FieldInstance]interface{}{
+			input: map[definitions.FieldInstance]any{
 				testutil.GetFieldInstance(t, "Account"):      "rMBzp8CgpE441cp5PVyA9rpVV7oT8hP3ys",
 				testutil.GetFieldInstance(t, "TransferRate"): 4234,
 				testutil.GetFieldInstance(t, "Expiration"):   23,

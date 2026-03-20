@@ -118,6 +118,7 @@ func TestSignerListSet_Flatten(t *testing.T) {
 		})
 	}
 }
+
 func TestSignerListSet_Validate(t *testing.T) {
 	tests := []struct {
 		name      string

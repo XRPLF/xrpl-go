@@ -51,7 +51,6 @@ func TestAssetFlatten(t *testing.T) {
 			t.Error(err)
 		}
 	})
-
 }
 
 func TestAssetKind(t *testing.T) {

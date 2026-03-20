@@ -17,22 +17,22 @@ type BookUpdate struct {
 	CurrencyB string `json:"currency_b"`
 	// The total amount, or volume, of the first currency (that is, currency_a) that moved as
 	// a result of trades through this order book in this ledger.
-	VolumeA interface{} `json:"volume_a"`
+	VolumeA any `json:"volume_a"`
 	// The volume of the second currency (that is, currency_b) that moved as a result of trades
 	// through this order book in this ledger.
-	VolumeB interface{} `json:"volume_b"`
+	VolumeB any `json:"volume_b"`
 	// The highest exchange rate among all offers matched in this ledger, as a ratio of the first
 	// currency to the second currency. (In other words, currency_a : currency_b.)
-	High interface{} `json:"high"`
+	High any `json:"high"`
 	// The lowest exchange rate among all offers matched in this ledger, as a ratio of the first
 	// currency to the second currency.
-	Low interface{} `json:"low"`
+	Low any `json:"low"`
 	// The exchange rate at the top of this order book before processing the transactions in this
 	// ledger, as a ratio of the first currency to the second currency.
-	Open interface{} `json:"open"`
+	Open any `json:"open"`
 	// The exchange rate at the top of this order book after processing the transactions in this
 	// ledger, as a ratio of the first currency to the second currency.
-	Close interface{} `json:"close"`
+	Close any `json:"close"`
 }
 
 // BookChangesStream sends bookChanges messages whenever a new ledger is validated.

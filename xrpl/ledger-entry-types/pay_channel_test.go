@@ -52,5 +52,5 @@ func TestPayChannel(t *testing.T) {
 
 func TestPayChannel_EntryType(t *testing.T) {
 	s := &PayChannel{}
-	require.Equal(t, s.EntryType(), PayChannelEntry)
+	require.Equal(t, PayChannelEntry, s.EntryType())
 }

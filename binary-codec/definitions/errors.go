@@ -5,12 +5,10 @@ import (
 	"fmt"
 )
 
-var (
-	// definitions
+// definitions
 
-	// ErrUnableToCastFieldInfo is returned when the field info cannot be cast.
-	ErrUnableToCastFieldInfo = errors.New("unable to cast to field info")
-)
+// ErrUnableToCastFieldInfo is returned when the field info cannot be cast.
+var ErrUnableToCastFieldInfo = errors.New("unable to cast to field info")
 
 // Dynamic errors
 

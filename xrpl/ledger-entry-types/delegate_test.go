@@ -10,7 +10,7 @@ import (
 
 func TestDelegate_EntryType(t *testing.T) {
 	delegate := &Delegate{}
-	require.Equal(t, delegate.EntryType(), DelegateEntry)
+	require.Equal(t, DelegateEntry, delegate.EntryType())
 }
 
 func TestDelegate_Serialization(t *testing.T) {
