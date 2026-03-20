@@ -51,8 +51,8 @@ func TestConfigCreation(t *testing.T) {
 			"Content-Type": {"application/json"},
 		}
 		req.Header = cfg.Headers
-		assert.Equal(t, &Config{HTTPClient: customHttpClient{}, URL: "http://s1.ripple.com:51234/", Headers: headers, maxRetries: common.DefaultMaxRetries, retryDelay: common.DefaultRetryDelay, feeCushion: common.DefaultFeeCushion, maxFeeXRP: common.DefaultMaxFeeXRP, faucetProvider: nil}, cfg)
-		require.NoError(t, err)
+		assert.Equal(t, &Config{HTTPClient: customHttpClient{}, URL: "http://s1.ripple.com:51234/", Headers: headers, maxRetries: common.DefaultMaxRetries, retryDelay: common.DefaultRetryDelay, feeCushion: common.DefaultFeeCushion, maxFeeXRP: common.DefaultMaxFeeXRP, faucetProvider: nil, timeout: common.DefaultTimeout}, cfg)
+		assert.NoError(t, err)
 	})
 }
 
@@ -77,11 +77,58 @@ func TestWithFaucetProvider(t *testing.T) {
 	require.Equal(t, fp, cfg.faucetProvider)
 }
 
-func TestWithTimeout(t *testing.T) {
-	timeOut := 11 * time.Second // 11 seconds
-	cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithTimeout(timeOut))
+func TestTimeout(t *testing.T) {
+	t.Run("Default timeout applied to config and HTTP client", func(t *testing.T) {
+		cfg, _ := NewClientConfig("http://s1.ripple.com:51234")
 
-	require.Equal(t, timeOut, cfg.timeout)
+		require.Equal(t, common.DefaultTimeout, cfg.timeout)
+		hc, ok := cfg.HTTPClient.(*http.Client)
+		require.True(t, ok)
+		require.Equal(t, common.DefaultTimeout, hc.Timeout)
+	})
+
+	t.Run("WithTimeout sets config and HTTP client timeout", func(t *testing.T) {
+		timeOut := 11 * time.Second
+		cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithTimeout(timeOut))
+
+		require.Equal(t, timeOut, cfg.timeout)
+		hc, ok := cfg.HTTPClient.(*http.Client)
+		require.True(t, ok)
+		require.Equal(t, timeOut, hc.Timeout)
+	})
+
+	t.Run("Custom HTTP client with timeout syncs to config", func(t *testing.T) {
+		customTimeout := 45 * time.Second
+		customClient := &http.Client{Timeout: customTimeout}
+		cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithHTTPClient(customClient))
+
+		require.Equal(t, customTimeout, cfg.timeout)
+		require.Equal(t, customTimeout, customClient.Timeout)
+	})
+
+	t.Run("Custom HTTP client without timeout gets default applied", func(t *testing.T) {
+		customClient := &http.Client{}
+		cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithHTTPClient(customClient))
+
+		require.Equal(t, common.DefaultTimeout, cfg.timeout)
+		require.Equal(t, common.DefaultTimeout, customClient.Timeout)
+	})
+
+	t.Run("WithTimeout overrides custom HTTP client timeout", func(t *testing.T) {
+		customClient := &http.Client{Timeout: 45 * time.Second}
+		explicitTimeout := 10 * time.Second
+		cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithHTTPClient(customClient), WithTimeout(explicitTimeout))
+
+		require.Equal(t, explicitTimeout, cfg.timeout)
+		require.Equal(t, explicitTimeout, customClient.Timeout)
+	})
+
+	t.Run("Non-standard HTTP client uses default config timeout", func(t *testing.T) {
+		c := customHttpClient{}
+		cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithHTTPClient(c))
+
+		require.Equal(t, common.DefaultTimeout, cfg.timeout)
+	})
 }
 
 func TestWithMaxRetries(t *testing.T) {
