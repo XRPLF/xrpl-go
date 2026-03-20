@@ -40,6 +40,10 @@ const (
 	TmfMPTSetCanClawback uint32 = 0x00000400
 	// TmfMPTClearCanClawback clears the CanClawback flag.
 	TmfMPTClearCanClawback uint32 = 0x00000800
+	// TmfMPTSetCanConfidentialAmount sets the CanConfidentialAmount flag.
+	TmfMPTSetCanConfidentialAmount uint32 = 0x00001000
+	// TmfMPTClearCanConfidentialAmount clears the CanConfidentialAmount flag.
+	TmfMPTClearCanConfidentialAmount uint32 = 0x00002000
 )
 
 // MPTokenIssuanceSet transaction is used to globally lock/unlock a MPTokenIssuance,
@@ -71,6 +75,12 @@ type MPTokenIssuanceSet struct {
 	TransferFee *uint16 `json:",omitempty"`
 	// (Optional) Set or clear the flags which were marked as mutable.
 	MutableFlags *uint32 `json:",omitempty"`
+	// (Optional) A 33-byte compressed ElGamal public key for the issuer.
+	// Required to use the confidential transfer feature. Must be 66 hex characters.
+	IssuerEncryptionKey *string `json:",omitempty"`
+	// (Optional) A 33-byte compressed ElGamal public key for an on-chain auditor.
+	// Must be 66 hex characters. Requires IssuerEncryptionKey to also be set.
+	AuditorEncryptionKey *string `json:",omitempty"`
 }
 
 // TxType returns the type of the transaction (MPTokenIssuanceSet).
@@ -104,6 +114,14 @@ func (m *MPTokenIssuanceSet) Flatten() FlatTransaction {
 
 	if m.MutableFlags != nil {
 		flattened["MutableFlags"] = int(*m.MutableFlags)
+	}
+
+	if m.IssuerEncryptionKey != nil {
+		flattened["IssuerEncryptionKey"] = *m.IssuerEncryptionKey
+	}
+
+	if m.AuditorEncryptionKey != nil {
+		flattened["AuditorEncryptionKey"] = *m.AuditorEncryptionKey
 	}
 
 	return flattened
@@ -190,6 +208,16 @@ func (m *MPTokenIssuanceSet) SetMPTClearCanClawbackMutableFlag() {
 	m.setMutableFlag(TmfMPTClearCanClawback)
 }
 
+// SetMPTSetCanConfidentialAmountMutableFlag sets the CanConfidentialAmount mutable flag.
+func (m *MPTokenIssuanceSet) SetMPTSetCanConfidentialAmountMutableFlag() {
+	m.setMutableFlag(TmfMPTSetCanConfidentialAmount)
+}
+
+// SetMPTClearCanConfidentialAmountMutableFlag clears the CanConfidentialAmount mutable flag.
+func (m *MPTokenIssuanceSet) SetMPTClearCanConfidentialAmountMutableFlag() {
+	m.setMutableFlag(TmfMPTClearCanConfidentialAmount)
+}
+
 // Validate validates the MPTokenIssuanceSet transaction ensuring all fields are correct.
 func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 	ok, err := m.BaseTx.Validate()
@@ -221,15 +249,21 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 	}
 
 	hasDynamicMPTFields := m.MutableFlags != nil || m.MPTokenMetadata != nil || m.TransferFee != nil
+	hasEncryptionKeys := m.IssuerEncryptionKey != nil || m.AuditorEncryptionKey != nil
 
-	// At least one operation must be specified (lock/unlock, holder lock/unlock, DynamicMPT mutation, or DomainID).
-	if m.Flags == 0 && m.Holder == nil && !hasDynamicMPTFields && m.DomainID == nil {
+	// At least one operation must be specified (lock/unlock, holder lock/unlock, DynamicMPT mutation, DomainID, or encryption keys).
+	if m.Flags == 0 && m.Holder == nil && !hasDynamicMPTFields && m.DomainID == nil && !hasEncryptionKeys {
 		return false, ErrMPTIssuanceSetEmpty
 	}
 
 	// Holder is mutually exclusive with DynamicMPT fields and DomainID.
 	if m.Holder != nil && (hasDynamicMPTFields || m.DomainID != nil) {
 		return false, ErrMPTIssuanceSetHolderMutuallyExclusive
+	}
+
+	// Encryption keys are mutually exclusive with Holder.
+	if m.Holder != nil && hasEncryptionKeys {
+		return false, ErrMPTIssuanceSetKeyConflict
 	}
 
 	// Non-zero Flags are mutually exclusive with DynamicMPT fields.
@@ -270,6 +304,19 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTIssuanceSetTransferFeeWithClearCanTransfer
 	}
 
+	// AuditorEncryptionKey requires IssuerEncryptionKey.
+	if m.AuditorEncryptionKey != nil && m.IssuerEncryptionKey == nil {
+		return false, ErrMPTIssuanceSetAuditorRequiresIssuerKey
+	}
+
+	// Validate encryption key lengths (issuer and auditor keys must be 33-byte compressed).
+	if m.IssuerEncryptionKey != nil && !IsValidCompressedEncryptionKey(*m.IssuerEncryptionKey) {
+		return false, ErrMPTIssuanceSetInvalidKeyLength
+	}
+	if m.AuditorEncryptionKey != nil && !IsValidCompressedEncryptionKey(*m.AuditorEncryptionKey) {
+		return false, ErrMPTIssuanceSetInvalidKeyLength
+	}
+
 	return true, nil
 }
 
@@ -282,6 +329,7 @@ func validateMutableFlagsNoConflict(mf uint32) (bool, error) {
 		{TmfMPTSetCanTrade, TmfMPTClearCanTrade},
 		{TmfMPTSetCanTransfer, TmfMPTClearCanTransfer},
 		{TmfMPTSetCanClawback, TmfMPTClearCanClawback},
+		{TmfMPTSetCanConfidentialAmount, TmfMPTClearCanConfidentialAmount},
 	}
 	for _, p := range pairs {
 		if flag.Contains(mf, p[0]) && flag.Contains(mf, p[1]) {

@@ -20,6 +20,8 @@ const (
 	TfMPTCanTransfer uint32 = 0x00000020
 	// TfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
 	TfMPTCanClawback uint32 = 0x00000040
+	// TfMPTCanConfidentialAmount if set, indicates that confidential transfers are enabled for this token issuance.
+	TfMPTCanConfidentialAmount uint32 = 0x00000080
 )
 
 // MutableFlags constants for MPTokenIssuanceCreate.
@@ -41,6 +43,8 @@ const (
 	TmfMPTCanMutateMetadata uint32 = 0x00010000
 	// TmfMPTCanMutateTransferFee allows the TransferFee to be changed after creation.
 	TmfMPTCanMutateTransferFee uint32 = 0x00020000
+	// TmfMPTCannotMutateCanConfidentialAmount prevents the CanConfidentialAmount property from being changed after creation.
+	TmfMPTCannotMutateCanConfidentialAmount uint32 = 0x00040000
 )
 
 // MPTokenIssuanceCreateMetadata represents the resulting metadata of a succeeded MPTokenIssuanceCreate transaction.
@@ -169,6 +173,11 @@ func (m *MPTokenIssuanceCreate) SetMPTCanClawbackFlag() {
 	m.Flags |= TfMPTCanClawback
 }
 
+// SetMPTCanConfidentialAmountFlag sets the TfMPTCanConfidentialAmount flag to enable confidential transfers for this token issuance.
+func (m *MPTokenIssuanceCreate) SetMPTCanConfidentialAmountFlag() {
+	m.Flags |= TfMPTCanConfidentialAmount
+}
+
 // setMutableFlag is a helper that initialises MutableFlags if nil and applies the given flag.
 func (m *MPTokenIssuanceCreate) setMutableFlag(f uint32) {
 	if m.MutableFlags == nil {
@@ -216,6 +225,11 @@ func (m *MPTokenIssuanceCreate) SetMPTCanMutateMetadataFlag() {
 // SetMPTCanMutateTransferFeeFlag allows the TransferFee to be changed after creation.
 func (m *MPTokenIssuanceCreate) SetMPTCanMutateTransferFeeFlag() {
 	m.setMutableFlag(TmfMPTCanMutateTransferFee)
+}
+
+// SetMPTCannotMutateCanConfidentialAmountFlag prevents the CanConfidentialAmount property from being changed after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCannotMutateCanConfidentialAmountFlag() {
+	m.setMutableFlag(TmfMPTCannotMutateCanConfidentialAmount)
 }
 
 // Validate validates the MPTokenIssuanceCreate transaction ensuring all fields are correct.
