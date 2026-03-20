@@ -9,13 +9,13 @@ import (
 
 func TestXChainModifyBridge_TxType(t *testing.T) {
 	tx := &XChainModifyBridge{}
-	require.Equal(t, tx.TxType(), XChainModifyBridgeTx)
+	require.Equal(t, XChainModifyBridgeTx, tx.TxType())
 }
 
 func TestXChainModifyBridge_SetClearAccountCreateAmount(t *testing.T) {
 	tx := &XChainModifyBridge{}
 	tx.SetClearAccountCreateAmount()
-	require.Equal(t, tx.Flags, TfClearAccountCreateAmount)
+	require.Equal(t, TfClearAccountCreateAmount, tx.Flags)
 }
 
 func TestXChainModifyBridge_Flatten(t *testing.T) {
@@ -58,7 +58,7 @@ func TestXChainModifyBridge_Flatten(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.tx.Flatten(), tc.expected)
+			require.Equal(t, tc.expected, tc.tx.Flatten())
 		})
 	}
 }
@@ -155,10 +155,10 @@ func TestXChainModifyBridge_Validate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ok, err := tc.tx.Validate()
 			if tc.expectedErr != nil {
-				require.Equal(t, err, tc.expectedErr)
+				require.Equal(t, tc.expectedErr, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, ok, tc.expected)
+				require.Equal(t, tc.expected, ok)
 			}
 		})
 	}

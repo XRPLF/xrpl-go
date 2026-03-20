@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-
 	fmt.Println("⏳ Setting up client...")
 
 	client := clients.GetDevnetWebsocketClient()

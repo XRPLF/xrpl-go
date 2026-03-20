@@ -32,7 +32,8 @@ func TestAMMBidFlatten(t *testing.T) {
 			{
 				AuthAccount: ledger.AuthAccount{
 					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				}},
+				},
+			},
 		},
 	}
 

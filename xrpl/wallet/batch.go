@@ -60,7 +60,6 @@ func SignMultiBatch(wallet Wallet, tx *transaction.FlatTransaction, opts *SignMu
 		} else {
 			return wallettypes.ErrRawTransactionFieldIsNotAnObject
 		}
-
 	}
 
 	if !batchAccountExists {

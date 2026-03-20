@@ -29,7 +29,7 @@ Hashes a signed transaction blob and returns the transaction hash or an error if
 ### SignTx
 
 ```go
-func SignTx(tx map[string]interface{}) (string, error)
+func SignTx(tx map[string]any) (string, error)
 ```
 
 Hashes a signed transaction provided as a decoded map and returns the transaction hash or an error if the transaction object is invalid.

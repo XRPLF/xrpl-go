@@ -9,7 +9,7 @@ import (
 
 func TestXChainCreateClaimID_TxType(t *testing.T) {
 	tx := &XChainCreateClaimID{}
-	require.Equal(t, tx.TxType(), XChainCreateClaimIDTx)
+	require.Equal(t, XChainCreateClaimIDTx, tx.TxType())
 }
 
 func TestXChainCreateClaimID_Flatten(t *testing.T) {
@@ -50,7 +50,7 @@ func TestXChainCreateClaimID_Flatten(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.tx.Flatten(), tc.expected)
+			require.Equal(t, tc.expected, tc.tx.Flatten())
 		})
 	}
 }
@@ -130,10 +130,10 @@ func TestXChainCreateClaimID_Validate(t *testing.T) {
 			ok, err := tc.tx.Validate()
 			if tc.expectedErr != nil {
 				require.Error(t, err)
-				require.Equal(t, err, tc.expectedErr)
+				require.Equal(t, tc.expectedErr, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, ok, tc.expected)
+				require.Equal(t, tc.expected, ok)
 			}
 		})
 	}

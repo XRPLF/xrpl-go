@@ -155,7 +155,6 @@ func TestClient_GetAccountInfo(t *testing.T) {
 			name: "Successful response",
 			serverMessages: []map[string]any{
 				{
-
 					"id": 1,
 					"result": map[string]any{
 						"account_data": map[string]any{

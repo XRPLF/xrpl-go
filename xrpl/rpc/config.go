@@ -90,7 +90,6 @@ func WithTimeout(timeout time.Duration) ConfigOpt {
 
 // NewClientConfig creates a new Config with the given URL and applies any provided ConfigOpt options.
 func NewClientConfig(url string, opts ...ConfigOpt) (*Config, error) {
-
 	// validate a url has been passed in
 	if len(url) == 0 {
 		return nil, ErrEmptyURL

@@ -44,5 +44,5 @@ func TestLedgerHashes(t *testing.T) {
 
 func TestLedgerHashes_EntryType(t *testing.T) {
 	s := &Hashes{}
-	require.Equal(t, s.EntryType(), LedgerHashesEntry)
+	require.Equal(t, LedgerHashesEntry, s.EntryType())
 }

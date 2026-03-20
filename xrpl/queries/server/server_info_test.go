@@ -64,24 +64,12 @@ func TestServerInfoResponse(t *testing.T) {
 	"info": {
 		"build_version": "1.9.4",
 		"complete_ledgers": "32570-75801736",
-		"closed_ledger": {
-			"age": 0,
-			"base_fee_xrp": 0,
-			"hash": "",
-			"reserve_base_xrp": 0,
-			"reserve_inc_xrp": 0,
-			"seq": 0
-		},
 		"hostid": "ARMY",
 		"io_latency_ms": 1,
 		"jq_trans_overflow": "2282",
 		"last_close": {
 			"converge_time_s": 3.002,
 			"proposers": 35
-		},
-		"load": {
-			"job_types": null,
-			"threads": 0
 		},
 		"load_factor": 1,
 		"peers": 20,
@@ -120,12 +108,7 @@ func TestServerInfoResponse(t *testing.T) {
 			"reserve_inc_xrp": 2,
 			"seq": 75801736
 		},
-		"validation_quorum": 28,
-		"validator_list": {
-			"count": 0,
-			"expiration": "",
-			"status": ""
-		}
+		"validation_quorum": 28
 	}
 }`
 

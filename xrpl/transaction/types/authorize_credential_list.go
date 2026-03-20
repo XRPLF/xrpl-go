@@ -28,8 +28,8 @@ func (ac *AuthorizeCredentialList) Validate() error {
 }
 
 // Flatten returns a slice of maps representing each AuthorizeCredential in JSON-like format.
-func (ac *AuthorizeCredentialList) Flatten() []map[string]interface{} {
-	acs := make([]map[string]interface{}, len(*ac))
+func (ac *AuthorizeCredentialList) Flatten() []map[string]any {
+	acs := make([]map[string]any, len(*ac))
 	for i, c := range *ac {
 		acs[i] = c.Flatten()
 	}

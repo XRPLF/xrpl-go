@@ -60,7 +60,7 @@ func TestXChainAccountCreateCommit_Flatten(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.tx.Flatten(), tc.expected)
+			require.Equal(t, tc.expected, tc.tx.Flatten())
 		})
 	}
 }

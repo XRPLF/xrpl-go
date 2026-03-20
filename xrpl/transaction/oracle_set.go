@@ -65,7 +65,7 @@ func (tx *OracleSet) TxType() TxType {
 }
 
 // Flatten returns a map representation of the OracleSet transaction for JSON-RPC submission.
-func (tx *OracleSet) Flatten() map[string]interface{} {
+func (tx *OracleSet) Flatten() map[string]any {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

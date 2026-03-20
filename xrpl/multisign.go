@@ -19,7 +19,7 @@ func Multisign(blobs ...string) (string, error) {
 		return "", ErrNoTxToMultisign
 	}
 
-	signers := make([]interface{}, 0)
+	signers := make([]any, 0)
 	for _, blob := range blobs {
 		tx, err := binarycodec.Decode(blob)
 		if err != nil {
@@ -29,7 +29,7 @@ func Multisign(blobs ...string) (string, error) {
 			return "", ErrMultisignNonEmptySigningPubKey
 		}
 
-		signers = append(signers, tx["Signers"].([]interface{})...)
+		signers = append(signers, tx["Signers"].([]any)...)
 	}
 
 	tx, err := binarycodec.Decode(blobs[0])

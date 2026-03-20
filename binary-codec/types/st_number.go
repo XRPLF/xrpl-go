@@ -258,12 +258,8 @@ func formatDecimalBig(mantissaAbs *big.Int, exponent int32, isNegative bool) str
 	rawValue := strings.Repeat("0", padPrefix) + mantissaStr + strings.Repeat("0", padSuffix)
 
 	offset := int(exponent) + padPrefix + rangeLog + 1 // exponent + 49
-	if offset < 0 {
-		offset = 0
-	}
-	if offset > len(rawValue) {
-		offset = len(rawValue)
-	}
+	offset = max(offset, 0)
+	offset = min(offset, len(rawValue))
 
 	integerPart := strings.TrimLeft(rawValue[:offset], "0")
 	if integerPart == "" {

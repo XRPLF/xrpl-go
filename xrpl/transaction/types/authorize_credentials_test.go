@@ -50,7 +50,7 @@ func TestAuthorizeCredentials_Flatten(t *testing.T) {
 	tests := []struct {
 		name       string
 		credential AuthorizeCredentialsWrapper
-		expected   map[string]interface{}
+		expected   map[string]any
 	}{
 		{
 			name: "pass - valid authorize credentials",
@@ -60,8 +60,8 @@ func TestAuthorizeCredentials_Flatten(t *testing.T) {
 					CredentialType: "6D795F63726564656E7469616C",
 				},
 			},
-			expected: map[string]interface{}{
-				"Credential": map[string]interface{}{
+			expected: map[string]any{
+				"Credential": map[string]any{
 					"Issuer":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					"CredentialType": "6D795F63726564656E7469616C",
 				},

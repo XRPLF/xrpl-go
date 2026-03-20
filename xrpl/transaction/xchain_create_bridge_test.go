@@ -9,7 +9,7 @@ import (
 
 func TestXChainCreateBridge_TxType(t *testing.T) {
 	tx := &XChainCreateBridge{}
-	require.Equal(t, tx.TxType(), XChainCreateBridgeTx)
+	require.Equal(t, XChainCreateBridgeTx, tx.TxType())
 }
 
 func TestXChainCreateBridge_Flatten(t *testing.T) {
@@ -76,7 +76,7 @@ func TestXChainCreateBridge_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			require.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			require.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -175,10 +175,10 @@ func TestXChainCreateBridge_Validate(t *testing.T) {
 		t.Run(testcase.name, func(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			if testcase.expectedErr != nil {
-				require.Equal(t, err, testcase.expectedErr)
+				require.Equal(t, testcase.expectedErr, err)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, ok, testcase.expected)
+				require.Equal(t, testcase.expected, ok)
 			}
 		})
 	}

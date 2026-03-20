@@ -3,6 +3,7 @@ package rpc
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"reflect"
 	"testing"
@@ -20,9 +21,7 @@ import (
 )
 
 func TestClient(t *testing.T) {
-
 	t.Run("Set config with valid port + ip", func(t *testing.T) {
-
 		cfg, _ := NewClientConfig("url")
 
 		jsonRpcClient := NewClient(cfg)
@@ -32,9 +31,7 @@ func TestClient(t *testing.T) {
 }
 
 func TestClient_Request(t *testing.T) {
-
 	t.Run("SendRequest - Check headers and URL", func(t *testing.T) {
-
 		req := &account.ChannelsRequest{
 			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		}
@@ -47,21 +44,20 @@ func TestClient_Request(t *testing.T) {
 		}
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
 		_, err = jsonRpcClient.Request(req)
 
 		assert.NotNil(t, capturedRequest)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "POST", capturedRequest.Method)
 		assert.Equal(t, "http://testnode/", capturedRequest.URL.String())
 		assert.Equal(t, "application/json", capturedRequest.Header.Get("Content-Type"))
 	})
 
-	t.Run("SendRequest - sucessful response", func(t *testing.T) {
-
+	t.Run("SendRequest - successful response", func(t *testing.T) {
 		req := &account.ChannelsRequest{
 			Account:            "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 			DestinationAccount: "rnZvsWuLem5Ha46AZs61jLWR9R5esinkG3",
@@ -99,7 +95,7 @@ func TestClient_Request(t *testing.T) {
 		mc.DoFunc = testutil.MockResponse(response, 200, mc)
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
@@ -125,10 +121,11 @@ func TestClient_Request(t *testing.T) {
 				"validated":    true,
 			},
 			Warning: "none",
-			Warnings: []XRPLResponseWarning{{
-				ID:      1,
-				Message: "message",
-			},
+			Warnings: []XRPLResponseWarning{
+				{
+					ID:      1,
+					Message: "message",
+				},
 			},
 		}
 
@@ -141,7 +138,7 @@ func TestClient_Request(t *testing.T) {
 			LedgerHash:  "1EDBBA3C793863366DF5B31C2174B6B5E6DF6DB89A7212B86838489148E2A581",
 		}
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assert.Equal(t, expectedXrplResponse, xrplResponse)
 
@@ -151,7 +148,6 @@ func TestClient_Request(t *testing.T) {
 	})
 
 	t.Run("SendRequest - error response", func(t *testing.T) {
-
 		req := &account.ChannelsRequest{
 			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		}
@@ -172,7 +168,7 @@ func TestClient_Request(t *testing.T) {
 		mc.DoFunc = testutil.MockResponse(response, 200, mc)
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
@@ -182,7 +178,6 @@ func TestClient_Request(t *testing.T) {
 	})
 
 	t.Run("SendRequest - 503 response", func(t *testing.T) {
-
 		req := &account.ChannelsRequest{
 			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		}
@@ -195,7 +190,7 @@ func TestClient_Request(t *testing.T) {
 		}
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
@@ -204,11 +199,9 @@ func TestClient_Request(t *testing.T) {
 		// Check that 3 extra requests were made
 		assert.Equal(t, 4, mc.RequestCount)
 		assert.EqualError(t, err, "Server is overloaded, rate limit exceeded")
-
 	})
 
-	t.Run("SendRequest - 503 response sucessfully resolves", func(t *testing.T) {
-
+	t.Run("SendRequest - 503 response successfully resolves", func(t *testing.T) {
 		req := &account.ChannelsRequest{
 			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		}
@@ -232,7 +225,7 @@ func TestClient_Request(t *testing.T) {
 		}
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
@@ -250,7 +243,7 @@ func TestClient_Request(t *testing.T) {
 		// Check that only 2 extra requests were made
 		assert.Equal(t, 3, mc.RequestCount)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expected.Account, channelsResponse.Account)
 		assert.Equal(t, expected.LedgerIndex, channelsResponse.LedgerIndex)
 		assert.Equal(t, expected.LedgerHash, channelsResponse.LedgerHash)
@@ -269,14 +262,14 @@ func TestClient_Request(t *testing.T) {
 		}
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
 
 		_, err = jsonRpcClient.Request(req)
 
 		// Check that the expected timeout error occurred
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "timeout")
 	})
 }
@@ -326,18 +319,18 @@ func TestClient_SubmitTxBlob(t *testing.T) {
 			}
 
 			cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			jsonRpcClient := NewClient(cfg)
 
 			response, err := jsonRpcClient.SubmitTxBlob(tt.txBlob, false)
 			if tt.expectError != nil {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tt.expectError.Error(), err.Error())
 				return
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectResult.EngineResult, response.EngineResult)
 			assert.Equal(t, tt.expectResult.EngineResultCode, response.EngineResultCode)
 			assert.Equal(t, tt.expectResult.EngineResultMessage, response.EngineResultMessage)
@@ -346,11 +339,10 @@ func TestClient_SubmitTxBlob(t *testing.T) {
 }
 
 func TestClient_SubmitTx(t *testing.T) {
-
 	tests := []struct {
 		name         string
 		mockResponse string
-		tx           map[string]interface{}
+		tx           map[string]any
 		opts         *rpctypes.SubmitOptions
 		expectError  error
 		expectResult *requests.SubmitResponse
@@ -367,7 +359,7 @@ func TestClient_SubmitTx(t *testing.T) {
 		"status": "success",
 		"type": "response"
 	}`,
-			tx: map[string]interface{}{
+			tx: map[string]any{
 				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Destination":     "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"Fee":             "10",
@@ -389,7 +381,7 @@ func TestClient_SubmitTx(t *testing.T) {
 		},
 		{
 			name: "fail - no wallet provided for unsigned tx",
-			tx: map[string]interface{}{
+			tx: map[string]any{
 				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Destination":     "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"Fee":             "10",
@@ -409,16 +401,16 @@ func TestClient_SubmitTx(t *testing.T) {
 			}
 
 			cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			jsonRpcClient := NewClient(cfg)
 
 			response, err := jsonRpcClient.SubmitTx(tt.tx, tt.opts)
 			if tt.expectError != nil {
-				assert.Error(t, err)
+				require.Error(t, err)
 				assert.Equal(t, tt.expectError.Error(), err.Error())
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectResult.EngineResult, response.EngineResult)
 			assert.Equal(t, tt.expectResult.EngineResultCode, response.EngineResultCode)
 			assert.Equal(t, tt.expectResult.EngineResultMessage, response.EngineResultMessage)
@@ -823,9 +815,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 
 			// Make a copy of the original tx for comparison
 			originalTx := make(transaction.FlatTransaction)
-			for k, v := range tt.tx {
-				originalTx[k] = v
-			}
+			maps.Copy(originalTx, tt.tx)
 
 			err := cl.autofillRawTransactions(&tt.tx)
 

@@ -98,7 +98,7 @@ func (e *ClientError) Error() string {
 // ErrFailedToMarshalJSONRPCRequest is returned when JSON-RPC request marshaling fails.
 type ErrFailedToMarshalJSONRPCRequest struct {
 	Method string
-	Params interface{}
+	Params any
 	Err    error
 }
 
