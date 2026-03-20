@@ -32,7 +32,7 @@ func TestIntegrationAccountSet_Websocket(t *testing.T) {
 
 	tt := []AccountSet{
 		{
-			Name: "delete account",
+			Name: "set account",
 			AccountSet: &transaction.AccountSet{
 				BaseTx: transaction.BaseTx{
 					Account: sender.GetAddress(),
@@ -73,7 +73,7 @@ func TestIntegrationAccountSet_RPCClient(t *testing.T) {
 
 	tt := []AccountSet{
 		{
-			Name: "delete account",
+			Name: "set account",
 			AccountSet: &transaction.AccountSet{
 				BaseTx: transaction.BaseTx{
 					Account: sender.GetAddress(),
