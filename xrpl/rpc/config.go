@@ -119,8 +119,14 @@ func NewClientConfig(url string, opts ...ConfigOpt) (*Config, error) {
 	}
 
 	// Keep the default HTTP client aligned with the config timeout.
+	// If the HTTP client has a custom timeout, sync it to the config to prevent divergence.
+	// Otherwise, apply the config timeout to the HTTP client.
 	if hc, ok := cfg.HTTPClient.(*http.Client); ok {
-		hc.Timeout = cfg.timeout
+		if hc.Timeout == 0 {
+			hc.Timeout = cfg.timeout
+		} else {
+			cfg.timeout = hc.Timeout
+		}
 	}
 
 	return cfg, nil

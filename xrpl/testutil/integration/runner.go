@@ -146,10 +146,8 @@ func (r *Runner) processTransaction(flatTx *transaction.FlatTransaction, signer 
 			return tx, hash, nil
 		}
 
-		if tx.EngineResult == transaction.TefPAST_SEQ.String() {
-			delete(*flatTx, "Sequence")
-			delete(*flatTx, "LastLedgerSequence")
-		}
+		delete(*flatTx, "Sequence")
+		delete(*flatTx, "LastLedgerSequence")
 		attempts++
 	}
 }
