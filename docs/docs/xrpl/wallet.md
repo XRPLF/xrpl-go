@@ -47,8 +47,8 @@ A wallet lets the developer sign and multisign transactions easily. The `Wallet`
 
 ```go
 // Signing methods
-func (w *Wallet) Sign(tx map[string]interface{}) (string, string, error)
-func (w *Wallet) Multisign(tx map[string]interface{}) (string, string, error)
+func (w *Wallet) Sign(tx map[string]any) (string, string, error)
+func (w *Wallet) Multisign(tx map[string]any) (string, string, error)
 ```
 
 The `Sign` method signs a flat transaction and returns the signed transaction blob and the signature.

@@ -19,7 +19,7 @@ type connFn func(*websocket.Conn)
 
 // TestWebSocketServer starts an HTTP test server that upgrades requests to WebSocket and invokes writeFunc.
 func (ms *MockWebSocketServer) TestWebSocketServer(writeFunc connFn) *httptest.Server {
-	var upgrader = websocket.Upgrader{}
+	upgrader := websocket.Upgrader{}
 
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		upgrader.CheckOrigin = func(_ *http.Request) bool { return true }

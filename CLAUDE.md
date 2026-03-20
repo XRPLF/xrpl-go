@@ -146,7 +146,7 @@ Integration tests require `INTEGRATION` environment variable:
 Start localnet with `make run-localnet-linux/amd64` before running integration tests.
 
 ### Lint Configuration
-- Uses `golangci-lint v2.2.2` (configured in Makefile)
+- Uses `golangci-lint v2.11.3` (configured in Makefile)
 - Config in `.golangci.yml` enables: govet, errcheck, staticcheck, gosec, etc.
 - Excludes package-comments linter for examples/
 

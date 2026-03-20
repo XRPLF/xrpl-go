@@ -74,7 +74,7 @@ func (d *DelegateSet) Flatten() FlatTransaction {
 	}
 
 	if len(d.Permissions) > 0 {
-		flattenedPermissions := make([]interface{}, len(d.Permissions))
+		flattenedPermissions := make([]any, len(d.Permissions))
 		for i, permission := range d.Permissions {
 			flattenedPermissions[i] = permission.Flatten()
 		}

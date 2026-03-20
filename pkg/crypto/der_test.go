@@ -83,7 +83,7 @@ func TestDERHexToSig(t *testing.T) {
 			} else {
 				require.Equal(t, tc.expectedR, hex.EncodeToString(r))
 				require.Equal(t, tc.expectedS, hex.EncodeToString(s))
-				require.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -143,7 +143,7 @@ func TestDERHexFromSig(t *testing.T) {
 				require.Equal(t, tc.expectError, err)
 			} else {
 				require.Equal(t, tc.expectedDER, result)
-				require.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -195,7 +195,7 @@ func TestParseInt(t *testing.T) {
 			} else {
 				require.Equal(t, tc.expectedInt.Bytes(), n.Bytes())
 				require.Equal(t, tc.expectedRemaining, remaining)
-				require.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

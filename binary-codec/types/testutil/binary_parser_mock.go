@@ -88,7 +88,7 @@ func (m *MockBinaryParser) ReadBytes(n int) ([]byte, error) {
 }
 
 // ReadBytes indicates an expected call of ReadBytes.
-func (mr *MockBinaryParserMockRecorder) ReadBytes(n interface{}) *gomock.Call {
+func (mr *MockBinaryParserMockRecorder) ReadBytes(n any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadBytes", reflect.TypeOf((*MockBinaryParser)(nil).ReadBytes), n)
 }

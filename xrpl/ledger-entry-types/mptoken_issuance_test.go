@@ -10,49 +10,49 @@ import (
 
 func TestMPTokenIssuance_EntryType(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
-	require.Equal(t, mpTokenIssuance.EntryType(), MPTokenIssuanceEntry)
+	require.Equal(t, MPTokenIssuanceEntry, mpTokenIssuance.EntryType())
 }
 
 func TestMPTokenIssuance_SetLsfMPTLocked(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTLocked()
-	require.Equal(t, mpTokenIssuance.Flags, LsfMPTLocked)
+	require.Equal(t, LsfMPTLocked, mpTokenIssuance.Flags)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanLock(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanLock()
-	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanLock)
+	require.Equal(t, LsfMPTCanLock, mpTokenIssuance.Flags)
 }
 
 func TestMPTokenIssuance_SetLsfMPTRequireAuth(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTRequireAuth()
-	require.Equal(t, mpTokenIssuance.Flags, LsfMPTRequireAuth)
+	require.Equal(t, LsfMPTRequireAuth, mpTokenIssuance.Flags)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanEscrow(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanEscrow()
-	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanEscrow)
+	require.Equal(t, LsfMPTCanEscrow, mpTokenIssuance.Flags)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanTrade(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanTrade()
-	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanTrade)
+	require.Equal(t, LsfMPTCanTrade, mpTokenIssuance.Flags)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanTransfer(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanTransfer()
-	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanTransfer)
+	require.Equal(t, LsfMPTCanTransfer, mpTokenIssuance.Flags)
 }
 
 func TestMPTokenIssuance_SetLsfMPTCanClawback(t *testing.T) {
 	mpTokenIssuance := &MPTokenIssuance{}
 	mpTokenIssuance.SetLsfMPTCanClawback()
-	require.Equal(t, mpTokenIssuance.Flags, LsfMPTCanClawback)
+	require.Equal(t, LsfMPTCanClawback, mpTokenIssuance.Flags)
 }
 
 func TestMPTokenIssuanceSerialization(t *testing.T) {

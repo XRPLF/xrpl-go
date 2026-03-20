@@ -22,7 +22,7 @@ type ValidationStream struct {
 	// validation key pair signs validations with different cookies concurrently, that
 	// usually indicates that multiple servers are incorrectly configured to use the same
 	// validation key pair.
-	Cookie interface{} `json:"cookie,omitempty"`
+	Cookie any `json:"cookie,omitempty"`
 	// Bit-mask of flags added to this validation message. The flag 0x80000000 indicates
 	// that the validation signature is fully-canonical. The flag 0x00000001 indicates
 	// that this is a full validation; otherwise it's a partial validation. Partial
@@ -51,7 +51,7 @@ type ValidationStream struct {
 	ReserveInc int `json:"reserve_inc,omitempty"`
 	// (May be omitted) An 64-bit integer that encodes the version number of the validating server.
 	// For example, "1745990410175512576". Only provided once every 256 ledgers.
-	ServerVersion interface{} `json:"server_version,omitempty"`
+	ServerVersion any `json:"server_version,omitempty"`
 	// The signature that the validator used to sign its vote for this ledger.
 	Signature string `json:"signature"`
 	// When this validation vote was signed, in seconds since the Ripple Epoch.

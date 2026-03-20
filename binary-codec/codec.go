@@ -83,7 +83,6 @@ func EncodeForMultisigning(json map[string]any, xrpAccountID string) (string, er
 	}
 
 	encoded, err := Encode(removeNonSigningFields(json))
-
 	if err != nil {
 		return "", err
 	}
@@ -93,9 +92,7 @@ func EncodeForMultisigning(json map[string]any, xrpAccountID string) (string, er
 
 // EncodeForSigning encodes a transaction into binary format in preparation for signing.
 func EncodeForSigning(json map[string]any) (string, error) {
-
 	encoded, err := Encode(removeNonSigningFields(json))
-
 	if err != nil {
 		return "", err
 	}
@@ -105,23 +102,19 @@ func EncodeForSigning(json map[string]any) (string, error) {
 
 // EncodeForSigningClaim encodes a payment channel claim into binary format in preparation for signing.
 func EncodeForSigningClaim(json map[string]any) (string, error) {
-
 	if json["Channel"] == nil || json["Amount"] == nil {
 		return "", ErrSigningClaimFieldNotFound
 	}
 
 	channel, err := types.NewHash256().FromJSON(json["Channel"])
-
 	if err != nil {
 		return "", err
 	}
 
 	t := &types.Amount{}
 	amount, err := t.FromJSON(json["Amount"])
-
 	if err != nil {
 		return "", err
-
 	}
 
 	if bytes.HasPrefix(amount, []byte{0x40}) {
@@ -171,7 +164,8 @@ func EncodeForSigningBatch(json map[string]any) (string, error) {
 	}
 
 	// Build the result string
-	result := batchPrefix + hex.EncodeToString(flagsBytes) + hex.EncodeToString(txIDsLengthBytes)
+	var result strings.Builder
+	result.WriteString(batchPrefix + hex.EncodeToString(flagsBytes) + hex.EncodeToString(txIDsLengthBytes))
 
 	// Add each transaction ID
 	for _, txID := range txIDsInterface {
@@ -180,10 +174,10 @@ func EncodeForSigningBatch(json map[string]any) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		result += hex.EncodeToString(txIDBytes)
+		result.WriteString(hex.EncodeToString(txIDBytes))
 	}
 
-	return strings.ToUpper(result), nil
+	return strings.ToUpper(result.String()), nil
 }
 
 // removeNonSigningFields removes the fields from a JSON transaction object that should not be signed.

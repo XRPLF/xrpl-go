@@ -94,13 +94,12 @@ func TestXChainBridge_FromJson(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			xcb := &XChainBridge{}
 			got, err := xcb.FromJSON(tc.json)
-			if err != tc.err {
+			if !errors.Is(err, tc.err) {
 				t.Errorf("FromJson() error = %v, want %v", err.Error(), tc.err.Error())
 			}
 			if !bytes.Equal(got, tc.want) {
 				t.Errorf("FromJson() got = %v, want %v", got, tc.want)
 			}
-
 		})
 	}
 }
@@ -161,7 +160,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			xcb, mock := tc.setup(t)
 			got, err := xcb.ToJSON(mock, tc.opts...)
-			if err != tc.err {
+			if !errors.Is(err, tc.err) {
 				t.Errorf("ToJson() error = %v, want %v", err.Error(), tc.err.Error())
 			} else if tc.err == nil && !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("ToJson() got = %v, want %v", got, tc.want)

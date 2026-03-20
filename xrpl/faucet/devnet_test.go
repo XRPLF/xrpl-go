@@ -11,7 +11,6 @@ import (
 // The result and behavior may vary based on the faucet's current state and rate limits.
 // Manual verification of the printed result is recommended.
 func TestDevnetFaucetProvider_FundWallet(t *testing.T) {
-
 	// Create a new DevnetFaucetProvider
 	provider := NewDevnetFaucetProvider()
 
@@ -23,7 +22,6 @@ func TestDevnetFaucetProvider_FundWallet(t *testing.T) {
 
 	// Call FundWallet
 	err = provider.FundWallet(testWallet.ClassicAddress)
-
 	// Check for errors
 	if err != nil {
 		t.Errorf("FundWallet returned an error: %v", err)

@@ -104,7 +104,6 @@ func TestEscrowCreate_Validate(t *testing.T) {
 		wantValid bool
 		wantErr   bool
 	}{
-
 		{
 			name: "fail - invalid transaction with only CancelAfter",
 			entry: &EscrowCreate{

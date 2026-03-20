@@ -53,7 +53,7 @@ type AMMClawback struct {
 	// The maximum amount to claw back from the AMM account. The currency and issuer subfields
 	// should match the Asset subfields. If this field isn't specified, or the value subfield
 	// exceeds the holder's available tokens in the AMM, all of the holder's tokens are clawed back.
-	Amount types.IssuedCurrencyAmount `json:",omitempty"`
+	Amount types.IssuedCurrencyAmount `json:",omitzero"`
 }
 
 // TxType returns the transaction type for AMMClawback.

@@ -5,11 +5,12 @@ import (
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoanBrokerCoverClawback_TxType(t *testing.T) {
 	tx := &LoanBrokerCoverClawback{}
-	assert.Equal(t, tx.TxType(), LoanBrokerCoverClawbackTx)
+	assert.Equal(t, LoanBrokerCoverClawbackTx, tx.TxType())
 }
 
 func TestLoanBrokerCoverClawback_Flatten(t *testing.T) {
@@ -18,12 +19,12 @@ func TestLoanBrokerCoverClawback_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanBrokerCoverClawback
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanBrokerCoverClawback{},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType": LoanBrokerCoverClawbackTx.String(),
 			},
 		},
@@ -39,7 +40,7 @@ func TestLoanBrokerCoverClawback_Flatten(t *testing.T) {
 				LoanBrokerID: &id,
 				Amount:       types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    LoanBrokerCoverClawbackTx.String(),
 				"Account":            "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 				"Fee":                "1000000",
@@ -53,7 +54,7 @@ func TestLoanBrokerCoverClawback_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -156,7 +157,7 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

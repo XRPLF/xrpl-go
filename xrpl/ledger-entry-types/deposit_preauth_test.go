@@ -35,5 +35,5 @@ func TestDepositPreauth(t *testing.T) {
 
 func TestDepositPreauth_EntryType(t *testing.T) {
 	dp := &DepositPreauthObj{}
-	require.Equal(t, dp.EntryType(), DepositPreauthObjEntry)
+	require.Equal(t, DepositPreauthObjEntry, dp.EntryType())
 }

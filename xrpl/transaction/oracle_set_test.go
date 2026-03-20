@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -11,19 +10,19 @@ import (
 
 func TestOracleSet_TxType(t *testing.T) {
 	tx := &OracleSet{}
-	assert.Equal(t, tx.TxType(), OracleSetTx)
+	assert.Equal(t, OracleSetTx, tx.TxType())
 }
 
 func TestOracleSet_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *OracleSet
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name: "pass - empty",
 			tx:   &OracleSet{},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":  OracleSetTx.String(),
 				"OracleDocumentID": uint32(0),
 				"LastUpdatedTime":  uint32(0),
@@ -54,7 +53,7 @@ func TestOracleSet_Flatten(t *testing.T) {
 					},
 				},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    OracleSetTx.String(),
 				"Account":            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 				"Fee":                "1000000",
@@ -81,7 +80,7 @@ func TestOracleSet_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -218,7 +217,7 @@ func TestOracleSet_Validate(t *testing.T) {
 		t.Run(testcase.name, func(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
-			assert.True(t, errors.Is(err, testcase.expected), "expected %v, got %v", testcase.expected, err)
+			assert.ErrorIs(t, err, testcase.expected, "expected %v, got %v", testcase.expected, err)
 		})
 	}
 }

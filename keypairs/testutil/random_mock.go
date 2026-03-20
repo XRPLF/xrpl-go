@@ -43,7 +43,7 @@ func (m *MockRandomizer) GenerateBytes(n int) ([]byte, error) {
 }
 
 // GenerateBytes indicates an expected call of GenerateBytes.
-func (mr *MockRandomizerMockRecorder) GenerateBytes(n interface{}) *gomock.Call {
+func (mr *MockRandomizerMockRecorder) GenerateBytes(n any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateBytes", reflect.TypeOf((*MockRandomizer)(nil).GenerateBytes), n)
 }

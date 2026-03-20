@@ -167,7 +167,7 @@ func createRequest(reqParams XRPLRequest) ([]byte, error) {
 	body = Request{
 		Method: reqParams.Method(),
 		// each param object will have a struct with json serialising tags
-		Params: [1]interface{}{reqParams},
+		Params: [1]any{reqParams},
 	}
 
 	// Omit the Params field if method doesn't require any
@@ -204,7 +204,6 @@ func createRequest(reqParams XRPLRequest) ([]byte, error) {
 
 // checkForError reads the http response and formats the error if it exists
 func checkForError(res *http.Response) (Response, error) {
-
 	var jr Response
 
 	b, err := io.ReadAll(res.Body)
@@ -294,7 +293,6 @@ func (c *Client) setTransactionNextValidSequenceNumber(tx *transaction.FlatTrans
 		Account:     types.Address((*tx)["Account"].(string)),
 		LedgerIndex: common.LedgerTitle("current"),
 	})
-
 	if err != nil {
 		return err
 	}
@@ -421,11 +419,7 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 		if err != nil {
 			return err
 		}
-		if baseFee < maxFeeUint {
-			totalFee = baseFee
-		} else {
-			totalFee = maxFeeUint
-		}
+		totalFee = min(baseFee, maxFeeUint)
 	}
 
 	(*tx)["Fee"] = strconv.FormatUint(totalFee, 10)

@@ -5,7 +5,7 @@ import (
 )
 
 // ValidateOptionalField validates an optional field in the transaction map.
-func ValidateOptionalField(tx FlatTransaction, paramName string, checkValidity func(interface{}) bool) error {
+func ValidateOptionalField(tx FlatTransaction, paramName string, checkValidity func(any) bool) error {
 	// Check if the field is present in the transaction map.
 	if value, ok := tx[paramName]; ok {
 		// Check if the field is valid.

@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -56,7 +57,7 @@ func TestCheckCash_Flatten(t *testing.T) {
 				"Account":         "rfkE1aSy9G8Upk4JssnwBxhEv5p4mn2KTy",
 				"TransactionType": "CheckCash",
 				"CheckID":         "838766BA2B995C00744175F69A1B11E32C3DBC40E64801A4056FCBD657F57334",
-				"DeliverMin": map[string]interface{}{
+				"DeliverMin": map[string]any{
 					"issuer":   "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					"value":    "50000000",
 					"currency": "USD",
@@ -236,7 +237,7 @@ func TestCheckCash_Validate(t *testing.T) {
 			valid, err := tt.checkCash.Validate()
 			assert.Equal(t, tt.wantValid, valid)
 			assert.Equal(t, tt.wantErr, err != nil)
-			if err != nil && err != tt.expectedErr {
+			if err != nil && !errors.Is(err, tt.expectedErr) {
 				t.Errorf("Validate() error = %v, expectedErr %v", err, tt.expectedErr)
 			}
 		})
