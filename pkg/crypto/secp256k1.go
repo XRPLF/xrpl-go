@@ -4,7 +4,7 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
-	"math/big"
+	"math"
 
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -72,7 +72,7 @@ func (c SECP256K1CryptoAlgorithm) deriveScalar(bytes []byte, discrim *uint32) se
 			return scalar
 		}
 
-		if i == 0xffffffff {
+		if i == math.MaxUint32 {
 			break
 		}
 	}

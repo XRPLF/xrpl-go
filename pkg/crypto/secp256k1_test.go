@@ -297,7 +297,7 @@ func TestSecp256k1_deriveScalar_discriminatorAffectsOutput(t *testing.T) {
 		scalars[i] = SECP256K1().deriveScalar(seed, d.discrim)
 	}
 
-	for i := 0; i < len(discrims); i++ {
+	for i := range discrims {
 		for j := i + 1; j < len(discrims); j++ {
 			t.Run(discrims[i].name+"_vs_"+discrims[j].name, func(t *testing.T) {
 				require.NotEqual(t, scalars[i], scalars[j], "different discriminators must produce different scalars")
