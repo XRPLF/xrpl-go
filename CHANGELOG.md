@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### xrpl
+
+- Added Dynamic MPT support for `MPTokenIssuanceCreate`:
+  - `MutableFlags` field to declare which properties can be mutated after creation.
+  - `DomainID` field to associate a permissioned domain (requires `TfMPTRequireAuth` flag).
+  - MutableFlags constants: `TmfMPTCanMutateCanLock`, `TmfMPTCanMutateRequireAuth`, `TmfMPTCanMutateCanEscrow`, `TmfMPTCanMutateCanTrade`, `TmfMPTCanMutateCanTransfer`, `TmfMPTCanMutateCanClawback`, `TmfMPTCanMutateMetadata`, `TmfMPTCanMutateTransferFee`.
+  - Flag setter methods for all mutable flags.
+- Added Dynamic MPT support for `MPTokenIssuanceSet`:
+  - `MutableFlags`, `MPTokenMetadata`, `TransferFee`, and `DomainID` fields for post-creation mutation.
+  - MutableFlags set/clear constant pairs: `TmfMPTSetCanLock`/`TmfMPTClearCanLock`, `TmfMPTSetRequireAuth`/`TmfMPTClearRequireAuth`, `TmfMPTSetCanEscrow`/`TmfMPTClearCanEscrow`, `TmfMPTSetCanTrade`/`TmfMPTClearCanTrade`, `TmfMPTSetCanTransfer`/`TmfMPTClearCanTransfer`, `TmfMPTSetCanClawback`/`TmfMPTClearCanClawback`.
+  - Flag setter methods for all set/clear mutable flags.
+  - Validation: mutual exclusivity between `Holder`/`Flags` and DynamicMPT fields, set/clear conflict detection, `TransferFee` + `ClearCanTransfer` conflict, `DomainID` format validation, no-op transaction detection.
+- Added `MutableFlags` and `DomainID` fields to `MPTokenIssuance` ledger entry type with ledger-state mutable flags constants (`Lsmf` prefix) and flag setter methods.
+- Added `MutableFlags` helper function in `types` package.
+
 ### Fixed
 
 #### pkg/crypto
@@ -19,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl
 
+- Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
+- Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
+- Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
 - Fixed struct-typed JSON fields not being omitted from JSON output when zero-valued. Previously, `omitempty` was used but had no effect on struct types, causing empty structs to always be serialized. Replaced with `omitzero` (Go 1.24+) to match the original intent.
 
 ## [v0.1.16]

@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -21,6 +20,27 @@ const (
 	TfMPTCanTransfer uint32 = 0x00000020
 	// TfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
 	TfMPTCanClawback uint32 = 0x00000040
+)
+
+// MutableFlags constants for MPTokenIssuanceCreate.
+// These declare which properties can be mutated after creation.
+const (
+	// TmfMPTCanMutateCanLock allows the CanLock property to be changed after creation.
+	TmfMPTCanMutateCanLock uint32 = 0x00000002
+	// TmfMPTCanMutateRequireAuth allows the RequireAuth property to be changed after creation.
+	TmfMPTCanMutateRequireAuth uint32 = 0x00000004
+	// TmfMPTCanMutateCanEscrow allows the CanEscrow property to be changed after creation.
+	TmfMPTCanMutateCanEscrow uint32 = 0x00000008
+	// TmfMPTCanMutateCanTrade allows the CanTrade property to be changed after creation.
+	TmfMPTCanMutateCanTrade uint32 = 0x00000010
+	// TmfMPTCanMutateCanTransfer allows the CanTransfer property to be changed after creation.
+	TmfMPTCanMutateCanTransfer uint32 = 0x00000020
+	// TmfMPTCanMutateCanClawback allows the CanClawback property to be changed after creation.
+	TmfMPTCanMutateCanClawback uint32 = 0x00000040
+	// TmfMPTCanMutateMetadata allows the MPTokenMetadata to be changed after creation.
+	TmfMPTCanMutateMetadata uint32 = 0x00010000
+	// TmfMPTCanMutateTransferFee allows the TransferFee to be changed after creation.
+	TmfMPTCanMutateTransferFee uint32 = 0x00020000
 )
 
 // MPTokenIssuanceCreateMetadata represents the resulting metadata of a succeeded MPTokenIssuanceCreate transaction.
@@ -73,7 +93,12 @@ type MPTokenIssuanceCreate struct {
 	MaximumAmount *types.XRPCurrencyAmount `json:",omitempty"`
 	// MPTokenMetadata is arbitrary metadata about this issuance in hex format.
 	// The limit for this field is 1024 bytes.
-	MPTokenMetadata *string
+	MPTokenMetadata *string `json:",omitempty"`
+	// DomainID is the ledger entry ID of a permissioned domain that grants access to the MPT.
+	// Requires the TfMPTRequireAuth flag to be set.
+	DomainID *string `json:",omitempty"`
+	// MutableFlags declares which properties of this MPT can be mutated after creation.
+	MutableFlags *uint32 `json:",omitempty"`
 }
 
 // TxType returns the type of the transaction (MPTokenIssuanceCreate).
@@ -101,6 +126,14 @@ func (m *MPTokenIssuanceCreate) Flatten() FlatTransaction {
 
 	if m.MPTokenMetadata != nil {
 		flattened["MPTokenMetadata"] = *m.MPTokenMetadata
+	}
+
+	if m.DomainID != nil {
+		flattened["DomainID"] = *m.DomainID
+	}
+
+	if m.MutableFlags != nil {
+		flattened["MutableFlags"] = int(*m.MutableFlags)
 	}
 
 	return flattened
@@ -136,6 +169,55 @@ func (m *MPTokenIssuanceCreate) SetMPTCanClawbackFlag() {
 	m.Flags |= TfMPTCanClawback
 }
 
+// setMutableFlag is a helper that initialises MutableFlags if nil and applies the given flag.
+func (m *MPTokenIssuanceCreate) setMutableFlag(f uint32) {
+	if m.MutableFlags == nil {
+		mf := uint32(0)
+		m.MutableFlags = &mf
+	}
+	*m.MutableFlags |= f
+}
+
+// SetMPTCanMutateCanLockFlag allows the CanLock property to be changed after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanLockFlag() {
+	m.setMutableFlag(TmfMPTCanMutateCanLock)
+}
+
+// SetMPTCanMutateRequireAuthFlag allows the RequireAuth property to be changed after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanMutateRequireAuthFlag() {
+	m.setMutableFlag(TmfMPTCanMutateRequireAuth)
+}
+
+// SetMPTCanMutateCanEscrowFlag allows the CanEscrow property to be changed after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanEscrowFlag() {
+	m.setMutableFlag(TmfMPTCanMutateCanEscrow)
+}
+
+// SetMPTCanMutateCanTradeFlag allows the CanTrade property to be changed after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanTradeFlag() {
+	m.setMutableFlag(TmfMPTCanMutateCanTrade)
+}
+
+// SetMPTCanMutateCanTransferFlag allows the CanTransfer property to be changed after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanTransferFlag() {
+	m.setMutableFlag(TmfMPTCanMutateCanTransfer)
+}
+
+// SetMPTCanMutateCanClawbackFlag allows the CanClawback property to be changed after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanClawbackFlag() {
+	m.setMutableFlag(TmfMPTCanMutateCanClawback)
+}
+
+// SetMPTCanMutateMetadataFlag allows the MPTokenMetadata to be changed after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanMutateMetadataFlag() {
+	m.setMutableFlag(TmfMPTCanMutateMetadata)
+}
+
+// SetMPTCanMutateTransferFeeFlag allows the TransferFee to be changed after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanMutateTransferFeeFlag() {
+	m.setMutableFlag(TmfMPTCanMutateTransferFee)
+}
+
 // Validate validates the MPTokenIssuanceCreate transaction ensuring all fields are correct.
 func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 	ok, err := m.BaseTx.Validate()
@@ -159,10 +241,25 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 		}
 	}
 
-	// Validate MPTokenMetadata: ensure it's in hex format.
+	// Validate MPTokenMetadata: ensure it's in hex format and at most 1024 bytes (2048 chars).
 	// This assumes m.MPTokenMetadata.String() returns its hex representation.
-	if m.MPTokenMetadata != nil && !typecheck.IsHex(*m.MPTokenMetadata) {
+	if m.MPTokenMetadata != nil && !ValidateHexMetadata(*m.MPTokenMetadata, 2*types.MaxMPTokenMetadataByteLength) {
 		return false, ErrInvalidMPTokenMetadata
+	}
+
+	// DomainID must be a valid 64-char hex string and requires TfMPTRequireAuth flag.
+	if m.DomainID != nil {
+		if !IsDomainID(*m.DomainID) {
+			return false, ErrMPTIssuanceCreateDomainIDInvalid
+		}
+		if !flag.Contains(m.Flags, TfMPTRequireAuth) {
+			return false, ErrMPTIssuanceCreateDomainIDRequiresRequireAuth
+		}
+	}
+
+	// MutableFlags cannot be zero when present.
+	if m.MutableFlags != nil && *m.MutableFlags == 0 {
+		return false, ErrMPTIssuanceCreateMutableFlagsZero
 	}
 
 	return true, nil
