@@ -7,21 +7,21 @@ import (
 )
 
 // CompareFlattenAndExpected compares a flattened map and expected JSON bytes and returns an error if they differ.
-func CompareFlattenAndExpected(flattened map[string]interface{}, expected []byte) error {
+func CompareFlattenAndExpected(flattened map[string]any, expected []byte) error {
 	// Convert flattened to JSON
 	flattenedJSON, err := json.Marshal(flattened)
 	if err != nil {
-		return fmt.Errorf("%w, error: %v", ErrMarshalingPaymentFlattened, err)
+		return fmt.Errorf("%w, error: %w", ErrMarshalingPaymentFlattened, err)
 	}
 
 	// Normalize expected JSON
-	var expectedMap map[string]interface{}
+	var expectedMap map[string]any
 	if err := json.Unmarshal([]byte(expected), &expectedMap); err != nil {
-		return fmt.Errorf("%w, error: %v", ErrUnmarshalingExpected, err)
+		return fmt.Errorf("%w, error: %w", ErrUnmarshalingExpected, err)
 	}
 	expectedJSON, err := json.Marshal(expectedMap)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrMarshalingExpectedPaymentObject, err)
+		return fmt.Errorf("%w: %w", ErrMarshalingExpectedPaymentObject, err)
 	}
 
 	// Compare JSON strings

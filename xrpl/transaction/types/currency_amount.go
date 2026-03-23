@@ -22,7 +22,7 @@ const (
 // CurrencyAmount defines methods for types representing XRP Ledger currency amounts.
 type CurrencyAmount interface {
 	Kind() CurrencyKind
-	Flatten() interface{}
+	Flatten() any
 }
 
 // UnmarshalCurrencyAmount parses JSON data into the appropriate CurrencyAmount implementation.
@@ -32,7 +32,7 @@ func UnmarshalCurrencyAmount(data []byte) (CurrencyAmount, error) {
 	}
 	switch data[0] {
 	case '{':
-		var raw map[string]interface{}
+		var raw map[string]any
 		if err := json.Unmarshal(data, &raw); err != nil {
 			return nil, err
 		}
@@ -71,9 +71,9 @@ func (IssuedCurrencyAmount) Kind() CurrencyKind {
 	return ISSUED
 }
 
-// Flatten returns a map[string]interface{} representation of the issued currency amount.
-func (i IssuedCurrencyAmount) Flatten() interface{} {
-	json := make(map[string]interface{})
+// Flatten returns a map[string]any representation of the issued currency amount.
+func (i IssuedCurrencyAmount) Flatten() any {
+	json := make(map[string]any)
 
 	if i.Issuer != "" {
 		json["issuer"] = i.Issuer.String()
@@ -112,7 +112,7 @@ func (XRPCurrencyAmount) Kind() CurrencyKind {
 }
 
 // Flatten returns the XRP amount as a decimal string.
-func (a XRPCurrencyAmount) Flatten() interface{} {
+func (a XRPCurrencyAmount) Flatten() any {
 	return a.String()
 }
 
@@ -138,7 +138,6 @@ func (a *XRPCurrencyAmount) UnmarshalJSON(data []byte) error {
 
 // UnmarshalText parses a text representation into an XRPCurrencyAmount.
 func (a *XRPCurrencyAmount) UnmarshalText(data []byte) error {
-
 	v, err := strconv.ParseUint(string(data), 10, 64)
 	if err != nil {
 		return err
@@ -158,9 +157,9 @@ func (MPTCurrencyAmount) Kind() CurrencyKind {
 	return MPT
 }
 
-// Flatten returns a map[string]interface{} representation of the MPT currency amount.
-func (m MPTCurrencyAmount) Flatten() interface{} {
-	json := make(map[string]interface{})
+// Flatten returns a map[string]any representation of the MPT currency amount.
+func (m MPTCurrencyAmount) Flatten() any {
+	json := make(map[string]any)
 	if m.MPTIssuanceID != "" {
 		json["mpt_issuance_id"] = m.MPTIssuanceID
 	}

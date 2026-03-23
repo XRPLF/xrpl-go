@@ -25,7 +25,7 @@ func safeInt64ToUint32(value int64) uint32 {
 	return uint32(value)
 }
 
-func printJSON(data interface{}) {
+func printJSON(data any) {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		fmt.Printf("❌ Error marshaling to JSON: %s\n", err)

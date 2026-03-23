@@ -279,7 +279,7 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 	if err != nil {
 		return nil, err
 	}
-	signers, okSigners := tx["Signers"].([]interface{})
+	signers, okSigners := tx["Signers"].([]any)
 
 	if okSigners && len(signers) > 0 {
 		for _, sig := range signers {
@@ -309,9 +309,7 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 
 	lastLedgerSequence, ok := tx["LastLedgerSequence"].(uint32)
 	if !ok {
-
 		return nil, ErrMissingLastLedgerSequenceInTransaction
-
 	}
 	txResponse, err := c.SubmitTxBlob(txBlob, failHard)
 	if err != nil {
@@ -496,7 +494,6 @@ func (c *Client) setTransactionNextValidSequenceNumber(tx *transaction.FlatTrans
 		Account:     types.Address((*tx)["Account"].(string)),
 		LedgerIndex: common.LedgerTitle("current"),
 	})
-
 	if err != nil {
 		return err
 	}
@@ -623,11 +620,7 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 		if err != nil {
 			return err
 		}
-		if baseFee < maxFeeUint {
-			totalFee = baseFee
-		} else {
-			totalFee = maxFeeUint
-		}
+		totalFee = min(baseFee, maxFeeUint)
 	}
 
 	(*tx)["Fee"] = strconv.FormatUint(totalFee, 10)

@@ -34,7 +34,7 @@ func (e ErrPriceDataScale) Error() string {
 
 // ErrUnrecognizedLedgerObjectType is returned when an unrecognized ledger object type is encountered.
 type ErrUnrecognizedLedgerObjectType struct {
-	Type interface{}
+	Type any
 }
 
 // Error implements the error interface for ErrUnrecognizedLedgerObjectType

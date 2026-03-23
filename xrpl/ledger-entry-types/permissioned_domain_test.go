@@ -10,11 +10,10 @@ import (
 
 func TestPermissionedDomain_EntryType(t *testing.T) {
 	permissionedDomain := &PermissionedDomain{}
-	require.Equal(t, permissionedDomain.EntryType(), PermissionedDomainEntry)
+	require.Equal(t, PermissionedDomainEntry, permissionedDomain.EntryType())
 }
 
 func TestPermissionedDomain(t *testing.T) {
-
 	tests := []struct {
 		name               string
 		permissionedDomain *PermissionedDomain

@@ -26,7 +26,7 @@ Returns `true` if all bits of `flag` are set in `currentFlag` (`(currentFlag & f
 
 :::warning
 
-The comparison is based on the flag value as a `uint32`. Different contexts may use the same numeric values (e.g. a transaction flag and a ledger-state flag), so a match only indicates the bit is set — not that it belongs to a specific context. Always pair `Contains` with the flag constant that matches the context you are checking.
+The comparison is based on the flag value as a `uint32`. Different contexts may use the same numeric values (e.g. a transaction flag and a ledger-state flag), so a match only indicates the bit is set, not that it belongs to a specific context. Always pair `Contains` with the flag constant that matches the context you are checking.
 
 :::
 

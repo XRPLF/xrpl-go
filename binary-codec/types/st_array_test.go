@@ -91,7 +91,6 @@ func TestSTArrayFromJson(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestSTArrayToJson(t *testing.T) {

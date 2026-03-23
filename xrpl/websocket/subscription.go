@@ -153,7 +153,6 @@ func (c *Client) OnBookChanges(
 func (c *Client) OnConsensusPhase(
 	handler func(consensusPhase *streamtypes.ConsensusStream),
 ) {
-
 	c.consensusChan = make(chan *streamtypes.ConsensusStream)
 	go func() {
 		defer close(c.consensusChan)

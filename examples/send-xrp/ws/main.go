@@ -15,7 +15,6 @@ import (
 )
 
 func main() {
-
 	fmt.Println("⏳ Connecting to testnet...")
 	client := websocket.NewClient(
 		websocket.NewClientConfig().
