@@ -48,7 +48,7 @@ type Tx interface {
 | `Memos` | Arbitrary attached data |
 | `Flags` | Bitmask of transaction-specific flags |
 
-Each transaction type has a `Flatten() FlatTransaction` method that converts the struct to a `map[string]interface{}` for JSON-RPC submission.
+Each transaction type has a `Flatten() FlatTransaction` method that converts the struct to a `map[string]any` for JSON-RPC submission.
 
 Available transaction types include: `Payment`, `AccountSet`, `AccountDelete`, `TrustSet`, `OfferCreate`, `OfferCancel`, `EscrowCreate/Finish/Cancel`, `PaymentChannelCreate/Fund/Claim`, `NFTokenMint/Burn/CreateOffer/CancelOffer/AcceptOffer`, `AMMCreate/Deposit/Withdraw/Vote/Bid/Delete`, `CheckCreate/Cash/Cancel`, `TicketCreate`, `SignerListSet`, `SetRegularKey`, `DepositPreauth`, `DIDSet/Delete`, `OracleSet/Delete`, `XChain*`, `Batch`, and more.
 
