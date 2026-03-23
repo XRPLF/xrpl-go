@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - Fixed struct-typed JSON fields not being omitted from JSON output when zero-valued. Previously, `omitempty` was used but had no effect on struct types, causing empty structs to always be serialized. Replaced with `omitzero` (Go 1.24+) to match the original intent.
+- `waitForTransaction` in both RPC and WebSocket clients now checks `txResponse.Validated` and returns early once the transaction is confirmed, instead of only relying on ledger sequence. The RPC client also now handles `txnNotFound` errors gracefully during the polling loop.
 
 ## [v0.1.16]
 
