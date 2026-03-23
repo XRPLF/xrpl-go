@@ -126,7 +126,7 @@ func (tx *BaseTx) Flatten() FlatTransaction {
 	if tx.Fee != 0 {
 		flattened["Fee"] = tx.Fee.String()
 	}
-	if tx.Sequence != 0 {
+	if tx.Sequence != 0 || tx.TicketSequence != 0 {
 		flattened["Sequence"] = tx.Sequence
 	}
 	if tx.AccountTxnID != "" {

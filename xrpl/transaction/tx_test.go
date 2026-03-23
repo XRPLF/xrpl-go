@@ -272,3 +272,24 @@ func TestBaseTx_Flatten(t *testing.T) {
 		})
 	}
 }
+
+func TestBaseTx_Flatten_PreservesZeroSequenceWithTicketSequence(t *testing.T) {
+	tx := &BaseTx{
+		Account:         "rhbi7TGHknHCsRrVYmW57tQHmHjmFgjEpU",
+		TransactionType: PaymentTx,
+		Fee:             types.XRPCurrencyAmount(10),
+		Sequence:        0,
+		TicketSequence:  2,
+	}
+
+	err := testutil.CompareFlattenAndExpected(tx.Flatten(), []byte(`{
+		"Account": "rhbi7TGHknHCsRrVYmW57tQHmHjmFgjEpU",
+		"TransactionType": "Payment",
+		"Fee": "10",
+		"Sequence": 0,
+		"TicketSequence": 2
+	}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
