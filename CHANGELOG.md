@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### xrpl/transaction
+
+- **`BaseTx.Flatten()` now preserves `Sequence: 0` when `TicketSequence` is set.** Previously, the condition `if tx.Sequence != 0` caused `Sequence` to be omitted from the flattened transaction when its value was `0`. This caused `Autofill` to overwrite it with the account's current sequence number, resulting in both a non-zero `Sequence` and a `TicketSequence` being present — which the server rejects with `temSEQ_AND_TICKET`.
+
 #### pkg/crypto
 
 - **Fixed a bug in secp256k1 `deriveScalar` where the discriminator and iteration counter were written to the input seed slice instead of their own buffers.** The old code wrote `discrim` and `i` values into `bytes[0..3]` (the caller's seed) rather than into `discrimBytes[0..3]` and `shiftBytes[0..3]`, causing two problems:
