@@ -5,6 +5,11 @@ import (
 	"fmt"
 )
 
+const (
+	// txnNotFound is the error message returned by the xrpl node when requesting for a not found transaction.
+	txnNotFound = "txnNotFound"
+)
+
 var (
 	// transaction
 
