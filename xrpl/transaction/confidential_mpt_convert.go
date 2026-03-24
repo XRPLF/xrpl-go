@@ -41,8 +41,8 @@ type ConfidentialMPTConvert struct {
 	// AuditorEncryptedAmount is the encrypted amount for the auditor (if configured). (Optional)
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	AuditorEncryptedAmount *string `json:",omitempty"`
-	// BlindingFactor is the blinding factor used in the Pedersen commitment.
-	// Required for proof verification.
+	// BlindingFactor is the 32-byte scalar value used to encrypt the amount.
+	// Used by validators to verify the ciphertexts match the plaintext MPTAmount.
 	BlindingFactor string
 	// ZKProof is a zero-knowledge proof required when holder has existing
 	// confidential balance. Proves the validity of the conversion. (Optional)
@@ -115,12 +115,12 @@ func (tx *ConfidentialMPTConvert) Validate() (bool, error) {
 		return false, ErrConfidentialConvertInvalidBlindingFactor
 	}
 
-	if !IsValidHexBlob(tx.HolderEncryptedAmount) || !IsValidHexBlob(tx.IssuerEncryptedAmount) {
-		return false, ErrConfidentialConvertMissingEncryptedAmount
+	if !IsValidCiphertext(tx.HolderEncryptedAmount) || !IsValidCiphertext(tx.IssuerEncryptedAmount) {
+		return false, ErrConfidentialConvertInvalidCiphertext
 	}
 
-	if tx.AuditorEncryptedAmount != nil && !IsValidHexBlob(*tx.AuditorEncryptedAmount) {
-		return false, ErrConfidentialConvertMissingEncryptedAmount
+	if tx.AuditorEncryptedAmount != nil && !IsValidCiphertext(*tx.AuditorEncryptedAmount) {
+		return false, ErrConfidentialConvertInvalidCiphertext
 	}
 
 	return true, nil

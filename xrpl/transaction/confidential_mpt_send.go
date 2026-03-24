@@ -116,14 +116,21 @@ func (tx *ConfidentialMPTSend) Validate() (bool, error) {
 		return false, ErrConfidentialSendSelfSend
 	}
 
-	if !IsValidHexBlob(tx.SenderEncryptedAmount) || !IsValidHexBlob(tx.DestinationEncryptedAmount) ||
-		!IsValidHexBlob(tx.IssuerEncryptedAmount) || !IsValidHexBlob(tx.ZKProof) ||
-		!IsValidHexBlob(tx.BalanceCommitment) || !IsValidHexBlob(tx.AmountCommitment) {
-		return false, ErrConfidentialSendMissingFields
+	if !IsValidCiphertext(tx.SenderEncryptedAmount) || !IsValidCiphertext(tx.DestinationEncryptedAmount) ||
+		!IsValidCiphertext(tx.IssuerEncryptedAmount) {
+		return false, ErrConfidentialSendInvalidCiphertext
 	}
 
-	if tx.AuditorEncryptedAmount != nil && !IsValidHexBlob(*tx.AuditorEncryptedAmount) {
-		return false, ErrConfidentialSendMissingFields
+	if tx.AuditorEncryptedAmount != nil && !IsValidCiphertext(*tx.AuditorEncryptedAmount) {
+		return false, ErrConfidentialSendInvalidCiphertext
+	}
+
+	if !IsValidCommitment(tx.BalanceCommitment) || !IsValidCommitment(tx.AmountCommitment) {
+		return false, ErrConfidentialSendInvalidCommitment
+	}
+
+	if !IsValidHexBlob(tx.ZKProof) {
+		return false, ErrConfidentialSendInvalidProof
 	}
 
 	if tx.CredentialIDs != nil && !tx.CredentialIDs.IsValid() {

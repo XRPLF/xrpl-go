@@ -34,8 +34,8 @@ type ConfidentialMPTConvertBack struct {
 	// IssuerEncryptedAmount is the encrypted amount for the issuer's tracking purposes.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	IssuerEncryptedAmount string
-	// BlindingFactor is the blinding factor used in the Pedersen commitment.
-	// Required for proof verification.
+	// BlindingFactor is the 32-byte scalar value used to encrypt the amount.
+	// Used by validators to verify the ciphertexts match the plaintext MPTAmount.
 	BlindingFactor string
 	// AuditorEncryptedAmount is the encrypted amount for the auditor (if configured). (Optional)
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
@@ -99,13 +99,20 @@ func (tx *ConfidentialMPTConvertBack) Validate() (bool, error) {
 		return false, ErrConfidentialConvertBackInvalidBlindingFactor
 	}
 
-	if !IsValidHexBlob(tx.HolderEncryptedAmount) || !IsValidHexBlob(tx.IssuerEncryptedAmount) ||
-		!IsValidHexBlob(tx.BalanceCommitment) || !IsValidHexBlob(tx.ZKProof) {
-		return false, ErrConfidentialConvertBackMissingFields
+	if !IsValidCiphertext(tx.HolderEncryptedAmount) || !IsValidCiphertext(tx.IssuerEncryptedAmount) {
+		return false, ErrConfidentialConvertBackInvalidCiphertext
 	}
 
-	if tx.AuditorEncryptedAmount != nil && !IsValidHexBlob(*tx.AuditorEncryptedAmount) {
-		return false, ErrConfidentialConvertBackMissingFields
+	if tx.AuditorEncryptedAmount != nil && !IsValidCiphertext(*tx.AuditorEncryptedAmount) {
+		return false, ErrConfidentialConvertBackInvalidCiphertext
+	}
+
+	if !IsValidCommitment(tx.BalanceCommitment) {
+		return false, ErrConfidentialConvertBackInvalidCommitment
+	}
+
+	if !IsValidHexBlob(tx.ZKProof) {
+		return false, ErrConfidentialConvertBackInvalidProof
 	}
 
 	return true, nil

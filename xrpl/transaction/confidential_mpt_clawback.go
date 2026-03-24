@@ -82,7 +82,7 @@ func (tx *ConfidentialMPTClawback) Validate() (bool, error) {
 	}
 
 	if !IsValidHexBlob(tx.ZKProof) {
-		return false, ErrConfidentialClawbackMissingProof
+		return false, ErrConfidentialClawbackBadProof
 	}
 
 	return true, nil

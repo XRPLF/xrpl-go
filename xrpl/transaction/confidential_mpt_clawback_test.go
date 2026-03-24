@@ -144,7 +144,7 @@ func TestConfidentialMPTClawback_Validate(t *testing.T) {
 				MPTAmount:         types.MPTPlainAmount(1000),
 				ZKProof:           "",
 			},
-			wantErr: ErrConfidentialClawbackMissingProof,
+			wantErr: ErrConfidentialClawbackBadProof,
 		},
 		{
 			name: "fail - invalid hex ZKProof",
@@ -159,7 +159,7 @@ func TestConfidentialMPTClawback_Validate(t *testing.T) {
 				MPTAmount:         types.MPTPlainAmount(1000),
 				ZKProof:           "ZZZZ",
 			},
-			wantErr: ErrConfidentialClawbackMissingProof,
+			wantErr: ErrConfidentialClawbackBadProof,
 		},
 	}
 
