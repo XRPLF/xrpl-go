@@ -12,19 +12,17 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 )
 
-var (
-	createPaymentTx = func(sender, receiver *wallet.Wallet, amount txnTypes.CurrencyAmount) *transaction.Payment {
-		return &transaction.Payment{
-			BaseTx: transaction.BaseTx{
-				Account:         sender.GetAddress(),
-				TransactionType: transaction.PaymentTx,
-				Flags:           txnTypes.TfInnerBatchTxn,
-			},
-			Amount:      amount,
-			Destination: receiver.GetAddress(),
-		}
+var createPaymentTx = func(sender, receiver *wallet.Wallet, amount txnTypes.CurrencyAmount) *transaction.Payment {
+	return &transaction.Payment{
+		BaseTx: transaction.BaseTx{
+			Account:         sender.GetAddress(),
+			TransactionType: transaction.PaymentTx,
+			Flags:           txnTypes.TfInnerBatchTxn,
+		},
+		Amount:      amount,
+		Destination: receiver.GetAddress(),
 	}
-)
+}
 
 func main() {
 	// Connect to testnet

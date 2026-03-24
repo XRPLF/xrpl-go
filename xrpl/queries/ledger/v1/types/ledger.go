@@ -23,7 +23,7 @@ type BaseLedger struct {
 	ParentHash          string                    `json:"parent_hash"`
 	TotalCoins          types.XRPCurrencyAmount   `json:"total_coins"`
 	TransactionHash     string                    `json:"transaction_hash"`
-	Transactions        []interface{}             `json:"transactions,omitempty"`
+	Transactions        []any                     `json:"transactions,omitempty"`
 }
 
 // QueueData contains information about transactions queued in the ledger,

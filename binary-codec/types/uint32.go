@@ -72,7 +72,6 @@ func (u *UInt32) FromJSON(value any) ([]byte, error) {
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, val)
-
 	if err != nil {
 		return nil, err
 	}

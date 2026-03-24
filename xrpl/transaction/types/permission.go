@@ -12,8 +12,8 @@ type PermissionValue struct {
 }
 
 // Flatten returns the flattened map representation of the Permission.
-func (p *Permission) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (p *Permission) Flatten() map[string]any {
+	flattened := make(map[string]any)
 	flattened["Permission"] = p.Permission.Flatten()
 	return flattened
 }
@@ -24,8 +24,8 @@ func (p *Permission) IsValid() bool {
 }
 
 // Flatten returns the flattened map representation of the PermissionValue.
-func (pv *PermissionValue) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (pv *PermissionValue) Flatten() map[string]any {
+	flattened := make(map[string]any)
 	flattened["PermissionValue"] = pv.PermissionValue
 	return flattened
 }

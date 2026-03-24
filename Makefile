@@ -9,7 +9,7 @@ PARALLEL_TESTS = 4
 TEST_TIMEOUT = 5m
 
 GOLANGCI_LINT_MAJOR_VERSION = 2
-GOLANGCI_LINT_VERSION = v2.2.2
+GOLANGCI_LINT_VERSION = v2.11.3
 
 RIPPLED_IMAGE = rippleci/rippled:2.3.0
 
@@ -26,7 +26,7 @@ lint:
 lint-fix:
 	@echo "Fixing Go code..."
 	@go install github.com/golangci/golangci-lint/v$(GOLANGCI_LINT_MAJOR_VERSION)/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
-	@gofmt -w -s .
+	@golangci-lint run --fix
 	@echo "Fixing complete!"
 
 ################################################################################

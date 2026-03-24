@@ -30,7 +30,7 @@ type TransactionStream struct {
 	LedgerIndex common.LedgerIndex `json:"ledger_index,omitempty"`
 	// (Validated transactions only) The transaction metadata, which shows the exact outcome
 	// of the transaction in detail.
-	Meta transactions.TxObjMeta `json:"meta,omitempty"`
+	Meta transactions.TxObjMeta `json:"meta,omitzero"`
 	// The definition of the transaction in JSON format.
 	Transaction transactions.FlatTransaction `json:"transaction"`
 	// If true, this transaction is included in a validated ledger and its outcome is final.

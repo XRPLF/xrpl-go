@@ -4,23 +4,24 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoanManage_TxType(t *testing.T) {
 	tx := &LoanManage{}
-	assert.Equal(t, tx.TxType(), LoanManageTx)
+	assert.Equal(t, LoanManageTx, tx.TxType())
 }
 
 func TestLoanManage_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanManage
-		expected map[string]interface{}
+		expected map[string]any
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanManage{},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType": LoanManageTx.String(),
 				"LoanID":          "",
 			},
@@ -37,7 +38,7 @@ func TestLoanManage_Flatten(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"TransactionType":    LoanManageTx.String(),
 				"Account":            "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Fee":                "1000000",
@@ -51,7 +52,7 @@ func TestLoanManage_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -126,7 +127,7 @@ func TestLoanManage_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

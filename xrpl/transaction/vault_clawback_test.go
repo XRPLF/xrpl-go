@@ -5,11 +5,12 @@ import (
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVaultClawback_TxType(t *testing.T) {
 	tx := &VaultClawback{}
-	assert.Equal(t, tx.TxType(), VaultClawbackTx)
+	assert.Equal(t, VaultClawbackTx, tx.TxType())
 }
 
 func TestVaultClawback_Flatten(t *testing.T) {
@@ -55,7 +56,7 @@ func TestVaultClawback_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -253,7 +254,7 @@ func TestVaultClawback_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

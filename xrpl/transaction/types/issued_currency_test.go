@@ -6,7 +6,7 @@ func TestIssuedCurrency_Flatten(t *testing.T) {
 	tests := []struct {
 		name     string
 		currency IssuedCurrency
-		want     map[string]interface{}
+		want     map[string]any
 	}{
 		{
 			name: "pass - basic issued currency",
@@ -14,7 +14,7 @@ func TestIssuedCurrency_Flatten(t *testing.T) {
 				Currency: "FOO",
 				Issuer:   "rPdYxU9dNkbzC5Y2h4jLbVJ3rMRrk7WVRL",
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"currency": "FOO",
 				"issuer":   "rPdYxU9dNkbzC5Y2h4jLbVJ3rMRrk7WVRL",
 			},
@@ -25,7 +25,7 @@ func TestIssuedCurrency_Flatten(t *testing.T) {
 				Currency: "",
 				Issuer:   "rPdYxU9dNkbzC5Y2h4jLbVJ3rMRrk7WVRL",
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"currency": "",
 				"issuer":   "rPdYxU9dNkbzC5Y2h4jLbVJ3rMRrk7WVRL",
 			},
@@ -36,7 +36,7 @@ func TestIssuedCurrency_Flatten(t *testing.T) {
 				Currency: "BAR",
 				Issuer:   "",
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"currency": "BAR",
 				"issuer":   "",
 			},

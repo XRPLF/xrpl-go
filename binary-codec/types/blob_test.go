@@ -11,7 +11,6 @@ import (
 )
 
 func TestBlob_FromJson(t *testing.T) {
-
 	tt := []struct {
 		name        string
 		input       string
@@ -42,7 +41,7 @@ func TestBlob_FromJson(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			blob := &Blob{}
 			actual, err := blob.FromJSON(tc.input)
-			if err != tc.expectedErr {
+			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("Expected error %v, got %v", tc.expectedErr, err)
 			}
 			if !bytes.Equal(actual, tc.expected) {

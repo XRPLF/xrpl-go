@@ -1,11 +1,13 @@
 package transaction
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPaymentChannelClaim_TxType(t *testing.T) {
@@ -137,7 +139,7 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := testutil.CompareFlattenAndExpected(tt.claim.Flatten(), []byte(tt.expected))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -254,7 +256,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			valid, err := tt.claim.Validate()
 			assert.Equal(t, tt.wantValid, valid)
 			assert.Equal(t, tt.wantErr, err != nil)
-			if err != nil && err != tt.expectedErr {
+			if err != nil && !errors.Is(err, tt.expectedErr) {
 				t.Errorf("Validate() error = %v, expectedErr %v", err, tt.expectedErr)
 			}
 		})

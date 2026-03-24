@@ -20,19 +20,19 @@ func TestGetBalanceChanges(t *testing.T) {
 					{
 						ModifiedNode: &ModifiedNode{
 							FinalFields: ledger.FlatLedgerObject{
-								"Balance": map[string]interface{}{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "1.535330905250352",
 								},
 								"Flags": 1114112,
-								"HighLimit": map[string]interface{}{
+								"HighLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
 									"value":    "0",
 								},
 								"HighNode": "00000000000001E8",
-								"LowLimit": map[string]interface{}{
+								"LowLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
 									"value":    "1000000000",
@@ -41,8 +41,8 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.RippleStateEntry,
 							LedgerIndex:     "2F323020B4288ACD4066CC64C89DAD2E4D5DFC2D44571942A51C005BF79D6E25",
-							PreviousFields: map[string]interface{}{
-								"Balance": map[string]interface{}{
+							PreviousFields: map[string]any{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "1.545330905250352",
@@ -55,19 +55,19 @@ func TestGetBalanceChanges(t *testing.T) {
 					{
 						ModifiedNode: &ModifiedNode{
 							FinalFields: ledger.FlatLedgerObject{
-								"Balance": map[string]interface{}{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "0.01",
 								},
 								"Flags": 1114112,
-								"HighLimit": map[string]interface{}{
+								"HighLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
 									"value":    "0",
 								},
 								"HighNode": "00000000000001E8",
-								"LowLimit": map[string]interface{}{
+								"LowLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
 									"value":    "1000000000",
@@ -76,8 +76,8 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.RippleStateEntry,
 							LedgerIndex:     "AAE13AF5192EFBFD49A8EEE5869595563FEB73228C0B38FED9CC3D20EE74F399",
-							PreviousFields: map[string]interface{}{
-								"Balance": map[string]interface{}{
+							PreviousFields: map[string]any{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "0",
@@ -98,7 +98,7 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.AccountRootEntry,
 							LedgerIndex:     "E9A39B0BA8703D5FFD05D9EAD01EE6C0E7A15CF33C2C6B7269107BD2BD535818",
-							PreviousFields: map[string]interface{}{
+							PreviousFields: map[string]any{
 								"Balance":  "239819992",
 								"Sequence": 16,
 							},
@@ -178,7 +178,7 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.AccountRootEntry,
 							LedgerIndex:     "E9A39B0BA8703D5FFD05D9EAD01EE6C0E7A15CF33C2C6B7269107BD2BD535818",
-							PreviousFields: map[string]interface{}{
+							PreviousFields: map[string]any{
 								"Balance":  "439915994",
 								"Sequence": 8,
 							},
@@ -216,19 +216,19 @@ func TestGetBalanceChanges(t *testing.T) {
 					{
 						ModifiedNode: &ModifiedNode{
 							FinalFields: ledger.FlatLedgerObject{
-								"Balance": map[string]interface{}{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "1.545330905250352",
 								},
 								"Flags": 1114112,
-								"HighLimit": map[string]interface{}{
+								"HighLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
 									"value":    "0",
 								},
 								"HighNode": "00000000000001E8",
-								"LowLimit": map[string]interface{}{
+								"LowLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
 									"value":    "1000000000",
@@ -237,8 +237,8 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.RippleStateEntry,
 							LedgerIndex:     "2F323020B4288ACD4066CC64C89DAD2E4D5DFC2D44571942A51C005BF79D6E25",
-							PreviousFields: map[string]interface{}{
-								"Balance": map[string]interface{}{
+							PreviousFields: map[string]any{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "1.345330905250352",
@@ -251,19 +251,19 @@ func TestGetBalanceChanges(t *testing.T) {
 					{
 						ModifiedNode: &ModifiedNode{
 							FinalFields: ledger.FlatLedgerObject{
-								"Balance": map[string]interface{}{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "0",
 								},
 								"Flags": 1114112,
-								"HighLimit": map[string]interface{}{
+								"HighLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
 									"value":    "0",
 								},
 								"HighNode": "00000000000001E8",
-								"LowLimit": map[string]interface{}{
+								"LowLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
 									"value":    "1000000000",
@@ -272,8 +272,8 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.RippleStateEntry,
 							LedgerIndex:     "AAE13AF5192EFBFD49A8EEE5869595563FEB73228C0B38FED9CC3D20EE74F399",
-							PreviousFields: map[string]interface{}{
-								"Balance": map[string]interface{}{
+							PreviousFields: map[string]any{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "0.2",
@@ -294,7 +294,7 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.AccountRootEntry,
 							LedgerIndex:     "C24354B286600B8F28E51233B4AC41A3B4DDD0FDC9BCF96BB171573F6B40A4AE",
-							PreviousFields: map[string]interface{}{
+							PreviousFields: map[string]any{
 								"Balance":  "99988002",
 								"Sequence": 2,
 							},
@@ -356,19 +356,19 @@ func TestGetBalanceChanges(t *testing.T) {
 					{
 						ModifiedNode: &ModifiedNode{
 							FinalFields: ledger.FlatLedgerObject{
-								"Balance": map[string]interface{}{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "1.525330905250352",
 								},
 								"Flags": 1114112,
-								"HighLimit": map[string]interface{}{
+								"HighLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
 									"value":    "0",
 								},
 								"HighNode": "00000000000001E8",
-								"LowLimit": map[string]interface{}{
+								"LowLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
 									"value":    "1000000000",
@@ -377,8 +377,8 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.RippleStateEntry,
 							LedgerIndex:     "2F323020B4288ACD4066CC64C89DAD2E4D5DFC2D44571942A51C005BF79D6E25",
-							PreviousFields: map[string]interface{}{
-								"Balance": map[string]interface{}{
+							PreviousFields: map[string]any{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "1.535330905250352",
@@ -390,20 +390,20 @@ func TestGetBalanceChanges(t *testing.T) {
 					},
 					{
 						ModifiedNode: &ModifiedNode{
-							FinalFields: map[string]interface{}{
-								"Balance": map[string]interface{}{
+							FinalFields: map[string]any{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "0.02",
 								},
 								"Flags": 1114112,
-								"HighLimit": map[string]interface{}{
+								"HighLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
 									"value":    "0",
 								},
 								"HighNode": "00000000000001E8",
-								"LowLimit": map[string]interface{}{
+								"LowLimit": map[string]any{
 									"currency": "USD",
 									"issuer":   "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
 									"value":    "1000000000",
@@ -412,8 +412,8 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.RippleStateEntry,
 							LedgerIndex:     "AAE13AF5192EFBFD49A8EEE5869595563FEB73228C0B38FED9CC3D20EE74F399",
-							PreviousFields: map[string]interface{}{
-								"Balance": map[string]interface{}{
+							PreviousFields: map[string]any{
+								"Balance": map[string]any{
 									"currency": "USD",
 									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
 									"value":    "0.01",
@@ -425,7 +425,7 @@ func TestGetBalanceChanges(t *testing.T) {
 					},
 					{
 						ModifiedNode: &ModifiedNode{
-							FinalFields: map[string]interface{}{
+							FinalFields: map[string]any{
 								"Account":    "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
 								"Balance":    "239555992",
 								"Flags":      0,
@@ -434,7 +434,7 @@ func TestGetBalanceChanges(t *testing.T) {
 							},
 							LedgerEntryType: ledger.AccountRootEntry,
 							LedgerIndex:     "E9A39B0BA8703D5FFD05D9EAD01EE6C0E7A15CF33C2C6B7269107BD2BD535818",
-							PreviousFields: map[string]interface{}{
+							PreviousFields: map[string]any{
 								"Balance":  "239567992",
 								"Sequence": 37,
 							},

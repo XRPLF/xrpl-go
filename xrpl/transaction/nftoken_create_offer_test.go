@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -96,6 +97,7 @@ func TestNFTokenCreateOffer_Flatten(t *testing.T) {
 		})
 	}
 }
+
 func TestNFTokenCreateOffer_Validate(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -251,7 +253,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 			if valid != tt.wantValid {
 				t.Errorf("expected valid to be %v, got %v", tt.wantValid, valid)
 			}
-			if (err != nil) && err != tt.errMessage {
+			if (err != nil) && !errors.Is(err, tt.errMessage) {
 				t.Errorf("Validate() got error message = %v, want error message %v", err, tt.errMessage)
 				return
 			}

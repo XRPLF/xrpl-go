@@ -21,7 +21,7 @@ type GatewayBalancesRequest struct {
 	Strict bool `json:"strict,omitempty"`
 	// An operational address to exclude from the balances issued, or an array of
 	// Such addresses.
-	HotWallet interface{} `json:"hotwallet,omitempty"`
+	HotWallet any `json:"hotwallet,omitempty"`
 	// A 20-byte hex string for the ledger version to use.
 	LedgerHash common.LedgerHash `json:"ledger_hash,omitempty"`
 	// The ledger index of the ledger to use, or a shortcut string.

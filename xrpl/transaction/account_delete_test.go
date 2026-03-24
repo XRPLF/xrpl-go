@@ -9,7 +9,7 @@ import (
 
 func TestAccountDelete_TxType(t *testing.T) {
 	tx := &AccountDelete{}
-	require.Equal(t, tx.TxType(), AccountDeleteTx)
+	require.Equal(t, AccountDeleteTx, tx.TxType())
 }
 
 func TestAccountDelete_Flatten(t *testing.T) {

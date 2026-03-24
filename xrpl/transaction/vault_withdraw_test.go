@@ -5,11 +5,12 @@ import (
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVaultWithdraw_TxType(t *testing.T) {
 	tx := &VaultWithdraw{}
-	assert.Equal(t, tx.TxType(), VaultWithdrawTx)
+	assert.Equal(t, VaultWithdrawTx, tx.TxType())
 }
 
 func TestVaultWithdraw_Flatten(t *testing.T) {
@@ -59,7 +60,7 @@ func TestVaultWithdraw_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -164,7 +165,7 @@ func TestVaultWithdraw_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

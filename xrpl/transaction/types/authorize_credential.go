@@ -21,8 +21,8 @@ func (a AuthorizeCredential) Validate() error {
 }
 
 // Flatten returns a flattened map representation of the AuthorizeCredential.
-func (a AuthorizeCredential) Flatten() map[string]interface{} {
-	m := make(map[string]interface{})
+func (a AuthorizeCredential) Flatten() map[string]any {
+	m := make(map[string]any)
 	m["Credential"] = a.Credential.Flatten()
 	return m
 }
