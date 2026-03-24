@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v.0.1.17]
+## [Unreleased]
 
 ### Added
 
@@ -26,8 +26,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MutableFlags set/clear constant pairs: `TmfMPTSetCanLock`/`TmfMPTClearCanLock`, `TmfMPTSetRequireAuth`/`TmfMPTClearRequireAuth`, `TmfMPTSetCanEscrow`/`TmfMPTClearCanEscrow`, `TmfMPTSetCanTrade`/`TmfMPTClearCanTrade`, `TmfMPTSetCanTransfer`/`TmfMPTClearCanTransfer`, `TmfMPTSetCanClawback`/`TmfMPTClearCanClawback`.
   - Flag setter methods for all set/clear mutable flags.
   - Validation: mutual exclusivity between `Holder`/`Flags` and DynamicMPT fields, set/clear conflict detection, `TransferFee` + `ClearCanTransfer` conflict, `DomainID` format validation, no-op transaction detection.
+- Added XLS-96 confidential transfer support to `MPTokenIssuanceCreate`:
+  - `TfMPTCanConfidentialAmount` flag to enable confidential transfers for a token issuance.
+  - `TmfMPTCannotMutateCanConfidentialAmount` mutable flag to prevent changing the confidential amount flag after creation.
+  - Flag setter methods: `SetMPTCanConfidentialAmountFlag()`, `SetMPTCannotMutateCanConfidentialAmountFlag()`.
+- Added XLS-96 confidential transfer support to `MPTokenIssuanceSet`:
+  - `IssuerEncryptionKey` and `AuditorEncryptionKey` fields for setting issuer/auditor ElGamal public keys.
+  - `TmfMPTSetCanConfidentialAmount`/`TmfMPTClearCanConfidentialAmount` mutable flag pair with flag setter methods.
+  - Validation: `AuditorEncryptionKey` requires `IssuerEncryptionKey`, encryption key length validation (33-byte compressed), encryption keys mutually exclusive with `Holder`.
+- Added `EncryptionKey` helper function in `types` package.
+- Added `IsValidCompressedEncryptionKey` validation helper for 33-byte compressed EC public keys.
 - Added `MutableFlags` and `DomainID` fields to `MPTokenIssuance` ledger entry type with ledger-state mutable flags constants (`Lsmf` prefix) and flag setter methods.
 - Added `MutableFlags` helper function in `types` package.
+- Added XLS-96 confidential transfer fields to `MPToken` ledger entry type: `HolderEncryptionKey`, `IssuerEncryptedBalance`, `AuditorEncryptedBalance`, `ConfidentialBalanceInbox`, `ConfidentialBalanceSpending`, `ConfidentialBalanceVersion`.
+- Added XLS-96 confidential transfer fields to `MPTokenIssuance` ledger entry type: `LsfMPTCanConfidentialAmount` flag, `LsmfMPTCannotMutateCanConfidentialAmount` mutable flag, `IssuerEncryptionKey`, `AuditorEncryptionKey`, `ConfidentialOutstandingAmount`, and corresponding flag setter methods.
+
+### Fixed
+
+#### xrpl
+
+- Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
+- Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
+- Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
+
+## [v0.1.17]
 
 ### Fixed
 
@@ -45,9 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl
 
-- Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
-- Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
-- Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
 - Fixed struct-typed JSON fields not being omitted from JSON output when zero-valued. Previously, `omitempty` was used but had no effect on struct types, causing empty structs to always be serialized. Replaced with `omitzero` (Go 1.24+) to match the original intent.
 - `waitForTransaction` in both RPC and WebSocket clients now checks `txResponse.Validated` and returns early once the transaction is confirmed, instead of only relying on ledger sequence. The RPC client also now handles `txnNotFound` errors gracefully during the polling loop.
 - RPC client now applies a default timeout (`common.DefaultTimeout`) to the HTTP client. `NewClientConfig` keeps `Config.timeout` and `http.Client.Timeout` in sync, if the HTTP client already has a custom timeout it is respected, otherwise the config default is applied.
