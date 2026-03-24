@@ -66,12 +66,12 @@ test-ci:
 
 run-localnet-linux/arm64:
 	@echo "Running localnet..."
-	@docker run -p 6006:6006 --rm -it -d --platform linux/arm64 --name rippled_standalone --volume $(PWD)/.ci-config:/etc/opt/ripple/ --entrypoint bash $(RIPPLED_IMAGE) -c 'rippled -a'
+	@docker run -p 6006:6006 -p 5005:5005 --rm -it -d --platform linux/arm64 --name rippled_standalone --volume $(PWD)/.ci-config:/etc/opt/ripple/ --entrypoint bash $(RIPPLED_IMAGE) -c 'rippled -a'
 	@echo "Localnet running!"
 
 run-localnet-linux/amd64:
 	@echo "Running localnet..."
-	@docker run -p 6006:6006 --rm -it -d --platform linux/amd64 --name rippled_standalone --volume $(PWD)/.ci-config:/etc/opt/ripple/ --entrypoint bash $(RIPPLED_IMAGE) -c 'rippled -a'
+	@docker run -p 6006:6006 -p 5005:5005 --rm -it -d --platform linux/amd64 --name rippled_standalone --volume $(PWD)/.ci-config:/etc/opt/ripple/ --entrypoint bash $(RIPPLED_IMAGE) -c 'rippled -a'
 	@echo "Localnet running!"
 
 test-integration-localnet:
