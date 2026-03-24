@@ -10,8 +10,8 @@ type Credential struct {
 }
 
 // Flatten returns a map of the Credential fields for transaction encoding.
-func (c Credential) Flatten() map[string]interface{} {
-	m := make(map[string]interface{})
+func (c Credential) Flatten() map[string]any {
+	m := make(map[string]any)
 	m["Issuer"] = c.Issuer.String()
 	m["CredentialType"] = c.CredentialType.String()
 	return m

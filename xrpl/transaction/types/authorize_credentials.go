@@ -24,8 +24,8 @@ func (a *AuthorizeCredentials) IsValid() bool {
 }
 
 // Flatten returns a map of the authorize credentials.
-func (a *AuthorizeCredentialsWrapper) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (a *AuthorizeCredentialsWrapper) Flatten() map[string]any {
+	flattened := make(map[string]any)
 
 	flattened["Credential"] = a.Credential.Flatten()
 
@@ -33,8 +33,8 @@ func (a *AuthorizeCredentialsWrapper) Flatten() map[string]interface{} {
 }
 
 // Flatten returns a map of the authorize credentials.
-func (a *AuthorizeCredentials) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (a *AuthorizeCredentials) Flatten() map[string]any {
+	flattened := make(map[string]any)
 
 	if a.Issuer != "" {
 		flattened["Issuer"] = a.Issuer.String()

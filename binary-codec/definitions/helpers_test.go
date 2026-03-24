@@ -7,7 +7,6 @@ import (
 )
 
 func TestGetTypeNameByFieldName(t *testing.T) {
-
 	tt := []struct {
 		description   string
 		input         string
@@ -32,24 +31,20 @@ func TestGetTypeNameByFieldName(t *testing.T) {
 	}
 
 	for _, test := range tt {
-
 		t.Run(test.description, func(t *testing.T) {
 			got, err := definitions.GetTypeNameByFieldName(test.input)
 			if test.expectedError != nil {
 				require.EqualError(t, err, test.expectedError.Error())
-				require.Zero(t, got)
+				require.Empty(t, got)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, got)
 			}
 		})
-
 	}
-
 }
 
 func TestGetTypeCodeByTypeName(t *testing.T) {
-
 	tt := []struct {
 		description   string
 		input         string
@@ -80,7 +75,6 @@ func TestGetTypeCodeByTypeName(t *testing.T) {
 	}
 
 	for _, test := range tt {
-
 		t.Run(test.description, func(t *testing.T) {
 			got, err := definitions.GetTypeCodeByTypeName(test.input)
 			if test.expectedError != nil {
@@ -91,9 +85,7 @@ func TestGetTypeCodeByTypeName(t *testing.T) {
 				require.Equal(t, test.expected, got)
 			}
 		})
-
 	}
-
 }
 
 func TestGetTypeCodeByFieldName(t *testing.T) {
@@ -127,7 +119,6 @@ func TestGetTypeCodeByFieldName(t *testing.T) {
 	}
 
 	for _, test := range tt {
-
 		t.Run(test.description, func(t *testing.T) {
 			got, err := definitions.GetTypeCodeByFieldName(test.input)
 			if test.expectedError != nil {
@@ -142,7 +133,6 @@ func TestGetTypeCodeByFieldName(t *testing.T) {
 }
 
 func TestGetFieldCodeByFieldName(t *testing.T) {
-
 	tt := []struct {
 		description   string
 		input         string
@@ -167,7 +157,6 @@ func TestGetFieldCodeByFieldName(t *testing.T) {
 	}
 
 	for _, test := range tt {
-
 		t.Run(test.description, func(t *testing.T) {
 			got, err := definitions.GetFieldCodeByFieldName(test.input)
 			if test.expectedError != nil {
@@ -209,7 +198,6 @@ func TestGetFieldHeaderByFieldName(t *testing.T) {
 	}
 
 	for _, test := range tt {
-
 		t.Run(test.description, func(t *testing.T) {
 			got, err := definitions.GetFieldHeaderByFieldName(test.input)
 			if test.expectedError != nil {
@@ -251,15 +239,15 @@ func TestGetFieldNameByFieldHeader(t *testing.T) {
 		{
 			description: "invalid FieldHeader",
 			input: FieldHeader{
-				TypeCode:  0000000000000111,
-				FieldCode: 000000000000111,
+				TypeCode:  111,
+				FieldCode: 111,
 			},
 			expected: "",
 			expectedError: &NotFoundErrorFieldHeader{
 				Instance: "FieldHeader",
 				Input: FieldHeader{
-					TypeCode:  0000000000000111,
-					FieldCode: 000000000000111,
+					TypeCode:  111,
+					FieldCode: 111,
 				},
 			},
 		},
@@ -270,7 +258,7 @@ func TestGetFieldNameByFieldHeader(t *testing.T) {
 			got, err := definitions.GetFieldNameByFieldHeader(test.input)
 			if test.expectedError != nil {
 				require.Error(t, err, test.expectedError.Error())
-				require.Zero(t, got)
+				require.Empty(t, got)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, got)
@@ -319,7 +307,6 @@ func TestGetFieldInfoByFieldName(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, got)
 			}
-
 		})
 	}
 }
@@ -362,7 +349,6 @@ func TestGetFieldInstanceByFieldName(t *testing.T) {
 	}
 
 	for _, test := range tt {
-
 		t.Run(test.description, func(t *testing.T) {
 			got, err := definitions.GetFieldInstanceByFieldName(test.input)
 			if test.expectedError != nil {
@@ -443,7 +429,7 @@ func TestGetTransactionTypeNameByTransactionTypeCode(t *testing.T) {
 			got, err := definitions.GetTransactionTypeNameByTransactionTypeCode(test.input)
 			if test.expectedError != nil {
 				require.EqualError(t, err, test.expectedError.Error())
-				require.Zero(t, got)
+				require.Empty(t, got)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, got)
@@ -481,7 +467,7 @@ func TestGetTransactionResultNameByTransactionResultTypeCode(t *testing.T) {
 			got, err := definitions.GetTransactionResultNameByTransactionResultTypeCode(test.input)
 			if test.expectedError != nil {
 				require.EqualError(t, err, test.expectedError.Error())
-				require.Zero(t, got)
+				require.Empty(t, got)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, got)
@@ -564,7 +550,6 @@ func TestGetLedgerEntryTypeCodeByLedgerEntryTypeName(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGetLedgerEntryTypeNameByLedgerEntryTypeCode(t *testing.T) {
@@ -596,7 +581,7 @@ func TestGetLedgerEntryTypeNameByLedgerEntryTypeCode(t *testing.T) {
 			got, err := definitions.GetLedgerEntryTypeNameByLedgerEntryTypeCode(test.input)
 			if test.expectedError != nil {
 				require.EqualError(t, err, test.expectedError.Error())
-				require.Zero(t, got)
+				require.Empty(t, got)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, got)
@@ -684,7 +669,7 @@ func TestGetDelegatablePermissionNameByValue(t *testing.T) {
 			got, err := definitions.GetDelegatablePermissionNameByValue(test.input)
 			if test.expectedError != nil {
 				require.EqualError(t, err, test.expectedError.Error())
-				require.Zero(t, got)
+				require.Empty(t, got)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, test.expected, got)

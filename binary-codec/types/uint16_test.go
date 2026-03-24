@@ -12,7 +12,6 @@ import (
 )
 
 func TestUint16_FromJson(t *testing.T) {
-
 	tt := []struct {
 		name        string
 		input       any
@@ -145,5 +144,4 @@ func TestUint16_ToJson(t *testing.T) {
 			}
 		})
 	}
-
 }

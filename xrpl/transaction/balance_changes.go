@@ -81,7 +81,7 @@ func GetBalanceChanges(meta *TxObjMeta) ([]AccountBalanceChanges, error) {
 	balanceChanges := make([]balanceChange, 0, len(nodes))
 
 	for _, node := range nodes {
-		switch node.LedgerEntryType {
+		switch node.LedgerEntryType { //nolint:exhaustive // only AccountRoot and RippleState affect balances
 		case ledger.AccountRootEntry:
 			xrpBalance, err := getXRPQuantity(node)
 			if err != nil {
@@ -170,7 +170,7 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 		fields = node.FinalFields
 	}
 
-	lowLimitMap, ok := fields["LowLimit"].(map[string]interface{})
+	lowLimitMap, ok := fields["LowLimit"].(map[string]any)
 	if !ok {
 		return nil, errLowLimitIssuerNotFound
 	}
@@ -178,7 +178,7 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 	if !ok {
 		return nil, errLowLimitIssuerNotFound
 	}
-	highLimitMap, ok := fields["HighLimit"].(map[string]interface{})
+	highLimitMap, ok := fields["HighLimit"].(map[string]any)
 	if !ok {
 		return nil, errHighLimitIssuerNotFound
 	}
@@ -186,7 +186,7 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 	if !ok {
 		return nil, errHighLimitIssuerNotFound
 	}
-	balanceMap, ok := fields["Balance"].(map[string]interface{})
+	balanceMap, ok := fields["Balance"].(map[string]any)
 	if !ok {
 		return nil, errBalanceCurrencyNotFound
 	}
@@ -268,10 +268,10 @@ func computeBalanceChange(node *normalizedNode) (string, error) {
 	return value.String(), nil
 }
 
-func getValue(balance interface{}) (string, error) {
+func getValue(balance any) (string, error) {
 	if value, ok := balance.(string); ok {
 		return value, nil
-	} else if balanceMap, ok := balance.(map[string]interface{}); ok {
+	} else if balanceMap, ok := balance.(map[string]any); ok {
 		return balanceMap["value"].(string), nil
 	}
 	return "", errInvalidBalanceValue

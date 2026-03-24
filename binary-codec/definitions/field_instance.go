@@ -40,7 +40,7 @@ func (fi *fieldInstanceMap) CodecEncodeSelf(_ *codec.Encoder) {}
 
 // CodecDecodeSelf implements the codec.SelfDecoder interface.
 func (fi *fieldInstanceMap) CodecDecodeSelf(d *codec.Decoder) {
-	var x [][]interface{}
+	var x [][]any
 	d.MustDecode(&x)
 	y := convertToFieldInstanceMap(x)
 	*fi = y

@@ -46,7 +46,7 @@ func TestLoanBroker(t *testing.T) {
 
 func TestLoanBroker_EntryType(t *testing.T) {
 	s := &LoanBroker{}
-	require.Equal(t, s.EntryType(), LoanBrokerEntry)
+	require.Equal(t, LoanBrokerEntry, s.EntryType())
 }
 
 func TestLoanBroker_WithOptionalFields(t *testing.T) {

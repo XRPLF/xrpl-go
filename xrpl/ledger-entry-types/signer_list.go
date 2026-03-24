@@ -93,8 +93,8 @@ type SignerEntry struct {
 }
 
 // Flatten returns a map of the SignerEntry object
-func (s *SignerEntry) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (s *SignerEntry) Flatten() map[string]any {
+	flattened := make(map[string]any)
 
 	if s.Account != "" {
 		flattened["Account"] = s.Account.String()

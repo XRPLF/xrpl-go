@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -117,7 +118,7 @@ func TestNFTokenMint_Flatten(t *testing.T) {
 				"Issuer":          "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				"TransferFee":     uint16(314),
 				"URI":             "697066733A2F2F62616679626569676479727A74357366703775646D37687537367568377932366E6634646675796C71616266336F636C67747179353566627A6469",
-				"Amount": map[string]interface{}{
+				"Amount": map[string]any{
 					"currency": "USD",
 					"issuer":   "r3Q1i8Y2e5v4Z2u7eFYTEXSwuJYfV2Jpn",
 					"value":    "1000",
@@ -432,7 +433,7 @@ func TestNFTokenMint_Validate(t *testing.T) {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if (err != nil) && err != tt.errMessage {
+			if (err != nil) && !errors.Is(err, tt.errMessage) {
 				t.Errorf("Validate() got error message = %v, want error message %v", err, tt.errMessage)
 				return
 			}

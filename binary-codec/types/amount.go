@@ -215,7 +215,6 @@ func (a *Amount) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 }
 
 func deserializeToken(data []byte) (map[string]any, error) {
-
 	var value string
 	var err error
 	if bytes.Equal(data[0:8], []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) {
@@ -348,7 +347,6 @@ func deserializeMPTAmount(data []byte) (map[string]any, error) {
 // verifyXrpValue validates the format of an XRP amount value.
 // XRP values should not contain a decimal point because they are represented as integers as drops.
 func verifyXrpValue(value string) error {
-
 	r := regexp.MustCompile(`\d+`) // regex to match only digits
 	m := r.FindAllString(value, -1)
 
@@ -434,13 +432,11 @@ func verifyMPTValue(value string) error {
 
 // serializeXrpAmount serializes an XRP amount value.
 func serializeXrpAmount(value string) ([]byte, error) {
-
 	if verifyXrpValue(value) != nil {
 		return nil, verifyXrpValue(value)
 	}
 
 	val, err := strconv.ParseUint(value, 10, 64)
-
 	if err != nil {
 		return nil, err
 	}
@@ -463,13 +459,11 @@ func serializeXrpAmount(value string) ([]byte, error) {
 
 // SerializeIssuedCurrencyValue serializes the value field of an issued currency amount to its bytes representation.
 func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
-
 	if verifyIOUValue(value) != nil {
 		return nil, verifyIOUValue(value)
 	}
 
 	bigDecimal, err := bigdecimal.NewBigDecimal(value)
-
 	if err != nil {
 		return nil, err
 	}
@@ -481,7 +475,6 @@ func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
 	}
 
 	mantissa, err := strconv.ParseUint(bigDecimal.UnscaledValue, 10, 64) // convert the unscaled value to an unsigned integer
-
 	if err != nil {
 		return nil, err
 	}
@@ -519,7 +512,7 @@ func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
 		serial |= PosSignBitMask // if the sign is positive, set the sign (second) bit to 1
 	}
 	// TODO: Check if this is still needed
-	//nolint:gosec // G115: Potential hardcoded credentials (gosec)
+	//nolint:gosec // G115: integer overflow conversion int32 -> uint64, exp+97 is always positive and small
 	serial |= (uint64(exp+97) << 54) // if the exponent is positive, set the exponent bits to the exponent + 97
 	serial |= uint64(mantissa)       // last 54 bits are mantissa
 
@@ -532,7 +525,6 @@ func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
 // serializeIssuedCurrencyCode serializes an issued currency code to its bytes representation.
 // The currency code can be 3 allowed string characters, or 20 bytes of hex.
 func serializeIssuedCurrencyCode(currency string) ([]byte, error) {
-
 	currency = strings.TrimPrefix(currency, "0x")                                    // remove the 0x prefix if it exists
 	if currency == "XRP" || currency == "0000000000000000000000005852500000000000" { // if the currency code is uppercase XRP, return an error
 		return nil, &InvalidCodeError{Disallowed: "XRP uppercase"}
@@ -546,12 +538,10 @@ func serializeIssuedCurrencyCode(currency string) ([]byte, error) {
 	}
 
 	return nil, &InvalidCodeError{Disallowed: currency}
-
 }
 
 func serializeIssuedCurrencyCodeHex(currency string) ([]byte, error) {
 	decodedHex, err := hex.DecodeString(currency)
-
 	if err != nil {
 		return nil, err
 	}
@@ -572,7 +562,6 @@ func serializeIssuedCurrencyCodeHex(currency string) ([]byte, error) {
 }
 
 func serializeIssuedCurrencyCodeChars(currency string) ([]byte, error) {
-
 	r := regexp.MustCompile(IOUCodeRegex) // regex to check if the currency code is valid
 	m := r.FindAllString(currency, -1)
 
@@ -590,7 +579,6 @@ func serializeIssuedCurrencyCodeChars(currency string) ([]byte, error) {
 // The currency code can be 3 allowed string characters, or 20 bytes of hex in standard currency format (e.g. with "00" prefix)
 // or non-standard currency format (e.g. without "00" prefix)
 func serializeIssuedCurrencyAmount(value, currency, issuer string) ([]byte, error) {
-
 	var valBytes []byte
 	var err error
 	if value == "0" {
@@ -604,7 +592,6 @@ func serializeIssuedCurrencyAmount(value, currency, issuer string) ([]byte, erro
 		return nil, err
 	}
 	currencyBytes, err := serializeIssuedCurrencyCode(currency) // serialize the currency code
-
 	if err != nil {
 		return nil, err
 	}
@@ -687,7 +674,6 @@ func isPositive(value byte) bool {
 }
 
 func containsInvalidIOUCodeCharactersHex(currency []byte) bool {
-
 	r := regexp.MustCompile(IOUCodeRegex) // regex to check if the currency code is valid
 	m := r.FindAll(currency, -1)
 

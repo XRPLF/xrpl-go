@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -136,7 +137,7 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.wantValid, valid)
-			if (err != nil) && err != tt.expectedErr {
+			if (err != nil) && !errors.Is(err, tt.expectedErr) {
 				t.Errorf("Validate() got error message = %v, want error message %v", err, tt.expectedErr)
 				return
 			}

@@ -9,7 +9,7 @@ import (
 
 func TestXChainClaim_TxType(t *testing.T) {
 	x := &XChainClaim{}
-	require.Equal(t, x.TxType(), XChainClaimTx)
+	require.Equal(t, XChainClaimTx, x.TxType())
 }
 
 func TestXChainClaim_Flatten(t *testing.T) {
@@ -66,7 +66,7 @@ func TestXChainClaim_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			require.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			require.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -161,11 +161,11 @@ func TestXChainClaim_Validate(t *testing.T) {
 		t.Run(testcase.name, func(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			if testcase.expectedErr != nil {
-				require.Equal(t, err, testcase.expectedErr)
+				require.Equal(t, testcase.expectedErr, err)
 			} else {
 				require.NoError(t, err)
 			}
-			require.Equal(t, ok, testcase.expected)
+			require.Equal(t, testcase.expected, ok)
 		})
 	}
 }

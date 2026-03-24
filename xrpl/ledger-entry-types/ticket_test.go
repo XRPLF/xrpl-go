@@ -35,5 +35,5 @@ func TestTicket(t *testing.T) {
 
 func TestTicket_EntryType(t *testing.T) {
 	s := &Ticket{}
-	require.Equal(t, s.EntryType(), TicketEntry)
+	require.Equal(t, TicketEntry, s.EntryType())
 }

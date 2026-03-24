@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -258,7 +259,7 @@ func TestNFTokenAcceptOffer_Validate(t *testing.T) {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if (err != nil) && err != tt.errMessage {
+			if (err != nil) && !errors.Is(err, tt.errMessage) {
 				t.Errorf("Validate() got error message = %v, want error message %v", err, tt.errMessage)
 				return
 			}

@@ -27,6 +27,9 @@ type TestTransactionOptions struct {
 // NewRunner creates a new runner. It doesn't connect to the websocket or generate wallets until Setup is called.
 // A testing.T is required to use the require package.
 func NewRunner(t *testing.T, client Client, config *RunnerConfig) *Runner {
+	if config == nil {
+		config = NewRunnerConfig()
+	}
 	return &Runner{
 		t:      t,
 		config: config,
@@ -142,6 +145,9 @@ func (r *Runner) processTransaction(flatTx *transaction.FlatTransaction, signer 
 		if tx.EngineResult != transaction.TefPAST_SEQ.String() || attempts >= r.config.MaxRetries {
 			return tx, hash, nil
 		}
+
+		delete(*flatTx, "Sequence")
+		delete(*flatTx, "LastLedgerSequence")
 		attempts++
 	}
 }

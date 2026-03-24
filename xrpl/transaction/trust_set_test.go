@@ -33,7 +33,7 @@ func TestTrustSetFlatten(t *testing.T) {
 		"Flags":              uint32(262144),
 		"Sequence":           uint32(12),
 		"LastLedgerSequence": uint32(8007750),
-		"LimitAmount": map[string]interface{}{
+		"LimitAmount": map[string]any{
 			"issuer":   "rsP3mgGb2tcYUrxiLFiHJiQXhsziegtwBc",
 			"currency": "USD",
 			"value":    "100",
@@ -128,6 +128,7 @@ func TestTrustSetFlags(t *testing.T) {
 		})
 	}
 }
+
 func TestTrustSetValidate(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -203,7 +204,6 @@ func TestTrustSetValidate(t *testing.T) {
 			if (err != nil && tt.valid) || (err == nil && !tt.valid) {
 				t.Errorf("Got error: %v", err)
 			}
-
 		})
 	}
 }
