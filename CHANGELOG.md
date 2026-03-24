@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v.0.1.17]
 
 ### Added
 
@@ -26,12 +26,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### pkg/crypto
+
+- **Fixed a bug in secp256k1 `deriveScalar` where the discriminator and iteration counter were written to the input seed slice instead of their own buffers.** The old code wrote `discrim` and `i` values into `bytes[0..3]` (the caller's seed) rather than into `discrimBytes[0..3]` and `shiftBytes[0..3]`, causing two problems:
+  1. **Input mutation**: the seed passed by the caller was silently corrupted on every call.
+  2. **Zero-hashing**: the actual `discrimBytes` and `shiftBytes` arrays were never populated, so the hash always received zeros regardless of the discriminator or iteration values.
+- **Practical impact was limited**: because the hash of the seed is written *before* the mutation, and the first iteration (`i = 0`) with `discrim = 0` produces the same zeros in both the buggy and fixed code paths, the bug was invisible for the overwhelmingly common case (a valid scalar is found on the first try, which happens with probability ~1 − 2⁻²⁵⁶). The bug would only produce incorrect results in the astronomically rare scenario where the first hash overflows the curve order or is zero, triggering a retry with the now-corrupted seed. No real-world keypair derivation is believed to have been affected.
+- Replaced manual DER signature encoding/decoding with the `dcrec/secp256k1` library's `Serialize()` and `ParseDERSignature()`, and replaced `btcsuite/btcd/btcec/v2` with `decred/dcrd/dcrec/secp256k1/v4` (v4.4.1).
+
+#### xrpl/transaction
+
+- **`BaseTx.Flatten()` now preserves `Sequence: 0` when `TicketSequence` is set.** Previously, the condition `if tx.Sequence != 0` caused `Sequence` to be omitted from the flattened transaction when its value was `0`. This caused `Autofill` to overwrite it with the account's current sequence number, resulting in both a non-zero `Sequence` and a `TicketSequence` being present — which the server rejects with `temSEQ_AND_TICKET`.
+
 #### xrpl
 
 - Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
 - Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
 - Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
 - Fixed struct-typed JSON fields not being omitted from JSON output when zero-valued. Previously, `omitempty` was used but had no effect on struct types, causing empty structs to always be serialized. Replaced with `omitzero` (Go 1.24+) to match the original intent.
+- `waitForTransaction` in both RPC and WebSocket clients now checks `txResponse.Validated` and returns early once the transaction is confirmed, instead of only relying on ledger sequence. The RPC client also now handles `txnNotFound` errors gracefully during the polling loop.
+- RPC client now applies a default timeout (`common.DefaultTimeout`) to the HTTP client. `NewClientConfig` keeps `Config.timeout` and `http.Client.Timeout` in sync, if the HTTP client already has a custom timeout it is respected, otherwise the config default is applied.
 
 ## [v0.1.16]
 

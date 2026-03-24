@@ -346,9 +346,8 @@ func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *wstypes.S
 
 func (c *Client) waitForTransaction(txHash string, lastLedgerSequence uint32) (*requests.TxResponse, error) {
 	var txResponse *requests.TxResponse
-	i := 0
 
-	for i < c.cfg.maxRetries {
+	for range c.cfg.maxRetries {
 		// Get the current ledger index
 		currentLedger, err := c.GetLedgerIndex()
 		if err != nil {
@@ -374,6 +373,11 @@ func (c *Client) waitForTransaction(txHash string, lastLedgerSequence uint32) (*
 				return nil, err
 			}
 
+			// Check if the transaction has been validated
+			if txResponse.Validated {
+				return txResponse, nil
+			}
+
 			// Check if the transaction has been included in the current ledger
 			if txResponse.LedgerIndex.Int() >= int(lastLedgerSequence) {
 				break
@@ -382,7 +386,6 @@ func (c *Client) waitForTransaction(txHash string, lastLedgerSequence uint32) (*
 
 		// Wait for the retry delay before retrying
 		time.Sleep(c.cfg.retryDelay)
-		i++
 	}
 
 	if txResponse == nil {

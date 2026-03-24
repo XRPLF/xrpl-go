@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
@@ -96,6 +97,7 @@ func main() {
 		return
 	}
 
+	start := time.Now()
 	res, err := client.SubmitTxBlobAndWait(txBlob, false)
 	if err != nil {
 		fmt.Println(err)
@@ -108,12 +110,14 @@ func main() {
 	fmt.Printf("🌐 Hash: %s\n", res.Hash)
 	fmt.Printf("🌐 Validated: %t\n", res.Validated)
 	fmt.Printf("🌐 DeliveredAmount (drops): %s\n", metadata.DeliveredAmount)
+	fmt.Printf("⏱️  Took: %s\n", time.Since(start))
 
 	fmt.Println()
 	fmt.Println("⏳ Using SubmitTxAndWait with wallet")
 	fmt.Println()
 
 	flattenedTx2 := p.Flatten()
+	start = time.Now()
 	resp, err := client.SubmitTxAndWait(flattenedTx2, &wstypes.SubmitOptions{
 		Autofill: true,
 		Wallet:   &w,
@@ -129,4 +133,5 @@ func main() {
 	fmt.Printf("🌐 Hash: %s\n", resp.Hash)
 	fmt.Printf("🌐 Validated: %t\n", resp.Validated)
 	fmt.Printf("🌐 DeliveredAmount (drops): %s\n", metadata.DeliveredAmount)
+	fmt.Printf("⏱️  Took: %s\n", time.Since(start))
 }
