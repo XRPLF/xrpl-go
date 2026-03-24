@@ -63,13 +63,11 @@ func TestMPTCurrencyAmount_Kind(t *testing.T) {
 		name     string
 		mpt      MPTCurrencyAmount
 		expected CurrencyKind
-		expPass  bool
 	}{
 		{
 			name:     "pass - mpt kind",
 			mpt:      MPTCurrencyAmount{},
 			expected: MPT,
-			expPass:  true,
 		},
 	}
 
@@ -77,11 +75,6 @@ func TestMPTCurrencyAmount_Kind(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual := tc.mpt.Kind()
 			require.Equal(t, tc.expected, actual)
-			if tc.expPass {
-				require.NoError(t, nil)
-			} else {
-				require.Error(t, nil)
-			}
 		})
 	}
 }
@@ -90,14 +83,14 @@ func TestMPTCurrencyAmount_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		mpt      MPTCurrencyAmount
-		expected map[string]interface{}
+		expected map[string]any
 		err      error
 		expPass  bool
 	}{
 		{
 			name:     "pass - empty",
 			mpt:      MPTCurrencyAmount{},
-			expected: map[string]interface{}{},
+			expected: map[string]any{},
 			err:      nil,
 			expPass:  true,
 		},
@@ -106,7 +99,7 @@ func TestMPTCurrencyAmount_Flatten(t *testing.T) {
 			mpt: MPTCurrencyAmount{
 				MPTIssuanceID: "00000000000000000000000000000000",
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"mpt_issuance_id": "00000000000000000000000000000000",
 			},
 			err:     nil,
@@ -117,7 +110,7 @@ func TestMPTCurrencyAmount_Flatten(t *testing.T) {
 			mpt: MPTCurrencyAmount{
 				Value: "100",
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"value": "100",
 			},
 			err:     nil,
@@ -129,7 +122,7 @@ func TestMPTCurrencyAmount_Flatten(t *testing.T) {
 				MPTIssuanceID: "00000000000000000000000000000000",
 				Value:         "100",
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"mpt_issuance_id": "00000000000000000000000000000000",
 				"value":           "100",
 			},

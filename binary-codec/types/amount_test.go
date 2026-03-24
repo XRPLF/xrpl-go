@@ -17,7 +17,6 @@ import (
 )
 
 func TestVerifyXrpValue(t *testing.T) {
-
 	tests := []struct {
 		name   string
 		input  string
@@ -56,7 +55,6 @@ func TestVerifyXrpValue(t *testing.T) {
 }
 
 func TestVerifyIOUValue(t *testing.T) {
-
 	tests := []struct {
 		name   string
 		input  string
@@ -99,7 +97,6 @@ func TestVerifyIOUValue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			err := verifyIOUValue(tt.input)
 			if tt.expErr != nil {
 				require.EqualError(t, tt.expErr, err.Error())
@@ -224,7 +221,6 @@ func TestSerializeXrpAmount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			got, err := serializeXrpAmount(tt.input)
 			if tt.expErr != nil {
 				require.EqualError(t, tt.expErr, err.Error())
@@ -300,7 +296,6 @@ func TestSerializeIssuedCurrencyValue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			got, err := SerializeIssuedCurrencyValue(tt.input)
 
 			if tt.expectedErr != nil {
@@ -309,7 +304,6 @@ func TestSerializeIssuedCurrencyValue(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, got)
 			}
-
 		})
 	}
 }
@@ -402,7 +396,6 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			got, err := serializeIssuedCurrencyCode(tt.input)
 
 			if tt.expectedErr != nil {
@@ -411,7 +404,6 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, got)
 			}
-
 		})
 	}
 }
@@ -477,7 +469,6 @@ func TestSerializeIssuedCurrencyAmount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			got, err := serializeIssuedCurrencyAmount(tt.inputValue, tt.inputCurrency, tt.inputIssuer)
 
 			if tt.expectedErr != nil {
@@ -486,7 +477,6 @@ func TestSerializeIssuedCurrencyAmount(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, got)
 			}
-
 		})
 	}
 }

@@ -51,6 +51,7 @@ func TestAMMDelete_Flatten(t *testing.T) {
 		t.Error(err)
 	}
 }
+
 func TestAMMDelete_Validate(t *testing.T) {
 	tests := []struct {
 		name    string

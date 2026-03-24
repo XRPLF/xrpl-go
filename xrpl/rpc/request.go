@@ -2,8 +2,8 @@ package rpc
 
 // Request represents a JSON-RPC request with method and parameters.
 type Request struct {
-	Method string         `json:"method"`
-	Params [1]interface{} `json:"params,omitempty"`
+	Method string `json:"method"`
+	Params [1]any `json:"params,omitempty"`
 }
 
 // APIVersionRequest defines the interface for requests that support API versioning.

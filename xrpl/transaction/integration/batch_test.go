@@ -18,19 +18,17 @@ type BatchTest struct {
 	ExpectedError string
 }
 
-var (
-	CreatePaymentTx = func(sender, receiver *wallet.Wallet, amount types.CurrencyAmount) *transaction.Payment {
-		return &transaction.Payment{
-			BaseTx: transaction.BaseTx{
-				Account:         sender.GetAddress(),
-				TransactionType: transaction.PaymentTx,
-				Flags:           0x40000000,
-			},
-			Amount:      amount,
-			Destination: receiver.GetAddress(),
-		}
+var CreatePaymentTx = func(sender, receiver *wallet.Wallet, amount types.CurrencyAmount) *transaction.Payment {
+	return &transaction.Payment{
+		BaseTx: transaction.BaseTx{
+			Account:         sender.GetAddress(),
+			TransactionType: transaction.PaymentTx,
+			Flags:           0x40000000,
+		},
+		Amount:      amount,
+		Destination: receiver.GetAddress(),
 	}
-)
+}
 
 func TestIntegrationBatch_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)

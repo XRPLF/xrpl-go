@@ -25,16 +25,17 @@ type AnyJSON transaction.FlatTransaction
 
 // APIWarning represents a warning from the API with optional details.
 type APIWarning struct {
-	ID      int         `json:"id"`
-	Message string      `json:"message"`
-	Details interface{} `json:"details,omitempty"`
+	ID      int    `json:"id"`
+	Message string `json:"message"`
+	Details any    `json:"details,omitempty"`
 }
 
 // GetResult decodes the RPC response result into the provided value using mapstructure.
 func (r Response) GetResult(v any) error {
-	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{TagName: "json",
-		Result: &v, DecodeHook: mapstructure.TextUnmarshallerHookFunc()})
-
+	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		TagName: "json",
+		Result:  &v, DecodeHook: mapstructure.TextUnmarshallerHookFunc(),
+	})
 	if err != nil {
 		return err
 	}

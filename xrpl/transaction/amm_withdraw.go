@@ -46,7 +46,7 @@ type AMMWithdraw struct {
 	// The minimum effective price, in LP Token returned, to pay per unit of the asset to withdraw.
 	EPrice types.CurrencyAmount `json:",omitempty"`
 	// How many of the AMM's LP Tokens to redeem.
-	LPTokenIn types.IssuedCurrencyAmount `json:",omitempty"`
+	LPTokenIn types.IssuedCurrencyAmount `json:",omitzero"`
 }
 
 // ****************************
