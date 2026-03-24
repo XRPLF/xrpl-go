@@ -11,7 +11,7 @@ TEST_TIMEOUT = 5m
 GOLANGCI_LINT_MAJOR_VERSION = 2
 GOLANGCI_LINT_VERSION = v2.2.2
 
-RIPPLED_IMAGE = rippleci/rippled:2.3.0
+RIPPLED_IMAGE = rippleci/rippled:develop
 
 ################################################################################
 ############################### LINTING ########################################
