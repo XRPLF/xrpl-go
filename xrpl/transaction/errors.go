@@ -536,6 +536,12 @@ var (
 	ErrConfidentialConvertInvalidBlindingFactor = errors.New("confidential MPT convert: BlindingFactor must be 64 hex characters (32 bytes)")
 	// ErrConfidentialConvertMissingEncryptedAmount is returned when HolderEncryptedAmount or IssuerEncryptedAmount is empty.
 	ErrConfidentialConvertMissingEncryptedAmount = errors.New("confidential MPT convert: HolderEncryptedAmount and IssuerEncryptedAmount must be non-empty hex strings")
+	// ErrConfidentialConvertBackInvalidAmount is returned when MPTAmount is not greater than 0 on a convert back.
+	ErrConfidentialConvertBackInvalidAmount = errors.New("confidential MPT convert back: MPTAmount must be greater than 0")
+	// ErrConfidentialConvertBackInvalidBlindingFactor is returned when BlindingFactor is not 64 hex characters on a convert back.
+	ErrConfidentialConvertBackInvalidBlindingFactor = errors.New("confidential MPT convert back: BlindingFactor must be 64 hex characters (32 bytes)")
+	// ErrConfidentialConvertBackMissingFields is returned when required fields are empty on a convert back.
+	ErrConfidentialConvertBackMissingFields = errors.New("confidential MPT convert back: HolderEncryptedAmount, IssuerEncryptedAmount, BalanceCommitment, and ZKProof must be non-empty hex strings")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.

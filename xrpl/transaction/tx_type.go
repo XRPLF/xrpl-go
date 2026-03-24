@@ -21,6 +21,7 @@ const (
 	ClawbackTx                          TxType = "Clawback"
 	ConfidentialMPTClawbackTx           TxType = "ConfidentialMPTClawback"
 	ConfidentialMPTConvertTx            TxType = "ConfidentialMPTConvert"
+	ConfidentialMPTConvertBackTx        TxType = "ConfidentialMPTConvertBack"
 	CredentialAcceptTx                  TxType = "CredentialAccept" //nolint:gosec // G101 false positive, not credentials
 	CredentialCreateTx                  TxType = "CredentialCreate" //nolint:gosec // G101 false positive, not credentials
 	CredentialDeleteTx                  TxType = "CredentialDelete" //nolint:gosec // G101 false positive, not credentials

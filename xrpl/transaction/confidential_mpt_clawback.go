@@ -24,13 +24,14 @@ import (
 // ```
 type ConfidentialMPTClawback struct {
 	BaseTx
-	// MPTokenIssuance ID identifies the MPTokenIssuance from which to clawback.
+	// MPTokenIssuanceID identifies the MPTokenIssuance from which to clawback.
 	MPTokenIssuanceID string
-	// Holder the holder account from which to clawback confidential balance.
+	// Holder is the holder account from which to clawback confidential balance.
 	Holder types.Address
-	// MPTAmount the amount of MPT to clawback from the holder's confidential balance.
+	// MPTAmount is the amount of MPT to clawback from the holder's confidential balance.
+	// Must be greater than 0.
 	MPTAmount types.MPTPlainAmount
-	// ZKProof zero-knowledge proof proving the holder has sufficient confidential
+	// ZKProof is a zero-knowledge proof proving the holder has sufficient confidential
 	// balance for the clawback and that the operation is valid.
 	ZKProof string
 }
