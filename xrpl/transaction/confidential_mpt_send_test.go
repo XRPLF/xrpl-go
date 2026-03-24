@@ -149,6 +149,26 @@ func TestConfidentialMPTSend_Validate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "pass - with valid AuditorEncryptedAmount",
+			tx: &ConfidentialMPTSend{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: ConfidentialMPTSendTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				Destination:                "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+				MPTokenIssuanceID:          "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				SenderEncryptedAmount:      testSendCiphertext1,
+				DestinationEncryptedAmount: testSendCiphertext2,
+				IssuerEncryptedAmount:      testSendCiphertext3,
+				AuditorEncryptedAmount:     types.HexBlob(testSendCiphertext4),
+				ZKProof:                    "DD44",
+				BalanceCommitment:          testSendCommitment1,
+				AmountCommitment:           testSendCommitment2,
+			},
+			wantErr: nil,
+		},
+		{
 			name: "fail - empty MPTokenIssuanceID",
 			tx: &ConfidentialMPTSend{
 				BaseTx: BaseTx{

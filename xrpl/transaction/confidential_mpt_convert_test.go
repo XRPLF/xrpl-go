@@ -142,6 +142,23 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "pass - with valid AuditorEncryptedAmount",
+			tx: &ConfidentialMPTConvert{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: ConfidentialMPTConvertTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTAmount:              types.MPTPlainAmount(1000),
+				HolderEncryptedAmount:  testCiphertext,
+				IssuerEncryptedAmount:  testCiphertext2,
+				AuditorEncryptedAmount: types.HexBlob(testCiphertext3),
+				BlindingFactor:         testBlindingFactor,
+			},
+			wantErr: nil,
+		},
+		{
 			name: "fail - empty MPTokenIssuanceID",
 			tx: &ConfidentialMPTConvert{
 				BaseTx: BaseTx{

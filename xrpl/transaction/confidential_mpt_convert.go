@@ -6,8 +6,8 @@ import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 // The amount being converted is specified in cleartext, but the resulting balance is encrypted
 // using EC-ElGamal encryption. On first use, the holder registers their ElGamal encryption key
 // by providing HolderEncryptionKey and ZKProof (Schnorr proof of knowledge).
-// A ZKProof is also required when the holder has existing confidential balance to prove
-// the validity of the conversion.
+// ZKProof must be present if and only if HolderEncryptionKey is present,
+// and must be absent when HolderEncryptionKey is absent.
 //
 // ```json
 //
@@ -44,8 +44,8 @@ type ConfidentialMPTConvert struct {
 	// BlindingFactor is the 32-byte scalar value used to encrypt the amount.
 	// Used by validators to verify the ciphertexts match the plaintext MPTAmount.
 	BlindingFactor string
-	// ZKProof is a zero-knowledge proof required when holder has existing
-	// confidential balance. Proves the validity of the conversion. (Optional)
+	// ZKProof is a Schnorr proof of knowledge. Required if and only if
+	// HolderEncryptionKey is present, must be absent otherwise. (Optional)
 	ZKProof *string `json:",omitempty"`
 }
 
