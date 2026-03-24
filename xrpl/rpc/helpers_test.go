@@ -11,11 +11,11 @@ import (
 	utility "github.com/Peersyst/xrpl-go/xrpl/queries/utility"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateRequest(t *testing.T) {
 	t.Run("Create request", func(t *testing.T) {
-
 		req := &account.ChannelsRequest{
 			Account:            "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 			DestinationAccount: "rnZvsWuLem5Ha46AZs61jLWR9R5esinkG3",
@@ -26,13 +26,13 @@ func TestCreateRequest(t *testing.T) {
 
 		expetedBody := Request{
 			Method: "account_channels",
-			Params: [1]interface{}{req},
+			Params: [1]any{req},
 		}
 		expectedRequestBytes, _ := jsoniter.Marshal(expetedBody)
 
 		byteRequest, err := createRequest(req)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// assert bytes equal
 		assert.Equal(t, expectedRequestBytes, byteRequest)
 		// assert json equal
@@ -45,13 +45,13 @@ func TestCreateRequest(t *testing.T) {
 
 		expetedBody := Request{
 			Method: req.Method(),
-			Params: [1]interface{}{req},
+			Params: [1]any{req},
 		}
 		expectedRequestBytes, _ := jsoniter.Marshal(expetedBody)
 
 		byteRequest, err := createRequest(req)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// assert bytes equal
 		assert.Equal(t, expectedRequestBytes, byteRequest)
 		// assert json equal
@@ -65,13 +65,13 @@ func TestCreateRequest(t *testing.T) {
 
 		expetedBody := Request{
 			Method: req.Method(),
-			Params: [1]interface{}{req},
+			Params: [1]any{req},
 		}
 		expectedRequestBytes, _ := jsoniter.Marshal(expetedBody)
 
 		byteRequest, err := createRequest(req)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// assert bytes equal
 		assert.Equal(t, expectedRequestBytes, byteRequest)
 		// assert json equal
@@ -80,9 +80,7 @@ func TestCreateRequest(t *testing.T) {
 }
 
 func TestCheckForError(t *testing.T) {
-
 	t.Run("Error Response", func(t *testing.T) {
-
 		json := `{
 			"result": {
 				"error": "ledgerIndexMalformed",
@@ -109,7 +107,6 @@ func TestCheckForError(t *testing.T) {
 	})
 
 	t.Run("Error Response with error code", func(t *testing.T) {
-
 		json := "Null Method" // https://xrpl.org/error-formatting.html#universal-errors
 
 		b := io.NopCloser(bytes.NewReader([]byte(json)))
@@ -125,7 +122,6 @@ func TestCheckForError(t *testing.T) {
 	})
 
 	t.Run("No error Response", func(t *testing.T) {
-
 		json := `{
 			"result": {
 			  "account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -156,7 +152,7 @@ func TestCheckForError(t *testing.T) {
 
 		bodyBytes, err := checkForError(res)
 
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, bodyBytes)
 	})
 }

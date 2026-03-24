@@ -66,7 +66,6 @@ type NFTokenOffer struct {
 // EntryType returns the type of the ledger entry.
 func (*NFTokenOffer) EntryType() EntryType {
 	return NFTokenOfferEntry
-
 }
 
 // UnmarshalJSON implements custom JSON unmarshalling for NFTokenOffer.

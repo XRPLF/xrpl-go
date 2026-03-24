@@ -30,7 +30,7 @@ func TestRandomizer_GenerateBytes(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			randomizer := NewRandomizer()
 			bytes, err := randomizer.GenerateBytes(tc.input)
-			fmt.Println(bytes)
+			fmt.Println(string(bytes))
 			if tc.expectedErr != nil {
 				require.Equal(t, tc.expectedErr, err)
 			}

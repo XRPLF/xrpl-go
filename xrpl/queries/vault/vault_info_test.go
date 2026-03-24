@@ -7,6 +7,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVaultInfoRequest_VaultID(t *testing.T) {
@@ -110,7 +111,7 @@ func TestInfoRequest_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.request.Validate()
 			if tt.expected == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
 				assert.ErrorIs(t, err, tt.expected)
 			}

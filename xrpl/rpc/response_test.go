@@ -7,11 +7,11 @@ import (
 
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetResult(t *testing.T) {
 	t.Run("correctly decodes", func(t *testing.T) {
-
 		jr := Response{
 			Result: AnyJSON{
 				"account":      "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -19,10 +19,11 @@ func TestGetResult(t *testing.T) {
 				"ledger_index": json.Number(strconv.FormatInt(71766343, 10)),
 			},
 			Warning: "none",
-			Warnings: []XRPLResponseWarning{{
-				ID:      1,
-				Message: "message",
-			},
+			Warnings: []XRPLResponseWarning{
+				{
+					ID:      1,
+					Message: "message",
+				},
 			},
 		}
 
@@ -35,11 +36,10 @@ func TestGetResult(t *testing.T) {
 		var acr account.ChannelsResponse
 		err := jr.GetResult(&acr)
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expected, acr)
 	})
 	t.Run("throws error for incorrect mapping", func(t *testing.T) {
-
 		jr := Response{
 			Result: AnyJSON{
 				"account":      123,
@@ -47,16 +47,17 @@ func TestGetResult(t *testing.T) {
 				"ledger_index": json.Number(strconv.FormatInt(71766343, 10)),
 			},
 			Warning: "none",
-			Warnings: []XRPLResponseWarning{{
-				ID:      1,
-				Message: "message",
-			},
+			Warnings: []XRPLResponseWarning{
+				{
+					ID:      1,
+					Message: "message",
+				},
 			},
 		}
 
 		var acr account.ChannelsResponse
 		err := jr.GetResult(&acr)
 
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }

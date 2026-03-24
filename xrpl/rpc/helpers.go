@@ -167,7 +167,7 @@ func createRequest(reqParams XRPLRequest) ([]byte, error) {
 	body = Request{
 		Method: reqParams.Method(),
 		// each param object will have a struct with json serialising tags
-		Params: [1]interface{}{reqParams},
+		Params: [1]any{reqParams},
 	}
 
 	// Omit the Params field if method doesn't require any
@@ -204,7 +204,6 @@ func createRequest(reqParams XRPLRequest) ([]byte, error) {
 
 // checkForError reads the http response and formats the error if it exists
 func checkForError(res *http.Response) (Response, error) {
-
 	var jr Response
 
 	b, err := io.ReadAll(res.Body)
@@ -294,7 +293,6 @@ func (c *Client) setTransactionNextValidSequenceNumber(tx *transaction.FlatTrans
 		Account:     types.Address((*tx)["Account"].(string)),
 		LedgerIndex: common.LedgerTitle("current"),
 	})
-
 	if err != nil {
 		return err
 	}
@@ -421,11 +419,7 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 		if err != nil {
 			return err
 		}
-		if baseFee < maxFeeUint {
-			totalFee = baseFee
-		} else {
-			totalFee = maxFeeUint
-		}
+		totalFee = min(baseFee, maxFeeUint)
 	}
 
 	(*tx)["Fee"] = strconv.FormatUint(totalFee, 10)
@@ -519,9 +513,8 @@ func (c *Client) submitRequest(req *requests.SubmitRequest) (*requests.SubmitRes
 
 func (c *Client) waitForTransaction(txHash string, lastLedgerSequence uint32) (*requests.TxResponse, error) {
 	var txResponse *requests.TxResponse
-	i := 0
 
-	for i < c.cfg.maxRetries {
+	for range c.cfg.maxRetries {
 		// Get the current ledger index
 		currentLedger, err := c.GetLedgerIndex()
 		if err != nil {
@@ -537,23 +530,29 @@ func (c *Client) waitForTransaction(txHash string, lastLedgerSequence uint32) (*
 		res, err := c.Request(&requests.TxRequest{
 			Transaction: txHash,
 		})
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), txnNotFound) {
 			return nil, err
 		}
 
-		err = res.GetResult(&txResponse)
-		if err != nil {
-			return nil, err
-		}
+		if res != nil {
+			err = res.GetResult(&txResponse)
+			if err != nil {
+				return nil, err
+			}
 
-		// Check if the transaction has been included in the current ledger
-		if txResponse.LedgerIndex.Int() >= int(lastLedgerSequence) {
-			break
+			// Check if the transaction has been validated
+			if txResponse.Validated {
+				return txResponse, nil
+			}
+
+			// Check if the transaction has been included in the current ledger
+			if txResponse.LedgerIndex.Int() >= int(lastLedgerSequence) {
+				break
+			}
 		}
 
 		// Wait for the retry delay before retrying
 		time.Sleep(c.cfg.retryDelay)
-		i++
 	}
 
 	if txResponse == nil {

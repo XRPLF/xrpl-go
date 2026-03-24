@@ -5,6 +5,7 @@ package wallet
 import (
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -20,9 +21,7 @@ import (
 	chaincfg "github.com/bsv-blockchain/go-sdk/transaction/chaincfg"
 )
 
-var (
-	nilHDPrivateKeyID = [4]byte{0x00, 0x00, 0x00, 0x00}
-)
+var nilHDPrivateKeyID = [4]byte{0x00, 0x00, 0x00, 0x00}
 
 // Wallet is a utility for deriving a wallet composed of a keypair (publicKey/privateKey).
 // It can be derived from a seed, mnemonic, or entropy, and supports offline signing and verification.
@@ -70,7 +69,6 @@ func FromSeed(seed string, masterAddress string) (Wallet, error) {
 		Seed:           seed,
 		ClassicAddress: classicAddr,
 	}, nil
-
 }
 
 // FromSecret derives a Wallet from a secret (AKA a seed).
@@ -140,14 +138,12 @@ func FromMnemonic(mnemonic string) (*Wallet, error) {
 
 // Sign signs a transaction offline, returning the transaction blob and its signature.
 // TODO: Refactor to accept a `Transaction` object instead of a map.
-func (w *Wallet) Sign(tx map[string]interface{}) (string, string, error) {
+func (w *Wallet) Sign(tx map[string]any) (string, string, error) {
 	tx["SigningPubKey"] = w.PublicKey
 
 	// Copy the transaction to avoid modifying the original transaction
-	signTx := make(map[string]interface{}, len(tx))
-	for k, v := range tx {
-		signTx[k] = v
-	}
+	signTx := make(map[string]any, len(tx))
+	maps.Copy(signTx, tx)
 
 	encodedTx, err := binarycodec.EncodeForSigning(signTx)
 	if err != nil {
@@ -181,7 +177,7 @@ func (w *Wallet) GetAddress() types.Address {
 
 // Multisign signs a multisigned transaction offline, returning the signed transaction blob and its transaction hash.
 // Note: this method sets tx["SigningPubKey"] = "" directly on the provided map (XRPL protocol requirement).
-func (w *Wallet) Multisign(tx map[string]interface{}) (string, string, error) {
+func (w *Wallet) Multisign(tx map[string]any) (string, string, error) {
 	// For regular multisigning, SigningPubKey must be empty per XRPL protocol.
 	tx["SigningPubKey"] = ""
 	encodedTx, err := binarycodec.EncodeForMultisigning(tx, w.ClassicAddress.String())

@@ -5,7 +5,7 @@ import "testing"
 func TestIsString(t *testing.T) {
 	tests := []struct {
 		name string
-		str  interface{}
+		str  any
 		want bool
 	}{
 		{
@@ -33,10 +33,11 @@ func TestIsString(t *testing.T) {
 		})
 	}
 }
+
 func TestIsUint32(t *testing.T) {
 	tests := []struct {
 		name string
-		num  interface{}
+		num  any
 		want bool
 	}{
 		{
@@ -71,7 +72,7 @@ func TestIsUint32(t *testing.T) {
 		},
 		{
 			name: "pass - Valid map",
-			num:  map[string]interface{}{},
+			num:  map[string]any{},
 			want: false,
 		},
 	}
@@ -84,10 +85,11 @@ func TestIsUint32(t *testing.T) {
 		})
 	}
 }
+
 func TestIsUint64(t *testing.T) {
 	tests := []struct {
 		name string
-		num  interface{}
+		num  any
 		want bool
 	}{
 		{
@@ -122,7 +124,7 @@ func TestIsUint64(t *testing.T) {
 		},
 		{
 			name: "pass - Valid map",
-			num:  map[string]interface{}{},
+			num:  map[string]any{},
 			want: false,
 		},
 	}
@@ -135,10 +137,11 @@ func TestIsUint64(t *testing.T) {
 		})
 	}
 }
+
 func TestIsUint(t *testing.T) {
 	tests := []struct {
 		name string
-		num  interface{}
+		num  any
 		want bool
 	}{
 		{
@@ -173,7 +176,7 @@ func TestIsUint(t *testing.T) {
 		},
 		{
 			name: "pass - Valid map",
-			num:  map[string]interface{}{},
+			num:  map[string]any{},
 			want: false,
 		},
 	}
@@ -186,10 +189,11 @@ func TestIsUint(t *testing.T) {
 		})
 	}
 }
+
 func TestIsBool(t *testing.T) {
 	tests := []struct {
 		name string
-		b    interface{}
+		b    any
 		want bool
 	}{
 		{
@@ -264,10 +268,11 @@ func TestIsHex(t *testing.T) {
 		})
 	}
 }
+
 func TestIsInt(t *testing.T) {
 	tests := []struct {
 		name string
-		num  interface{}
+		num  any
 		want bool
 	}{
 		{
@@ -367,6 +372,7 @@ func TestIsFloat64(t *testing.T) {
 		})
 	}
 }
+
 func TestIsFloat32(t *testing.T) {
 	tests := []struct {
 		name string
@@ -433,6 +439,7 @@ func TestIsFloat32(t *testing.T) {
 		})
 	}
 }
+
 func TestIsStringNumericUint(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -504,12 +511,12 @@ func TestIsStringNumericUint(t *testing.T) {
 func TestIsMap(t *testing.T) {
 	tests := []struct {
 		name string
-		m    interface{}
+		m    any
 		want bool
 	}{
 		{
 			name: "pass - Valid map",
-			m:    map[string]interface{}{},
+			m:    map[string]any{},
 			want: true,
 		},
 		{
@@ -535,7 +542,7 @@ func TestIsMap(t *testing.T) {
 func TestIsXRPLNumber(t *testing.T) {
 	tests := []struct {
 		name  string
-		value interface{}
+		value any
 		want  bool
 	}{
 		// Valid cases - integers

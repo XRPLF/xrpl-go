@@ -207,6 +207,7 @@ func TestAMMWithdraw_Flatten(t *testing.T) {
 		})
 	}
 }
+
 func TestAMMWithdraw_Validate(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -73,7 +74,7 @@ func TestAuthorizeCredential_Validate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.ac.Validate()
 			if err != nil {
-				if err != tt.expectedError {
+				if !errors.Is(err, tt.expectedError) {
 					t.Errorf("expected error %v, got %v", tt.expectedError, err)
 				}
 			}

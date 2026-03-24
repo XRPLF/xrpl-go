@@ -38,7 +38,6 @@ func (fp *TestnetFaucetProvider) FundWallet(address types.Address) error {
 	url := fmt.Sprintf("https://%s%s", fp.host, fp.accountPath)
 	payload := map[string]string{"destination": address.String(), "userAgent": UserAgent}
 	jsonPayload, err := json.Marshal(payload)
-
 	if err != nil {
 		return ErrMarshalPayload{
 			Err: err,

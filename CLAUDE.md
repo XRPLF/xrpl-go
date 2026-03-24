@@ -146,7 +146,7 @@ Integration tests require `INTEGRATION` environment variable:
 Start localnet with `make run-localnet-linux/amd64` before running integration tests.
 
 ### Lint Configuration
-- Uses `golangci-lint v2.2.2` (configured in Makefile)
+- Uses `golangci-lint v2.11.3` (configured in Makefile)
 - Config in `.golangci.yml` enables: govet, errcheck, staticcheck, gosec, etc.
 - Excludes package-comments linter for examples/
 
@@ -156,6 +156,13 @@ The binary codec is critical for transaction signing and submission:
 - Type serializers in `binary-codec/types/`
 - Always use `binarycodec.Encode()` for creating transaction blobs
 - Use `binarycodec.EncodeForSigning()` when preparing transactions for signature
+
+### Changelog
+Before finishing any task that changes code, update the changelog in **both** locations:
+1. `CHANGELOG.md` (root) — under the `[Unreleased]` section
+2. `docs/changelog/v0.1.x/<weight>_v0_1_<minor>.md` — the file for the current unreleased version
+
+Follow the existing format: group entries under `### Added`, `### Changed`, or `### Fixed`, with a `#### <package>` subheading. Keep entries concise but descriptive enough that users understand the impact.
 
 ### Common Gotchas
 - XRP amounts are always in "drops" (1 XRP = 1,000,000 drops)

@@ -5,11 +5,12 @@ import (
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVaultDeposit_TxType(t *testing.T) {
 	tx := &VaultDeposit{}
-	assert.Equal(t, tx.TxType(), VaultDepositTx)
+	assert.Equal(t, VaultDepositTx, tx.TxType())
 }
 
 func TestVaultDeposit_Flatten(t *testing.T) {
@@ -52,7 +53,7 @@ func TestVaultDeposit_Flatten(t *testing.T) {
 
 	for _, testcase := range testcases {
 		t.Run(testcase.name, func(t *testing.T) {
-			assert.Equal(t, testcase.tx.Flatten(), testcase.expected)
+			assert.Equal(t, testcase.expected, testcase.tx.Flatten())
 		})
 	}
 }
@@ -129,7 +130,7 @@ func TestVaultDeposit_Validate(t *testing.T) {
 			if testcase.expected != nil {
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

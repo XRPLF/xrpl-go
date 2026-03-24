@@ -47,14 +47,14 @@ func TestDelegateSet_Flatten(t *testing.T) {
 				"Fee":             "12",
 				"Sequence":        uint32(1),
 				"Authorize":       "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
-				"Permissions": []interface{}{
-					map[string]interface{}{
-						"Permission": map[string]interface{}{
+				"Permissions": []any{
+					map[string]any{
+						"Permission": map[string]any{
 							"PermissionValue": "Payment",
 						},
 					},
-					map[string]interface{}{
-						"Permission": map[string]interface{}{
+					map[string]any{
+						"Permission": map[string]any{
 							"PermissionValue": "TrustlineAuthorize",
 						},
 					},
@@ -81,9 +81,9 @@ func TestDelegateSet_Flatten(t *testing.T) {
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"TransactionType": "DelegateSet",
 				"Authorize":       "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
-				"Permissions": []interface{}{
-					map[string]interface{}{
-						"Permission": map[string]interface{}{
+				"Permissions": []any{
+					map[string]any{
+						"Permission": map[string]any{
 							"PermissionValue": "Payment",
 						},
 					},

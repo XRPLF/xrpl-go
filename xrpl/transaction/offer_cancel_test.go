@@ -41,6 +41,7 @@ func TestOfferCancel_Flatten(t *testing.T) {
 		t.Error(err)
 	}
 }
+
 func TestOfferCancel_Validate(t *testing.T) {
 	tests := []struct {
 		name      string

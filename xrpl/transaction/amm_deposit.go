@@ -99,7 +99,6 @@ func (*AMMDeposit) TxType() TxType {
 
 // Flatten implements the Flatten method for the AMMDeposit struct.
 func (a *AMMDeposit) Flatten() FlatTransaction {
-
 	// Add BaseTx fields
 	flattened := a.BaseTx.Flatten()
 

@@ -8,8 +8,8 @@ type IssuedCurrency struct {
 }
 
 // Flatten returns a JSON-like map representing the IssuedCurrency fields.
-func (i *IssuedCurrency) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (i *IssuedCurrency) Flatten() map[string]any {
+	flattened := make(map[string]any)
 	flattened["currency"] = i.Currency
 	flattened["issuer"] = i.Issuer.String()
 	return flattened
