@@ -526,6 +526,16 @@ var (
 	// ErrConfidentialClawbackMissingProof is returned when ZKProof is empty on a confidential MPT clawback.
 	ErrConfidentialClawbackMissingProof = errors.New("confidential MPT clawback: ZKProof must be a non-empty hex string")
 
+	// ErrConfidentialConvertKeyProofMismatch is returned when HolderEncryptionKey and ZKProof are not both present or both absent.
+	ErrConfidentialConvertKeyProofMismatch = errors.New("confidential MPT convert: HolderEncryptionKey and ZKProof must both be present or both absent")
+	// ErrConfidentialConvertInvalidKeyLength is returned when HolderEncryptionKey is not 128 hex characters.
+	ErrConfidentialConvertInvalidKeyLength = errors.New("confidential MPT convert: HolderEncryptionKey must be 128 hex characters (64-byte uncompressed key)")
+	// ErrConfidentialConvertInvalidProofLength is returned when ZKProof is not 130 hex characters.
+	ErrConfidentialConvertInvalidProofLength = errors.New("confidential MPT convert: ZKProof must be 130 hex characters (65-byte Schnorr PoK)")
+	// ErrConfidentialConvertInvalidBlindingFactor is returned when BlindingFactor is not 64 hex characters.
+	ErrConfidentialConvertInvalidBlindingFactor = errors.New("confidential MPT convert: BlindingFactor must be 64 hex characters (32 bytes)")
+	// ErrConfidentialConvertMissingEncryptedAmount is returned when HolderEncryptedAmount or IssuerEncryptedAmount is empty.
+	ErrConfidentialConvertMissingEncryptedAmount = errors.New("confidential MPT convert: HolderEncryptedAmount and IssuerEncryptedAmount must be non-empty hex strings")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.
