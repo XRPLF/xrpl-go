@@ -249,8 +249,8 @@ func TestBaseTx_Flatten(t *testing.T) {
 				"Signers": [
 					{
 						"Signer": {
-							"Account": "rDqbKhee18wUCnvjPjZA5Kgpe4zeubLQUC", 
-							"TxnSignature": "abc123", 
+							"Account": "rDqbKhee18wUCnvjPjZA5Kgpe4zeubLQUC",
+							"TxnSignature": "abc123",
 							"SigningPubKey": "def456"
 						}
 					}
@@ -259,6 +259,38 @@ func TestBaseTx_Flatten(t *testing.T) {
 				"SigningPubKey": "abcdefg",
 				"TicketSequence": 2,
 				"TxnSignature": "xyz123"
+			}`,
+		},
+		{
+			name: "Zero Sequence preserved when TicketSequence is set",
+			tx: &BaseTx{
+				Account:         "rhbi7TGHknHCsRrVYmW57tQHmHjmFgjEpU",
+				TransactionType: PaymentTx,
+				Fee:             types.XRPCurrencyAmount(10),
+				Sequence:        0,
+				TicketSequence:  2,
+			},
+			expected: `{
+				"Account": "rhbi7TGHknHCsRrVYmW57tQHmHjmFgjEpU",
+				"TransactionType": "Payment",
+				"Fee": "10",
+				"Sequence": 0,
+				"TicketSequence": 2
+			}`,
+		},
+		{
+			name: "Sequence absent when both Sequence and TicketSequence are zero",
+			tx: &BaseTx{
+				Account:         "rhbi7TGHknHCsRrVYmW57tQHmHjmFgjEpU",
+				TransactionType: PaymentTx,
+				Fee:             types.XRPCurrencyAmount(10),
+				Sequence:        0,
+				TicketSequence:  0,
+			},
+			expected: `{
+				"Account": "rhbi7TGHknHCsRrVYmW57tQHmHjmFgjEpU",
+				"TransactionType": "Payment",
+				"Fee": "10"
 			}`,
 		},
 	}
@@ -270,26 +302,5 @@ func TestBaseTx_Flatten(t *testing.T) {
 				t.Error(err)
 			}
 		})
-	}
-}
-
-func TestBaseTx_Flatten_PreservesZeroSequenceWithTicketSequence(t *testing.T) {
-	tx := &BaseTx{
-		Account:         "rhbi7TGHknHCsRrVYmW57tQHmHjmFgjEpU",
-		TransactionType: PaymentTx,
-		Fee:             types.XRPCurrencyAmount(10),
-		Sequence:        0,
-		TicketSequence:  2,
-	}
-
-	err := testutil.CompareFlattenAndExpected(tx.Flatten(), []byte(`{
-		"Account": "rhbi7TGHknHCsRrVYmW57tQHmHjmFgjEpU",
-		"TransactionType": "Payment",
-		"Fee": "10",
-		"Sequence": 0,
-		"TicketSequence": 2
-	}`))
-	if err != nil {
-		t.Fatal(err)
 	}
 }
