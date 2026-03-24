@@ -103,7 +103,7 @@ func main() {
 
 	for _, affectedNode := range affectedNodes {
 		if affectedNode.CreatedNode == nil {
-			fmt.Println("❌ Node is not of type map[string]interface{}")
+			fmt.Println("❌ Node is not of type map[string]any")
 			return
 		}
 

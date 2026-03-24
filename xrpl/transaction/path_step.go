@@ -12,8 +12,8 @@ type PathStep struct {
 }
 
 // Flatten returns a map representation of the PathStep.
-func (p *PathStep) Flatten() map[string]interface{} {
-	flattened := make(map[string]interface{})
+func (p *PathStep) Flatten() map[string]any {
+	flattened := make(map[string]any)
 
 	if p.Account != "" {
 		flattened["account"] = p.Account.String()
@@ -28,5 +28,4 @@ func (p *PathStep) Flatten() map[string]interface{} {
 	}
 
 	return flattened
-
 }

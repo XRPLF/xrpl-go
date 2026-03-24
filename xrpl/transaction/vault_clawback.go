@@ -76,7 +76,7 @@ func (tx *VaultClawback) Validate() (bool, error) {
 	}
 
 	if tx.Amount != nil {
-		switch tx.Amount.Kind() {
+		switch tx.Amount.Kind() { //nolint:exhaustive // ISSUED is handled by default case
 		case types.XRP:
 			return false, ErrVaultClawbackAmountInvalidType
 		case types.MPT:

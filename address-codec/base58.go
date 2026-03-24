@@ -22,7 +22,6 @@ var bigRadix10 = big.NewInt(58 * 58 * 58 * 58 * 58 * 58 * 58 * 58 * 58 * 58)
 
 // EncodeBase58 encodes a byte slice to a base58 string using the XRP alphabet.
 func EncodeBase58(b []byte) string {
-
 	x := new(big.Int)
 	x.SetBytes(b)
 
@@ -52,7 +51,7 @@ func EncodeBase58(b []byte) string {
 			}
 		} else {
 			m := mod.Int64()
-			for i := 0; i < 10; i++ {
+			for range 10 {
 				answer = append(answer, xrpAlphabet[m%58])
 				m /= 58
 			}
@@ -73,7 +72,6 @@ func EncodeBase58(b []byte) string {
 	}
 
 	return string(answer)
-
 }
 
 // DecodeBase58 decodes a modified base58 string to a byte slice.
@@ -99,10 +97,7 @@ func DecodeBase58(b string) []byte {
 	// In that case we'll use the bigRadix[n] lookup for the appropriate power.
 
 	for t := b; len(t) > 0; {
-		n := len(t)
-		if n > 10 {
-			n = 10
-		}
+		n := min(len(t), 10)
 
 		total := uint64(0)
 		for _, v := range t[:n] {

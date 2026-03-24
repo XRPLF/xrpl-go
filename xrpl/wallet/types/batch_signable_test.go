@@ -10,12 +10,12 @@ func TestBatchSignable_Flatten(t *testing.T) {
 	tc := []struct {
 		name string
 		bs   BatchSignable
-		want map[string]interface{}
+		want map[string]any
 	}{
 		{
 			name: "pass - empty batch signable",
 			bs:   BatchSignable{},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"flags": uint32(0),
 			},
 		},
@@ -25,7 +25,7 @@ func TestBatchSignable_Flatten(t *testing.T) {
 				Flags: 0,
 				TxIDs: []string{"tx1", "tx2"},
 			},
-			want: map[string]interface{}{
+			want: map[string]any{
 				"flags": uint32(0),
 				"txIDs": []string{"tx1", "tx2"},
 			},

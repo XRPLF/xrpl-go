@@ -2,7 +2,6 @@ package definitions
 
 // GetTypeNameByFieldName returns the serialization data type for the given field name.
 func (d *Definitions) GetTypeNameByFieldName(n string) (string, error) {
-
 	fi, ok := d.Fields[n]
 
 	if !ok {
@@ -31,7 +30,6 @@ func (d *Definitions) GetTypeCodeByTypeName(n string) (int32, error) {
 // GetTypeCodeByFieldName returns the type code associated with the given field name.
 func (d *Definitions) GetTypeCodeByFieldName(n string) (int32, error) {
 	typeName, err := d.GetTypeNameByFieldName(n)
-
 	if err != nil {
 		return 0, err
 	}
@@ -41,7 +39,6 @@ func (d *Definitions) GetTypeCodeByFieldName(n string) (int32, error) {
 
 // GetFieldCodeByFieldName returns the field code associated with the given field name.
 func (d *Definitions) GetFieldCodeByFieldName(n string) (int32, error) {
-
 	fi, ok := d.Fields[n]
 
 	if !ok {
@@ -56,7 +53,6 @@ func (d *Definitions) GetFieldCodeByFieldName(n string) (int32, error) {
 
 // GetFieldHeaderByFieldName returns the field header struct associated with the given field name.
 func (d *Definitions) GetFieldHeaderByFieldName(n string) (*FieldHeader, error) {
-
 	fi, ok := d.Fields[n]
 
 	if !ok {
@@ -71,7 +67,6 @@ func (d *Definitions) GetFieldHeaderByFieldName(n string) (*FieldHeader, error) 
 
 // GetFieldNameByFieldHeader returns the field name associated with the given field header struct.
 func (d *Definitions) GetFieldNameByFieldHeader(fh FieldHeader) (string, error) {
-
 	fim, ok := definitions.FieldIDNameMap[fh]
 
 	if !ok {
@@ -85,7 +80,6 @@ func (d *Definitions) GetFieldNameByFieldHeader(fh FieldHeader) (string, error) 
 
 // GetFieldInfoByFieldName returns the field info struct associated with the given field name.
 func (d *Definitions) GetFieldInfoByFieldName(n string) (*FieldInfo, error) {
-
 	fi, ok := d.Fields[n]
 
 	if !ok {
@@ -100,7 +94,6 @@ func (d *Definitions) GetFieldInfoByFieldName(n string) (*FieldInfo, error) {
 
 // GetFieldInstanceByFieldName returns the field instance struct associated with the given field name.
 func (d *Definitions) GetFieldInstanceByFieldName(n string) (*FieldInstance, error) {
-
 	fi, ok := d.Fields[n]
 
 	if !ok {
@@ -127,7 +120,6 @@ func (d *Definitions) GetTransactionTypeCodeByTransactionTypeName(n string) (int
 
 // GetTransactionTypeNameByTransactionTypeCode returns the transaction type name associated with the transaction type code.
 func (d *Definitions) GetTransactionTypeNameByTransactionTypeCode(c int32) (string, error) {
-
 	for txTypeName, code := range d.TransactionTypes {
 		if code == c {
 			return txTypeName, nil
@@ -141,7 +133,6 @@ func (d *Definitions) GetTransactionTypeNameByTransactionTypeCode(c int32) (stri
 
 // GetTransactionResultNameByTransactionResultTypeCode returns the transaction result name associated with the transaction result type code.
 func (d *Definitions) GetTransactionResultNameByTransactionResultTypeCode(c int32) (string, error) {
-
 	for txResultName, code := range d.TransactionResults {
 		if code == c {
 			return txResultName, nil
@@ -156,7 +147,6 @@ func (d *Definitions) GetTransactionResultNameByTransactionResultTypeCode(c int3
 
 // GetTransactionResultTypeCodeByTransactionResultName returns the transaction result type code associated with the transaction result name.
 func (d *Definitions) GetTransactionResultTypeCodeByTransactionResultName(n string) (int32, error) {
-
 	txResultTypeCode, ok := d.TransactionResults[n]
 
 	if !ok {
@@ -170,7 +160,6 @@ func (d *Definitions) GetTransactionResultTypeCodeByTransactionResultName(n stri
 
 // GetLedgerEntryTypeCodeByLedgerEntryTypeName returns the ledger entry type code associated with the ledger entry type name.
 func (d *Definitions) GetLedgerEntryTypeCodeByLedgerEntryTypeName(n string) (int32, error) {
-
 	ledgerEntryTypeCode, ok := d.LedgerEntryTypes[n]
 
 	if !ok {
@@ -184,9 +173,7 @@ func (d *Definitions) GetLedgerEntryTypeCodeByLedgerEntryTypeName(n string) (int
 
 // GetLedgerEntryTypeNameByLedgerEntryTypeCode returns the ledger entry type name associated with the ledger entry type code.
 func (d *Definitions) GetLedgerEntryTypeNameByLedgerEntryTypeCode(c int32) (string, error) {
-
 	for ledgerEntryTypeName, code := range d.LedgerEntryTypes {
-
 		if code == c {
 			return ledgerEntryTypeName, nil
 		}

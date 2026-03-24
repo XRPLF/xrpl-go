@@ -54,7 +54,7 @@ func (c *Clawback) Validate() (bool, error) {
 	}
 
 	// check if Account is not the same as the issuer
-	if c.Account.String() == c.Amount.Flatten().(map[string]interface{})["issuer"] {
+	if c.Account.String() == c.Amount.Flatten().(map[string]any)["issuer"] {
 		return false, ErrClawbackSameAccount
 	}
 

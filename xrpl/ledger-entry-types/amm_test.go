@@ -11,6 +11,7 @@ func TestAMM_EntryType(t *testing.T) {
 	entry := &AMM{}
 	assert.Equal(t, AMMEntry, entry.EntryType())
 }
+
 func TestAuthAccounts_Flatten(t *testing.T) {
 	authAccount := AuthAccount{
 		Account: "rExampleAccount",

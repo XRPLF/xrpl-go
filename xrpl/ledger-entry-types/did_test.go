@@ -8,5 +8,5 @@ import (
 
 func TestDID_EntryType(t *testing.T) {
 	did := &DID{}
-	assert.Equal(t, did.EntryType(), DIDEntry)
+	assert.Equal(t, DIDEntry, did.EntryType())
 }

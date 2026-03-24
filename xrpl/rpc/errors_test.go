@@ -8,5 +8,5 @@ import (
 
 func TestClientError(t *testing.T) {
 	err := &ClientError{ErrorString: "test error"}
-	require.Equal(t, err.Error(), "test error")
+	require.Equal(t, "test error", err.Error())
 }

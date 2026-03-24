@@ -39,5 +39,4 @@ func TestChannelVerifyResponse(t *testing.T) {
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
 	}
-
 }

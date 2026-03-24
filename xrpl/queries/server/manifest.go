@@ -48,7 +48,7 @@ func (*ManifestRequest) Validate() error {
 // ManifestResponse is the response type returned by the manifest command.
 // It includes the parsed manifest details, the raw manifest string, and the requested key.
 type ManifestResponse struct {
-	Details   ManifestDetails `json:"details,omitempty"`
+	Details   ManifestDetails `json:"details,omitzero"`
 	Manifest  string          `json:"manifest,omitempty"`
 	Requested string          `json:"requested"`
 }

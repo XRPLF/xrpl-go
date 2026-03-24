@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 )
@@ -48,12 +49,12 @@ func (c *Currency) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 
 	// Check if bytes has exactly 3 non-zero bytes at positions 12-14
 	nonZeroCount := 0
-	var currencyStr string
-	for i := 0; i < len(currencyBytes); i++ {
+	var currencyStr strings.Builder
+	for i := range currencyBytes {
 		if currencyBytes[i] != 0 {
 			if i >= 12 && i <= 14 {
 				nonZeroCount++
-				currencyStr += string(currencyBytes[i])
+				currencyStr.WriteString(string(currencyBytes[i]))
 			} else {
 				nonZeroCount = 0
 				break
@@ -62,7 +63,7 @@ func (c *Currency) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 	}
 
 	if nonZeroCount == 3 {
-		return currencyStr, nil
+		return currencyStr.String(), nil
 	}
 
 	return hex.EncodeToString(currencyBytes), nil

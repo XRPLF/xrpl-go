@@ -306,18 +306,19 @@ func TestEncode(t *testing.T) {
 		},
 		{
 			description: "invalid pathset",
-			input: map[string]any{"Paths": []any{
-				map[string]any{
-					"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
-					"currency": "USD",
-					"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
+			input: map[string]any{
+				"Paths": []any{
+					map[string]any{
+						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+						"currency": "USD",
+						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
+					},
+					map[string]any{
+						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+						"currency": "USD",
+						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
+					},
 				},
-				map[string]any{
-					"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
-					"currency": "USD",
-					"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
-				},
-			},
 			},
 			output:      "",
 			expectedErr: types.ErrInvalidPathSet,
@@ -337,7 +338,6 @@ func TestEncode(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestDecode(t *testing.T) {
@@ -439,11 +439,10 @@ func TestDecode(t *testing.T) {
 				require.Nil(t, act)
 			} else {
 				require.NoError(t, err)
-				require.EqualValues(t, tc.output, act)
+				require.Equal(t, tc.output, act)
 			}
 		})
 	}
-
 }
 
 func TestEncodeDecodeInt32_LoanScale(t *testing.T) {
@@ -497,7 +496,7 @@ func TestEncodeDecodeInt32_LoanScale(t *testing.T) {
 
 			decoded, err := Decode(encoded)
 			require.NoError(t, err)
-			require.EqualValues(t, tc.input, decoded)
+			require.Equal(t, tc.input, decoded)
 		})
 	}
 }
@@ -576,7 +575,6 @@ func TestEncodeForMultisigning(t *testing.T) {
 }
 
 func TestEncodeForSigningClaim(t *testing.T) {
-
 	tt := []struct {
 		description string
 		input       map[string]any

@@ -41,5 +41,5 @@ func TestNegativeUNL(t *testing.T) {
 
 func TestNegativeUNL_EntryType(t *testing.T) {
 	s := &NegativeUNL{}
-	require.Equal(t, s.EntryType(), NegativeUNLEntry)
+	require.Equal(t, NegativeUNLEntry, s.EntryType())
 }

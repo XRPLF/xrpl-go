@@ -50,7 +50,7 @@ func TestBinarySerializer_EncodeVariableLength(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := strings.Repeat("A2", tc.len)
 			b, _ := hex.DecodeString(s)
-			require.Equal(t, tc.len, len(b))
+			require.Len(t, b, tc.len)
 			actual, err := encodeVariableLength(len(b))
 			if tc.expectedErr != nil {
 				require.Error(t, err, tc.expectedErr.Error())
