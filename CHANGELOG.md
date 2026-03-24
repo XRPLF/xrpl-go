@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v.0.1.17]
+## [Unreleased]
 
 ### Added
 
@@ -31,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### xrpl
+
+- Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
+- Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
+- Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
+
+## [v0.1.17]
+
+### Fixed
+
 #### pkg/crypto
 
 - **Fixed a bug in secp256k1 `deriveScalar` where the discriminator and iteration counter were written to the input seed slice instead of their own buffers.** The old code wrote `discrim` and `i` values into `bytes[0..3]` (the caller's seed) rather than into `discrimBytes[0..3]` and `shiftBytes[0..3]`, causing two problems:
@@ -45,9 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl
 
-- Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
-- Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
-- Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
 - Fixed struct-typed JSON fields not being omitted from JSON output when zero-valued. Previously, `omitempty` was used but had no effect on struct types, causing empty structs to always be serialized. Replaced with `omitzero` (Go 1.24+) to match the original intent.
 - `waitForTransaction` in both RPC and WebSocket clients now checks `txResponse.Validated` and returns early once the transaction is confirmed, instead of only relying on ledger sequence. The RPC client also now handles `txnNotFound` errors gracefully during the polling loop.
 - RPC client now applies a default timeout (`common.DefaultTimeout`) to the HTTP client. `NewClientConfig` keeps `Config.timeout` and `http.Client.Timeout` in sync, if the HTTP client already has a custom timeout it is respected, otherwise the config default is applied.
