@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Validation: mutual exclusivity between `Holder`/`Flags` and DynamicMPT fields, set/clear conflict detection, `TransferFee` + `ClearCanTransfer` conflict, `DomainID` format validation, no-op transaction detection.
 - Added `MutableFlags` and `DomainID` fields to `MPTokenIssuance` ledger entry type with ledger-state mutable flags constants (`Lsmf` prefix) and flag setter methods.
 - Added `MutableFlags` helper function in `types` package.
+- Added XLS-96 confidential transfer fields to `MPToken` ledger entry type: `HolderEncryptionKey`, `IssuerEncryptedBalance`, `AuditorEncryptedBalance`, `ConfidentialBalanceInbox`, `ConfidentialBalanceSpending`, `ConfidentialBalanceVersion`.
+- Added XLS-96 confidential transfer fields to `MPTokenIssuance` ledger entry type: `LsfMPTCanConfidentialAmount` flag, `LsmfMPTCannotMutateCanConfidentialAmount` mutable flag, `IssuerEncryptionKey`, `AuditorEncryptionKey`, `ConfidentialOutstandingAmount`, and corresponding flag setter methods.
 
 ### Fixed
 
