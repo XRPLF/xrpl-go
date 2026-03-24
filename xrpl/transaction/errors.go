@@ -512,6 +512,20 @@ var (
 	ErrVaultClawbackHolderRequired = errors.New("vaultClawback: Holder is required")
 	// ErrVaultClawbackHolderInvalid is returned when Holder is not a valid XRPL address.
 	ErrVaultClawbackHolderInvalid = errors.New("vaultClawback: Holder must be a valid XRPL address")
+
+	// confidential mpt
+
+	// ErrConfidentialMPTInvalidIssuanceID is returned when MPTokenIssuanceID is empty on a confidential MPT transaction.
+	ErrConfidentialMPTInvalidIssuanceID = errors.New("confidential MPT: MPTokenIssuanceID must not be empty")
+	// ErrConfidentialClawbackInvalidHolder is returned when the Holder address is invalid on a confidential MPT clawback.
+	ErrConfidentialClawbackInvalidHolder = errors.New("confidential MPT clawback: invalid Holder address")
+	// ErrConfidentialClawbackSelfClawback is returned when the Holder is the same as the Account on a confidential MPT clawback.
+	ErrConfidentialClawbackSelfClawback = errors.New("confidential MPT clawback: Holder cannot be the same as Account")
+	// ErrConfidentialClawbackInvalidAmount is returned when MPTAmount is not greater than 0 on a confidential MPT clawback.
+	ErrConfidentialClawbackInvalidAmount = errors.New("confidential MPT clawback: MPTAmount must be greater than 0")
+	// ErrConfidentialClawbackMissingProof is returned when ZKProof is empty on a confidential MPT clawback.
+	ErrConfidentialClawbackMissingProof = errors.New("confidential MPT clawback: ZKProof must be a non-empty hex string")
+
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.

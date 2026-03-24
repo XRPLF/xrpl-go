@@ -11,3 +11,8 @@ const EncryptionKeyCompressedLen = 66
 func IsValidCompressedEncryptionKey(key string) bool {
 	return len(key) == EncryptionKeyCompressedLen && typecheck.IsHex(key)
 }
+
+// IsValidHexBlob checks if the given string is a non-empty valid hex-encoded blob.
+func IsValidHexBlob(s string) bool {
+	return len(s) > 0 && typecheck.IsHex(s)
+}
