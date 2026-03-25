@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### xrpl/testutil
+
+- Added method `GetAccountObjects` and `GetAccountLines` to testutil `client` interface-
+
+#### xrpl/transaction
+
+- Added integration tests for `TrustSet` transaction
+
 ## [v.0.1.17]
 
 ### Fixed
