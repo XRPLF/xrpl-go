@@ -28,7 +28,6 @@ func safeInt64ToUint32(value int64) uint32 {
 }
 
 func main() {
-
 	//
 	// Configure client
 	//
@@ -244,7 +243,6 @@ func createEscrow(client *rpc.Client, issuerWallet, holderWallet, holderWallet2 
 	fmt.Println()
 
 	return escrowResponse.TxJSON.Sequence()
-
 }
 
 // finishEscrow finishes the escrow for the holder wallet 2.

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,6 +39,14 @@ func TestSecp256k1_deriveKeypair(t *testing.T) {
 			validator:       false,
 			expectedPubKey:  "031FBCFDD2EC6C2EDFBBA3866BDBAC28E5253C6A01FE9EFF8CAAE01871F009E837",
 			expectedPrivKey: "00A3D1513DBE784107428B363A1F8EAF1377AB63D4D137AB9E28E0BC614C71D8C0",
+			expectedErr:     nil,
+		},
+		{
+			name:            "pass - valid seed 3",
+			seedBytes:       []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+			validator:       false,
+			expectedPrivKey: "00D78B9735C3F26501C7337B8A5727FD53A6EFDBC6AA55984F098488561F985E23",
+			expectedPubKey:  "030D58EB48B4420B1F7B9DF55087E0E29FEF0E8468F9A6825B01CA2C361042D435",
 			expectedErr:     nil,
 		},
 		{
@@ -194,6 +203,13 @@ func TestSecp256k1_Validate(t *testing.T) {
 			wantValid: true,
 		},
 		{
+			name:      "pass - valid signature with seed 3 keypair",
+			message:   "test message",
+			signature: "30440220583A91C95E54E6A651C47BEC22744E0B101E2C4060E7B08F6341657DAD9BC3EE02207D1489C7395DB0188D3A56A977ECBA54B36FA9371B40319655B1B4429E33EF2D",
+			pubKey:    "030D58EB48B4420B1F7B9DF55087E0E29FEF0E8468F9A6825B01CA2C361042D435",
+			wantValid: true,
+		},
+		{
 			name:      "fail - invalid signature",
 			message:   "Hello, World!",
 			signature: "3045022100B1629F44BB12A86AE5A3D79A4E2BE6A473DBBD3F4FB4E3898A2E9A9BE1A54EF502204C3B0C33C46F5ABDE7C2C1A3F2B79B8A9F3A69D8C7C248B2B5C16A39A9C3B5F6",
@@ -228,6 +244,65 @@ func TestSecp256k1_Validate(t *testing.T) {
 			isValid := SECP256K1().Validate(tc.message, tc.pubKey, tc.signature)
 			require.Equal(t, tc.wantValid, isValid)
 		})
+	}
+}
+
+func TestSecp256k1_deriveScalar_doesNotMutateInput(t *testing.T) {
+	tests := []struct {
+		name    string
+		discrim *uint32
+	}{
+		{
+			name:    "nil discrim",
+			discrim: nil,
+		},
+		{
+			name:    "discrim=0",
+			discrim: func() *uint32 { v := uint32(0); return &v }(),
+		},
+		{
+			name:    "discrim=7",
+			discrim: func() *uint32 { v := uint32(7); return &v }(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// seed 1
+			seed := []byte{229, 81, 182, 134, 131, 220, 192, 126, 133, 114, 150, 132, 140, 237, 222, 196}
+			original := make([]byte, len(seed))
+			copy(original, seed)
+
+			SECP256K1().deriveScalar(seed, tt.discrim)
+			require.Equal(t, original, seed, "deriveScalar must not mutate input bytes")
+		})
+	}
+}
+
+func TestSecp256k1_deriveScalar_discriminatorAffectsOutput(t *testing.T) {
+	// seed 1
+	seed := []byte{229, 81, 182, 134, 131, 220, 192, 126, 133, 114, 150, 132, 140, 237, 222, 196}
+
+	discrims := []struct {
+		name    string
+		discrim *uint32
+	}{
+		{name: "nil", discrim: nil},
+		{name: "0", discrim: func() *uint32 { v := uint32(0); return &v }()},
+		{name: "1", discrim: func() *uint32 { v := uint32(1); return &v }()},
+	}
+
+	scalars := make([]secp256k1.ModNScalar, len(discrims))
+	for i, d := range discrims {
+		scalars[i] = SECP256K1().deriveScalar(seed, d.discrim)
+	}
+
+	for i := range discrims {
+		for j := i + 1; j < len(discrims); j++ {
+			t.Run(discrims[i].name+"_vs_"+discrims[j].name, func(t *testing.T) {
+				require.NotEqual(t, scalars[i], scalars[j], "different discriminators must produce different scalars")
+			})
+		}
 	}
 }
 

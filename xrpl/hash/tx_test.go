@@ -11,13 +11,13 @@ import (
 func TestSignTxBlob(t *testing.T) {
 	tests := []struct {
 		name        string
-		tx          map[string]interface{}
+		tx          map[string]any
 		expected    bool
 		expectedErr error
 	}{
 		{
 			name: "pass - has TxnSignature",
-			tx: map[string]interface{}{
+			tx: map[string]any{
 				"TransactionType": "Payment",
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"TxnSignature":    "30440220702ABC11419AD4940969CC32EB4D1BFDBFCA651F064F30D6E1646D74FBFC493902204E5B451B447B0F69904127F04FE71634BD825A8970B9467871DA89EEC4B021F8",
@@ -28,7 +28,7 @@ func TestSignTxBlob(t *testing.T) {
 		},
 		{
 			name: "pass - has SigningPubKey",
-			tx: map[string]interface{}{
+			tx: map[string]any{
 				"TransactionType": "Payment",
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"SigningPubKey":   "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
@@ -39,12 +39,12 @@ func TestSignTxBlob(t *testing.T) {
 		},
 		{
 			name: "pass - has Signers",
-			tx: map[string]interface{}{
+			tx: map[string]any{
 				"TransactionType": "Payment",
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
-				"Signers": []interface{}{
-					map[string]interface{}{
-						"Signer": map[string]interface{}{
+				"Signers": []any{
+					map[string]any{
+						"Signer": map[string]any{
 							"Account":       "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
 							"SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 							"TxnSignature":  "30440220702ABC11419AD4940969CC32EB4D1BFDBFCA651F064F30D6E1646D74FBFC493902204E5B451B447B0F69904127F04FE71634BD825A8970B9467871DA89EEC4B021F8",
@@ -58,7 +58,7 @@ func TestSignTxBlob(t *testing.T) {
 		},
 		{
 			name: "fail - no signature fields",
-			tx: map[string]interface{}{
+			tx: map[string]any{
 				"TransactionType": "Payment",
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"Destination":     "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
@@ -70,7 +70,7 @@ func TestSignTxBlob(t *testing.T) {
 		},
 		{
 			name: "pass - inner-batch skips signature",
-			tx: map[string]interface{}{
+			tx: map[string]any{
 				"TransactionType": "Payment",
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"Destination":     "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
@@ -82,7 +82,7 @@ func TestSignTxBlob(t *testing.T) {
 		},
 		{
 			name: "pass - inner-batch + other flags skips signature",
-			tx: map[string]interface{}{
+			tx: map[string]any{
 				"TransactionType": "Payment",
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"Destination":     "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
@@ -94,7 +94,7 @@ func TestSignTxBlob(t *testing.T) {
 		},
 		{
 			name: "fail - other flags without inner-batch",
-			tx: map[string]interface{}{
+			tx: map[string]any{
 				"TransactionType": "Payment",
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"Flags":           uint32(0x00010000),

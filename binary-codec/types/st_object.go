@@ -31,7 +31,6 @@ func (t *STObject) FromJSON(json any) ([]byte, error) {
 		return nil, errNotValidJSON
 	}
 	fimap, err := createFieldInstanceMapFromJson(json.(map[string]any))
-
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +166,6 @@ func createFieldInstanceMapFromJson(json map[string]any) (map[definitions.FieldI
 
 	for k, v := range processedJSON {
 		fi, err := definitions.Get().GetFieldInstanceByFieldName(k)
-
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +188,7 @@ func parseSpecialFields(k string, v any) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			//nolint:gosec // G115: Potential hardcoded credentials (gosec)
+			//nolint:gosec // G115: integer overflow conversion int -> uint32, value is bounded by protocol
 			return uint32(permissionValue), nil
 		}
 	}
@@ -226,19 +224,19 @@ func enumToStr(fieldName string, value any) (any, error) {
 	switch fieldName {
 	case "TransactionType":
 		// TODO: Check if this is still needed
-		//nolint:gosec // G115: Potential hardcoded credentials (gosec)
+		//nolint:gosec // G115: integer overflow conversion int -> int32, value is bounded by protocol
 		return definitions.Get().GetTransactionTypeNameByTransactionTypeCode(int32(value.(int)))
 	case "TransactionResult":
 		// TODO: Check if this is still needed
-		//nolint:gosec // G115: Potential hardcoded credentials (gosec)
+		//nolint:gosec // G115: integer overflow conversion int -> int32, value is bounded by protocol
 		return definitions.Get().GetTransactionResultNameByTransactionResultTypeCode(int32(value.(int)))
 	case "LedgerEntryType":
 		// TODO: Check if this is still needed
-		//nolint:gosec // G115: Potential hardcoded credentials (gosec)
+		//nolint:gosec // G115: integer overflow conversion int -> int32, value is bounded by protocol
 		return definitions.Get().GetLedgerEntryTypeNameByLedgerEntryTypeCode(int32(value.(int)))
 	case "PermissionValue":
 		// Convert permission value to permission name if available, otherwise return numeric value
-		//nolint:gosec // G115: Potential hardcoded credentials (gosec)
+		//nolint:gosec // G115: integer overflow conversion int -> int32, value is bounded by protocol
 		if name, err := definitions.Get().GetDelegatablePermissionNameByValue(int32(value.(uint32))); err == nil {
 			return name, nil
 		}

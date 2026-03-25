@@ -11,7 +11,6 @@ import (
 )
 
 func main() {
-
 	wsClient := websocket.NewClient(
 		websocket.NewClientConfig().
 			WithHost("wss://s.altnet.rippletest.net:51233"),

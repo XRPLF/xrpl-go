@@ -44,6 +44,29 @@ func TestCredentialCreate_Flatten(t *testing.T) {
 				"URI":             "687474703A2F2F636F6D70616E792E636F6D2F63726564656E7469616C73",
 			},
 		},
+		{
+			name: "pass - valid CredentialCreate with TicketSequence and zero Sequence",
+			input: &CredentialCreate{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: CredentialCreateTx,
+					Fee:             types.XRPCurrencyAmount(1),
+					Sequence:        0,
+					TicketSequence:  55,
+				},
+				Subject:        "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				CredentialType: "6D795F63726564656E7469616C",
+			},
+			expected: FlatTransaction{
+				"Account":         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+				"TransactionType": "CredentialCreate",
+				"Fee":             "1",
+				"Sequence":        uint32(0),
+				"TicketSequence":  uint32(55),
+				"Subject":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"CredentialType":  "6D795F63726564656E7469616C",
+			},
+		},
 	}
 
 	for _, tt := range tests {

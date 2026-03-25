@@ -8,9 +8,9 @@ import (
 
 func TestEncodeToUpperHex(t *testing.T) {
 	tt := []struct {
-		name  string
-		input []byte
-		expected    string
+		name     string
+		input    []byte
+		expected string
 	}{
 		{
 			name:     "pass - nil input returns empty string",

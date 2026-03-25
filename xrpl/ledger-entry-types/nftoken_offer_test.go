@@ -40,5 +40,5 @@ func TestNFTokenOffer(t *testing.T) {
 
 func TestNFTokenOffer_EntryType(t *testing.T) {
 	s := &NFTokenOffer{}
-	require.Equal(t, s.EntryType(), NFTokenOfferEntry)
+	require.Equal(t, NFTokenOfferEntry, s.EntryType())
 }

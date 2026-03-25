@@ -64,13 +64,11 @@ func abs(x int) int {
 
 // NewBigDecimal creates a BigDecimal from the given string, validating format and scale.
 func NewBigDecimal(value string) (bd *BigDecimal, err error) {
-
 	// check if the value string contains only allowed characters
 	if !bigDecimalRegEx(value) {
 		return nil, ErrInvalidCharacter{
 			Allowed: AllowedCharacters,
 		}
-
 	}
 
 	v := strings.ToLower(value)
@@ -145,12 +143,11 @@ func valNoDecimalHasE(scale int, prefix, _ string) (sc int, uv string) {
 	uv = strings.Trim(prefix, "0")
 	sc = scale + len(strings.TrimLeft(prefix, "0")) - len(uv)
 	return
-
 }
 
 func handleSign(value string) (int, string) {
-	if strings.HasPrefix(value, "-") {
-		return 1, strings.TrimPrefix(value, "-")
+	if after, ok := strings.CutPrefix(value, "-"); ok {
+		return 1, after
 	}
 	return 0, value
 }

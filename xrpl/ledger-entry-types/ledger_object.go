@@ -38,7 +38,7 @@ const (
 )
 
 // FlatLedgerObject represents a generic ledger entry as a flat map of field names to values.
-type FlatLedgerObject map[string]interface{}
+type FlatLedgerObject map[string]any
 
 // EntryType returns the LedgerEntryType string stored in this flat object.
 func (f FlatLedgerObject) EntryType() EntryType {

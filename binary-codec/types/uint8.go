@@ -61,6 +61,7 @@ func (u *UInt8) FromJSON(value any) ([]byte, error) {
 
 	buf := new(bytes.Buffer)
 	// TODO: Check if this is still needed
+	//nolint:gosec // G115: int64Value is range-checked by checkRange above
 	err := binary.Write(buf, binary.BigEndian, byte(int64Value))
 	if err != nil {
 		return nil, err

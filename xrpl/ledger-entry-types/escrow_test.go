@@ -54,7 +54,7 @@ func TestEscrow(t *testing.T) {
 
 func TestEscrow_EntryType(t *testing.T) {
 	s := &Escrow{}
-	require.Equal(t, s.EntryType(), EscrowEntry)
+	require.Equal(t, EscrowEntry, s.EntryType())
 }
 
 func TestEscrowMPTAmountSerialization(t *testing.T) {

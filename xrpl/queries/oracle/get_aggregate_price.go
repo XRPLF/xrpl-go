@@ -54,7 +54,7 @@ type GetAggregatePriceResponse struct {
 	// The statistics from the collected oracle prices.
 	EntireSet types.Set `json:"entire_set"`
 	// The trimmed statistics from the collected oracle prices. Only appears if the trim field was specified in the request.
-	TrimmedSet types.Set `json:"trimmed_set,omitempty"`
+	TrimmedSet types.Set `json:"trimmed_set,omitzero"`
 	// The median of the collected oracle prices.
 	Median string `json:"median"`
 	// The most recent timestamp out of all LastUpdateTime values.

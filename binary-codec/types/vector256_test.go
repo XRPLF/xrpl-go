@@ -92,7 +92,6 @@ func TestVector256_ToJson(t *testing.T) {
 }
 
 func TestVector256FromValue(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		input    []string

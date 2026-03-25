@@ -25,7 +25,6 @@ func (u *UInt16) checkRange(value int64) error {
 // If the input value is a string, it's assumed to be a transaction type or ledger entry type name, and the
 // method will attempt to convert it into a corresponding type code. If the conversion fails, an error is returned.
 func (u *UInt16) FromJSON(value any) ([]byte, error) {
-
 	if _, ok := value.(string); ok {
 		tc, err := definitions.Get().GetTransactionTypeCodeByTransactionTypeName(value.(string))
 		if err != nil {
@@ -66,9 +65,8 @@ func (u *UInt16) FromJSON(value any) ([]byte, error) {
 	//nolint:gosec // G115: integer overflow conversion int64 -> uint16 (gosec)
 	val := uint16(int64Value)
 	buf := new(bytes.Buffer)
-	//nolint:gosec // G115: Potential hardcoded credentials (gosec)
+	//nolint:gosec // G115 false positive, binary.Write with uint16 value
 	err := binary.Write(buf, binary.BigEndian, val)
-
 	if err != nil {
 		return nil, err
 	}

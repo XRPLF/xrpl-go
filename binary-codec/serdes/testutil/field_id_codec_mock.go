@@ -43,7 +43,7 @@ func (m *MockFieldIDCodec) Decode(h string) (string, error) {
 }
 
 // Decode indicates an expected call of Decode.
-func (mr *MockFieldIDCodecMockRecorder) Decode(h interface{}) *gomock.Call {
+func (mr *MockFieldIDCodecMockRecorder) Decode(h any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Decode", reflect.TypeOf((*MockFieldIDCodec)(nil).Decode), h)
 }
@@ -58,7 +58,7 @@ func (m *MockFieldIDCodec) Encode(fieldName string) ([]byte, error) {
 }
 
 // Encode indicates an expected call of Encode.
-func (mr *MockFieldIDCodecMockRecorder) Encode(fieldName interface{}) *gomock.Call {
+func (mr *MockFieldIDCodecMockRecorder) Encode(fieldName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Encode", reflect.TypeOf((*MockFieldIDCodec)(nil).Encode), fieldName)
 }

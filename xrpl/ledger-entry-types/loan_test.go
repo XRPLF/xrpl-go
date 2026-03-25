@@ -56,25 +56,25 @@ func TestLoan(t *testing.T) {
 
 func TestLoan_EntryType(t *testing.T) {
 	s := &Loan{}
-	require.Equal(t, s.EntryType(), LoanEntry)
+	require.Equal(t, LoanEntry, s.EntryType())
 }
 
 func TestLoan_SetLsfLoanDefault(t *testing.T) {
 	l := &Loan{}
 	l.SetLsfLoanDefault()
-	require.Equal(t, l.Flags, LsfLoanDefault)
+	require.Equal(t, LsfLoanDefault, l.Flags)
 }
 
 func TestLoan_SetLsfLoanImpaired(t *testing.T) {
 	l := &Loan{}
 	l.SetLsfLoanImpaired()
-	require.Equal(t, l.Flags, LsfLoanImpaired)
+	require.Equal(t, LsfLoanImpaired, l.Flags)
 }
 
 func TestLoan_SetLsfLoanOverpayment(t *testing.T) {
 	l := &Loan{}
 	l.SetLsfLoanOverpayment()
-	require.Equal(t, l.Flags, LsfLoanOverpayment)
+	require.Equal(t, LsfLoanOverpayment, l.Flags)
 }
 
 func TestLoan_WithOptionalFields(t *testing.T) {
@@ -117,7 +117,7 @@ func TestLoan_WithOptionalFields(t *testing.T) {
 		StartDate:                1724871860,
 		PaymentInterval:          2592000,
 		GracePeriod:              604800,
-		PreviousPaymentDueDate:      &previousPaymentDueDate,
+		PreviousPaymentDueDate:   &previousPaymentDueDate,
 		NextPaymentDueDate:       1727463860,
 		PaymentRemaining:         10,
 		PreviousTxnID:            "C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7",

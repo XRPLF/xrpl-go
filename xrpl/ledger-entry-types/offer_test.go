@@ -53,24 +53,24 @@ func TestOffer(t *testing.T) {
 func TestOffer_SetLsfPassive(t *testing.T) {
 	o := &Offer{}
 	o.SetLsfPassive()
-	require.Equal(t, o.Flags, uint32(0x00010000))
+	require.Equal(t, uint32(0x00010000), o.Flags)
 }
 
 func TestOffer_SetLsfSell(t *testing.T) {
 	o := &Offer{}
 	o.SetLsfSell()
-	require.Equal(t, o.Flags, uint32(0x00020000))
+	require.Equal(t, uint32(0x00020000), o.Flags)
 }
 
 func TestOffer_SetLsfHybrid(t *testing.T) {
 	o := &Offer{}
 	o.SetLsfHybrid()
-	require.Equal(t, o.Flags, uint32(0x00040000))
+	require.Equal(t, uint32(0x00040000), o.Flags)
 }
 
 func TestOffer_EntryType(t *testing.T) {
 	o := &Offer{}
-	require.Equal(t, o.EntryType(), OfferEntry)
+	require.Equal(t, OfferEntry, o.EntryType())
 }
 
 func TestOffer_WithDomainIDAndAdditionalBooks(t *testing.T) {
