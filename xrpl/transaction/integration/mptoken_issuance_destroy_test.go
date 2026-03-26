@@ -78,7 +78,7 @@ func mptIssuanceDestroyTest(t *testing.T, client integration.Client) {
 				Type:    account.MPTIssuance,
 			})
 			require.NoError(t, err)
-			require.Len(t, accountObjectsFinal.AccountObjects, 0)
+			require.Empty(t, accountObjectsFinal.AccountObjects)
 		})
 	}
 }

@@ -16,6 +16,8 @@ const (
 	CredentialObject     ObjectType = "credential"
 	DepositPreauthObject ObjectType = "deposit_preauth"
 	EscrowObject         ObjectType = "escrow"
+	MPToken              ObjectType = "mptoken"
+	MPTIssuance          ObjectType = "mpt_issuance"
 	NFTOfferObject       ObjectType = "nft_offer"
 	OfferObject          ObjectType = "offer"
 	PaymentChannelObject ObjectType = "payment_channel"
