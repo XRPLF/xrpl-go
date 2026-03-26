@@ -5,8 +5,8 @@ import (
 )
 
 const (
-	// LsfMPTCanLock if set, indicates that the issuer has authorized the holder for the MPT. (Only applicable for allow-listing).
-	// This flag can be set using a MPTokenAuthorize transaction; it can also be "un-set" using a MPTokenAuthorize transaction specifying the TfMPTUnauthorize flag.
+	// LsfMPTCanLock if set, indicates that the issuer can lock an individual balance or all balances of this MPT.
+	// If not set, the MPT cannot be locked in any way.
 	LsfMPTCanLock uint32 = 0x00000002
 	// LsfMPTRequireAuth if set, indicates that individual holders must be authorized. This enables issuers to limit who can hold their assets.
 	LsfMPTRequireAuth uint32 = 0x00000004
@@ -19,6 +19,26 @@ const (
 	LsfMPTCanTransfer uint32 = 0x00000020
 	// LsfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
 	LsfMPTCanClawback uint32 = 0x00000040
+)
+
+// Ledger-state mutable flags for MPTokenIssuance (Lsmf prefix).
+const (
+	// LsmfMPTCanMutateCanLock indicates the CanLock property can be mutated.
+	LsmfMPTCanMutateCanLock uint32 = 0x00000002
+	// LsmfMPTCanMutateRequireAuth indicates the RequireAuth property can be mutated.
+	LsmfMPTCanMutateRequireAuth uint32 = 0x00000004
+	// LsmfMPTCanMutateCanEscrow indicates the CanEscrow property can be mutated.
+	LsmfMPTCanMutateCanEscrow uint32 = 0x00000008
+	// LsmfMPTCanMutateCanTrade indicates the CanTrade property can be mutated.
+	LsmfMPTCanMutateCanTrade uint32 = 0x00000010
+	// LsmfMPTCanMutateCanTransfer indicates the CanTransfer property can be mutated.
+	LsmfMPTCanMutateCanTransfer uint32 = 0x00000020
+	// LsmfMPTCanMutateCanClawback indicates the CanClawback property can be mutated.
+	LsmfMPTCanMutateCanClawback uint32 = 0x00000040
+	// LsmfMPTCanMutateMetadata indicates the MPTokenMetadata can be mutated.
+	LsmfMPTCanMutateMetadata uint32 = 0x00010000
+	// LsmfMPTCanMutateTransferFee indicates the TransferFee can be mutated.
+	LsmfMPTCanMutateTransferFee uint32 = 0x00020000
 )
 
 // An MPTokenIssuance entry represents a single MPT issuance and holds data associated with the issuance itself.
@@ -61,6 +81,10 @@ type MPTokenIssuance struct {
 	Sequence uint32
 	// The amount of tokens currently locked up (for example, in escrow or payment channels). (Requires the TokenEscrow amendment .)
 	LockedAmount uint64 `json:",omitempty"`
+	// DomainID is the ledger entry ID of a permissioned domain that grants access to the MPT.
+	DomainID string `json:",omitempty"`
+	// MutableFlags indicates which properties of this MPT can be mutated after creation.
+	MutableFlags uint32 `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.
