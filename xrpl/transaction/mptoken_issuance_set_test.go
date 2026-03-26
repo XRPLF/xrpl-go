@@ -527,6 +527,21 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "pass - enable confidential with both encryption keys",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MutableFlags:         types.MutableFlags(TmfMPTSetCanConfidentialAmount),
+				IssuerEncryptionKey:  types.EncryptionKey(validCompressedKey),
+				AuditorEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			wantOk:  true,
+			wantErr: nil,
+		},
+		{
 			name: "fail - AuditorEncryptionKey without IssuerEncryptionKey",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{

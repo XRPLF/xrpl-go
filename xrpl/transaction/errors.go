@@ -214,8 +214,8 @@ var (
 	ErrMPTIssuanceCreateDomainIDInvalid = errors.New("mptoken issuance create: DomainID must be a valid 64-character hexadecimal string")
 	// ErrMPTIssuanceCreateDomainIDRequiresRequireAuth is returned when DomainID is set without enabling TfMPTRequireAuth flag.
 	ErrMPTIssuanceCreateDomainIDRequiresRequireAuth = errors.New("mptoken issuance create: DomainID requires TfMPTRequireAuth flag to be set")
-	// ErrMPTIssuanceSetEmpty is returned when no operation is specified (no Flags, Holder, or DynamicMPT fields).
-	ErrMPTIssuanceSetEmpty = errors.New("mptoken issuance set: at least one of Flags, Holder, MutableFlags, MPTokenMetadata, TransferFee, or DomainID must be set")
+	// ErrMPTIssuanceSetEmpty is returned when no operation is specified (no Flags, Holder, DynamicMPT, or encryption key fields).
+	ErrMPTIssuanceSetEmpty = errors.New("mptoken issuance set: at least one of Flags, Holder, MutableFlags, MPTokenMetadata, TransferFee, DomainID, IssuerEncryptionKey, or AuditorEncryptionKey must be set")
 	// ErrMPTIssuanceSetHolderMutuallyExclusive is returned when Holder is set together with DynamicMPT fields.
 	ErrMPTIssuanceSetHolderMutuallyExclusive = errors.New("mptoken issuance set: Holder is mutually exclusive with MutableFlags/MPTokenMetadata/TransferFee/DomainID")
 	// ErrMPTIssuanceSetFlagsMutuallyExclusive is returned when non-zero Flags are set together with DynamicMPT fields.
@@ -516,6 +516,50 @@ var (
 	ErrVaultClawbackHolderRequired = errors.New("vaultClawback: Holder is required")
 	// ErrVaultClawbackHolderInvalid is returned when Holder is not a valid XRPL address.
 	ErrVaultClawbackHolderInvalid = errors.New("vaultClawback: Holder must be a valid XRPL address")
+
+	// confidential mpt
+
+	// ErrConfidentialMPTInvalidIssuanceID is returned when MPTokenIssuanceID is empty on a confidential MPT transaction.
+	ErrConfidentialMPTInvalidIssuanceID = errors.New("confidential MPT: MPTokenIssuanceID must not be empty")
+	// ErrConfidentialClawbackInvalidHolder is returned when the Holder address is invalid on a confidential MPT clawback.
+	ErrConfidentialClawbackInvalidHolder = errors.New("confidential MPT clawback: invalid Holder address")
+	// ErrConfidentialClawbackSelfClawback is returned when the Holder is the same as the Account on a confidential MPT clawback.
+	ErrConfidentialClawbackSelfClawback = errors.New("confidential MPT clawback: Holder cannot be the same as Account")
+	// ErrConfidentialClawbackInvalidAmount is returned when MPTAmount is not greater than 0 on a confidential MPT clawback.
+	ErrConfidentialClawbackInvalidAmount = errors.New("confidential MPT clawback: MPTAmount must be greater than 0")
+	// ErrConfidentialClawbackBadProof is returned when ZKProof is empty on a confidential MPT clawback.
+	ErrConfidentialClawbackBadProof = errors.New("confidential MPT clawback: ZKProof must be a non-empty hex string")
+
+	// ErrConfidentialConvertKeyProofMismatch is returned when HolderEncryptionKey and ZKProof are not both present or both absent.
+	ErrConfidentialConvertKeyProofMismatch = errors.New("confidential MPT convert: HolderEncryptionKey and ZKProof must both be present or both absent")
+	// ErrConfidentialConvertInvalidKeyLength is returned when HolderEncryptionKey is not 128 hex characters.
+	ErrConfidentialConvertInvalidKeyLength = errors.New("confidential MPT convert: HolderEncryptionKey must be 128 hex characters (64-byte uncompressed key)")
+	// ErrConfidentialConvertInvalidProofLength is returned when ZKProof is not 130 hex characters.
+	ErrConfidentialConvertInvalidProofLength = errors.New("confidential MPT convert: ZKProof must be 130 hex characters (65-byte Schnorr PoK)")
+	// ErrConfidentialConvertInvalidBlindingFactor is returned when BlindingFactor is not 64 hex characters.
+	ErrConfidentialConvertInvalidBlindingFactor = errors.New("confidential MPT convert: BlindingFactor must be 64 hex characters (32 bytes)")
+	// ErrConfidentialConvertInvalidCiphertext is returned when HolderEncryptedAmount or IssuerEncryptedAmount is not a valid 66-byte ciphertext.
+	ErrConfidentialConvertInvalidCiphertext = errors.New("confidential MPT convert: HolderEncryptedAmount, IssuerEncryptedAmount, and AuditorEncryptedAmount must be 132 hex characters (66-byte ElGamal ciphertext)")
+	// ErrConfidentialConvertBackInvalidAmount is returned when MPTAmount is not greater than 0 on a convert back.
+	ErrConfidentialConvertBackInvalidAmount = errors.New("confidential MPT convert back: MPTAmount must be greater than 0")
+	// ErrConfidentialConvertBackInvalidBlindingFactor is returned when BlindingFactor is not 64 hex characters on a convert back.
+	ErrConfidentialConvertBackInvalidBlindingFactor = errors.New("confidential MPT convert back: BlindingFactor must be 64 hex characters (32 bytes)")
+	// ErrConfidentialConvertBackInvalidCiphertext is returned when a ciphertext field is not a valid 66-byte ElGamal ciphertext on a convert back.
+	ErrConfidentialConvertBackInvalidCiphertext = errors.New("confidential MPT convert back: HolderEncryptedAmount, IssuerEncryptedAmount, and AuditorEncryptedAmount must be 132 hex characters (66-byte ElGamal ciphertext)")
+	// ErrConfidentialConvertBackInvalidCommitment is returned when BalanceCommitment is not a valid 33-byte commitment on a convert back.
+	ErrConfidentialConvertBackInvalidCommitment = errors.New("confidential MPT convert back: BalanceCommitment must be 66 hex characters (33-byte Pedersen commitment)")
+	// ErrConfidentialConvertBackInvalidProof is returned when ZKProof is empty or not valid hex on a convert back.
+	ErrConfidentialConvertBackInvalidProof = errors.New("confidential MPT convert back: ZKProof must be a non-empty hex string")
+	// ErrConfidentialSendInvalidDestination is returned when the Destination address is invalid on a confidential MPT send.
+	ErrConfidentialSendInvalidDestination = errors.New("confidential MPT send: invalid Destination address")
+	// ErrConfidentialSendSelfSend is returned when the Destination is the same as the Account on a confidential MPT send.
+	ErrConfidentialSendSelfSend = errors.New("confidential MPT send: Destination cannot be the same as Account")
+	// ErrConfidentialSendInvalidCiphertext is returned when a ciphertext field is not a valid 66-byte ElGamal ciphertext on a confidential MPT send.
+	ErrConfidentialSendInvalidCiphertext = errors.New("confidential MPT send: SenderEncryptedAmount, DestinationEncryptedAmount, IssuerEncryptedAmount, and AuditorEncryptedAmount must be 132 hex characters (66-byte ElGamal ciphertext)")
+	// ErrConfidentialSendInvalidCommitment is returned when a commitment field is not a valid 33-byte commitment on a confidential MPT send.
+	ErrConfidentialSendInvalidCommitment = errors.New("confidential MPT send: BalanceCommitment and AmountCommitment must be 66 hex characters (33-byte Pedersen commitment)")
+	// ErrConfidentialSendInvalidProof is returned when ZKProof is empty or not valid hex on a confidential MPT send.
+	ErrConfidentialSendInvalidProof = errors.New("confidential MPT send: ZKProof must be a non-empty hex string")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.

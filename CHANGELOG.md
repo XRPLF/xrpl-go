@@ -40,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `MutableFlags` helper function in `types` package.
 - Added XLS-96 confidential transfer fields to `MPToken` ledger entry type: `HolderEncryptionKey`, `IssuerEncryptedBalance`, `AuditorEncryptedBalance`, `ConfidentialBalanceInbox`, `ConfidentialBalanceSpending`, `ConfidentialBalanceVersion`.
 - Added XLS-96 confidential transfer fields to `MPTokenIssuance` ledger entry type: `LsfMPTCanConfidentialAmount` flag, `LsmfMPTCannotMutateCanConfidentialAmount` mutable flag, `IssuerEncryptionKey`, `AuditorEncryptionKey`, `ConfidentialOutstandingAmount`, and corresponding flag setter methods.
+- Added `ConfidentialMPTClawback` transaction type: allows issuer to reclaim a holder's entire confidential MPT balance with a ZK equality proof.
+- Added `ConfidentialMPTConvert` transaction type: converts public MPT balance into confidential (encrypted) balance using EC-ElGamal encryption, with optional holder key registration.
+- Added `ConfidentialMPTConvertBack` transaction type: converts confidential MPT balance back into public balance with a ZK proof of sufficient balance.
+- Added `ConfidentialMPTMergeInbox` transaction type: merges holder's confidential inbox balance into their spending balance.
+- Added `ConfidentialMPTSend` transaction type: sends confidential MPT between accounts with encrypted amounts for sender, destination, issuer, and optional auditor, verified by ZK proof.
+- Added `MPTPlainAmount` type for bare MPT token quantities with JSON string serialization.
+- Added `HexBlob` helper function in `types` package for optional hex blob fields.
+- Added confidential transfer validation helpers: `IsValidUncompressedEncryptionKey`, `IsValidBlindingFactor`, `IsValidSchnorrProof`, `IsValidHexBlob`.
 
 ### Changed
 
