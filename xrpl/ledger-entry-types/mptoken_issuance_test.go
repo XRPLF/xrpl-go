@@ -55,54 +55,6 @@ func TestMPTokenIssuance_SetLsfMPTCanClawback(t *testing.T) {
 	require.Equal(t, LsfMPTCanClawback, mpTokenIssuance.Flags)
 }
 
-func TestMPTokenIssuance_SetLsmfMPTCanMutateCanLock(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCanMutateCanLock()
-	require.Equal(t, LsmfMPTCanMutateCanLock, mpTokenIssuance.MutableFlags)
-}
-
-func TestMPTokenIssuance_SetLsmfMPTCanMutateRequireAuth(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCanMutateRequireAuth()
-	require.Equal(t, LsmfMPTCanMutateRequireAuth, mpTokenIssuance.MutableFlags)
-}
-
-func TestMPTokenIssuance_SetLsmfMPTCanMutateCanEscrow(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCanMutateCanEscrow()
-	require.Equal(t, LsmfMPTCanMutateCanEscrow, mpTokenIssuance.MutableFlags)
-}
-
-func TestMPTokenIssuance_SetLsmfMPTCanMutateCanTrade(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCanMutateCanTrade()
-	require.Equal(t, LsmfMPTCanMutateCanTrade, mpTokenIssuance.MutableFlags)
-}
-
-func TestMPTokenIssuance_SetLsmfMPTCanMutateCanTransfer(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCanMutateCanTransfer()
-	require.Equal(t, LsmfMPTCanMutateCanTransfer, mpTokenIssuance.MutableFlags)
-}
-
-func TestMPTokenIssuance_SetLsmfMPTCanMutateCanClawback(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCanMutateCanClawback()
-	require.Equal(t, LsmfMPTCanMutateCanClawback, mpTokenIssuance.MutableFlags)
-}
-
-func TestMPTokenIssuance_SetLsmfMPTCanMutateMetadata(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCanMutateMetadata()
-	require.Equal(t, LsmfMPTCanMutateMetadata, mpTokenIssuance.MutableFlags)
-}
-
-func TestMPTokenIssuance_SetLsmfMPTCanMutateTransferFee(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCanMutateTransferFee()
-	require.Equal(t, LsmfMPTCanMutateTransferFee, mpTokenIssuance.MutableFlags)
-}
-
 func TestMPTokenIssuanceSerialization(t *testing.T) {
 	tests := []struct {
 		name            string

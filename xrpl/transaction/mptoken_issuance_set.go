@@ -2,6 +2,7 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -99,11 +100,11 @@ func (m *MPTokenIssuanceSet) Flatten() FlatTransaction {
 	}
 
 	if m.TransferFee != nil {
-		flattened["TransferFee"] = int(*m.TransferFee)
+		flattened["TransferFee"] = *m.TransferFee
 	}
 
 	if m.MutableFlags != nil {
-		flattened["MutableFlags"] = int(*m.MutableFlags)
+		flattened["MutableFlags"] = *m.MutableFlags
 	}
 
 	return flattened
@@ -197,9 +198,9 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, err
 	}
 
-	// MPTokenIssuanceID is required and must not be empty.
-	if m.MPTokenIssuanceID == "" {
-		return false, ErrInvalidMPTokenIssuanceID
+	// MPTokenIssuanceID is required and must be valid hex.
+	if m.MPTokenIssuanceID == "" || !typecheck.IsHex(m.MPTokenIssuanceID) {
+		return false, ErrInvalidMPTokenIssuanceIDSet
 	}
 
 	// If a Holder is specified, validate it as a proper XRPL address.
@@ -275,7 +276,7 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 
 // validateMutableFlagsNoConflict checks that no set/clear pair is active simultaneously.
 func validateMutableFlagsNoConflict(mf uint32) (bool, error) {
-	pairs := [][2]uint32{
+	pairs := [6][2]uint32{
 		{TmfMPTSetCanLock, TmfMPTClearCanLock},
 		{TmfMPTSetRequireAuth, TmfMPTClearRequireAuth},
 		{TmfMPTSetCanEscrow, TmfMPTClearCanEscrow},
