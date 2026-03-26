@@ -113,11 +113,11 @@ func (m *MPTokenIssuanceCreate) Flatten() FlatTransaction {
 	flattened["TransactionType"] = "MPTokenIssuanceCreate"
 
 	if m.AssetScale != nil {
-		flattened["AssetScale"] = int(*m.AssetScale)
+		flattened["AssetScale"] = *m.AssetScale
 	}
 
 	if m.TransferFee != nil {
-		flattened["TransferFee"] = int(*m.TransferFee)
+		flattened["TransferFee"] = *m.TransferFee
 	}
 
 	if m.MaximumAmount != nil {
@@ -133,7 +133,7 @@ func (m *MPTokenIssuanceCreate) Flatten() FlatTransaction {
 	}
 
 	if m.MutableFlags != nil {
-		flattened["MutableFlags"] = int(*m.MutableFlags)
+		flattened["MutableFlags"] = *m.MutableFlags
 	}
 
 	return flattened

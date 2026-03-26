@@ -82,7 +82,7 @@ func TestMPTokenIssuanceSet_Flatten(t *testing.T) {
 				"TransactionType":   "MPTokenIssuanceSet",
 				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"TransferFee":       314,
+				"TransferFee":       uint16(314),
 			},
 		},
 		{
@@ -98,7 +98,7 @@ func TestMPTokenIssuanceSet_Flatten(t *testing.T) {
 				"TransactionType":   "MPTokenIssuanceSet",
 				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"MutableFlags":      1,
+				"MutableFlags":      uint32(1),
 			},
 		},
 		{
@@ -117,8 +117,8 @@ func TestMPTokenIssuanceSet_Flatten(t *testing.T) {
 				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				"MPTokenMetadata":   "464f4f",
-				"TransferFee":       314,
-				"MutableFlags":      1,
+				"TransferFee":       uint16(314),
+				"MutableFlags":      uint32(1),
 			},
 		},
 		{
@@ -178,7 +178,20 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 				MPTokenIssuanceID: "",
 			},
 			wantOk:  false,
-			wantErr: ErrInvalidMPTokenIssuanceID,
+			wantErr: ErrInvalidMPTokenIssuanceIDSet,
+		},
+		{
+			name: "fail - non-hex MPTokenIssuanceID",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+					Flags:           TfMPTLock,
+				},
+				MPTokenIssuanceID: "not-a-hex-value!",
+			},
+			wantOk:  false,
+			wantErr: ErrInvalidMPTokenIssuanceIDSet,
 		},
 		{
 			name: "fail - no operation specified (no-op)",
