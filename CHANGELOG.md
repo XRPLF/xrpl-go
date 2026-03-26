@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `MutableFlags` and `DomainID` fields to `MPTokenIssuance` ledger entry type with ledger-state mutable flags constants (`Lsmf` prefix) and flag setter methods.
 - Added `MutableFlags` helper function in `types` package.
 
+### Changed
+
+#### Makefile
+
+- Changed localnet rippled image to `develop`
+- Exposed RPC port in localnet command
+
 ### Fixed
 
 #### xrpl
@@ -32,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
 - Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
 - Validate `MPTokenIssuanceID` is valid hexadecimal in `MPTokenIssuanceSet`, `MPTokenIssuanceDestroy`, and `MPTokenAuthorize` (previously only checked non-empty).
+
+### Removed
+
+#### xrpl/transaction
+
+- Removed integration tests for obsolete transactions `Batch` and `DelegateSet`
 
 ## [v0.1.17]
 
