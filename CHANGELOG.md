@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
 - Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
 - Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
+- Validate `MPTokenIssuanceID` is valid hexadecimal in `MPTokenIssuanceSet`, `MPTokenIssuanceDestroy`, and `MPTokenAuthorize` (previously only checked non-empty).
 
 ## [v0.1.17]
 
