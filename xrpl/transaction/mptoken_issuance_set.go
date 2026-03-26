@@ -323,7 +323,7 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 
 // validateMutableFlagsNoConflict checks that no set/clear pair is active simultaneously.
 func validateMutableFlagsNoConflict(mf uint32) (bool, error) {
-	pairs := [6][2]uint32{
+	pairs := [7][2]uint32{
 		{TmfMPTSetCanLock, TmfMPTClearCanLock},
 		{TmfMPTSetRequireAuth, TmfMPTClearRequireAuth},
 		{TmfMPTSetCanEscrow, TmfMPTClearCanEscrow},
