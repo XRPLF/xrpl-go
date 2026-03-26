@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- Added integration test for credential transaction `CredentialAccept` 
+- Added integration test for credential transactions `CredentialAccept` and `CredentialDelete`
 
 ## [v.0.1.17]
 
