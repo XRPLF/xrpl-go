@@ -112,6 +112,8 @@ func VerifyConvertProof(proof [SchnorrProofSize]byte, pubkey [PubKeySize]byte, c
 }
 
 // VerifyConvertBackProof verifies a linkage + range proof for a ConfidentialMPTConvertBack transaction.
+// balanceCommit must be the original balance commitment, not the remainder after subtraction;
+// the C library internally subtracts the transparent amount before checking the range proof.
 func VerifyConvertBackProof(proof [ConvertBackProofSize]byte, pubkey [PubKeySize]byte, ciphertext [CiphertextSize]byte, balanceCommit [CommitmentSize]byte, amount uint64, ctxHash [HashOutputSize]byte) error {
 	return ErrCgoRequired
 }

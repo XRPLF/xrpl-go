@@ -22,6 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GenerateKeypair()`, `GenerateBlindingFactor()`, `Encrypt()`, `Decrypt()` with hex-encoded inputs/outputs.
   - Sentinel errors with wrapped underlying causes for debuggability.
 - Extended `mptcrypto` with `GenerateBlindingFactor()`, `EncryptAmount()`, and `DecryptAmount()` CGo bindings (with `!cgo` stubs).
+- Extended `mptcrypto` with ZK proof CGo bindings (with `!cgo` stubs):
+  - Context hash functions: `ConvertContextHash()`, `ConvertBackContextHash()`, `SendContextHash()`, `ClawbackContextHash()`.
+  - Pedersen commitment: `PedersenCommitment()`.
+  - Proof generation: `GenerateConvertProof()`, `GenerateConvertBackProof()`, `GenerateSendProof()`, `GenerateClawbackProof()`, `GenerateAmountLinkageProof()`, `GenerateBalanceLinkageProof()`.
+  - Proof verification: `VerifyConvertProof()`, `VerifyConvertBackProof()`, `VerifySendProof()`, `VerifyClawbackProof()`, `VerifyRevealedAmount()`, `VerifyAmountLinkage()`, `VerifyBalanceLinkage()`, `VerifyEqualityProof()`, `VerifySendRangeProof()`.
+  - Utilities: `GetSendProofSize()`, `ComputeConvertBackRemainder()`.
+  - New types: `Participant`, `PedersenProofParams`.
+- Added `confidential/commitment` package providing a hex-string API for Pedersen commitment creation (`Create()`), wrapping `mptcrypto.PedersenCommitment()`.
+- Added `confidential/proofs` package providing a hex-string API for ZK proof generation and verification with classic XRPL address support:
+  - Context hashes: `ConvertContextHash()`, `ConvertBackContextHash()`, `SendContextHash()`, `ClawbackContextHash()` (accept classic addresses).
+  - Proof generation/verification: `GenerateConvertProof()`/`VerifyConvertProof()`, `GenerateConvertBackProof()`/`VerifyConvertBackProof()`, `GenerateSendProof()`/`VerifySendProof()`, `GenerateClawbackProof()`/`VerifyClawbackProof()`.
+  - Component verifiers: `VerifyRevealedAmount()`, `VerifyAmountLinkage()`, `VerifyBalanceLinkage()`, `VerifyEqualityProof()`, `VerifySendRangeProof()`.
 
 #### pkg/hexutil
 

@@ -221,9 +221,6 @@ func TestConvertBackProofRoundtrip(t *testing.T) {
 
 	convertBackAmount := uint64(30)
 
-	balanceCommit, err := mptcrypto.ComputeConvertBackRemainder(totalCommit, convertBackAmount)
-	require.NoError(t, err)
-
 	ctxHash, err := mptcrypto.ConvertBackContextHash(testAccountID(0x01), testIssuanceID(), 1, 1)
 	require.NoError(t, err)
 
@@ -238,7 +235,7 @@ func TestConvertBackProofRoundtrip(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotEqual(t, [mptcrypto.ConvertBackProofSize]byte{}, proof)
-	err = mptcrypto.VerifyConvertBackProof(proof, pub, ct, balanceCommit, convertBackAmount, ctxHash)
+	err = mptcrypto.VerifyConvertBackProof(proof, pub, ct, totalCommit, convertBackAmount, ctxHash)
 	require.NoError(t, err)
 }
 
@@ -459,7 +456,7 @@ func TestVerifyRevealedAmount(t *testing.T) {
 func TestGetSendProofSize(t *testing.T) {
 	t.Run("pass - positive size for 2 participants", func(t *testing.T) {
 		size := mptcrypto.GetSendProofSize(2)
-		require.Greater(t, size, 0)
+		require.Positive(t, size)
 	})
 
 	t.Run("pass - more participants produce larger proof", func(t *testing.T) {
