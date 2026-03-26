@@ -2151,7 +2151,7 @@
       }
     ],
     [
-      "IssuerElGamalPublicKey",
+      "IssuerEncryptionKey",
       {
         "isSerialized": true,
         "isSigningField": true,
@@ -2161,7 +2161,7 @@
       }
     ],
     [
-      "HolderElGamalPublicKey",
+      "HolderEncryptionKey",
       {
         "isSerialized": true,
         "isSigningField": true,
@@ -2241,7 +2241,7 @@
       }
     ],
     [
-      "AuditorElGamalPublicKey",
+      "AuditorEncryptionKey",
       {
         "isSerialized": true,
         "isSigningField": true,
