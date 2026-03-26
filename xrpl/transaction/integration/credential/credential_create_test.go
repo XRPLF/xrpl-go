@@ -12,6 +12,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 	"github.com/stretchr/testify/require"
 )
+
 type CredentialCreateTest struct {
 	Name             string
 	CredentialCreate *transaction.CredentialCreate
