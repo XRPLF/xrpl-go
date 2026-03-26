@@ -103,18 +103,6 @@ func TestMPTokenIssuance_SetLsmfMPTCanMutateTransferFee(t *testing.T) {
 	require.Equal(t, LsmfMPTCanMutateTransferFee, mpTokenIssuance.MutableFlags)
 }
 
-func TestMPTokenIssuance_SetLsmfMPTCannotMutateCanConfidentialAmount(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsmfMPTCannotMutateCanConfidentialAmount()
-	require.Equal(t, LsmfMPTCannotMutateCanConfidentialAmount, mpTokenIssuance.MutableFlags)
-}
-
-func TestMPTokenIssuance_SetLsfMPTCanConfidentialAmount(t *testing.T) {
-	mpTokenIssuance := &MPTokenIssuance{}
-	mpTokenIssuance.SetLsfMPTCanConfidentialAmount()
-	require.Equal(t, LsfMPTCanConfidentialAmount, mpTokenIssuance.Flags)
-}
-
 func TestMPTokenIssuanceSerialization(t *testing.T) {
 	tests := []struct {
 		name            string

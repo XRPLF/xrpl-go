@@ -140,11 +140,6 @@ func (c *MPTokenIssuance) SetLsfMPTCanClawback() {
 	c.Flags |= LsfMPTCanClawback
 }
 
-// SetLsfMPTCanConfidentialAmount sets the LsfMPTCanConfidentialAmount flag.
-func (c *MPTokenIssuance) SetLsfMPTCanConfidentialAmount() {
-	c.Flags |= LsfMPTCanConfidentialAmount
-}
-
 // SetLsmfMPTCanMutateCanLock sets the LsmfMPTCanMutateCanLock flag on MutableFlags.
 func (c *MPTokenIssuance) SetLsmfMPTCanMutateCanLock() {
 	c.MutableFlags |= LsmfMPTCanMutateCanLock
@@ -183,10 +178,4 @@ func (c *MPTokenIssuance) SetLsmfMPTCanMutateMetadata() {
 // SetLsmfMPTCanMutateTransferFee sets the LsmfMPTCanMutateTransferFee flag on MutableFlags.
 func (c *MPTokenIssuance) SetLsmfMPTCanMutateTransferFee() {
 	c.MutableFlags |= LsmfMPTCanMutateTransferFee
-}
-
-// SetLsmfMPTCannotMutateCanConfidentialAmount sets the LsmfMPTCannotMutateCanConfidentialAmount flag on MutableFlags.
-// When set, the lsfMPTCanConfidentialAmount flag can never be changed after the token is issued.
-func (c *MPTokenIssuance) SetLsmfMPTCannotMutateCanConfidentialAmount() {
-	c.MutableFlags |= LsmfMPTCannotMutateCanConfidentialAmount
 }
