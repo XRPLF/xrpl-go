@@ -193,8 +193,12 @@ var (
 	// ErrMPTokenIssuanceSetFlags is returned when both TfMPTLock and TfMPTUnlock flags are enabled simultaneously.
 	ErrMPTokenIssuanceSetFlags = errors.New("mptoken issuance set: TfMPTLock and TfMPTUnlock flags cannot both be enabled")
 
-	// ErrInvalidMPTokenIssuanceID is returned when the MPTokenIssuanceID is empty or invalid.
-	ErrInvalidMPTokenIssuanceID = errors.New("mptoken issuance destroy: invalid MPTokenIssuanceID")
+	// ErrInvalidMPTokenIssuanceIDDestroy is returned when the MPTokenIssuanceID is empty or invalid in MPTokenIssuanceDestroy.
+	ErrInvalidMPTokenIssuanceIDDestroy = errors.New("mptoken issuance destroy: invalid MPTokenIssuanceID")
+	// ErrInvalidMPTokenIssuanceIDSet is returned when the MPTokenIssuanceID is empty or invalid in MPTokenIssuanceSet.
+	ErrInvalidMPTokenIssuanceIDSet = errors.New("mptoken issuance set: invalid MPTokenIssuanceID")
+	// ErrInvalidMPTokenIssuanceIDAuthorize is returned when the MPTokenIssuanceID is empty or invalid in MPTokenAuthorize.
+	ErrInvalidMPTokenIssuanceIDAuthorize = errors.New("mptoken authorize: invalid MPTokenIssuanceID")
 
 	// ErrTransferFeeRequiresCanTransfer is returned when TransferFee is set without enabling TfMPTCanTransfer flag.
 	ErrTransferFeeRequiresCanTransfer = errors.New("mptoken issuance create: TransferFee cannot be provided without enabling TfMPTCanTransfer flag")
