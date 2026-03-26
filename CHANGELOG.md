@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### xrpl/transaction
+
+- Added integration tests for account transactions `AccountSet` and `AccountDelete`
+
 ### Changed
 
 #### Makefile
