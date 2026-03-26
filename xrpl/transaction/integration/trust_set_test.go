@@ -12,13 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type TrustSet struct {
+type TrustSetTest struct {
 	Name          string
 	TrustSet      *transaction.TrustSet
 	ExpectedError string
 }
 
-func TrustSetTest(t *testing.T, client integration.Client) {
+func trustSetTest(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 2,
 	})
@@ -30,7 +30,7 @@ func TrustSetTest(t *testing.T, client integration.Client) {
 	issuer := runner.GetWallet(0)
 	receiver := runner.GetWallet(1)
 
-	tt := []TrustSet{
+	tt := []TrustSetTest{
 		{
 			Name: "base trust set",
 			TrustSet: &transaction.TrustSet{
@@ -98,7 +98,7 @@ func fronzenTrustlineTrustSetTest(t *testing.T, client integration.Client) {
 	issuer := runner.GetWallet(0)
 	receiver := runner.GetWallet(1)
 
-	tt := []TrustSet{
+	tt := []TrustSetTest{
 		{
 			Name: "frozen trustline test",
 			TrustSet: &transaction.TrustSet{
@@ -139,7 +139,7 @@ func fronzenTrustlineTrustSetTest(t *testing.T, client integration.Client) {
 func TestIntegrationTrustSet_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	TrustSetTest(t, client)
+	trustSetTest(t, client)
 	fronzenTrustlineTrustSetTest(t, client)
 }
 
@@ -148,6 +148,6 @@ func TestIntegrationTrustSet_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	TrustSetTest(t, client)
+	trustSetTest(t, client)
 	fronzenTrustlineTrustSetTest(t, client)
 }
