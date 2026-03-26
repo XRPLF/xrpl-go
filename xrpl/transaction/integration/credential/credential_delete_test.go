@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type CredentialDelete struct {
+type CredentialDeleteTest struct {
 	Name             string
 	CredentialCreate *transaction.CredentialCreate
 	CredentialAccept *transaction.CredentialAccept
@@ -32,9 +32,9 @@ func credentialDeleteTest(t *testing.T, client integration.Client) {
 
 	issuer := runner.GetWallet(0)
 	subject := runner.GetWallet(1)
-	tt := []CredentialDelete{
+	tt := []CredentialDeleteTest{
 		{
-			Name: "credential create",
+			Name: "pass - credential delete",
 			CredentialCreate: &transaction.CredentialCreate{
 				BaseTx: transaction.BaseTx{
 					Account: issuer.GetAddress(),

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type CredentialAccept struct {
+type CredentialAcceptTest struct {
 	Name             string
 	CredentialCreate *transaction.CredentialCreate
 	CredentialAccept *transaction.CredentialAccept
@@ -31,7 +31,7 @@ func credentialAcceptTest(t *testing.T, client integration.Client) {
 
 	issuer := runner.GetWallet(0)
 	subject := runner.GetWallet(1)
-	tt := []CredentialAccept{
+	tt := []CredentialAcceptTest{
 		{
 			Name: "pass - credential create",
 			CredentialCreate: &transaction.CredentialCreate{
