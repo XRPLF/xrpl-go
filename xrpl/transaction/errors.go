@@ -228,6 +228,12 @@ var (
 	ErrMPTIssuanceSetTransferFeeWithClearCanTransfer = errors.New("mptoken issuance set: non-zero TransferFee cannot be set together with tmfMPTClearCanTransfer")
 	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string (and not empty).
 	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string or empty")
+	// ErrMPTIssuanceSetKeyConflict is returned when encryption keys are set together with Holder.
+	ErrMPTIssuanceSetKeyConflict = errors.New("mptoken issuance set: encryption keys cannot be set together with Holder")
+	// ErrMPTIssuanceSetAuditorRequiresIssuerKey is returned when AuditorEncryptionKey is set without IssuerEncryptionKey.
+	ErrMPTIssuanceSetAuditorRequiresIssuerKey = errors.New("mptoken issuance set: AuditorEncryptionKey requires IssuerEncryptionKey to be set")
+	// ErrMPTIssuanceSetInvalidKeyLength is returned when an encryption key has an invalid length.
+	ErrMPTIssuanceSetInvalidKeyLength = errors.New("mptoken issuance set: encryption key must be 66 hex characters (33-byte compressed EC point)")
 
 	// escrow
 

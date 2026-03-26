@@ -331,6 +331,11 @@ func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
 			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanClawbackFlag,
 			flagMask: TfMPTCanClawback,
 		},
+		{
+			name:     "MPTCanConfidentialAmount",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanConfidentialAmountFlag,
+			flagMask: TfMPTCanConfidentialAmount,
+		},
 	}
 
 	for _, tt := range tests {
@@ -361,7 +366,7 @@ func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
 		tt.setFlag(tx)
 	}
 
-	expectedFlags := TfMPTCanLock | TfMPTRequireAuth | TfMPTCanEscrow | TfMPTCanTrade | TfMPTCanTransfer | TfMPTCanClawback
+	expectedFlags := TfMPTCanLock | TfMPTRequireAuth | TfMPTCanEscrow | TfMPTCanTrade | TfMPTCanTransfer | TfMPTCanClawback | TfMPTCanConfidentialAmount
 	require.Equal(t, uint32(expectedFlags), tx.Flags)
 }
 
@@ -411,6 +416,11 @@ func TestMPTokenIssuanceCreate_MutableFlags(t *testing.T) {
 			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateTransferFeeFlag,
 			flagMask: TmfMPTCanMutateTransferFee,
 		},
+		{
+			name:     "MPTCannotMutateCanConfidentialAmount",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCannotMutateCanConfidentialAmountFlag,
+			flagMask: TmfMPTCannotMutateCanConfidentialAmount,
+		},
 	}
 
 	for _, tt := range tests {
@@ -430,6 +440,6 @@ func TestMPTokenIssuanceCreate_MutableFlags(t *testing.T) {
 
 	expectedMutableFlags := TmfMPTCanMutateCanLock | TmfMPTCanMutateRequireAuth | TmfMPTCanMutateCanEscrow |
 		TmfMPTCanMutateCanTrade | TmfMPTCanMutateCanTransfer | TmfMPTCanMutateCanClawback |
-		TmfMPTCanMutateMetadata | TmfMPTCanMutateTransferFee
+		TmfMPTCanMutateMetadata | TmfMPTCanMutateTransferFee | TmfMPTCannotMutateCanConfidentialAmount
 	require.Equal(t, expectedMutableFlags, *tx.MutableFlags)
 }

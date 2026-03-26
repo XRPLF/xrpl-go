@@ -26,6 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MutableFlags set/clear constant pairs: `TmfMPTSetCanLock`/`TmfMPTClearCanLock`, `TmfMPTSetRequireAuth`/`TmfMPTClearRequireAuth`, `TmfMPTSetCanEscrow`/`TmfMPTClearCanEscrow`, `TmfMPTSetCanTrade`/`TmfMPTClearCanTrade`, `TmfMPTSetCanTransfer`/`TmfMPTClearCanTransfer`, `TmfMPTSetCanClawback`/`TmfMPTClearCanClawback`.
   - Flag setter methods for all set/clear mutable flags.
   - Validation: mutual exclusivity between `Holder`/`Flags` and DynamicMPT fields, set/clear conflict detection, `TransferFee` + `ClearCanTransfer` conflict, `DomainID` format validation, no-op transaction detection.
+- Added XLS-96 confidential transfer support to `MPTokenIssuanceCreate`:
+  - `TfMPTCanConfidentialAmount` flag to enable confidential transfers for a token issuance.
+  - `TmfMPTCannotMutateCanConfidentialAmount` mutable flag to prevent changing the confidential amount flag after creation.
+  - Flag setter methods: `SetMPTCanConfidentialAmountFlag()`, `SetMPTCannotMutateCanConfidentialAmountFlag()`.
+- Added XLS-96 confidential transfer support to `MPTokenIssuanceSet`:
+  - `IssuerEncryptionKey` and `AuditorEncryptionKey` fields for setting issuer/auditor ElGamal public keys.
+  - `TmfMPTSetCanConfidentialAmount`/`TmfMPTClearCanConfidentialAmount` mutable flag pair with flag setter methods.
+  - Validation: `AuditorEncryptionKey` requires `IssuerEncryptionKey`, encryption key length validation (33-byte compressed), encryption keys mutually exclusive with `Holder`.
+- Added `EncryptionKey` helper function in `types` package.
+- Added `IsValidCompressedEncryptionKey` validation helper for 33-byte compressed EC public keys.
 - Added `MutableFlags` and `DomainID` fields to `MPTokenIssuance` ledger entry type with ledger-state mutable flags constants (`Lsmf` prefix) and flag setter methods.
 - Added `MutableFlags` helper function in `types` package.
 - Added XLS-96 confidential transfer fields to `MPToken` ledger entry type: `HolderEncryptionKey`, `IssuerEncryptedBalance`, `AuditorEncryptedBalance`, `ConfidentialBalanceInbox`, `ConfidentialBalanceSpending`, `ConfidentialBalanceVersion`.
