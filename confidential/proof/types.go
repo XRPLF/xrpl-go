@@ -1,4 +1,4 @@
-package proofs
+package proof
 
 // HexParticipant represents a participant with hex-encoded fields.
 type HexParticipant struct {

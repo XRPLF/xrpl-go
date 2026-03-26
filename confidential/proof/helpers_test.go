@@ -1,6 +1,6 @@
 //go:build cgo
 
-package proofs_test
+package proof_test
 
 const (
 	testAccount    = "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN"

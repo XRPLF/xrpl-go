@@ -1,6 +1,6 @@
 //go:build cgo
 
-package proofs_test
+package proof_test
 
 import (
 	"encoding/hex"
@@ -9,7 +9,7 @@ import (
 	"github.com/Peersyst/xrpl-go/confidential/commitment"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
-	"github.com/Peersyst/xrpl-go/confidential/proofs"
+	"github.com/Peersyst/xrpl-go/confidential/proof"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,10 +29,10 @@ func TestVerifyRevealedAmountWithoutAuditor(t *testing.T) {
 	issuerCt, err := elgamal.Encrypt(amount, issuerKP.PubKeyHex, bf)
 	require.NoError(t, err)
 
-	holder := proofs.HexParticipant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
-	issuer := proofs.HexParticipant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
+	holder := proof.HexParticipant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
+	issuer := proof.HexParticipant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
 
-	err = proofs.VerifyRevealedAmount(amount, bf, holder, issuer, nil)
+	err = proof.VerifyRevealedAmount(amount, bf, holder, issuer, nil)
 	require.NoError(t, err)
 }
 
@@ -56,11 +56,11 @@ func TestVerifyRevealedAmountWithAuditor(t *testing.T) {
 	auditorCt, err := elgamal.Encrypt(amount, auditorKP.PubKeyHex, bf)
 	require.NoError(t, err)
 
-	holder := proofs.HexParticipant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
-	issuer := proofs.HexParticipant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
-	auditor := proofs.HexParticipant{PubKeyHex: auditorKP.PubKeyHex, CiphertextHex: auditorCt}
+	holder := proof.HexParticipant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
+	issuer := proof.HexParticipant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
+	auditor := proof.HexParticipant{PubKeyHex: auditorKP.PubKeyHex, CiphertextHex: auditorCt}
 
-	err = proofs.VerifyRevealedAmount(amount, bf, holder, issuer, &auditor)
+	err = proof.VerifyRevealedAmount(amount, bf, holder, issuer, &auditor)
 	require.NoError(t, err)
 }
 
@@ -80,11 +80,11 @@ func TestVerifyRevealedAmountWrongAmount(t *testing.T) {
 	issuerCt, err := elgamal.Encrypt(amount, issuerKP.PubKeyHex, bf)
 	require.NoError(t, err)
 
-	holder := proofs.HexParticipant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
-	issuer := proofs.HexParticipant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
+	holder := proof.HexParticipant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
+	issuer := proof.HexParticipant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
 
-	err = proofs.VerifyRevealedAmount(999, bf, holder, issuer, nil)
-	require.ErrorIs(t, err, proofs.ErrProofVerificationFailed)
+	err = proof.VerifyRevealedAmount(999, bf, holder, issuer, nil)
+	require.ErrorIs(t, err, proof.ErrProofVerificationFailed)
 }
 
 // setupLinkageScenario creates the crypto state needed to test linkage and range proof verifiers.
@@ -115,7 +115,7 @@ func setupLinkageScenario(t *testing.T, amount, balance uint64) (
 	balanceCommitHex, err = commitment.Create(balance, balanceBF)
 	require.NoError(t, err)
 
-	ctxHash, err = proofs.SendContextHash(testAccount, testIssuanceID, 1, testDest, 0)
+	ctxHash, err = proof.SendContextHash(testAccount, testIssuanceID, 1, testDest, 0)
 	require.NoError(t, err)
 	return
 }
@@ -151,11 +151,11 @@ func TestVerifyAmountLinkageRoundtrip(t *testing.T) {
 		BlindingFactor: bf,
 	}
 
-	proof, err := mptcrypto.GenerateAmountLinkageProof(pub, bf, hash, params)
+	proofBytes, err := mptcrypto.GenerateAmountLinkageProof(pub, bf, hash, params)
 	require.NoError(t, err)
 
-	proofHex := hex.EncodeToString(proof[:])
-	err = proofs.VerifyAmountLinkage(proofHex, amountCt, senderKP.PubKeyHex, amountCommitHex, ctxHash)
+	proofHex := hex.EncodeToString(proofBytes[:])
+	err = proof.VerifyAmountLinkage(proofHex, amountCt, senderKP.PubKeyHex, amountCommitHex, ctxHash)
 	require.NoError(t, err)
 }
 
@@ -193,11 +193,11 @@ func TestVerifyBalanceLinkageRoundtrip(t *testing.T) {
 		BlindingFactor: bf,
 	}
 
-	proof, err := mptcrypto.GenerateBalanceLinkageProof(priv, pub, hash, params)
+	proofBytes, err := mptcrypto.GenerateBalanceLinkageProof(priv, pub, hash, params)
 	require.NoError(t, err)
 
-	proofHex := hex.EncodeToString(proof[:])
-	err = proofs.VerifyBalanceLinkage(proofHex, balanceCt, senderKP.PubKeyHex, balanceCommitHex, ctxHash)
+	proofHex := hex.EncodeToString(proofBytes[:])
+	err = proof.VerifyBalanceLinkage(proofHex, balanceCt, senderKP.PubKeyHex, balanceCommitHex, ctxHash)
 	require.NoError(t, err)
 }
 
@@ -210,22 +210,22 @@ func TestVerifyRevealedAmountInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad blinding factor",
 			fn: func() error {
-				return proofs.VerifyRevealedAmount(42, "bad",
-					proofs.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
-					proofs.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
+				return proof.VerifyRevealedAmount(42, "bad",
+					proof.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
+					proof.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
 					nil)
 			},
-			wantErr: proofs.ErrInvalidBlindingFactor,
+			wantErr: proof.ErrInvalidBlindingFactor,
 		},
 		{
 			name: "fail - bad holder pubkey",
 			fn: func() error {
-				return proofs.VerifyRevealedAmount(42, zeroHex(32),
-					proofs.HexParticipant{PubKeyHex: "zz", CiphertextHex: zeroHex(66)},
-					proofs.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
+				return proof.VerifyRevealedAmount(42, zeroHex(32),
+					proof.HexParticipant{PubKeyHex: "zz", CiphertextHex: zeroHex(66)},
+					proof.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
 					nil)
 			},
-			wantErr: proofs.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKeyLength,
 		},
 	}
 
@@ -246,37 +246,37 @@ func TestVerifyLinkageInvalidInputs(t *testing.T) {
 		{
 			name: "fail - amount linkage bad proof",
 			fn: func() error {
-				return proofs.VerifyAmountLinkage("zz", zeroHex(66), zeroHex(33), "02"+zeroHex(32), zeroHex(32))
+				return proof.VerifyAmountLinkage("zz", zeroHex(66), zeroHex(33), "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proofs.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProofLength,
 		},
 		{
 			name: "fail - amount linkage bad ciphertext",
 			fn: func() error {
-				return proofs.VerifyAmountLinkage(zeroHex(195), "zz", zeroHex(33), "02"+zeroHex(32), zeroHex(32))
+				return proof.VerifyAmountLinkage(zeroHex(195), "zz", zeroHex(33), "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proofs.ErrInvalidCiphertextLength,
+			wantErr: proof.ErrInvalidCiphertextLength,
 		},
 		{
 			name: "fail - balance linkage bad pubkey",
 			fn: func() error {
-				return proofs.VerifyBalanceLinkage(zeroHex(195), zeroHex(66), "zz", "02"+zeroHex(32), zeroHex(32))
+				return proof.VerifyBalanceLinkage(zeroHex(195), zeroHex(66), "zz", "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proofs.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKeyLength,
 		},
 		{
 			name: "fail - balance linkage bad commitment",
 			fn: func() error {
-				return proofs.VerifyBalanceLinkage(zeroHex(195), zeroHex(66), zeroHex(33), "zz", zeroHex(32))
+				return proof.VerifyBalanceLinkage(zeroHex(195), zeroHex(66), zeroHex(33), "zz", zeroHex(32))
 			},
-			wantErr: proofs.ErrInvalidCommitmentLength,
+			wantErr: proof.ErrInvalidCommitmentLength,
 		},
 		{
 			name: "fail - balance linkage bad ctx hash",
 			fn: func() error {
-				return proofs.VerifyBalanceLinkage(zeroHex(195), zeroHex(66), zeroHex(33), "02"+zeroHex(32), "zz")
+				return proof.VerifyBalanceLinkage(zeroHex(195), zeroHex(66), zeroHex(33), "02"+zeroHex(32), "zz")
 			},
-			wantErr: proofs.ErrInvalidContextHash,
+			wantErr: proof.ErrInvalidContextHash,
 		},
 	}
 
@@ -297,16 +297,16 @@ func TestVerifyEqualityProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad proof hex",
 			fn: func() error {
-				return proofs.VerifyEqualityProof("zzzz", nil, zeroHex(32))
+				return proof.VerifyEqualityProof("zzzz", nil, zeroHex(32))
 			},
-			wantErr: proofs.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProofLength,
 		},
 		{
 			name: "fail - bad ctx hash",
 			fn: func() error {
-				return proofs.VerifyEqualityProof(zeroHex(32), nil, "zz")
+				return proof.VerifyEqualityProof(zeroHex(32), nil, "zz")
 			},
-			wantErr: proofs.ErrInvalidContextHash,
+			wantErr: proof.ErrInvalidContextHash,
 		},
 	}
 
@@ -327,16 +327,16 @@ func TestVerifySendRangeProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad proof",
 			fn: func() error {
-				return proofs.VerifySendRangeProof("zz", "02"+zeroHex(32), "02"+zeroHex(32), zeroHex(32))
+				return proof.VerifySendRangeProof("zz", "02"+zeroHex(32), "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proofs.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProofLength,
 		},
 		{
 			name: "fail - bad amount commitment",
 			fn: func() error {
-				return proofs.VerifySendRangeProof(zeroHex(754), "zz", "02"+zeroHex(32), zeroHex(32))
+				return proof.VerifySendRangeProof(zeroHex(754), "zz", "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proofs.ErrInvalidCommitmentLength,
+			wantErr: proof.ErrInvalidCommitmentLength,
 		},
 	}
 

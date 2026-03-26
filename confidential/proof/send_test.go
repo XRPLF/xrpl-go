@@ -1,25 +1,25 @@
 //go:build cgo
 
-package proofs_test
+package proof_test
 
 import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/commitment"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
-	"github.com/Peersyst/xrpl-go/confidential/proofs"
+	"github.com/Peersyst/xrpl-go/confidential/proof"
 	"github.com/stretchr/testify/require"
 )
 
-// setupSendProofScenario creates a full scenario for testing ConfidentialMPTSend proofs.
+// setupSendProofScenario creates a full scenario for testing ConfidentialMPTSend proof.
 // Returns all the hex-encoded data needed to generate and verify a send proof.
 func setupSendProofScenario(t *testing.T, sendAmount, senderBalance uint64, withAuditor bool) (
 	senderKP elgamal.Keypair,
-	participants []proofs.HexParticipant,
+	participants []proof.HexParticipant,
 	txBF string,
 	ctxHash string,
-	amountParams proofs.HexProofParams,
-	balanceParams proofs.HexProofParams,
+	amountParams proof.HexProofParams,
+	balanceParams proof.HexProofParams,
 	senderBalanceCt string,
 	amountCommitHex string,
 	balanceCommitHex string,
@@ -61,11 +61,11 @@ func setupSendProofScenario(t *testing.T, sendAmount, senderBalance uint64, with
 	require.NoError(t, err)
 
 	// Context hash.
-	ctxHash, err = proofs.SendContextHash(testAccount, testIssuanceID, 1, testDest, 0)
+	ctxHash, err = proof.SendContextHash(testAccount, testIssuanceID, 1, testDest, 0)
 	require.NoError(t, err)
 
 	// Participants array.
-	participants = []proofs.HexParticipant{
+	participants = []proof.HexParticipant{
 		{PubKeyHex: senderKP.PubKeyHex, CiphertextHex: senderAmountCt},
 		{PubKeyHex: destKP.PubKeyHex, CiphertextHex: destAmountCt},
 		{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerAmountCt},
@@ -76,20 +76,20 @@ func setupSendProofScenario(t *testing.T, sendAmount, senderBalance uint64, with
 		require.NoError(t, err)
 		auditorAmountCt, err := elgamal.Encrypt(sendAmount, auditorKP.PubKeyHex, txBF)
 		require.NoError(t, err)
-		participants = append(participants, proofs.HexParticipant{
+		participants = append(participants, proof.HexParticipant{
 			PubKeyHex:     auditorKP.PubKeyHex,
 			CiphertextHex: auditorAmountCt,
 		})
 	}
 
 	// Proof params.
-	amountParams = proofs.HexProofParams{
+	amountParams = proof.HexProofParams{
 		CommitmentHex:     amountCommitHex,
 		Amount:            sendAmount,
 		CiphertextHex:     senderAmountCt,
 		BlindingFactorHex: txBF,
 	}
-	balanceParams = proofs.HexProofParams{
+	balanceParams = proof.HexProofParams{
 		CommitmentHex:     balanceCommitHex,
 		Amount:            senderBalance,
 		CiphertextHex:     senderBalanceCt,
@@ -114,14 +114,14 @@ func TestGenerateAndVerifySendProof(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			senderKP, participants, txBF, ctxHash, amountParams, balanceParams, senderBalanceCt, amountCommitHex, balanceCommitHex := setupSendProofScenario(t, tt.sendAmount, tt.senderBalance, tt.withAuditor)
 
-			proof, err := proofs.GenerateSendProof(
+			proofHex, err := proof.GenerateSendProof(
 				senderKP.PrivKeyHex, tt.sendAmount, participants, txBF, ctxHash,
 				amountParams, balanceParams,
 			)
 			require.NoError(t, err)
-			require.NotEmpty(t, proof)
+			require.NotEmpty(t, proofHex)
 
-			err = proofs.VerifySendProof(proof, participants, senderBalanceCt, amountCommitHex, balanceCommitHex, ctxHash)
+			err = proof.VerifySendProof(proofHex, participants, senderBalanceCt, amountCommitHex, balanceCommitHex, ctxHash)
 			require.NoError(t, err)
 		})
 	}
@@ -136,48 +136,48 @@ func TestSendProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad privkey",
 			fn: func() error {
-				_, err := proofs.GenerateSendProof("zz", 100, nil, zeroHex(32), zeroHex(32),
-					proofs.HexProofParams{}, proofs.HexProofParams{})
+				_, err := proof.GenerateSendProof("zz", 100, nil, zeroHex(32), zeroHex(32),
+					proof.HexProofParams{}, proof.HexProofParams{})
 				return err
 			},
-			wantErr: proofs.ErrInvalidPrivKeyLength,
+			wantErr: proof.ErrInvalidPrivKeyLength,
 		},
 		{
 			name: "fail - bad tx blinding factor",
 			fn: func() error {
-				_, err := proofs.GenerateSendProof(zeroHex(32), 100, nil, "bad", zeroHex(32),
-					proofs.HexProofParams{}, proofs.HexProofParams{})
+				_, err := proof.GenerateSendProof(zeroHex(32), 100, nil, "bad", zeroHex(32),
+					proof.HexProofParams{}, proof.HexProofParams{})
 				return err
 			},
-			wantErr: proofs.ErrInvalidBlindingFactor,
+			wantErr: proof.ErrInvalidBlindingFactor,
 		},
 		{
 			name: "fail - bad ctx hash",
 			fn: func() error {
-				_, err := proofs.GenerateSendProof(zeroHex(32), 100, nil, zeroHex(32), "bad",
-					proofs.HexProofParams{}, proofs.HexProofParams{})
+				_, err := proof.GenerateSendProof(zeroHex(32), 100, nil, zeroHex(32), "bad",
+					proof.HexProofParams{}, proof.HexProofParams{})
 				return err
 			},
-			wantErr: proofs.ErrInvalidContextHash,
+			wantErr: proof.ErrInvalidContextHash,
 		},
 		{
 			name: "fail - bad participant pubkey",
 			fn: func() error {
-				_, err := proofs.GenerateSendProof(zeroHex(32), 100,
-					[]proofs.HexParticipant{{PubKeyHex: "zz", CiphertextHex: zeroHex(66)}},
+				_, err := proof.GenerateSendProof(zeroHex(32), 100,
+					[]proof.HexParticipant{{PubKeyHex: "zz", CiphertextHex: zeroHex(66)}},
 					zeroHex(32), zeroHex(32),
-					proofs.HexProofParams{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)},
-					proofs.HexProofParams{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)})
+					proof.HexProofParams{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)},
+					proof.HexProofParams{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)})
 				return err
 			},
-			wantErr: proofs.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKeyLength,
 		},
 		{
 			name: "fail - verify bad proof hex",
 			fn: func() error {
-				return proofs.VerifySendProof("zzzz", nil, zeroHex(66), "02"+zeroHex(32), "02"+zeroHex(32), zeroHex(32))
+				return proof.VerifySendProof("zzzz", nil, zeroHex(66), "02"+zeroHex(32), "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proofs.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProofLength,
 		},
 	}
 

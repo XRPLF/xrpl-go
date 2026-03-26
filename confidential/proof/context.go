@@ -1,7 +1,7 @@
-// Package proofs provides a hex-string API for ZK proof generation and verification.
+// Package proof provides a hex-string API for ZK proof generation and verification.
 // It wraps the byte-array functions in mptcrypto with hex encoding/decoding and
 // classic XRPL address decoding for use with transaction fields.
-package proofs
+package proof
 
 import (
 	"encoding/hex"

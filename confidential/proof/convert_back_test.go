@@ -1,13 +1,13 @@
 //go:build cgo
 
-package proofs_test
+package proof_test
 
 import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/commitment"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
-	"github.com/Peersyst/xrpl-go/confidential/proofs"
+	"github.com/Peersyst/xrpl-go/confidential/proof"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,21 +27,21 @@ func TestGenerateAndVerifyConvertBackProof(t *testing.T) {
 	balanceCommit, err := commitment.Create(balanceAmount, bf)
 	require.NoError(t, err)
 
-	ctxHash, err := proofs.ConvertBackContextHash(testAccount, testIssuanceID, 1, 0)
+	ctxHash, err := proof.ConvertBackContextHash(testAccount, testIssuanceID, 1, 0)
 	require.NoError(t, err)
 
-	params := proofs.HexProofParams{
+	params := proof.HexProofParams{
 		CommitmentHex:     balanceCommit,
 		Amount:            balanceAmount,
 		CiphertextHex:     balanceCt,
 		BlindingFactorHex: bf,
 	}
 
-	proof, err := proofs.GenerateConvertBackProof(kp.PrivKeyHex, kp.PubKeyHex, ctxHash, withdrawAmount, params)
+	proofHex, err := proof.GenerateConvertBackProof(kp.PrivKeyHex, kp.PubKeyHex, ctxHash, withdrawAmount, params)
 	require.NoError(t, err)
-	require.NotEmpty(t, proof)
+	require.NotEmpty(t, proofHex)
 
-	err = proofs.VerifyConvertBackProof(proof, kp.PubKeyHex, balanceCt, balanceCommit, withdrawAmount, ctxHash)
+	err = proof.VerifyConvertBackProof(proofHex, kp.PubKeyHex, balanceCt, balanceCommit, withdrawAmount, ctxHash)
 	require.NoError(t, err)
 }
 
@@ -54,57 +54,57 @@ func TestConvertBackProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad privkey",
 			fn: func() error {
-				_, err := proofs.GenerateConvertBackProof("zz", "02"+zeroHex(32), zeroHex(32), 100, proofs.HexProofParams{
+				_, err := proof.GenerateConvertBackProof("zz", "02"+zeroHex(32), zeroHex(32), 100, proof.HexProofParams{
 					CommitmentHex:     "02" + zeroHex(32),
 					CiphertextHex:     zeroHex(66),
 					BlindingFactorHex: zeroHex(32),
 				})
 				return err
 			},
-			wantErr: proofs.ErrInvalidPrivKeyLength,
+			wantErr: proof.ErrInvalidPrivKeyLength,
 		},
 		{
 			name: "fail - bad pubkey",
 			fn: func() error {
-				_, err := proofs.GenerateConvertBackProof(zeroHex(32), "zz", zeroHex(32), 100, proofs.HexProofParams{
+				_, err := proof.GenerateConvertBackProof(zeroHex(32), "zz", zeroHex(32), 100, proof.HexProofParams{
 					CommitmentHex:     "02" + zeroHex(32),
 					CiphertextHex:     zeroHex(66),
 					BlindingFactorHex: zeroHex(32),
 				})
 				return err
 			},
-			wantErr: proofs.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKeyLength,
 		},
 		{
 			name: "fail - bad ctx hash",
 			fn: func() error {
-				_, err := proofs.GenerateConvertBackProof(zeroHex(32), "02"+zeroHex(32), "zz", 100, proofs.HexProofParams{
+				_, err := proof.GenerateConvertBackProof(zeroHex(32), "02"+zeroHex(32), "zz", 100, proof.HexProofParams{
 					CommitmentHex:     "02" + zeroHex(32),
 					CiphertextHex:     zeroHex(66),
 					BlindingFactorHex: zeroHex(32),
 				})
 				return err
 			},
-			wantErr: proofs.ErrInvalidContextHash,
+			wantErr: proof.ErrInvalidContextHash,
 		},
 		{
 			name: "fail - bad commitment in params",
 			fn: func() error {
-				_, err := proofs.GenerateConvertBackProof(zeroHex(32), "02"+zeroHex(32), zeroHex(32), 100, proofs.HexProofParams{
+				_, err := proof.GenerateConvertBackProof(zeroHex(32), "02"+zeroHex(32), zeroHex(32), 100, proof.HexProofParams{
 					CommitmentHex:     "bad",
 					CiphertextHex:     zeroHex(66),
 					BlindingFactorHex: zeroHex(32),
 				})
 				return err
 			},
-			wantErr: proofs.ErrInvalidCommitmentLength,
+			wantErr: proof.ErrInvalidCommitmentLength,
 		},
 		{
 			name: "fail - verify bad proof",
 			fn: func() error {
-				return proofs.VerifyConvertBackProof("0102", "02"+zeroHex(32), zeroHex(66), "02"+zeroHex(32), 100, zeroHex(32))
+				return proof.VerifyConvertBackProof("0102", "02"+zeroHex(32), zeroHex(66), "02"+zeroHex(32), 100, zeroHex(32))
 			},
-			wantErr: proofs.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProofLength,
 		},
 	}
 
