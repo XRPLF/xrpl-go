@@ -11,6 +11,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 	"github.com/stretchr/testify/require"
 )
+
 type DepositPreauthTest struct {
 	Name           string
 	DepositPreauth *transaction.DepositPreauth
