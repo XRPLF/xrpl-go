@@ -12,12 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type CheckCancelTest struct{
+type CheckCancelTest struct {
 	Name          string
 	CheckCreate   *transaction.CheckCreate
 	ExpectedError string
 }
-
 
 func checkCancelTest(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
