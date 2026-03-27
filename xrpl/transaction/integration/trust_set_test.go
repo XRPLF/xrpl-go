@@ -13,12 +13,11 @@ import (
 )
 
 type TrustSetTest struct {
-	Name          string
-	TrustSet      *transaction.TrustSet
-	ExpectedError string
+	Name     string
+	TrustSet *transaction.TrustSet
 }
 
-func trustSetTest(t *testing.T, client integration.Client) {
+func testIntegrationTrustSet(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 2,
 	})
@@ -32,7 +31,7 @@ func trustSetTest(t *testing.T, client integration.Client) {
 
 	tt := []TrustSetTest{
 		{
-			Name: "base trust set",
+			Name: "pass - base trust set",
 			TrustSet: &transaction.TrustSet{
 				BaseTx: transaction.BaseTx{
 					Account: issuer.GetAddress(),
@@ -46,7 +45,7 @@ func trustSetTest(t *testing.T, client integration.Client) {
 			},
 		},
 		{
-			Name: "trust set - quality < 1",
+			Name: "pass - trust set - quality < 1",
 			TrustSet: &transaction.TrustSet{
 				BaseTx: transaction.BaseTx{
 					Account: issuer.GetAddress(),
@@ -61,7 +60,7 @@ func trustSetTest(t *testing.T, client integration.Client) {
 			},
 		},
 		{
-			Name: "trust set - quality > 1",
+			Name: "pass - trust set - quality > 1",
 			TrustSet: &transaction.TrustSet{
 				BaseTx: transaction.BaseTx{
 					Account: issuer.GetAddress(),
@@ -86,7 +85,7 @@ func trustSetTest(t *testing.T, client integration.Client) {
 	}
 }
 
-func fronzenTrustlineTrustSetTest(t *testing.T, client integration.Client) {
+func testIntegrationFrozenTrustlineTrustSet(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 2,
 	})
@@ -100,7 +99,7 @@ func fronzenTrustlineTrustSetTest(t *testing.T, client integration.Client) {
 
 	tt := []TrustSetTest{
 		{
-			Name: "frozen trustline test",
+			Name: "pass - frozen trustline test",
 			TrustSet: &transaction.TrustSet{
 				BaseTx: transaction.BaseTx{
 					Account: issuer.GetAddress(),
@@ -139,8 +138,8 @@ func fronzenTrustlineTrustSetTest(t *testing.T, client integration.Client) {
 func TestIntegrationTrustSet_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	trustSetTest(t, client)
-	fronzenTrustlineTrustSetTest(t, client)
+	testIntegrationTrustSet(t, client)
+	testIntegrationFrozenTrustlineTrustSet(t, client)
 }
 
 func TestIntegrationTrustSet_RPCClient(t *testing.T) {
@@ -148,6 +147,6 @@ func TestIntegrationTrustSet_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	trustSetTest(t, client)
-	fronzenTrustlineTrustSetTest(t, client)
+	testIntegrationTrustSet(t, client)
+	testIntegrationFrozenTrustlineTrustSet(t, client)
 }

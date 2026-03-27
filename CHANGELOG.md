@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added integration tests for `TrustSet` transaction
 
-## [v.0.1.17]
+## [v0.1.17]
 
 ### Fixed
 
