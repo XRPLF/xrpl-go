@@ -15,6 +15,7 @@ const (
 	CheckObject          ObjectType = "check"
 	CredentialObject     ObjectType = "credential"
 	DepositPreauthObject ObjectType = "deposit_preauth"
+	DID                  ObjectType = "did"
 	EscrowObject         ObjectType = "escrow"
 	NFTOfferObject       ObjectType = "nft_offer"
 	OfferObject          ObjectType = "offer"
