@@ -7,10 +7,6 @@ import "github.com/Peersyst/xrpl-go/pkg/typecheck"
 // Pedersen commitments (BalanceCommitment, AmountCommitment).
 const CompressedPointLen = 66
 
-// UncompressedPointLen is the hex-encoded length of a 64-byte uncompressed EC point.
-// Used for HolderEncryptionKey in ConfidentialMPTConvert per XLS-96.
-const UncompressedPointLen = 128
-
 // CiphertextLen is the hex-encoded length of a 66-byte ElGamal ciphertext (two compressed EC points).
 const CiphertextLen = 2 * CompressedPointLen
 
@@ -25,13 +21,6 @@ const SchnorrProofLen = 130
 // Used for IssuerEncryptionKey and AuditorEncryptionKey per XLS-96.
 func IsValidCompressedEncryptionKey(key string) bool {
 	return len(key) == CompressedPointLen && typecheck.IsHex(key)
-}
-
-// IsValidUncompressedEncryptionKey checks if the given hex string is a valid
-// 64-byte uncompressed EC public key (128 hex chars).
-// Used for HolderEncryptionKey in ConfidentialMPTConvert per XLS-96.
-func IsValidUncompressedEncryptionKey(key string) bool {
-	return len(key) == UncompressedPointLen && typecheck.IsHex(key)
 }
 
 // IsValidBlindingFactor checks if the given hex string is a valid 32-byte blinding factor (64 hex chars).

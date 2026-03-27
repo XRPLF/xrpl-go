@@ -77,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ConfidentialMPTSend` transaction type: sends confidential MPT between accounts with encrypted amounts for sender, destination, issuer, and optional auditor, verified by ZK proof.
 - Added `MPTPlainAmount` type for bare MPT token quantities with JSON string serialization.
 - Added `HexBlob` helper function in `types` package for optional hex blob fields.
-- Added confidential transfer validation helpers: `IsValidUncompressedEncryptionKey`, `IsValidBlindingFactor`, `IsValidSchnorrProof`, `IsValidHexBlob`.
+- Added confidential transfer validation helpers: `IsValidBlindingFactor`, `IsValidSchnorrProof`, `IsValidHexBlob`.
 
 #### xrpl/hash
 

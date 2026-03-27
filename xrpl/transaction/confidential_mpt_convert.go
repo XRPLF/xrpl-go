@@ -30,7 +30,7 @@ type ConfidentialMPTConvert struct {
 	MPTAmount types.MPTPlainAmount
 	// HolderEncryptionKey is the holder's EC-ElGamal public key for encryption. (Optional)
 	// Required if the holder doesn't already have a key registered.
-	// 64 bytes uncompressed EC point, hex-encoded (per XLS-96).
+	// 33 bytes compressed EC point, hex-encoded (66 hex chars).
 	HolderEncryptionKey *string `json:",omitempty"`
 	// HolderEncryptedAmount is the encrypted amount for the holder's confidential balance.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
@@ -103,7 +103,7 @@ func (tx *ConfidentialMPTConvert) Validate() (bool, error) {
 		return false, ErrConfidentialConvertKeyProofMismatch
 	}
 
-	if hasKey && !IsValidUncompressedEncryptionKey(*tx.HolderEncryptionKey) {
+	if hasKey && !IsValidCompressedEncryptionKey(*tx.HolderEncryptionKey) {
 		return false, ErrConfidentialConvertInvalidKeyLength
 	}
 
