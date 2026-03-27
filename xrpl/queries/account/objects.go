@@ -12,16 +12,17 @@ type ObjectType string
 
 // ObjectType constants for account_objects requests.
 const (
-	CheckObject          ObjectType = "check"
-	CredentialObject     ObjectType = "credential"
-	DepositPreauthObject ObjectType = "deposit_preauth"
-	EscrowObject         ObjectType = "escrow"
-	NFTOfferObject       ObjectType = "nft_offer"
-	OfferObject          ObjectType = "offer"
-	PaymentChannelObject ObjectType = "payment_channel"
-	SignerListObject     ObjectType = "signer_list"
-	StateObject          ObjectType = "state"
-	TicketObject         ObjectType = "ticket"
+	CheckObject              ObjectType = "check"
+	CredentialObject         ObjectType = "credential"
+	DepositPreauthObject     ObjectType = "deposit_preauth"
+	EscrowObject             ObjectType = "escrow"
+	NFTOfferObject           ObjectType = "nft_offer"
+	OfferObject              ObjectType = "offer"
+	PaymentChannelObject     ObjectType = "payment_channel"
+	PermissionedDomainObject ObjectType = "permissioned_domain"
+	SignerListObject         ObjectType = "signer_list"
+	StateObject              ObjectType = "state"
+	TicketObject             ObjectType = "ticket"
 )
 
 // ############################################################################
