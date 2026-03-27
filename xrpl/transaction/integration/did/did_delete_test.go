@@ -27,7 +27,7 @@ func didDeleteTest(t *testing.T, client integration.Client) {
 
 	tt := []DIDDeleteTest{
 		{
-			Name:          "pass - base",
+			Name: "pass - base",
 			DIDSet: &transaction.DIDSet{
 				BaseTx:      transaction.BaseTx{Account: wallet.GetAddress()},
 				Data:        "617474657374",
