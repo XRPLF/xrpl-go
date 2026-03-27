@@ -79,6 +79,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `HexBlob` helper function in `types` package for optional hex blob fields.
 - Added confidential transfer validation helpers: `IsValidUncompressedEncryptionKey`, `IsValidBlindingFactor`, `IsValidSchnorrProof`, `IsValidHexBlob`.
 
+#### xrpl/hash
+
+- Added `MPToken()` and `MPTokenIssuance()` ledger entry hash functions for computing MPToken and MPTokenIssuance keylet indices.
+- Extracted ledger space hex values into package-level constants.
+
 ### Fixed
 
 #### xrpl

@@ -95,3 +95,84 @@ func TestLoan(t *testing.T) {
 		})
 	}
 }
+
+func TestMPToken(t *testing.T) {
+	tests := []struct {
+		name       string
+		issuanceID string
+		holder     string
+		want       string
+		wantError  bool
+	}{
+		{
+			name:       "pass - valid inputs",
+			issuanceID: "000000000000000000000000000000000000000000000001",
+			holder:     "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+			want:       "421477BB4C4F7195FD4934C1161BCEE697A3472EAE4E176FEE33DB7A3DD46C3F",
+		},
+		{
+			name:       "pass - different issuance ID",
+			issuanceID: "000000000000000000000000000000000000000000000002",
+			holder:     "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+			want:       "CF6A7BB8B75ACBE74B0D6D1DF6B446735000DC1D6B512AF0CABE28E551477619",
+		},
+		{
+			name:       "fail - wrong issuance ID length",
+			issuanceID: "0001",
+			holder:     "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+			wantError:  true,
+		},
+		{
+			name:       "fail - invalid address",
+			issuanceID: "000000000000000000000000000000000000000000000001",
+			holder:     "invalid",
+			wantError:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MPToken(tt.issuanceID, tt.holder)
+			if tt.wantError {
+				require.Error(t, err)
+				require.Empty(t, got)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestMPTokenIssuance(t *testing.T) {
+	tests := []struct {
+		name       string
+		issuanceID string
+		want       string
+		wantError  bool
+	}{
+		{
+			name:       "pass - valid issuance ID",
+			issuanceID: "000000000000000000000000000000000000000000000001",
+			want:       "35AE3B1DD171EC091E8FE05D102B7AA5D9A40AA191EBEE00E4536EB677DF7879",
+		},
+		{
+			name:       "fail - wrong length",
+			issuanceID: "0001",
+			wantError:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := MPTokenIssuance(tt.issuanceID)
+			if tt.wantError {
+				require.Error(t, err)
+				require.Empty(t, got)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
