@@ -15,10 +15,9 @@ import (
 type MPTokenIssuanceAuthorizeTest struct {
 	Name                  string
 	MPTokenIssuanceCreate *transaction.MPTokenIssuanceCreate
-	ExpectedError         string
 }
 
-func mptTokenIssuanceAuthorizeTest(t *testing.T, client integration.Client) {
+func testIntegrationMptTokenIssuanceAuthorize(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 2,
 	})
@@ -30,7 +29,7 @@ func mptTokenIssuanceAuthorizeTest(t *testing.T, client integration.Client) {
 	sender := runner.GetWallet(0)
 	receiver := runner.GetWallet(1)
 
-	encodedMetadata, err := mtpIntegrationTtestMetadata()
+	encodedMetadata, err := testIntegrationMptTokenCreationMetadata()
 	require.NoError(t, err)
 	assetScale := uint8(2)
 	maxAmount := types.XRPCurrencyAmount(1)
@@ -54,11 +53,6 @@ func mptTokenIssuanceAuthorizeTest(t *testing.T, client integration.Client) {
 			tc.MPTokenIssuanceCreate.SetMPTRequireAuthFlag()
 			flatTx := tc.MPTokenIssuanceCreate.Flatten()
 			_, err := runner.TestTransaction(&flatTx, sender, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-				return
-			}
 			require.NoError(t, err)
 
 			accountObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
@@ -122,7 +116,7 @@ func mptTokenIssuanceAuthorizeTest(t *testing.T, client integration.Client) {
 func TestIntegrationMPTokenIssuanceAuthorize_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	mptTokenIssuanceAuthorizeTest(t, client)
+	testIntegrationMptTokenIssuanceAuthorize(t, client)
 }
 
 func TestIntegrationMPTokenIssuanceAuthorize_RPCClient(t *testing.T) {
@@ -130,5 +124,5 @@ func TestIntegrationMPTokenIssuanceAuthorize_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	mptTokenIssuanceAuthorizeTest(t, client)
+	testIntegrationMptTokenIssuanceAuthorize(t, client)
 }

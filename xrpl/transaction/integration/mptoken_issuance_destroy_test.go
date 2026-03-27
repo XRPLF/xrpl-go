@@ -15,10 +15,9 @@ import (
 type MPTokenIssuanceDestroyTest struct {
 	Name                  string
 	MPTokenIssuanceCreate *transaction.MPTokenIssuanceCreate
-	ExpectedError         string
 }
 
-func mptIssuanceDestroyTest(t *testing.T, client integration.Client) {
+func testIntegrationMptTokenIssuanceDestroy(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 1,
 	})
@@ -28,7 +27,7 @@ func mptIssuanceDestroyTest(t *testing.T, client integration.Client) {
 	defer runner.Teardown()
 
 	sender := runner.GetWallet(0)
-	encodedMetadata, err := mtpIntegrationTtestMetadata()
+	encodedMetadata, err := testIntegrationMptTokenCreationMetadata()
 	require.NoError(t, err)
 	assetScale := uint8(2)
 	maxAmount := types.XRPCurrencyAmount(1)
@@ -48,14 +47,10 @@ func mptIssuanceDestroyTest(t *testing.T, client integration.Client) {
 	}
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.MPTokenIssuanceCreate.Flatten()
-			_, err := runner.TestTransaction(&flatTx, sender, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-				return
-			}
+			flatCreateTx := tc.MPTokenIssuanceCreate.Flatten()
+			_, err := runner.TestTransaction(&flatCreateTx, sender, "tesSUCCESS", nil)
 			require.NoError(t, err)
+
 			accountObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: sender.GetAddress(),
 				Type:    account.MPTIssuance,
@@ -86,7 +81,7 @@ func mptIssuanceDestroyTest(t *testing.T, client integration.Client) {
 func TestIntegrationMPTokenIssuanceDestroy_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	mptIssuanceDestroyTest(t, client)
+	testIntegrationMptTokenIssuanceDestroy(t, client)
 }
 
 func TestIntegrationMPTokenIssuanceDestroy_RPCClient(t *testing.T) {
@@ -94,5 +89,5 @@ func TestIntegrationMPTokenIssuanceDestroy_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	mptIssuanceDestroyTest(t, client)
+	testIntegrationMptTokenIssuanceDestroy(t, client)
 }

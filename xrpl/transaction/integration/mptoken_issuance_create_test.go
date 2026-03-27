@@ -15,10 +15,9 @@ import (
 type MPTokenIssuanceCreateTest struct {
 	Name                  string
 	MPTokenIssuanceCreate *transaction.MPTokenIssuanceCreate
-	ExpectedError         string
 }
 
-func mtpIntegrationTtestMetadata() (string, error) {
+func testIntegrationMptTokenCreationMetadata() (string, error) {
 	assetSubclass := "treasury"
 	desc := "A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."
 	metadata := types.ParsedMPTokenMetadata{
@@ -53,7 +52,7 @@ func mtpIntegrationTtestMetadata() (string, error) {
 	return types.EncodeMPTokenMetadata(metadata)
 }
 
-func mtpIntegrationTestCreate(t *testing.T, client integration.Client) {
+func testIntegrationMptTokenCreate(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 1,
 	})
@@ -63,7 +62,7 @@ func mtpIntegrationTestCreate(t *testing.T, client integration.Client) {
 	defer runner.Teardown()
 
 	sender := runner.GetWallet(0)
-	encodedMetadata, err := mtpIntegrationTtestMetadata()
+	encodedMetadata, err := testIntegrationMptTokenCreationMetadata()
 	require.NoError(t, err)
 	assetScale := uint8(2)
 	maxAmount := types.XRPCurrencyAmount(1)
@@ -85,11 +84,6 @@ func mtpIntegrationTestCreate(t *testing.T, client integration.Client) {
 		t.Run(tc.Name, func(t *testing.T) {
 			flatTx := tc.MPTokenIssuanceCreate.Flatten()
 			_, err := runner.TestTransaction(&flatTx, sender, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-				return
-			}
 			require.NoError(t, err)
 
 			accountObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
@@ -105,7 +99,7 @@ func mtpIntegrationTestCreate(t *testing.T, client integration.Client) {
 func TestIntegrationMPTokenIssuanceCreate_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	mtpIntegrationTestCreate(t, client)
+	testIntegrationMptTokenCreate(t, client)
 }
 
 func TestIntegrationMPTokenIssuanceCreate_RPCClient(t *testing.T) {
@@ -113,5 +107,5 @@ func TestIntegrationMPTokenIssuanceCreate_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	mtpIntegrationTestCreate(t, client)
+	testIntegrationMptTokenCreate(t, client)
 }
