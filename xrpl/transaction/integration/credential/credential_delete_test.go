@@ -18,10 +18,9 @@ type CredentialDeleteTest struct {
 	CredentialCreate *transaction.CredentialCreate
 	CredentialAccept *transaction.CredentialAccept
 	CredentialDelete *transaction.CredentialDelete
-	ExpectedError    string
 }
 
-func credentialDeleteTest(t *testing.T, client integration.Client) {
+func testIntegrationCredentialDelete(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 2,
 	})
@@ -61,14 +60,10 @@ func credentialDeleteTest(t *testing.T, client integration.Client) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.CredentialCreate.Flatten()
-			_, err := runner.TestTransaction(&flatTx, issuer, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-				return
-			}
+			flatCreateTx := tc.CredentialCreate.Flatten()
+			_, err := runner.TestTransaction(&flatCreateTx, issuer, "tesSUCCESS", nil)
 			require.NoError(t, err)
+
 			accountObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: subject.GetAddress(),
 				Type:    account.CredentialObject,
@@ -88,12 +83,8 @@ func credentialDeleteTest(t *testing.T, client integration.Client) {
 
 			credentialDeleteTx := tc.CredentialDelete.Flatten()
 			_, err = runner.TestTransaction(&credentialDeleteTx, subject, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-				return
-			}
 			require.NoError(t, err)
+
 			subjectObjectsFinal, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: subject.GetAddress(),
 				Type:    account.CredentialObject,
@@ -113,7 +104,7 @@ func credentialDeleteTest(t *testing.T, client integration.Client) {
 func TestIntegrationCredentialDelete_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	credentialDeleteTest(t, client)
+	testIntegrationCredentialDelete(t, client)
 }
 
 func TestIntegrationCredentialDelete_RPCClient(t *testing.T) {
@@ -121,5 +112,5 @@ func TestIntegrationCredentialDelete_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	credentialDeleteTest(t, client)
+	testIntegrationCredentialDelete(t, client)
 }

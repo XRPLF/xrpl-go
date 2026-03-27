@@ -17,10 +17,9 @@ type CredentialAcceptTest struct {
 	Name             string
 	CredentialCreate *transaction.CredentialCreate
 	CredentialAccept *transaction.CredentialAccept
-	ExpectedError    string
 }
 
-func credentialAcceptTest(t *testing.T, client integration.Client) {
+func testIntegrationCredentialAccept(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 2,
 	})
@@ -53,14 +52,10 @@ func credentialAcceptTest(t *testing.T, client integration.Client) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.CredentialCreate.Flatten()
-			_, err := runner.TestTransaction(&flatTx, issuer, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-				return
-			}
+			flatCreateTx := tc.CredentialCreate.Flatten()
+			_, err := runner.TestTransaction(&flatCreateTx, issuer, "tesSUCCESS", nil)
 			require.NoError(t, err)
+
 			accountObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: subject.GetAddress(),
 				Type:    account.CredentialObject,
@@ -84,7 +79,7 @@ func credentialAcceptTest(t *testing.T, client integration.Client) {
 func TestIntegrationCredentialAccept_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	credentialAcceptTest(t, client)
+	testIntegrationCredentialAccept(t, client)
 }
 
 func TestIntegrationCredentialAccept_RPCClient(t *testing.T) {
@@ -92,5 +87,5 @@ func TestIntegrationCredentialAccept_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	credentialAcceptTest(t, client)
+	testIntegrationCredentialAccept(t, client)
 }
