@@ -13,11 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added method `GetAccountObjects` and `GetAccountLines` to testutil `client` interface-
 - Added integration tests for `TrustSet` transaction
-
-## [v0.1.17]
-
-#### xrpl
-
 - Added Dynamic MPT support for `MPTokenIssuanceCreate`:
   - `MutableFlags` field to declare which properties can be mutated after creation.
   - `DomainID` field to associate a permissioned domain (requires `TfMPTRequireAuth` flag).
@@ -55,7 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed integration tests for obsolete transactions `Batch` and `DelegateSet`
 
 ## [v0.1.17]
-
 
 ### Fixed
 
