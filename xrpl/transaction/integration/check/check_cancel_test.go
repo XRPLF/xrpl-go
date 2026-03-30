@@ -13,12 +13,11 @@ import (
 )
 
 type CheckCancelTest struct {
-	Name          string
-	CheckCreate   *transaction.CheckCreate
-	ExpectedError string
+	Name        string
+	CheckCreate *transaction.CheckCreate
 }
 
-func checkCancelTest(t *testing.T, client integration.Client) {
+func integrationTestCheckCancel(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -40,8 +39,8 @@ func checkCancelTest(t *testing.T, client integration.Client) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flat := tc.CheckCreate.Flatten()
-			_, err := runner.TestTransaction(&flat, sender, "tesSUCCESS", nil)
+			flatCheckCreateTx := tc.CheckCreate.Flatten()
+			_, err := runner.TestTransaction(&flatCheckCreateTx, sender, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
@@ -56,8 +55,8 @@ func checkCancelTest(t *testing.T, client integration.Client) {
 				BaseTx:  transaction.BaseTx{Account: sender.GetAddress()},
 				CheckID: types.Hash256(checkID),
 			}
-			flat = checkCancelTx.Flatten()
-			_, err = runner.TestTransaction(&flat, sender, "tesSUCCESS", nil)
+			flatCheckCancelTx := checkCancelTx.Flatten()
+			_, err = runner.TestTransaction(&flatCheckCancelTx, sender, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			objects, err = client.GetAccountObjects(&account.ObjectsRequest{
@@ -73,7 +72,7 @@ func checkCancelTest(t *testing.T, client integration.Client) {
 func TestIntegrationCheckCancel_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	checkCancelTest(t, client)
+	integrationTestCheckCancel(t, client)
 }
 
 func TestIntegrationCheckCancel_RPCClient(t *testing.T) {
@@ -81,5 +80,5 @@ func TestIntegrationCheckCancel_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	checkCancelTest(t, client)
+	integrationTestCheckCancel(t, client)
 }

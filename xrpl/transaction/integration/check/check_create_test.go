@@ -13,12 +13,11 @@ import (
 )
 
 type CheckCreateTest struct {
-	Name          string
-	CheckCreate   *transaction.CheckCreate
-	ExpectedError string
+	Name        string
+	CheckCreate *transaction.CheckCreate
 }
 
-func checkCreateTest(t *testing.T, client integration.Client) {
+func integrationTestCheckCreate(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -40,8 +39,8 @@ func checkCreateTest(t *testing.T, client integration.Client) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flat := tc.CheckCreate.Flatten()
-			_, err := runner.TestTransaction(&flat, sender, "tesSUCCESS", nil)
+			flatCheckCreateTx := tc.CheckCreate.Flatten()
+			_, err := runner.TestTransaction(&flatCheckCreateTx, sender, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
@@ -57,7 +56,7 @@ func checkCreateTest(t *testing.T, client integration.Client) {
 func TestIntegrationCheckCreate_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	checkCreateTest(t, client)
+	integrationTestCheckCreate(t, client)
 }
 
 func TestIntegrationCheckCreate_RPCClient(t *testing.T) {
@@ -65,5 +64,5 @@ func TestIntegrationCheckCreate_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	checkCreateTest(t, client)
+	integrationTestCheckCreate(t, client)
 }
