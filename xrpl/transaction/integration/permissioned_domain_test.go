@@ -16,10 +16,9 @@ import (
 type PermissionedDomainTest struct {
 	Name                  string
 	PermissionedDomainSet *transaction.PermissionedDomainSet
-	ExpectedError         string
 }
 
-func permissionedDomainTest(t *testing.T, client integration.Client) {
+func integrationTestPermissionedDomain(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -46,8 +45,8 @@ func permissionedDomainTest(t *testing.T, client integration.Client) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flat := tc.PermissionedDomainSet.Flatten()
-			_, err = runner.TestTransaction(&flat, owner, "tesSUCCESS", nil)
+			flatPermissionedDomainSetTx := tc.PermissionedDomainSet.Flatten()
+			_, err = runner.TestTransaction(&flatPermissionedDomainSetTx, owner, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
@@ -62,8 +61,8 @@ func permissionedDomainTest(t *testing.T, client integration.Client) {
 				BaseTx:   transaction.BaseTx{Account: owner.GetAddress()},
 				DomainID: domainID,
 			}
-			flat = pdDeleteTx.Flatten()
-			_, err = runner.TestTransaction(&flat, owner, "tesSUCCESS", nil)
+			flatPermissionedDomainDeleteTx := pdDeleteTx.Flatten()
+			_, err = runner.TestTransaction(&flatPermissionedDomainDeleteTx, owner, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			objects, err = client.GetAccountObjects(&account.ObjectsRequest{
@@ -78,7 +77,7 @@ func permissionedDomainTest(t *testing.T, client integration.Client) {
 func TestIntegrationPermissionedDomain_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	permissionedDomainTest(t, client)
+	integrationTestPermissionedDomain(t, client)
 }
 
 func TestIntegrationPermissionedDomain_RPCClient(t *testing.T) {
@@ -86,5 +85,5 @@ func TestIntegrationPermissionedDomain_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	permissionedDomainTest(t, client)
+	integrationTestPermissionedDomain(t, client)
 }
