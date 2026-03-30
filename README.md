@@ -10,7 +10,7 @@ complex elements of the XRP Ledger. A full library of models for all transaction
 
 ## Requirements
 
-Requiring Go version `1.22.0` and later.
+Requiring Go version `1.24.3` and later.
 [Download latest Go version](https://go.dev/dl/)
 
 ## Packages
@@ -21,6 +21,8 @@ Requiring Go version `1.22.0` and later.
 | binarycodec | Implements binary serialization and deserialization of XRP Ledger objects |
 | keypairs | Handles generation and management of cryptographic key pairs for XRP Ledger accounts |
 | xrpl | Core package containing the main functionality for interacting with the XRP Ledger |
+| confidential | Provides cryptographic primitives for confidential MPT operations (commitments, proofs, ElGamal encryption) |
+| pkg | Internal utility packages (crypto, big-decimal, hexutil, type checking) |
 | examples | Contains example code demonstrating usage of the xrpl-go library |
 
 ## Quickstart
@@ -31,7 +33,7 @@ This guide covers everything you need to start contributing to XRPL-GO.
 
 To work on this project, you'll need:
 
-- **Go compiler** version `1.22.0` or later ([download](https://go.dev/doc/install) or use [gvm](https://github.com/moovweb/gvm))
+- **Go compiler** version `1.24.3` or later ([download](https://go.dev/doc/install) or use [gvm](https://github.com/moovweb/gvm))
 - **golangci-lint** (see `GOLANGCI_LINT_VERSION` in `Makefile`)
 - **make** command-line tool
 - **Docker** (for running CI/CD workflows locally)
