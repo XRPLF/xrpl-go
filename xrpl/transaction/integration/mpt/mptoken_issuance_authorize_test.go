@@ -1,4 +1,4 @@
-package integration
+package mpt
 
 import (
 	"testing"
@@ -51,8 +51,8 @@ func testIntegrationMptTokenIssuanceAuthorize(t *testing.T, client integration.C
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
 			tc.MPTokenIssuanceCreate.SetMPTRequireAuthFlag()
-			flatTx := tc.MPTokenIssuanceCreate.Flatten()
-			_, err := runner.TestTransaction(&flatTx, sender, "tesSUCCESS", nil)
+			flatIssuanceCreateTx := tc.MPTokenIssuanceCreate.Flatten()
+			_, err := runner.TestTransaction(&flatIssuanceCreateTx, sender, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			accountObjects, err := client.GetAccountObjects(&account.ObjectsRequest{

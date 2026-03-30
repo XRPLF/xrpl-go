@@ -1,4 +1,4 @@
-package integration
+package mpt
 
 import (
 	"testing"
@@ -12,47 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type MPTokenIssuanceCreateTest struct {
+type MPTokenIssuanceDestroyTest struct {
 	Name                  string
 	MPTokenIssuanceCreate *transaction.MPTokenIssuanceCreate
 }
 
-func testIntegrationMptTokenCreationMetadata() (string, error) {
-	assetSubclass := "treasury"
-	desc := "A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."
-	metadata := types.ParsedMPTokenMetadata{
-		Ticker:        "TBILL",
-		Name:          "T-Bill Yield Token",
-		Desc:          &desc,
-		Icon:          "example.org/tbill-icon.png",
-		AssetClass:    "rwa",
-		AssetSubclass: &assetSubclass,
-		IssuerName:    "Example Yield Co.",
-		URIs: []types.ParsedMPTokenMetadataURI{
-			{
-				URI:      "exampleyield.co/tbill",
-				Category: "website",
-				Title:    "Product Page",
-			},
-			{
-				URI:      "exampleyield.co/docs",
-				Category: "docs",
-				Title:    "Yield Token Docs",
-			},
-		},
-		AdditionalInfo: map[string]any{
-			"interest_rate": "5.00%",
-			"interest_type": "variable",
-			"yield_source":  "U.S. Treasury Bills",
-			"maturity_date": "2045-06-30",
-			"cusip":         "912796RX0",
-		},
-	}
-
-	return types.EncodeMPTokenMetadata(metadata)
-}
-
-func testIntegrationMptTokenCreate(t *testing.T, client integration.Client) {
+func testIntegrationMptTokenIssuanceDestroy(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 1,
 	})
@@ -67,7 +32,7 @@ func testIntegrationMptTokenCreate(t *testing.T, client integration.Client) {
 	assetScale := uint8(2)
 	maxAmount := types.XRPCurrencyAmount(1)
 
-	tt := []MPTokenIssuanceCreateTest{
+	tt := []MPTokenIssuanceDestroyTest{
 		{
 			Name: "pass - base",
 			MPTokenIssuanceCreate: &transaction.MPTokenIssuanceCreate{
@@ -82,8 +47,8 @@ func testIntegrationMptTokenCreate(t *testing.T, client integration.Client) {
 	}
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.MPTokenIssuanceCreate.Flatten()
-			_, err := runner.TestTransaction(&flatTx, sender, "tesSUCCESS", nil)
+			flatIssuanceCreateTx := tc.MPTokenIssuanceCreate.Flatten()
+			_, err := runner.TestTransaction(&flatIssuanceCreateTx, sender, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			accountObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
@@ -92,20 +57,37 @@ func testIntegrationMptTokenCreate(t *testing.T, client integration.Client) {
 			})
 			require.NoError(t, err)
 			require.Len(t, accountObjects.AccountObjects, 1)
+
+			issuanceTokenID := accountObjects.AccountObjects[0]["mpt_issuance_id"].(string)
+			deleteTx := transaction.MPTokenIssuanceDestroy{
+				BaseTx: transaction.BaseTx{
+					Account: sender.GetAddress(),
+				},
+				MPTokenIssuanceID: issuanceTokenID,
+			}
+			flatIssuanceDeleteTx := deleteTx.Flatten()
+			_, err = runner.TestTransaction(&flatIssuanceDeleteTx, sender, "tesSUCCESS", nil)
+			require.NoError(t, err)
+			accountObjectsFinal, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: sender.GetAddress(),
+				Type:    account.MPTIssuance,
+			})
+			require.NoError(t, err)
+			require.Empty(t, accountObjectsFinal.AccountObjects)
 		})
 	}
 }
 
-func TestIntegrationMPTokenIssuanceCreate_Websocket(t *testing.T) {
+func TestIntegrationMPTokenIssuanceDestroy_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	testIntegrationMptTokenCreate(t, client)
+	testIntegrationMptTokenIssuanceDestroy(t, client)
 }
 
-func TestIntegrationMPTokenIssuanceCreate_RPCClient(t *testing.T) {
+func TestIntegrationMPTokenIssuanceDestroy_RPCClient(t *testing.T) {
 	env := integration.GetRPCEnv(t)
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	testIntegrationMptTokenCreate(t, client)
+	testIntegrationMptTokenIssuanceDestroy(t, client)
 }

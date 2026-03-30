@@ -1,4 +1,4 @@
-package integration
+package mpt
 
 import (
 	"testing"
@@ -12,12 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type MPTokenIssuanceDestroyTest struct {
+type MPTokenIssuanceSetTest struct {
 	Name                  string
 	MPTokenIssuanceCreate *transaction.MPTokenIssuanceCreate
 }
 
-func testIntegrationMptTokenIssuanceDestroy(t *testing.T, client integration.Client) {
+func testIntegrationMptTokenIssuanceSet(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 1,
 	})
@@ -27,12 +27,13 @@ func testIntegrationMptTokenIssuanceDestroy(t *testing.T, client integration.Cli
 	defer runner.Teardown()
 
 	sender := runner.GetWallet(0)
+
 	encodedMetadata, err := testIntegrationMptTokenCreationMetadata()
 	require.NoError(t, err)
 	assetScale := uint8(2)
 	maxAmount := types.XRPCurrencyAmount(1)
 
-	tt := []MPTokenIssuanceDestroyTest{
+	tt := []MPTokenIssuanceSetTest{
 		{
 			Name: "pass - base",
 			MPTokenIssuanceCreate: &transaction.MPTokenIssuanceCreate{
@@ -47,6 +48,7 @@ func testIntegrationMptTokenIssuanceDestroy(t *testing.T, client integration.Cli
 	}
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
+			tc.MPTokenIssuanceCreate.SetMPTCanLockFlag()
 			flatCreateTx := tc.MPTokenIssuanceCreate.Flatten()
 			_, err := runner.TestTransaction(&flatCreateTx, sender, "tesSUCCESS", nil)
 			require.NoError(t, err)
@@ -59,35 +61,30 @@ func testIntegrationMptTokenIssuanceDestroy(t *testing.T, client integration.Cli
 			require.Len(t, accountObjects.AccountObjects, 1)
 
 			issuanceTokenID := accountObjects.AccountObjects[0]["mpt_issuance_id"].(string)
-			deleteTx := transaction.MPTokenIssuanceDestroy{
+			setTx := transaction.MPTokenIssuanceSet{
 				BaseTx: transaction.BaseTx{
 					Account: sender.GetAddress(),
 				},
 				MPTokenIssuanceID: issuanceTokenID,
 			}
-			flattenedDeleteTx := deleteTx.Flatten()
-			_, err = runner.TestTransaction(&flattenedDeleteTx, sender, "tesSUCCESS", nil)
+			setTx.SetMPTLockFlag()
+			flatSetTx := setTx.Flatten()
+			_, err = runner.TestTransaction(&flatSetTx, sender, "tesSUCCESS", nil)
 			require.NoError(t, err)
-			accountObjectsFinal, err := client.GetAccountObjects(&account.ObjectsRequest{
-				Account: sender.GetAddress(),
-				Type:    account.MPTIssuance,
-			})
-			require.NoError(t, err)
-			require.Empty(t, accountObjectsFinal.AccountObjects)
 		})
 	}
 }
 
-func TestIntegrationMPTokenIssuanceDestroy_Websocket(t *testing.T) {
+func TestIntegrationMPTokenIssuanceSet_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	testIntegrationMptTokenIssuanceDestroy(t, client)
+	testIntegrationMptTokenIssuanceSet(t, client)
 }
 
-func TestIntegrationMPTokenIssuanceDestroy_RPCClient(t *testing.T) {
+func TestIntegrationMPTokenIssuanceSet_RPCClient(t *testing.T) {
 	env := integration.GetRPCEnv(t)
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	testIntegrationMptTokenIssuanceDestroy(t, client)
+	testIntegrationMptTokenIssuanceSet(t, client)
 }
