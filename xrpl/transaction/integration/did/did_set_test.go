@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type DidSetTest struct {
+type DIDSetTest struct {
 	Name   string
 	DIDSet *transaction.DIDSet
 }
@@ -23,7 +23,7 @@ func integrationTestDIDSet(t *testing.T, client integration.Client) {
 	defer runner.Teardown()
 
 	wallet := runner.GetWallet(0)
-	tt := []DidSetTest{
+	tt := []DIDSetTest{
 		{
 			Name: "pass - base",
 			DIDSet: &transaction.DIDSet{
@@ -43,7 +43,7 @@ func integrationTestDIDSet(t *testing.T, client integration.Client) {
 
 			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: wallet.GetAddress(),
-				Type:    account.DID,
+				Type:    account.DIDObject,
 			})
 			require.NoError(t, err)
 			require.Len(t, objects.AccountObjects, 1, "should be exactly one DID on the ledger after DIDSet")
