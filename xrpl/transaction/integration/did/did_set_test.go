@@ -12,12 +12,11 @@ import (
 )
 
 type DidSetTest struct {
-	Name          string
-	DIDSet        *transaction.DIDSet
-	ExpectedError string
+	Name   string
+	DIDSet *transaction.DIDSet
 }
 
-func didSetTest(t *testing.T, client integration.Client) {
+func integrationTestDIDSet(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -38,8 +37,8 @@ func didSetTest(t *testing.T, client integration.Client) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flat := tc.DIDSet.Flatten()
-			_, err := runner.TestTransaction(&flat, wallet, "tesSUCCESS", nil)
+			flatDIDSetTx := tc.DIDSet.Flatten()
+			_, err := runner.TestTransaction(&flatDIDSetTx, wallet, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
@@ -55,7 +54,7 @@ func didSetTest(t *testing.T, client integration.Client) {
 func TestIntegrationDIDSet_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	didSetTest(t, client)
+	integrationTestDIDSet(t, client)
 }
 
 func TestIntegrationDIDSet_RPCClient(t *testing.T) {
@@ -63,5 +62,5 @@ func TestIntegrationDIDSet_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	didSetTest(t, client)
+	integrationTestDIDSet(t, client)
 }

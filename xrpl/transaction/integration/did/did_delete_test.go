@@ -12,12 +12,11 @@ import (
 )
 
 type DIDDeleteTest struct {
-	Name          string
-	DIDSet        *transaction.DIDSet
-	ExpectedError string
+	Name   string
+	DIDSet *transaction.DIDSet
 }
 
-func didDeleteTest(t *testing.T, client integration.Client) {
+func integrationTestDIDDelete(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -39,8 +38,8 @@ func didDeleteTest(t *testing.T, client integration.Client) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flat := tc.DIDSet.Flatten()
-			_, err := runner.TestTransaction(&flat, wallet, "tesSUCCESS", nil)
+			flatDIDSet := tc.DIDSet.Flatten()
+			_, err := runner.TestTransaction(&flatDIDSet, wallet, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
@@ -53,8 +52,8 @@ func didDeleteTest(t *testing.T, client integration.Client) {
 			didDeleteTx := &transaction.DIDDelete{
 				BaseTx: transaction.BaseTx{Account: wallet.GetAddress()},
 			}
-			flat = didDeleteTx.Flatten()
-			_, err = runner.TestTransaction(&flat, wallet, "tesSUCCESS", nil)
+			flatDIDDeleteTx := didDeleteTx.Flatten()
+			_, err = runner.TestTransaction(&flatDIDDeleteTx, wallet, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			objects, err = client.GetAccountObjects(&account.ObjectsRequest{
@@ -70,7 +69,7 @@ func didDeleteTest(t *testing.T, client integration.Client) {
 func TestIntegrationDIDDelete_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	didDeleteTest(t, client)
+	integrationTestDIDDelete(t, client)
 }
 
 func TestIntegrationDIDDelete_RPCClient(t *testing.T) {
@@ -78,5 +77,5 @@ func TestIntegrationDIDDelete_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	didDeleteTest(t, client)
+	integrationTestDIDDelete(t, client)
 }
