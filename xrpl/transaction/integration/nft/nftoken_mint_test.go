@@ -12,8 +12,8 @@ import (
 )
 
 type NFTokenMintTest struct {
-	Name          string
-	NFTokenMint   *transaction.NFTokenMint
+	Name        string
+	NFTokenMint *transaction.NFTokenMint
 }
 
 func integrationTestNFTokenMint(t *testing.T, client integration.Client) {
