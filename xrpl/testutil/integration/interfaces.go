@@ -24,6 +24,7 @@ type Client interface {
 	SubmitMultisigned(blob string, validate bool) (*transactions.SubmitMultisignedResponse, error)
 	GetAccountObjects(req *account.ObjectsRequest) (*account.ObjectsResponse, error)
 	GetAccountLines(req *account.LinesRequest) (*account.LinesResponse, error)
+	GetAccountOffers(req *account.OffersRequest) (*account.OffersResponse, error)
 }
 
 // Connectable defines methods to connect and disconnect the integration client.
