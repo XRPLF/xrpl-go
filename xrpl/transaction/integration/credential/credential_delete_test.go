@@ -71,8 +71,8 @@ func testIntegrationCredentialDelete(t *testing.T, client integration.Client) {
 			require.NoError(t, err)
 			require.Len(t, accountObjects.AccountObjects, 1)
 
-			credentialAcceptTx := tc.CredentialAccept.Flatten()
-			_, err = runner.TestTransaction(&credentialAcceptTx, subject, "tesSUCCESS", nil)
+			flatCredentialAcceptTx := tc.CredentialAccept.Flatten()
+			_, err = runner.TestTransaction(&flatCredentialAcceptTx, subject, "tesSUCCESS", nil)
 			require.NoError(t, err)
 			accountObjects, err = client.GetAccountObjects(&account.ObjectsRequest{
 				Account: subject.GetAddress(),
@@ -81,8 +81,8 @@ func testIntegrationCredentialDelete(t *testing.T, client integration.Client) {
 			require.NoError(t, err)
 			require.Len(t, accountObjects.AccountObjects, 1)
 
-			credentialDeleteTx := tc.CredentialDelete.Flatten()
-			_, err = runner.TestTransaction(&credentialDeleteTx, subject, "tesSUCCESS", nil)
+			flatCredentialDeleteTx := tc.CredentialDelete.Flatten()
+			_, err = runner.TestTransaction(&flatCredentialDeleteTx, subject, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			subjectObjectsFinal, err := client.GetAccountObjects(&account.ObjectsRequest{
