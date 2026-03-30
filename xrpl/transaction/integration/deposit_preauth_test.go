@@ -15,10 +15,9 @@ import (
 type DepositPreauthTest struct {
 	Name           string
 	DepositPreauth *transaction.DepositPreauth
-	ExpectedError  string
 }
 
-func depositPreauthBaseTest(t *testing.T, client integration.Client) {
+func testIntegrationDepositPreauthBase(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -39,19 +38,14 @@ func depositPreauthBaseTest(t *testing.T, client integration.Client) {
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flat := tc.DepositPreauth.Flatten()
-			_, err := runner.TestTransaction(&flat, account0, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-			} else {
-				require.NoError(t, err)
-			}
+			flatDepositPreauthTx := tc.DepositPreauth.Flatten()
+			_, err := runner.TestTransaction(&flatDepositPreauthTx, account0, "tesSUCCESS", nil)
+			require.NoError(t, err)
 		})
 	}
 }
 
-func depositPreauthAuthorizeCredentialTest(t *testing.T, client integration.Client) {
+func testIntegrationDepositPreauthAuthCredential(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -67,8 +61,8 @@ func depositPreauthAuthorizeCredentialTest(t *testing.T, client integration.Clie
 			Subject:        subject.GetAddress(),
 			CredentialType: credType,
 		}
-		flat := credCreateTx.Flatten()
-		_, err = runner.TestTransaction(&flat, issuer, "tesSUCCESS", nil)
+		flatCredentialCreateTx := credCreateTx.Flatten()
+		_, err = runner.TestTransaction(&flatCredentialCreateTx, issuer, "tesSUCCESS", nil)
 		require.NoError(t, err)
 
 		credAcceptTx := &transaction.CredentialAccept{
@@ -76,8 +70,8 @@ func depositPreauthAuthorizeCredentialTest(t *testing.T, client integration.Clie
 			Issuer:         issuer.GetAddress(),
 			CredentialType: credType,
 		}
-		flat = credAcceptTx.Flatten()
-		_, err = runner.TestTransaction(&flat, subject, "tesSUCCESS", nil)
+		flatCredentialAcceptTx := credAcceptTx.Flatten()
+		_, err = runner.TestTransaction(&flatCredentialAcceptTx, subject, "tesSUCCESS", nil)
 		require.NoError(t, err)
 
 		depositPreauthTx := &transaction.DepositPreauth{
@@ -91,13 +85,13 @@ func depositPreauthAuthorizeCredentialTest(t *testing.T, client integration.Clie
 				},
 			},
 		}
-		flat = depositPreauthTx.Flatten()
-		_, err = runner.TestTransaction(&flat, issuer, "tesSUCCESS", nil)
+		flatDepositPreauthTx := depositPreauthTx.Flatten()
+		_, err = runner.TestTransaction(&flatDepositPreauthTx, issuer, "tesSUCCESS", nil)
 		require.NoError(t, err)
 	})
 }
 
-func depositPreauthUnauthorizeCredentialTest(t *testing.T, client integration.Client) {
+func testIntegrationDepositPreauthUnauthCredential(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -114,8 +108,8 @@ func depositPreauthUnauthorizeCredentialTest(t *testing.T, client integration.Cl
 			Subject:        subject.GetAddress(),
 			CredentialType: credType,
 		}
-		flat := credCreateTx.Flatten()
-		_, err = runner.TestTransaction(&flat, issuer, "tesSUCCESS", nil)
+		flatCredentialCreateTx := credCreateTx.Flatten()
+		_, err = runner.TestTransaction(&flatCredentialCreateTx, issuer, "tesSUCCESS", nil)
 		require.NoError(t, err)
 
 		credAcceptTx := &transaction.CredentialAccept{
@@ -123,8 +117,8 @@ func depositPreauthUnauthorizeCredentialTest(t *testing.T, client integration.Cl
 			Issuer:         issuer.GetAddress(),
 			CredentialType: credType,
 		}
-		flat = credAcceptTx.Flatten()
-		_, err = runner.TestTransaction(&flat, subject, "tesSUCCESS", nil)
+		flatCredentialAcceptTx := credAcceptTx.Flatten()
+		_, err = runner.TestTransaction(&flatCredentialAcceptTx, subject, "tesSUCCESS", nil)
 		require.NoError(t, err)
 
 		authorizeCredential := types.AuthorizeCredentialsWrapper{
@@ -138,16 +132,16 @@ func depositPreauthUnauthorizeCredentialTest(t *testing.T, client integration.Cl
 			BaseTx:               transaction.BaseTx{Account: issuer.GetAddress()},
 			AuthorizeCredentials: []types.AuthorizeCredentialsWrapper{authorizeCredential},
 		}
-		flat = authTx.Flatten()
-		_, err = runner.TestTransaction(&flat, issuer, "tesSUCCESS", nil)
+		flatAuthTx := authTx.Flatten()
+		_, err = runner.TestTransaction(&flatAuthTx, issuer, "tesSUCCESS", nil)
 		require.NoError(t, err)
 
 		unauthTx := &transaction.DepositPreauth{
 			BaseTx:                 transaction.BaseTx{Account: issuer.GetAddress()},
 			UnauthorizeCredentials: []types.AuthorizeCredentialsWrapper{authorizeCredential},
 		}
-		flat = unauthTx.Flatten()
-		_, err = runner.TestTransaction(&flat, issuer, "tesSUCCESS", nil)
+		flatUnauthTx := unauthTx.Flatten()
+		_, err = runner.TestTransaction(&flatUnauthTx, issuer, "tesSUCCESS", nil)
 		require.NoError(t, err)
 	})
 }
@@ -155,9 +149,9 @@ func depositPreauthUnauthorizeCredentialTest(t *testing.T, client integration.Cl
 func TestIntegrationDepositPreauth_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	depositPreauthBaseTest(t, client)
-	depositPreauthAuthorizeCredentialTest(t, client)
-	depositPreauthUnauthorizeCredentialTest(t, client)
+	testIntegrationDepositPreauthBase(t, client)
+	testIntegrationDepositPreauthAuthCredential(t, client)
+	testIntegrationDepositPreauthUnauthCredential(t, client)
 }
 
 func TestIntegrationDepositPreauth_RPCClient(t *testing.T) {
@@ -165,7 +159,7 @@ func TestIntegrationDepositPreauth_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	depositPreauthBaseTest(t, client)
-	depositPreauthAuthorizeCredentialTest(t, client)
-	depositPreauthUnauthorizeCredentialTest(t, client)
+	testIntegrationDepositPreauthBase(t, client)
+	testIntegrationDepositPreauthAuthCredential(t, client)
+	testIntegrationDepositPreauthUnauthCredential(t, client)
 }
