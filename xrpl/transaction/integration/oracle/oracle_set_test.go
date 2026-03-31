@@ -28,7 +28,7 @@ func integrationTestOracleSet(t *testing.T, client integration.Client) {
 		oracleSetTx := &transaction.OracleSet{
 			BaseTx:           transaction.BaseTx{Account: owner.GetAddress()},
 			OracleDocumentID: 1234,
-			LastUpdatedTime:  uint32(time.RippleTimeToUnixTime(int64(closeTime))/1000) + 20,
+			LastUpdateTime:   uint32(time.RippleTimeToUnixTime(int64(closeTime))/1000) + 20,
 			PriceDataSeries: []ledger.PriceDataWrapper{
 				{
 					PriceData: ledger.PriceData{
@@ -64,7 +64,7 @@ func integrationTestOracleSet(t *testing.T, client integration.Client) {
 		require.Len(t, objects.AccountObjects, 1, "there should be exactly one oracle on the ledger")
 
 		oracle := objects.AccountObjects[0]
-		require.Equal(t, oracleSetTx.LastUpdatedTime, txFieldUint32(t, oracle, "LastUpdateTime"))
+		require.Equal(t, oracleSetTx.LastUpdateTime, txFieldUint32(t, oracle, "LastUpdateTime"))
 		require.Equal(t, string(owner.GetAddress()), oracle["Owner"].(string))
 		require.Equal(t, strings.ToLower(oracleSetTx.AssetClass), strings.ToLower(oracle["AssetClass"].(string)))
 		require.Equal(t, strings.ToLower(oracleSetTx.Provider), strings.ToLower(oracle["Provider"].(string)))
