@@ -18,6 +18,7 @@ const (
 	EscrowObject         ObjectType = "escrow"
 	NFTOfferObject       ObjectType = "nft_offer"
 	OfferObject          ObjectType = "offer"
+	OracleObject         ObjectType = "oracle"
 	PaymentChannelObject ObjectType = "payment_channel"
 	SignerListObject     ObjectType = "signer_list"
 	StateObject          ObjectType = "state"

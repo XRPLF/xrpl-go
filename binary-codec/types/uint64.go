@@ -68,6 +68,10 @@ func (u *UInt64) FromJSON(value any) ([]byte, error) {
 		return nil, err
 	}
 
+	if len(strValue) > 16 {
+		return nil, ErrUInt64OutOfRange
+	}
+
 	// Right justify the string to 16 hex characters (8 bytes)
 	strValue = strings.Repeat("0", 16-len(strValue)) + strValue
 	decoded, err := hex.DecodeString(strValue)
