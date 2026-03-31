@@ -1,0 +1,150 @@
+name: Build mpt-crypto
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "mpt-crypto version (leave empty for latest)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "0 9 * * 1" # Every Monday at 9:00 UTC
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      current: ${{ steps.resolve.outputs.current }}
+      needed: ${{ steps.resolve.outputs.needed }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Conan
+        run: |
+          pip install conan
+          conan profile detect
+          conan remote add --index 0 xrplf https://conan.ripplex.io
+
+      - name: Resolve version and check if update needed
+        id: resolve
+        run: |
+          CURRENT=$(cat confidential/deps/VERSION 2>/dev/null || echo "")
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(conan list 'mpt-crypto/*' -r xrplf 2>/dev/null \
+              | grep 'mpt-crypto/' \
+              | sed 's/.*mpt-crypto\///' \
+              | sort -V \
+              | tail -1)
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$CURRENT" = "$VERSION" ]; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "Already at mpt-crypto/$VERSION — skipping build."
+          elif git ls-remote --exit-code --heads origin "chore/update-mpt-crypto-${VERSION}" >/dev/null 2>&1; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Branch 'chore/update-mpt-crypto-${VERSION}' already exists. Delete it before re-running."
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "Update needed: $CURRENT -> $VERSION"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.needed == 'true'
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-amd64
+          - os: ubuntu-22.04-arm
+            platform: linux-arm64
+          - os: macos-latest
+            platform: darwin-arm64
+          - os: macos-15-intel
+            platform: darwin-amd64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Conan
+        run: |
+          pip install conan
+          conan profile detect
+          conan remote add --index 0 xrplf https://conan.ripplex.io
+
+      - name: Build libraries
+        run: |
+          bash confidential/deps/update.sh \
+            --platform ${{ matrix.platform }} \
+            --force \
+            --version ${{ needs.check.outputs.version }}
+
+      - name: Upload platform artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpt-crypto-${{ matrix.platform }}
+          path: confidential/deps/
+
+  pr:
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts/
+
+      - name: Merge artifacts into repo
+        run: |
+          for dir in artifacts/mpt-crypto-*/; do
+            platform=$(basename "$dir" | sed 's/mpt-crypto-//')
+            # Copy platform libs
+            if [ -d "$dir/libs/$platform" ]; then
+              mkdir -p "confidential/deps/libs/$platform"
+              cp "$dir/libs/$platform/"*.a "confidential/deps/libs/$platform/"
+            fi
+          done
+          # Headers and VERSION are the same across platforms — take from any
+          mkdir -p confidential/deps/include/utility
+          cp artifacts/mpt-crypto-linux-amd64/include/*.h confidential/deps/include/
+          cp artifacts/mpt-crypto-linux-amd64/include/utility/*.h confidential/deps/include/utility/
+          cp artifacts/mpt-crypto-linux-amd64/VERSION confidential/deps/VERSION
+
+      - name: Create PR
+        run: |
+          VERSION="${{ needs.check.outputs.version }}"
+          BRANCH="chore/update-mpt-crypto-${VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -f confidential/deps/
+          git commit -m "chore(confidential): update vendored mpt-crypto to $VERSION"
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+            --base "${{ github.ref_name }}" \
+            --title "Update vendored mpt-crypto to $VERSION" \
+            --body "$(cat <<EOF
+          Automated update of vendored mpt-crypto static libraries.
+
+          **${{ needs.check.outputs.current }} → $VERSION**
+
+          Platforms built:
+          - linux-amd64
+          - linux-arm64
+          - darwin-arm64
+          - darwin-amd64
+          EOF
+          )"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### confidential
+
+- Added `confidential/mptcrypto` package with CGo bindings to the XRPLF `mpt-crypto` C library for XLS-96 Confidential MPT Transfers (ElGamal encryption, ZK proofs, Pedersen commitments).
+  - `GenerateKeypair()` creates a new secp256k1 ElGamal keypair (32-byte private key, 33-byte compressed public key).
+  - Platform-specific static libraries vendored for `linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`.
+  - Graceful `!cgo` build tag fallback returning `ErrCgoRequired`.
+- Added `confidential/deps/update.sh` maintainer script for fetching and vendoring `mpt-crypto` static libraries from the XRPLF Conan remote.
+- Added `update-mpt-crypto` GitHub Actions workflow to automatically check for new `mpt-crypto` releases weekly and open a PR with updated vendored dependencies.
+- Added `test-confidential` and `update-mpt-crypto` Makefile targets.
+
 #### binary-codec
 
 - Added XLS-96 confidential MPT field and transaction type definitions (`ConfidentialMPTSend`, `ConfidentialMPTConvert`, `ConfidentialMPTConvertBack`, `ConfidentialMPTMergeInbox`, `ConfidentialMPTClawback`).
