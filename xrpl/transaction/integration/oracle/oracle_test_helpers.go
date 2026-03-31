@@ -31,7 +31,7 @@ func getLedgerCloseTime(t *testing.T, client integration.Client) uint64 {
 	return uint64(res.Ledger.CloseTime)
 }
 
-func txFieldUint32(t *testing.T, tx map[string]interface{}, field string) uint32 {
+func txFieldUint32(t *testing.T, tx map[string]any, field string) uint32 {
 	t.Helper()
 	switch v := tx[field].(type) {
 	case float64:
@@ -46,7 +46,7 @@ func txFieldUint32(t *testing.T, tx map[string]interface{}, field string) uint32
 	}
 }
 
-func txFieldFloat64(t *testing.T, m map[string]interface{}, field string) float64 {
+func txFieldFloat64(t *testing.T, m map[string]any, field string) float64 {
 	t.Helper()
 	switch v := m[field].(type) {
 	case float64:
