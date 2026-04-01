@@ -57,7 +57,7 @@ func TestConvertProofInvalidInputs(t *testing.T) {
 				_, err := proof.GenerateConvertProof("zz", kp.PrivKeyHex, ctxHash)
 				return err
 			},
-			wantErr: proof.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKey,
 		},
 		{
 			name: "fail - generate bad privkey",
@@ -65,7 +65,7 @@ func TestConvertProofInvalidInputs(t *testing.T) {
 				_, err := proof.GenerateConvertProof(kp.PubKeyHex, "short", ctxHash)
 				return err
 			},
-			wantErr: proof.ErrInvalidPrivKeyLength,
+			wantErr: proof.ErrInvalidPrivKey,
 		},
 		{
 			name: "fail - generate bad ctx hash",
@@ -80,7 +80,7 @@ func TestConvertProofInvalidInputs(t *testing.T) {
 			fn: func() error {
 				return proof.VerifyConvertProof("0102", kp.PubKeyHex, ctxHash)
 			},
-			wantErr: proof.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProof,
 		},
 	}
 

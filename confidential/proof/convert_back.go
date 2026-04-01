@@ -10,14 +10,14 @@ import (
 
 // GenerateConvertBackProof generates a linkage + range proof for a ConfidentialMPTConvertBack transaction.
 // Returns hex-encoded proof string (1766 hex chars = 883 bytes).
-func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, params HexProofParams) (string, error) {
+func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, params Params) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKeyLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKey, err)
 	}
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidPubKeyLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
 	if err != nil {
@@ -46,19 +46,19 @@ func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount u
 func VerifyConvertBackProof(proofHex, pubkeyHex, ciphertextHex, balanceCommitHex string, amount uint64, ctxHashHex string) error {
 	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.ConvertBackProofSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidProofLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidPubKeyLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	ctBytes, err := hexutil.DecodeFixedHex(ciphertextHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 	commitBytes, err := hexutil.DecodeFixedHex(balanceCommitHex, mptcrypto.CommitmentSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCommitmentLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
 	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
 	if err != nil {

@@ -68,7 +68,7 @@ func TestClawbackProofInvalidInputs(t *testing.T) {
 				_, err := proof.GenerateClawbackProof("zz", kp.PubKeyHex, ctxHash, 100, zeroHex(66))
 				return err
 			},
-			wantErr: proof.ErrInvalidPrivKeyLength,
+			wantErr: proof.ErrInvalidPrivKey,
 		},
 		{
 			name: "fail - generate bad ciphertext",
@@ -76,14 +76,14 @@ func TestClawbackProofInvalidInputs(t *testing.T) {
 				_, err := proof.GenerateClawbackProof(kp.PrivKeyHex, kp.PubKeyHex, ctxHash, 100, "bad")
 				return err
 			},
-			wantErr: proof.ErrInvalidCiphertextLength,
+			wantErr: proof.ErrInvalidCiphertext,
 		},
 		{
 			name: "fail - verify bad proof",
 			fn: func() error {
 				return proof.VerifyClawbackProof("0102", 100, kp.PubKeyHex, zeroHex(66), ctxHash)
 			},
-			wantErr: proof.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProof,
 		},
 	}
 

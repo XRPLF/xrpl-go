@@ -30,7 +30,7 @@ func TestGenerateAndVerifyConvertBackProof(t *testing.T) {
 	ctxHash, err := proof.ConvertBackContextHash(testAccount, testIssuanceID, 1, 0)
 	require.NoError(t, err)
 
-	params := proof.HexProofParams{
+	params := proof.Params{
 		CommitmentHex:     balanceCommit,
 		Amount:            balanceAmount,
 		CiphertextHex:     balanceCt,
@@ -54,31 +54,31 @@ func TestConvertBackProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad privkey",
 			fn: func() error {
-				_, err := proof.GenerateConvertBackProof("zz", "02"+zeroHex(32), zeroHex(32), 100, proof.HexProofParams{
+				_, err := proof.GenerateConvertBackProof("zz", "02"+zeroHex(32), zeroHex(32), 100, proof.Params{
 					CommitmentHex:     "02" + zeroHex(32),
 					CiphertextHex:     zeroHex(66),
 					BlindingFactorHex: zeroHex(32),
 				})
 				return err
 			},
-			wantErr: proof.ErrInvalidPrivKeyLength,
+			wantErr: proof.ErrInvalidPrivKey,
 		},
 		{
 			name: "fail - bad pubkey",
 			fn: func() error {
-				_, err := proof.GenerateConvertBackProof(zeroHex(32), "zz", zeroHex(32), 100, proof.HexProofParams{
+				_, err := proof.GenerateConvertBackProof(zeroHex(32), "zz", zeroHex(32), 100, proof.Params{
 					CommitmentHex:     "02" + zeroHex(32),
 					CiphertextHex:     zeroHex(66),
 					BlindingFactorHex: zeroHex(32),
 				})
 				return err
 			},
-			wantErr: proof.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKey,
 		},
 		{
 			name: "fail - bad ctx hash",
 			fn: func() error {
-				_, err := proof.GenerateConvertBackProof(zeroHex(32), "02"+zeroHex(32), "zz", 100, proof.HexProofParams{
+				_, err := proof.GenerateConvertBackProof(zeroHex(32), "02"+zeroHex(32), "zz", 100, proof.Params{
 					CommitmentHex:     "02" + zeroHex(32),
 					CiphertextHex:     zeroHex(66),
 					BlindingFactorHex: zeroHex(32),
@@ -90,21 +90,21 @@ func TestConvertBackProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad commitment in params",
 			fn: func() error {
-				_, err := proof.GenerateConvertBackProof(zeroHex(32), "02"+zeroHex(32), zeroHex(32), 100, proof.HexProofParams{
+				_, err := proof.GenerateConvertBackProof(zeroHex(32), "02"+zeroHex(32), zeroHex(32), 100, proof.Params{
 					CommitmentHex:     "bad",
 					CiphertextHex:     zeroHex(66),
 					BlindingFactorHex: zeroHex(32),
 				})
 				return err
 			},
-			wantErr: proof.ErrInvalidCommitmentLength,
+			wantErr: proof.ErrInvalidCommitment,
 		},
 		{
 			name: "fail - verify bad proof",
 			fn: func() error {
 				return proof.VerifyConvertBackProof("0102", "02"+zeroHex(32), zeroHex(66), "02"+zeroHex(32), 100, zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProof,
 		},
 	}
 

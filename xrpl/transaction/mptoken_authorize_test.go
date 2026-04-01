@@ -74,6 +74,32 @@ func TestMPTokenAuthorize_Validate(t *testing.T) {
 		errMessage error
 	}{
 		{
+			name: "fail - empty MPTokenIssuanceID",
+			tx: &MPTokenAuthorize{
+				BaseTx: BaseTx{
+					Account:         accountHolder,
+					TransactionType: MPTokenAuthorizeTx,
+				},
+				MPTokenIssuanceID: "",
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidMPTokenIssuanceIDAuthorize,
+		},
+		{
+			name: "fail - non-hex MPTokenIssuanceID",
+			tx: &MPTokenAuthorize{
+				BaseTx: BaseTx{
+					Account:         accountHolder,
+					TransactionType: MPTokenAuthorizeTx,
+				},
+				MPTokenIssuanceID: "not-a-hex-value!",
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidMPTokenIssuanceIDAuthorize,
+		},
+		{
 			name: "fail - holder account conflict",
 			tx: &MPTokenAuthorize{
 				BaseTx: BaseTx{

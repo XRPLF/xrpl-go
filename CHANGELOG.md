@@ -95,6 +95,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `MPToken()` and `MPTokenIssuance()` ledger entry hash functions for computing MPToken and MPTokenIssuance keylet indices.
 - Extracted ledger space hex values into package-level constants.
 
+### Changed
+
+#### Makefile
+
+- Changed localnet rippled image to `develop`
+- Exposed RPC port in localnet command
+
 ### Fixed
 
 #### xrpl/transaction
@@ -106,6 +113,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validate `DomainID` is valid hexadecimal in `IsDomainID` check (previously only checked length).
 - Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
 - Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
+- Validate `MPTokenIssuanceID` is valid hexadecimal in `MPTokenIssuanceSet`, `MPTokenIssuanceDestroy`, and `MPTokenAuthorize` (previously only checked non-empty).
+
+### Removed
+
+#### xrpl/transaction
+
+- Removed integration tests for obsolete transactions `Batch` and `DelegateSet`
 
 ## [v0.1.17]
 

@@ -1,13 +1,13 @@
 package proof
 
-// HexParticipant represents a participant with hex-encoded fields.
-type HexParticipant struct {
+// Participant represents a participant with hex-encoded fields.
+type Participant struct {
 	PubKeyHex     string // 66 hex chars (33 bytes)
 	CiphertextHex string // 132 hex chars (66 bytes)
 }
 
-// HexProofParams holds hex-encoded Pedersen linkage proof parameters.
-type HexProofParams struct {
+// Params holds hex-encoded Pedersen linkage proof parameters.
+type Params struct {
 	CommitmentHex     string // 66 hex chars (33 bytes)
 	Amount            uint64
 	CiphertextHex     string // 132 hex chars (66 bytes)

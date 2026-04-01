@@ -13,11 +13,11 @@ import (
 func GenerateClawbackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, ciphertextHex string) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKeyLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKey, err)
 	}
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidPubKeyLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
 	if err != nil {
@@ -25,7 +25,7 @@ func GenerateClawbackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint
 	}
 	ctBytes, err := hexutil.DecodeFixedHex(ciphertextHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 
 	var priv [mptcrypto.PrivKeySize]byte
@@ -48,15 +48,15 @@ func GenerateClawbackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint
 func VerifyClawbackProof(proofHex string, amount uint64, pubkeyHex, ciphertextHex, ctxHashHex string) error {
 	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.EqualityProofSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidProofLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidPubKeyLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	ctBytes, err := hexutil.DecodeFixedHex(ciphertextHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
 	if err != nil {

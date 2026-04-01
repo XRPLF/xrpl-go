@@ -14,11 +14,11 @@ import (
 func GenerateConvertProof(pubkeyHex, privkeyHex, ctxHashHex string) (string, error) {
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidPubKeyLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKeyLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKey, err)
 	}
 	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
 	if err != nil {
@@ -44,11 +44,11 @@ func GenerateConvertProof(pubkeyHex, privkeyHex, ctxHashHex string) (string, err
 func VerifyConvertProof(proofHex, pubkeyHex, ctxHashHex string) error {
 	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.SchnorrProofSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidProofLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidPubKeyLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
 	if err != nil {

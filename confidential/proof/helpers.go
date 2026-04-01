@@ -24,30 +24,33 @@ func decodeIssuanceID(issHex string) ([mptcrypto.IssuanceIDSize]byte, error) {
 	var id [mptcrypto.IssuanceIDSize]byte
 	b, err := hexutil.DecodeFixedHex(issHex, mptcrypto.IssuanceIDSize)
 	if err != nil {
-		return id, fmt.Errorf("%w: %w", ErrInvalidIssuanceIDLength, err)
+		return id, fmt.Errorf("%w: %w", ErrInvalidIssuanceID, err)
 	}
 	copy(id[:], b)
 	return id, nil
 }
 
-// decodeParticipant converts a HexParticipant to a mptcrypto.Participant.
-func decodeParticipant(hp HexParticipant) (mptcrypto.Participant, error) {
+// decodeParticipant converts a Participant to a mptcrypto.Participant.
+func decodeParticipant(hp Participant) (mptcrypto.Participant, error) {
 	var p mptcrypto.Participant
 	pubBytes, err := hexutil.DecodeFixedHex(hp.PubKeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return p, fmt.Errorf("%w: %w", ErrInvalidPubKeyLength, err)
+		return p, fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	ctBytes, err := hexutil.DecodeFixedHex(hp.CiphertextHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 	copy(p.PubKey[:], pubBytes)
 	copy(p.Ciphertext[:], ctBytes)
 	return p, nil
 }
 
-// decodeParticipants converts a slice of HexParticipant to mptcrypto.Participant.
-func decodeParticipants(hps []HexParticipant) ([]mptcrypto.Participant, error) {
+// decodeParticipants converts a slice of Participant to mptcrypto.Participant.
+func decodeParticipants(hps []Participant) ([]mptcrypto.Participant, error) {
+	if len(hps) == 0 {
+		return nil, ErrNoParticipants
+	}
 	parts := make([]mptcrypto.Participant, len(hps))
 	for i, hp := range hps {
 		p, err := decodeParticipant(hp)
@@ -59,16 +62,16 @@ func decodeParticipants(hps []HexParticipant) ([]mptcrypto.Participant, error) {
 	return parts, nil
 }
 
-// decodeProofParams converts a HexProofParams to a mptcrypto.PedersenProofParams.
-func decodeProofParams(hp HexProofParams) (mptcrypto.PedersenProofParams, error) {
+// decodeProofParams converts a Params to a mptcrypto.PedersenProofParams.
+func decodeProofParams(hp Params) (mptcrypto.PedersenProofParams, error) {
 	var p mptcrypto.PedersenProofParams
 	commitBytes, err := hexutil.DecodeFixedHex(hp.CommitmentHex, mptcrypto.CommitmentSize)
 	if err != nil {
-		return p, fmt.Errorf("%w: %w", ErrInvalidCommitmentLength, err)
+		return p, fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
 	ctBytes, err := hexutil.DecodeFixedHex(hp.CiphertextHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 	bfBytes, err := hexutil.DecodeFixedHex(hp.BlindingFactorHex, mptcrypto.BlindingFactorSize)
 	if err != nil {

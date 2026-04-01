@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
 
 package mptcrypto
 
@@ -518,6 +518,9 @@ func VerifySendRangeProof(proof [DoubleBulletproofSize]byte, amountCommit, remai
 
 // GetSendProofSize returns the total proof size in bytes for a ConfidentialMPTSend with nRecipients.
 func GetSendProofSize(nRecipients int) int {
+	if nRecipients <= 0 {
+		return 0
+	}
 	return int(C.get_confidential_send_proof_size(C.size_t(nRecipients)))
 }
 

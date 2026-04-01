@@ -15,11 +15,11 @@ import (
 // Returns all the hex-encoded data needed to generate and verify a send proof.
 func setupSendProofScenario(t *testing.T, sendAmount, senderBalance uint64, withAuditor bool) (
 	senderKP elgamal.Keypair,
-	participants []proof.HexParticipant,
+	participants []proof.Participant,
 	txBF string,
 	ctxHash string,
-	amountParams proof.HexProofParams,
-	balanceParams proof.HexProofParams,
+	amountParams proof.Params,
+	balanceParams proof.Params,
 	senderBalanceCt string,
 	amountCommitHex string,
 	balanceCommitHex string,
@@ -65,7 +65,7 @@ func setupSendProofScenario(t *testing.T, sendAmount, senderBalance uint64, with
 	require.NoError(t, err)
 
 	// Participants array.
-	participants = []proof.HexParticipant{
+	participants = []proof.Participant{
 		{PubKeyHex: senderKP.PubKeyHex, CiphertextHex: senderAmountCt},
 		{PubKeyHex: destKP.PubKeyHex, CiphertextHex: destAmountCt},
 		{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerAmountCt},
@@ -76,20 +76,20 @@ func setupSendProofScenario(t *testing.T, sendAmount, senderBalance uint64, with
 		require.NoError(t, err)
 		auditorAmountCt, err := elgamal.Encrypt(sendAmount, auditorKP.PubKeyHex, txBF)
 		require.NoError(t, err)
-		participants = append(participants, proof.HexParticipant{
+		participants = append(participants, proof.Participant{
 			PubKeyHex:     auditorKP.PubKeyHex,
 			CiphertextHex: auditorAmountCt,
 		})
 	}
 
 	// Proof params.
-	amountParams = proof.HexProofParams{
+	amountParams = proof.Params{
 		CommitmentHex:     amountCommitHex,
 		Amount:            sendAmount,
 		CiphertextHex:     senderAmountCt,
 		BlindingFactorHex: txBF,
 	}
-	balanceParams = proof.HexProofParams{
+	balanceParams = proof.Params{
 		CommitmentHex:     balanceCommitHex,
 		Amount:            senderBalance,
 		CiphertextHex:     senderBalanceCt,
@@ -137,16 +137,18 @@ func TestSendProofInvalidInputs(t *testing.T) {
 			name: "fail - bad privkey",
 			fn: func() error {
 				_, err := proof.GenerateSendProof("zz", 100, nil, zeroHex(32), zeroHex(32),
-					proof.HexProofParams{}, proof.HexProofParams{})
+					proof.Params{}, proof.Params{})
 				return err
 			},
-			wantErr: proof.ErrInvalidPrivKeyLength,
+			wantErr: proof.ErrInvalidPrivKey,
 		},
 		{
 			name: "fail - bad tx blinding factor",
 			fn: func() error {
-				_, err := proof.GenerateSendProof(zeroHex(32), 100, nil, "bad", zeroHex(32),
-					proof.HexProofParams{}, proof.HexProofParams{})
+				_, err := proof.GenerateSendProof(zeroHex(32), 100,
+					[]proof.Participant{{PubKeyHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66)}},
+					"bad", zeroHex(32),
+					proof.Params{}, proof.Params{})
 				return err
 			},
 			wantErr: proof.ErrInvalidBlindingFactor,
@@ -154,8 +156,10 @@ func TestSendProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad ctx hash",
 			fn: func() error {
-				_, err := proof.GenerateSendProof(zeroHex(32), 100, nil, zeroHex(32), "bad",
-					proof.HexProofParams{}, proof.HexProofParams{})
+				_, err := proof.GenerateSendProof(zeroHex(32), 100,
+					[]proof.Participant{{PubKeyHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66)}},
+					zeroHex(32), "bad",
+					proof.Params{}, proof.Params{})
 				return err
 			},
 			wantErr: proof.ErrInvalidContextHash,
@@ -164,20 +168,20 @@ func TestSendProofInvalidInputs(t *testing.T) {
 			name: "fail - bad participant pubkey",
 			fn: func() error {
 				_, err := proof.GenerateSendProof(zeroHex(32), 100,
-					[]proof.HexParticipant{{PubKeyHex: "zz", CiphertextHex: zeroHex(66)}},
+					[]proof.Participant{{PubKeyHex: "zz", CiphertextHex: zeroHex(66)}},
 					zeroHex(32), zeroHex(32),
-					proof.HexProofParams{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)},
-					proof.HexProofParams{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)})
+					proof.Params{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)},
+					proof.Params{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)})
 				return err
 			},
-			wantErr: proof.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKey,
 		},
 		{
 			name: "fail - verify bad proof hex",
 			fn: func() error {
 				return proof.VerifySendProof("zzzz", nil, zeroHex(66), "02"+zeroHex(32), "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProof,
 		},
 	}
 

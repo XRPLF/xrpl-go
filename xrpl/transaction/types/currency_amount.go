@@ -176,21 +176,8 @@ func (a MPTPlainAmount) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
-// UnmarshalJSON parses a JSON string into an MPTPlainAmount.
-func (a *MPTPlainAmount) UnmarshalJSON(data []byte) error {
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	v, err := strconv.ParseUint(s, 10, 64)
-	if err != nil {
-		return err
-	}
-	*a = MPTPlainAmount(v)
-	return nil
-}
-
 // UnmarshalText parses a text representation into an MPTPlainAmount.
+// encoding/json automatically calls UnmarshalText for JSON strings.
 func (a *MPTPlainAmount) UnmarshalText(data []byte) error {
 	v, err := strconv.ParseUint(string(data), 10, 64)
 	if err != nil {
