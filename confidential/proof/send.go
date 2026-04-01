@@ -62,6 +62,9 @@ func VerifySendProof(proofHex string, participants []HexParticipant, senderCtHex
 	if err != nil {
 		return err
 	}
+	if expected := mptcrypto.GetSendProofSize(len(parts)); len(proofBytes) != expected {
+		return fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidProof, expected, len(proofBytes))
+	}
 	senderCtBytes, err := hexutil.DecodeFixedHex(senderCtHex, mptcrypto.CiphertextSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
