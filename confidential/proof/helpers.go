@@ -30,8 +30,8 @@ func decodeIssuanceID(issHex string) ([mptcrypto.IssuanceIDSize]byte, error) {
 	return id, nil
 }
 
-// decodeParticipant converts a HexParticipant to a mptcrypto.Participant.
-func decodeParticipant(hp HexParticipant) (mptcrypto.Participant, error) {
+// decodeParticipant converts a Participant to a mptcrypto.Participant.
+func decodeParticipant(hp Participant) (mptcrypto.Participant, error) {
 	var p mptcrypto.Participant
 	pubBytes, err := hexutil.DecodeFixedHex(hp.PubKeyHex, mptcrypto.PubKeySize)
 	if err != nil {
@@ -46,8 +46,8 @@ func decodeParticipant(hp HexParticipant) (mptcrypto.Participant, error) {
 	return p, nil
 }
 
-// decodeParticipants converts a slice of HexParticipant to mptcrypto.Participant.
-func decodeParticipants(hps []HexParticipant) ([]mptcrypto.Participant, error) {
+// decodeParticipants converts a slice of Participant to mptcrypto.Participant.
+func decodeParticipants(hps []Participant) ([]mptcrypto.Participant, error) {
 	parts := make([]mptcrypto.Participant, len(hps))
 	for i, hp := range hps {
 		p, err := decodeParticipant(hp)
@@ -59,8 +59,8 @@ func decodeParticipants(hps []HexParticipant) ([]mptcrypto.Participant, error) {
 	return parts, nil
 }
 
-// decodeProofParams converts a HexProofParams to a mptcrypto.PedersenProofParams.
-func decodeProofParams(hp HexProofParams) (mptcrypto.PedersenProofParams, error) {
+// decodeProofParams converts a Params to a mptcrypto.PedersenProofParams.
+func decodeProofParams(hp Params) (mptcrypto.PedersenProofParams, error) {
 	var p mptcrypto.PedersenProofParams
 	commitBytes, err := hexutil.DecodeFixedHex(hp.CommitmentHex, mptcrypto.CommitmentSize)
 	if err != nil {

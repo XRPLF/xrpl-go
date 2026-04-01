@@ -10,7 +10,7 @@ import (
 
 // GenerateConvertBackProof generates a linkage + range proof for a ConfidentialMPTConvertBack transaction.
 // Returns hex-encoded proof string (1766 hex chars = 883 bytes).
-func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, params HexProofParams) (string, error) {
+func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, params Params) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKey, err)

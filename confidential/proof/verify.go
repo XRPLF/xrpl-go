@@ -10,7 +10,7 @@ import (
 
 // VerifyRevealedAmount verifies that a revealed amount and blinding factor are consistent
 // with the participants' ciphertexts. auditor may be nil.
-func VerifyRevealedAmount(amount uint64, bfHex string, holder, issuer HexParticipant, auditor *HexParticipant) error {
+func VerifyRevealedAmount(amount uint64, bfHex string, holder, issuer Participant, auditor *Participant) error {
 	bfBytes, err := hexutil.DecodeFixedHex(bfHex, mptcrypto.BlindingFactorSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
@@ -95,7 +95,7 @@ func VerifyBalanceLinkage(proofHex, ciphertextHex, pubkeyHex, commitmentHex, ctx
 }
 
 // VerifyEqualityProof verifies that all participants' ciphertexts encrypt the same value.
-func VerifyEqualityProof(proofHex string, participants []HexParticipant, ctxHashHex string) error {
+func VerifyEqualityProof(proofHex string, participants []Participant, ctxHashHex string) error {
 	proofBytes, err := hex.DecodeString(proofHex)
 	if err != nil {
 		return fmt.Errorf("%w: invalid hex: %w", ErrInvalidProof, err)

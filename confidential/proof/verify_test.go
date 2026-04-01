@@ -29,8 +29,8 @@ func TestVerifyRevealedAmountWithoutAuditor(t *testing.T) {
 	issuerCt, err := elgamal.Encrypt(amount, issuerKP.PubKeyHex, bf)
 	require.NoError(t, err)
 
-	holder := proof.HexParticipant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
-	issuer := proof.HexParticipant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
+	holder := proof.Participant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
+	issuer := proof.Participant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
 
 	err = proof.VerifyRevealedAmount(amount, bf, holder, issuer, nil)
 	require.NoError(t, err)
@@ -56,9 +56,9 @@ func TestVerifyRevealedAmountWithAuditor(t *testing.T) {
 	auditorCt, err := elgamal.Encrypt(amount, auditorKP.PubKeyHex, bf)
 	require.NoError(t, err)
 
-	holder := proof.HexParticipant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
-	issuer := proof.HexParticipant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
-	auditor := proof.HexParticipant{PubKeyHex: auditorKP.PubKeyHex, CiphertextHex: auditorCt}
+	holder := proof.Participant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
+	issuer := proof.Participant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
+	auditor := proof.Participant{PubKeyHex: auditorKP.PubKeyHex, CiphertextHex: auditorCt}
 
 	err = proof.VerifyRevealedAmount(amount, bf, holder, issuer, &auditor)
 	require.NoError(t, err)
@@ -80,8 +80,8 @@ func TestVerifyRevealedAmountWrongAmount(t *testing.T) {
 	issuerCt, err := elgamal.Encrypt(amount, issuerKP.PubKeyHex, bf)
 	require.NoError(t, err)
 
-	holder := proof.HexParticipant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
-	issuer := proof.HexParticipant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
+	holder := proof.Participant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
+	issuer := proof.Participant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
 
 	err = proof.VerifyRevealedAmount(999, bf, holder, issuer, nil)
 	require.ErrorIs(t, err, proof.ErrProofVerificationFailed)
@@ -211,8 +211,8 @@ func TestVerifyRevealedAmountInvalidInputs(t *testing.T) {
 			name: "fail - bad blinding factor",
 			fn: func() error {
 				return proof.VerifyRevealedAmount(42, "bad",
-					proof.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
-					proof.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
+					proof.Participant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
+					proof.Participant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
 					nil)
 			},
 			wantErr: proof.ErrInvalidBlindingFactor,
@@ -221,8 +221,8 @@ func TestVerifyRevealedAmountInvalidInputs(t *testing.T) {
 			name: "fail - bad holder pubkey",
 			fn: func() error {
 				return proof.VerifyRevealedAmount(42, zeroHex(32),
-					proof.HexParticipant{PubKeyHex: "zz", CiphertextHex: zeroHex(66)},
-					proof.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
+					proof.Participant{PubKeyHex: "zz", CiphertextHex: zeroHex(66)},
+					proof.Participant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
 					nil)
 			},
 			wantErr: proof.ErrInvalidPubKey,
