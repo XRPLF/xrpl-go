@@ -48,19 +48,19 @@ type linkageVerifyFn func([mptcrypto.PedersenLinkSize]byte, [mptcrypto.Ciphertex
 func verifyLinkage(proofHex, ciphertextHex, pubkeyHex, commitmentHex, ctxHashHex string, fn linkageVerifyFn) error {
 	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.PedersenLinkSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidProofLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
 	ctBytes, err := hexutil.DecodeFixedHex(ciphertextHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidPubKeyLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	commitBytes, err := hexutil.DecodeFixedHex(commitmentHex, mptcrypto.CommitmentSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCommitmentLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
 	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
 	if err != nil {
@@ -98,7 +98,7 @@ func VerifyBalanceLinkage(proofHex, ciphertextHex, pubkeyHex, commitmentHex, ctx
 func VerifyEqualityProof(proofHex string, participants []HexParticipant, ctxHashHex string) error {
 	proofBytes, err := hex.DecodeString(proofHex)
 	if err != nil {
-		return fmt.Errorf("%w: invalid hex: %w", ErrInvalidProofLength, err)
+		return fmt.Errorf("%w: invalid hex: %w", ErrInvalidProof, err)
 	}
 	parts, err := decodeParticipants(participants)
 	if err != nil {
@@ -122,15 +122,15 @@ func VerifyEqualityProof(proofHex string, participants []HexParticipant, ctxHash
 func VerifySendRangeProof(proofHex, amountCommitHex, remainderCommitHex, ctxHashHex string) error {
 	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.DoubleBulletproofSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidProofLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
 	amountCommitBytes, err := hexutil.DecodeFixedHex(amountCommitHex, mptcrypto.CommitmentSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCommitmentLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
 	remainderCommitBytes, err := hexutil.DecodeFixedHex(remainderCommitHex, mptcrypto.CommitmentSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCommitmentLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
 	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
 	if err != nil {

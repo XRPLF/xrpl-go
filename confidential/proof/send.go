@@ -14,7 +14,7 @@ import (
 func GenerateSendProof(privkeyHex string, amount uint64, participants []HexParticipant, txBFHex, ctxHashHex string, amountParams, balanceParams HexProofParams) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKeyLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKey, err)
 	}
 	parts, err := decodeParticipants(participants)
 	if err != nil {
@@ -56,7 +56,7 @@ func GenerateSendProof(privkeyHex string, amount uint64, participants []HexParti
 func VerifySendProof(proofHex string, participants []HexParticipant, senderCtHex, amountCommitHex, balanceCommitHex, ctxHashHex string) error {
 	proofBytes, err := hex.DecodeString(proofHex)
 	if err != nil {
-		return fmt.Errorf("%w: invalid hex: %w", ErrInvalidProofLength, err)
+		return fmt.Errorf("%w: invalid hex: %w", ErrInvalidProof, err)
 	}
 	parts, err := decodeParticipants(participants)
 	if err != nil {
@@ -64,15 +64,15 @@ func VerifySendProof(proofHex string, participants []HexParticipant, senderCtHex
 	}
 	senderCtBytes, err := hexutil.DecodeFixedHex(senderCtHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 	amountCommitBytes, err := hexutil.DecodeFixedHex(amountCommitHex, mptcrypto.CommitmentSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCommitmentLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
 	balanceCommitBytes, err := hexutil.DecodeFixedHex(balanceCommitHex, mptcrypto.CommitmentSize)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCommitmentLength, err)
+		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
 	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
 	if err != nil {

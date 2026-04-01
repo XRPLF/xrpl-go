@@ -140,7 +140,7 @@ func TestSendProofInvalidInputs(t *testing.T) {
 					proof.HexProofParams{}, proof.HexProofParams{})
 				return err
 			},
-			wantErr: proof.ErrInvalidPrivKeyLength,
+			wantErr: proof.ErrInvalidPrivKey,
 		},
 		{
 			name: "fail - bad tx blinding factor",
@@ -170,14 +170,14 @@ func TestSendProofInvalidInputs(t *testing.T) {
 					proof.HexProofParams{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)})
 				return err
 			},
-			wantErr: proof.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKey,
 		},
 		{
 			name: "fail - verify bad proof hex",
 			fn: func() error {
 				return proof.VerifySendProof("zzzz", nil, zeroHex(66), "02"+zeroHex(32), "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProof,
 		},
 	}
 

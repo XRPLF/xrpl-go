@@ -225,7 +225,7 @@ func TestVerifyRevealedAmountInvalidInputs(t *testing.T) {
 					proof.HexParticipant{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
 					nil)
 			},
-			wantErr: proof.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKey,
 		},
 	}
 
@@ -248,28 +248,28 @@ func TestVerifyLinkageInvalidInputs(t *testing.T) {
 			fn: func() error {
 				return proof.VerifyAmountLinkage("zz", zeroHex(66), zeroHex(33), "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProof,
 		},
 		{
 			name: "fail - amount linkage bad ciphertext",
 			fn: func() error {
 				return proof.VerifyAmountLinkage(zeroHex(195), "zz", zeroHex(33), "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidCiphertextLength,
+			wantErr: proof.ErrInvalidCiphertext,
 		},
 		{
 			name: "fail - balance linkage bad pubkey",
 			fn: func() error {
 				return proof.VerifyBalanceLinkage(zeroHex(195), zeroHex(66), "zz", "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKey,
 		},
 		{
 			name: "fail - balance linkage bad commitment",
 			fn: func() error {
 				return proof.VerifyBalanceLinkage(zeroHex(195), zeroHex(66), zeroHex(33), "zz", zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidCommitmentLength,
+			wantErr: proof.ErrInvalidCommitment,
 		},
 		{
 			name: "fail - balance linkage bad ctx hash",
@@ -299,7 +299,7 @@ func TestVerifyEqualityProofInvalidInputs(t *testing.T) {
 			fn: func() error {
 				return proof.VerifyEqualityProof("zzzz", nil, zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProof,
 		},
 		{
 			name: "fail - bad ctx hash",
@@ -329,14 +329,14 @@ func TestVerifySendRangeProofInvalidInputs(t *testing.T) {
 			fn: func() error {
 				return proof.VerifySendRangeProof("zz", "02"+zeroHex(32), "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProof,
 		},
 		{
 			name: "fail - bad amount commitment",
 			fn: func() error {
 				return proof.VerifySendRangeProof(zeroHex(754), "zz", "02"+zeroHex(32), zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidCommitmentLength,
+			wantErr: proof.ErrInvalidCommitment,
 		},
 	}
 

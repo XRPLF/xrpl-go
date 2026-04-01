@@ -24,7 +24,7 @@ func decodeIssuanceID(issHex string) ([mptcrypto.IssuanceIDSize]byte, error) {
 	var id [mptcrypto.IssuanceIDSize]byte
 	b, err := hexutil.DecodeFixedHex(issHex, mptcrypto.IssuanceIDSize)
 	if err != nil {
-		return id, fmt.Errorf("%w: %w", ErrInvalidIssuanceIDLength, err)
+		return id, fmt.Errorf("%w: %w", ErrInvalidIssuanceID, err)
 	}
 	copy(id[:], b)
 	return id, nil
@@ -35,11 +35,11 @@ func decodeParticipant(hp HexParticipant) (mptcrypto.Participant, error) {
 	var p mptcrypto.Participant
 	pubBytes, err := hexutil.DecodeFixedHex(hp.PubKeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return p, fmt.Errorf("%w: %w", ErrInvalidPubKeyLength, err)
+		return p, fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	ctBytes, err := hexutil.DecodeFixedHex(hp.CiphertextHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 	copy(p.PubKey[:], pubBytes)
 	copy(p.Ciphertext[:], ctBytes)
@@ -64,11 +64,11 @@ func decodeProofParams(hp HexProofParams) (mptcrypto.PedersenProofParams, error)
 	var p mptcrypto.PedersenProofParams
 	commitBytes, err := hexutil.DecodeFixedHex(hp.CommitmentHex, mptcrypto.CommitmentSize)
 	if err != nil {
-		return p, fmt.Errorf("%w: %w", ErrInvalidCommitmentLength, err)
+		return p, fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
 	ctBytes, err := hexutil.DecodeFixedHex(hp.CiphertextHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 	bfBytes, err := hexutil.DecodeFixedHex(hp.BlindingFactorHex, mptcrypto.BlindingFactorSize)
 	if err != nil {

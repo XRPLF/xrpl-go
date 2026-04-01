@@ -61,7 +61,7 @@ func TestConvertBackProofInvalidInputs(t *testing.T) {
 				})
 				return err
 			},
-			wantErr: proof.ErrInvalidPrivKeyLength,
+			wantErr: proof.ErrInvalidPrivKey,
 		},
 		{
 			name: "fail - bad pubkey",
@@ -73,7 +73,7 @@ func TestConvertBackProofInvalidInputs(t *testing.T) {
 				})
 				return err
 			},
-			wantErr: proof.ErrInvalidPubKeyLength,
+			wantErr: proof.ErrInvalidPubKey,
 		},
 		{
 			name: "fail - bad ctx hash",
@@ -97,14 +97,14 @@ func TestConvertBackProofInvalidInputs(t *testing.T) {
 				})
 				return err
 			},
-			wantErr: proof.ErrInvalidCommitmentLength,
+			wantErr: proof.ErrInvalidCommitment,
 		},
 		{
 			name: "fail - verify bad proof",
 			fn: func() error {
 				return proof.VerifyConvertBackProof("0102", "02"+zeroHex(32), zeroHex(66), "02"+zeroHex(32), 100, zeroHex(32))
 			},
-			wantErr: proof.ErrInvalidProofLength,
+			wantErr: proof.ErrInvalidProof,
 		},
 	}
 

@@ -20,8 +20,8 @@ func TestConvertContextHash(t *testing.T) {
 	}{
 		{"pass - valid inputs", testAccount, testIssuanceID, 1, nil},
 		{"fail - invalid address", "notAnAddress", testIssuanceID, 1, proof.ErrInvalidAddress},
-		{"fail - invalid issuance ID", testAccount, "zz", 1, proof.ErrInvalidIssuanceIDLength},
-		{"fail - short issuance ID", testAccount, "0102", 1, proof.ErrInvalidIssuanceIDLength},
+		{"fail - invalid issuance ID", testAccount, "zz", 1, proof.ErrInvalidIssuanceID},
+		{"fail - short issuance ID", testAccount, "0102", 1, proof.ErrInvalidIssuanceID},
 	}
 
 	for _, tt := range tests {
@@ -58,7 +58,7 @@ func TestConvertBackContextHash(t *testing.T) {
 	}{
 		{"pass - valid inputs", testAccount, testIssuanceID, 1, 0, nil},
 		{"fail - invalid address", "bad", testIssuanceID, 1, 0, proof.ErrInvalidAddress},
-		{"fail - invalid issuance ID", testAccount, "bad", 1, 0, proof.ErrInvalidIssuanceIDLength},
+		{"fail - invalid issuance ID", testAccount, "bad", 1, 0, proof.ErrInvalidIssuanceID},
 	}
 
 	for _, tt := range tests {
@@ -87,7 +87,7 @@ func TestSendContextHash(t *testing.T) {
 		{"pass - valid inputs", testAccount, testIssuanceID, 1, testDest, 0, nil},
 		{"fail - invalid account", "bad", testIssuanceID, 1, testDest, 0, proof.ErrInvalidAddress},
 		{"fail - invalid dest", testAccount, testIssuanceID, 1, "bad", 0, proof.ErrInvalidAddress},
-		{"fail - invalid issuance ID", testAccount, "zz", 1, testDest, 0, proof.ErrInvalidIssuanceIDLength},
+		{"fail - invalid issuance ID", testAccount, "zz", 1, testDest, 0, proof.ErrInvalidIssuanceID},
 	}
 
 	for _, tt := range tests {
