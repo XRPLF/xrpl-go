@@ -302,9 +302,18 @@ func TestVerifyEqualityProofInvalidInputs(t *testing.T) {
 			wantErr: proof.ErrInvalidProof,
 		},
 		{
+			name: "fail - no participants",
+			fn: func() error {
+				return proof.VerifyEqualityProof(zeroHex(32), nil, zeroHex(32))
+			},
+			wantErr: proof.ErrNoParticipants,
+		},
+		{
 			name: "fail - bad ctx hash",
 			fn: func() error {
-				return proof.VerifyEqualityProof(zeroHex(32), nil, "zz")
+				return proof.VerifyEqualityProof(zeroHex(32), []proof.Participant{
+					{PubKeyHex: zeroHex(33), CiphertextHex: zeroHex(66)},
+				}, "zz")
 			},
 			wantErr: proof.ErrInvalidContextHash,
 		},

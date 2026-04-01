@@ -145,7 +145,9 @@ func TestSendProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad tx blinding factor",
 			fn: func() error {
-				_, err := proof.GenerateSendProof(zeroHex(32), 100, nil, "bad", zeroHex(32),
+				_, err := proof.GenerateSendProof(zeroHex(32), 100,
+					[]proof.Participant{{PubKeyHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66)}},
+					"bad", zeroHex(32),
 					proof.Params{}, proof.Params{})
 				return err
 			},
@@ -154,7 +156,9 @@ func TestSendProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad ctx hash",
 			fn: func() error {
-				_, err := proof.GenerateSendProof(zeroHex(32), 100, nil, zeroHex(32), "bad",
+				_, err := proof.GenerateSendProof(zeroHex(32), 100,
+					[]proof.Participant{{PubKeyHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66)}},
+					zeroHex(32), "bad",
 					proof.Params{}, proof.Params{})
 				return err
 			},
