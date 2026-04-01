@@ -110,7 +110,7 @@ func TestPrepareSend_Pass(t *testing.T) {
 	ctxHash, err := proof.SendContextHash(testAccount, testIssuanceID, uint32(1), testDestination, uint32(0))
 	require.NoError(t, err)
 
-	participants := []proof.HexParticipant{
+	participants := []proof.Participant{
 		{PubKeyHex: senderKP.PubKeyHex, CiphertextHex: result.SenderEncryptedAmount},
 		{PubKeyHex: receiverKP.PubKeyHex, CiphertextHex: result.DestinationEncryptedAmount},
 		{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: result.IssuerEncryptedAmount},

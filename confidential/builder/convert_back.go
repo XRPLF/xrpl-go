@@ -154,7 +154,7 @@ func PrepareConvertBack(p ConvertBackParams) (*transaction.ConfidentialMPTConver
 		return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 	}
 
-	balanceProofParams := proof.HexProofParams{
+	balanceProofParams := proof.Params{
 		CommitmentHex:     balanceCommit,
 		Amount:            p.CurrentBalance,
 		CiphertextHex:     p.CurrentBalanceCt,

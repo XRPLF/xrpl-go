@@ -180,25 +180,25 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 		return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 	}
 
-	participants := []proof.HexParticipant{
+	participants := []proof.Participant{
 		{PubKeyHex: p.SenderPubKey, CiphertextHex: senderCt},
 		{PubKeyHex: p.ReceiverPubKey, CiphertextHex: destCt},
 		{PubKeyHex: p.IssuerPubKey, CiphertextHex: issuerCt},
 	}
 	if p.AuditorPubKey != "" {
-		participants = append(participants, proof.HexParticipant{
+		participants = append(participants, proof.Participant{
 			PubKeyHex:     p.AuditorPubKey,
 			CiphertextHex: auditorCt,
 		})
 	}
 
-	amountParams := proof.HexProofParams{
+	amountParams := proof.Params{
 		CommitmentHex:     amountCommit,
 		Amount:            p.Amount,
 		CiphertextHex:     senderCt,
 		BlindingFactorHex: amountBF,
 	}
-	balanceParams := proof.HexProofParams{
+	balanceParams := proof.Params{
 		CommitmentHex:     balanceCommit,
 		Amount:            p.CurrentBalance,
 		CiphertextHex:     p.CurrentBalanceCt,
