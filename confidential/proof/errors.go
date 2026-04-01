@@ -27,4 +27,6 @@ var (
 	ErrProofVerificationFailed = errors.New("proof: proof verification failed")
 	// ErrContextHashFailed is returned when the underlying C context hash computation fails.
 	ErrContextHashFailed = errors.New("proof: context hash computation failed")
+	// ErrNoParticipants is returned when the participants slice is empty.
+	ErrNoParticipants = errors.New("proof: at least one participant is required")
 )

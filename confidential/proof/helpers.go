@@ -48,6 +48,9 @@ func decodeParticipant(hp Participant) (mptcrypto.Participant, error) {
 
 // decodeParticipants converts a slice of Participant to mptcrypto.Participant.
 func decodeParticipants(hps []Participant) ([]mptcrypto.Participant, error) {
+	if len(hps) == 0 {
+		return nil, ErrNoParticipants
+	}
 	parts := make([]mptcrypto.Participant, len(hps))
 	for i, hp := range hps {
 		p, err := decodeParticipant(hp)
