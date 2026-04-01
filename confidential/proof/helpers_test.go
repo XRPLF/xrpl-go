@@ -2,6 +2,8 @@
 
 package proof_test
 
+import "strings"
+
 const (
 	testAccount    = "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN"
 	testDest       = "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"
@@ -11,9 +13,5 @@ const (
 
 // zeroHex returns a hex string of n zero bytes (2*n hex chars).
 func zeroHex(n int) string {
-	b := make([]byte, n*2)
-	for i := range b {
-		b[i] = '0'
-	}
-	return string(b)
+	return strings.Repeat("00", n)
 }

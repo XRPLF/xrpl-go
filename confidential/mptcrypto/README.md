@@ -1,6 +1,6 @@
 # mptcrypto
 
-Go bindings for the [XRPLF/mpt-crypto](https://github.com/xrplf/mpt-crypto) C library. This package is the **only** place in the codebase that imports `"C"` (CGo). Everything above this layer (elgamal/, proofs/, commitment/) is pure Go.
+Go bindings for the [XRPLF/mpt-crypto](https://github.com/xrplf/mpt-crypto) C library. This package is the **only** place in the codebase that imports `"C"` (CGo). Everything above this layer (elgamal/, proof/, commitment/) is pure Go.
 
 ## Build requirements
 
