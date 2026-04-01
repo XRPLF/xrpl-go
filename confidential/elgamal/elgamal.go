@@ -44,11 +44,11 @@ func GenerateBlindingFactor() (string, error) {
 func Encrypt(amount uint64, pubkeyHex, bfHex string) (string, error) {
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidKeyLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidKey, err)
 	}
 	bfBytes, err := hexutil.DecodeFixedHex(bfHex, mptcrypto.BlindingFactorSize)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidBlindingFactorLength, err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
 	}
 
 	var pub [mptcrypto.PubKeySize]byte
@@ -69,11 +69,11 @@ func Encrypt(amount uint64, pubkeyHex, bfHex string) (string, error) {
 func Decrypt(ciphertextHex, privkeyHex string) (uint64, error) {
 	ctBytes, err := hexutil.DecodeFixedHex(ciphertextHex, mptcrypto.CiphertextSize)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %w", ErrInvalidCiphertextLength, err)
+		return 0, fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %w", ErrInvalidKeyLength, err)
+		return 0, fmt.Errorf("%w: %w", ErrInvalidKey, err)
 	}
 
 	var ct [mptcrypto.CiphertextSize]byte

@@ -1,5 +1,7 @@
 package transaction
 
+import "github.com/Peersyst/xrpl-go/pkg/typecheck"
+
 // MPTokenIssuanceDestroy transaction is used to remove an MPTokenIssuance object from the directory node
 // in which it is being held, effectively removing the token from the ledger ("destroying" it).
 //
@@ -44,8 +46,8 @@ func (m *MPTokenIssuanceDestroy) Validate() (bool, error) {
 		return false, err
 	}
 
-	if m.MPTokenIssuanceID == "" {
-		return false, ErrInvalidMPTokenIssuanceID
+	if m.MPTokenIssuanceID == "" || !typecheck.IsHex(m.MPTokenIssuanceID) {
+		return false, ErrInvalidMPTokenIssuanceIDDestroy
 	}
 
 	return true, nil

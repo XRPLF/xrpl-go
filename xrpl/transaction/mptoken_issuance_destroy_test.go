@@ -72,7 +72,19 @@ func TestMPTokenIssuanceDestroy_Validate(t *testing.T) {
 				},
 				MPTokenIssuanceID: "",
 			},
-			wantErr: ErrInvalidMPTokenIssuanceID,
+			wantErr: ErrInvalidMPTokenIssuanceIDDestroy,
+		},
+		{
+			name: "fail - non-hex MPTokenIssuanceID",
+			tx: &MPTokenIssuanceDestroy{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceDestroyTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				MPTokenIssuanceID: "not-a-hex-value!",
+			},
+			wantErr: ErrInvalidMPTokenIssuanceIDDestroy,
 		},
 	}
 

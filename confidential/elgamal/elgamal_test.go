@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
 
 package elgamal_test
 
@@ -130,7 +130,7 @@ func TestInvalidHexInputs(t *testing.T) {
 				_, err := elgamal.Encrypt(1, "zzzz", bf)
 				return err
 			},
-			wantErr: elgamal.ErrInvalidKeyLength,
+			wantErr: elgamal.ErrInvalidKey,
 		},
 		{
 			name: "fail - encrypt short pubkey",
@@ -138,7 +138,7 @@ func TestInvalidHexInputs(t *testing.T) {
 				_, err := elgamal.Encrypt(1, "0102", bf)
 				return err
 			},
-			wantErr: elgamal.ErrInvalidKeyLength,
+			wantErr: elgamal.ErrInvalidKey,
 		},
 		{
 			name: "fail - encrypt bad blinding factor",
@@ -146,7 +146,7 @@ func TestInvalidHexInputs(t *testing.T) {
 				_, err := elgamal.Encrypt(1, kp.PubKeyHex, "not-hex")
 				return err
 			},
-			wantErr: elgamal.ErrInvalidBlindingFactorLength,
+			wantErr: elgamal.ErrInvalidBlindingFactor,
 		},
 		{
 			name: "fail - decrypt bad ciphertext",
@@ -154,7 +154,7 @@ func TestInvalidHexInputs(t *testing.T) {
 				_, err := elgamal.Decrypt("zz", kp.PrivKeyHex)
 				return err
 			},
-			wantErr: elgamal.ErrInvalidCiphertextLength,
+			wantErr: elgamal.ErrInvalidCiphertext,
 		},
 		{
 			name: "fail - decrypt bad privkey",
@@ -163,7 +163,7 @@ func TestInvalidHexInputs(t *testing.T) {
 				_, err := elgamal.Decrypt(ct, "short")
 				return err
 			},
-			wantErr: elgamal.ErrInvalidKeyLength,
+			wantErr: elgamal.ErrInvalidKey,
 		},
 	}
 	for _, tc := range tests {
