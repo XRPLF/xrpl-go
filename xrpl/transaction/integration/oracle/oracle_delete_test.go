@@ -8,7 +8,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
-	"github.com/Peersyst/xrpl-go/xrpl/time"
+	xrpltime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 	"github.com/stretchr/testify/require"
@@ -36,7 +36,7 @@ func integrationTestOracleDelete(t *testing.T, client integration.Client) {
 			OracleSet: &transaction.OracleSet{
 				BaseTx:           transaction.BaseTx{Account: owner.GetAddress()},
 				OracleDocumentID: 1234,
-				LastUpdateTime:   uint32(time.RippleTimeToUnixTime(int64(closeTime))/1000) + 20,
+				LastUpdateTime:   uint32(xrpltime.RippleTimeToUnixTime(closeTime)/1000) + 20,
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{

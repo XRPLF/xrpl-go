@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getLedgerCloseTime(t *testing.T, client integration.Client) uint64 {
+func getLedgerCloseTime(t *testing.T, client integration.Client) int64 {
 	t.Helper()
 	req := &ledger.Request{
 		LedgerIndex: queriesCommon.Validated,
@@ -28,7 +28,7 @@ func getLedgerCloseTime(t *testing.T, client integration.Client) uint64 {
 		t.Fatal("unsupported client type for getLedgerCloseTime")
 	}
 	require.NoError(t, err)
-	return uint64(res.Ledger.CloseTime)
+	return int64(res.Ledger.CloseTime)
 }
 
 func txFieldUint32(t *testing.T, tx map[string]any, field string) uint32 {
@@ -37,7 +37,7 @@ func txFieldUint32(t *testing.T, tx map[string]any, field string) uint32 {
 	case float64:
 		return uint32(v)
 	case json.Number:
-		n, err := v.Int64()
+		n, err := v.Float64()
 		require.NoError(t, err)
 		return uint32(n)
 	default:

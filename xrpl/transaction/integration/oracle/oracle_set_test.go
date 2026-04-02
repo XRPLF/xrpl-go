@@ -9,7 +9,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
-	"github.com/Peersyst/xrpl-go/xrpl/time"
+	xrpltime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ func integrationTestOracleSet(t *testing.T, client integration.Client) {
 		oracleSetTx := &transaction.OracleSet{
 			BaseTx:           transaction.BaseTx{Account: owner.GetAddress()},
 			OracleDocumentID: 1234,
-			LastUpdateTime:   uint32(time.RippleTimeToUnixTime(int64(closeTime))/1000) + 20,
+			LastUpdateTime:   uint32(xrpltime.RippleTimeToUnixTime(closeTime)/1000) + 20,
 			PriceDataSeries: []ledger.PriceDataWrapper{
 				{
 					PriceData: ledger.PriceData{
@@ -76,8 +76,8 @@ func integrationTestOracleSet(t *testing.T, client integration.Client) {
 		require.Equal(t, "XRP", firstPriceData["BaseAsset"].(string))
 		require.Equal(t, "USD", firstPriceData["QuoteAsset"].(string))
 		require.Equal(t, "2e4", firstPriceData["AssetPrice"].(string))
-		require.Equal(t, float64(3), txFieldFloat64(t, firstPriceData, "Scale"))
-		require.Equal(t, float64(0), txFieldFloat64(t, oracle, "Flags"))
+		require.InEpsilon(t, float64(3), txFieldFloat64(t, firstPriceData, "Scale"), 0.0)
+		require.InDelta(t, float64(0), txFieldFloat64(t, oracle, "Flags"), 0)
 
 		secondPriceData := priceDataSeries[1].(map[string]any)["PriceData"].(map[string]any)
 		require.Equal(t, "ffffffffffffffff", secondPriceData["AssetPrice"].(string))
