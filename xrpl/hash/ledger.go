@@ -82,3 +82,29 @@ func Loan(loanBrokerID string, loanSequence uint32) (string, error) {
 func EncodeToHashString(bytes []byte) string {
 	return hexutil.EncodeToUpperHex(crypto.Sha512Half(bytes))
 }
+
+// PaymentChannel generates the corresponding channelID
+func PaymentChannel(source, destination string, sequence uint32) (string, error) {
+	_, sourceID, err := addresscodec.DecodeClassicAddressToAccountID(source)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode classic address: %w", err)
+	}
+
+	_, destID, err := addresscodec.DecodeClassicAddressToAccountID(destination)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode classic address: %w", err)
+	}
+
+	ledgerSpaceHex := "0078"
+	sourceHex := hex.EncodeToString(sourceID)
+	destHex := hex.EncodeToString(destID)
+	sequenceHex := fmt.Sprintf("%08x", sequence)
+
+	payload := ledgerSpaceHex + sourceHex + destHex + sequenceHex
+	payloadBytes, err := hex.DecodeString(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode hex payload: %w", err)
+	}
+
+	return EncodeToHashString(payloadBytes), nil
+}
