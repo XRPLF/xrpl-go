@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `MutableFlags` helper function in `types` package.
 - Added integration tests for account transactions `AccountSet` and `AccountDelete`
 - Added integration test for `DepositPreauth` transaction
+- Added integration test for escrow transactions.
 
 ### Changed
 
