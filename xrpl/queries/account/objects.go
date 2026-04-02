@@ -22,6 +22,7 @@ const (
 	SignerListObject     ObjectType = "signer_list"
 	StateObject          ObjectType = "state"
 	TicketObject         ObjectType = "ticket"
+	VaultObject          ObjectType = "vault"
 )
 
 // ############################################################################

@@ -1,9 +1,14 @@
 package integration
 
 import (
+	"encoding/hex"
+	"fmt"
+	"strings"
 	"testing"
 
-	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -15,378 +20,481 @@ import (
 // VaultCreate
 // ############################################################################
 
-type VaultCreateTest struct {
-	Name          string
-	VaultCreate   *transaction.VaultCreate
-	ExpectedError string
+type vaultCreateTest struct {
+	Name        string
+	VaultCreate *transaction.VaultCreate
 }
 
-func TestIntegrationVaultCreate_Websocket(t *testing.T) {
-	env := integration.GetWebsocketEnv(t)
-	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-
-	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
-		WalletCount: 1,
-	})
-
+func integrationTestVaultCreate(t *testing.T, client integration.Client) {
+	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
 	defer runner.Teardown()
 
 	owner := runner.GetWallet(0)
 
-	tt := []VaultCreateTest{
+	tt := []vaultCreateTest{
 		{
-			Name: "pass - create XRP vault",
+			Name: "pass - base vault create",
 			VaultCreate: &transaction.VaultCreate{
-				BaseTx: transaction.BaseTx{
-					Account: owner.GetAddress(),
-				},
-				Asset: ledger.Asset{
-					Currency: "XRP",
-				},
+				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
+				Asset:  ledger.Asset{Currency: "XRP"},
 			},
-		},
-		{
-			Name: "fail - missing Asset",
-			VaultCreate: &transaction.VaultCreate{
-				BaseTx: transaction.BaseTx{
-					Account: owner.GetAddress(),
-				},
-			},
-			ExpectedError: ErrInvalidTransaction,
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.VaultCreate.Flatten()
-			_, err := runner.TestTransaction(&flatTx, owner, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-			} else {
-				require.NoError(t, err)
-			}
+			flatVaultCreateTx := tc.VaultCreate.Flatten()
+			_, err := runner.TestTransaction(&flatVaultCreateTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			vaultObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: owner.GetAddress(),
+				Type:    account.VaultObject,
+			})
+			require.NoError(t, err)
+			require.Len(t, vaultObjects.AccountObjects, 1)
+
+			vault := vaultObjects.AccountObjects[0]
+			require.Equal(t, string(owner.GetAddress()), vault["Owner"].(string))
+			require.Equal(t, tc.VaultCreate.Asset.Currency, vault["Asset"].(map[string]any)["currency"].(string))
 		})
 	}
+}
+
+func TestIntegrationVaultCreate_Websocket(t *testing.T) {
+	env := integration.GetWebsocketEnv(t)
+	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
+	integrationTestVaultCreate(t, client)
+}
+
+func TestIntegrationVaultCreate_RPCClient(t *testing.T) {
+	env := integration.GetRPCEnv(t)
+	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
+	require.NoError(t, err)
+	client := rpc.NewClient(clientCfg)
+	integrationTestVaultCreate(t, client)
 }
 
 // ############################################################################
 // VaultDeposit
 // ############################################################################
 
-type VaultDepositTest struct {
-	Name          string
-	VaultDeposit  *transaction.VaultDeposit
-	ExpectedError string
+type vaultDepositTest struct {
+	Name         string
+	VaultCreate  *transaction.VaultCreate
+	VaultDeposit *transaction.VaultDeposit
 }
 
-func TestIntegrationVaultDeposit_Websocket(t *testing.T) {
-	env := integration.GetWebsocketEnv(t)
-	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-
-	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
-		WalletCount: 1,
-	})
-
+func integrationTestVaultDeposit(t *testing.T, client integration.Client) {
+	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
 	defer runner.Teardown()
 
 	owner := runner.GetWallet(0)
 
-	tt := []VaultDepositTest{
+	tt := []vaultDepositTest{
 		{
-			Name: "fail - missing VaultID",
+			Name: "deposit XRP into vault",
+			VaultCreate: &transaction.VaultCreate{
+				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
+				Asset:  ledger.Asset{Currency: "XRP"},
+			},
 			VaultDeposit: &transaction.VaultDeposit{
-				BaseTx: transaction.BaseTx{
-					Account: owner.GetAddress(),
-				},
+				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
 				Amount: types.XRPCurrencyAmount(1000000),
 			},
-			ExpectedError: "invalid hash length",
-		},
-		{
-			Name: "fail - missing Amount",
-			VaultDeposit: &transaction.VaultDeposit{
-				BaseTx: transaction.BaseTx{
-					Account: owner.GetAddress(),
-				},
-				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-			},
-			ExpectedError: ErrInvalidTransaction,
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.VaultDeposit.Flatten()
-			_, err := runner.TestTransaction(&flatTx, owner, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-			} else {
-				require.NoError(t, err)
-			}
+			flatVaultCreateTx := tc.VaultCreate.Flatten()
+			_, err = runner.TestTransaction(&flatVaultCreateTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			vaultObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: owner.GetAddress(),
+				Type:    account.VaultObject,
+			})
+			require.NoError(t, err)
+			require.Len(t, vaultObjects.AccountObjects, 1)
+
+			tc.VaultDeposit.VaultID = types.Hash256(vaultObjects.AccountObjects[0]["index"].(string))
+			flatVaultDepositTx := tc.VaultDeposit.Flatten()
+			_, err = runner.TestTransaction(&flatVaultDepositTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: owner.GetAddress(),
+				Type:    account.VaultObject,
+			})
+			require.NoError(t, err)
+			require.Equal(t, "1000000", objects.AccountObjects[0]["AssetsTotal"].(string))
 		})
 	}
+}
+
+func TestIntegrationVaultDeposit_Websocket(t *testing.T) {
+	env := integration.GetWebsocketEnv(t)
+	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
+	integrationTestVaultDeposit(t, client)
+}
+
+func TestIntegrationVaultDeposit_RPCClient(t *testing.T) {
+	env := integration.GetRPCEnv(t)
+	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
+	require.NoError(t, err)
+	client := rpc.NewClient(clientCfg)
+	integrationTestVaultDeposit(t, client)
 }
 
 // ############################################################################
 // VaultWithdraw
 // ############################################################################
 
-type VaultWithdrawTest struct {
+type vaultWithdrawTest struct {
 	Name          string
+	VaultCreate   *transaction.VaultCreate
+	VaultDeposit  *transaction.VaultDeposit
 	VaultWithdraw *transaction.VaultWithdraw
-	ExpectedError string
 }
 
-func TestIntegrationVaultWithdraw_Websocket(t *testing.T) {
-	env := integration.GetWebsocketEnv(t)
-	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-
-	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
-		WalletCount: 1,
-	})
-
+func integrationTestVaultWithdraw(t *testing.T, client integration.Client) {
+	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
 	defer runner.Teardown()
 
 	owner := runner.GetWallet(0)
 
-	tt := []VaultWithdrawTest{
+	tt := []vaultWithdrawTest{
 		{
-			Name: "fail - missing VaultID",
+			Name: "withdraw XRP from vault",
+			VaultCreate: &transaction.VaultCreate{
+				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
+				Asset:  ledger.Asset{Currency: "XRP"},
+			},
+			VaultDeposit: &transaction.VaultDeposit{
+				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
+				Amount: types.XRPCurrencyAmount(1000000),
+			},
 			VaultWithdraw: &transaction.VaultWithdraw{
-				BaseTx: transaction.BaseTx{
-					Account: owner.GetAddress(),
-				},
+				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
 				Amount: types.XRPCurrencyAmount(500000),
 			},
-			ExpectedError: "invalid hash length",
-		},
-		{
-			Name: "fail - missing Amount",
-			VaultWithdraw: &transaction.VaultWithdraw{
-				BaseTx: transaction.BaseTx{
-					Account: owner.GetAddress(),
-				},
-				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-			},
-			ExpectedError: ErrInvalidTransaction,
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.VaultWithdraw.Flatten()
-			_, err := runner.TestTransaction(&flatTx, owner, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-			} else {
-				require.NoError(t, err)
-			}
+			flatVaultCreateTx := tc.VaultCreate.Flatten()
+			_, err = runner.TestTransaction(&flatVaultCreateTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			vaultObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: owner.GetAddress(),
+				Type:    account.VaultObject,
+			})
+			require.NoError(t, err)
+			require.Len(t, vaultObjects.AccountObjects, 1)
+			tc.VaultDeposit.VaultID = types.Hash256(vaultObjects.AccountObjects[0]["index"].(string))
+
+			flatVaultDepositTx := tc.VaultDeposit.Flatten()
+			_, err = runner.TestTransaction(&flatVaultDepositTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			tc.VaultWithdraw.VaultID = tc.VaultDeposit.VaultID
+			flatVaultWithdrawTx := tc.VaultWithdraw.Flatten()
+			_, err = runner.TestTransaction(&flatVaultWithdrawTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: owner.GetAddress(),
+				Type:    account.VaultObject,
+			})
+			require.NoError(t, err)
+			require.Equal(t, "500000", objects.AccountObjects[0]["AssetsTotal"])
 		})
 	}
+}
+
+func TestIntegrationVaultWithdraw_Websocket(t *testing.T) {
+	env := integration.GetWebsocketEnv(t)
+	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
+	integrationTestVaultWithdraw(t, client)
+}
+
+func TestIntegrationVaultWithdraw_RPCClient(t *testing.T) {
+	env := integration.GetRPCEnv(t)
+	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
+	require.NoError(t, err)
+	client := rpc.NewClient(clientCfg)
+	integrationTestVaultWithdraw(t, client)
 }
 
 // ############################################################################
 // VaultSet
 // ############################################################################
 
-type VaultSetTest struct {
-	Name          string
-	VaultSet      *transaction.VaultSet
-	ExpectedError string
+type vaultSetTest struct {
+	Name        string
+	VaultCreate *transaction.VaultCreate
+	VaultSet    *transaction.VaultSet
 }
 
-func TestIntegrationVaultSet_Websocket(t *testing.T) {
-	env := integration.GetWebsocketEnv(t)
-	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-
-	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
-		WalletCount: 1,
-	})
-
+func integrationTestVaultSet(t *testing.T, client integration.Client) {
+	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
 	defer runner.Teardown()
 
 	owner := runner.GetWallet(0)
 
-	tt := []VaultSetTest{
+	updatedData := types.Data(hex.EncodeToString([]byte("updated vault metadata")))
+	updatedMaximum := types.XRPLNumber("3000000")
+
+	tt := []vaultSetTest{
 		{
-			Name: "fail - missing VaultID",
-			VaultSet: &transaction.VaultSet{
-				BaseTx: transaction.BaseTx{
-					Account: owner.GetAddress(),
-				},
+			Name: "update vault Data and AssetsMaximum",
+			VaultCreate: &transaction.VaultCreate{
+				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
+				Asset:  ledger.Asset{Currency: "XRP"},
 			},
-			ExpectedError: "invalid hash length",
+			VaultSet: &transaction.VaultSet{
+				BaseTx:        transaction.BaseTx{Account: owner.GetAddress()},
+				Data:          &updatedData,
+				AssetsMaximum: &updatedMaximum,
+			},
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.VaultSet.Flatten()
-			_, err := runner.TestTransaction(&flatTx, owner, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-			} else {
-				require.NoError(t, err)
-			}
+			flatVaultCreateTx := tc.VaultCreate.Flatten()
+			_, err = runner.TestTransaction(&flatVaultCreateTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			vaultObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: owner.GetAddress(),
+				Type:    account.VaultObject,
+			})
+			require.NoError(t, err)
+			require.Len(t, vaultObjects.AccountObjects, 1)
+
+			tc.VaultSet.VaultID = types.Hash256(vaultObjects.AccountObjects[0]["index"].(string))
+			flatVaultSetTx := tc.VaultSet.Flatten()
+			_, err = runner.TestTransaction(&flatVaultSetTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: owner.GetAddress(),
+				Type:    account.VaultObject,
+			})
+			require.NoError(t, err)
+
+			vault := objects.AccountObjects[0]
+			require.Equal(t, strings.ToLower(string(updatedData)), strings.ToLower(vault["Data"].(string)))
+			require.Equal(t, "3000000", vault["AssetsMaximum"].(string))
 		})
 	}
+}
+
+func TestIntegrationVaultSet_Websocket(t *testing.T) {
+	env := integration.GetWebsocketEnv(t)
+	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
+	integrationTestVaultSet(t, client)
+}
+
+func TestIntegrationVaultSet_RPCClient(t *testing.T) {
+	env := integration.GetRPCEnv(t)
+	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
+	require.NoError(t, err)
+	client := rpc.NewClient(clientCfg)
+	integrationTestVaultSet(t, client)
 }
 
 // ############################################################################
 // VaultDelete
 // ############################################################################
 
-type VaultDeleteTest struct {
-	Name          string
-	VaultDelete   *transaction.VaultDelete
-	ExpectedError string
+type vaultDeleteTest struct {
+	Name        string
+	VaultCreate *transaction.VaultCreate
+	VaultDelete *transaction.VaultDelete
 }
 
-func TestIntegrationVaultDelete_Websocket(t *testing.T) {
-	env := integration.GetWebsocketEnv(t)
-	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-
-	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
-		WalletCount: 1,
-	})
-
+func integrationTestVaultDelete(t *testing.T, client integration.Client) {
+	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
 	defer runner.Teardown()
 
 	owner := runner.GetWallet(0)
 
-	tt := []VaultDeleteTest{
+	tt := []vaultDeleteTest{
 		{
-			Name: "fail - missing VaultID",
-			VaultDelete: &transaction.VaultDelete{
-				BaseTx: transaction.BaseTx{
-					Account: owner.GetAddress(),
-				},
+			Name: "delete empty vault",
+			VaultCreate: &transaction.VaultCreate{
+				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
+				Asset:  ledger.Asset{Currency: "XRP"},
 			},
-			ExpectedError: "invalid hash length",
+			VaultDelete: &transaction.VaultDelete{
+				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
+			},
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.VaultDelete.Flatten()
-			_, err := runner.TestTransaction(&flatTx, owner, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-			} else {
-				require.NoError(t, err)
-			}
+			flatVaultCreateTx := tc.VaultCreate.Flatten()
+			_, err = runner.TestTransaction(&flatVaultCreateTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			vaultObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: owner.GetAddress(),
+				Type:    account.VaultObject,
+			})
+			require.NoError(t, err)
+			require.Len(t, vaultObjects.AccountObjects, 1)
+
+			tc.VaultDelete.VaultID = types.Hash256(vaultObjects.AccountObjects[0]["index"].(string))
+			flatVaultDeleteTx := tc.VaultDelete.Flatten()
+			_, err = runner.TestTransaction(&flatVaultDeleteTx, owner, "tesSUCCESS", nil)
+			require.NoError(t, err)
+
+			objects, err := client.GetAccountObjects(&account.ObjectsRequest{
+				Account: owner.GetAddress(),
+				Type:    account.VaultObject,
+			})
+			require.NoError(t, err)
+			require.Empty(t, objects.AccountObjects)
 		})
 	}
+}
+
+func TestIntegrationVaultDelete_Websocket(t *testing.T) {
+	env := integration.GetWebsocketEnv(t)
+	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
+	integrationTestVaultDelete(t, client)
+}
+
+func TestIntegrationVaultDelete_RPCClient(t *testing.T) {
+	env := integration.GetRPCEnv(t)
+	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
+	require.NoError(t, err)
+	client := rpc.NewClient(clientCfg)
+	integrationTestVaultDelete(t, client)
 }
 
 // ############################################################################
 // VaultClawback
 // ############################################################################
 
-type VaultClawbackTest struct {
-	Name          string
-	VaultClawback *transaction.VaultClawback
-	ExpectedError string
-}
-
-func TestIntegrationVaultClawback_Websocket(t *testing.T) {
-	env := integration.GetWebsocketEnv(t)
-	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-
-	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
-		WalletCount: 2,
-	})
-
+func integrationTestVaultClawback(t *testing.T, client integration.Client) {
+	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 3})
 	err := runner.Setup()
 	require.NoError(t, err)
 	defer runner.Teardown()
 
 	issuer := runner.GetWallet(0)
-	holder := runner.GetWallet(1)
+	vaultOwner := runner.GetWallet(1)
+	holder := runner.GetWallet(2)
+	t.Run("pass - vault clawback test", func(t *testing.T) {
+		issuerAccountSetDefaultRippleTx := &transaction.AccountSet{
+			BaseTx: transaction.BaseTx{Account: issuer.GetAddress()},
+		}
+		issuerAccountSetDefaultRippleTx.SetFlag = transaction.AsfDefaultRipple
+		flatIssuerAccountSetDefaultRippleTx := issuerAccountSetDefaultRippleTx.Flatten()
+		_, err = runner.TestTransaction(&flatIssuerAccountSetDefaultRippleTx, issuer, "tesSUCCESS", nil)
+		require.NoError(t, err)
 
-	tt := []VaultClawbackTest{
-		{
-			Name: "fail - missing VaultID",
-			VaultClawback: &transaction.VaultClawback{
-				BaseTx: transaction.BaseTx{
-					Account: issuer.GetAddress(),
-				},
-				Holder: holder.GetAddress(),
-			},
-			ExpectedError: "invalid hash length",
-		},
-		{
-			Name: "fail - missing Holder",
-			VaultClawback: &transaction.VaultClawback{
-				BaseTx: transaction.BaseTx{
-					Account: issuer.GetAddress(),
-				},
-				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-			},
-			ExpectedError: "invalid address format",
-		},
-	}
+		issuerAccountSetAllowTrustLineClawbackTx := &transaction.AccountSet{
+			BaseTx: transaction.BaseTx{Account: issuer.GetAddress()},
+		}
+		issuerAccountSetAllowTrustLineClawbackTx.SetFlag = transaction.AsfAllowTrustLineClawback
+		flatIssuerAccountSetAllowTrustLineClawbackTx := issuerAccountSetAllowTrustLineClawbackTx.Flatten()
+		_, err = runner.TestTransaction(&flatIssuerAccountSetAllowTrustLineClawbackTx, issuer, "tesSUCCESS", nil)
+		require.NoError(t, err)
 
-	for _, tc := range tt {
-		t.Run(tc.Name, func(t *testing.T) {
-			flatTx := tc.VaultClawback.Flatten()
-			_, err := runner.TestTransaction(&flatTx, issuer, "tesSUCCESS", nil)
-			if tc.ExpectedError != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tc.ExpectedError)
-			} else {
-				require.NoError(t, err)
-			}
+		setTrustLineTx := &transaction.TrustSet{
+			BaseTx: transaction.BaseTx{Account: holder.GetAddress()},
+			LimitAmount: types.IssuedCurrencyAmount{
+				Currency: "USD",
+				Issuer:   issuer.GetAddress(),
+				Value:    "9999999999",
+			},
+		}
+		flatSetTrustLineTx := setTrustLineTx.Flatten()
+		_, err = runner.TestTransaction(&flatSetTrustLineTx, holder, "tesSUCCESS", nil)
+		require.NoError(t, err)
+
+		paymentTx := &transaction.Payment{
+			BaseTx:      transaction.BaseTx{Account: issuer.GetAddress()},
+			Destination: holder.GetAddress(),
+			Amount:      types.IssuedCurrencyAmount{Currency: "USD", Issuer: issuer.GetAddress(), Value: "100"},
+		}
+		flatPaymentTx := paymentTx.Flatten()
+		_, err = runner.TestTransaction(&flatPaymentTx, issuer, "tesSUCCESS", nil)
+		require.NoError(t, err)
+
+		vaultCreateTx := &transaction.VaultCreate{
+			BaseTx: transaction.BaseTx{Account: vaultOwner.GetAddress()},
+			Asset:  ledger.Asset{Currency: "USD", Issuer: issuer.GetAddress()},
+		}
+		flatVaultCreateTx := vaultCreateTx.Flatten()
+		_, err = runner.TestTransaction(&flatVaultCreateTx, vaultOwner, "tesSUCCESS", nil)
+		fmt.Println(err)
+		require.NoError(t, err)
+
+		vaultObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
+			Account: vaultOwner.GetAddress(),
+			Type:    account.VaultObject,
 		})
-	}
+		require.NoError(t, err)
+		require.Len(t, vaultObjects.AccountObjects, 1)
+
+		vaultID := types.Hash256(vaultObjects.AccountObjects[0]["index"].(string))
+		vaultDepositTx := &transaction.VaultDeposit{
+			BaseTx:  transaction.BaseTx{Account: holder.GetAddress()},
+			VaultID: vaultID,
+			Amount:  types.IssuedCurrencyAmount{Currency: "USD", Issuer: issuer.GetAddress(), Value: "10"},
+		}
+		flatVaultDepositTx := vaultDepositTx.Flatten()
+		_, err = runner.TestTransaction(&flatVaultDepositTx, holder, "tesSUCCESS", nil)
+		require.NoError(t, err)
+
+		vaultClawbackTx := &transaction.VaultClawback{
+			BaseTx:  transaction.BaseTx{Account: issuer.GetAddress()},
+			VaultID: vaultID,
+			Holder:  holder.GetAddress(),
+			Amount:  types.IssuedCurrencyAmount{Currency: "USD", Issuer: issuer.GetAddress(), Value: "10"},
+		}
+		flatVaultClawbackTx := vaultClawbackTx.Flatten()
+		_, err = runner.TestTransaction(&flatVaultClawbackTx, issuer, "tesSUCCESS", nil)
+		require.NoError(t, err)
+
+		vaultObjects, err = client.GetAccountObjects(&account.ObjectsRequest{
+			Account: vaultOwner.GetAddress(),
+			Type:    account.VaultObject,
+		})
+		require.NoError(t, err)
+		require.NotContains(t, vaultObjects.AccountObjects[0], "AssetsTotal")
+	})
 }
 
-// ############################################################################
-// Vault Lifecycle (end-to-end)
-// ############################################################################
-
-// TestVaultLifecycle_Websocket tests the complete vault lifecycle: create, deposit, set, withdraw, delete.
-func TestVaultLifecycle_Websocket(t *testing.T) {
+func TestIntegrationVaultClawback_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
+	integrationTestVaultClawback(t, client)
+}
 
-	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
-		WalletCount: 1,
-	})
-
-	err := runner.Setup()
+func TestIntegrationVaultClawback_RPCClient(t *testing.T) {
+	env := integration.GetRPCEnv(t)
+	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
-	defer runner.Teardown()
-
-	owner := runner.GetWallet(0)
-
-	// Step 1: Create an XRP vault
-	vaultCreateTx := &transaction.VaultCreate{
-		BaseTx: transaction.BaseTx{
-			Account: owner.GetAddress(),
-		},
-		Asset: ledger.Asset{
-			Currency: "XRP",
-		},
-	}
-
-	flatTx := vaultCreateTx.Flatten()
-	res, err := runner.TestTransaction(&flatTx, owner, "tesSUCCESS", nil)
-	require.NoError(t, err)
-	require.NotNil(t, res)
+	client := rpc.NewClient(clientCfg)
+	integrationTestVaultClawback(t, client)
 }
