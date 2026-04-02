@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `confidential/deps/update.sh` maintainer script for fetching and vendoring `mpt-crypto` static libraries from the XRPLF Conan remote.
 - Added `update-mpt-crypto` GitHub Actions workflow to automatically check for new `mpt-crypto` releases weekly and open a PR with updated vendored dependencies.
 - Added `test-confidential` and `update-mpt-crypto` Makefile targets.
+- Added `confidential/elgamal` package providing a hex-string API for ElGamal keypair generation, encryption, and decryption, wrapping `mptcrypto` CGo bindings for use with XRPL transaction fields.
+  - `GenerateKeypair()`, `GenerateBlindingFactor()`, `Encrypt()`, `Decrypt()` with hex-encoded inputs/outputs.
+  - Sentinel errors with wrapped underlying causes for debuggability.
+- Extended `mptcrypto` with `GenerateBlindingFactor()`, `EncryptAmount()`, and `DecryptAmount()` CGo bindings (with `!cgo` stubs).
+
+#### pkg/hexutil
+
+- Added `DecodeFixedHex()` to decode a hex string and validate it decodes to exactly N bytes.
 
 #### binary-codec
 

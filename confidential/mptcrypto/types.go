@@ -5,6 +5,8 @@ package mptcrypto
 
 // Size constants (bytes), matching mpt_utility.h defines.
 const (
-	PrivKeySize = 32
-	PubKeySize  = 33
+	PrivKeySize        = 32
+	PubKeySize         = 33
+	BlindingFactorSize = 32
+	CiphertextSize     = 66 // two compressed EC points (C1 || C2)
 )
