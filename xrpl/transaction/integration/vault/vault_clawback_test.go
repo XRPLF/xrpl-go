@@ -1,7 +1,6 @@
 package vault
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
@@ -67,7 +66,6 @@ func integrationTestVaultClawback(t *testing.T, client integration.Client) {
 		}
 		flatVaultCreateTx := vaultCreateTx.Flatten()
 		_, err = runner.TestTransaction(&flatVaultCreateTx, vaultOwner, "tesSUCCESS", nil)
-		fmt.Println(err)
 		require.NoError(t, err)
 
 		vaultObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
