@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added integration test for credential transactions `CredentialAccept` and `CredentialDelete`
 - Added integration test for `DepositPreauth` transaction
 - Added integration test for payment and payment channels transactions.
+- Added integration test for vault transactions 
 - Added integration test for oracle transactions `OracleSet` and `OracleDelete`
 - Added integration test for NFT transaction `NFTModify`
 - Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`
