@@ -116,7 +116,7 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 		res, err := runner.TestTransaction(&flatMptIssuanceCreateTx, issuer, "tesSUCCESS", nil)
 		require.NoError(t, err)
 
-		sequence := txFieldUint32(t, res.Tx, "Sequence")
+		sequence := integration.TxFieldUint32(t, res.Tx, "Sequence")
 
 		_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(issuer.GetAddress().String())
 		require.NoError(t, err)

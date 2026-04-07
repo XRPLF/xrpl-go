@@ -34,7 +34,7 @@ func testIntegrationPaymentChannelFund(t *testing.T, client integration.Client) 
 		res, err := runner.TestTransaction(&flatPaymentChannelCreateTx, sender, "tesSUCCESS", nil)
 		require.NoError(t, err)
 
-		createSequence := txFieldUint32(t, res.Tx, "Sequence")
+		createSequence := integration.TxFieldUint32(t, res.Tx, "Sequence")
 		channelID, err := xrplhash.PaymentChannel(
 			sender.GetAddress().String(),
 			receiver.GetAddress().String(),
