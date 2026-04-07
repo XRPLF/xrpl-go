@@ -17,6 +17,8 @@ const (
 	DepositPreauthObject ObjectType = "deposit_preauth"
 	DIDObject            ObjectType = "did"
 	EscrowObject         ObjectType = "escrow"
+	MPToken              ObjectType = "mptoken"
+	MPTIssuance          ObjectType = "mpt_issuance"
 	NFTOfferObject       ObjectType = "nft_offer"
 	OfferObject          ObjectType = "offer"
 	PaymentChannelObject ObjectType = "payment_channel"
