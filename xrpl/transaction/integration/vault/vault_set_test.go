@@ -34,7 +34,7 @@ func integrationTestVaultSet(t *testing.T, client integration.Client) {
 
 	tt := []vaultSetTest{
 		{
-			Name: "update vault Data and AssetsMaximum",
+			Name: "pass - update vault Data and AssetsMaximum",
 			VaultCreate: &transaction.VaultCreate{
 				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
 				Asset:  ledger.Asset{Currency: "XRP"},

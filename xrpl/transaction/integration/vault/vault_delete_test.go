@@ -29,7 +29,7 @@ func integrationTestVaultDelete(t *testing.T, client integration.Client) {
 
 	tt := []vaultDeleteTest{
 		{
-			Name: "delete empty vault",
+			Name: "pass - delete empty vault",
 			VaultCreate: &transaction.VaultCreate{
 				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
 				Asset:  ledger.Asset{Currency: "XRP"},

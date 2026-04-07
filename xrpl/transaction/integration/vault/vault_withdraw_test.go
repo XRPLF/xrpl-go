@@ -30,7 +30,7 @@ func integrationTestVaultWithdraw(t *testing.T, client integration.Client) {
 
 	tt := []vaultWithdrawTest{
 		{
-			Name: "withdraw XRP from vault",
+			Name: "pass - withdraw XRP from vault",
 			VaultCreate: &transaction.VaultCreate{
 				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
 				Asset:  ledger.Asset{Currency: "XRP"},

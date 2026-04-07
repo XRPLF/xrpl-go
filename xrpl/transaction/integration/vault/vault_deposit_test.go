@@ -29,7 +29,7 @@ func integrationTestVaultDeposit(t *testing.T, client integration.Client) {
 
 	tt := []vaultDepositTest{
 		{
-			Name: "deposit XRP into vault",
+			Name: "pass - deposit XRP into vault",
 			VaultCreate: &transaction.VaultCreate{
 				BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
 				Asset:  ledger.Asset{Currency: "XRP"},
