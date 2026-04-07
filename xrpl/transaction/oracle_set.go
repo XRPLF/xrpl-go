@@ -46,7 +46,7 @@ type OracleSet struct {
 	OracleDocumentID uint32
 	// The time the data was last updated, in seconds since the UNIX Epoch.
 	// It is 0 by default.
-	LastUpdatedTime uint32
+	LastUpdateTime uint32
 	// (Variable) An arbitrary value that identifies an oracle provider, such as Chainlink, Band, or DIA. This field is a string, up to 256 ASCII hex encoded characters (0x20-0x7E).
 	// This field is required when creating a new Oracle ledger entry, but is optional for updates.
 	Provider string `json:",omitempty"`
@@ -65,7 +65,7 @@ func (tx *OracleSet) TxType() TxType {
 }
 
 // Flatten returns a map representation of the OracleSet transaction for JSON-RPC submission.
-func (tx *OracleSet) Flatten() map[string]any {
+func (tx *OracleSet) Flatten() FlatTransaction {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()
@@ -83,7 +83,7 @@ func (tx *OracleSet) Flatten() map[string]any {
 		flattened["URI"] = tx.URI
 	}
 
-	flattened["LastUpdatedTime"] = tx.LastUpdatedTime
+	flattened["LastUpdateTime"] = tx.LastUpdateTime
 
 	if tx.AssetClass != "" {
 		flattened["AssetClass"] = tx.AssetClass

@@ -1,7 +1,7 @@
 package ledger
 
 import (
-	"strconv"
+	"fmt"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -80,9 +80,8 @@ func (priceData *PriceData) Flatten() map[string]any {
 	flattened := make(map[string]any, mapKeys)
 
 	if priceData.AssetPrice != 0 {
-		// AssetPrice needs to be a string
-		flatAssetPrice := strconv.FormatUint(priceData.AssetPrice, 10)
-		flattened["AssetPrice"] = flatAssetPrice
+		// AssetPrice must be a hex string for the binary codec UInt64 type
+		flattened["AssetPrice"] = fmt.Sprintf("%016X", priceData.AssetPrice)
 	}
 	if priceData.BaseAsset != "" {
 		flattened["BaseAsset"] = priceData.BaseAsset
