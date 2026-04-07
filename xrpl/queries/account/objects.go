@@ -21,6 +21,7 @@ const (
 	MPTIssuance              ObjectType = "mpt_issuance"
 	NFTOfferObject           ObjectType = "nft_offer"
 	OfferObject              ObjectType = "offer"
+	OracleObject             ObjectType = "oracle"
 	PaymentChannelObject     ObjectType = "payment_channel"
 	PermissionedDomainObject ObjectType = "permissioned_domain"
 	SignerListObject         ObjectType = "signer_list"

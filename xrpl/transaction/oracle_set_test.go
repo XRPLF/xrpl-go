@@ -17,7 +17,7 @@ func TestOracleSet_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *OracleSet
-		expected map[string]any
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
@@ -25,7 +25,7 @@ func TestOracleSet_Flatten(t *testing.T) {
 			expected: map[string]any{
 				"TransactionType":  OracleSetTx.String(),
 				"OracleDocumentID": uint32(0),
-				"LastUpdatedTime":  uint32(0),
+				"LastUpdateTime":   uint32(0),
 			},
 		},
 		{
@@ -40,7 +40,7 @@ func TestOracleSet_Flatten(t *testing.T) {
 				OracleDocumentID: 1,
 				Provider:         "Chainlink",
 				URI:              "https://example.com",
-				LastUpdatedTime:  1715702400,
+				LastUpdateTime:   1715702400,
 				AssetClass:       "currency",
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
@@ -62,12 +62,12 @@ func TestOracleSet_Flatten(t *testing.T) {
 				"OracleDocumentID":   uint32(1),
 				"Provider":           "Chainlink",
 				"URI":                "https://example.com",
-				"LastUpdatedTime":    uint32(1715702400),
+				"LastUpdateTime":     uint32(1715702400),
 				"AssetClass":         "currency",
 				"PriceDataSeries": []map[string]any{
 					{
 						"PriceData": map[string]any{
-							"AssetPrice": "740",
+							"AssetPrice": "00000000000002E4",
 							"BaseAsset":  "XRP",
 							"QuoteAsset": "USD",
 							"Scale":      uint8(3),
@@ -196,7 +196,7 @@ func TestOracleSet_Validate(t *testing.T) {
 				OracleDocumentID: 1,
 				Provider:         "Chainlink",
 				URI:              "https://example.com",
-				LastUpdatedTime:  1715702400,
+				LastUpdateTime:   1715702400,
 				AssetClass:       "currency",
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{

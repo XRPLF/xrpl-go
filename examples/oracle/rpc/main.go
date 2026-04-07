@@ -72,7 +72,7 @@ func main() {
 			Account: oracleIssuer.ClassicAddress,
 		},
 		OracleDocumentID: oracleDocumentID,
-		LastUpdatedTime:  lastUpdatedTime,
+		LastUpdateTime:   lastUpdatedTime,
 		URI:              hex.EncodeToString([]byte("https://example.com")),
 		Provider:         hex.EncodeToString([]byte("Chainlink")),
 		AssetClass:       hex.EncodeToString([]byte("currency")),
