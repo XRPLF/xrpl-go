@@ -18,7 +18,7 @@ type PermissionedDomainTest struct {
 	PermissionedDomainSet *transaction.PermissionedDomainSet
 }
 
-func integrationTestPermissionedDomain(t *testing.T, client integration.Client) {
+func testIntegrationPermissionedDomain(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -77,7 +77,7 @@ func integrationTestPermissionedDomain(t *testing.T, client integration.Client) 
 func TestIntegrationPermissionedDomain_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestPermissionedDomain(t, client)
+	testIntegrationPermissionedDomain(t, client)
 }
 
 func TestIntegrationPermissionedDomain_RPCClient(t *testing.T) {
@@ -85,5 +85,5 @@ func TestIntegrationPermissionedDomain_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestPermissionedDomain(t, client)
+	testIntegrationPermissionedDomain(t, client)
 }
