@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func integrationTestPaymentChannelClaim(t *testing.T, client integration.Client) {
+func testIntegrationPaymentChannelClaim(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -55,7 +55,7 @@ func integrationTestPaymentChannelClaim(t *testing.T, client integration.Client)
 func TestIntegrationPaymentChannelClaim_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestPaymentChannelClaim(t, client)
+	testIntegrationPaymentChannelClaim(t, client)
 }
 
 func TestIntegrationPaymentChannelClaim_RPCClient(t *testing.T) {
@@ -63,5 +63,5 @@ func TestIntegrationPaymentChannelClaim_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestPaymentChannelClaim(t, client)
+	testIntegrationPaymentChannelClaim(t, client)
 }
