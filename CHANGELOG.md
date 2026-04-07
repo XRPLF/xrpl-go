@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added integration tests for did transactions `DIDSet` and `DIDDelete`
 - Added integration test for credential transactions `CredentialAccept` and `CredentialDelete`
 - Added integration test for `DepositPreauth` transaction
+- Added integration test for NFT transaction `NFTModify`
 - Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`
 
 ### Changed
