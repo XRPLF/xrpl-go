@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func integrationTestOracleSet(t *testing.T, client integration.Client) {
+func testIntegrationOracleSet(t *testing.T, client integration.Client) {
 	t.Run("pass - base oracle set", func(t *testing.T) {
 		runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 		err := runner.Setup()
@@ -87,7 +87,7 @@ func integrationTestOracleSet(t *testing.T, client integration.Client) {
 func TestIntegrationOracleSet_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestOracleSet(t, client)
+	testIntegrationOracleSet(t, client)
 }
 
 func TestIntegrationOracleSet_RPCClient(t *testing.T) {
@@ -95,5 +95,5 @@ func TestIntegrationOracleSet_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestOracleSet(t, client)
+	testIntegrationOracleSet(t, client)
 }

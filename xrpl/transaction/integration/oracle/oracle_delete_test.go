@@ -20,7 +20,7 @@ type OracleDeleteTest struct {
 	OracleDelete *transaction.OracleDelete
 }
 
-func integrationTestOracleDelete(t *testing.T, client integration.Client) {
+func testIntegrationOracleDelete(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func integrationTestOracleDelete(t *testing.T, client integration.Client) {
 func TestIntegrationOracleDelete_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestOracleDelete(t, client)
+	testIntegrationOracleDelete(t, client)
 }
 
 func TestIntegrationOracleDelete_RPCClient(t *testing.T) {
@@ -96,5 +96,5 @@ func TestIntegrationOracleDelete_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestOracleDelete(t, client)
+	testIntegrationOracleDelete(t, client)
 }
