@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl
 
+- Added method `GetAccountObjects` and `GetAccountLines` to testutil `client` interface-
+- Added integration tests for `TrustSet` transaction
 - Added Dynamic MPT support for `MPTokenIssuanceCreate`:
   - `MutableFlags` field to declare which properties can be mutated after creation.
   - `DomainID` field to associate a permissioned domain (requires `TfMPTRequireAuth` flag).
@@ -25,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `MutableFlags` helper function in `types` package.
 - Added integration tests for account transactions `AccountSet` and `AccountDelete`
 - Added integration test for permissioned domain transactions
+- Added integration test for check transactions `CheckCreate`, `CheckCash` and `CheckCancel`
+- Added integration tests for did transactions `DIDSet` and `DIDDelete`
+- Added integration test for credential transactions `CredentialAccept` and `CredentialDelete`
+- Added integration test for `DepositPreauth` transaction
+- Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`
+
 ### Changed
 
 #### Makefile
