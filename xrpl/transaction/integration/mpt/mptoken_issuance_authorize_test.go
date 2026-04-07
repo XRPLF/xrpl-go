@@ -99,8 +99,8 @@ func testIntegrationMptTokenIssuanceAuthorize(t *testing.T, client integration.C
 				MPTokenIssuanceID: issuanceTokenID,
 			}
 			unauthorizeTx.SetMPTUnauthorizeFlag()
-			unauthorizeFlatTx := unauthorizeTx.Flatten()
-			_, err = runner.TestTransaction(&unauthorizeFlatTx, receiver, "tesSUCCESS", nil)
+			flatUnauthorizeTx := unauthorizeTx.Flatten()
+			_, err = runner.TestTransaction(&flatUnauthorizeTx, receiver, "tesSUCCESS", nil)
 			require.NoError(t, err)
 
 			finalReceiverObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
