@@ -36,7 +36,7 @@ func testIntegrationOracleDelete(t *testing.T, client integration.Client) {
 			OracleSet: &transaction.OracleSet{
 				BaseTx:           transaction.BaseTx{Account: owner.GetAddress()},
 				OracleDocumentID: 1234,
-				LastUpdateTime:   uint32(xrpltime.RippleTimeToUnixTime(closeTime)/1000) + 20,
+				LastUpdateTime:   uint32(xrpltime.RippleTimeToUnixSeconds(closeTime)) + 20,
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{
