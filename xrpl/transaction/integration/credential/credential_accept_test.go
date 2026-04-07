@@ -66,12 +66,12 @@ func testIntegrationCredentialAccept(t *testing.T, client integration.Client) {
 			flatCredentialAcceptTx := tc.CredentialAccept.Flatten()
 			_, err = runner.TestTransaction(&flatCredentialAcceptTx, subject, "tesSUCCESS", nil)
 			require.NoError(t, err)
-			accountObjects, err = client.GetAccountObjects(&account.ObjectsRequest{
+			accountObjectsAfterAccept, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: subject.GetAddress(),
 				Type:    account.CredentialObject,
 			})
 			require.NoError(t, err)
-			require.Len(t, accountObjects.AccountObjects, 1)
+			require.Len(t, accountObjectsAfterAccept.AccountObjects, 1)
 		})
 	}
 }
