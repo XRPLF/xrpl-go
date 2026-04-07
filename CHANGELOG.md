@@ -26,8 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `MutableFlags` and `DomainID` fields to `MPTokenIssuance` ledger entry type with ledger-state mutable flags constants (`Lsmf` prefix) and flag setter methods.
 - Added `MutableFlags` helper function in `types` package.
 - Added integration tests for account transactions `AccountSet` and `AccountDelete`
+- Added integration test for permissioned domain transactions
+- Added integration test for check transactions `CheckCreate`, `CheckCash` and `CheckCancel`
+- Added integration tests for did transactions `DIDSet` and `DIDDelete`
+- Added integration test for credential transactions `CredentialAccept` and `CredentialDelete`
 - Added integration test for `DepositPreauth` transaction
 - Added integration test for vault transactions 
+- Added integration test for oracle transactions `OracleSet` and `OracleDelete`
+- Added integration test for NFT transaction `NFTModify`
+- Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`
+- Added `RippleTimeToUnixSeconds` function
 
 ### Changed
 
