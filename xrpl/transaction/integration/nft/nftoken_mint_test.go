@@ -16,7 +16,7 @@ type NFTokenMintTest struct {
 	NFTokenMint *transaction.NFTokenMint
 }
 
-func integrationTestNFTokenMint(t *testing.T, client integration.Client) {
+func testIntegrationNFTokenMint(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 2,
 	})
@@ -55,7 +55,7 @@ func integrationTestNFTokenMint(t *testing.T, client integration.Client) {
 func TestIntegrationNFTokenMint_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestNFTokenMint(t, client)
+	testIntegrationNFTokenMint(t, client)
 }
 
 func TestIntegrationNFTokenMint_RPCClient(t *testing.T) {
@@ -63,5 +63,5 @@ func TestIntegrationNFTokenMint_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestNFTokenMint(t, client)
+	testIntegrationNFTokenMint(t, client)
 }

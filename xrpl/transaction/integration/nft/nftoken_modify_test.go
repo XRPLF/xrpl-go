@@ -19,7 +19,7 @@ type NFTokenModifyTest struct {
 	NFTokenMint *transaction.NFTokenMint
 }
 
-func integrationTestNFTokenModify(t *testing.T, client integration.Client) {
+func testIntegrationNFTokenModify(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 1,
 	})
@@ -79,7 +79,7 @@ func integrationTestNFTokenModify(t *testing.T, client integration.Client) {
 			})
 			require.NoError(t, err)
 			require.Len(t, updatedNFTs.AccountNFTs, 1)
-			require.Equal(t, strings.ToLower(updatedNFTs.AccountNFTs[0].URI.String()), strings.ToLower(updatedURI.String()))
+			require.Equal(t, strings.ToLower(updatedURI.String()), strings.ToLower(updatedNFTs.AccountNFTs[0].URI.String()))
 		})
 	}
 }
@@ -87,7 +87,7 @@ func integrationTestNFTokenModify(t *testing.T, client integration.Client) {
 func TestIntegrationNFTokenModify_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestNFTokenModify(t, client)
+	testIntegrationNFTokenModify(t, client)
 }
 
 func TestIntegrationNFTokenModify_RPCClient(t *testing.T) {
@@ -95,5 +95,5 @@ func TestIntegrationNFTokenModify_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestNFTokenModify(t, client)
+	testIntegrationNFTokenModify(t, client)
 }
