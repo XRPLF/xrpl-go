@@ -57,6 +57,14 @@ func testIntegrationMptTokenCreate(t *testing.T, client integration.Client) {
 			})
 			require.NoError(t, err)
 			require.Len(t, accountObjects.AccountObjects, 1)
+			createdToken := accountObjects.AccountObjects[0]
+
+			createdAssetScale := createdToken["AssetScale"].(float64)
+			require.Equal(t, uint8(createdAssetScale), assetScale)
+
+			createdMaximumAmount := createdToken["MaximumAmount"]
+			require.Equal(t, createdMaximumAmount, maxAmount.String())
+			require.Equal(t, createdToken["MPTokenMetadata"], encodedMetadata)
 		})
 	}
 }
