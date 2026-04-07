@@ -8,6 +8,8 @@ INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration
 PARALLEL_TESTS = 4
 TEST_TIMEOUT = 5m
 
+GOTEST := $(shell command -v gotest 2>/dev/null || echo "go test")
+
 GOLANGCI_LINT_MAJOR_VERSION = 2
 GOLANGCI_LINT_VERSION = v2.11.3
 
@@ -35,33 +37,33 @@ lint-fix:
 
 test-all:
 	@echo "Running Go tests..."
-	@go test $(EXCLUDED_TEST_PACKAGES)
+	@$(GOTEST) $(EXCLUDED_TEST_PACKAGES)
 	@echo "Tests complete!"
 
 test-binary-codec:
 	@echo "Running Go tests for binary codec package..."
-	@go test ./binary-codec/...
+	@$(GOTEST) ./binary-codec/...
 	@echo "Tests complete!"
 
 test-address-codec:
 	@echo "Running Go tests for address codec package..."
-	@go test ./address-codec/...
+	@$(GOTEST) ./address-codec/...
 	@echo "Tests complete!"
 
 test-keypairs:
 	@echo "Running Go tests for keypairs package..."
-	@go test ./keypairs/...
+	@$(GOTEST) ./keypairs/...
 	@echo "Tests complete!"
 
 test-xrpl:
 	@echo "Running Go tests for xrpl package..."
-	@go test ./xrpl/...
+	@$(GOTEST) ./xrpl/...
 	@echo "Tests complete!"
 
 test-ci:
 	@echo "Running Go tests..."
 	@go clean -testcache
-	@go test $(EXCLUDED_TEST_PACKAGES) -parallel $(PARALLEL_TESTS) -timeout $(TEST_TIMEOUT)
+	@$(GOTEST) $(EXCLUDED_TEST_PACKAGES) -parallel $(PARALLEL_TESTS) -timeout $(TEST_TIMEOUT)
 	@echo "Tests complete!"
 
 run-localnet-linux/arm64:
@@ -77,28 +79,28 @@ run-localnet-linux/amd64:
 test-integration-localnet:
 	@echo "Running Go tests for integration package..."
 	@go clean -testcache
-	@INTEGRATION=localnet go test $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+	@INTEGRATION=localnet $(GOTEST) $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 test-integration-devnet:
 	@echo "Running Go tests for integration package..."
 	@go clean -testcache
-	@INTEGRATION=devnet go test $(INTEGRATION_TEST_PACKAGES)  -timeout $(TEST_TIMEOUT) -v
+	@INTEGRATION=devnet $(GOTEST) $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 test-integration-testnet:
 	@echo "Running Go tests for integration package..."
 	@go clean -testcache
-	@INTEGRATION=testnet go test $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+	@INTEGRATION=testnet $(GOTEST) $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 coverage-unit:
 	@echo "Generating unit test coverage report..."
-	@go test -coverprofile=coverage.out $(EXCLUDED_COVERAGE_PACKAGES)
+	@$(GOTEST) -coverprofile=coverage.out $(EXCLUDED_COVERAGE_PACKAGES)
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated at coverage.html"
 
 benchmark:
 	@echo "Running Go benchmarks..."
-	@go test -bench=. ./...
+	@$(GOTEST) -bench=. ./...
 	@echo "Benchmarks complete!"
