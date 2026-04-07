@@ -32,7 +32,7 @@ func testIntegrationCredentialAccept(t *testing.T, client integration.Client) {
 	subject := runner.GetWallet(1)
 	tt := []CredentialAcceptTest{
 		{
-			Name: "pass - credential accept",
+			Name: "pass - credential create",
 			CredentialCreate: &transaction.CredentialCreate{
 				BaseTx: transaction.BaseTx{
 					Account: issuer.GetAddress(),
