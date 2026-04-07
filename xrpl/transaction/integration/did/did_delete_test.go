@@ -1,4 +1,4 @@
-package integration
+package did
 
 import (
 	"testing"
@@ -16,7 +16,7 @@ type DIDDeleteTest struct {
 	DIDSet *transaction.DIDSet
 }
 
-func integrationTestDIDDelete(t *testing.T, client integration.Client) {
+func testIntegrationDIDDelete(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -69,7 +69,7 @@ func integrationTestDIDDelete(t *testing.T, client integration.Client) {
 func TestIntegrationDIDDelete_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestDIDDelete(t, client)
+	testIntegrationDIDDelete(t, client)
 }
 
 func TestIntegrationDIDDelete_RPCClient(t *testing.T) {
@@ -77,5 +77,5 @@ func TestIntegrationDIDDelete_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestDIDDelete(t, client)
+	testIntegrationDIDDelete(t, client)
 }

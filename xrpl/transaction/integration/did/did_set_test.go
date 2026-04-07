@@ -1,4 +1,4 @@
-package integration
+package did
 
 import (
 	"testing"
@@ -16,7 +16,7 @@ type DIDSetTest struct {
 	DIDSet *transaction.DIDSet
 }
 
-func integrationTestDIDSet(t *testing.T, client integration.Client) {
+func testIntegrationDIDSet(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -54,7 +54,7 @@ func integrationTestDIDSet(t *testing.T, client integration.Client) {
 func TestIntegrationDIDSet_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestDIDSet(t, client)
+	testIntegrationDIDSet(t, client)
 }
 
 func TestIntegrationDIDSet_RPCClient(t *testing.T) {
@@ -62,5 +62,5 @@ func TestIntegrationDIDSet_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestDIDSet(t, client)
+	testIntegrationDIDSet(t, client)
 }
