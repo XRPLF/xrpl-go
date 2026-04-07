@@ -23,8 +23,8 @@ type Client interface {
 	SubmitTxBlobAndWait(txBlob string, failHard bool) (*transactions.TxResponse, error)
 	SubmitMultisigned(blob string, validate bool) (*transactions.SubmitMultisignedResponse, error)
 	GetAccountObjects(req *account.ObjectsRequest) (*account.ObjectsResponse, error)
-	GetAccountOffers(req *account.OffersRequest) (*account.OffersResponse, error)
 	GetAccountLines(req *account.LinesRequest) (*account.LinesResponse, error)
+	GetAccountOffers(req *account.OffersRequest) (*account.OffersResponse, error)
 }
 
 // Connectable defines methods to connect and disconnect the integration client.
