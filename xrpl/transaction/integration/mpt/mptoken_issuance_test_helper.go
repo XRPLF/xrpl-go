@@ -36,4 +36,3 @@ func testIntegrationMptTokenCreationMetadata() (string, error) {
 
 	return types.EncodeMPTokenMetadata(metadata)
 }
-
