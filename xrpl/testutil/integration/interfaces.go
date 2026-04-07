@@ -25,6 +25,7 @@ type Client interface {
 	GetAccountObjects(req *account.ObjectsRequest) (*account.ObjectsResponse, error)
 	GetAccountLines(req *account.LinesRequest) (*account.LinesResponse, error)
 	GetAccountOffers(req *account.OffersRequest) (*account.OffersResponse, error)
+	GetAccountNFTs(req *account.NFTsRequest) (*account.NFTsResponse, error)
 }
 
 // Connectable defines methods to connect and disconnect the integration client.
