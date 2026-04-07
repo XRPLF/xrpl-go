@@ -19,7 +19,16 @@ const (
 //
 // It returns the number of milliseconds since the Unix epoch (January 1, 1970 00:00 UTC).
 func RippleTimeToUnixTime(rpepoch int64) int64 {
-	return (rpepoch + RippleEpochDiff) * 1000
+	return RippleTimeToUnixSeconds(rpepoch) * 1000
+}
+
+// RippleTimeToUnixSeconds converts a ripple timestamp to unix elapsed seconds.
+//
+// rpepoch is the number of seconds since January 1, 2000 (00:00 UTC).
+//
+// It returns the number of seconds since the Unix epoch (January 1, 1970 00:00 UTC).
+func RippleTimeToUnixSeconds(rpepoch int64) int64 {
+	return rpepoch + RippleEpochDiff
 }
 
 // UnixTimeToRippleTime converts a unix timestamp to a ripple timestamp.
