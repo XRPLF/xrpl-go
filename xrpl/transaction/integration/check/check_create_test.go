@@ -1,4 +1,4 @@
-package integration
+package check
 
 import (
 	"testing"
@@ -17,7 +17,7 @@ type CheckCreateTest struct {
 	CheckCreate *transaction.CheckCreate
 }
 
-func integrationTestCheckCreate(t *testing.T, client integration.Client) {
+func testIntegrationCheckCreate(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func integrationTestCheckCreate(t *testing.T, client integration.Client) {
 func TestIntegrationCheckCreate_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestCheckCreate(t, client)
+	testIntegrationCheckCreate(t, client)
 }
 
 func TestIntegrationCheckCreate_RPCClient(t *testing.T) {
@@ -64,5 +64,5 @@ func TestIntegrationCheckCreate_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestCheckCreate(t, client)
+	testIntegrationCheckCreate(t, client)
 }

@@ -1,4 +1,4 @@
-package integration
+package check
 
 import (
 	"testing"
@@ -17,7 +17,7 @@ type CheckCancelTest struct {
 	CheckCreate *transaction.CheckCreate
 }
 
-func integrationTestCheckCancel(t *testing.T, client integration.Client) {
+func testIntegrationCheckCancel(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func integrationTestCheckCancel(t *testing.T, client integration.Client) {
 func TestIntegrationCheckCancel_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestCheckCancel(t, client)
+	testIntegrationCheckCancel(t, client)
 }
 
 func TestIntegrationCheckCancel_RPCClient(t *testing.T) {
@@ -80,5 +80,5 @@ func TestIntegrationCheckCancel_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestCheckCancel(t, client)
+	testIntegrationCheckCancel(t, client)
 }

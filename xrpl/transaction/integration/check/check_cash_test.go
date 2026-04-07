@@ -1,4 +1,4 @@
-package integration
+package check
 
 import (
 	"testing"
@@ -17,7 +17,7 @@ type CheckCashTest struct {
 	CheckCreate *transaction.CheckCreate
 }
 
-func integrationTestCheckCash(t *testing.T, client integration.Client) {
+func testIntegrationCheckCash(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -74,7 +74,7 @@ func integrationTestCheckCash(t *testing.T, client integration.Client) {
 func TestIntegrationCheckCash_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	integrationTestCheckCash(t, client)
+	testIntegrationCheckCash(t, client)
 }
 
 func TestIntegrationCheckCash_RPCClient(t *testing.T) {
@@ -82,5 +82,5 @@ func TestIntegrationCheckCash_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	integrationTestCheckCash(t, client)
+	testIntegrationCheckCash(t, client)
 }
