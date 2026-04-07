@@ -60,6 +60,7 @@ func testIntegrationCredentialCreate(t *testing.T, client integration.Client) {
 			require.Len(t, accountObjects.AccountObjects, 1)
 			receivedCredentialType := accountObjects.AccountObjects[0]["CredentialType"].(string)
 			require.Equal(t, strings.ToLower(credentialType.String()), strings.ToLower(receivedCredentialType))
+			require.Equal(t, accountObjects.AccountObjects[0]["Subject"].(string), subject.GetAddress().String())
 		})
 	}
 }
