@@ -64,7 +64,7 @@ func TestVaultCreate_Flatten(t *testing.T) {
 			expected: FlatTransaction{
 				"TransactionType":  VaultCreateTx.String(),
 				"Account":          "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
-				"Asset":            map[string]any{"currency": "USD", "issuer": types.Address("rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb")},
+				"Asset":            map[string]any{"currency": "USD", "issuer": "rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb"},
 				"AssetsMaximum":    "1000000",
 				"WithdrawalPolicy": types.VaultStrategyFirstComeFirstServe.Value(),
 			},
@@ -89,7 +89,7 @@ func TestVaultCreate_Flatten(t *testing.T) {
 				"TransactionType": VaultCreateTx.String(),
 				"Account":         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				"Flags":           TfVaultPrivate,
-				"Asset":           map[string]any{"currency": "USD", "issuer": types.Address("rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb")},
+				"Asset":           map[string]any{"currency": "USD", "issuer": "rXJSJiZMxaLuH3kQBUV5DLipnYtrE6iVb"},
 				"Scale":           uint8(6),
 				"Data":            "DEADBEEF",
 				"DomainID":        "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
