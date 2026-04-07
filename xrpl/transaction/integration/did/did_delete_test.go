@@ -61,7 +61,7 @@ func testIntegrationDIDDelete(t *testing.T, client integration.Client) {
 				Type:    account.DIDObject,
 			})
 			require.NoError(t, err)
-			require.Empty(t, objects.AccountObjects, " there should be no DID on the ledger after DIDDelete")
+			require.Empty(t, objects.AccountObjects, "there should be no DID on the ledger after DIDDelete")
 		})
 	}
 }
