@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func EscrowFinishTest(t *testing.T, client integration.Client) {
+func testIntegrationEscrowFinish(t *testing.T, client integration.Client) {
 	t.Run("pass - base escrow finish", func(t *testing.T) {
 		runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 		err := runner.Setup()
@@ -65,7 +65,7 @@ func EscrowFinishTest(t *testing.T, client integration.Client) {
 func TestIntegrationEscrowFinish_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	EscrowFinishTest(t, client)
+	testIntegrationEscrowFinish(t, client)
 }
 
 func TestIntegrationEscrowFinish_RPCClient(t *testing.T) {
@@ -73,5 +73,5 @@ func TestIntegrationEscrowFinish_RPCClient(t *testing.T) {
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	EscrowFinishTest(t, client)
+	testIntegrationEscrowFinish(t, client)
 }
