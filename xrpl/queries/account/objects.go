@@ -15,6 +15,7 @@ const (
 	CheckObject          ObjectType = "check"
 	CredentialObject     ObjectType = "credential"
 	DepositPreauthObject ObjectType = "deposit_preauth"
+	DIDObject            ObjectType = "did"
 	EscrowObject         ObjectType = "escrow"
 	MPToken              ObjectType = "mptoken"
 	MPTIssuance          ObjectType = "mpt_issuance"
