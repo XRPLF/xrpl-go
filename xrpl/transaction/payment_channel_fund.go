@@ -43,7 +43,7 @@ func (*PaymentChannelFund) TxType() TxType {
 // Flatten returns a map of the PaymentChannelFund transaction fields.
 func (p *PaymentChannelFund) Flatten() FlatTransaction {
 	flattened := p.BaseTx.Flatten()
-	flattened["TransactionType"] = "PaymentChannelFund"
+	flattened["TransactionType"] = p.TxType().String()
 	flattened["Channel"] = p.Channel.String()
 	flattened["Amount"] = p.Amount.String()
 

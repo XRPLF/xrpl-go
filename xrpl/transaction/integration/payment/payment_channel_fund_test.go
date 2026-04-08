@@ -1,9 +1,9 @@
-package payments
+package payment
 
 import (
 	"testing"
 
-	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	xrplhash "github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testIntegrationPaymentChannelCreate(t *testing.T, client integration.Client) {
+func testIntegrationPaymentChannelFund(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
 	err := runner.Setup()
 	require.NoError(t, err)
@@ -21,7 +21,7 @@ func testIntegrationPaymentChannelCreate(t *testing.T, client integration.Client
 	sender := runner.GetWallet(0)
 	receiver := runner.GetWallet(1)
 
-	t.Run("pass - payment channel create base", func(t *testing.T) {
+	t.Run("pass - base payment channel fund", func(t *testing.T) {
 		paymentChannelCreateTx := &transaction.PaymentChannelCreate{
 			BaseTx:      transaction.BaseTx{Account: sender.GetAddress()},
 			Amount:      types.XRPCurrencyAmount(100),
@@ -31,28 +31,38 @@ func testIntegrationPaymentChannelCreate(t *testing.T, client integration.Client
 		}
 
 		flatPaymentChannelCreateTx := paymentChannelCreateTx.Flatten()
-		_, err = runner.TestTransaction(&flatPaymentChannelCreateTx, sender, "tesSUCCESS", nil)
+		res, err := runner.TestTransaction(&flatPaymentChannelCreateTx, sender, "tesSUCCESS", nil)
 		require.NoError(t, err)
 
-		objects, err := client.GetAccountObjects(&account.ObjectsRequest{
-			Account: sender.GetAddress(),
-			Type:    account.PaymentChannelObject,
-		})
+		createSequence := integration.TxFieldUint32(t, res.Tx, "Sequence")
+		channelID, err := xrplhash.PaymentChannel(
+			sender.GetAddress().String(),
+			receiver.GetAddress().String(),
+			createSequence,
+		)
 		require.NoError(t, err)
-		require.Len(t, objects.AccountObjects, 1)
+
+		paymentChannelFundTx := &transaction.PaymentChannelFund{
+			BaseTx:  transaction.BaseTx{Account: sender.GetAddress()},
+			Channel: types.Hash256(channelID),
+			Amount:  types.XRPCurrencyAmount(100),
+		}
+		flatPaymentChannelFundTx := paymentChannelFundTx.Flatten()
+		_, err = runner.TestTransaction(&flatPaymentChannelFundTx, sender, "tesSUCCESS", nil)
+		require.NoError(t, err)
 	})
 }
 
-func TestIntegrationPaymentChannelCreate_Websocket(t *testing.T) {
+func TestIntegrationPaymentChannelFund_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	testIntegrationPaymentChannelCreate(t, client)
+	testIntegrationPaymentChannelFund(t, client)
 }
 
-func TestIntegrationPaymentChannelCreate_RPCClient(t *testing.T) {
+func TestIntegrationPaymentChannelFund_RPCClient(t *testing.T) {
 	env := integration.GetRPCEnv(t)
 	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
 	require.NoError(t, err)
 	client := rpc.NewClient(clientCfg)
-	testIntegrationPaymentChannelCreate(t, client)
+	testIntegrationPaymentChannelFund(t, client)
 }

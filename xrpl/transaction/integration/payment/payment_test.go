@@ -1,12 +1,9 @@
-package payments
+package payment
 
 import (
-	"encoding/binary"
-	"encoding/hex"
-	"strings"
 	"testing"
 
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
@@ -17,15 +14,15 @@ import (
 )
 
 func testIntegrationPayment(t *testing.T, client integration.Client) {
+	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
+	err := runner.Setup()
+	require.NoError(t, err)
+	defer runner.Teardown()
+
+	sender := runner.GetWallet(0)
+	receiver := runner.GetWallet(1)
+
 	t.Run("pass - base payment", func(t *testing.T) {
-		runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
-		err := runner.Setup()
-		require.NoError(t, err)
-		defer runner.Teardown()
-
-		sender := runner.GetWallet(0)
-		receiver := runner.GetWallet(1)
-
 		paymentTx := &transaction.Payment{
 			BaseTx:      transaction.BaseTx{Account: sender.GetAddress()},
 			Amount:      types.XRPCurrencyAmount(1000),
@@ -37,14 +34,6 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 	})
 
 	t.Run("pass - payment specifying amount field", func(t *testing.T) {
-		runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
-		err := runner.Setup()
-		require.NoError(t, err)
-		defer runner.Teardown()
-
-		sender := runner.GetWallet(0)
-		receiver := runner.GetWallet(1)
-
 		paymentTx := &transaction.Payment{
 			BaseTx:      transaction.BaseTx{Account: sender.GetAddress()},
 			Amount:      types.XRPCurrencyAmount(1000),
@@ -58,14 +47,6 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 	})
 
 	t.Run("pass - payment specifying delivery max field", func(t *testing.T) {
-		runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
-		err := runner.Setup()
-		require.NoError(t, err)
-		defer runner.Teardown()
-
-		sender := runner.GetWallet(0)
-		receiver := runner.GetWallet(1)
-
 		paymentTx := &transaction.Payment{
 			BaseTx:      transaction.BaseTx{Account: sender.GetAddress()},
 			DeliverMax:  types.XRPCurrencyAmount(1000),
@@ -79,14 +60,6 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 	})
 
 	t.Run("pass - payment with identical DeliverMax and Amount fields", func(t *testing.T) {
-		runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
-		err := runner.Setup()
-		require.NoError(t, err)
-		defer runner.Teardown()
-
-		sender := runner.GetWallet(0)
-		receiver := runner.GetWallet(1)
-
 		paymentTx := &transaction.Payment{
 			BaseTx:      transaction.BaseTx{Account: sender.GetAddress()},
 			Amount:      types.XRPCurrencyAmount(1000),
@@ -101,13 +74,8 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 	})
 
 	t.Run("pass - MPT payment", func(t *testing.T) {
-		runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 2})
-		err := runner.Setup()
-		require.NoError(t, err)
-		defer runner.Teardown()
-
-		issuer := runner.GetWallet(0)
-		holder := runner.GetWallet(1)
+		issuer := sender
+		holder := receiver
 
 		mptIssuanceCreateTx := &transaction.MPTokenIssuanceCreate{
 			BaseTx: transaction.BaseTx{Account: issuer.GetAddress()},
@@ -118,12 +86,7 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 
 		sequence := integration.TxFieldUint32(t, res.Tx, "Sequence")
 
-		_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(issuer.GetAddress().String())
-		require.NoError(t, err)
-
-		seqBytes := make([]byte, 4)
-		binary.BigEndian.PutUint32(seqBytes, sequence)
-		mptID := strings.ToUpper(hex.EncodeToString(seqBytes) + hex.EncodeToString(accountID))
+		mptID, err := hash.MPTId(sequence, issuer.GetAddress().String())
 
 		objects, err := client.GetAccountObjects(&account.ObjectsRequest{
 			Account: issuer.GetAddress(),
