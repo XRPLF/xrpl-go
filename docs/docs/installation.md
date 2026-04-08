@@ -63,6 +63,6 @@ Now that you have the `xrpl-go` package downloaded and imported in your project,
 
 To learn more about the `xrpl-go` packages, you can find the documentation for each package:
 
+- [confidential](/docs/confidential)
 - [keypairs](/docs/keypairs)
 - [xrpl](/docs/xrpl/currency)
-

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### docs
+
+- Added a Docusaurus `confidential` section documenting the confidential MPT package layout, CGo requirement, confidential transaction types, and `confidential/builder` workflows.
+
 #### confidential
 
 - Added `confidential/mptcrypto` package with CGo bindings to the XRPLF `mpt-crypto` C library for XLS-96 Confidential MPT Transfers (ElGamal encryption, ZK proofs, Pedersen commitments).
@@ -96,6 +100,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extracted ledger space hex values into package-level constants.
 
 ### Changed
+
+#### docs
+
+- Changed the Docusaurus docs navigation to place `confidential` under a dedicated `Packages` section instead of surfacing it alongside the introduction docs, and added a `Packages` overview page.
 
 #### Makefile
 
