@@ -7,6 +7,8 @@ import (
 
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	queriesCommon "github.com/Peersyst/xrpl-go/xrpl/queries/common"
+	xrpledger "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
 	xrpltime "github.com/Peersyst/xrpl-go/xrpl/time"
@@ -23,7 +25,12 @@ func testIntegrationOracleSet(t *testing.T, client integration.Client) {
 		defer runner.Teardown()
 
 		owner := runner.GetWallet(0)
-		closeTime := getLedgerCloseTime(t, client)
+		currentLedger, err := client.GetLedger(&xrpledger.Request{
+			LedgerIndex: queriesCommon.Validated,
+		})
+		require.NoError(t, err)
+
+		closeTime := int64(currentLedger.Ledger.CloseTime)
 
 		oracleSetTx := &transaction.OracleSet{
 			BaseTx:           transaction.BaseTx{Account: owner.GetAddress()},
@@ -64,7 +71,7 @@ func testIntegrationOracleSet(t *testing.T, client integration.Client) {
 		require.Len(t, objects.AccountObjects, 1, "there should be exactly one oracle on the ledger")
 
 		oracle := objects.AccountObjects[0]
-		require.Equal(t, oracleSetTx.LastUpdateTime, txFieldUint32(t, oracle, "LastUpdateTime"))
+		require.Equal(t, oracleSetTx.LastUpdateTime, integration.TxFieldUint32(t, oracle, "LastUpdateTime"))
 		require.Equal(t, string(owner.GetAddress()), oracle["Owner"].(string))
 		require.Equal(t, strings.ToLower(oracleSetTx.AssetClass), strings.ToLower(oracle["AssetClass"].(string)))
 		require.Equal(t, strings.ToLower(oracleSetTx.Provider), strings.ToLower(oracle["Provider"].(string)))
@@ -76,8 +83,8 @@ func testIntegrationOracleSet(t *testing.T, client integration.Client) {
 		require.Equal(t, "XRP", firstPriceData["BaseAsset"].(string))
 		require.Equal(t, "USD", firstPriceData["QuoteAsset"].(string))
 		require.Equal(t, "2e4", firstPriceData["AssetPrice"].(string))
-		require.InEpsilon(t, float64(3), txFieldFloat64(t, firstPriceData, "Scale"), 0.0)
-		require.InDelta(t, float64(0), txFieldFloat64(t, oracle, "Flags"), 0)
+		require.InEpsilon(t, float64(3), integration.TxFieldFloat64(t, firstPriceData, "Scale"), 0.0)
+		require.InDelta(t, float64(0), integration.TxFieldFloat64(t, oracle, "Flags"), 0)
 
 		secondPriceData := priceDataSeries[1].(map[string]any)["PriceData"].(map[string]any)
 		require.Equal(t, "ffffffffffffffff", secondPriceData["AssetPrice"].(string))

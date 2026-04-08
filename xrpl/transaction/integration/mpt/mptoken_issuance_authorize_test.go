@@ -57,7 +57,7 @@ func testIntegrationMptTokenIssuanceAuthorize(t *testing.T, client integration.C
 
 			accountObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: sender.GetAddress(),
-				Type:    account.MPTIssuance,
+				Type:    account.MPTIssuanceObject,
 			})
 			require.NoError(t, err)
 			require.Len(t, accountObjects.AccountObjects, 1)
@@ -75,7 +75,7 @@ func testIntegrationMptTokenIssuanceAuthorize(t *testing.T, client integration.C
 
 			receiverObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: receiver.GetAddress(),
-				Type:    account.MPToken,
+				Type:    account.MPTokenObject,
 			})
 			require.NoError(t, err)
 			require.Len(t, receiverObjects.AccountObjects, 1)
@@ -105,7 +105,7 @@ func testIntegrationMptTokenIssuanceAuthorize(t *testing.T, client integration.C
 
 			finalReceiverObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: receiver.GetAddress(),
-				Type:    account.MPToken,
+				Type:    account.MPTokenObject,
 			})
 			require.NoError(t, err)
 			require.Empty(t, finalReceiverObjects.AccountObjects)

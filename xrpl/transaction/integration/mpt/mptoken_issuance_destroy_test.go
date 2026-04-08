@@ -53,7 +53,7 @@ func testIntegrationMptTokenIssuanceDestroy(t *testing.T, client integration.Cli
 
 			accountObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: sender.GetAddress(),
-				Type:    account.MPTIssuance,
+				Type:    account.MPTIssuanceObject,
 			})
 			require.NoError(t, err)
 			require.Len(t, accountObjects.AccountObjects, 1)
@@ -70,7 +70,7 @@ func testIntegrationMptTokenIssuanceDestroy(t *testing.T, client integration.Cli
 			require.NoError(t, err)
 			accountObjectsFinal, err := client.GetAccountObjects(&account.ObjectsRequest{
 				Account: sender.GetAddress(),
-				Type:    account.MPTIssuance,
+				Type:    account.MPTIssuanceObject,
 			})
 			require.NoError(t, err)
 			require.Empty(t, accountObjectsFinal.AccountObjects)

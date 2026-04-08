@@ -6,6 +6,8 @@ import (
 
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	queriesCommon "github.com/Peersyst/xrpl-go/xrpl/queries/common"
+	xrpledger "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
 	xrpltime "github.com/Peersyst/xrpl-go/xrpl/time"
@@ -28,7 +30,12 @@ func testIntegrationOracleDelete(t *testing.T, client integration.Client) {
 
 	owner := runner.GetWallet(0)
 
-	closeTime := getLedgerCloseTime(t, client)
+	currentLedger, err := client.GetLedger(&xrpledger.Request{
+		LedgerIndex: queriesCommon.Validated,
+	})
+	require.NoError(t, err)
+
+	closeTime := int64(currentLedger.Ledger.CloseTime)
 
 	tt := []OracleDeleteTest{
 		{
