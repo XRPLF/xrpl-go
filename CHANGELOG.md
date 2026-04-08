@@ -59,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `GetResult` decoding failure when the server returns numeric values (e.g. `validator_list_expires: 0`) for fields typed as `string` in Go structs.
 
+#### xrpl/ledger-entry-types
+
+- Fixed `AuthAccount.Flatten()` storing `types.Address` without converting to `string`, causing binary codec serialization to fail.
+
 ### Removed
 
 #### xrpl/transaction
