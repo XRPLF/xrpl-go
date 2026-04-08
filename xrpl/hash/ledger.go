@@ -117,14 +117,14 @@ func PaymentChannel(source, destination string, sequence uint32) (string, error)
 	return EncodeToHashString(payloadBytes), nil
 }
 
-// MPTId computes the unique identifier for a Multi-Purpose Token (MPT).
+// MPTID computes the unique identifier for a Multi-Purpose Token (MPT).
 // The ID is computed by concatenating the sequence number (as 8-char hex)
 // and the account ID of the issuer.
 //
 // sequence is the sequence number of the MPTokenIssuance transaction.
 // issuer is the account address that issued the token.
 // Returns the computed MPT ID as an uppercase hexadecimal string.
-func MPTId(sequence uint32, issuer string) (string, error) {
+func MPTID(sequence uint32, issuer string) (string, error) {
 	_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(issuer)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode issuer classic address: %w", err)

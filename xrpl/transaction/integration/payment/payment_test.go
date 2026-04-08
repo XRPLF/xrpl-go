@@ -86,7 +86,7 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 
 		sequence := integration.TxFieldUint32(t, res.Tx, "Sequence")
 
-		mptID, err := hash.MPTId(sequence, issuer.GetAddress().String())
+		mptID, err := hash.MPTID(sequence, issuer.GetAddress().String())
 
 		objects, err := client.GetAccountObjects(&account.ObjectsRequest{
 			Account: issuer.GetAddress(),
