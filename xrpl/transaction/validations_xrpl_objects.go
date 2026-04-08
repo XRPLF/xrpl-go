@@ -25,6 +25,8 @@ const (
 	DomainIDLength = 64
 	// SHA512HalfLength is the length of a SHA-512 half hash (64 hex characters).
 	SHA512HalfLength = 64
+	// MPTIssuanceIDLength is the hex-encoded length of a 24-byte MPT issuance ID (48 hex chars).
+	MPTIssuanceIDLength = 48
 )
 
 // *************************
@@ -276,6 +278,11 @@ func IsDomainID(id string) bool {
 // A valid ledger entry id is a 64-character hexadecimal string (SHA-512 half length).
 func IsLedgerEntryID(input string) bool {
 	return len(input) == SHA512HalfLength && typecheck.IsHex(input)
+}
+
+// IsMPTIssuanceID checks if the given hex string is a valid 24-byte MPT issuance ID (48 hex chars).
+func IsMPTIssuanceID(id string) bool {
+	return len(id) == MPTIssuanceIDLength && typecheck.IsHex(id)
 }
 
 // ValidateHexMetadata validates input is non-empty hex string of up to a certain length.

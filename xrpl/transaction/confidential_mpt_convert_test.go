@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test helper: 128-char hex string (64-byte uncompressed key).
-var testUncompressedKey = strings.Repeat("AB", 64)
+// Test helper: 66-char hex string (33-byte compressed key).
+var testCompressedKey = strings.Repeat("AB", 33)
 
 // Test helper: 130-char hex string (65-byte Schnorr proof).
 var testSchnorrProof = strings.Repeat("CD", 65)
@@ -70,7 +70,7 @@ func TestConfidentialMPTConvert_Flatten(t *testing.T) {
 				},
 				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				MPTAmount:              types.MPTPlainAmount(500),
-				HolderEncryptionKey:    types.EncryptionKey(testUncompressedKey),
+				HolderEncryptionKey:    types.EncryptionKey(testCompressedKey),
 				HolderEncryptedAmount:  testCiphertext,
 				IssuerEncryptedAmount:  testCiphertext2,
 				AuditorEncryptedAmount: types.HexBlob(testCiphertext3),
@@ -83,7 +83,7 @@ func TestConfidentialMPTConvert_Flatten(t *testing.T) {
 				"TransactionType":        "ConfidentialMPTConvert",
 				"MPTokenIssuanceID":      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				"MPTAmount":              "500",
-				"HolderEncryptionKey":    testUncompressedKey,
+				"HolderEncryptionKey":    testCompressedKey,
 				"HolderEncryptedAmount":  testCiphertext,
 				"IssuerEncryptedAmount":  testCiphertext2,
 				"AuditorEncryptedAmount": testCiphertext3,
@@ -133,7 +133,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 				},
 				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptionKey:   types.EncryptionKey(testUncompressedKey),
+				HolderEncryptionKey:   types.EncryptionKey(testCompressedKey),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
 				BlindingFactor:        testBlindingFactor,
@@ -184,7 +184,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 				},
 				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptionKey:   types.EncryptionKey(testUncompressedKey),
+				HolderEncryptionKey:   types.EncryptionKey(testCompressedKey),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
 				BlindingFactor:        testBlindingFactor,
@@ -236,7 +236,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 				},
 				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptionKey:   types.EncryptionKey(testUncompressedKey),
+				HolderEncryptionKey:   types.EncryptionKey(testCompressedKey),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
 				BlindingFactor:        testBlindingFactor,

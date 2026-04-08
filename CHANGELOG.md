@@ -35,6 +35,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Proof generation/verification: `GenerateConvertProof()`/`VerifyConvertProof()`, `GenerateConvertBackProof()`/`VerifyConvertBackProof()`, `GenerateSendProof()`/`VerifySendProof()`, `GenerateClawbackProof()`/`VerifyClawbackProof()`.
   - Component verifiers: `VerifyRevealedAmount()`, `VerifyAmountLinkage()`, `VerifyBalanceLinkage()`, `VerifyEqualityProof()`, `VerifySendRangeProof()`.
 
+#### confidential/builder
+
+- Added `confidential/builder` package with high-level transaction builders for all XLS-96 confidential MPT operations.
+  - `BuildSend()` / `PrepareSend()` for confidential MPT transfers between accounts (encrypts amounts, creates Pedersen commitments, generates ZK proofs).
+  - `BuildConvert()` / `PrepareConvert()` for converting public MPT balance into confidential balance with optional holder key registration.
+  - `BuildConvertBack()` / `PrepareConvertBack()` for converting confidential balance back to public with ZK proof of sufficient balance.
+  - `BuildClawback()` / `PrepareClawback()` for issuer clawback of a holder's confidential balance with equality proof.
+  - `BuildMergeInbox()` / `PrepareMergeInbox()` for merging confidential inbox balance into spending balance.
+  - `Build*` functions accept a `LedgerQuerier` interface (satisfied by both RPC and WebSocket clients) and auto-resolve encryption keys, balances, and sequence numbers from ledger state.
+  - `Prepare*` functions accept explicit parameters for offline transaction construction without ledger queries.
+
 #### pkg/hexutil
 
 - Added `DecodeFixedHex()` to decode a hex string and validate it decodes to exactly N bytes.
@@ -77,7 +88,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ConfidentialMPTSend` transaction type: sends confidential MPT between accounts with encrypted amounts for sender, destination, issuer, and optional auditor, verified by ZK proof.
 - Added `MPTPlainAmount` type for bare MPT token quantities with JSON string serialization.
 - Added `HexBlob` helper function in `types` package for optional hex blob fields.
-- Added confidential transfer validation helpers: `IsValidUncompressedEncryptionKey`, `IsValidBlindingFactor`, `IsValidSchnorrProof`, `IsValidHexBlob`.
+- Added confidential transfer validation helpers: `IsValidBlindingFactor`, `IsValidSchnorrProof`, `IsValidHexBlob`.
+
+#### xrpl/hash
+
+- Added `MPToken()` and `MPTokenIssuance()` ledger entry hash functions for computing MPToken and MPTokenIssuance keylet indices.
+- Extracted ledger space hex values into package-level constants.
 
 ### Changed
 
@@ -87,6 +103,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exposed RPC port in localnet command
 
 ### Fixed
+
+#### xrpl/transaction
+
+- Fixed `ConfidentialMPTConvert` to use compressed EC public key for `HolderEncryptionKey` field instead of uncompressed key.
 
 #### xrpl
 
