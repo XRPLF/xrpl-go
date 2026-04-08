@@ -37,7 +37,7 @@ type ClientResponse struct {
 
 // GetResult decodes the Result field into the provided variable v using mapstructure.
 func (r *ClientResponse) GetResult(v any) error {
-	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{TagName: "json", Result: &v, DecodeHook: mapstructure.TextUnmarshallerHookFunc()})
+	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{TagName: "json", Result: &v, WeaklyTypedInput: true, DecodeHook: mapstructure.TextUnmarshallerHookFunc()})
 	if err != nil {
 		return err
 	}

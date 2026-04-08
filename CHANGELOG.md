@@ -55,6 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
 - Validate `MPTokenIssuanceID` is valid hexadecimal in `MPTokenIssuanceSet`, `MPTokenIssuanceDestroy`, and `MPTokenAuthorize` (previously only checked non-empty).
 
+#### xrpl/websocket
+
+- `GetResult` decoding failure when the server returns numeric values (e.g. `validator_list_expires: 0`) for fields typed as `string` in Go structs.
+
 ### Removed
 
 #### xrpl/transaction
