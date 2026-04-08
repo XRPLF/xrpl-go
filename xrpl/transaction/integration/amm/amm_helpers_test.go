@@ -6,6 +6,7 @@ import (
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	accounttypes "github.com/Peersyst/xrpl-go/xrpl/queries/account/types"
+	ammqueries "github.com/Peersyst/xrpl-go/xrpl/queries/amm"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -126,6 +127,17 @@ func setupAMMPool(t *testing.T, runner *integration.Runner, client integration.C
 	require.NoError(t, err)
 
 	return pool
+}
+
+// getAMMInfo fetches AMM pool info and returns the AMM object.
+func getAMMInfo(t *testing.T, client integration.Client, pool *ammPool) ammqueries.Info {
+	t.Helper()
+	res, err := client.GetAMMInfo(&ammqueries.InfoRequest{
+		Asset:  pool.asset,
+		Asset2: pool.asset2,
+	})
+	require.NoError(t, err)
+	return res.AMM
 }
 
 // getLPToken returns the LP token currency code and issuer from the wallet's account lines.
