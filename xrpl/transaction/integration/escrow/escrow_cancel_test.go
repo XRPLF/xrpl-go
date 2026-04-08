@@ -42,7 +42,7 @@ func testIntegrationEscrowCancel(t *testing.T, client integration.Client) {
 		require.NoError(t, err)
 		require.Len(t, objects.AccountObjects, 1)
 
-		offerSequence := txFieldUint32(t, res.Tx)
+		offerSequence := integration.TxFieldUint32(t, res.Tx, "Sequence")
 		escrowCancelTx := &transaction.EscrowCancel{
 			BaseTx:        transaction.BaseTx{Account: sender.GetAddress()},
 			Owner:         sender.GetAddress(),
