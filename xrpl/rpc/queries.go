@@ -3,6 +3,7 @@ package rpc
 import (
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/amm"
 	channel "github.com/Peersyst/xrpl-go/xrpl/queries/channel"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
@@ -533,6 +534,24 @@ func (c *Client) GetAggregatePrice(req *oracle.GetAggregatePriceRequest) (*oracl
 		return nil, err
 	}
 	var lr oracle.GetAggregatePriceResponse
+	err = res.GetResult(&lr)
+	if err != nil {
+		return nil, err
+	}
+	return &lr, nil
+}
+
+// AMM queries
+
+// GetAMMInfo retrieves information about an AMM instance.
+// It takes an InfoRequest as input and returns an InfoResponse,
+// along with any error encountered.
+func (c *Client) GetAMMInfo(req *amm.InfoRequest) (*amm.InfoResponse, error) {
+	res, err := c.Request(req)
+	if err != nil {
+		return nil, err
+	}
+	var lr amm.InfoResponse
 	err = res.GetResult(&lr)
 	if err != nil {
 		return nil, err
