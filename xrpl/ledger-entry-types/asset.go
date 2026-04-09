@@ -44,7 +44,7 @@ func (a *Asset) Flatten() map[string]any {
 	}
 
 	if a.Issuer.String() != "" {
-		flattened["issuer"] = a.Issuer
+		flattened["issuer"] = a.Issuer.String()
 	}
 
 	if a.Currency != "" {

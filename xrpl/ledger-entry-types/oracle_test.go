@@ -36,7 +36,7 @@ func TestPriceData_Flatten(t *testing.T) {
 			expected: map[string]any{
 				"BaseAsset":  "XRP",
 				"QuoteAsset": "USD",
-				"AssetPrice": "740",
+				"AssetPrice": "00000000000002E4",
 				"Scale":      uint8(3),
 			},
 		},
@@ -51,7 +51,7 @@ func TestPriceData_Flatten(t *testing.T) {
 			expected: map[string]any{
 				"BaseAsset":  "XRP",
 				"QuoteAsset": "ACGBD",
-				"AssetPrice": "740",
+				"AssetPrice": "00000000000002E4",
 				"Scale":      uint8(3),
 			},
 		},
@@ -89,7 +89,7 @@ func TestPriceDataWrapper_Flatten(t *testing.T) {
 				"PriceData": map[string]any{
 					"BaseAsset":  "XRP",
 					"QuoteAsset": "USD",
-					"AssetPrice": "740",
+					"AssetPrice": "00000000000002E4",
 					"Scale":      uint8(3),
 				},
 			},
@@ -108,7 +108,7 @@ func TestPriceDataWrapper_Flatten(t *testing.T) {
 				"PriceData": map[string]any{
 					"BaseAsset":  "XRP",
 					"QuoteAsset": "ACGBD",
-					"AssetPrice": "740",
+					"AssetPrice": "00000000000002E4",
 					"Scale":      uint8(3),
 				},
 			},
