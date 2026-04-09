@@ -3,6 +3,7 @@ package integration
 import (
 	"github.com/Peersyst/xrpl-go/xrpl/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/amm"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -27,6 +28,7 @@ type Client interface {
 	GetAccountLines(req *account.LinesRequest) (*account.LinesResponse, error)
 	GetAccountOffers(req *account.OffersRequest) (*account.OffersResponse, error)
 	GetAccountNFTs(req *account.NFTsRequest) (*account.NFTsResponse, error)
+	GetAMMInfo(req *amm.InfoRequest) (*amm.InfoResponse, error)
 	GetLedger(req *ledger.Request) (*ledger.Response, error)
 }
 

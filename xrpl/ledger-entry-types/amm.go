@@ -126,7 +126,7 @@ type AuthAccount struct {
 // Flatten returns the flattened representation of AuthAccount.
 func (a *AuthAccount) Flatten() map[string]any {
 	flattened := make(map[string]any)
-	flattened["Account"] = a.Account
+	flattened["Account"] = a.Account.String()
 	return flattened
 }
 

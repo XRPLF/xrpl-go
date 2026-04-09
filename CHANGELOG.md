@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.1.18]
 
 ### Added
 
@@ -38,6 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added integration test for NFT transaction `NFTModify`
 - Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`
 - Added `RippleTimeToUnixSeconds` function
+- Added `GetAMMInfo` query for both RPC and WebSocket clients
+- Added unit tests for `amm_info` request and response serialization
+- Added integration test for amm transactions
+- Added `pkg/decodehook` package with shared `JSON()` decode hook for `mapstructure`
+- Added `hash.PaymentChannel()` function to compute payment channel ID from source, destination, and sequence
+- Added `hash.MPTID()` function to compute MPT ID from sequence and issuer
+- Added `ObjectType` constants for `DID`, `MPToken`, `MPTIssuance`, `Oracle`, `PermissionedDomain`, and `Vault` in account objects query
 
 ### Changed
 
@@ -45,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed localnet rippled image to `develop`
 - Exposed RPC port in localnet command
+- Use `gotest` (colorized output) with fallback to `go test`
 
 ### Fixed
 
@@ -54,6 +62,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
 - Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
 - Validate `MPTokenIssuanceID` is valid hexadecimal in `MPTokenIssuanceSet`, `MPTokenIssuanceDestroy`, and `MPTokenAuthorize` (previously only checked non-empty).
+- `PaymentChannelCreate.Flatten()` and `PaymentChannelFund.Flatten()` now set `TransactionType` in flattened output.
+
+#### binary-codec
+
+- `UInt64` type now validates hex string length (max 16 chars) before padding, preventing silent overflow.
+
+#### xrpl/websocket
+
+- `GetResult` now composes a `jsonUnmarshalerHookFunc` alongside the existing `TextUnmarshallerHookFunc`, so any target type implementing `json.Unmarshaler` is decoded via its own `UnmarshalJSON` rather than by mapstructure directly.
+
+#### xrpl/queries/server/types
+
+- `State.ValidatorListExpires` remains a `string`; a custom `UnmarshalJSON` on `State` now accepts both a JSON string and a JSON number for that field, converting the number to its string representation. This fixes a crash when rippled returns `0` for `validator_list_expires` over WebSocket.
+
+#### xrpl/ledger-entry-types
+
+- Fixed `AuthAccount.Flatten()` storing `types.Address` without converting to `string`, causing binary codec serialization to fail.
+
+#### Makefile
+
+- Corrected localnet setup to automatically create ledgers periodically
 
 ### Removed
 
