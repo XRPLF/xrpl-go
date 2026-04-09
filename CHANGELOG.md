@@ -71,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed `AuthAccount.Flatten()` storing `types.Address` without converting to `string`, causing binary codec serialization to fail.
 
+#### Makefile
+
+- Corrected localnet setup to automatically create ledgers periodically
+
 ### Removed
 
 #### xrpl/transaction
