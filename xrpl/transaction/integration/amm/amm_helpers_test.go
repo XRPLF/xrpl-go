@@ -155,6 +155,6 @@ func getLPToken(t *testing.T, client integration.Client, walletAddr types.Addres
 			return line
 		}
 	}
-	t.Fatal("LP token trust line not found for wallet " + walletAddr)
+	require.FailNow(t, "LP token trust line not found", "wallet: %s", walletAddr)
 	return accounttypes.TrustLine{}
 }
