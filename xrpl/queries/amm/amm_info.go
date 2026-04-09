@@ -2,11 +2,17 @@
 package amm
 
 import (
+	"encoding/json"
+	"errors"
+
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/version"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
+
+// ErrInvalidInfoRequest is returned when neither amm_account nor both asset and asset2 are specified.
+var ErrInvalidInfoRequest = errors.New("must specify either amm_account or both asset and asset2")
 
 // ############################################################################
 // Request
@@ -34,7 +40,13 @@ func (*InfoRequest) APIVersion() int {
 }
 
 // Validate performs validation on InfoRequest.
-func (*InfoRequest) Validate() error {
+// Either amm_account or both asset and asset2 must be specified.
+func (i *InfoRequest) Validate() error {
+	hasAMMAccount := i.AMMAccount != ""
+	hasAssets := i.Asset != (ledger.Asset{}) && i.Asset2 != (ledger.Asset{})
+	if !hasAMMAccount && !hasAssets {
+		return ErrInvalidInfoRequest
+	}
 	return nil
 }
 
@@ -76,11 +88,10 @@ type VoteSlotInfo struct {
 type Info struct {
 	// The address of the special account that holds this AMM's assets.
 	Account types.Address `json:"account"`
-	// The first asset this AMM holds. For XRP this is a string (drops), for IOU it is a map (currency/issuer/value).
-	// Use any to accommodate both mapstructure (map[string]any / string) and JSON decoding.
-	Amount any `json:"amount"`
-	// The second asset this AMM holds. Same polymorphic type as Amount.
-	Amount2 any `json:"amount2"`
+	// The first asset this AMM holds. Either XRPCurrencyAmount (drops string) or IssuedCurrencyAmount.
+	Amount types.CurrencyAmount `json:"amount"`
+	// The second asset this AMM holds. Either XRPCurrencyAmount (drops string) or IssuedCurrencyAmount.
+	Amount2 types.CurrencyAmount `json:"amount2"`
 	// Details of the current auction slot owner.
 	AuctionSlot *AuctionSlotInfo `json:"auction_slot,omitempty"`
 	// The total outstanding balance of LP tokens from this AMM instance.
@@ -89,6 +100,35 @@ type Info struct {
 	TradingFee uint16 `json:"trading_fee"`
 	// A list of vote objects representing votes on the pool's trading fee.
 	VoteSlots []VoteSlotInfo `json:"vote_slots,omitempty"`
+}
+
+// UnmarshalJSON implements custom JSON decoding for Info to handle the polymorphic Amount and Amount2 fields.
+func (i *Info) UnmarshalJSON(data []byte) error {
+	type Alias Info
+	aux := &struct {
+		Amount  json.RawMessage `json:"amount"`
+		Amount2 json.RawMessage `json:"amount2"`
+		*Alias
+	}{
+		Alias: (*Alias)(i),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	var err error
+	if aux.Amount != nil {
+		i.Amount, err = types.UnmarshalCurrencyAmount(aux.Amount)
+		if err != nil {
+			return err
+		}
+	}
+	if aux.Amount2 != nil {
+		i.Amount2, err = types.UnmarshalCurrencyAmount(aux.Amount2)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // InfoResponse is the response from the amm_info method.

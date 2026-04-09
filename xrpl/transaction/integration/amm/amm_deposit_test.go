@@ -12,26 +12,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// xrpDropsFromAny extracts the integer XRP drops value from an amm_info Amount (type any).
-// The server returns it as a string like "250".
-func xrpDropsFromAny(t *testing.T, v any) int {
+// xrpDrops returns the XRP drops value from an XRPCurrencyAmount.
+func xrpDrops(t *testing.T, v types.CurrencyAmount) int {
 	t.Helper()
-	s, ok := v.(string)
-	require.True(t, ok, "expected XRP amount to be a string, got %T", v)
-	n, err := strconv.Atoi(s)
-	require.NoError(t, err)
-	return n
+	xrp, ok := v.(types.XRPCurrencyAmount)
+	require.True(t, ok, "expected XRP amount, got %T", v)
+	return int(xrp.Uint64())
 }
 
-// icaValueFromAny extracts the float value from an amm_info Amount2 (type any).
-// The server returns it as a map[string]any with "value" key.
-func icaValueFromAny(t *testing.T, v any) float64 {
+// icaValue returns the numeric value from an IssuedCurrencyAmount.
+func icaValue(t *testing.T, v types.CurrencyAmount) float64 {
 	t.Helper()
-	m, ok := v.(map[string]any)
-	require.True(t, ok, "expected ICA amount to be a map, got %T", v)
-	val, ok := m["value"].(string)
-	require.True(t, ok, "expected ICA value to be a string")
-	n, err := strconv.ParseFloat(val, 64)
+	ica, ok := v.(types.IssuedCurrencyAmount)
+	require.True(t, ok, "expected IssuedCurrencyAmount, got %T", v)
+	n, err := strconv.ParseFloat(ica.Value, 64)
 	require.NoError(t, err)
 	return n
 }
@@ -50,7 +44,7 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 	t.Run("pass - deposit with Amount", func(t *testing.T) {
 		preAmm := getAMMInfo(t, client, pool)
 
-		preAmountDrops := xrpDropsFromAny(t, preAmm.Amount)
+		preAmountDrops := xrpDrops(t, preAmm.Amount)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -69,7 +63,7 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 
 		postAmm := getAMMInfo(t, client, pool)
 
-		postAmountDrops := xrpDropsFromAny(t, postAmm.Amount)
+		postAmountDrops := xrpDrops(t, postAmm.Amount)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -81,8 +75,8 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 	t.Run("pass - deposit with Amount and Amount2", func(t *testing.T) {
 		preAmm := getAMMInfo(t, client, pool)
 
-		preAmountDrops := xrpDropsFromAny(t, preAmm.Amount)
-		preAmount2Value := icaValueFromAny(t, preAmm.Amount2)
+		preAmountDrops := xrpDrops(t, preAmm.Amount)
+		preAmount2Value := icaValue(t, preAmm.Amount2)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -106,8 +100,8 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 
 		postAmm := getAMMInfo(t, client, pool)
 
-		postAmountDrops := xrpDropsFromAny(t, postAmm.Amount)
-		postAmount2Value := icaValueFromAny(t, postAmm.Amount2)
+		postAmountDrops := xrpDrops(t, postAmm.Amount)
+		postAmount2Value := icaValue(t, postAmm.Amount2)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -119,7 +113,7 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 	t.Run("pass - deposit with Amount and LPTokenOut", func(t *testing.T) {
 		preAmm := getAMMInfo(t, client, pool)
 
-		preAmountDrops := xrpDropsFromAny(t, preAmm.Amount)
+		preAmountDrops := xrpDrops(t, preAmm.Amount)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -145,7 +139,7 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 
 		postAmm := getAMMInfo(t, client, pool)
 
-		postAmountDrops := xrpDropsFromAny(t, postAmm.Amount)
+		postAmountDrops := xrpDrops(t, postAmm.Amount)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -157,8 +151,8 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 	t.Run("pass - deposit with LPTokenOut", func(t *testing.T) {
 		preAmm := getAMMInfo(t, client, pool)
 
-		preAmountDrops := xrpDropsFromAny(t, preAmm.Amount)
-		preAmount2Value := icaValueFromAny(t, preAmm.Amount2)
+		preAmountDrops := xrpDrops(t, preAmm.Amount)
+		preAmount2Value := icaValue(t, preAmm.Amount2)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -183,8 +177,8 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 
 		postAmm := getAMMInfo(t, client, pool)
 
-		postAmountDrops := xrpDropsFromAny(t, postAmm.Amount)
-		postAmount2Value := icaValueFromAny(t, postAmm.Amount2)
+		postAmountDrops := xrpDrops(t, postAmm.Amount)
+		postAmount2Value := icaValue(t, postAmm.Amount2)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 

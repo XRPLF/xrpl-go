@@ -1,7 +1,6 @@
 package amm
 
 import (
-	"encoding/json"
 	"testing"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -28,20 +27,12 @@ func testIntegrationAMMCreate(t *testing.T, client integration.Client) {
 
 		require.True(t, addresscodec.IsValidAddress(result.Account.String()), "AMM account should be a valid classic address")
 
-		amountStr, ok := result.Amount.(string)
-		require.True(t, ok, "amount should be a string (XRP drops)")
-		require.Equal(t, "250", amountStr)
-
-		amount2Bytes, err := json.Marshal(result.Amount2)
-		require.NoError(t, err)
-		var amount2 types.IssuedCurrencyAmount
-		err = json.Unmarshal(amount2Bytes, &amount2)
-		require.NoError(t, err)
+		require.Equal(t, types.XRPCurrencyAmount(250), result.Amount)
 		require.Equal(t, types.IssuedCurrencyAmount{
 			Currency: pool.asset2.Currency,
 			Issuer:   pool.asset2.Issuer,
 			Value:    "250",
-		}, amount2)
+		}, result.Amount2)
 
 		require.Equal(t, uint16(12), result.TradingFee)
 	})

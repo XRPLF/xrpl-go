@@ -26,7 +26,7 @@ func testIntegrationAMMWithdraw(t *testing.T, client integration.Client) {
 	t.Run("pass - withdraw with Amount", func(t *testing.T) {
 		preAmm := getAMMInfo(t, client, pool)
 
-		preAmountDrops := xrpDropsFromAny(t, preAmm.Amount)
+		preAmountDrops := xrpDrops(t, preAmm.Amount)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -45,7 +45,7 @@ func testIntegrationAMMWithdraw(t *testing.T, client integration.Client) {
 
 		postAmm := getAMMInfo(t, client, pool)
 
-		postAmountDrops := xrpDropsFromAny(t, postAmm.Amount)
+		postAmountDrops := xrpDrops(t, postAmm.Amount)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -57,8 +57,8 @@ func testIntegrationAMMWithdraw(t *testing.T, client integration.Client) {
 	t.Run("pass - withdraw with Amount and Amount2", func(t *testing.T) {
 		preAmm := getAMMInfo(t, client, pool)
 
-		preAmountDrops := xrpDropsFromAny(t, preAmm.Amount)
-		preAmount2Value := icaValueFromAny(t, preAmm.Amount2)
+		preAmountDrops := xrpDrops(t, preAmm.Amount)
+		preAmount2Value := icaValue(t, preAmm.Amount2)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -82,8 +82,8 @@ func testIntegrationAMMWithdraw(t *testing.T, client integration.Client) {
 
 		postAmm := getAMMInfo(t, client, pool)
 
-		postAmountDrops := xrpDropsFromAny(t, postAmm.Amount)
-		postAmount2Value := icaValueFromAny(t, postAmm.Amount2)
+		postAmountDrops := xrpDrops(t, postAmm.Amount)
+		postAmount2Value := icaValue(t, postAmm.Amount2)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -95,7 +95,7 @@ func testIntegrationAMMWithdraw(t *testing.T, client integration.Client) {
 	t.Run("pass - withdraw with Amount and LPTokenIn", func(t *testing.T) {
 		preAmm := getAMMInfo(t, client, pool)
 
-		preAmountDrops := xrpDropsFromAny(t, preAmm.Amount)
+		preAmountDrops := xrpDrops(t, preAmm.Amount)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -121,7 +121,7 @@ func testIntegrationAMMWithdraw(t *testing.T, client integration.Client) {
 
 		postAmm := getAMMInfo(t, client, pool)
 
-		postAmountDrops := xrpDropsFromAny(t, postAmm.Amount)
+		postAmountDrops := xrpDrops(t, postAmm.Amount)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -133,8 +133,8 @@ func testIntegrationAMMWithdraw(t *testing.T, client integration.Client) {
 	t.Run("pass - withdraw with LPTokenIn", func(t *testing.T) {
 		preAmm := getAMMInfo(t, client, pool)
 
-		preAmountDrops := xrpDropsFromAny(t, preAmm.Amount)
-		preAmount2Value := icaValueFromAny(t, preAmm.Amount2)
+		preAmountDrops := xrpDrops(t, preAmm.Amount)
+		preAmount2Value := icaValue(t, preAmm.Amount2)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 
@@ -159,8 +159,8 @@ func testIntegrationAMMWithdraw(t *testing.T, client integration.Client) {
 
 		postAmm := getAMMInfo(t, client, pool)
 
-		postAmountDrops := xrpDropsFromAny(t, postAmm.Amount)
-		postAmount2Value := icaValueFromAny(t, postAmm.Amount2)
+		postAmountDrops := xrpDrops(t, postAmm.Amount)
+		postAmount2Value := icaValue(t, postAmm.Amount2)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
 		require.NoError(t, err)
 

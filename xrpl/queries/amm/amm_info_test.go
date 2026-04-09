@@ -6,6 +6,7 @@ import (
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAMMInfoRequest(t *testing.T) {
@@ -163,7 +164,7 @@ func TestAMMInfoResponse_XRPAssets(t *testing.T) {
 	s := InfoResponse{
 		AMM: Info{
 			Account: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
-			Amount:  "1000000",
+			Amount:  types.XRPCurrencyAmount(1000000),
 			Amount2: types.IssuedCurrencyAmount{
 				Currency: "USD",
 				Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
@@ -199,4 +200,49 @@ func TestAMMInfoResponse_XRPAssets(t *testing.T) {
 	if err := testutil.Serialize(t, s, j); err != nil {
 		t.Error(err)
 	}
+}
+
+func TestAMMInfoRequest_Validate(t *testing.T) {
+	t.Run("pass - with asset and asset2", func(t *testing.T) {
+		req := InfoRequest{
+			Asset:  ledger.Asset{Currency: "XRP"},
+			Asset2: ledger.Asset{Currency: "USD", Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
+		}
+		require.NoError(t, req.Validate())
+	})
+
+	t.Run("pass - with amm_account", func(t *testing.T) {
+		req := InfoRequest{
+			AMMAccount: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		}
+		require.NoError(t, req.Validate())
+	})
+
+	t.Run("pass - with amm_account and assets", func(t *testing.T) {
+		req := InfoRequest{
+			Asset:      ledger.Asset{Currency: "XRP"},
+			Asset2:     ledger.Asset{Currency: "USD", Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
+			AMMAccount: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		}
+		require.NoError(t, req.Validate())
+	})
+
+	t.Run("fail - no amm_account and no assets", func(t *testing.T) {
+		req := InfoRequest{}
+		require.ErrorIs(t, req.Validate(), ErrInvalidInfoRequest)
+	})
+
+	t.Run("fail - only asset specified", func(t *testing.T) {
+		req := InfoRequest{
+			Asset: ledger.Asset{Currency: "XRP"},
+		}
+		require.ErrorIs(t, req.Validate(), ErrInvalidInfoRequest)
+	})
+
+	t.Run("fail - only asset2 specified", func(t *testing.T) {
+		req := InfoRequest{
+			Asset2: ledger.Asset{Currency: "USD", Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
+		}
+		require.ErrorIs(t, req.Validate(), ErrInvalidInfoRequest)
+	})
 }
