@@ -23,11 +23,10 @@ func testIntegrationEscrowFinish(t *testing.T, client integration.Client) {
 		receiver := runner.GetWallet(1)
 
 		closeTime := getLedgerCloseTime(t, client)
-		const amount = types.XRPCurrencyAmount(10000)
 
 		escrowCreateTx := &transaction.EscrowCreate{
 			BaseTx:      transaction.BaseTx{Account: sender.GetAddress()},
-			Amount:      amount,
+			Amount:      types.XRPCurrencyAmount(10000),
 			Destination: receiver.GetAddress(),
 			FinishAfter: uint32(closeTime + 2),
 		}
