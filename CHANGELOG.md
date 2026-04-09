@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added integration tests for did transactions `DIDSet` and `DIDDelete`
 - Added integration test for credential transactions `CredentialAccept` and `CredentialDelete`
 - Added integration test for `DepositPreauth` transaction
+- Added integration test for escrow transactions.
 - Added integration test for payment and payment channels transactions.
 - Added integration test for vault transactions 
 - Added integration test for oracle transactions `OracleSet` and `OracleDelete`
@@ -40,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `GetAMMInfo` query for both RPC and WebSocket clients
 - Added unit tests for `amm_info` request and response serialization
 - Added integration test for amm transactions
+- Added `pkg/decodehook` package with shared `JSON()` decode hook for `mapstructure`
+
 ### Changed
 
 #### Makefile

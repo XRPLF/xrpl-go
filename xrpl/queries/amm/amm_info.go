@@ -3,16 +3,12 @@ package amm
 
 import (
 	"encoding/json"
-	"errors"
 
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/version"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
-
-// ErrInvalidInfoRequest is returned when neither amm_account nor both asset and asset2 are specified.
-var ErrInvalidInfoRequest = errors.New("must specify either amm_account or both asset and asset2")
 
 // ############################################################################
 // Request

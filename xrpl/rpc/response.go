@@ -1,37 +1,10 @@
 package rpc
 
 import (
-	"encoding/json"
-	"reflect"
-
+	"github.com/Peersyst/xrpl-go/pkg/decodehook"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/mitchellh/mapstructure"
 )
-
-var jsonUnmarshalerType = reflect.TypeFor[json.Unmarshaler]()
-
-// jsonUnmarshalerHookFunc returns a mapstructure decode hook that delegates to
-// json.Unmarshaler for any target type that implements it.
-func jsonUnmarshalerHookFunc() mapstructure.DecodeHookFuncValue {
-	return func(from reflect.Value, to reflect.Value) (any, error) {
-		toType := to.Type()
-		if toType.Kind() != reflect.Ptr {
-			toType = reflect.PointerTo(toType)
-		}
-		if !toType.Implements(jsonUnmarshalerType) {
-			return from.Interface(), nil
-		}
-		jsonBytes, err := json.Marshal(from.Interface())
-		if err != nil {
-			return nil, err
-		}
-		target := reflect.New(to.Type())
-		if err := json.Unmarshal(jsonBytes, target.Interface()); err != nil {
-			return nil, err
-		}
-		return target.Elem().Interface(), nil
-	}
-}
 
 // Response represents a JSON-RPC response from an XRPL server.
 type Response struct {
@@ -64,7 +37,7 @@ func (r Response) GetResult(v any) error {
 		TagName: "json",
 		Result:  &v,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			jsonUnmarshalerHookFunc(),
+			decodehook.JSON(),
 			mapstructure.TextUnmarshallerHookFunc(),
 		),
 	})
