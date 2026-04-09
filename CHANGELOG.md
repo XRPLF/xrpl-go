@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `RippleTimeToUnixSeconds` function
 - Added `GetAMMInfo` query for both RPC and WebSocket clients
 - Added integration test for amm transactions
+- Added `pkg/decodehook` package with shared `JSON()` decode hook for `mapstructure`
+
 ### Changed
 
 #### Makefile
