@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`
 - Added `RippleTimeToUnixSeconds` function
 - Added `GetAMMInfo` query for both RPC and WebSocket clients
+- Added unit tests for `amm_info` request and response serialization
 - Added integration test for amm transactions
 ### Changed
 
@@ -57,7 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
-- `GetResult` decoding failure when the server returns numeric values (e.g. `validator_list_expires: 0`) for fields typed as `string` in Go structs.
+- `GetResult` now composes a `jsonUnmarshalerHookFunc` alongside the existing `TextUnmarshallerHookFunc`, so any target type implementing `json.Unmarshaler` is decoded via its own `UnmarshalJSON` rather than by mapstructure directly.
+
+#### xrpl/queries/server/types
+
+- `State.ValidatorListExpires` remains a `string`; a custom `UnmarshalJSON` on `State` now accepts both a JSON string and a JSON number for that field, converting the number to its string representation. This fixes a crash when rippled returns `0` for `validator_list_expires` over WebSocket.
 
 #### xrpl/ledger-entry-types
 
