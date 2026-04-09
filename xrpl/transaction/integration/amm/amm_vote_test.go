@@ -42,9 +42,12 @@ func testIntegrationAMMVote(t *testing.T, client integration.Client) {
 		require.NotNil(t, postAmm.AuctionSlot)
 		require.NotEmpty(t, postAmm.VoteSlots)
 
+		// Weighted average of the existing 12 bps vote (lpWallet) and the new 150 bps vote (testWallet).
+		// testWallet holds roughly half the LP tokens, so the blended fee rises by ~76 bps.
 		diffTradingFee := uint16(76)
 		require.Equal(t, preAmm.TradingFee+diffTradingFee, postAmm.TradingFee)
 
+		// The discounted fee is 1/10 of the trading fee; it increases proportionally with the trading fee.
 		diffDiscountedFee := uint16(7)
 		require.Equal(t, preAmm.AuctionSlot.DiscountedFee+diffDiscountedFee, postAmm.AuctionSlot.DiscountedFee)
 

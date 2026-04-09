@@ -46,6 +46,7 @@ func testIntegrationAMMBid(t *testing.T, client integration.Client) {
 		require.NoError(t, err)
 		beforePriceValue, err := strconv.ParseFloat(preAmm.AuctionSlot.Price.Value, 64)
 		require.NoError(t, err)
+		// Minimum bid (1/5% of LP tokens); no previous holder so no rebate is issued.
 		diffPriceValue := 0.002683192572241211
 		require.InDelta(t, beforePriceValue+diffPriceValue, afterPriceValue, 1e-9)
 
@@ -53,7 +54,8 @@ func testIntegrationAMMBid(t *testing.T, client integration.Client) {
 		require.NoError(t, err)
 		beforeLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
-		diffLPTokenValue := -0.0026831925721
+		// No rebate ⇒ burned == paid, so diffLPTokenValue == -diffPriceValue.
+		diffLPTokenValue := -diffPriceValue
 		require.InDelta(t, beforeLPTokenValue+diffLPTokenValue, afterLPTokenValue, 1e-9)
 	})
 
@@ -98,6 +100,7 @@ func testIntegrationAMMBid(t *testing.T, client integration.Client) {
 		require.NoError(t, err)
 		beforePriceValue, err := strconv.ParseFloat(preAmm.AuctionSlot.Price.Value, 64)
 		require.NoError(t, err)
+		// New slot price = BidMin=5; diff is 5 minus the previous slot price (≈ 0.002683).
 		diffPriceValue := 4.997316807427759
 		require.InDelta(t, beforePriceValue+diffPriceValue, afterPriceValue, 1e-9)
 
@@ -105,6 +108,9 @@ func testIntegrationAMMBid(t *testing.T, client integration.Client) {
 		require.NoError(t, err)
 		beforeLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
 		require.NoError(t, err)
+		// Previous holder receives a rebate of 19/20 of their price (19 intervals remaining).
+		// Burned = 5 − rebate ≈ 4.99745, slightly more than diffPriceValue because the
+		// unreturned 1/20th of the old price is also burned.
 		diffLPTokenValue := -4.9974509670563
 		require.InDelta(t, beforeLPTokenValue+diffLPTokenValue, afterLPTokenValue, 1e-9)
 
