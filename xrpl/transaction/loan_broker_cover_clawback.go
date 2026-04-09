@@ -41,7 +41,7 @@ func (tx *LoanBrokerCoverClawback) TxType() TxType {
 }
 
 // Flatten returns a map representation of the LoanBrokerCoverClawback transaction for JSON-RPC submission.
-func (tx *LoanBrokerCoverClawback) Flatten() map[string]any {
+func (tx *LoanBrokerCoverClawback) Flatten() FlatTransaction {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

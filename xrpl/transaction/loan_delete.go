@@ -23,7 +23,7 @@ func (tx *LoanDelete) TxType() TxType {
 }
 
 // Flatten returns a map representation of the LoanDelete transaction for JSON-RPC submission.
-func (tx *LoanDelete) Flatten() map[string]any {
+func (tx *LoanDelete) Flatten() FlatTransaction {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

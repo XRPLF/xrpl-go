@@ -18,12 +18,12 @@ func TestLoanSet_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanSet
-		expected map[string]any
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanSet{},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType":    LoanSetTx.String(),
 				"LoanBrokerID":       "",
 				"PrincipalRequested": "",
@@ -44,7 +44,7 @@ func TestLoanSet_Flatten(t *testing.T) {
 				InterestRate:       func() *types.InterestRate { v := types.InterestRate(5000); return &v }(),
 				PaymentInterval:    func() *types.PaymentInterval { v := types.PaymentInterval(2592000); return &v }(),
 			},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType":    LoanSetTx.String(),
 				"Account":            "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Fee":                "1000000",
