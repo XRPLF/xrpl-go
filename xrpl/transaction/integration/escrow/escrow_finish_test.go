@@ -23,12 +23,12 @@ func testIntegrationEscrowFinish(t *testing.T, client integration.Client) {
 		receiver := runner.GetWallet(1)
 
 		closeTime := getLedgerCloseTime(t, client)
-
+		finishTime := closeTime + 2
 		escrowCreateTx := &transaction.EscrowCreate{
 			BaseTx:      transaction.BaseTx{Account: sender.GetAddress()},
 			Amount:      types.XRPCurrencyAmount(10000),
 			Destination: receiver.GetAddress(),
-			FinishAfter: uint32(closeTime + 2),
+			FinishAfter: uint32(finishTime),
 		}
 		flatEscrowCreateTx := escrowCreateTx.Flatten()
 		res, err := runner.TestTransaction(&flatEscrowCreateTx, sender, "tesSUCCESS", nil)
@@ -47,7 +47,7 @@ func testIntegrationEscrowFinish(t *testing.T, client integration.Client) {
 			Owner:         sender.GetAddress(),
 			OfferSequence: offerSequence,
 		}
-		waitForLedgerTime(t, client, closeTime+2)
+		waitForLedgerTime(t, client, finishTime)
 		flatEscrowFinishTx := escrowFinishTx.Flatten()
 		_, err = runner.TestTransaction(&flatEscrowFinishTx, sender, "tesSUCCESS", nil)
 		require.NoError(t, err)

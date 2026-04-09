@@ -6,28 +6,16 @@ import (
 
 	queriesCommon "github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
-	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
 	xrpltime "github.com/Peersyst/xrpl-go/xrpl/time"
-	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 	"github.com/stretchr/testify/require"
 )
 
 func getLedgerCloseTime(t *testing.T, client integration.Client) int64 {
 	t.Helper()
-	req := &ledger.Request{
+	res, err := client.GetLedger(&ledger.Request{
 		LedgerIndex: queriesCommon.Validated,
-	}
-	var res *ledger.Response
-	var err error
-	switch c := client.(type) {
-	case *websocket.Client:
-		res, err = c.GetLedger(req)
-	case *rpc.Client:
-		res, err = c.GetLedger(req)
-	default:
-		t.Fatal("unsupported client type for getLedgerCloseTime")
-	}
+	})
 	require.NoError(t, err)
 	return int64(res.Ledger.CloseTime)
 }
