@@ -10,6 +10,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 )
 
+
 // FaucetProvider provides faucet funding for wallets in integration tests.
 type FaucetProvider interface {
 	common.FaucetProvider
@@ -30,6 +31,7 @@ type Client interface {
 	GetAccountNFTs(req *account.NFTsRequest) (*account.NFTsResponse, error)
 	GetAMMInfo(req *amm.InfoRequest) (*amm.InfoResponse, error)
 	GetLedger(req *ledger.Request) (*ledger.Response, error)
+	GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse, error)
 }
 
 // Connectable defines methods to connect and disconnect the integration client.

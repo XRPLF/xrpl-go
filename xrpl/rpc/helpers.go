@@ -636,7 +636,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 		// Make ledger_entry request
 		res, err := c.GetLedgerEntry(&ledger.EntryRequest{
 			Index:       loanBrokerID,
-			LedgerIndex: common.LedgerTitle("validated"),
+			LedgerIndex: common.LedgerTitle("current"),
 		})
 		if err != nil {
 			return 0, err
@@ -657,7 +657,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 	// Fetch account info with signer lists
 	accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
 		Account:     counterparty,
-		LedgerIndex: common.LedgerTitle("validated"),
+		LedgerIndex: common.LedgerTitle("current"),
 		SignerLists: true,
 	})
 	if err != nil {
