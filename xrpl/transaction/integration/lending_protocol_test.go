@@ -575,8 +575,8 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 		},
 	}
 
-	flatLoanBrokerCoverDeposit := loanBrokerCoverDepositTx.Flatten()
-	_, err = runner.TestTransaction(&flatLoanBrokerCoverDeposit, loanBroker, "tesSUCCESS", nil)
+	flatLoanBrokerCoverDepositTx := loanBrokerCoverDepositTx.Flatten()
+	_, err = runner.TestTransaction(&flatLoanBrokerCoverDepositTx, loanBroker, "tesSUCCESS", nil)
 	require.NoError(t, err)
 
 	// Assert LoanBroker object has updated CoverAvailable
@@ -740,8 +740,8 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 		LoanBrokerID: loanBrokerObjectID,
 	}
 
-	flatLoanBrokerDelete := loanBrokerDeleteTx.Flatten()
-	_, err = runner.TestTransaction(&flatLoanBrokerDelete, loanBroker, "tesSUCCESS", nil)
+	flatLoanBrokerDeleteTx := loanBrokerDeleteTx.Flatten()
+	_, err = runner.TestTransaction(&flatLoanBrokerDeleteTx, loanBroker, "tesSUCCESS", nil)
 	require.NoError(t, err)
 
 	// Assert LoanBroker object is deleted
