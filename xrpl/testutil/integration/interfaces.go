@@ -10,7 +10,6 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 )
 
-
 // FaucetProvider provides faucet funding for wallets in integration tests.
 type FaucetProvider interface {
 	common.FaucetProvider
