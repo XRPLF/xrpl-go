@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### xrpl/rpc
+
+- `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+
+#### xrpl/websocket
+
+- `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+
 ### Changed
 
 #### xrpl/rpc

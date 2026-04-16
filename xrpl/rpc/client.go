@@ -320,7 +320,7 @@ func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 	// Starting balance. An error here (typically actNotFound for a
 	// brand-new account) is treated as a zero balance so polling can still
 	// detect the faucet deposit.
-	startBalance, err := c.getFundWalletBalance(wallet.ClassicAddress)
+	startBalance, err := c.getValidatedBalance(wallet.ClassicAddress)
 	if err != nil && !isFundWalletActNotFound(err) {
 		return err
 	}
@@ -331,7 +331,7 @@ func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 
 	for range fundWalletMaxAttempts {
 		time.Sleep(fundWalletPollInterval)
-		balance, err := c.getFundWalletBalance(wallet.ClassicAddress)
+		balance, err := c.getValidatedBalance(wallet.ClassicAddress)
 		if err != nil {
 			if isFundWalletActNotFound(err) {
 				continue
