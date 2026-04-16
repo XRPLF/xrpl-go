@@ -9,9 +9,10 @@ import (
 	"time"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
-	"github.com/Peersyst/xrpl-go/xrpl/common"
+	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	requests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -304,7 +305,7 @@ func (c *Client) AutofillMultisigned(tx *transaction.FlatTransaction, nSigners u
 }
 
 // FaucetProvider returns the faucet provider for the client.
-func (c *Client) FaucetProvider() common.FaucetProvider {
+func (c *Client) FaucetProvider() commonconstants.FaucetProvider {
 	return c.cfg.faucetProvider
 }
 
@@ -320,7 +321,7 @@ func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 	// Starting balance. An error here (typically actNotFound for a
 	// brand-new account) is treated as a zero balance so polling can still
 	// detect the faucet deposit.
-	startBalance, err := c.getValidatedBalance(wallet.ClassicAddress)
+	startBalance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
 	if err != nil && !isFundWalletActNotFound(err) {
 		return err
 	}
@@ -331,7 +332,7 @@ func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 
 	for range fundWalletMaxAttempts {
 		time.Sleep(fundWalletPollInterval)
-		balance, err := c.getValidatedBalance(wallet.ClassicAddress)
+		balance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
 		if err != nil {
 			if isFundWalletActNotFound(err) {
 				continue

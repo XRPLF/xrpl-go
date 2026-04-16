@@ -83,34 +83,27 @@ func (c *Client) GetAccountLines(req *account.LinesRequest) (*account.LinesRespo
 // GetXrpBalance retrieves the XRP balance of a given account address.
 // It returns the balance as a string in XRP (not drops) and any error encountered.
 func (c *Client) GetXrpBalance(address types.Address) (string, error) {
-	balance, err := c.getXrpBalance(address, nil)
-	if err != nil {
-		return "", err
-	}
-	return currency.DropsToXrp(balance.String())
+	return c.getXrpBalance(address, nil)
 }
 
 // GetXrpBalanceValidated retrieves the XRP balance of a given account address
 // from the most recently validated ledger. It returns the balance as a string
 // in XRP (not drops) and any error encountered.
 func (c *Client) GetXrpBalanceValidated(address types.Address) (string, error) {
-	balance, err := c.getXrpBalance(address, common.Validated)
+	return c.getXrpBalance(address, common.Validated)
+}
+
+func (c *Client) getXrpBalance(address types.Address, ledgerIndex common.LedgerSpecifier) (string, error) {
+	balance, err := c.getXrpDropsBalance(address, ledgerIndex)
 	if err != nil {
 		return "", err
 	}
 	return currency.DropsToXrp(balance.String())
 }
 
-// getValidatedBalance returns the account balance in drops on the validated
-// ledger. FundWallet uses it to compare balances before and after the faucet
-// deposit, querying the validated ledger avoids racing against open ledger state.
-func (c *Client) getValidatedBalance(address types.Address) (types.XRPCurrencyAmount, error) {
-	return c.getXrpBalance(address, common.Validated)
-}
-
-// getXrpBalance returns the account's XRP balance in drops at the given
+// getXrpDropsBalance returns the account's XRP balance in drops at the given
 // ledger specifier. A nil ledgerIndex lets rippled apply its default.
-func (c *Client) getXrpBalance(address types.Address, ledgerIndex common.LedgerSpecifier) (types.XRPCurrencyAmount, error) {
+func (c *Client) getXrpDropsBalance(address types.Address, ledgerIndex common.LedgerSpecifier) (types.XRPCurrencyAmount, error) {
 	res, err := c.GetAccountInfo(&account.InfoRequest{
 		Account:     address,
 		LedgerIndex: ledgerIndex,
