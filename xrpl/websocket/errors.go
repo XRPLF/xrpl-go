@@ -8,6 +8,8 @@ import (
 const (
 	// txnNotFound is the error message returned by the xrpl node when requesting for a not found transaction.
 	txnNotFound = "txnNotFound"
+	// actNotFound is the error message returned by the xrpl node when requesting for a not found account.
+	actNotFound = "actNotFound"
 )
 
 var (
@@ -64,6 +66,8 @@ var (
 
 	// ErrCannotFundWalletWithoutClassicAddress is returned when attempting to fund a wallet without a classic address.
 	ErrCannotFundWalletWithoutClassicAddress = errors.New("cannot fund a wallet without a classic address")
+	// ErrFundWalletBalanceNotUpdated is returned when the wallet balance does not update on the validated ledger after polling.
+	ErrFundWalletBalanceNotUpdated = errors.New("fund wallet: balance did not update on validated ledger after polling")
 
 	// fees
 
