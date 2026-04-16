@@ -5,12 +5,14 @@ import (
 	"maps"
 	"reflect"
 	"testing"
+	"time"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/interfaces"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/testutil"
 	"github.com/gorilla/websocket"
@@ -1651,4 +1653,152 @@ func setupTestClientForAutofill(t *testing.T, serverMessages []map[string]any) (
 		cl.Disconnect()
 		s.Close()
 	}
+}
+
+type mockFaucetProvider struct {
+	err error
+}
+
+func (m *mockFaucetProvider) FundWallet(_ types.Address) error {
+	return m.err
+}
+
+func TestClient_FundWallet(t *testing.T) {
+	const testAddr = "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"
+	prevMaxAttempts := fundWalletMaxAttempts
+	prevPollInterval := fundWalletPollInterval
+	fundWalletMaxAttempts = 3
+	fundWalletPollInterval = time.Millisecond
+	t.Cleanup(func() {
+		fundWalletMaxAttempts = prevMaxAttempts
+		fundWalletPollInterval = prevPollInterval
+	})
+
+	accountInfoMsg := func(id int, balance string) map[string]any {
+		return map[string]any{
+			"id": id,
+			"result": map[string]any{
+				"account_data": map[string]any{
+					"Account": testAddr,
+					"Balance": balance,
+				},
+			},
+		}
+	}
+
+	actNotFoundMsg := func(id int) map[string]any {
+		return map[string]any{
+			"id":    id,
+			"error": actNotFound,
+		}
+	}
+	invalidParamsMsg := func(id int) map[string]any {
+		return map[string]any{
+			"id":    id,
+			"error": "invalidParams",
+		}
+	}
+
+	tests := []struct {
+		name           string
+		address        string
+		faucetErr      error
+		serverMessages []map[string]any
+		expectedErr    error
+	}{
+		{
+			name:      "pass - new account funded successfully",
+			address:   testAddr,
+			faucetErr: nil,
+			serverMessages: []map[string]any{
+				actNotFoundMsg(1),
+				accountInfoMsg(2, "1000000000"),
+			},
+			expectedErr: nil,
+		},
+		{
+			name:      "pass - existing account balance increases",
+			address:   testAddr,
+			faucetErr: nil,
+			serverMessages: []map[string]any{
+				accountInfoMsg(1, "1000"),
+				accountInfoMsg(2, "1000"),
+				accountInfoMsg(3, "2000"),
+			},
+			expectedErr: nil,
+		},
+		{
+			name:      "fail - balance never updates",
+			address:   testAddr,
+			faucetErr: nil,
+			serverMessages: []map[string]any{
+				accountInfoMsg(1, "1000"),
+				accountInfoMsg(2, "1000"),
+				accountInfoMsg(3, "1000"),
+				accountInfoMsg(4, "1000"),
+			},
+			expectedErr: ErrFundWalletBalanceNotUpdated,
+		},
+		{
+			name:      "fail - polling balance error returns immediately",
+			address:   testAddr,
+			faucetErr: nil,
+			serverMessages: []map[string]any{
+				accountInfoMsg(1, "1000"),
+				invalidParamsMsg(2),
+			},
+			expectedErr: &ErrorWebsocketClientXrplResponse{Type: "invalidParams"},
+		},
+		{
+			name:      "fail - faucet returns error",
+			address:   testAddr,
+			faucetErr: errors.New("faucet unavailable"),
+			serverMessages: []map[string]any{
+				actNotFoundMsg(1),
+			},
+			expectedErr: errors.New("faucet unavailable"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ws := &testutil.MockWebSocketServer{Msgs: tt.serverMessages}
+			s := ws.TestWebSocketServer(func(c *websocket.Conn) {
+				for _, m := range tt.serverMessages {
+					if err := c.WriteJSON(m); err != nil {
+						t.Errorf("error writing message: %v", err)
+					}
+				}
+			})
+			defer s.Close()
+
+			url, _ := testutil.ConvertHTTPToWS(s.URL)
+			cl := NewClient(
+				NewClientConfig().
+					WithHost(url).
+					WithTimeout(1 * time.Second).
+					WithFaucetProvider(&mockFaucetProvider{err: tt.faucetErr}),
+			)
+
+			require.NoError(t, cl.Connect())
+			defer cl.Disconnect()
+
+			w := &wallet.Wallet{ClassicAddress: types.Address(tt.address)}
+			err := cl.FundWallet(w)
+
+			if tt.expectedErr != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedErr.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+
+	t.Run("fail - missing classic address", func(t *testing.T) {
+		cl := NewClient(*NewClientConfig())
+		w := &wallet.Wallet{ClassicAddress: ""}
+		err := cl.FundWallet(w)
+		require.ErrorIs(t, err, ErrCannotFundWalletWithoutClassicAddress)
+	})
 }

@@ -83,17 +83,33 @@ func (c *Client) GetAccountLines(req *account.LinesRequest) (*account.LinesRespo
 // GetXrpBalance retrieves the XRP balance of a given account address.
 // It returns the balance as a string in XRP (not drops) and any error encountered.
 func (c *Client) GetXrpBalance(address types.Address) (string, error) {
+	balance, err := c.getAccountBalance(address, nil)
+	if err != nil {
+		return "", err
+	}
+	return currency.DropsToXrp(balance.String())
+}
+
+// getFundWalletBalance returns the account balance in drops on the validated
+// ledger. FundWallet uses it to detect confirmed faucet deposits; querying
+// the validated ledger avoids racing against open ledger state.
+func (c *Client) getFundWalletBalance(address types.Address) (types.XRPCurrencyAmount, error) {
+	return c.getAccountBalance(address, common.Validated)
+}
+
+// getAccountBalance returns the account's XRP balance in drops at the given
+// ledger specifier. A nil ledgerIndex lets rippled apply its default. It is
+// the shared account_info fetch used by GetXrpBalance (default ledger, XRP
+// string output) and FundWallet (validated ledger, drops comparison).
+func (c *Client) getAccountBalance(address types.Address, ledgerIndex common.LedgerSpecifier) (types.XRPCurrencyAmount, error) {
 	res, err := c.GetAccountInfo(&account.InfoRequest{
-		Account: address,
+		Account:     address,
+		LedgerIndex: ledgerIndex,
 	})
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	xrpBalance, err := currency.DropsToXrp(res.AccountData.Balance.String())
-	if err != nil {
-		return "", err
-	}
-	return xrpBalance, nil
+	return res.AccountData.Balance, nil
 }
 
 // GetAccountNFTs retrieves a list of NFTs owned by an account on the XRP Ledger.

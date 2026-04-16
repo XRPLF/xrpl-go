@@ -4,6 +4,7 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -17,6 +18,11 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
+)
+
+var (
+	fundWalletMaxAttempts  = 20
+	fundWalletPollInterval = 1 * time.Second
 )
 
 // Client is an XRPL RPC client for sending requests and managing transactions.
@@ -302,18 +308,47 @@ func (c *Client) FaucetProvider() common.FaucetProvider {
 	return c.cfg.faucetProvider
 }
 
-// FundWallet funds a wallet with the client's faucet provider.
+// FundWallet funds a wallet with the client's faucet provider and polls the
+// validated ledger until the account's balance increases. It returns
+// ErrFundWalletBalanceNotUpdated if the balance fails to update within the
+// poll window.
 func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 	if wallet.ClassicAddress == "" {
 		return ErrCannotFundWalletWithoutClassicAddress
 	}
 
-	err := c.cfg.faucetProvider.FundWallet(wallet.ClassicAddress)
-	if err != nil {
+	// Starting balance. An error here (typically actNotFound for a
+	// brand-new account) is treated as a zero balance so polling can still
+	// detect the faucet deposit.
+	startBalance, err := c.getFundWalletBalance(wallet.ClassicAddress)
+	if err != nil && !isFundWalletActNotFound(err) {
 		return err
 	}
 
-	return nil
+	if err := c.cfg.faucetProvider.FundWallet(wallet.ClassicAddress); err != nil {
+		return err
+	}
+
+	for range fundWalletMaxAttempts {
+		time.Sleep(fundWalletPollInterval)
+		balance, err := c.getFundWalletBalance(wallet.ClassicAddress)
+		if err != nil {
+			if isFundWalletActNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if balance > startBalance {
+			return nil
+		}
+	}
+
+	return ErrFundWalletBalanceNotUpdated
+}
+
+func isFundWalletActNotFound(err error) bool {
+	var clientErr *ClientError
+	return errors.As(err, &clientErr) && clientErr.ErrorString == actNotFound
 }
 
 func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
