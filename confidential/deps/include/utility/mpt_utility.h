@@ -2,6 +2,7 @@
 #define MPT_UTILITY_H
 
 #include <secp256k1.h>
+#include <secp256k1_mpt.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -29,9 +30,7 @@ extern "C" {
 #define kMPT_PEDERSEN_COMMIT_SIZE 33
 
 // Proof sizes in bytes
-#define kMPT_SCHNORR_PROOF_SIZE 65
-#define kMPT_EQUALITY_PROOF_SIZE 98
-#define kMPT_PEDERSEN_LINK_SIZE 195
+#define kMPT_SCHNORR_PROOF_SIZE 64
 #define kMPT_SINGLE_BULLETPROOF_SIZE 688
 #define kMPT_DOUBLE_BULLETPROOF_SIZE 754
 
@@ -140,12 +139,6 @@ mpt_get_clawback_context_hash(
     account_id holder,
     uint8_t out_hash[kMPT_HALF_SHA_SIZE]);
 
-/**
- * @brief Calculates the total size for a ConfidentialMPTSend proof.
- */
-size_t
-get_confidential_send_proof_size(size_t n_recipients);
-
 /* ============================================================================
  * Key & Ciphertext Utilities
  * ============================================================================ */
@@ -235,7 +228,7 @@ mpt_decrypt_amount(
  * @param pubkey    [in]  33-byte public key of the account.
  * @param privkey   [in]  32-byte private key of the account.
  * @param ctx_hash  [in]  32-byte hash of the transaction (challenge).
- * @param out_proof [out] 65-byte buffer to store the Schnorr proof.
+ * @param out_proof [out] 64-byte buffer to store the compact Schnorr proof.
  * @return 0 on success, -1 on failure.
  */
 int
@@ -258,76 +251,63 @@ mpt_get_pedersen_commitment(
     uint8_t out_commitment[kMPT_PEDERSEN_COMMIT_SIZE]);
 
 /**
- * @brief Generates a ZK linkage proof between an ElGamal ciphertext and a Pedersen commitment.
- * @param pubkey              [in] 33-byte public key of the sender.
- * @param blinding_factor     [in] 32-byte blinding factor used for the ElGamal encryption.
- * @param context_hash        [in] 32-byte hash of the transaction context.
- * @param params              [in] Struct containing commitment, amount, and ciphertext.
- * @param out                 [out] Buffer of exactly 195 bytes to store the proof.
- * @return 0 on success, -1 on failure.
- */
-int
-mpt_get_amount_linkage_proof(
-    uint8_t const pubkey[kMPT_PUBKEY_SIZE],
-    uint8_t const blinding_factor[kMPT_BLINDING_FACTOR_SIZE],
-    uint8_t const context_hash[kMPT_HALF_SHA_SIZE],
-    mpt_pedersen_proof_params const* params,
-    uint8_t out[kMPT_PEDERSEN_LINK_SIZE]);
-
-/**
- * @brief Generates a ZK linkage proof for the sender's balance.
- * @param priv                [in] 32-byte private key of the sender.
- * @param pub                 [in] 33-byte public key of the sender.
- * @param context_hash        [in] 32-byte hash of the transaction context.
- * @param params              [in] Struct containing commitment, amount, and ciphertext.
- * @param out                 [out] Buffer of exactly 195 bytes to store the proof.
- * @return 0 on success, -1 on failure.
- */
-int
-mpt_get_balance_linkage_proof(
-    uint8_t const priv[kMPT_PRIVKEY_SIZE],
-    uint8_t const pub[kMPT_PUBKEY_SIZE],
-    uint8_t const context_hash[kMPT_HALF_SHA_SIZE],
-    mpt_pedersen_proof_params const* params,
-    uint8_t out[kMPT_PEDERSEN_LINK_SIZE]);
-
-/**
  * @brief Generates proof for ConfidentialMPTSend.
- * @param priv.             [in] The sender's 32-byte private key.
- * @param amount            [in] The amount being sent.
- * @param recipients        [in] List of recipients (Sender, Dest, Issuer).
- * @param n_recipients      [in] Number of recipients in the list.
- * @param tx_blinding_factor [in] The ElGamal 'r' used for the transaction.
- * @param context_hash      [in] The 32-byte context hash.
- * @param amount_params     [in] Linkage params for the transaction amount.
- * @param balance_params    [in] Linkage params for the sender's balance.
- * @param out_proof         [out] Pointer to the buffer to be filled with the hex/bytes.
- * @param out_len           [in/out] In: Size of the buffer. Out: Actual bytes written.
- * @return 0 on success, -1 on failure (e.g., buffer too small or math error).
+ *
+ * Produces a compact AND-composed sigma proof (192 bytes) that simultaneously
+ * proves ciphertext equality, Pedersen commitment linkage, and balance ownership
+ * under a single Fiat-Shamir challenge, followed by an aggregated Bulletproof
+ * range proof (754 bytes). Total proof size is fixed at 946 bytes.
+ *
+ * pc_m must be computed as m*G + r*H using tx_blinding_factor as the blinding
+ * factor (not an independent scalar), since the compact sigma proof binds pc_m
+ * to the ciphertext randomness r.
+ *
+ * @param priv               [in] The sender's 32-byte private key.
+ * @param pub                [in] The sender's 33-byte public key.
+ * @param amount             [in] The amount being sent.
+ * @param participants         [in] List of participants, including Sender, Dest, Issuer,
+ * Auditor(optional).
+ * @param n_participants       [in] Number of participants (3 or 4).
+ * @param tx_blinding_factor [in] The ElGamal randomness r (also blinding factor for pc_m).
+ * @param context_hash       [in] The 32-byte context hash.
+ * @param amount_commitment  [in] Pedersen commitment pc_m = m*G + r*H.
+ * @param balance_params     [in] Includes pedersen_commitment (pc_b), amount (balance),
+ *                                blinding_factor (rho), and ciphertext (b1||b2).
+ * @param out_proof          [out] Buffer to receive the proof blob.
+ * @param out_len            [in/out] In: capacity (must be >= 946). Out: bytes written.
+ * @return 0 on success, -1 on failure.
  */
 int
 mpt_get_confidential_send_proof(
     uint8_t const priv[kMPT_PRIVKEY_SIZE],
+    uint8_t const pub[kMPT_PUBKEY_SIZE],
     uint64_t amount,
-    mpt_confidential_participant const* recipients,
-    size_t n_recipients,
+    mpt_confidential_participant const* participants,
+    size_t n_participants,
     uint8_t const tx_blinding_factor[kMPT_BLINDING_FACTOR_SIZE],
     uint8_t const context_hash[kMPT_HALF_SHA_SIZE],
-    mpt_pedersen_proof_params const* amount_params,
+    uint8_t const amount_commitment[kMPT_PEDERSEN_COMMIT_SIZE],
     mpt_pedersen_proof_params const* balance_params,
     uint8_t* out_proof,
     size_t* out_len);
 
 /**
  * @brief Generates proof for ConfidentialMPTConvertBack.
- * @param priv          [in] The holder's 32-byte private key.
- * @param pub           [in] The holder's 33-byte public key.
- * @param context_hash  [in] The 32-byte context hash binding the proof to the transaction.
- * @param amount        [in] The amount to convert back.
- * @param params        [in] Pedersen commitment parameters.
- * @param out_proof     [out] The 883-byte buffer to be filled with the Pedersen linkage proof and
- * range proof.
- * @return 0 on success, -1 on failure (e.g., math error or invalid parameters).
+ *
+ * Produces a compact AND-composed sigma proof (128 bytes) over the balance
+ * witness (b, rho, priv), followed by a single Bulletproof range proof (688
+ * bytes) over the remainder commitment pc_rem = pc_b - m*G.
+ * Total proof size: 816 bytes (SECP256K1_COMPACT_CONVERTBACK_PROOF_SIZE +
+ * kMPT_SINGLE_BULLETPROOF_SIZE).
+ *
+ * @param priv         [in] The holder's 32-byte private key.
+ * @param pub          [in] The holder's 33-byte public key.
+ * @param context_hash [in] The 32-byte context hash binding the proof to the transaction.
+ * @param amount       [in] The publicly revealed conversion amount m.
+ * @param params       [in] Includes pedersen_commitment (pc_b), blinding_factor (rho),
+ *                          amount (balance b), and ciphertext (b1||b2).
+ * @param out_proof    [out] 816-byte buffer for the compact sigma proof and range proof.
+ * @return 0 on success, -1 on failure.
  */
 int
 mpt_get_convert_back_proof(
@@ -336,17 +316,17 @@ mpt_get_convert_back_proof(
     uint8_t const context_hash[kMPT_HALF_SHA_SIZE],
     uint64_t const amount,
     mpt_pedersen_proof_params const* params,
-    uint8_t out_proof[kMPT_PEDERSEN_LINK_SIZE + kMPT_SINGLE_BULLETPROOF_SIZE]);
+    uint8_t out_proof[SECP256K1_COMPACT_CONVERTBACK_PROOF_SIZE + kMPT_SINGLE_BULLETPROOF_SIZE]);
 
 /**
  * @brief Generates proof for ConfidentialMPTClawback.
- * @param priv              [in] The issuer's 32-byte private key.
- * @param pub               [in] The issuer's 33-byte public key.
- * @param context_hash      [in] The 32-byte context hash binding the proof to the transaction.
- * @param amount            [in] The plaintext amount to be clawed back.
- * @param ciphertext  [in] The 66-byte sfIssuerEncryptedBalance blob from the ledger.
- * @param out_proof         [out] The 98-byte buffer to be filled with the equality proof.
- * @return 0 on success, -1 on failure (e.g., math error or invalid ciphertext).
+ * @param priv         [in] The issuer's 32-byte private key.
+ * @param pub          [in] The issuer's 33-byte compressed public key.
+ * @param context_hash [in] The 32-byte context hash binding the proof to the transaction.
+ * @param amount       [in] The publicly known amount to be clawed back.
+ * @param ciphertext   [in] The 66-byte sfIssuerEncryptedBalance blob from the ledger.
+ * @param out_proof    [out] 64-byte buffer for the compact sigma proof.
+ * @return 0 on success, -1 on failure.
  */
 int
 mpt_get_clawback_proof(
@@ -355,11 +335,23 @@ mpt_get_clawback_proof(
     uint8_t const context_hash[kMPT_HALF_SHA_SIZE],
     uint64_t const amount,
     uint8_t const ciphertext[kMPT_ELGAMAL_TOTAL_SIZE],
-    uint8_t out_proof[kMPT_EQUALITY_PROOF_SIZE]);
+    uint8_t out_proof[SECP256K1_COMPACT_CLAWBACK_PROOF_SIZE]);
 
 /* ============================================================================
- * Encryption & Commitment Validation (Non-ZKP)
+ * Non-ZKP Validation
  * ============================================================================ */
+
+/**
+ * @brief Verifies that the ElGamal ciphertexts held by all participants encrypt
+ * the same revealed plaintext amount under the given blinding factor.
+ *
+ * @param amount          [in] Actual numeric amount to verify against.
+ * @param blinding_factor [in] The ElGamal randomness r used to produce all ciphertexts.
+ * @param holder          [in] Holder's public key and ciphertext.
+ * @param issuer          [in] Issuer's public key and ciphertext.
+ * @param auditor         [in] Auditor's public key and ciphertext, optional.
+ * @return 0 on success, -1 on failure.
+ */
 int
 mpt_verify_revealed_amount(
     uint64_t const amount,
@@ -377,7 +369,7 @@ mpt_verify_revealed_amount(
  *
  * Proves that the sender possesses the private key for the provided public key.
  *
- * @param proof        [in] The 65-byte Schnorr proof.
+ * @param proof        [in] The 64-byte compact Schnorr proof.
  * @param pubkey       [in] The 33-byte compressed ElGamal public key.
  * @param context_hash [in] The 32-byte transaction context hash.
  * @return 0 on success, -1 on failure.
@@ -394,17 +386,17 @@ mpt_verify_convert_proof(
  * Proves that the hidden balance matches the commitment and that
  * subtracting the transparent amount results in a non-negative balance.
  *
- * @param proof              [in] Concatenated linkage and range proofs.
- * @param pubkey             [in] The sender's ElGamal public key.
- * @param ciphertext         [in] The ElGamal ciphertext of the balance.
- * @param balance_commitment [in] The Pedersen commitment of the balance.
- * @param amount             [in] The amount being converted back to public.
+ * @param proof              [in] 816-byte proof blob (compact sigma || Bulletproof).
+ * @param pubkey             [in] The holder's 33-byte ElGamal public key.
+ * @param ciphertext         [in] The holder's 66-byte balance ciphertext.
+ * @param balance_commitment [in] The 33-byte Pedersen commitment to the balance.
+ * @param amount             [in] The publicly revealed conversion amount m.
  * @param context_hash       [in] The 32-byte transaction context hash.
  * @return 0 on success, -1 on failure.
  */
 int
 mpt_verify_convert_back_proof(
-    uint8_t const proof[kMPT_PEDERSEN_LINK_SIZE + kMPT_SINGLE_BULLETPROOF_SIZE],
+    uint8_t const proof[SECP256K1_COMPACT_CONVERTBACK_PROOF_SIZE + kMPT_SINGLE_BULLETPROOF_SIZE],
     uint8_t const pubkey[kMPT_PUBKEY_SIZE],
     uint8_t const ciphertext[kMPT_ELGAMAL_TOTAL_SIZE],
     uint8_t const balance_commitment[kMPT_PEDERSEN_COMMIT_SIZE],
@@ -414,27 +406,24 @@ mpt_verify_convert_back_proof(
 /**
  * @brief Verify proof for ConfidentialMPTSend.
  *
- * Validates equality, Amount/Balance linkage, and range proofs.
- * Equality proof: Proves the same value is encrypted for the sender, receiver, issuer, and auditor.
- * Amount linkage: Proves the send amount in the ElGamal ciphertext matches the amount Pedersen
- * commitment. Balance linkage: Proves the sender's encrypted balance matches the balance Pedersen
- * commitment. Range proof: Proves the transfer amount and the remaining balance are within range
- * from 0 to 2^64-1.
+ * Verifies the compact AND-composed sigma proof (first 192 bytes) that proves
+ * ciphertext correctness, Pedersen commitment linkage, and balance ownership,
+ * followed by an aggregated Bulletproof range proof (next 754 bytes).
+ * Proof size is fixed at 946 bytes.
  *
- * @param proof                      [in] Concatenated equality, linkage and range proofs.
- * @param proof_len                  [in] Total length of the proof blob.
+ * @param proof                      [in] 946-byte proof blob (compact sigma || Bulletproof).
  * @param participants               [in] List of participants' public keys and ciphertexts.
- * @param n_participants             [in] Number of participants.
- * @param sender_spending_ciphertext [in] The ciphertext for the sender's balance.
- * @param amount_commitment          [in] Pedersen commitment to the send amount.
- * @param balance_commitment         [in] Pedersen commitment to the sender's balance.
+ *                                        participants[0] is the sender.
+ * @param n_participants             [in] Number of participants (3 or 4).
+ * @param sender_spending_ciphertext [in] The sender's on-ledger balance ciphertext (b1||b2).
+ * @param amount_commitment          [in] Pedersen commitment pc_m to the transfer amount.
+ * @param balance_commitment         [in] Pedersen commitment pc_b to the sender's balance.
  * @param context_hash               [in] The 32-byte transaction context hash.
  * @return 0 on success, -1 on failure.
  */
 int
 mpt_verify_send_proof(
     uint8_t const* proof,
-    size_t const proof_len,
     mpt_confidential_participant const* participants,
     uint8_t const n_participants,
     uint8_t const sender_spending_ciphertext[kMPT_ELGAMAL_TOTAL_SIZE],
@@ -448,87 +437,20 @@ mpt_verify_send_proof(
  * Proves that a ciphertext, when decrypted by the issuer, results in exactly the plaintext amount
  * specified in the transaction.
  *
- * @param proof        [in] The equality proof.
+ * @param proof        [in] The 64-byte compact sigma proof.
  * @param amount       [in] The publicly known amount to be clawed back.
- * @param pubkey       [in] The issuer's public key.
- * @param ciphertext   [in] The ciphertext associated with the issuer's balance on the holder's
- * account.
- * @param context_hash [in] 32-byte transaction context hash.
+ * @param pubkey       [in] The issuer's 33-byte compressed public key.
+ * @param ciphertext   [in] The 66-byte sfIssuerEncryptedBalance blob associated with the holder's
+ *                         account on the ledger.
+ * @param context_hash [in] The 32-byte transaction context hash.
  * @return 0 on success, -1 on failure.
  */
 int
 mpt_verify_clawback_proof(
-    uint8_t const proof[kMPT_EQUALITY_PROOF_SIZE],
+    uint8_t const proof[SECP256K1_COMPACT_CLAWBACK_PROOF_SIZE],
     uint64_t const amount,
     uint8_t const pubkey[kMPT_PUBKEY_SIZE],
     uint8_t const ciphertext[kMPT_ELGAMAL_TOTAL_SIZE],
-    uint8_t const context_hash[kMPT_HALF_SHA_SIZE]);
-
-/* ============================================================================
- * Internal ZKProof Verification Components
- * ============================================================================ */
-
-/**
- * @brief Verifies the consistency between ElGamal and Pedersen representations.
- *
- * @param ctx          [in] secp256k1-zkp context.
- * @param proof        [in] 195-byte Pedersen linkage proof.
- * @param ciphertext   [in] ElGamal ciphertext.
- * @param pubkey       [in] Public key used for ElGamal encryption.
- * @param commitment   [in] Pedersen commitment.
- * @param context_hash [in] 32-byte transaction context hash.
- * @return 0 on success, -1 on failure.
- */
-int
-mpt_verify_amount_linkage(
-    secp256k1_context const* ctx,
-    uint8_t const proof[kMPT_PEDERSEN_LINK_SIZE],
-    uint8_t const ciphertext[kMPT_ELGAMAL_TOTAL_SIZE],
-    uint8_t const pubkey[kMPT_PUBKEY_SIZE],
-    uint8_t const commitment[kMPT_PEDERSEN_COMMIT_SIZE],
-    uint8_t const context_hash[kMPT_HALF_SHA_SIZE]);
-
-/**
- * @brief Verifies the cryptographic linkage between an ElGamal balance ciphertext and a Pedersen
- * commitment.
- *
- * @param proof        [in] The 195-byte Pedersen linkage proof buffer.
- * @param ciphertext   [in] The 66-byte ElGamal ciphertext representing the encrypted balance.
- * @param pubkey       [in] The 33-byte compressed public key of the balance holder.
- * @param commitment   [in] The 33-byte Pedersen commitment point to be verified against the
- * ciphertext.
- * @param context_hash [in] The 32-byte context hash binding this proof to a specific transaction.
- * @return 0 on success, -1 on failure.
- */
-int
-mpt_verify_balance_linkage(
-    uint8_t const proof[kMPT_PEDERSEN_LINK_SIZE],
-    uint8_t const ciphertext[kMPT_ELGAMAL_TOTAL_SIZE],
-    uint8_t const pubkey[kMPT_PUBKEY_SIZE],
-    uint8_t const commitment[kMPT_PEDERSEN_COMMIT_SIZE],
-    uint8_t const context_hash[kMPT_HALF_SHA_SIZE]);
-
-/**
- * @brief Verifies a Multi-Participants Equality Proof.
- *
- * Validates that different ElGamal ciphertexts all encrypt the same underlying plaintext
- * value without revealing the value itself.
- *
- * @param ctx            [in] secp256k1-zkp context.
- * @param proof          [in] Pointer to the equality proof segment.
- * @param proof_len      [in] Length of the equality proof.
- * @param participants   [in] List of participant public keys and ciphertexts.
- * @param n_participants [in] Number of participants.
- * @param context_hash   [in] 32-byte transaction context hash.
- * @return 0 on success, -1 on failure.
- */
-int
-mpt_verify_equality_proof(
-    secp256k1_context const* ctx,
-    uint8_t const* proof,
-    size_t const proof_len,
-    mpt_confidential_participant const* participants,
-    uint8_t const n_participants,
     uint8_t const context_hash[kMPT_HALF_SHA_SIZE]);
 
 /**
@@ -576,10 +498,9 @@ mpt_verify_aggregated_bulletproof(
  */
 int
 mpt_verify_send_range_proof(
-    secp256k1_context const* ctx,
     uint8_t const proof[kMPT_DOUBLE_BULLETPROOF_SIZE],
     uint8_t const amount_commitment[kMPT_PEDERSEN_COMMIT_SIZE],
-    uint8_t const remainder_commitment[kMPT_PEDERSEN_COMMIT_SIZE],
+    uint8_t const balance_commitment[kMPT_PEDERSEN_COMMIT_SIZE],
     uint8_t const context_hash[kMPT_HALF_SHA_SIZE]);
 
 #ifdef __cplusplus
