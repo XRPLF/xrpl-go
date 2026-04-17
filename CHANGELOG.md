@@ -21,6 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `GetLedgerEntry` method to the testutil integration `Client` interface.
 - Updated lending protocol integration test with expanded lifecycle coverage.
 
+#### xrpl/rpc
+
+- `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+
+#### xrpl/websocket
+
+- `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+
+### Changed
+
+#### xrpl/rpc
+
+- `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+
+#### xrpl/websocket
+
+- `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+
 ### Fixed
 
 #### xrpl

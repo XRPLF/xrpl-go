@@ -16,6 +16,7 @@ import (
 	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -876,4 +877,150 @@ func setupTestRPCClientForAutofill(t *testing.T, mockResponses []string) *Client
 	require.NoError(t, err)
 
 	return NewClient(cfg)
+}
+
+// mockFaucetProvider is a test double for common.FaucetProvider.
+type mockFaucetProvider struct {
+	err error
+}
+
+func (m *mockFaucetProvider) FundWallet(_ types.Address) error {
+	return m.err
+}
+
+func TestClient_FundWallet(t *testing.T) {
+	const testAddr = "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"
+	prevMaxAttempts := fundWalletMaxAttempts
+	prevPollInterval := fundWalletPollInterval
+	fundWalletMaxAttempts = 3
+	fundWalletPollInterval = time.Millisecond
+	t.Cleanup(func() {
+		fundWalletMaxAttempts = prevMaxAttempts
+		fundWalletPollInterval = prevPollInterval
+	})
+
+	accountInfoResponse := func(balance string) string {
+		return `{
+			"result": {
+				"account_data": {
+					"Account": "` + testAddr + `",
+					"Balance": "` + balance + `",
+					"Flags": 0,
+					"LedgerEntryType": "AccountRoot",
+					"OwnerCount": 0
+				}
+			}
+		}`
+	}
+
+	actNotFoundResponse := `{
+		"result": {
+			"error": "` + actNotFound + `",
+			"status": "error"
+		}
+	}`
+	ledgerIndexMalformedResponse := `{
+		"result": {
+			"error": "ledgerIndexMalformed",
+			"status": "error"
+		}
+	}`
+
+	tests := []struct {
+		name        string
+		address     types.Address
+		faucetErr   error
+		responses   []string
+		expectedErr error
+	}{
+		{
+			name:      "pass - new account funded successfully",
+			address:   testAddr,
+			faucetErr: nil,
+			responses: []string{
+				actNotFoundResponse,
+				accountInfoResponse("1000000000"),
+			},
+			expectedErr: nil,
+		},
+		{
+			name:      "pass - existing account balance increases",
+			address:   testAddr,
+			faucetErr: nil,
+			responses: []string{
+				accountInfoResponse("1000"),
+				accountInfoResponse("1000"),
+				accountInfoResponse("2000"),
+			},
+			expectedErr: nil,
+		},
+		{
+			name:      "fail - balance never updates",
+			address:   testAddr,
+			faucetErr: nil,
+			responses: []string{
+				accountInfoResponse("1000"),
+				accountInfoResponse("1000"),
+				accountInfoResponse("1000"),
+				accountInfoResponse("1000"),
+			},
+			expectedErr: ErrFundWalletBalanceNotUpdated,
+		},
+		{
+			name:      "fail - polling balance error returns immediately",
+			address:   testAddr,
+			faucetErr: nil,
+			responses: []string{
+				accountInfoResponse("1000"),
+				ledgerIndexMalformedResponse,
+			},
+			expectedErr: errors.New("ledgerIndexMalformed"),
+		},
+		{
+			name:        "fail - faucet returns error",
+			address:     testAddr,
+			faucetErr:   errors.New("faucet unavailable"),
+			responses:   []string{actNotFoundResponse},
+			expectedErr: errors.New("faucet unavailable"),
+		},
+		{
+			name:        "fail - missing classic address",
+			address:     "",
+			expectedErr: ErrCannotFundWalletWithoutClassicAddress,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mc := &testutil.JSONRPCMockClient{}
+			callIdx := 0
+			mc.DoFunc = func(req *http.Request) (*http.Response, error) {
+				idx := callIdx
+				callIdx++
+				if idx < len(tt.responses) {
+					return testutil.MockResponse(tt.responses[idx], 200, mc)(req)
+				}
+				return testutil.MockResponse(actNotFoundResponse, 200, mc)(req)
+			}
+
+			cfg, err := NewClientConfig(
+				"http://testnode/",
+				WithHTTPClient(mc),
+				WithFaucetProvider(&mockFaucetProvider{err: tt.faucetErr}),
+			)
+			require.NoError(t, err)
+
+			client := NewClient(cfg)
+			w := &wallet.Wallet{ClassicAddress: tt.address}
+
+			err = client.FundWallet(w)
+
+			if tt.expectedErr != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedErr.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

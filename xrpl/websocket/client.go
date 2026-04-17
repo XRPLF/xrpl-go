@@ -3,6 +3,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -45,6 +46,11 @@ const (
 	RestrictedNetworks = 1024
 	// RequiredNetworkIDVersion is the minimum XRPL server build version after which specifying NetworkID is required for restricted networks.
 	RequiredNetworkIDVersion = "1.11.0"
+)
+
+var (
+	fundWalletMaxAttempts  = 20
+	fundWalletPollInterval = 1 * time.Second
 )
 
 // Client is a WebSocket client for interacting with an XRPL server.
@@ -178,19 +184,48 @@ func (c *Client) AutofillMultisigned(tx *transaction.FlatTransaction, nSigners u
 	return nil
 }
 
-// FundWallet funds a wallet with XRP from the faucet.
-// If the wallet does not have a classic address, it will return an error.
+// FundWallet funds a wallet with XRP from the faucet and polls the validated
+// ledger until the account's balance increases. It returns
+// ErrFundWalletBalanceNotUpdated if the balance fails to update within the
+// poll window. If the wallet does not have a classic address, it returns an
+// error.
 func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 	if wallet.ClassicAddress == "" {
 		return ErrCannotFundWalletWithoutClassicAddress
 	}
 
-	err := c.cfg.faucetProvider.FundWallet(wallet.ClassicAddress)
-	if err != nil {
+	// Starting balance. An error here (typically actNotFound for a
+	// brand-new account) is treated as a zero balance so polling can still
+	// detect the faucet deposit.
+	startBalance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
+	if err != nil && !isFundWalletActNotFound(err) {
 		return err
 	}
 
-	return nil
+	if err := c.cfg.faucetProvider.FundWallet(wallet.ClassicAddress); err != nil {
+		return err
+	}
+
+	for range fundWalletMaxAttempts {
+		time.Sleep(fundWalletPollInterval)
+		balance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
+		if err != nil {
+			if isFundWalletActNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if balance > startBalance {
+			return nil
+		}
+	}
+
+	return ErrFundWalletBalanceNotUpdated
+}
+
+func isFundWalletActNotFound(err error) bool {
+	var wsErr *ErrorWebsocketClientXrplResponse
+	return errors.As(err, &wsErr) && wsErr.Type == actNotFound
 }
 
 // Request sends a request to the server and returns the response.
