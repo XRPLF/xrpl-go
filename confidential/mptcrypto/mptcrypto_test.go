@@ -3,6 +3,7 @@
 package mptcrypto_test
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
@@ -341,6 +342,17 @@ func TestSendProofRoundtrip(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestVerifySendProofRejectsShortProof(t *testing.T) {
+	shortProof := make([]byte, mptcrypto.SendProofSize-1)
+
+	var senderCT [mptcrypto.CiphertextSize]byte
+	var amountCommit, balanceCommit [mptcrypto.CommitmentSize]byte
+	var ctxHash [mptcrypto.HashOutputSize]byte
+
+	err := mptcrypto.VerifySendProof(shortProof, nil, senderCT, amountCommit, balanceCommit, ctxHash)
+	require.EqualError(t, err, fmt.Sprintf("mptcrypto: proof must be %d bytes, got %d", mptcrypto.SendProofSize, len(shortProof)))
 }
 
 // endregion

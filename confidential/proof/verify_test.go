@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
+	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
 	"github.com/stretchr/testify/require"
 )
@@ -140,6 +141,13 @@ func TestVerifySendRangeProofInvalidInputs(t *testing.T) {
 			},
 			wantErr: proof.ErrInvalidCommitment,
 		},
+		{
+			name: "fail - bad balance commitment",
+			fn: func() error {
+				return proof.VerifySendRangeProof(zeroHex(754), "02"+zeroHex(32), "zz", zeroHex(32))
+			},
+			wantErr: proof.ErrInvalidCommitment,
+		},
 	}
 
 	for _, tt := range tests {
@@ -148,4 +156,19 @@ func TestVerifySendRangeProofInvalidInputs(t *testing.T) {
 			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
+}
+
+func TestVerifySendRangeProofRoundtrip(t *testing.T) {
+	senderKP, participants, txBF, ctxHash, amountParams, balanceParams, _, amountCommitHex, balanceCommitHex := setupSendProofScenario(t, 500, 1000, false)
+
+	proofHex, err := proof.GenerateSendProof(
+		senderKP.PrivKeyHex, senderKP.PubKeyHex, 500, participants, txBF, ctxHash,
+		amountParams, balanceParams,
+	)
+	require.NoError(t, err)
+
+	rangeProofHex := proofHex[mptcrypto.CompactSendProofSize*2:]
+
+	err = proof.VerifySendRangeProof(rangeProofHex, amountCommitHex, balanceCommitHex, ctxHash)
+	require.NoError(t, err)
 }

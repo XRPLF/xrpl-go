@@ -42,7 +42,8 @@ func VerifyRevealedAmount(amount uint64, bfHex string, holder, issuer Participan
 }
 
 // VerifySendRangeProof verifies that the transfer amount and remaining balance are within [0, 2^64-1].
-func VerifySendRangeProof(proofHex, amountCommitHex, remainderCommitHex, ctxHashHex string) error {
+// balanceCommitHex must be the sender's original balance commitment, the C library derives the remainder internally.
+func VerifySendRangeProof(proofHex, amountCommitHex, balanceCommitHex, ctxHashHex string) error {
 	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.DoubleBulletproofSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
@@ -51,7 +52,7 @@ func VerifySendRangeProof(proofHex, amountCommitHex, remainderCommitHex, ctxHash
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
-	remainderCommitBytes, err := hexutil.DecodeFixedHex(remainderCommitHex, mptcrypto.CommitmentSize)
+	balanceCommitBytes, err := hexutil.DecodeFixedHex(balanceCommitHex, mptcrypto.CommitmentSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
@@ -62,14 +63,14 @@ func VerifySendRangeProof(proofHex, amountCommitHex, remainderCommitHex, ctxHash
 
 	var proof [mptcrypto.DoubleBulletproofSize]byte
 	var amountCommit [mptcrypto.CommitmentSize]byte
-	var remainderCommit [mptcrypto.CommitmentSize]byte
+	var balanceCommit [mptcrypto.CommitmentSize]byte
 	var hash [mptcrypto.HashOutputSize]byte
 	copy(proof[:], proofBytes)
 	copy(amountCommit[:], amountCommitBytes)
-	copy(remainderCommit[:], remainderCommitBytes)
+	copy(balanceCommit[:], balanceCommitBytes)
 	copy(hash[:], hashBytes)
 
-	if err := mptcrypto.VerifySendRangeProof(proof, amountCommit, remainderCommit, hash); err != nil {
+	if err := mptcrypto.VerifySendRangeProof(proof, amountCommit, balanceCommit, hash); err != nil {
 		return fmt.Errorf("%w: %w", ErrProofVerificationFailed, err)
 	}
 	return nil

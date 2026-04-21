@@ -127,6 +127,20 @@ func TestGenerateAndVerifySendProof(t *testing.T) {
 	}
 }
 
+func TestVerifySendProofRejectsWrongLength(t *testing.T) {
+	const amount = 500
+	senderKP, participants, txBF, ctxHash, amountParams, balanceParams, senderBalanceCt, amountCommitHex, balanceCommitHex := setupSendProofScenario(t, amount, 1000, false)
+
+	proofHex, err := proof.GenerateSendProof(
+		senderKP.PrivKeyHex, senderKP.PubKeyHex, amount, participants, txBF, ctxHash,
+		amountParams, balanceParams,
+	)
+	require.NoError(t, err)
+
+	err = proof.VerifySendProof(proofHex[:len(proofHex)-2], participants, senderBalanceCt, amountCommitHex, balanceCommitHex, ctxHash)
+	require.ErrorIs(t, err, proof.ErrInvalidProof)
+}
+
 func TestSendProofInvalidInputs(t *testing.T) {
 	tests := []struct {
 		name    string

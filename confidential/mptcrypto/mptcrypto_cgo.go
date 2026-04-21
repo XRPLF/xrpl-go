@@ -333,8 +333,8 @@ func VerifyConvertBackProof(proof [ConvertBackProofSize]byte, pubkey [PubKeySize
 
 // VerifySendProof verifies the full proof for a ConfidentialMPTSend transaction.
 func VerifySendProof(proof []byte, participants []Participant, senderCt [CiphertextSize]byte, amountCommit, balanceCommit [CommitmentSize]byte, ctxHash [HashOutputSize]byte) error {
-	if len(proof) == 0 {
-		return fmt.Errorf("mptcrypto: proof must not be empty")
+	if len(proof) != SendProofSize {
+		return fmt.Errorf("mptcrypto: proof must be %d bytes, got %d", SendProofSize, len(proof))
 	}
 	if len(participants) == 0 {
 		return fmt.Errorf("mptcrypto: at least one participant is required")

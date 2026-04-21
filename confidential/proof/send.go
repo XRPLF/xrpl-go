@@ -9,7 +9,7 @@ import (
 )
 
 // GenerateSendProof generates the full proof (equality + linkage + range) for a ConfidentialMPTSend transaction.
-// Returns hex-encoded proof string (variable length depending on participant count).
+// Returns a fixed-size proof string (946 bytes, 1892 hex chars).
 // The C API limits participants to 255 (uint8); XRPL uses at most 4 (sender, dest, issuer, auditor).
 func GenerateSendProof(privkeyHex string, pubkeyHex string, amount uint64, participants []Participant, txBFHex, ctxHashHex string, amountParams, balanceParams Params) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
@@ -60,9 +60,9 @@ func GenerateSendProof(privkeyHex string, pubkeyHex string, amount uint64, parti
 // VerifySendProof verifies the full proof for a ConfidentialMPTSend transaction.
 // The C API limits participants to 255 (uint8); XRPL uses at most 4 (sender, dest, issuer, auditor).
 func VerifySendProof(proofHex string, participants []Participant, senderCtHex, amountCommitHex, balanceCommitHex, ctxHashHex string) error {
-	proofBytes, err := hex.DecodeString(proofHex)
+	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.SendProofSize)
 	if err != nil {
-		return fmt.Errorf("%w: invalid hex: %w", ErrInvalidProof, err)
+		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
 	parts, err := decodeParticipants(participants)
 	if err != nil {
