@@ -29,15 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended `mptcrypto` with ZK proof CGo bindings (with `!cgo` stubs):
   - Context hash functions: `ConvertContextHash()`, `ConvertBackContextHash()`, `SendContextHash()`, `ClawbackContextHash()`.
   - Pedersen commitment: `PedersenCommitment()`.
-  - Proof generation: `GenerateConvertProof()`, `GenerateConvertBackProof()`, `GenerateSendProof()`, `GenerateClawbackProof()`, `GenerateAmountLinkageProof()`, `GenerateBalanceLinkageProof()`.
-  - Proof verification: `VerifyConvertProof()`, `VerifyConvertBackProof()`, `VerifySendProof()`, `VerifyClawbackProof()`, `VerifyRevealedAmount()`, `VerifyAmountLinkage()`, `VerifyBalanceLinkage()`, `VerifyEqualityProof()`, `VerifySendRangeProof()`.
-  - Utilities: `GetSendProofSize()`, `ComputeConvertBackRemainder()`.
+  - Proof generation: `GenerateConvertProof()`, `GenerateConvertBackProof()`, `GenerateSendProof()`, `GenerateClawbackProof()`.
+  - Proof verification: `VerifyConvertProof()`, `VerifyConvertBackProof()`, `VerifySendProof()`, `VerifyClawbackProof()`, `VerifyRevealedAmount()`, `VerifySendRangeProof()`.
+  - Utilities: `ComputeConvertBackRemainder()`.
   - New types: `Participant`, `PedersenProofParams`.
 - Added `confidential/commitment` package providing a hex-string API for Pedersen commitment creation (`Create()`), wrapping `mptcrypto.PedersenCommitment()`.
 - Added `confidential/proof` package providing a hex-string API for ZK proof generation and verification with classic XRPL address support:
   - Context hashes: `ConvertContextHash()`, `ConvertBackContextHash()`, `SendContextHash()`, `ClawbackContextHash()` (accept classic addresses).
   - Proof generation/verification: `GenerateConvertProof()`/`VerifyConvertProof()`, `GenerateConvertBackProof()`/`VerifyConvertBackProof()`, `GenerateSendProof()`/`VerifySendProof()`, `GenerateClawbackProof()`/`VerifyClawbackProof()`.
-  - Component verifiers: `VerifyRevealedAmount()`, `VerifyAmountLinkage()`, `VerifyBalanceLinkage()`, `VerifyEqualityProof()`, `VerifySendRangeProof()`.
+  - Component verifiers: `VerifyRevealedAmount()`, `VerifySendRangeProof()`.
 
 #### confidential/builder
 
@@ -111,6 +111,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exposed RPC port in localnet command
 
 ### Fixed
+
+#### confidential
+
+- Fixed confidential send proof verification to reject any proof whose length differs from the fixed 946-byte compact proof blob before passing it to the C verifier.
+- Fixed `VerifySendRangeProof()` docs and helper naming to match the current `mpt-crypto` contract, which expects the sender's original balance commitment.
 
 #### xrpl/transaction
 
