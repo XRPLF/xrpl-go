@@ -274,9 +274,9 @@ func TestSendProofRoundtrip(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			senderPriv, senderPub, err := mptcrypto.GenerateKeypair()
 			require.NoError(t, err)
-			_, issuerPub, err := mptcrypto.GenerateKeypair()
-			require.NoError(t, err)
 			_, destPub, err := mptcrypto.GenerateKeypair()
+			require.NoError(t, err)
+			_, issuerPub, err := mptcrypto.GenerateKeypair()
 			require.NoError(t, err)
 
 			balanceAmount := uint64(100)
@@ -293,15 +293,15 @@ func TestSendProofRoundtrip(t *testing.T) {
 
 			senderAmountCT, err := mptcrypto.EncryptAmount(sendAmount, senderPub, txBF)
 			require.NoError(t, err)
-			issuerAmountCT, err := mptcrypto.EncryptAmount(sendAmount, issuerPub, txBF)
-			require.NoError(t, err)
 			destAmountCT, err := mptcrypto.EncryptAmount(sendAmount, destPub, txBF)
+			require.NoError(t, err)
+			issuerAmountCT, err := mptcrypto.EncryptAmount(sendAmount, issuerPub, txBF)
 			require.NoError(t, err)
 
 			participants := []mptcrypto.Participant{
 				{PubKey: senderPub, Ciphertext: senderAmountCT},
-				{PubKey: issuerPub, Ciphertext: issuerAmountCT},
 				{PubKey: destPub, Ciphertext: destAmountCT},
+				{PubKey: issuerPub, Ciphertext: issuerAmountCT},
 			}
 
 			if tt.withAuditor {
