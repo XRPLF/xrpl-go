@@ -19,6 +19,15 @@ const BlindingFactorLen = 64
 // SchnorrProofLen is the hex-encoded length of a 64-byte compact Schnorr proof of knowledge.
 const SchnorrProofLen = 128
 
+// SendProofLen is the hex-encoded length of a 946-byte confidential send proof bundle.
+const SendProofLen = 1892
+
+// ConvertBackProofLen is the hex-encoded length of an 816-byte confidential convert back proof bundle.
+const ConvertBackProofLen = 1632
+
+// ClawbackProofLen is the hex-encoded length of a 64-byte confidential clawback proof.
+const ClawbackProofLen = 128
+
 // IsValidPrivKey checks if the given hex string is a valid 32-byte private key scalar (64 hex chars).
 func IsValidPrivKey(key string) bool {
 	return len(key) == PrivKeyLen && typecheck.IsHex(key)
@@ -55,4 +64,9 @@ func IsValidCommitment(s string) bool {
 // Used for variable-length fields like ZKProof bundles where the spec does not define a fixed size.
 func IsValidHexBlob(s string) bool {
 	return len(s) > 0 && typecheck.IsHex(s)
+}
+
+// IsValidFixedHexBlob checks if the given string is valid hex with an exact encoded length.
+func IsValidFixedHexBlob(s string, hexLen int) bool {
+	return len(s) == hexLen && typecheck.IsHex(s)
 }

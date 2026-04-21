@@ -111,7 +111,7 @@ func (tx *ConfidentialMPTConvertBack) Validate() (bool, error) {
 		return false, ErrConfidentialConvertBackInvalidCommitment
 	}
 
-	if !IsValidHexBlob(tx.ZKProof) {
+	if !IsValidFixedHexBlob(tx.ZKProof, ConvertBackProofLen) {
 		return false, ErrConfidentialConvertBackInvalidProof
 	}
 

@@ -120,6 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Fixed `ConfidentialMPTConvert` to use compressed EC public key for `HolderEncryptionKey` field instead of uncompressed key.
+- Fixed confidential MPT transaction validation to enforce fixed `ZKProof` sizes for `ConfidentialMPTSend`, `ConfidentialMPTConvertBack`, and `ConfidentialMPTClawback`.
 
 #### xrpl
 

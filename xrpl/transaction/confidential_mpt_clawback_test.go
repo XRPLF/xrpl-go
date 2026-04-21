@@ -1,11 +1,14 @@
 package transaction
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
+
+var testClawbackProof = strings.Repeat("AB", ClawbackProofLen/2)
 
 func TestConfidentialMPTClawback_TxType(t *testing.T) {
 	tx := &ConfidentialMPTClawback{}
@@ -28,7 +31,7 @@ func TestConfidentialMPTClawback_Flatten(t *testing.T) {
 				Holder:            "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				MPTAmount:         types.MPTPlainAmount(1000),
-				ZKProof:           "AABBCCDD",
+				ZKProof:           testClawbackProof,
 			},
 			expected: FlatTransaction{
 				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -37,7 +40,7 @@ func TestConfidentialMPTClawback_Flatten(t *testing.T) {
 				"Holder":            "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
 				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				"MPTAmount":         "1000",
-				"ZKProof":           "AABBCCDD",
+				"ZKProof":           testClawbackProof,
 			},
 		},
 	}
@@ -67,7 +70,7 @@ func TestConfidentialMPTClawback_Validate(t *testing.T) {
 				Holder:            "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				MPTAmount:         types.MPTPlainAmount(1000),
-				ZKProof:           "AABBCCDD",
+				ZKProof:           testClawbackProof,
 			},
 			wantErr: nil,
 		},
@@ -82,7 +85,7 @@ func TestConfidentialMPTClawback_Validate(t *testing.T) {
 				Holder:            "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
 				MPTokenIssuanceID: "",
 				MPTAmount:         types.MPTPlainAmount(1000),
-				ZKProof:           "AABBCCDD",
+				ZKProof:           testClawbackProof,
 			},
 			wantErr: ErrConfidentialMPTInvalidIssuanceID,
 		},
@@ -97,7 +100,7 @@ func TestConfidentialMPTClawback_Validate(t *testing.T) {
 				Holder:            "invalidAddress",
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				MPTAmount:         types.MPTPlainAmount(1000),
-				ZKProof:           "AABBCCDD",
+				ZKProof:           testClawbackProof,
 			},
 			wantErr: ErrConfidentialClawbackInvalidHolder,
 		},
@@ -112,7 +115,7 @@ func TestConfidentialMPTClawback_Validate(t *testing.T) {
 				Holder:            "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				MPTAmount:         types.MPTPlainAmount(1000),
-				ZKProof:           "AABBCCDD",
+				ZKProof:           testClawbackProof,
 			},
 			wantErr: ErrConfidentialClawbackSelfClawback,
 		},
@@ -127,9 +130,24 @@ func TestConfidentialMPTClawback_Validate(t *testing.T) {
 				Holder:            "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				MPTAmount:         types.MPTPlainAmount(0),
-				ZKProof:           "AABBCCDD",
+				ZKProof:           testClawbackProof,
 			},
 			wantErr: ErrConfidentialClawbackInvalidAmount,
+		},
+		{
+			name: "fail - short ZKProof",
+			tx: &ConfidentialMPTClawback{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: ConfidentialMPTClawbackTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				Holder:            "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTAmount:         types.MPTPlainAmount(1000),
+				ZKProof:           "A1B2C3D4",
+			},
+			wantErr: ErrConfidentialClawbackBadProof,
 		},
 		{
 			name: "fail - empty ZKProof",
