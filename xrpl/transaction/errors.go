@@ -534,8 +534,8 @@ var (
 	ErrConfidentialConvertKeyProofMismatch = errors.New("confidential MPT convert: HolderEncryptionKey and ZKProof must both be present or both absent")
 	// ErrConfidentialConvertInvalidKeyLength is returned when HolderEncryptionKey is not 66 hex characters.
 	ErrConfidentialConvertInvalidKeyLength = errors.New("confidential MPT convert: HolderEncryptionKey must be 66 hex characters (33-byte compressed key)")
-	// ErrConfidentialConvertInvalidProofLength is returned when ZKProof is not 130 hex characters.
-	ErrConfidentialConvertInvalidProofLength = errors.New("confidential MPT convert: ZKProof must be 130 hex characters (65-byte Schnorr PoK)")
+	// ErrConfidentialConvertInvalidProofLength is returned when ZKProof is not 128 hex characters.
+	ErrConfidentialConvertInvalidProofLength = errors.New("confidential MPT convert: ZKProof must be 128 hex characters (64-byte Schnorr PoK)")
 	// ErrConfidentialConvertInvalidBlindingFactor is returned when BlindingFactor is not 64 hex characters.
 	ErrConfidentialConvertInvalidBlindingFactor = errors.New("confidential MPT convert: BlindingFactor must be 64 hex characters (32 bytes)")
 	// ErrConfidentialConvertInvalidCiphertext is returned when HolderEncryptedAmount or IssuerEncryptedAmount is not a valid 66-byte ciphertext.

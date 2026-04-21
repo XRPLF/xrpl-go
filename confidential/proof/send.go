@@ -11,10 +11,14 @@ import (
 // GenerateSendProof generates the full proof (equality + linkage + range) for a ConfidentialMPTSend transaction.
 // Returns hex-encoded proof string (variable length depending on participant count).
 // The C API limits participants to 255 (uint8); XRPL uses at most 4 (sender, dest, issuer, auditor).
-func GenerateSendProof(privkeyHex string, amount uint64, participants []Participant, txBFHex, ctxHashHex string, amountParams, balanceParams Params) (string, error) {
+func GenerateSendProof(privkeyHex string, pubkeyHex string, amount uint64, participants []Participant, txBFHex, ctxHashHex string, amountParams, balanceParams Params) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKey, err)
+	}
+	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
 	parts, err := decodeParticipants(participants)
 	if err != nil {
@@ -38,13 +42,15 @@ func GenerateSendProof(privkeyHex string, amount uint64, participants []Particip
 	}
 
 	var priv [mptcrypto.PrivKeySize]byte
+	var pub [mptcrypto.PubKeySize]byte
 	var bf [mptcrypto.BlindingFactorSize]byte
 	var hash [mptcrypto.HashOutputSize]byte
 	copy(priv[:], privBytes)
+	copy(pub[:], pubBytes)
 	copy(bf[:], bfBytes)
 	copy(hash[:], hashBytes)
 
-	proof, err := mptcrypto.GenerateSendProof(priv, amount, parts, bf, hash, ap, bp)
+	proof, err := mptcrypto.GenerateSendProof(priv, pub, amount, parts, bf, hash, ap.Commitment, bp)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrProofGenerationFailed, err)
 	}
@@ -61,9 +67,6 @@ func VerifySendProof(proofHex string, participants []Participant, senderCtHex, a
 	parts, err := decodeParticipants(participants)
 	if err != nil {
 		return err
-	}
-	if expected := mptcrypto.GetSendProofSize(len(parts)); len(proofBytes) != expected {
-		return fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidProof, expected, len(proofBytes))
 	}
 	senderCtBytes, err := hexutil.DecodeFixedHex(senderCtHex, mptcrypto.CiphertextSize)
 	if err != nil {

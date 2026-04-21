@@ -8,8 +8,8 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
-// GenerateClawbackProof generates an equality proof for a ConfidentialMPTClawback transaction.
-// Returns 196 hex chars (98-byte proof).
+// GenerateClawbackProof generates a compact sigma proof for a ConfidentialMPTClawback transaction.
+// Returns 128 hex chars (64-byte proof).
 func GenerateClawbackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, ciphertextHex string) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
 	if err != nil {
@@ -46,7 +46,7 @@ func GenerateClawbackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint
 
 // VerifyClawbackProof verifies an equality proof for a ConfidentialMPTClawback transaction.
 func VerifyClawbackProof(proofHex string, amount uint64, pubkeyHex, ciphertextHex, ctxHashHex string) error {
-	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.EqualityProofSize)
+	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.CompactClawbackProofSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
@@ -63,7 +63,7 @@ func VerifyClawbackProof(proofHex string, amount uint64, pubkeyHex, ciphertextHe
 		return fmt.Errorf("%w: %w", ErrInvalidContextHash, err)
 	}
 
-	var proof [mptcrypto.EqualityProofSize]byte
+	var proof [mptcrypto.CompactClawbackProofSize]byte
 	var pub [mptcrypto.PubKeySize]byte
 	var ct [mptcrypto.CiphertextSize]byte
 	var hash [mptcrypto.HashOutputSize]byte

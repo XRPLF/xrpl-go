@@ -256,7 +256,7 @@ func TestClawbackProofRoundtrip(t *testing.T) {
 	proof, err := mptcrypto.GenerateClawbackProof(priv, pub, ctxHash, amount, ct)
 	require.NoError(t, err)
 
-	require.NotEqual(t, [mptcrypto.EqualityProofSize]byte{}, proof)
+	require.NotEqual(t, [mptcrypto.CompactClawbackProofSize]byte{}, proof)
 	err = mptcrypto.VerifyClawbackProof(proof, amount, pub, ct, ctxHash)
 	require.NoError(t, err)
 }
@@ -333,7 +333,7 @@ func TestSendProofRoundtrip(t *testing.T) {
 			ctxHash, err := mptcrypto.SendContextHash(testAccountID(0x01), testIssuanceID(), 1, testAccountID(0x20), 1)
 			require.NoError(t, err)
 
-			proof, err := mptcrypto.GenerateSendProof(senderPriv, sendAmount, participants, txBF, ctxHash, amountParams, balanceParams)
+			proof, err := mptcrypto.GenerateSendProof(senderPriv, senderPub, sendAmount, participants, txBF, ctxHash, amountParams.Commitment, balanceParams)
 			require.NoError(t, err)
 			require.NotEmpty(t, proof)
 
@@ -341,70 +341,6 @@ func TestSendProofRoundtrip(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
-}
-
-func TestAmountLinkageProofRoundtrip(t *testing.T) {
-	_, pub, err := mptcrypto.GenerateKeypair()
-	require.NoError(t, err)
-
-	amount := uint64(42)
-	bf, err := mptcrypto.GenerateBlindingFactor()
-	require.NoError(t, err)
-
-	ct, err := mptcrypto.EncryptAmount(amount, pub, bf)
-	require.NoError(t, err)
-
-	commit, err := mptcrypto.PedersenCommitment(amount, bf)
-	require.NoError(t, err)
-
-	ctxHash, err := mptcrypto.ConvertContextHash(testAccountID(0x01), testIssuanceID(), 1)
-	require.NoError(t, err)
-
-	params := mptcrypto.PedersenProofParams{
-		Commitment:     commit,
-		Amount:         amount,
-		Ciphertext:     ct,
-		BlindingFactor: bf,
-	}
-
-	proof, err := mptcrypto.GenerateAmountLinkageProof(pub, bf, ctxHash, params)
-	require.NoError(t, err)
-	require.NotEqual(t, [mptcrypto.PedersenLinkSize]byte{}, proof)
-
-	err = mptcrypto.VerifyAmountLinkage(proof, ct, pub, commit, ctxHash)
-	require.NoError(t, err)
-}
-
-func TestBalanceLinkageProofRoundtrip(t *testing.T) {
-	priv, pub, err := mptcrypto.GenerateKeypair()
-	require.NoError(t, err)
-
-	amount := uint64(100)
-	bf, err := mptcrypto.GenerateBlindingFactor()
-	require.NoError(t, err)
-
-	ct, err := mptcrypto.EncryptAmount(amount, pub, bf)
-	require.NoError(t, err)
-
-	commit, err := mptcrypto.PedersenCommitment(amount, bf)
-	require.NoError(t, err)
-
-	ctxHash, err := mptcrypto.ConvertContextHash(testAccountID(0x01), testIssuanceID(), 1)
-	require.NoError(t, err)
-
-	params := mptcrypto.PedersenProofParams{
-		Commitment:     commit,
-		Amount:         amount,
-		Ciphertext:     ct,
-		BlindingFactor: bf,
-	}
-
-	proof, err := mptcrypto.GenerateBalanceLinkageProof(priv, pub, ctxHash, params)
-	require.NoError(t, err)
-	require.NotEqual(t, [mptcrypto.PedersenLinkSize]byte{}, proof)
-
-	err = mptcrypto.VerifyBalanceLinkage(proof, ct, pub, commit, ctxHash)
-	require.NoError(t, err)
 }
 
 // endregion
@@ -453,18 +389,6 @@ func TestVerifyRevealedAmount(t *testing.T) {
 // endregion
 
 // region Utilities
-func TestGetSendProofSize(t *testing.T) {
-	t.Run("pass - positive size for 2 participants", func(t *testing.T) {
-		size := mptcrypto.GetSendProofSize(2)
-		require.Positive(t, size)
-	})
-
-	t.Run("pass - more participants produce larger proof", func(t *testing.T) {
-		size2 := mptcrypto.GetSendProofSize(2)
-		size3 := mptcrypto.GetSendProofSize(3)
-		require.Greater(t, size3, size2)
-	})
-}
 
 func TestComputeConvertBackRemainder(t *testing.T) {
 	bf, err := mptcrypto.GenerateBlindingFactor()

@@ -236,7 +236,7 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 		BlindingFactorHex: balanceBF,
 	}
 
-	proofHex, err := proof.GenerateSendProof(p.SenderPrivKey, p.Amount, participants, amountBF, ctxHash, amountParams, balanceParams)
+	proofHex, err := proof.GenerateSendProof(p.SenderPrivKey, p.SenderPubKey, p.Amount, participants, amountBF, ctxHash, amountParams, balanceParams)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 	}

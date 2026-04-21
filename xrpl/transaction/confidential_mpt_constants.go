@@ -16,8 +16,8 @@ const PrivKeyLen = 64
 // BlindingFactorLen is the hex-encoded length of a 32-byte blinding factor scalar.
 const BlindingFactorLen = 64
 
-// SchnorrProofLen is the hex-encoded length of a 65-byte Schnorr proof of knowledge (T[33] || s[32]).
-const SchnorrProofLen = 130
+// SchnorrProofLen is the hex-encoded length of a 64-byte compact Schnorr proof of knowledge.
+const SchnorrProofLen = 128
 
 // IsValidPrivKey checks if the given hex string is a valid 32-byte private key scalar (64 hex chars).
 func IsValidPrivKey(key string) bool {
@@ -36,7 +36,7 @@ func IsValidBlindingFactor(bf string) bool {
 	return len(bf) == BlindingFactorLen && typecheck.IsHex(bf)
 }
 
-// IsValidSchnorrProof checks if the given hex string is a valid 65-byte Schnorr proof (130 hex chars).
+// IsValidSchnorrProof checks if the given hex string is a valid 64-byte Schnorr proof (128 hex chars).
 func IsValidSchnorrProof(proof string) bool {
 	return len(proof) == SchnorrProofLen && typecheck.IsHex(proof)
 }

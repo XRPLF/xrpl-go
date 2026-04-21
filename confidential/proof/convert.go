@@ -10,7 +10,7 @@ import (
 
 // GenerateConvertProof generates a Schnorr proof of knowledge for a ConfidentialMPTConvert transaction.
 // pubkeyHex: 66 hex chars, privkeyHex: 64 hex chars, ctxHashHex: 64 hex chars.
-// Returns 130 hex chars (65-byte proof).
+// Returns 128 hex chars (64-byte proof).
 func GenerateConvertProof(pubkeyHex, privkeyHex, ctxHashHex string) (string, error) {
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
 	if err != nil {
@@ -40,7 +40,7 @@ func GenerateConvertProof(pubkeyHex, privkeyHex, ctxHashHex string) (string, err
 }
 
 // VerifyConvertProof verifies a Schnorr proof for a ConfidentialMPTConvert transaction.
-// proofHex: 130 hex chars, pubkeyHex: 66 hex chars, ctxHashHex: 64 hex chars.
+// proofHex: 128 hex chars, pubkeyHex: 66 hex chars, ctxHashHex: 64 hex chars.
 func VerifyConvertProof(proofHex, pubkeyHex, ctxHashHex string) error {
 	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.SchnorrProofSize)
 	if err != nil {
