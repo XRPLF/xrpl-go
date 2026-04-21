@@ -555,6 +555,20 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantErr: ErrMPTIssuanceSetAuditorRequiresIssuerKey,
 		},
 		{
+			name: "fail - encryption keys with clear confidential amount",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MutableFlags:        types.MutableFlags(TmfMPTClearCanConfidentialAmount),
+				IssuerEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetKeysWithClearCanConfidentialAmount,
+		},
+		{
 			name: "fail - IssuerEncryptionKey invalid length",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{

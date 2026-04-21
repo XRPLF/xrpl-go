@@ -232,6 +232,8 @@ var (
 	ErrMPTIssuanceSetKeyConflict = errors.New("mptoken issuance set: encryption keys cannot be set together with Holder")
 	// ErrMPTIssuanceSetAuditorRequiresIssuerKey is returned when AuditorEncryptionKey is set without IssuerEncryptionKey.
 	ErrMPTIssuanceSetAuditorRequiresIssuerKey = errors.New("mptoken issuance set: AuditorEncryptionKey requires IssuerEncryptionKey to be set")
+	// ErrMPTIssuanceSetKeysWithClearCanConfidentialAmount is returned when encryption keys are set together with tmfMPTClearCanConfidentialAmount.
+	ErrMPTIssuanceSetKeysWithClearCanConfidentialAmount = errors.New("mptoken issuance set: encryption keys cannot be set together with tmfMPTClearCanConfidentialAmount")
 	// ErrMPTIssuanceSetInvalidKeyLength is returned when an encryption key has an invalid length.
 	ErrMPTIssuanceSetInvalidKeyLength = errors.New("mptoken issuance set: encryption key must be 66 hex characters (33-byte compressed EC point)")
 
