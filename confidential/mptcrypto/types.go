@@ -17,12 +17,14 @@ const (
 	HashOutputSize = 32 // kMPT_HALF_SHA_SIZE -- output size of context hash functions
 	CommitmentSize = 33 // compressed Pedersen commitment point
 
-	SchnorrProofSize      = 65
-	EqualityProofSize     = 98
-	PedersenLinkSize      = 195
-	SingleBulletproofSize = 688
-	DoubleBulletproofSize = 754
-	ConvertBackProofSize  = PedersenLinkSize + SingleBulletproofSize // 883
+	SchnorrProofSize            = 64
+	SingleBulletproofSize       = 688
+	DoubleBulletproofSize       = 754
+	CompactClawbackProofSize    = 64
+	CompactConvertBackProofSize = 128
+	CompactSendProofSize        = 192
+	ConvertBackProofSize        = CompactConvertBackProofSize + SingleBulletproofSize
+	SendProofSize               = CompactSendProofSize + DoubleBulletproofSize
 
 	MaxParticipants = math.MaxUint8 // C API uses uint8_t for participant count
 )
