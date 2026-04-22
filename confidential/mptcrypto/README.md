@@ -42,12 +42,14 @@ Every function works with **fixed-size byte arrays** (`[32]byte`, `[33]byte`, `[
 | `IssuanceIDSize` | 24 | MPTokenIssuance ID |
 | `HashOutputSize` | 32 | Context hash output (half-SHA) |
 | `CommitmentSize` | 33 | Compressed Pedersen commitment point |
-| `SchnorrProofSize` | 65 | Schnorr proof of knowledge |
-| `EqualityProofSize` | 98 | Equality proof (same value encrypted under different keys) |
-| `PedersenLinkSize` | 195 | Pedersen linkage proof |
+| `SchnorrProofSize` | 64 | Schnorr proof of knowledge |
 | `SingleBulletproofSize` | 688 | Single bulletproof (range proof for 1 value) |
 | `DoubleBulletproofSize` | 754 | Double bulletproof (range proof for 2 values) |
-| `ConvertBackProofSize` | 883 | Linkage + range proof (195 + 688) |
+| `CompactClawbackProofSize` | 64 | Compact sigma proof for clawback |
+| `CompactConvertBackProofSize` | 128 | Compact sigma proof for convert-back |
+| `CompactSendProofSize` | 192 | Compact sigma proof for send |
+| `ConvertBackProofSize` | 816 | Compact sigma + single bulletproof (128 + 688) |
+| `SendProofSize` | 946 | Compact sigma + double bulletproof (192 + 754) |
 | `MaxParticipants` | 255 | Max participants in a send (C API uses uint8_t) |
 
 ### Structs
@@ -158,65 +160,57 @@ commitment, err := mptcrypto.PedersenCommitment(1000, blindingFactor)
 
 Each XRPL confidential transaction type requires a specific proof. The proof convinces validators that the transaction is valid without revealing the actual amounts.
 
-#### `GenerateConvertProof(pubkey [33]byte, privkey [32]byte, ctxHash [32]byte) ([65]byte, error)`
+#### `GenerateConvertProof(pubkey [33]byte, privkey [32]byte, ctxHash [32]byte) ([64]byte, error)`
 
 **Schnorr proof of knowledge.** Proves you own the private key for the public key being registered, bound to the transaction via ctxHash.
 
 Used in: **ConfidentialMPTConvert** (registering a keypair on the ledger).
 
-#### `GenerateConvertBackProof(privkey [32]byte, pubkey [33]byte, ctxHash [32]byte, amount uint64, params PedersenProofParams) ([883]byte, error)`
+#### `GenerateConvertBackProof(privkey [32]byte, pubkey [33]byte, ctxHash [32]byte, amount uint64, params PedersenProofParams) ([816]byte, error)`
 
-**Linkage + range proof.** Proves:
-1. Your encrypted balance matches the Pedersen commitment (linkage)
-2. After subtracting the convert-back amount, the remaining balance is non-negative (range proof, via bulletproof)
+**Compact AND-composed sigma proof + single Bulletproof range proof.** Proves:
+1. Your encrypted balance matches the Pedersen commitment (sigma proof over balance witness)
+2. After subtracting the convert-back amount, the remaining balance is non-negative (range proof over remainder commitment)
 
 Used in: **ConfidentialMPTConvertBack**.
 
-#### `GenerateClawbackProof(privkey [32]byte, pubkey [33]byte, ctxHash [32]byte, amount uint64, ciphertext [66]byte) ([98]byte, error)`
+#### `GenerateClawbackProof(privkey [32]byte, pubkey [33]byte, ctxHash [32]byte, amount uint64, ciphertext [66]byte) ([64]byte, error)`
 
-**Equality proof.** Proves that the ciphertext decrypts to exactly the claimed amount, without revealing the private key.
+**Compact sigma proof.** Proves that the ciphertext decrypts to exactly the claimed amount, without revealing the private key.
 
 Used in: **ConfidentialMPTClawback** (issuer proves the amount they're clawing back matches the encrypted balance).
 
-#### `GenerateSendProof(privkey [32]byte, amount uint64, participants []Participant, txBF [32]byte, ctxHash [32]byte, amountParams, balanceParams PedersenProofParams) ([]byte, error)`
+#### `GenerateSendProof(privkey [32]byte, pubkey [33]byte, amount uint64, participants []Participant, txBF [32]byte, ctxHash [32]byte, amountCommitment [33]byte, balanceParams PedersenProofParams) ([]byte, error)`
 
-**Full send proof** (the most complex one). Combines:
+**Compact AND-composed sigma proof + aggregated Bulletproof range proof** (the most complex one). Combines:
 1. **Equality proof** - same amount encrypted for sender, receiver, issuer (and optionally auditor)
 2. **Amount linkage** - ElGamal ciphertext matches amount commitment
 3. **Balance linkage** - sender's encrypted balance matches balance commitment
 4. **Range proof** - amount and remaining balance are both in [0, 2^64-1]
 
-Returns a variable-length byte slice (size depends on number of participants). Use `GetSendProofSize(n)` to compute the expected size.
+Returns a fixed-size byte slice of `SendProofSize` (946) bytes.
 
 Used in: **ConfidentialMPTSend**.
-
-#### `GenerateAmountLinkageProof(pubkey [33]byte, bf [32]byte, ctxHash [32]byte, params PedersenProofParams) ([195]byte, error)`
-
-**Standalone linkage proof** between an ElGamal ciphertext and a Pedersen commitment for the transaction amount. This is a building block used internally by `GenerateSendProof`, but exposed separately for testing.
-
-#### `GenerateBalanceLinkageProof(privkey [32]byte, pubkey [33]byte, ctxHash [32]byte, params PedersenProofParams) ([195]byte, error)`
-
-**Standalone linkage proof** for the sender's balance. Same idea as amount linkage, but uses the private key (because the sender's balance ciphertext was created with their key). Also a building block exposed for testing.
 
 ### 5. Proof verification (top-level)
 
 These are the four main verifiers, one per transaction type. Each returns `nil` on success or an error on failure.
 
-#### `VerifyConvertProof(proof [65]byte, pubkey [33]byte, ctxHash [32]byte) error`
+#### `VerifyConvertProof(proof [64]byte, pubkey [33]byte, ctxHash [32]byte) error`
 
 Verifies the Schnorr proof from a ConfidentialMPTConvert.
 
-#### `VerifyConvertBackProof(proof [883]byte, pubkey [33]byte, ciphertext [66]byte, balanceCommit [33]byte, amount uint64, ctxHash [32]byte) error`
+#### `VerifyConvertBackProof(proof [816]byte, pubkey [33]byte, ciphertext [66]byte, balanceCommit [33]byte, amount uint64, ctxHash [32]byte) error`
 
-Verifies the linkage + range proof from a ConfidentialMPTConvertBack.
+Verifies the compact sigma + range proof from a ConfidentialMPTConvertBack.
 
 #### `VerifySendProof(proof []byte, participants []Participant, senderCt [66]byte, amountCommit, balanceCommit [33]byte, ctxHash [32]byte) error`
 
-Verifies the full send proof. `proof` is variable-length (depends on participant count).
+Verifies the compact sigma + range proof from a ConfidentialMPTSend.
 
-#### `VerifyClawbackProof(proof [98]byte, amount uint64, pubkey [33]byte, ciphertext [66]byte, ctxHash [32]byte) error`
+#### `VerifyClawbackProof(proof [64]byte, amount uint64, pubkey [33]byte, ciphertext [66]byte, ctxHash [32]byte) error`
 
-Verifies the equality proof from a ConfidentialMPTClawback.
+Verifies the compact sigma proof from a ConfidentialMPTClawback.
 
 ### 6. Proof verification (internal components)
 
@@ -226,31 +220,11 @@ These verify individual pieces of a send proof. Useful for debugging or testing 
 
 Verifies that a plaintext amount and blinding factor are consistent with the participants' ciphertexts. `auditor` can be `nil` if there's no auditor.
 
-#### `VerifyAmountLinkage(proof [195]byte, ciphertext [66]byte, pubkey [33]byte, commitment [33]byte, ctxHash [32]byte) error`
-
-Verifies that the ElGamal ciphertext and Pedersen commitment encode the same amount.
-
-#### `VerifyBalanceLinkage(proof [195]byte, ciphertext [66]byte, pubkey [33]byte, commitment [33]byte, ctxHash [32]byte) error`
-
-Same as amount linkage but for the sender's balance. Note: unlike `VerifyAmountLinkage`, this does NOT require a `secp256k1_context` internally (asymmetry in the C API, not a bug).
-
-#### `VerifyEqualityProof(proof []byte, participants []Participant, ctxHash [32]byte) error`
-
-Verifies that all participants' ciphertexts encrypt the same value.
-
-#### `VerifySendRangeProof(proof [754]byte, amountCommit, remainderCommit [33]byte, ctxHash [32]byte) error`
+#### `VerifySendRangeProof(proof [754]byte, amountCommit, balanceCommitment [33]byte, ctxHash [32]byte) error`
 
 Verifies a double bulletproof: both the transfer amount and remaining balance are in [0, 2^64-1].
 
 ### 7. Utilities
-
-#### `GetSendProofSize(nRecipients int) int`
-
-Returns the expected proof size in bytes for a send with `nRecipients` participants. Use this to pre-allocate or validate proof buffers.
-
-```go
-size := mptcrypto.GetSendProofSize(3) // 3 participants: sender, dest, issuer
-```
 
 #### `ComputeConvertBackRemainder(commitmentIn [33]byte, amount uint64) ([33]byte, error)`
 
@@ -359,17 +333,6 @@ C.mpt_verify_revealed_amount(..., cAuditor)
 ```
 
 A nil Go pointer becomes `NULL` in C.
-
-### secp256k1 context
-
-Some C verification functions need a `secp256k1_context*`. The Go wrappers get it internally:
-
-```go
-ctx := C.mpt_secp256k1_context()   // returns a shared global context
-C.mpt_verify_amount_linkage(ctx, ...)
-```
-
-This is never exposed to callers. The context is managed by the C library.
 
 ### Error handling
 

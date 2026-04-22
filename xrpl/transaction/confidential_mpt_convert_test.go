@@ -11,8 +11,8 @@ import (
 // Test helper: 66-char hex string (33-byte compressed key).
 var testCompressedKey = strings.Repeat("AB", 33)
 
-// Test helper: 130-char hex string (65-byte Schnorr proof).
-var testSchnorrProof = strings.Repeat("CD", 65)
+// Test helper: 128-char hex string (64-byte Schnorr proof).
+var testSchnorrProof = strings.Repeat("CD", 64)
 
 // Test helper: 64-char hex string (32-byte blinding factor).
 var testBlindingFactor = strings.Repeat("EF", 32)

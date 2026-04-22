@@ -222,7 +222,9 @@ func GenerateConvertProof(pubkey [PubKeySize]byte, privkey [PrivKeySize]byte, ct
 	return
 }
 
-// GenerateConvertBackProof generates a linkage + range proof for a ConfidentialMPTConvertBack transaction.
+// GenerateConvertBackProof generates a compact AND-composed sigma proof over the balance
+// witness, followed by a single Bulletproof range proof over the remainder commitment,
+// for a ConfidentialMPTConvertBack transaction.
 func GenerateConvertBackProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, ctxHash [HashOutputSize]byte, amount uint64, params PedersenProofParams) (proof [ConvertBackProofSize]byte, err error) {
 	cParams := toProofParams(params)
 	ret := C.mpt_get_convert_back_proof(
@@ -240,7 +242,7 @@ func GenerateConvertBackProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte
 }
 
 // GenerateClawbackProof generates an equality proof for a ConfidentialMPTClawback transaction.
-func GenerateClawbackProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, ctxHash [HashOutputSize]byte, amount uint64, ciphertext [CiphertextSize]byte) (proof [EqualityProofSize]byte, err error) {
+func GenerateClawbackProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, ctxHash [HashOutputSize]byte, amount uint64, ciphertext [CiphertextSize]byte) (proof [CompactClawbackProofSize]byte, err error) {
 	ret := C.mpt_get_clawback_proof(
 		uint8Ptr(&privkey[0]),
 		uint8Ptr(&pubkey[0]),
@@ -255,8 +257,9 @@ func GenerateClawbackProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, c
 	return
 }
 
-// GenerateSendProof generates a full proof (equality + linkage + range) for a ConfidentialMPTSend transaction.
-func GenerateSendProof(privkey [PrivKeySize]byte, amount uint64, participants []Participant, txBF [BlindingFactorSize]byte, ctxHash [HashOutputSize]byte, amountParams, balanceParams PedersenProofParams) ([]byte, error) {
+// GenerateSendProof generates a compact AND-composed sigma proof + aggregated Bulletproof range proof
+// for a ConfidentialMPTSend transaction.
+func GenerateSendProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, amount uint64, participants []Participant, txBF [BlindingFactorSize]byte, ctxHash [HashOutputSize]byte, amountCommitment [CommitmentSize]byte, balanceParams PedersenProofParams) ([]byte, error) {
 	n := len(participants)
 	if n == 0 {
 		return nil, fmt.Errorf("mptcrypto: at least one participant is required")
@@ -264,26 +267,25 @@ func GenerateSendProof(privkey [PrivKeySize]byte, amount uint64, participants []
 	if n > MaxParticipants {
 		return nil, fmt.Errorf("mptcrypto: too many participants: %d (max %d)", n, MaxParticipants)
 	}
-	proofSize := GetSendProofSize(n)
-	proof := make([]byte, proofSize)
-	outLen := C.size_t(proofSize)
+	proof := make([]byte, SendProofSize)
+	outLen := C.size_t(SendProofSize)
 
 	cParts := make([]C.mpt_confidential_participant, n)
 	for i, p := range participants {
 		cParts[i] = toParticipant(p)
 	}
 
-	cAmount := toProofParams(amountParams)
 	cBalance := toProofParams(balanceParams)
 
 	ret := C.mpt_get_confidential_send_proof(
 		uint8Ptr(&privkey[0]),
+		uint8Ptr(&pubkey[0]),
 		C.uint64_t(amount),
 		&cParts[0],
 		C.size_t(n),
 		uint8Ptr(&txBF[0]),
 		uint8Ptr(&ctxHash[0]),
-		&cAmount,
+		uint8Ptr(&amountCommitment[0]),
 		&cBalance,
 		uint8Ptr(&proof[0]),
 		&outLen,
@@ -292,38 +294,6 @@ func GenerateSendProof(privkey [PrivKeySize]byte, amount uint64, participants []
 		return nil, fmt.Errorf("mpt_get_confidential_send_proof failed with code %d", ret)
 	}
 	return proof[:outLen], nil
-}
-
-// GenerateAmountLinkageProof generates a Pedersen linkage proof between an ElGamal ciphertext and a commitment.
-func GenerateAmountLinkageProof(pubkey [PubKeySize]byte, bf [BlindingFactorSize]byte, ctxHash [HashOutputSize]byte, params PedersenProofParams) (proof [PedersenLinkSize]byte, err error) {
-	cParams := toProofParams(params)
-	ret := C.mpt_get_amount_linkage_proof(
-		uint8Ptr(&pubkey[0]),
-		uint8Ptr(&bf[0]),
-		uint8Ptr(&ctxHash[0]),
-		&cParams,
-		uint8Ptr(&proof[0]),
-	)
-	if ret != 0 {
-		return proof, fmt.Errorf("mpt_get_amount_linkage_proof failed with code %d", ret)
-	}
-	return
-}
-
-// GenerateBalanceLinkageProof generates a Pedersen linkage proof for the sender's balance.
-func GenerateBalanceLinkageProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, ctxHash [HashOutputSize]byte, params PedersenProofParams) (proof [PedersenLinkSize]byte, err error) {
-	cParams := toProofParams(params)
-	ret := C.mpt_get_balance_linkage_proof(
-		uint8Ptr(&privkey[0]),
-		uint8Ptr(&pubkey[0]),
-		uint8Ptr(&ctxHash[0]),
-		&cParams,
-		uint8Ptr(&proof[0]),
-	)
-	if ret != 0 {
-		return proof, fmt.Errorf("mpt_get_balance_linkage_proof failed with code %d", ret)
-	}
-	return
 }
 
 // endregion
@@ -363,8 +333,8 @@ func VerifyConvertBackProof(proof [ConvertBackProofSize]byte, pubkey [PubKeySize
 
 // VerifySendProof verifies the full proof for a ConfidentialMPTSend transaction.
 func VerifySendProof(proof []byte, participants []Participant, senderCt [CiphertextSize]byte, amountCommit, balanceCommit [CommitmentSize]byte, ctxHash [HashOutputSize]byte) error {
-	if len(proof) == 0 {
-		return fmt.Errorf("mptcrypto: proof must not be empty")
+	if len(proof) != SendProofSize {
+		return fmt.Errorf("mptcrypto: proof must be %d bytes, got %d", SendProofSize, len(proof))
 	}
 	if len(participants) == 0 {
 		return fmt.Errorf("mptcrypto: at least one participant is required")
@@ -378,7 +348,6 @@ func VerifySendProof(proof []byte, participants []Participant, senderCt [Ciphert
 	}
 	ret := C.mpt_verify_send_proof(
 		uint8Ptr(&proof[0]),
-		C.size_t(len(proof)),
 		&cParts[0],
 		C.uint8_t(len(participants)),
 		uint8Ptr(&senderCt[0]),
@@ -393,7 +362,7 @@ func VerifySendProof(proof []byte, participants []Participant, senderCt [Ciphert
 }
 
 // VerifyClawbackProof verifies an equality proof for a ConfidentialMPTClawback transaction.
-func VerifyClawbackProof(proof [EqualityProofSize]byte, amount uint64, pubkey [PubKeySize]byte, ciphertext [CiphertextSize]byte, ctxHash [HashOutputSize]byte) error {
+func VerifyClawbackProof(proof [CompactClawbackProofSize]byte, amount uint64, pubkey [PubKeySize]byte, ciphertext [CiphertextSize]byte, ctxHash [HashOutputSize]byte) error {
 	ret := C.mpt_verify_clawback_proof(
 		uint8Ptr(&proof[0]),
 		C.uint64_t(amount),
@@ -434,76 +403,12 @@ func VerifyRevealedAmount(amount uint64, bf [BlindingFactorSize]byte, holder, is
 	return nil
 }
 
-// VerifyAmountLinkage verifies a Pedersen linkage proof for the transaction amount.
-func VerifyAmountLinkage(proof [PedersenLinkSize]byte, ciphertext [CiphertextSize]byte, pubkey [PubKeySize]byte, commitment [CommitmentSize]byte, ctxHash [HashOutputSize]byte) error {
-	ctx := C.mpt_secp256k1_context()
-	ret := C.mpt_verify_amount_linkage(
-		ctx,
-		uint8Ptr(&proof[0]),
-		uint8Ptr(&ciphertext[0]),
-		uint8Ptr(&pubkey[0]),
-		uint8Ptr(&commitment[0]),
-		uint8Ptr(&ctxHash[0]),
-	)
-	if ret != 0 {
-		return fmt.Errorf("mpt_verify_amount_linkage failed with code %d", ret)
-	}
-	return nil
-}
-
-// VerifyBalanceLinkage verifies a Pedersen linkage proof for the sender's balance.
-func VerifyBalanceLinkage(proof [PedersenLinkSize]byte, ciphertext [CiphertextSize]byte, pubkey [PubKeySize]byte, commitment [CommitmentSize]byte, ctxHash [HashOutputSize]byte) error {
-	ret := C.mpt_verify_balance_linkage(
-		uint8Ptr(&proof[0]),
-		uint8Ptr(&ciphertext[0]),
-		uint8Ptr(&pubkey[0]),
-		uint8Ptr(&commitment[0]),
-		uint8Ptr(&ctxHash[0]),
-	)
-	if ret != 0 {
-		return fmt.Errorf("mpt_verify_balance_linkage failed with code %d", ret)
-	}
-	return nil
-}
-
-// VerifyEqualityProof verifies that all participants' ciphertexts encrypt the same value.
-func VerifyEqualityProof(proof []byte, participants []Participant, ctxHash [HashOutputSize]byte) error {
-	if len(proof) == 0 {
-		return fmt.Errorf("mptcrypto: proof must not be empty")
-	}
-	if len(participants) == 0 {
-		return fmt.Errorf("mptcrypto: at least one participant is required")
-	}
-	if len(participants) > MaxParticipants {
-		return fmt.Errorf("mptcrypto: too many participants: %d (max %d)", len(participants), MaxParticipants)
-	}
-	ctx := C.mpt_secp256k1_context()
-	cParts := make([]C.mpt_confidential_participant, len(participants))
-	for i, p := range participants {
-		cParts[i] = toParticipant(p)
-	}
-	ret := C.mpt_verify_equality_proof(
-		ctx,
-		uint8Ptr(&proof[0]),
-		C.size_t(len(proof)),
-		&cParts[0],
-		C.uint8_t(len(participants)),
-		uint8Ptr(&ctxHash[0]),
-	)
-	if ret != 0 {
-		return fmt.Errorf("mpt_verify_equality_proof failed with code %d", ret)
-	}
-	return nil
-}
-
 // VerifySendRangeProof verifies that the transfer amount and remaining balance are within [0, 2^64-1].
-func VerifySendRangeProof(proof [DoubleBulletproofSize]byte, amountCommit, remainderCommit [CommitmentSize]byte, ctxHash [HashOutputSize]byte) error {
-	ctx := C.mpt_secp256k1_context()
+func VerifySendRangeProof(proof [DoubleBulletproofSize]byte, amountCommit, balanceCommitment [CommitmentSize]byte, ctxHash [HashOutputSize]byte) error {
 	ret := C.mpt_verify_send_range_proof(
-		ctx,
 		uint8Ptr(&proof[0]),
 		uint8Ptr(&amountCommit[0]),
-		uint8Ptr(&remainderCommit[0]),
+		uint8Ptr(&balanceCommitment[0]),
 		uint8Ptr(&ctxHash[0]),
 	)
 	if ret != 0 {
@@ -515,14 +420,6 @@ func VerifySendRangeProof(proof [DoubleBulletproofSize]byte, amountCommit, remai
 // endregion
 
 // region Utilities
-
-// GetSendProofSize returns the total proof size in bytes for a ConfidentialMPTSend with nRecipients.
-func GetSendProofSize(nRecipients int) int {
-	if nRecipients <= 0 {
-		return 0
-	}
-	return int(C.get_confidential_send_proof_size(C.size_t(nRecipients)))
-}
 
 // ComputeConvertBackRemainder subtracts a transparent amount from a hidden Pedersen commitment.
 func ComputeConvertBackRemainder(commitmentIn [CommitmentSize]byte, amount uint64) (commitmentOut [CommitmentSize]byte, err error) {

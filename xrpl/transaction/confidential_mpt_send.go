@@ -129,7 +129,7 @@ func (tx *ConfidentialMPTSend) Validate() (bool, error) {
 		return false, ErrConfidentialSendInvalidCommitment
 	}
 
-	if !IsValidHexBlob(tx.ZKProof) {
+	if !IsValidFixedHexBlob(tx.ZKProof, SendProofLen) {
 		return false, ErrConfidentialSendInvalidProof
 	}
 

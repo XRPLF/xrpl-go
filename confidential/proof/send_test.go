@@ -115,7 +115,7 @@ func TestGenerateAndVerifySendProof(t *testing.T) {
 			senderKP, participants, txBF, ctxHash, amountParams, balanceParams, senderBalanceCt, amountCommitHex, balanceCommitHex := setupSendProofScenario(t, tt.sendAmount, tt.senderBalance, tt.withAuditor)
 
 			proofHex, err := proof.GenerateSendProof(
-				senderKP.PrivKeyHex, tt.sendAmount, participants, txBF, ctxHash,
+				senderKP.PrivKeyHex, senderKP.PubKeyHex, tt.sendAmount, participants, txBF, ctxHash,
 				amountParams, balanceParams,
 			)
 			require.NoError(t, err)
@@ -127,6 +127,20 @@ func TestGenerateAndVerifySendProof(t *testing.T) {
 	}
 }
 
+func TestVerifySendProofRejectsWrongLength(t *testing.T) {
+	const amount = 500
+	senderKP, participants, txBF, ctxHash, amountParams, balanceParams, senderBalanceCt, amountCommitHex, balanceCommitHex := setupSendProofScenario(t, amount, 1000, false)
+
+	proofHex, err := proof.GenerateSendProof(
+		senderKP.PrivKeyHex, senderKP.PubKeyHex, amount, participants, txBF, ctxHash,
+		amountParams, balanceParams,
+	)
+	require.NoError(t, err)
+
+	err = proof.VerifySendProof(proofHex[:len(proofHex)-2], participants, senderBalanceCt, amountCommitHex, balanceCommitHex, ctxHash)
+	require.ErrorIs(t, err, proof.ErrInvalidProof)
+}
+
 func TestSendProofInvalidInputs(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -136,17 +150,27 @@ func TestSendProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad privkey",
 			fn: func() error {
-				_, err := proof.GenerateSendProof("zz", 100, nil, zeroHex(32), zeroHex(32),
+				_, err := proof.GenerateSendProof("zz", "zz", 100, nil, zeroHex(32), zeroHex(32),
 					proof.Params{}, proof.Params{})
 				return err
 			},
 			wantErr: proof.ErrInvalidPrivKey,
 		},
 		{
+			name: "fail - bad pubkey",
+			fn: func() error {
+				_, err := proof.GenerateSendProof(zeroHex(32), "zz", 100, nil, zeroHex(32), zeroHex(32),
+					proof.Params{}, proof.Params{})
+				return err
+			},
+			wantErr: proof.ErrInvalidPubKey,
+		},
+		{
 			name: "fail - bad tx blinding factor",
 			fn: func() error {
-				_, err := proof.GenerateSendProof(zeroHex(32), 100,
-					[]proof.Participant{{PubKeyHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66)}},
+				pubKey := "02" + zeroHex(32)
+				_, err := proof.GenerateSendProof(zeroHex(32), pubKey, 100,
+					[]proof.Participant{{PubKeyHex: pubKey, CiphertextHex: zeroHex(66)}},
 					"bad", zeroHex(32),
 					proof.Params{}, proof.Params{})
 				return err
@@ -156,8 +180,9 @@ func TestSendProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad ctx hash",
 			fn: func() error {
-				_, err := proof.GenerateSendProof(zeroHex(32), 100,
-					[]proof.Participant{{PubKeyHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66)}},
+				pubKey := "02" + zeroHex(32)
+				_, err := proof.GenerateSendProof(zeroHex(32), pubKey, 100,
+					[]proof.Participant{{PubKeyHex: pubKey, CiphertextHex: zeroHex(66)}},
 					zeroHex(32), "bad",
 					proof.Params{}, proof.Params{})
 				return err
@@ -167,7 +192,7 @@ func TestSendProofInvalidInputs(t *testing.T) {
 		{
 			name: "fail - bad participant pubkey",
 			fn: func() error {
-				_, err := proof.GenerateSendProof(zeroHex(32), 100,
+				_, err := proof.GenerateSendProof(zeroHex(32), zeroHex(32), 100,
 					[]proof.Participant{{PubKeyHex: "zz", CiphertextHex: zeroHex(66)}},
 					zeroHex(32), zeroHex(32),
 					proof.Params{CommitmentHex: "02" + zeroHex(32), CiphertextHex: zeroHex(66), BlindingFactorHex: zeroHex(32)},

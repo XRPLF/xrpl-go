@@ -8,8 +8,8 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
-// GenerateConvertBackProof generates a linkage + range proof for a ConfidentialMPTConvertBack transaction.
-// Returns hex-encoded proof string (1766 hex chars = 883 bytes).
+// GenerateConvertBackProof generates a compact sigma + range proof for a ConfidentialMPTConvertBack transaction.
+// Returns hex-encoded proof string (1632 hex chars = 816 bytes).
 func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, params Params) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
 	if err != nil {

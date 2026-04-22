@@ -310,6 +310,11 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTIssuanceSetAuditorRequiresIssuerKey
 	}
 
+	// Encryption keys cannot be uploaded while clearing the confidential amount flag.
+	if hasEncryptionKeys && m.MutableFlags != nil && flag.Contains(*m.MutableFlags, TmfMPTClearCanConfidentialAmount) {
+		return false, ErrMPTIssuanceSetKeysWithClearCanConfidentialAmount
+	}
+
 	// Validate encryption key lengths (issuer and auditor keys must be 33-byte compressed).
 	if m.IssuerEncryptionKey != nil && !IsValidCompressedEncryptionKey(*m.IssuerEncryptionKey) {
 		return false, ErrMPTIssuanceSetInvalidKeyLength
