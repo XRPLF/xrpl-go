@@ -49,7 +49,7 @@ func (tx *LoanManage) SetLoanUnimpairFlag() {
 }
 
 // Flatten returns a map representation of the LoanManage transaction for JSON-RPC submission.
-func (tx *LoanManage) Flatten() map[string]any {
+func (tx *LoanManage) Flatten() FlatTransaction {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

@@ -17,12 +17,12 @@ func TestLoanPay_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanPay
-		expected map[string]any
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanPay{},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType": LoanPayTx.String(),
 				"LoanID":          "",
 			},
@@ -39,7 +39,7 @@ func TestLoanPay_Flatten(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType":    LoanPayTx.String(),
 				"Account":            "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Fee":                "1000000",
@@ -59,7 +59,7 @@ func TestLoanPay_Flatten(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType": LoanPayTx.String(),
 				"Account":         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Flags":           TfLoanPayOverpayment,
@@ -77,7 +77,7 @@ func TestLoanPay_Flatten(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType": LoanPayTx.String(),
 				"Account":         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Flags":           TfLoanPayFullPayment,
@@ -95,7 +95,7 @@ func TestLoanPay_Flatten(t *testing.T) {
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType": LoanPayTx.String(),
 				"Account":         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Flags":           TfLoanPayLatePayment,

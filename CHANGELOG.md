@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### BREAKING CHANGES
+
+#### xrpl/transaction
+
+- All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
+
 ### Added
+
+#### xrpl
+
+- Added `LoanObject` and `LoanBrokerObject` `ObjectType` constants for `account_objects` query.
+- Added `GetLedgerEntry` method to the testutil integration `Client` interface.
+- Updated lending protocol integration test with expanded lifecycle coverage.
 
 #### xrpl/rpc
 
@@ -26,6 +38,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/websocket
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+
+### Fixed
+
+#### xrpl
+
+- `fetchCounterPartySignersCount` in the RPC client now uses `"current"` ledger index instead of `"validated"` when fetching the loan broker and counterparty signer information, avoiding lookup failures before the transaction is validated.
 
 ## [v0.1.18]
 

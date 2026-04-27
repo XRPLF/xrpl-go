@@ -19,12 +19,12 @@ func TestLoanBrokerCoverClawback_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanBrokerCoverClawback
-		expected map[string]any
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanBrokerCoverClawback{},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType": LoanBrokerCoverClawbackTx.String(),
 			},
 		},
@@ -40,7 +40,7 @@ func TestLoanBrokerCoverClawback_Flatten(t *testing.T) {
 				LoanBrokerID: &id,
 				Amount:       types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType":    LoanBrokerCoverClawbackTx.String(),
 				"Account":            "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 				"Fee":                "1000000",
