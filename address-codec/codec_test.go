@@ -63,12 +63,39 @@ func TestDecode(t *testing.T) {
 			expectedOutput: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 			expectedErr:    nil,
 		},
+		{
+			name:           "fail - invalid base58 character",
+			input:          "0",
+			inputPrefix:    []byte{AccountAddressPrefix},
+			expectedOutput: nil,
+			expectedErr:    ErrInvalidFormat,
+		},
+		{
+			name:           "fail - invalid checksum",
+			input:          "rrrrrrrrrrrrrrrrrp9U13c",
+			inputPrefix:    []byte{AccountAddressPrefix},
+			expectedOutput: nil,
+			expectedErr:    ErrChecksum,
+		},
+		{
+			name:           "fail - decoded payload shorter than prefix",
+			input:          Base58CheckEncode(nil, AccountAddressPrefix),
+			inputPrefix:    []byte{AccountAddressPrefix, AccountPublicKeyPrefix},
+			expectedOutput: nil,
+			expectedErr:    ErrB58PrefixMismatch,
+		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			res, _ := Decode(tc.input, tc.inputPrefix)
-			require.Equal(t, tc.expectedOutput, res)
+			res, err := Decode(tc.input, tc.inputPrefix)
+
+			if tc.expectedErr != nil {
+				require.EqualError(t, err, tc.expectedErr.Error())
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedOutput, res)
+			}
 		})
 	}
 }
@@ -442,7 +469,7 @@ func TestDecodeNodePublicKey(t *testing.T) {
 			name:           "fail - length error",
 			input:          "rfZG9pC1cKF7q96TNZR264H9ykzKCxMyk44ZK8hFL8cNv1G3c8J",
 			expectedOutput: nil,
-			expectedErr:    errors.New("b58string prefix and typeprefix not equal"),
+			expectedErr:    ErrB58PrefixMismatch,
 		},
 	}
 
@@ -512,7 +539,7 @@ func TestDecodeAccountPublicKey(t *testing.T) {
 			name:        "fail - length error",
 			input:       "nHU75pVH2Tak7adBWNP3H2CU3wcUtSgf45sKrd1uGyFyRcTozXNm",
 			output:      nil,
-			expectedErr: errors.New("b58string prefix and typeprefix not equal"),
+			expectedErr: ErrB58PrefixMismatch,
 		},
 	}
 
