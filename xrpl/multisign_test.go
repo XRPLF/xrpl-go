@@ -3,6 +3,7 @@ package xrpl
 import (
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,11 +27,104 @@ func TestMultisign(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		res, err := Multisign(tc.blobs...)
-		if tc.err != nil {
-			require.Error(t, err)
-		} else {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := Multisign(tc.blobs...)
+			if tc.err != nil {
+				require.ErrorIs(t, err, tc.err)
+				return
+			}
+
+			require.NoError(t, err)
 			require.Equal(t, tc.want, res)
-		}
+		})
+	}
+}
+
+func TestSortByAccountID(t *testing.T) {
+	testCases := []struct {
+		name        string
+		accounts    []string
+		account     func(string) (string, error)
+		want        []string
+		expectedErr error
+	}{
+		{
+			name: "pass - sorts by account ID bytes",
+			accounts: []string{
+				"raHgU3KRBN6XYbEhi5JyJELSHtshTenYw",
+				"rrrrrrrrrrrrrrrrrrrrBZbvji",
+			},
+			account: func(account string) (string, error) {
+				return account, nil
+			},
+			want: []string{
+				"rrrrrrrrrrrrrrrrrrrrBZbvji",
+				"raHgU3KRBN6XYbEhi5JyJELSHtshTenYw",
+			},
+		},
+		{
+			name: "fail - returns error before sorting",
+			accounts: []string{
+				"raHgU3KRBN6XYbEhi5JyJELSHtshTenYw",
+				"rrrrrrrrrrrrrrrrrrrrBZbvji",
+			},
+			account: func(account string) (string, error) {
+				if account == "rrrrrrrrrrrrrrrrrrrrBZbvji" {
+					return "", ErrInvalidSigner
+				}
+				return account, nil
+			},
+			want: []string{
+				"raHgU3KRBN6XYbEhi5JyJELSHtshTenYw",
+				"rrrrrrrrrrrrrrrrrrrrBZbvji",
+			},
+			expectedErr: ErrInvalidSigner,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := SortByAccountID(tc.accounts, tc.account)
+			if tc.expectedErr != nil {
+				require.ErrorIs(t, err, tc.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, tc.want, tc.accounts)
+		})
+	}
+}
+
+func TestSortSignersReturnsErrors(t *testing.T) {
+	testCases := []struct {
+		name        string
+		signers     []any
+		expectedErr error
+	}{
+		{
+			name:        "fail - invalid signer",
+			signers:     []any{"invalid"},
+			expectedErr: ErrInvalidSigner,
+		},
+		{
+			name: "fail - invalid address",
+			signers: []any{
+				map[string]any{
+					"Signer": map[string]any{
+						"Account": "invalid",
+					},
+				},
+			},
+			expectedErr: addresscodec.ErrInvalidClassicAddress,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := SortSigners(tc.signers)
+
+			require.ErrorIs(t, err, tc.expectedErr)
+		})
 	}
 }

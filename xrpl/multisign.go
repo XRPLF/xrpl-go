@@ -3,7 +3,7 @@ package xrpl
 
 import (
 	"bytes"
-	"sort"
+	"slices"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
@@ -37,7 +37,9 @@ func Multisign(blobs ...string) (string, error) {
 		return "", err
 	}
 
-	SortSigners(signers)
+	if err := SortSigners(signers); err != nil {
+		return "", err
+	}
 	tx["Signers"] = signers
 
 	blob, err := binarycodec.Encode(tx)
@@ -49,15 +51,63 @@ func Multisign(blobs ...string) (string, error) {
 }
 
 // SortSigners sorts signers ascending by their decoded account ID bytes.
-// This matches xrpl.js's compareSigners which sorts by addressToBigNumber ascending.
-func SortSigners(signers []any) {
-	sort.Slice(signers, func(i, j int) bool {
-		iAccount := signers[i].(map[string]any)["Signer"].(map[string]any)["Account"].(string)
-		jAccount := signers[j].(map[string]any)["Signer"].(map[string]any)["Account"].(string)
+func SortSigners(signers []any) error {
+	return SortByAccountID(signers, signerAccount)
+}
 
-		_, iBytes, _ := addresscodec.DecodeClassicAddressToAccountID(iAccount)
-		_, jBytes, _ := addresscodec.DecodeClassicAddressToAccountID(jAccount)
+// SortByAccountID sorts items in place by the decoded bytes of each item's classic XRPL account address.
+// Use it for canonical signer ordering when different signer representations store the account in
+// different fields. The account function extracts the classic address from an item and may return an
+// error when the item does not contain one. SortByAccountID validates and decodes every account before
+// sorting, so items stay in their original order if extraction or decoding fails.
+func SortByAccountID[T any](items []T, account func(T) (string, error)) error {
+	type sortableItem struct {
+		item      T
+		accountID []byte
+	}
 
-		return bytes.Compare(iBytes, jBytes) < 0
+	sortable := make([]sortableItem, len(items))
+
+	for i, item := range items {
+		addr, err := account(item)
+		if err != nil {
+			return err
+		}
+
+		_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(addr)
+		if err != nil {
+			return err
+		}
+
+		sortable[i] = sortableItem{item: item, accountID: accountID}
+	}
+
+	slices.SortFunc(sortable, func(a, b sortableItem) int {
+		return bytes.Compare(a.accountID, b.accountID)
 	})
+
+	for i, item := range sortable {
+		items[i] = item.item
+	}
+
+	return nil
+}
+
+func signerAccount(signer any) (string, error) {
+	signerMap, ok := signer.(map[string]any)
+	if !ok {
+		return "", ErrInvalidSigner
+	}
+
+	signerData, ok := signerMap["Signer"].(map[string]any)
+	if !ok {
+		return "", ErrInvalidSigner
+	}
+
+	account, ok := signerData["Account"].(string)
+	if !ok || account == "" {
+		return "", ErrInvalidSigner
+	}
+
+	return account, nil
 }
