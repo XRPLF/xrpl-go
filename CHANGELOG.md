@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - `fetchCounterPartySignersCount` in the RPC client now uses `"current"` ledger index instead of `"validated"` when fetching the loan broker and counterparty signer information, avoiding lookup failures before the transaction is validated.
+- `Multisign` now validates that all input blobs represent the same transaction (ignoring `Signers`) and returns `ErrMultisignTxNotEqual` otherwise.
 
 ## [v0.1.18]
 

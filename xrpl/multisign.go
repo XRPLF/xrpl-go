@@ -3,6 +3,7 @@ package xrpl
 
 import (
 	"bytes"
+	"maps"
 	"sort"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -13,14 +14,18 @@ import (
 // It takes a list of transaction blobs and returns the multisigned transaction blob.
 // These transaction blobs must be signed with the wallet.Multisign method.
 // They cannot contain SigningPubKey, otherwise the transaction will fail to submit.
+// All blobs must represent the same transaction (excluding Signers); otherwise
+// ErrMultisignTxNotEqual is returned.
 // If an error occurs, it will return an error.
 func Multisign(blobs ...string) (string, error) {
 	if len(blobs) == 0 {
 		return "", ErrNoTxToMultisign
 	}
 
+	var firstTx map[string]any
+	var referenceBlob string
 	signers := make([]any, 0)
-	for _, blob := range blobs {
+	for i, blob := range blobs {
 		tx, err := binarycodec.Decode(blob)
 		if err != nil {
 			return "", err
@@ -29,23 +34,40 @@ func Multisign(blobs ...string) (string, error) {
 			return "", ErrMultisignNonEmptySigningPubKey
 		}
 
+		encoded, err := encodeWithoutSigners(tx)
+		if err != nil {
+			return "", err
+		}
+		if i == 0 {
+			referenceBlob = encoded
+			firstTx = tx
+		} else if encoded != referenceBlob {
+			return "", ErrMultisignTxNotEqual
+		}
+
 		signers = append(signers, tx["Signers"].([]any)...)
 	}
 
-	tx, err := binarycodec.Decode(blobs[0])
-	if err != nil {
-		return "", err
-	}
-
 	SortSigners(signers)
-	tx["Signers"] = signers
+	firstTx["Signers"] = signers
 
-	blob, err := binarycodec.Encode(tx)
+	blob, err := binarycodec.Encode(firstTx)
 	if err != nil {
 		return "", err
 	}
 
 	return blob, nil
+}
+
+// encodeWithoutSigners returns the binary-encoded form of tx with the Signers
+// field removed. Used to compare blobs that represent the same transaction but
+// carry different signers. A shallow copy is made so removing Signers does not
+// mutate tx.
+func encodeWithoutSigners(tx map[string]any) (string, error) {
+	stripped := make(map[string]any, len(tx))
+	maps.Copy(stripped, tx)
+	delete(stripped, "Signers")
+	return binarycodec.Encode(stripped)
 }
 
 // SortSigners sorts signers ascending by their decoded account ID bytes.
