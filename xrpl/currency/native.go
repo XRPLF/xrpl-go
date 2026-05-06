@@ -2,13 +2,15 @@
 package currency
 
 import (
-	"errors"
-	"strconv"
+	"math/big"
 	"strings"
 )
 
 const (
 	// DropsPerXrp is the number of drops equivalent to one XRP.
+	//
+	// Deprecated: use XrpToDrops and DropsToXrp for native amount conversions.
+	// The conversion helpers use exact rational arithmetic internally instead of float64.
 	DropsPerXrp float64 = 1000000
 	// MaxFractionLength is the maximum allowed decimal places in an XRP value.
 	MaxFractionLength uint = 6
@@ -16,29 +18,100 @@ const (
 	NativeCurrencySymbol string = "XRP"
 )
 
+const (
+	dropsPerXRP = int64(1000000)
+	maxDrops    = uint64(100000000000000000)
+)
+
+var (
+	maxDropsInt       = new(big.Int).SetUint64(maxDrops)
+	dropsPerXRPBigInt = big.NewInt(dropsPerXRP)
+	dropsPerXRPRat    = big.NewRat(dropsPerXRP, 1)
+)
+
 // XrpToDrops converts an amount in XRP to an amount in drops.
 func XrpToDrops(value string) (string, error) {
-	if _, after, ok := strings.Cut(value, "."); ok && len(after) > int(MaxFractionLength) {
-		return "", errors.New("xrp to drops: value has too many decimals")
+	xrp, ok := decimalRat(value)
+	if !ok {
+		return "", ErrXrpToDropsInvalidValue
 	}
 
-	xrpFloat, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return "", err
+	if xrp.Sign() < 0 {
+		return "", ErrXrpToDropsNegativeValue
 	}
 
-	dropsFloat := xrpFloat * DropsPerXrp
-	return strconv.FormatFloat(dropsFloat, 'f', -1, 64), nil
+	drops := new(big.Rat).Mul(xrp, dropsPerXRPRat)
+	if drops.Denom().Cmp(big.NewInt(1)) != 0 {
+		return "", ErrXrpToDropsTooManyDecimals
+	}
+
+	if drops.Num().Cmp(maxDropsInt) > 0 {
+		return "", ErrXrpToDropsExceedsMax
+	}
+
+	return drops.Num().String(), nil
 }
 
 // DropsToXrp converts an amount of drops into an amount of XRP.
 func DropsToXrp(value string) (string, error) {
-	dropUint, err := strconv.ParseUint(value, 10, 64)
-	if err != nil {
-		return "", err
+	drops, ok := decimalRat(value)
+	if !ok {
+		return "", ErrDropsToXrpInvalidValue
 	}
 
-	xrpFloat := float64(dropUint) / DropsPerXrp
+	if drops.Sign() < 0 {
+		return "", ErrDropsToXrpNegativeValue
+	}
 
-	return strconv.FormatFloat(xrpFloat, 'f', -1, 64), nil
+	if drops.Denom().Cmp(big.NewInt(1)) != 0 {
+		return "", ErrDropsToXrpFractionalDrops
+	}
+
+	dropInt := drops.Num()
+	if dropInt.Cmp(maxDropsInt) > 0 {
+		return "", ErrDropsToXrpExceedsMax
+	}
+
+	whole := new(big.Int).Div(dropInt, dropsPerXRPBigInt)
+	fraction := new(big.Int).Mod(dropInt, dropsPerXRPBigInt)
+	if fraction.Sign() == 0 {
+		return whole.String(), nil
+	}
+
+	fractionString := fraction.String()
+	if len(fractionString) < int(MaxFractionLength) {
+		fractionString = strings.Repeat("0", int(MaxFractionLength)-len(fractionString)) + fractionString
+	}
+
+	return whole.String() + "." + strings.TrimRight(fractionString, "0"), nil
+}
+
+func decimalRat(value string) (*big.Rat, bool) {
+	if containsInvalidChar(value) {
+		return nil, false
+	}
+
+	return new(big.Rat).SetString(value)
+}
+
+func containsInvalidChar(value string) bool {
+	if value == "" {
+		return true
+	}
+
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		switch {
+		case c >= '0' && c <= '9', c == '.', c == 'e', c == 'E':
+			// always valid
+		case c == '+' || c == '-':
+			if i != 0 && value[i-1] != 'e' && value[i-1] != 'E' {
+				return true
+			}
+		default:
+			return true
+		}
+	}
+
+	return false
 }
