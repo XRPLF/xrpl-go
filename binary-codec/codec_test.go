@@ -340,6 +340,32 @@ func TestEncode(t *testing.T) {
 	}
 }
 
+func TestEncodeDoesNotMutateInput(t *testing.T) {
+	tx := map[string]any{
+		"Account":         "rMBzp8CgpE441cp5PVyA9rpVV7oT8hP3ys",
+		"Fee":             "10",
+		"Sequence":        uint32(1752792),
+		"SigningPubKey":   "03EE83BB432547885C219634A1BC407A9DB0474145D69737D09CCDC63E1DEE7FE3",
+		"TransactionType": "Payment",
+		"TxnSignature":    "30440220143759437C04F7B61F012563AFE90D8DAFC46E86035E1D965A9CED282C97D4CE02204CFD241E86F17E011298FC1A39B63386C74306A5DE047E213B0F29EFA4571C2C",
+		"hash":            "73734B611DDA23D3F5F62E20A173B78AB8406AC5015094DA53F53D39B9EDB06C",
+	}
+	expected := map[string]any{
+		"Account":         "rMBzp8CgpE441cp5PVyA9rpVV7oT8hP3ys",
+		"Fee":             "10",
+		"Sequence":        uint32(1752792),
+		"SigningPubKey":   "03EE83BB432547885C219634A1BC407A9DB0474145D69737D09CCDC63E1DEE7FE3",
+		"TransactionType": "Payment",
+		"TxnSignature":    "30440220143759437C04F7B61F012563AFE90D8DAFC46E86035E1D965A9CED282C97D4CE02204CFD241E86F17E011298FC1A39B63386C74306A5DE047E213B0F29EFA4571C2C",
+		"hash":            "73734B611DDA23D3F5F62E20A173B78AB8406AC5015094DA53F53D39B9EDB06C",
+	}
+
+	_, err := Encode(tx)
+
+	require.NoError(t, err)
+	require.Equal(t, expected, tx)
+}
+
 func TestDecode(t *testing.T) {
 	tt := []struct {
 		description string
@@ -574,6 +600,32 @@ func TestEncodeForMultisigning(t *testing.T) {
 	}
 }
 
+func TestEncodeForMultisigningDoesNotMutateInput(t *testing.T) {
+	tx := map[string]any{
+		"Account":         "rMBzp8CgpE441cp5PVyA9rpVV7oT8hP3ys",
+		"Fee":             "10",
+		"Sequence":        uint32(1752792),
+		"SigningPubKey":   "",
+		"TransactionType": "Payment",
+		"TxnSignature":    "30440220143759437C04F7B61F012563AFE90D8DAFC46E86035E1D965A9CED282C97D4CE02204CFD241E86F17E011298FC1A39B63386C74306A5DE047E213B0F29EFA4571C2C",
+		"hash":            "73734B611DDA23D3F5F62E20A173B78AB8406AC5015094DA53F53D39B9EDB06C",
+	}
+	expected := map[string]any{
+		"Account":         "rMBzp8CgpE441cp5PVyA9rpVV7oT8hP3ys",
+		"Fee":             "10",
+		"Sequence":        uint32(1752792),
+		"SigningPubKey":   "",
+		"TransactionType": "Payment",
+		"TxnSignature":    "30440220143759437C04F7B61F012563AFE90D8DAFC46E86035E1D965A9CED282C97D4CE02204CFD241E86F17E011298FC1A39B63386C74306A5DE047E213B0F29EFA4571C2C",
+		"hash":            "73734B611DDA23D3F5F62E20A173B78AB8406AC5015094DA53F53D39B9EDB06C",
+	}
+
+	_, err := EncodeForMultisigning(tx, "rMBzp8CgpE441cp5PVyA9rpVV7oT8hP3ys")
+
+	require.NoError(t, err)
+	require.Equal(t, expected, tx)
+}
+
 func TestEncodeForSigningClaim(t *testing.T) {
 	tt := []struct {
 		description string
@@ -621,6 +673,32 @@ func TestEncodeForSigningClaim(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEncodeForSigningDoesNotMutateInput(t *testing.T) {
+	tx := map[string]any{
+		"Account":         "rMBzp8CgpE441cp5PVyA9rpVV7oT8hP3ys",
+		"Fee":             "10",
+		"Sequence":        uint32(1752792),
+		"SigningPubKey":   "03EE83BB432547885C219634A1BC407A9DB0474145D69737D09CCDC63E1DEE7FE3",
+		"TransactionType": "Payment",
+		"TxnSignature":    "30440220143759437C04F7B61F012563AFE90D8DAFC46E86035E1D965A9CED282C97D4CE02204CFD241E86F17E011298FC1A39B63386C74306A5DE047E213B0F29EFA4571C2C",
+		"hash":            "73734B611DDA23D3F5F62E20A173B78AB8406AC5015094DA53F53D39B9EDB06C",
+	}
+	expected := map[string]any{
+		"Account":         "rMBzp8CgpE441cp5PVyA9rpVV7oT8hP3ys",
+		"Fee":             "10",
+		"Sequence":        uint32(1752792),
+		"SigningPubKey":   "03EE83BB432547885C219634A1BC407A9DB0474145D69737D09CCDC63E1DEE7FE3",
+		"TransactionType": "Payment",
+		"TxnSignature":    "30440220143759437C04F7B61F012563AFE90D8DAFC46E86035E1D965A9CED282C97D4CE02204CFD241E86F17E011298FC1A39B63386C74306A5DE047E213B0F29EFA4571C2C",
+		"hash":            "73734B611DDA23D3F5F62E20A173B78AB8406AC5015094DA53F53D39B9EDB06C",
+	}
+
+	_, err := EncodeForSigning(tx)
+
+	require.NoError(t, err)
+	require.Equal(t, expected, tx)
 }
 
 func TestEncodeForSigning(t *testing.T) {
