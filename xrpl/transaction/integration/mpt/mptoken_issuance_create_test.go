@@ -59,7 +59,7 @@ func testIntegrationMptTokenCreate(t *testing.T, client integration.Client) {
 			require.Len(t, accountObjects.AccountObjects, 1)
 			createdToken := accountObjects.AccountObjects[0]
 
-			createdAssetScale := createdToken["AssetScale"].(float64)
+			createdAssetScale := integration.TxFieldUint32(t, createdToken, "AssetScale")
 			require.Equal(t, uint8(createdAssetScale), assetScale)
 
 			createdMaximumAmount := createdToken["MaximumAmount"]
