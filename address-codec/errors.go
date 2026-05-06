@@ -12,6 +12,10 @@ var (
 	ErrInvalidClassicAddress = errors.New("invalid classic address")
 	// ErrInvalidSeed indicates an invalid seed; could not determine encoding algorithm.
 	ErrInvalidSeed = errors.New("invalid seed; could not determine encoding algorithm")
+	// ErrInvalidSeedPrefix indicates that a seed has an unknown algorithm prefix.
+	ErrInvalidSeedPrefix = errors.New("invalid seed prefix")
+	// ErrInvalidSeedLength indicates that a seed has an invalid decoded length.
+	ErrInvalidSeedLength = errors.New("invalid seed length")
 	// ErrInvalidXAddress indicates an invalid x-address.
 	ErrInvalidXAddress = errors.New("invalid X-address: bad prefix")
 	// ErrUnsupportedXAddress indicates an unsupported x-address (e.g., 64-bit tag).
