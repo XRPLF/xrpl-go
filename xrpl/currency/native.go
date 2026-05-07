@@ -27,6 +27,7 @@ var (
 	maxDropsInt       = new(big.Int).SetUint64(maxDrops)
 	dropsPerXRPBigInt = big.NewInt(dropsPerXRP)
 	dropsPerXRPRat    = big.NewRat(dropsPerXRP, 1)
+	bigIntOne         = big.NewInt(1)
 )
 
 // XrpToDrops converts an amount in XRP to an amount in drops.
@@ -41,7 +42,7 @@ func XrpToDrops(value string) (string, error) {
 	}
 
 	drops := new(big.Rat).Mul(xrp, dropsPerXRPRat)
-	if drops.Denom().Cmp(big.NewInt(1)) != 0 {
+	if drops.Denom().Cmp(bigIntOne) != 0 {
 		return "", ErrXrpToDropsTooManyDecimals
 	}
 
@@ -63,7 +64,7 @@ func DropsToXrp(value string) (string, error) {
 		return "", ErrDropsToXrpNegativeValue
 	}
 
-	if drops.Denom().Cmp(big.NewInt(1)) != 0 {
+	if drops.Denom().Cmp(bigIntOne) != 0 {
 		return "", ErrDropsToXrpFractionalDrops
 	}
 
