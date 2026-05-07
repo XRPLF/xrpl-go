@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"time"
 
@@ -42,8 +43,7 @@ func NewClient(cfg *Config) *Client {
 
 // Request sends a request to the XRPL server and returns the response and any error encountered.
 func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
-	err := reqParams.Validate()
-	if err != nil {
+	if err := reqParams.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -52,57 +52,61 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.cfg.URL, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-
-	// add timeout context to prevent hanging
-	ctx, cancel := context.WithTimeout(context.Background(), c.cfg.timeout)
-	defer cancel()
-	req = req.WithContext(ctx)
-
-	req.Header = c.cfg.Headers
+	maxRetries := 3
+	backoffDuration := 1 * time.Second
 
 	var response *http.Response
 
-	response, err = c.cfg.HTTPClient.Do(req)
-	if err != nil || response == nil {
-		return nil, err
-	}
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), c.cfg.timeout)
 
-	// allow client to reuse persistent connection
-	defer func() {
-		_ = response.Body.Close()
-	}()
-	// Check for service unavailable response and retry if so
-	if response.StatusCode == 503 {
-
-		maxRetries := 3
-		backoffDuration := 1 * time.Second
-
-		for range maxRetries {
-			time.Sleep(backoffDuration)
-
-			// Make request again after waiting
-			response, err = c.cfg.HTTPClient.Do(req)
-			if err != nil {
-				return nil, err
-			}
-
-			if response.StatusCode != 503 {
-				break
-			}
-
-			// Increase backoff duration for the next retry
-			backoffDuration *= 2
+		req, err := http.NewRequestWithContext(
+			ctx,
+			http.MethodPost,
+			c.cfg.URL,
+			bytes.NewReader(body),
+		)
+		if err != nil {
+			cancel()
+			return nil, err
 		}
 
-		if response.StatusCode == 503 {
-			// Return service unavailable error here after retry 3 times
+		req.Header = c.cfg.Headers
+
+		response, err = c.cfg.HTTPClient.Do(req)
+		if err != nil {
+			cancel()
+			return nil, err
+		}
+
+		// HTTPClient is an interface, custom impls may return (nil, nil),
+		// violating net/http's contract. Standard *http.Client never hits
+		// this branch.
+		if response == nil {
+			cancel()
+			return nil, &ClientError{ErrorString: "nil response from server"}
+		}
+
+		if response.StatusCode != http.StatusServiceUnavailable {
+			defer cancel()
+			defer func() {
+				_ = response.Body.Close()
+			}()
+			break
+		}
+
+		// Drain and close the 503 response body before retrying so the connection
+		// can be reused by the HTTP client.
+		_, _ = io.Copy(io.Discard, response.Body)
+		_ = response.Body.Close()
+		cancel()
+
+		if attempt == maxRetries {
 			return nil, &ClientError{ErrorString: "Server is overloaded, rate limit exceeded"}
 		}
 
+		time.Sleep(backoffDuration)
+		backoffDuration *= 2
 	}
 
 	var jr Response
