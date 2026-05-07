@@ -10,16 +10,22 @@ import (
 // It provides a method to read messages from the connection.
 // All methods are safe for concurrent use.
 type Connection struct {
-	conn *websocket.Conn
-	url  string
+	conn            *websocket.Conn
+	url             string
+	maxResponseSize int64
 
 	mu sync.Mutex
 }
 
 // NewConnection creates a new Connection.
 func NewConnection(url string) *Connection {
+	return newConnection(url, defaultMaxResponseSize)
+}
+
+func newConnection(url string, maxResponseSize int64) *Connection {
 	return &Connection{
-		url: url,
+		url:             url,
+		maxResponseSize: maxResponseSize,
 	}
 }
 
@@ -32,6 +38,7 @@ func (c *Connection) Connect() error {
 	if err != nil {
 		return err
 	}
+	conn.SetReadLimit(c.maxResponseSize)
 	c.conn = conn
 	return nil
 }

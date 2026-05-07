@@ -80,7 +80,7 @@ func NewClient(cfg ClientConfig) *Client {
 		cfg:         cfg,
 		requestChan: make(chan *ClientResponse),
 		errChan:     make(chan error),
-		conn:        NewConnection(cfg.host),
+		conn:        newConnection(cfg.host, cfg.maxResponseSize),
 	}
 }
 
