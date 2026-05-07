@@ -85,6 +85,20 @@ func TestEscrowCreate_Flatten(t *testing.T) {
 				"Destination":     "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW"
 			}`,
 		},
+		{
+			name: "pass - nil Amount omitted",
+			entry: &EscrowCreate{
+				BaseTx: BaseTx{
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+			},
+			expected: `{
+				"TransactionType": "EscrowCreate",
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"Destination":     "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW"
+			}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -99,11 +113,38 @@ func TestEscrowCreate_Flatten(t *testing.T) {
 
 func TestEscrowCreate_Validate(t *testing.T) {
 	tests := []struct {
-		name      string
-		entry     *EscrowCreate
-		wantValid bool
-		wantErr   bool
+		name        string
+		entry       *EscrowCreate
+		expectedErr error
 	}{
+		{
+			name: "fail - missing Amount",
+			entry: &EscrowCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowCreateTx,
+				},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				FinishAfter: 533171558,
+			},
+			expectedErr: ErrMissingField{Field: "Amount"},
+		},
+		{
+			name: "fail - malformed issued Amount",
+			entry: &EscrowCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowCreateTx,
+				},
+				Amount: types.IssuedCurrencyAmount{
+					Currency: "USD",
+					Value:    "10000",
+				},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				FinishAfter: 533171558,
+			},
+			expectedErr: ErrInvalidTokenFields,
+		},
 		{
 			name: "fail - invalid transaction with only CancelAfter",
 			entry: &EscrowCreate{
@@ -115,8 +156,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				CancelAfter: 533257958,
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrEscrowCreateNoConditionOrFinishAfterSet,
 		},
 		{
 			name: "fail - invalid transaction with only Condition",
@@ -129,8 +169,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				Condition:   "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrEscrowCreateNoConditionOrFinishAfterSet,
 		},
 		{
 			name: "fail - invalid transaction with no Condition and FinishAfter",
@@ -143,8 +182,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				CancelAfter: 533257958,
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrEscrowCreateNoConditionOrFinishAfterSet,
 		},
 		{
 			name: "fail - invalid transaction with invalid destination address",
@@ -157,8 +195,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				Destination: "invalidAddress",
 				CancelAfter: 533257958,
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrEscrowCreateInvalidDestinationAddress,
 		},
 		{
 			name: "fail - invalid BaseTx, missing TransactionType",
@@ -170,8 +207,7 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				CancelAfter: 533257958,
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrInvalidTransactionType,
 		},
 		{
 			name: "pass - valid transaction - Conditional with expiration",
@@ -185,8 +221,6 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				CancelAfter: 533257958,
 				Condition:   "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 			},
-			wantValid: true,
-			wantErr:   false,
 		},
 		{
 			name: "pass - valid transaction - Time based",
@@ -199,8 +233,6 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
 				FinishAfter: 533171558,
 			},
-			wantValid: true,
-			wantErr:   false,
 		},
 		{
 			name: "pass - valid transaction - Time based with expiration",
@@ -214,8 +246,6 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				FinishAfter: 533171558,
 				CancelAfter: 533257958,
 			},
-			wantValid: true,
-			wantErr:   false,
 		},
 		{
 			name: "pass - valid transaction - Timed conditional",
@@ -229,8 +259,6 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				FinishAfter: 533171558,
 				Condition:   "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 			},
-			wantValid: true,
-			wantErr:   false,
 		},
 		{
 			name: "pass - valid transaction - Timed conditional with Expiration",
@@ -245,21 +273,21 @@ func TestEscrowCreate_Validate(t *testing.T) {
 				Condition:   "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 				CancelAfter: 533257958,
 			},
-			wantValid: true,
-			wantErr:   false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			valid, err := tt.entry.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("escrowCreate.Validate() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.expectedErr != nil {
+				assert.False(t, valid)
+				assert.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
-			if valid != tt.wantValid {
-				t.Errorf("escrowCreate.Validate() = %v, want %v", valid, tt.wantValid)
-			}
+
+			assert.True(t, valid)
+			assert.NoError(t, err)
 		})
 	}
 }

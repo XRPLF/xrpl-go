@@ -54,7 +54,9 @@ func (e *EscrowCreate) Flatten() FlatTransaction {
 
 	flattened["TransactionType"] = "EscrowCreate"
 
-	flattened["Amount"] = e.Amount.Flatten()
+	if e.Amount != nil {
+		flattened["Amount"] = e.Amount.Flatten()
+	}
 
 	if e.Destination != "" {
 		flattened["Destination"] = e.Destination.String()
@@ -110,6 +112,10 @@ func (e *EscrowCreate) UnmarshalJSON(data []byte) error {
 func (e *EscrowCreate) Validate() (bool, error) {
 	ok, err := e.BaseTx.Validate()
 	if err != nil || !ok {
+		return false, err
+	}
+
+	if ok, err := IsAmount(e.Amount, "Amount", true); !ok {
 		return false, err
 	}
 

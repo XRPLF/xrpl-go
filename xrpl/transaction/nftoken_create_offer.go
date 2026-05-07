@@ -1,6 +1,8 @@
 package transaction
 
 import (
+	"strconv"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -79,7 +81,9 @@ func (n *NFTokenCreateOffer) Flatten() FlatTransaction {
 	}
 
 	flattened["NFTokenID"] = n.NFTokenID.String()
-	flattened["Amount"] = n.Amount.Flatten()
+	if n.Amount != nil {
+		flattened["Amount"] = n.Amount.Flatten()
+	}
 
 	if n.Expiration != 0 {
 		flattened["Expiration"] = n.Expiration
@@ -97,6 +101,15 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 	ok, err := n.BaseTx.Validate()
 	if err != nil || !ok {
 		return false, err
+	}
+
+	if ok, err := IsAmount(n.Amount, "Amount", true); !ok {
+		return false, err
+	}
+
+	isSellOffer := flag.Contains(n.Flags, TfSellNFToken)
+	if isZeroNFTokenOfferAmount(n.Amount) && (!isSellOffer || n.Amount.Kind() != types.XRP) {
+		return false, ErrInvalidTokenValue
 	}
 
 	// check owner and account are not equal
@@ -120,14 +133,35 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 	}
 
 	// validate Sell Offer Cases
-	if flag.Contains(n.Flags, TfSellNFToken) && n.Owner != "" {
+	if isSellOffer && n.Owner != "" {
 		return false, ErrOwnerPresentForSellOffer
 	}
 
 	// validate Buy Offer Cases
-	if !flag.Contains(n.Flags, TfSellNFToken) && n.Owner == "" {
+	if !isSellOffer && n.Owner == "" {
 		return false, ErrOwnerNotPresentForBuyOffer
 	}
 
 	return true, nil
+}
+
+// isZeroNFTokenOfferAmount reports whether a valid amount represents zero.
+func isZeroNFTokenOfferAmount(amount types.CurrencyAmount) bool {
+	switch amount := amount.(type) {
+	case types.XRPCurrencyAmount:
+		return amount == 0
+	case types.IssuedCurrencyAmount:
+		value, err := strconv.ParseFloat(amount.Value, 64)
+		if err != nil {
+			return false
+		}
+		return value == 0
+	case types.MPTCurrencyAmount:
+		value, err := strconv.ParseInt(amount.Value, 10, 64)
+		if err != nil {
+			return false
+		}
+		return value == 0
+	}
+	return false
 }

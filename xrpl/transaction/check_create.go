@@ -50,7 +50,9 @@ func (c *CheckCreate) Flatten() FlatTransaction {
 
 	flattened["TransactionType"] = c.TxType().String()
 	flattened["Destination"] = c.Destination.String()
-	flattened["SendMax"] = c.SendMax.Flatten()
+	if c.SendMax != nil {
+		flattened["SendMax"] = c.SendMax.Flatten()
+	}
 	if c.DestinationTag != nil {
 		flattened["DestinationTag"] = *c.DestinationTag
 	}

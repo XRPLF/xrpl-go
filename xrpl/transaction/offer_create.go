@@ -103,8 +103,12 @@ func (o *OfferCreate) Flatten() FlatTransaction {
 	if o.OfferSequence != 0 {
 		flattened["OfferSequence"] = o.OfferSequence
 	}
-	flattened["TakerGets"] = o.TakerGets.Flatten()
-	flattened["TakerPays"] = o.TakerPays.Flatten()
+	if o.TakerGets != nil {
+		flattened["TakerGets"] = o.TakerGets.Flatten()
+	}
+	if o.TakerPays != nil {
+		flattened["TakerPays"] = o.TakerPays.Flatten()
+	}
 
 	if o.DomainID != nil {
 		flattened["DomainID"] = *o.DomainID
