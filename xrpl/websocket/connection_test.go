@@ -70,9 +70,14 @@ func newMessageServer(t *testing.T, msg string) *httptest.Server {
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
-		require.NoError(t, err)
+		if err != nil {
+			t.Errorf("upgrade websocket: %v", err)
+			return
+		}
 		defer conn.Close()
 
-		require.NoError(t, conn.WriteMessage(gorillawebsocket.TextMessage, []byte(msg)))
+		if err := conn.WriteMessage(gorillawebsocket.TextMessage, []byte(msg)); err != nil {
+			t.Errorf("write websocket message: %v", err)
+		}
 	}))
 }
