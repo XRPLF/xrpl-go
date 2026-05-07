@@ -34,7 +34,7 @@ func TestBinarySerializer_EncodeVariableLength(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:        "length more than 12841 ad less than 918744",
+			name:        "length more than 12841 and less than 918744",
 			len:         20000,
 			expected:    []byte{0xF1, 0x1D, 0x5F},
 			expectedErr: nil,
@@ -74,6 +74,12 @@ func TestBinarySerializer_EncodeVariableLength(t *testing.T) {
 			len:         918744,
 			expected:    []byte{0xFE, 0xD4, 0x17},
 			expectedErr: nil,
+		},
+		{
+			name:        "boundary - length 918745 (one past max)",
+			len:         918745,
+			expected:    nil,
+			expectedErr: ErrLengthPrefixTooLong,
 		},
 		{
 			name:        "length more than 918744",
