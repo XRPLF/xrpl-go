@@ -117,6 +117,9 @@ func (s *SignerListSet) Validate() (bool, error) {
 			ErrInvalidSignerEntries, MinSigners, MaxSigners)
 	}
 
+	seenSignerAccounts := make(map[string]struct{}, len(s.SignerEntries))
+	sumSignerWeights := uint64(0)
+	txAccount := s.Account.String()
 	for _, signerEntry := range s.SignerEntries {
 		// Check if WalletLocator is an hexadecimal string for each SignerEntry
 		if signerEntry.SignerEntry.WalletLocator != "" && !typecheck.IsHex(signerEntry.SignerEntry.WalletLocator.String()) {
@@ -124,17 +127,29 @@ func (s *SignerListSet) Validate() (bool, error) {
 		}
 
 		// Check if Account is a valid xrpl address for each SignerEntry
-		if !addresscodec.IsValidAddress(signerEntry.SignerEntry.Account.String()) {
+		signerAccount := signerEntry.SignerEntry.Account.String()
+		if !addresscodec.IsValidAddress(signerAccount) {
 			return false, ErrInvalidAccount
 		}
+
+		if signerAccount == txAccount {
+			return false, ErrSignerAccountMatchesAccount
+		}
+
+		if _, ok := seenSignerAccounts[signerAccount]; ok {
+			return false, ErrDuplicateSignerAccount
+		}
+		seenSignerAccounts[signerAccount] = struct{}{}
+
+		if signerEntry.SignerEntry.SignerWeight == 0 {
+			return false, ErrInvalidSignerWeight
+		}
+
+		sumSignerWeights += uint64(signerEntry.SignerEntry.SignerWeight)
 	}
 
 	// Check SignerQuorum is less than or equal to the sum of all SignerWeights
-	sumSignerWeights := uint16(0)
-	for _, signerEntry := range s.SignerEntries {
-		sumSignerWeights += signerEntry.SignerEntry.SignerWeight
-	}
-	if sq > uint32(sumSignerWeights) {
+	if uint64(sq) > sumSignerWeights {
 		return false, ErrSignerQuorumGreaterThanSumOfSignerWeights
 	}
 

@@ -2,12 +2,14 @@ package transaction
 
 import (
 	"encoding/hex"
+	"math"
 	"testing"
 
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSignerListSet_TxType(t *testing.T) {
@@ -121,46 +123,34 @@ func TestSignerListSet_Flatten(t *testing.T) {
 
 func TestSignerListSet_Validate(t *testing.T) {
 	tests := []struct {
-		name      string
-		entry     *SignerListSet
-		wantValid bool
-		wantErr   bool
+		name        string
+		entry       *SignerListSet
+		expectedErr error
 	}{
 		{
 			name: "pass - valid SignerListSet",
-			entry: &SignerListSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: SignerListSetTx,
-					Fee:             types.XRPCurrencyAmount(12),
-				},
-				SignerQuorum: uint32(3),
-				SignerEntries: []ledger.SignerEntryWrapper{
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:       "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
-							SignerWeight:  2,
-							WalletLocator: types.Hash256(hex.EncodeToString([]byte("Ledger"))),
-						},
-					},
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:       "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v",
-							SignerWeight:  1,
-							WalletLocator: types.Hash256(hex.EncodeToString([]byte("Ledger Nano"))),
-						},
-					},
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:       "XVYRdEocC28DRx94ZFGP3qNJ1D5Ln7ecXFMd3vREB5Pesju",
-							SignerWeight:  1,
-							WalletLocator: types.Hash256(hex.EncodeToString([]byte("Ledger Nano"))),
-						},
-					},
-				},
-			},
-			wantValid: true,
-			wantErr:   false,
+			entry: newSignerListSetTx(
+				3,
+				newSignerListSetEntryWithWallet("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 2, "Ledger"),
+				newSignerListSetEntryWithWallet("rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v", 1, "Ledger Nano"),
+				newSignerListSetEntryWithWallet("XVYRdEocC28DRx94ZFGP3qNJ1D5Ln7ecXFMd3vREB5Pesju", 1, "Ledger Nano"),
+			),
+		},
+		{
+			name: "pass - valid SignerListSet with large SignerWeight sum",
+			entry: newSignerListSetTx(
+				math.MaxUint16+1,
+				newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", math.MaxUint16),
+				newSignerListSetEntry("rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v", 1),
+			),
+		},
+		{
+			name: "pass - valid SignerListSet with unsorted SignerEntries",
+			entry: newSignerListSetTx(
+				2,
+				newSignerListSetEntry("rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v", 1),
+				newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 1),
+			),
 		},
 		{
 			name: "fail - invalid SignerListSet BaseTx",
@@ -171,189 +161,132 @@ func TestSignerListSet_Validate(t *testing.T) {
 				},
 				SignerQuorum: uint32(3),
 				SignerEntries: []ledger.SignerEntryWrapper{
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:      "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
-							SignerWeight: 2,
-						},
-					},
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:      "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v",
-							SignerWeight: 1,
-						},
-					},
+					newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 2),
+					newSignerListSetEntry("rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v", 1),
 				},
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrInvalidTransactionType,
 		},
 		{
-			name: "fail - invalid SignerListSet with no SignerEntries and quorum > 0",
-			entry: &SignerListSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: SignerListSetTx,
-					Fee:             types.XRPCurrencyAmount(12),
-				},
-				SignerQuorum: uint32(3),
-			},
-			wantValid: false,
-			wantErr:   true,
+			name: "fail - invalid SignerListSet with duplicate signer account",
+			entry: newSignerListSetTx(
+				2,
+				newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 1),
+				newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 1),
+			),
+			expectedErr: ErrDuplicateSignerAccount,
 		},
 		{
-			name: "fail - invalid SignerListSet with too many SignerEntries",
-			entry: &SignerListSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: SignerListSetTx,
-					Fee:             types.XRPCurrencyAmount(12),
-				},
-				SignerQuorum: uint32(3),
-				SignerEntries: func() []ledger.SignerEntryWrapper {
-					entries := make([]ledger.SignerEntryWrapper, 33)
-					for i := range entries {
-						entries[i] = ledger.SignerEntryWrapper{
-							SignerEntry: ledger.SignerEntry{
-								Account:      "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
-								SignerWeight: 1,
-							},
-						}
-					}
-					return entries
-				}(),
-			},
-			wantValid: false,
-			wantErr:   true,
+			name:        "fail - invalid SignerListSet with signer account matching transaction account",
+			entry:       newSignerListSetTx(1, newSignerListSetEntry("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", 1)),
+			expectedErr: ErrSignerAccountMatchesAccount,
+		},
+		{
+			name:        "fail - invalid SignerListSet with zero signer weight",
+			entry:       newSignerListSetTx(1, newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 0)),
+			expectedErr: ErrInvalidSignerWeight,
+		},
+		{
+			name:        "fail - invalid SignerListSet with no SignerEntries and quorum > 0",
+			entry:       newSignerListSetTx(3),
+			expectedErr: ErrInvalidSignerEntries,
+		},
+		{
+			name:        "fail - invalid SignerListSet with too many SignerEntries",
+			entry:       newSignerListSetTx(3, newSignerListSetEntries(MaxSigners+1)...),
+			expectedErr: ErrInvalidSignerEntries,
 		},
 		{
 			name: "fail - invalid SignerListSet with invalid WalletLocator",
-			entry: &SignerListSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: SignerListSetTx,
-					Fee:             types.XRPCurrencyAmount(12),
+			entry: newSignerListSetTx(3, ledger.SignerEntryWrapper{
+				SignerEntry: ledger.SignerEntry{
+					Account:       "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+					SignerWeight:  2,
+					WalletLocator: "invalid_hex",
 				},
-				SignerQuorum: uint32(3),
-				SignerEntries: []ledger.SignerEntryWrapper{
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:       "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
-							SignerWeight:  2,
-							WalletLocator: "invalid_hex",
-						},
-					},
-				},
-			},
-			wantValid: false,
-			wantErr:   true,
+			}),
+			expectedErr: ErrInvalidWalletLocator,
 		},
 		{
 			name: "fail - invalid SignerListSet with SignerQuorum greater than sum of SignerWeights",
-			entry: &SignerListSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: SignerListSetTx,
-					Fee:             types.XRPCurrencyAmount(12),
-				},
-				SignerQuorum: uint32(5),
-				SignerEntries: []ledger.SignerEntryWrapper{
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:      "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
-							SignerWeight: 2,
-						},
-					},
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:      "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v",
-							SignerWeight: 1,
-						},
-					},
-				},
-			},
-			wantValid: false,
-			wantErr:   true,
+			entry: newSignerListSetTx(
+				5,
+				newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 2),
+				newSignerListSetEntry("rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v", 1),
+			),
+			expectedErr: ErrSignerQuorumGreaterThanSumOfSignerWeights,
 		},
 		{
 			name: "fail - invalid SignerEntry Account, not an xrpl address",
-			entry: &SignerListSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: SignerListSetTx,
-					Fee:             types.XRPCurrencyAmount(12),
-				},
-				SignerQuorum: uint32(2),
-				SignerEntries: []ledger.SignerEntryWrapper{
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:      "invalid",
-							SignerWeight: 2,
-						},
-					},
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:      "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v",
-							SignerWeight: 1,
-						},
-					},
-				},
-			},
-			wantValid: false,
-			wantErr:   true,
+			entry: newSignerListSetTx(
+				2,
+				newSignerListSetEntry("invalid", 2),
+				newSignerListSetEntry("rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v", 1),
+			),
+			expectedErr: ErrInvalidAccount,
 		},
 		{
-			name: "pass - valid SignerListSet with SignerQuorum 0",
-			entry: &SignerListSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: SignerListSetTx,
-					Fee:             types.XRPCurrencyAmount(12),
-				},
-				SignerQuorum: uint32(0),
-			},
-			wantValid: true,
-			wantErr:   false,
+			name:  "pass - valid SignerListSet with SignerQuorum 0",
+			entry: newSignerListSetTx(0),
 		},
 		{
 			name: "fail - invalid SignerListSet with SignerQuorum 0 but a SignerEntries not empty",
-			entry: &SignerListSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: SignerListSetTx,
-					Fee:             types.XRPCurrencyAmount(12),
-				},
-				SignerQuorum: uint32(0),
-				SignerEntries: []ledger.SignerEntryWrapper{
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:      "invalid",
-							SignerWeight: 2,
-						},
-					},
-					{
-						SignerEntry: ledger.SignerEntry{
-							Account:      "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v",
-							SignerWeight: 1,
-						},
-					},
-				},
-			},
-			wantValid: false,
-			wantErr:   true,
+			entry: newSignerListSetTx(
+				0,
+				newSignerListSetEntry("invalid", 2),
+				newSignerListSetEntry("rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v", 1),
+			),
+			expectedErr: ErrInvalidQuorumAndEntries,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			valid, err := tt.entry.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+				require.False(t, valid)
 				return
 			}
-			if valid != tt.wantValid {
-				t.Errorf("Validate() = %v, want %v", valid, !tt.wantErr)
-			}
+
+			require.NoError(t, err)
+			require.True(t, valid)
 		})
 	}
+}
+
+func newSignerListSetTx(quorum uint32, entries ...ledger.SignerEntryWrapper) *SignerListSet {
+	return &SignerListSet{
+		BaseTx: BaseTx{
+			Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+			TransactionType: SignerListSetTx,
+			Fee:             types.XRPCurrencyAmount(12),
+		},
+		SignerQuorum:  quorum,
+		SignerEntries: entries,
+	}
+}
+
+func newSignerListSetEntry(account string, weight uint16) ledger.SignerEntryWrapper {
+	return ledger.SignerEntryWrapper{
+		SignerEntry: ledger.SignerEntry{
+			Account:      types.Address(account),
+			SignerWeight: weight,
+		},
+	}
+}
+
+func newSignerListSetEntryWithWallet(account string, weight uint16, wallet string) ledger.SignerEntryWrapper {
+	entry := newSignerListSetEntry(account, weight)
+	entry.SignerEntry.WalletLocator = types.Hash256(hex.EncodeToString([]byte(wallet)))
+	return entry
+}
+
+func newSignerListSetEntries(count int) []ledger.SignerEntryWrapper {
+	entries := make([]ledger.SignerEntryWrapper, count)
+	for i := range entries {
+		entries[i] = newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 1)
+	}
+	return entries
 }
