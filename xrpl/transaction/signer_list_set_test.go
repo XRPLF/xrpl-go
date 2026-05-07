@@ -177,8 +177,43 @@ func TestSignerListSet_Validate(t *testing.T) {
 			expectedErr: ErrDuplicateSignerAccount,
 		},
 		{
+			name: "fail - invalid SignerListSet with duplicate signer account using X-address",
+			entry: newSignerListSetTx(
+				2,
+				newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 1),
+				newSignerListSetEntry("X7d3eHCXzwBeWrZec1yT24iZerQjYL8m8zCJ16ACxu1BrBY", 1),
+			),
+			expectedErr: ErrDuplicateSignerAccount,
+		},
+		{
 			name:        "fail - invalid SignerListSet with signer account matching transaction account",
 			entry:       newSignerListSetTx(1, newSignerListSetEntry("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", 1)),
+			expectedErr: ErrSignerAccountMatchesAccount,
+		},
+		{
+			name: "fail - invalid SignerListSet with X-address signer account matching transaction account",
+			entry: &SignerListSet{
+				BaseTx: BaseTx{
+					Account:         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+					TransactionType: SignerListSetTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				SignerQuorum:  uint32(1),
+				SignerEntries: []ledger.SignerEntryWrapper{newSignerListSetEntry("X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ", 1)},
+			},
+			expectedErr: ErrSignerAccountMatchesAccount,
+		},
+		{
+			name: "fail - invalid SignerListSet with X-address transaction account matching signer account",
+			entry: &SignerListSet{
+				BaseTx: BaseTx{
+					Account:         "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+					TransactionType: SignerListSetTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				SignerQuorum:  uint32(1),
+				SignerEntries: []ledger.SignerEntryWrapper{newSignerListSetEntry("r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", 1)},
+			},
 			expectedErr: ErrSignerAccountMatchesAccount,
 		},
 		{

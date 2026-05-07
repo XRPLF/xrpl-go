@@ -119,7 +119,10 @@ func (s *SignerListSet) Validate() (bool, error) {
 
 	seenSignerAccounts := make(map[string]struct{}, len(s.SignerEntries))
 	sumSignerWeights := uint64(0)
-	txAccount := s.Account.String()
+	txAccount, ok := classicAccountAddress(s.Account.String())
+	if !ok {
+		return false, ErrInvalidAccount
+	}
 	for _, signerEntry := range s.SignerEntries {
 		// Check if WalletLocator is an hexadecimal string for each SignerEntry
 		if signerEntry.SignerEntry.WalletLocator != "" && !typecheck.IsHex(signerEntry.SignerEntry.WalletLocator.String()) {
@@ -128,7 +131,8 @@ func (s *SignerListSet) Validate() (bool, error) {
 
 		// Check if Account is a valid xrpl address for each SignerEntry
 		signerAccount := signerEntry.SignerEntry.Account.String()
-		if !addresscodec.IsValidAddress(signerAccount) {
+		signerAccount, ok = classicAccountAddress(signerAccount)
+		if !ok {
 			return false, ErrInvalidAccount
 		}
 
@@ -154,4 +158,13 @@ func (s *SignerListSet) Validate() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func classicAccountAddress(address string) (string, bool) {
+	if addresscodec.IsValidClassicAddress(address) {
+		return address, true
+	}
+
+	classicAddress, _, _, err := addresscodec.XAddressToClassicAddress(address)
+	return classicAddress, err == nil
 }
