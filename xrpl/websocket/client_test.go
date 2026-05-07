@@ -189,6 +189,140 @@ func TestClient_SendRequest(t *testing.T) {
 	}
 }
 
+func TestClient_RequestDropsLateTimedOutResponse(t *testing.T) {
+	serverErr := make(chan error, 1)
+	allowLateResponse := make(chan struct{})
+	lateResponseWritten := make(chan struct{})
+
+	cl, cleanup := setupRequestDispatchTestClient(t, func(c *websocket.Conn) {
+		defer c.Close()
+
+		firstID, err := readWebsocketRequestID(c)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+
+		<-allowLateResponse
+		if err := c.WriteJSON(map[string]any{
+			"id":     firstID,
+			"result": map[string]any{"request": "late"},
+		}); err != nil {
+			serverErr <- err
+			return
+		}
+		close(lateResponseWritten)
+
+		secondID, err := readWebsocketRequestID(c)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+
+		if err := c.WriteJSON(map[string]any{
+			"id":     secondID,
+			"result": map[string]any{"request": "current"},
+		}); err != nil {
+			serverErr <- err
+		}
+	})
+	defer cleanup()
+
+	_, err := cl.Request(newAccountChannelsRequest())
+	require.ErrorIs(t, err, ErrRequestTimedOut)
+
+	close(allowLateResponse)
+	select {
+	case <-lateResponseWritten:
+	case err := <-serverErr:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for late response")
+	}
+
+	res, err := cl.Request(newAccountChannelsRequest())
+	require.NoError(t, err)
+	require.Equal(t, 2, res.ID)
+	require.Equal(t, "current", res.Result["request"])
+
+	select {
+	case err := <-serverErr:
+		require.NoError(t, err)
+	default:
+	}
+}
+
+func TestClient_RequestMatchesOutOfOrderResponses(t *testing.T) {
+	serverErr := make(chan error, 1)
+	firstRequestRead := make(chan struct{})
+
+	cl, cleanup := setupRequestDispatchTestClient(t, func(c *websocket.Conn) {
+		defer c.Close()
+
+		firstID, err := readWebsocketRequestID(c)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+		close(firstRequestRead)
+
+		secondID, err := readWebsocketRequestID(c)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+
+		if err := c.WriteJSON(map[string]any{
+			"id":     secondID,
+			"result": map[string]any{"request": "second"},
+		}); err != nil {
+			serverErr <- err
+			return
+		}
+		if err := c.WriteJSON(map[string]any{
+			"id":     firstID,
+			"result": map[string]any{"request": "first"},
+		}); err != nil {
+			serverErr <- err
+		}
+	})
+	defer cleanup()
+
+	firstResult := make(chan requestResult, 1)
+	go func() {
+		res, err := cl.Request(newAccountChannelsRequest())
+		firstResult <- requestResult{res: res, err: err}
+	}()
+
+	select {
+	case <-firstRequestRead:
+	case err := <-serverErr:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for first request")
+	}
+
+	secondResult := make(chan requestResult, 1)
+	go func() {
+		res, err := cl.Request(newAccountChannelsRequest())
+		secondResult <- requestResult{res: res, err: err}
+	}()
+
+	first := receiveRequestResult(t, firstResult)
+	second := receiveRequestResult(t, secondResult)
+
+	require.Equal(t, 1, first.ID)
+	require.Equal(t, "first", first.Result["request"])
+	require.Equal(t, 2, second.ID)
+	require.Equal(t, "second", second.Result["request"])
+
+	select {
+	case err := <-serverErr:
+		require.NoError(t, err)
+	default:
+	}
+}
+
 func TestClient_formatRequest(t *testing.T) {
 	ws := &Client{}
 	tt := []struct {
@@ -946,12 +1080,7 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ws := &testutil.MockWebSocketServer{Msgs: tt.serverMessages}
 			s := ws.TestWebSocketServer(func(c *websocket.Conn) {
-				for _, m := range tt.serverMessages {
-					err := c.WriteJSON(m)
-					if err != nil {
-						t.Errorf("error writing message: %v", err)
-					}
-				}
+				writeMessagesAfterRequests(t, c, tt.serverMessages)
 			})
 			defer s.Close()
 
@@ -1634,12 +1763,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 func setupTestClientForAutofill(t *testing.T, serverMessages []map[string]any) (*Client, func()) {
 	ws := &testutil.MockWebSocketServer{Msgs: serverMessages}
 	s := ws.TestWebSocketServer(func(c *websocket.Conn) {
-		for _, m := range serverMessages {
-			err := c.WriteJSON(m)
-			if err != nil {
-				t.Errorf("error writing message: %v", err)
-			}
-		}
+		writeMessagesAfterRequests(t, c, serverMessages)
 	})
 
 	url, _ := testutil.ConvertHTTPToWS(s.URL)
@@ -1661,6 +1785,80 @@ type mockFaucetProvider struct {
 
 func (m *mockFaucetProvider) FundWallet(_ types.Address) error {
 	return m.err
+}
+
+type requestResult struct {
+	res *ClientResponse
+	err error
+}
+
+func setupRequestDispatchTestClient(t *testing.T, handler func(*websocket.Conn)) (*Client, func()) {
+	t.Helper()
+
+	ws := &testutil.MockWebSocketServer{}
+	s := ws.TestWebSocketServer(handler)
+
+	url, err := testutil.ConvertHTTPToWS(s.URL)
+	require.NoError(t, err)
+
+	cl := NewClient(NewClientConfig().
+		WithHost(url).
+		WithTimeout(30 * time.Millisecond))
+
+	require.NoError(t, cl.Connect())
+
+	return cl, func() {
+		_ = cl.Disconnect()
+		s.Close()
+	}
+}
+
+func readWebsocketRequestID(c *websocket.Conn) (int, error) {
+	var req struct {
+		ID int `json:"id"`
+	}
+
+	if err := c.ReadJSON(&req); err != nil {
+		return 0, err
+	}
+
+	return req.ID, nil
+}
+
+func writeMessagesAfterRequests(t *testing.T, c *websocket.Conn, messages []map[string]any) {
+	t.Helper()
+
+	for _, m := range messages {
+		if _, err := readWebsocketRequestID(c); err != nil {
+			t.Errorf("read websocket request id: %v", err)
+			return
+		}
+
+		if err := c.WriteJSON(m); err != nil {
+			t.Errorf("write websocket response: %v", err)
+			return
+		}
+	}
+}
+
+func receiveRequestResult(t *testing.T, resultChan <-chan requestResult) *ClientResponse {
+	t.Helper()
+
+	select {
+	case result := <-resultChan:
+		require.NoError(t, result.err)
+		return result.res
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for request result")
+	}
+
+	return nil
+}
+
+func newAccountChannelsRequest() *account.ChannelsRequest {
+	return &account.ChannelsRequest{
+		Account: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+	}
 }
 
 func TestClient_FundWallet(t *testing.T) {
@@ -1764,11 +1962,7 @@ func TestClient_FundWallet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ws := &testutil.MockWebSocketServer{Msgs: tt.serverMessages}
 			s := ws.TestWebSocketServer(func(c *websocket.Conn) {
-				for _, m := range tt.serverMessages {
-					if err := c.WriteJSON(m); err != nil {
-						t.Errorf("error writing message: %v", err)
-					}
-				}
+				writeMessagesAfterRequests(t, c, tt.serverMessages)
 			})
 			defer s.Close()
 

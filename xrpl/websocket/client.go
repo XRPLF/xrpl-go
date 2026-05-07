@@ -8,6 +8,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -60,7 +61,6 @@ type Client struct {
 
 	// Channels
 	errChan          chan error
-	requestChan      chan *ClientResponse
 	ledgerClosedChan chan *streamtypes.LedgerStream
 	validationChan   chan *streamtypes.ValidationStream
 	transactionChan  chan *streamtypes.TransactionStream
@@ -68,6 +68,9 @@ type Client struct {
 	orderBookChan    chan *streamtypes.OrderBookStream
 	bookChangesChan  chan *streamtypes.BookChangesStream
 	consensusChan    chan *streamtypes.ConsensusStream
+
+	pendingResponsesMu sync.Mutex
+	pendingResponses   map[int]chan *ClientResponse
 
 	idCounter atomic.Uint32
 	NetworkID uint32
@@ -77,10 +80,10 @@ type Client struct {
 // This client will open and close a websocket connection for each request.
 func NewClient(cfg ClientConfig) *Client {
 	return &Client{
-		cfg:         cfg,
-		requestChan: make(chan *ClientResponse),
-		errChan:     make(chan error),
-		conn:        NewConnection(cfg.host),
+		cfg:              cfg,
+		pendingResponses: make(map[int]chan *ClientResponse),
+		errChan:          make(chan error),
+		conn:             NewConnection(cfg.host),
 	}
 }
 
@@ -237,9 +240,9 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 		return nil, err
 	}
 
-	id := c.idCounter.Add(1)
+	id := int(c.idCounter.Add(1))
 
-	msg, err := c.formatRequest(req, int(id), nil)
+	msg, err := c.formatRequest(req, id, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -248,17 +251,20 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 		return nil, ErrNotConnectedToServer
 	}
 
+	responseChan := c.registerPendingResponse(id)
+	defer c.unregisterPendingResponse(id)
+
 	err = c.conn.WriteMessage(msg)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := c.awaitResponse(int(id))
+	res, err := c.awaitResponse(responseChan)
 	if err != nil {
 		return nil, err
 	}
 
-	if res.ID != int(id) {
+	if res.ID != id {
 		return nil, ErrIncorrectID
 	}
 	if err := res.CheckError(); err != nil {
@@ -724,16 +730,44 @@ func (c *Client) setTransactionFlags(tx *transaction.FlatTransaction) error {
 	return nil
 }
 
-func (c *Client) awaitResponse(id int) (*ClientResponse, error) {
-	for {
-		select {
-		case res := <-c.requestChan:
-			if res.ID == id {
-				return res, nil
-			}
-		case <-time.After(c.cfg.timeout):
-			return nil, ErrRequestTimedOut
-		}
+func (c *Client) registerPendingResponse(id int) chan *ClientResponse {
+	responseChan := make(chan *ClientResponse, 1)
+
+	c.pendingResponsesMu.Lock()
+	defer c.pendingResponsesMu.Unlock()
+
+	if c.pendingResponses == nil {
+		c.pendingResponses = make(map[int]chan *ClientResponse)
+	}
+	c.pendingResponses[id] = responseChan
+
+	return responseChan
+}
+
+func (c *Client) unregisterPendingResponse(id int) {
+	c.pendingResponsesMu.Lock()
+	defer c.pendingResponsesMu.Unlock()
+
+	delete(c.pendingResponses, id)
+}
+
+func (c *Client) pendingResponse(id int) (chan *ClientResponse, bool) {
+	c.pendingResponsesMu.Lock()
+	defer c.pendingResponsesMu.Unlock()
+
+	responseChan, ok := c.pendingResponses[id]
+	return responseChan, ok
+}
+
+func (c *Client) awaitResponse(responseChan <-chan *ClientResponse) (*ClientResponse, error) {
+	timer := time.NewTimer(c.cfg.timeout)
+	defer timer.Stop()
+
+	select {
+	case res := <-responseChan:
+		return res, nil
+	case <-timer.C:
+		return nil, ErrRequestTimedOut
 	}
 }
 
@@ -750,7 +784,15 @@ func (c *Client) handleMessage(message []byte) {
 func (c *Client) handleRequest(message []byte) {
 	var res ClientResponse
 	c.unmarshalMessage(message, &res)
-	c.requestChan <- &res
+	responseChan, ok := c.pendingResponse(res.ID)
+	if !ok {
+		return
+	}
+
+	select {
+	case responseChan <- &res:
+	default:
+	}
 }
 
 func (c *Client) unmarshalMessage(message []byte, v any) {
