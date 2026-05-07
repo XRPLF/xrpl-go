@@ -107,6 +107,10 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 		return false, err
 	}
 
+	if !IsHex256(n.NFTokenID.String()) {
+		return false, ErrInvalidNFTokenID
+	}
+
 	isSellOffer := flag.Contains(n.Flags, TfSellNFToken)
 	if isZeroNFTokenOfferAmount(n.Amount) && (!isSellOffer || n.Amount.Kind() != types.XRP) {
 		return false, ErrInvalidTokenValue

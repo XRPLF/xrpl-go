@@ -178,8 +178,8 @@ var (
 	// ErrEmptyNFTokenOffers is returned when the NFTokenOffers array contains no entries.
 	ErrEmptyNFTokenOffers = errors.New("the NFTokenOffers array must have at least one entry")
 
-	// ErrInvalidNFTokenID is returned when the NFTokenID is not a hexadecimal.
-	ErrInvalidNFTokenID = errors.New("invalid NFTokenID, must be a hexadecimal string")
+	// ErrInvalidNFTokenID is returned when the NFTokenID is not a 256-bit hexadecimal value.
+	ErrInvalidNFTokenID = errors.New("invalid NFTokenID, must be a 64-character hexadecimal string")
 
 	// ErrNFTokenBrokerFeeZero is returned when NFTokenBrokerFee is zero.
 	ErrNFTokenBrokerFeeZero = errors.New("nftoken accept offer: NFTokenBrokerFee cannot be zero")

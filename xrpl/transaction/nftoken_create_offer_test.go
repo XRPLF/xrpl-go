@@ -255,6 +255,50 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 			expectedErr: ErrMissingField{Field: "Amount"},
 		},
 		{
+			name: "fail - missing NFTokenID",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				Amount: types.XRPCurrencyAmount(1000000),
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+			expectedErr: ErrInvalidNFTokenID,
+		},
+		{
+			name: "fail - invalid NFTokenID",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "invalidNFTokenID",
+				Amount:    types.XRPCurrencyAmount(1000000),
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+			expectedErr: ErrInvalidNFTokenID,
+		},
+		{
+			name: "fail - short hex NFTokenID",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "ABC123",
+				Amount:    types.XRPCurrencyAmount(1000000),
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+			expectedErr: ErrInvalidNFTokenID,
+		},
+		{
 			name: "fail - buy offer XRP amount cannot be zero",
 			input: &NFTokenCreateOffer{
 				BaseTx: BaseTx{

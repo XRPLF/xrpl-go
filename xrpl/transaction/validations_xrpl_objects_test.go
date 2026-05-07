@@ -763,3 +763,40 @@ func TestIsDomainID(t *testing.T) {
 		})
 	}
 }
+
+func TestIsHex256(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "pass - valid 64 character hex",
+			input:    "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			expected: true,
+		},
+		{
+			name:     "fail - empty",
+			input:    "",
+			expected: false,
+		},
+		{
+			name:     "fail - short hex",
+			input:    "ABC123",
+			expected: false,
+		},
+		{
+			name:     "fail - 64 character non-hex",
+			input:    "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if result := IsHex256(tt.input); result != tt.expected {
+				t.Errorf("Expected IsHex256 to return %v, but got %v", tt.expected, result)
+			}
+		})
+	}
+}
