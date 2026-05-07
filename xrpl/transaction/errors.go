@@ -341,8 +341,12 @@ var (
 
 	// account
 
-	// ErrAccountSetInvalidSetFlag is returned when SetFlag is outside the valid range (1 to 16).
-	ErrAccountSetInvalidSetFlag = errors.New("account set: SetFlag must be an integer between AsfRequireDest (1) and AsfAllowTrustLineClawback (16)")
+	// ErrAccountSetInvalidSetFlag is returned when SetFlag is not a valid AccountSet flag.
+	ErrAccountSetInvalidSetFlag = errors.New("account set: SetFlag must be a valid AccountSet flag (1-17, excluding 11)")
+	// ErrAccountSetInvalidClearFlag is returned when ClearFlag is not a valid AccountSet flag.
+	ErrAccountSetInvalidClearFlag = errors.New("account set: ClearFlag must be a valid AccountSet flag (1-17, excluding 11)")
+	// ErrAccountSetInvalidTransferRate is returned when TransferRate is outside the valid range.
+	ErrAccountSetInvalidTransferRate = errors.New("account set: TransferRate must be 0 or between 1000000000 and 2000000000 inclusive")
 	// ErrAccountSetInvalidTickSize is returned when TickSize is outside the valid range (0 to 15 inclusive).
 	ErrAccountSetInvalidTickSize = errors.New("account set: TickSize must be an integer between 0 and 15 inclusive")
 

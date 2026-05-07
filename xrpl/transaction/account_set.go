@@ -73,6 +73,11 @@ const (
 	// MaxTickSize is the maximum tick size to use for offers involving a currency issued by this address.
 	// Valid values are 3 to 15 inclusive, or 0 to disable.
 	MaxTickSize = 15
+
+	minTransferRate uint32 = 1000000000
+	maxTransferRate uint32 = 2000000000
+
+	reservedAccountSetFlagHooks uint32 = 11
 )
 
 // An AccountSet transaction modifies the properties of an account in the XRP
@@ -407,11 +412,17 @@ func (s *AccountSet) Validate() (bool, error) {
 		return false, err
 	}
 
+	if !isValidAccountSetFlag(s.ClearFlag) {
+		return false, ErrAccountSetInvalidClearFlag
+	}
+
 	// check if SetFlag is within the valid range
-	if s.SetFlag != 0 {
-		if s.SetFlag < AsfRequireDest || s.SetFlag > AsfAllowTrustLineLocking {
-			return false, ErrAccountSetInvalidSetFlag
-		}
+	if !isValidAccountSetFlag(s.SetFlag) {
+		return false, ErrAccountSetInvalidSetFlag
+	}
+
+	if s.TransferRate != nil && !isValidTransferRate(*s.TransferRate) {
+		return false, ErrAccountSetInvalidTransferRate
 	}
 
 	// check if TickSize is within the valid range
@@ -420,4 +431,24 @@ func (s *AccountSet) Validate() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func isValidAccountSetFlag(flag uint32) bool {
+	if flag == 0 {
+		return true
+	}
+
+	if flag == reservedAccountSetFlagHooks {
+		return false
+	}
+
+	return flag >= AsfRequireDest && flag <= AsfAllowTrustLineLocking
+}
+
+func isValidTransferRate(transferRate uint32) bool {
+	if transferRate == 0 {
+		return true
+	}
+
+	return transferRate >= minTransferRate && transferRate <= maxTransferRate
 }
