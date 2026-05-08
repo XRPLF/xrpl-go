@@ -12,21 +12,25 @@ on:
         description: Is this a pre-release?
         type: boolean
         required: true
+permissions:
+  contents: read
 jobs:
   release:
     runs-on: ubuntu-latest
     name: Release
+    permissions:
+      contents: write # to create the git tag and publish the GitHub release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.commit_branch }}
           fetch-depth: 0
           fetch-tags: true
       - name: Publish the Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: ${{ github.event.inputs.tag }}
-          prerelease: github.event.inputs.is_pre_release
+          prerelease: ${{ github.event.inputs.is_pre_release }}
           target_commitish: ${{ github.event.inputs.commit_branch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
