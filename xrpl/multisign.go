@@ -3,6 +3,7 @@ package xrpl
 
 import (
 	"bytes"
+	"fmt"
 	"slices"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -71,12 +72,12 @@ func SortByAccountID[T any](items []T, account func(T) (string, error)) error {
 	for i, item := range items {
 		addr, err := account(item)
 		if err != nil {
-			return err
+			return fmt.Errorf("sort by account ID: extract account at index %d: %w", i, err)
 		}
 
 		_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(addr)
 		if err != nil {
-			return err
+			return fmt.Errorf("sort by account ID: decode account at index %d: %w", i, err)
 		}
 
 		sortable[i] = sortableItem{item: item, accountID: accountID}
