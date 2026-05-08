@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1108,6 +1109,107 @@ func TestAmount_ToJson(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAmount_ToJSONEnforcesCanonicalIOUValue(t *testing.T) {
+	defs := definitions.Get()
+	tests := []struct {
+		name        string
+		exponent    int
+		mantissa    uint64
+		expectedErr error
+	}{
+		{
+			name:        "fail - zero mantissa outside zero sentinel",
+			exponent:    0,
+			mantissa:    0,
+			expectedErr: errInvalidAmountValue,
+		},
+		{
+			name:        "fail - mantissa below canonical range",
+			exponent:    MaxIOUExponent,
+			mantissa:    MinIOUMantissa - 1,
+			expectedErr: errInvalidAmountValue,
+		},
+		{
+			name:        "fail - mantissa above canonical range",
+			exponent:    0,
+			mantissa:    MaxIOUMantissa + 1,
+			expectedErr: errInvalidAmountValue,
+		},
+		{
+			name:        "fail - exponent below canonical range",
+			exponent:    MinIOUExponent - 1,
+			mantissa:    MinIOUMantissa,
+			expectedErr: &OutOfRangeError{Type: "Exponent"},
+		},
+		{
+			name:        "fail - exponent above canonical range",
+			exponent:    MaxIOUExponent + 1,
+			mantissa:    MinIOUMantissa,
+			expectedErr: &OutOfRangeError{Type: "Exponent"},
+		},
+		{
+			name:        "pass - min exponent and min mantissa",
+			exponent:    MinIOUExponent,
+			mantissa:    MinIOUMantissa,
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - max exponent and max mantissa",
+			exponent:    MaxIOUExponent,
+			mantissa:    MaxIOUMantissa,
+			expectedErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := serdes.NewBinaryParser(issuedCurrencyAmountBytes(tt.exponent, tt.mantissa), defs)
+
+			actual, err := (&Amount{}).ToJSON(parser)
+
+			if tt.expectedErr != nil {
+				require.Nil(t, actual)
+				require.Equal(t, tt.expectedErr, err)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, actual)
+		})
+	}
+}
+
+func issuedCurrencyAmountBytes(exponent int, mantissa uint64) []byte {
+	serial := uint64(ZeroCurrencyAmountHex) // Set the not-XRP bit and start from the issued-currency zero pattern.
+	serial |= PosSignBitMask                // Set the positive sign bit so these fixtures only vary exponent and mantissa.
+	serial |= uint64(exponent+97) << 54     // Store the XRPL biased exponent in bits 54 through 61.
+	serial |= mantissa                      // Store the mantissa in the low 54 bits.
+
+	valueBytes := make([]byte, NativeAmountByteLength) // Allocate the 8-byte issued-currency value prefix.
+	binary.BigEndian.PutUint64(valueBytes, serial)     // Encode the 64-bit value in XRPL wire byte order.
+
+	currencyBytes := []byte{ // Build the 20-byte standard currency slot for USD.
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		'U', 'S', 'D', // Bytes 12 through 14 contain the standard currency code.
+		0x00, 0x00, 0x00, 0x00, 0x00,
+	}
+	issuerBytes := []byte{ // AccountID bytes for rweYz56rfmQ98cAdRaeTxQS9wVMGnrdsFp.
+		0x69, 0xd3, 0x3b, 0x18,
+		0xd5, 0x33, 0x85, 0xf8,
+		0xa3, 0x18, 0x55, 0x16,
+		0xc2, 0xed, 0xa5, 0xde,
+		0xdb, 0x8a, 0xc5, 0xc6,
+	}
+
+	data := make([]byte, 0, CurrencyAmountByteLength)
+	data = append(data, valueBytes...)
+	data = append(data, currencyBytes...)
+	data = append(data, issuerBytes...)
+
+	return data // Return value + currency + issuer in the binary amount layout.
 }
 
 // TestValueToString covers all branches of valueToString

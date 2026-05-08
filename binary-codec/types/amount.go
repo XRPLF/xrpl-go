@@ -253,6 +253,14 @@ func deserializeValue(data []byte) (string, error) {
 	exponent := e1 + e2 - 97
 	sigFigs := append([]byte{0, (b2 & 0x3F)}, valueBytes[2:]...)
 	sigFigsInt := binary.BigEndian.Uint64(sigFigs)
+	// The canonical zero amount is handled by deserializeToken before this path.
+	// Any value decoded here must be a normalized non-zero IOU amount.
+	if sigFigsInt < MinIOUMantissa || sigFigsInt > MaxIOUMantissa {
+		return "", errInvalidAmountValue
+	}
+	if exponent < MinIOUExponent || exponent > MaxIOUExponent {
+		return "", &OutOfRangeError{Type: "Exponent"}
+	}
 	d, err := bigdecimal.NewBigDecimal(sign + strconv.FormatUint(sigFigsInt, 10) + "e" + strconv.Itoa(exponent))
 	if err != nil {
 		return "", err
@@ -459,8 +467,8 @@ func serializeXrpAmount(value string) ([]byte, error) {
 
 // SerializeIssuedCurrencyValue serializes the value field of an issued currency amount to its bytes representation.
 func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
-	if verifyIOUValue(value) != nil {
-		return nil, verifyIOUValue(value)
+	if err := verifyIOUValue(value); err != nil {
+		return nil, err
 	}
 
 	bigDecimal, err := bigdecimal.NewBigDecimal(value)
