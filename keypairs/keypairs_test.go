@@ -13,11 +13,28 @@ import (
 )
 
 func TestGenerateEncodeSeed(t *testing.T) {
-	defaultEntropy := "fakeRandomString"
+	generatedEntropy := []byte("fakeRandomString")
+	legacyOverlongEntropy := []byte("setPasswordOverLen16")
+	legacyTruncatedEntropy := legacyOverlongEntropy[:addresscodec.FamilySeedLength]
+	rawEntropy := []byte{
+		0x10, 0x11, 0x12, 0x13,
+		0x14, 0x15, 0x16, 0x17,
+		0x18, 0x19, 0x1A, 0x1B,
+		0x1C, 0x1D, 0x1E, 0x1F,
+	}
+	shortEntropy := rawEntropy[:addresscodec.FamilySeedLength-1]
+	overlongEntropy := append(append([]byte{}, rawEntropy...), 0x20)
+
+	require.Len(t, generatedEntropy, addresscodec.FamilySeedLength)
+	require.Greater(t, len(legacyOverlongEntropy), addresscodec.FamilySeedLength)
+	require.Len(t, legacyTruncatedEntropy, addresscodec.FamilySeedLength)
+	require.Len(t, rawEntropy, addresscodec.FamilySeedLength)
+	require.Len(t, shortEntropy, addresscodec.FamilySeedLength-1)
+	require.Len(t, overlongEntropy, addresscodec.FamilySeedLength+1)
 
 	tt := []struct {
 		name        string
-		entropy     string
+		entropy     []byte
 		malleate    func() interfaces.Randomizer
 		algorithm   interfaces.KeypairCryptoAlg
 		expected    string
@@ -27,18 +44,18 @@ func TestGenerateEncodeSeed(t *testing.T) {
 			name: "fail - generate bytes error",
 			malleate: func() interfaces.Randomizer {
 				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return(nil, errors.New("error"))
+				rand.EXPECT().GenerateBytes(addresscodec.FamilySeedLength).AnyTimes().Return(nil, errors.New("error"))
 				return rand
 			},
 			expectedErr: errors.New("error"),
 			algorithm:   crypto.ED25519(),
 		},
 		{
-			name:    "pass - empty entropy should generate random seed (ED25519)",
-			entropy: "",
+			name:    "pass - nil entropy should generate random seed (ED25519)",
+			entropy: nil,
 			malleate: func() interfaces.Randomizer {
 				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return([]byte(defaultEntropy), nil)
+				rand.EXPECT().GenerateBytes(addresscodec.FamilySeedLength).AnyTimes().Return(generatedEntropy, nil)
 				return rand
 			},
 			algorithm:   crypto.ED25519(),
@@ -46,23 +63,28 @@ func TestGenerateEncodeSeed(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:    "pass - entropy defined and above family seed length (ED25519)",
-			entropy: "setPasswordOverLen16",
-			malleate: func() interfaces.Randomizer {
-				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return([]byte("setPasswordOverLen16"), nil)
-				return rand
-			},
+			name:        "pass - manually truncated legacy entropy keeps previous seed (ED25519)",
+			entropy:     legacyTruncatedEntropy,
 			algorithm:   crypto.ED25519(),
 			expected:    "sEdTuXdrgQobjDidph2oMDN36jGZX2U",
 			expectedErr: nil,
 		},
 		{
+			name:      "fail - raw entropy below family seed length",
+			entropy:   shortEntropy,
+			algorithm: crypto.ED25519(),
+			expectedErr: &addresscodec.EncodeLengthError{
+				Instance: "Entropy",
+				Input:    len(shortEntropy),
+				Expected: addresscodec.FamilySeedLength,
+			},
+		},
+		{
 			name:    "pass - empty entropy should generate random seed (SECP256K1)",
-			entropy: "",
+			entropy: []byte{},
 			malleate: func() interfaces.Randomizer {
 				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return([]byte(defaultEntropy), nil)
+				rand.EXPECT().GenerateBytes(addresscodec.FamilySeedLength).AnyTimes().Return(generatedEntropy, nil)
 				return rand
 			},
 			algorithm:   crypto.SECP256K1(),
@@ -70,27 +92,35 @@ func TestGenerateEncodeSeed(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:    "pass - entropy defined and above family seed length (SECP256K1)",
-			entropy: "setPasswordOverLen16",
-			malleate: func() interfaces.Randomizer {
-				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return([]byte("setPasswordOverLen16"), nil)
-				return rand
-			},
+			name:        "pass - manually truncated legacy entropy keeps previous seed (SECP256K1)",
+			entropy:     legacyTruncatedEntropy,
 			algorithm:   crypto.SECP256K1(),
 			expected:    "shJYdazRN9dvWbGqCehzHcBKWBaFR",
 			expectedErr: nil,
+		},
+		{
+			name:      "fail - raw entropy above family seed length",
+			entropy:   overlongEntropy,
+			algorithm: crypto.SECP256K1(),
+			expectedErr: &addresscodec.EncodeLengthError{
+				Instance: "Entropy",
+				Input:    len(overlongEntropy),
+				Expected: addresscodec.FamilySeedLength,
+			},
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			randomizer := tc.malleate()
+			var randomizer interfaces.Randomizer
+			if tc.malleate != nil {
+				randomizer = tc.malleate()
+			}
 			a, err := GenerateSeed(tc.entropy, tc.algorithm, randomizer)
 
 			if tc.expectedErr != nil {
 				require.Empty(t, a)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.EqualError(t, err, tc.expectedErr.Error())
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, a)

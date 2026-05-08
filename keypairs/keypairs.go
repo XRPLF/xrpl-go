@@ -11,21 +11,21 @@ const (
 	verificationMessage = "This test message should verify."
 )
 
-// GenerateSeed generates a seed from a given entropy, a crypto algorithm implementation and a randomizer.
-// If the entropy is empty, it generates a random seed. Otherwise, it uses the entropy to generate the seed.
+// GenerateSeed generates a seed from raw entropy, a crypto algorithm implementation and a randomizer.
+// If entropy is nil or empty, it generates a random seed. Otherwise, entropy must be exactly
+// addresscodec.FamilySeedLength bytes. Do not pass passphrases directly. For deterministic
+// passphrase-based seeds, hash or KDF the passphrase outside this function and pass exactly 16 derived bytes.
 // The seed is encoded using the addresscodec package.
-func GenerateSeed(entropy string, alg interfaces.KeypairCryptoAlg, r interfaces.Randomizer) (string, error) {
-	var pe []byte
-	var err error
-	if entropy == "" {
-		pe, err = r.GenerateBytes(addresscodec.FamilySeedLength)
+func GenerateSeed(entropy []byte, alg interfaces.KeypairCryptoAlg, r interfaces.Randomizer) (string, error) {
+	if len(entropy) == 0 {
+		pe, err := r.GenerateBytes(addresscodec.FamilySeedLength)
 		if err != nil {
 			return "", err
 		}
-	} else {
-		pe = []byte(entropy)[:addresscodec.FamilySeedLength]
+		return addresscodec.EncodeSeed(pe, alg)
 	}
-	return addresscodec.EncodeSeed(pe, alg)
+	// EncodeSeed validates that caller-supplied entropy is exactly FamilySeedLength bytes.
+	return addresscodec.EncodeSeed(entropy, alg)
 }
 
 // DeriveKeypair derives a key pair from a given seed. Returns a tuple of private key and public key.

@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
 
+#### keypairs
+
+- `GenerateSeed` now accepts caller-supplied entropy as `[]byte` instead of `string`. Empty or nil entropy still generates random entropy with the provided randomizer, while non-empty entropy must be exactly 16 raw bytes. Callers that need to recover old seeds generated from arbitrary strings must reproduce the legacy first-16-byte behavior outside this function.
+
 ### Added
 
 #### xrpl
@@ -40,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
 
 ### Fixed
+
+#### keypairs
+
+- `GenerateSeed` now rejects non-empty entropy whose length is not exactly 16 bytes, removing silent truncation of longer inputs and the panic on shorter inputs.
 
 #### xrpl
 
