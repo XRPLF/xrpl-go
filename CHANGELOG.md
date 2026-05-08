@@ -18,8 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - Added `LoanObject` and `LoanBrokerObject` `ObjectType` constants for `account_objects` query.
-- Added `GetLedgerEntry` method to the testutil integration `Client` interface.
+- Added `GetLedgerEntry` and `GetXrpBalanceValidated` methods to the testutil integration `Client` interface.
 - Updated lending protocol integration test with expanded lifecycle coverage.
+- Added `AutofillMultisigned` to the testutil integration `Client` interface and multisigned payment integration coverage.
 
 #### xrpl/rpc
 

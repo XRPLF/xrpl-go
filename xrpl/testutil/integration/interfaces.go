@@ -7,6 +7,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 )
 
@@ -21,6 +22,8 @@ type Client interface {
 
 	FundWallet(wallet *wallet.Wallet) error
 	Autofill(tx *transaction.FlatTransaction) error
+	AutofillMultisigned(tx *transaction.FlatTransaction, nSigners uint64) error
+	GetXrpBalanceValidated(address types.Address) (string, error)
 	SubmitTxBlob(txBlob string, failHard bool) (*transactions.SubmitResponse, error)
 	SubmitTxBlobAndWait(txBlob string, failHard bool) (*transactions.TxResponse, error)
 	SubmitMultisigned(blob string, validate bool) (*transactions.SubmitMultisignedResponse, error)
