@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### BREAKING CHANGES
+
+#### xrpl/transaction
+
+- All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
+
+### Added
+
+#### xrpl
+
+- Added `LoanObject` and `LoanBrokerObject` `ObjectType` constants for `account_objects` query.
+- Added `GetLedgerEntry` method to the testutil integration `Client` interface.
+- Updated lending protocol integration test with expanded lifecycle coverage.
+
+#### xrpl/rpc
+
+- `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+
+#### xrpl/websocket
+
+- `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+
+### Changed
+
+#### xrpl/rpc
+
+- `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+
+#### xrpl/websocket
+
+- `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+
+### Fixed
+
+#### xrpl
+
+- `fetchCounterPartySignersCount` in the RPC client now uses `"current"` ledger index instead of `"validated"` when fetching the loan broker and counterparty signer information, avoiding lookup failures before the transaction is validated.
+- `MPTokenIssuanceCreate` integration tests now handle RPC numeric fields decoded as `json.Number`.
+
+#### binary-codec
+
+- Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
+
 ## [v0.1.18]
 
 ### Added

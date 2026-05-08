@@ -62,7 +62,7 @@ func encodeVariableLength(length int) ([]byte, error) {
 	if length <= 192 {
 		return []byte{byte(length)}, nil
 	}
-	if length < 12480 {
+	if length <= 12480 {
 		length -= 193
 		b1 := byte((length >> 8) + 193)
 		b2 := byte((length & 0xFF))
