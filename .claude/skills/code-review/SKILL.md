@@ -13,15 +13,46 @@ This skill **does not** replace `/review` or `/security-review`. It's a **rule-b
 
 ### 1. Resolve scope
 
-Default: committed changes on the current branch vs `main`.
+**Default: this branch's *own* first-parent, non-merge commits vs `main`.** Not `git diff main...HEAD` — that semantic includes commits brought in by merging *other* feature branches into this one (e.g., chained-PR dependencies not yet on the base), causing reviewers to flag work that doesn't belong to this PR.
+
+Computing the PR's own scope:
+
+```bash
+# This branch's own commits (chronological)
+git log --first-parent main..HEAD --no-merges --reverse --format=%H
+
+# This branch's own file scope
+git log --first-parent main..HEAD --no-merges --name-only --format= | sort -u
+
+# This branch's own cumulative diff — feed this to subagents instead of `git diff main...HEAD`
+for sha in $(git log --first-parent main..HEAD --no-merges --reverse --format=%H); do
+  git show --format= "$sha"
+done
+```
+
+**Detect feature-merges** — merge commits in `main..HEAD` whose second parent is *not* an ancestor of `main`:
+
+```bash
+git log --merges main..HEAD --format=%H | while read sha; do
+  p2=$(git rev-parse "$sha^2")
+  if ! git merge-base --is-ancestor "$p2" main; then
+    echo "$sha $(git log -1 --format=%s "$sha")"
+  fi
+done
+```
+
+If any feature-merges are detected, prepend a banner to the report: `⚠️ N merged-in branch(es) excluded from review (not yet on <base>): <subjects>. Pass --include-merged-branches to include.`
+
+When `--include-merged-branches` is set, fall back to the broader `git diff main...HEAD` semantics (the PR plus any merged-in feature branches).
 
 **Prompt the user (`AskUserQuestion`) only on ambiguous cases:**
 
-| Situation                               | Ask                                                    |
-| --------------------------------------- | ------------------------------------------------------ |
-| Dirty tree, no `--include-*` flag       | committed only / + uncommitted / + untracked           |
-| Current branch == base (e.g. on `main`) | last commit / last N commits / pick a package / cancel |
-| Base does not exist                     | pick a base from `git branch -a`                       |
+| Situation                                            | Ask                                                                          |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Dirty tree, no `--include-*` flag                    | committed only / + uncommitted / + untracked                                 |
+| Current branch == base (e.g. on `main`)              | last commit / last N commits / pick a package / cancel                       |
+| Base does not exist                                  | pick a base from `git branch -a`                                             |
+| Zero first-parent non-merge commits, but feature-merges exist | review only this branch's own work (none) / include merged branches / cancel |
 
 If the user passed flags or a positional package, those resolve the ambiguity — don't re-prompt.
 
@@ -112,6 +143,7 @@ Banners (prepend if applicable):
 
 - Dirty tree without `--include-uncommitted`: "⚠️ N uncommitted file(s) not in this review. Run with --include-uncommitted to include."
 - Untracked `.go` files without `--include-untracked`: "⚠️ N untracked .go file(s) not reviewed: ..."
+- Feature-merges excluded (default first-parent scope): "⚠️ N merged-in branch(es) excluded from review (not yet on <base>): <subjects>. Pass --include-merged-branches to include."
 - Subagent unparseable: "⚠️ <reviewer> returned unparseable output."
 
 If zero findings after filtering: print one line — `✅ No issues found. The changes look good.`
