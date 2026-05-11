@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,6 +33,13 @@ func TestMultisign(t *testing.T) {
 			blobs: []string{},
 			err:   ErrNoTxToMultisign,
 		},
+		{
+			// Signer object encoded without an Account field, the codec round-trips it,
+			// so SortSigners is the one that rejects it via signerAccount.
+			name:  "fail - signer missing Account propagates ErrInvalidSigner",
+			blobs: []string{"12000024000000016140000000000F424068400000000000000C81149A51260615192AF5A94692D5F02EAB105D129F5183147990EC5D1D8DF69E070A968D4B186986FDF06ED0F3E0107321ED4CC509EF081781B7F562A216A1C19F5FFDC8EA4F3E0D1FB2D153A5E55F88346174400BA2FE2E0C220B635F3CDC4BFEB07CE1EC197EC4E33AF3F5E6FBD4A3C58381309EAC3C326943F7F144A60C9B8161A7CBB5AF289385EA22DD059ED80A481D510AE1F1"},
+			err:   ErrInvalidSigner,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -41,6 +49,7 @@ func TestMultisign(t *testing.T) {
 				require.ErrorIs(t, err, tc.err)
 				return
 			}
+
 			require.NoError(t, err)
 			require.Equal(t, tc.want, res)
 
@@ -51,6 +60,95 @@ func TestMultisign(t *testing.T) {
 			tx, err := binarycodec.Decode(res)
 			require.NoError(t, err)
 			require.Len(t, tx["Signers"], tc.wantSigners)
+		})
+	}
+}
+
+func TestSortByAccountID(t *testing.T) {
+	testCases := []struct {
+		name        string
+		accounts    []string
+		account     func(string) (string, error)
+		want        []string
+		expectedErr error
+	}{
+		{
+			name: "pass - sorts by account ID bytes",
+			accounts: []string{
+				"raHgU3KRBN6XYbEhi5JyJELSHtshTenYw",
+				"rrrrrrrrrrrrrrrrrrrrBZbvji",
+			},
+			account: func(account string) (string, error) {
+				return account, nil
+			},
+			want: []string{
+				"rrrrrrrrrrrrrrrrrrrrBZbvji",
+				"raHgU3KRBN6XYbEhi5JyJELSHtshTenYw",
+			},
+		},
+		{
+			name: "fail - returns error before sorting",
+			accounts: []string{
+				"raHgU3KRBN6XYbEhi5JyJELSHtshTenYw",
+				"rrrrrrrrrrrrrrrrrrrrBZbvji",
+			},
+			account: func(account string) (string, error) {
+				if account == "rrrrrrrrrrrrrrrrrrrrBZbvji" {
+					return "", ErrInvalidSigner
+				}
+				return account, nil
+			},
+			want: []string{
+				"raHgU3KRBN6XYbEhi5JyJELSHtshTenYw",
+				"rrrrrrrrrrrrrrrrrrrrBZbvji",
+			},
+			expectedErr: ErrInvalidSigner,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := SortByAccountID(tc.accounts, tc.account)
+			if tc.expectedErr != nil {
+				require.ErrorIs(t, err, tc.expectedErr)
+			} else {
+				require.NoError(t, err)
+			}
+
+			require.Equal(t, tc.want, tc.accounts)
+		})
+	}
+}
+
+func TestSortSignersReturnsErrors(t *testing.T) {
+	testCases := []struct {
+		name        string
+		signers     []any
+		expectedErr error
+	}{
+		{
+			name:        "fail - invalid signer",
+			signers:     []any{"invalid"},
+			expectedErr: ErrInvalidSigner,
+		},
+		{
+			name: "fail - invalid address",
+			signers: []any{
+				map[string]any{
+					"Signer": map[string]any{
+						"Account": "invalid",
+					},
+				},
+			},
+			expectedErr: addresscodec.ErrInvalidClassicAddress,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := SortSigners(tc.signers)
+
+			require.ErrorIs(t, err, tc.expectedErr)
 		})
 	}
 }

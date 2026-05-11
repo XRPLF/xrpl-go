@@ -17,4 +17,6 @@ var (
 	// ErrMultisignInvalidSigner is returned when signer data in a multisign blob
 	// is missing or has an unexpected shape.
 	ErrMultisignInvalidSigner = errors.New("invalid multisign signer data")
+	// ErrInvalidSigner is returned when a signer entry is malformed.
+	ErrInvalidSigner = errors.New("invalid signer")
 )

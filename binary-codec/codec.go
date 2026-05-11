@@ -75,7 +75,7 @@ func EncodeForMultisigning(json map[string]any, xrpAccountID string) (string, er
 		return "", err
 	}
 
-	encoded, err := Encode(removeNonSigningFields(json))
+	encoded, err := Encode(signingFieldsOnly(json))
 	if err != nil {
 		return "", err
 	}
@@ -85,7 +85,7 @@ func EncodeForMultisigning(json map[string]any, xrpAccountID string) (string, er
 
 // EncodeForSigning encodes a transaction into binary format in preparation for signing.
 func EncodeForSigning(json map[string]any) (string, error) {
-	encoded, err := Encode(removeNonSigningFields(json))
+	encoded, err := Encode(signingFieldsOnly(json))
 	if err != nil {
 		return "", err
 	}
@@ -173,8 +173,8 @@ func EncodeForSigningBatch(json map[string]any) (string, error) {
 	return strings.ToUpper(result.String()), nil
 }
 
-// removeNonSigningFields returns the fields from a JSON transaction object that should be signed.
-func removeNonSigningFields(json map[string]any) map[string]any {
+// signingFieldsOnly returns a new map containing only the fields from the JSON transaction that are signing fields.
+func signingFieldsOnly(json map[string]any) map[string]any {
 	signingFields := make(map[string]any, len(json))
 	for k, v := range json {
 		fi, _ := definitions.Get().GetFieldInstanceByFieldName(k)
