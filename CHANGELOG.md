@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### binary-codec
+
+- `Amount` serialization no longer accepts `float64` values. Use strings, `json.Number`, or exact amount types to preserve precision.
+
 #### xrpl/transaction
 
 - All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
