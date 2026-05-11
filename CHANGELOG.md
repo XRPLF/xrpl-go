@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### address-codec
+
+- `Decode` now validates Base58Check checksums and prefix lengths before slicing, preventing panics on malformed public key input.
+
 #### xrpl
 
 - `Multisign`, `CombineLoanSetCounterpartySigners`, and `CombineBatchSigners` now propagate signer sort errors and use canonical account ID byte ordering.
