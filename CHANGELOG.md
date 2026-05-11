@@ -9,14 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### binary-codec
+
+- `Amount` serialization no longer accepts `float64` values. Use strings, `json.Number`, or exact amount types to preserve precision.
+
+#### xrpl
+
+- `SortSigners` now returns an error when signer extraction or address decoding fails. Errors are wrapped with the failing item index to help diagnose which signer caused the failure.
+
 #### xrpl/transaction
 
 - All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
+
+#### binary-codec
+
+- Changed the exported `MaxDrops` constant to a typed `uint64` drops limit.
+- Removed the exported `MinXRP` constant. Native XRP amount serialization validates drops, not XRP-denominated decimal values.
 
 ### Added
 
 #### xrpl
 
+- Added `SortByAccountID` helper for canonical account ID byte ordering.
 - Added `LoanObject` and `LoanBrokerObject` `ObjectType` constants for `account_objects` query.
 - Added `GetLedgerEntry` method to the testutil integration `Client` interface.
 - Updated lending protocol integration test with expanded lifecycle coverage.
@@ -44,10 +58,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### address-codec
 
 - `DecodeSeed` now returns errors for checksum-valid seeds with invalid decoded lengths or unknown prefixes instead of reading past the decoded payload or treating them as secp256k1 seeds.
+- `Decode` now validates Base58Check checksums and prefix lengths before slicing, preventing panics on malformed public key input.
+
+#### binary-codec
+
+- `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
 
 #### xrpl
 
+- `Multisign`, `CombineLoanSetCounterpartySigners`, and `CombineBatchSigners` now propagate signer sort errors and use canonical account ID byte ordering.
 - `fetchCounterPartySignersCount` in the RPC client now uses `"current"` ledger index instead of `"validated"` when fetching the loan broker and counterparty signer information, avoiding lookup failures before the transaction is validated.
+- `MPTokenIssuanceCreate` integration tests now handle RPC numeric fields decoded as `json.Number`.
+
+#### binary-codec
+
+- IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
+- Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
+- Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
 
 ## [v0.1.18]
 

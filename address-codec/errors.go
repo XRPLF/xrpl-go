@@ -34,6 +34,8 @@ var (
 	ErrChecksum = errors.New("checksum error")
 	// ErrInvalidFormat indicates that the check-encoded string has an invalid format.
 	ErrInvalidFormat = errors.New("invalid format: version and/or checksum bytes missing")
+	// ErrB58PrefixMismatch indicates that the decoded base58 payload prefix does not match the expected type prefix.
+	ErrB58PrefixMismatch = errors.New("b58string prefix and typeprefix not equal")
 )
 
 // Dynamic errors

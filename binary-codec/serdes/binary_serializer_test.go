@@ -3,6 +3,7 @@ package serdes
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -33,10 +34,52 @@ func TestBinarySerializer_EncodeVariableLength(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:        "length more than 12841 ad less than 918744",
+			name:        "length more than 12841 and less than 918744",
 			len:         20000,
 			expected:    []byte{0xF1, 0x1D, 0x5F},
 			expectedErr: nil,
+		},
+		{
+			name:        "boundary - length 0",
+			len:         0,
+			expected:    []byte{0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "boundary - length 192 (max 1-byte)",
+			len:         192,
+			expected:    []byte{0xC0},
+			expectedErr: nil,
+		},
+		{
+			name:        "boundary - length 193 (min 2-byte)",
+			len:         193,
+			expected:    []byte{0xC1, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "boundary - length 12480 (max 2-byte)",
+			len:         12480,
+			expected:    []byte{0xF0, 0xFF},
+			expectedErr: nil,
+		},
+		{
+			name:        "boundary - length 12481 (min 3-byte)",
+			len:         12481,
+			expected:    []byte{0xF1, 0x00, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "boundary - length 918744 (max 3-byte)",
+			len:         918744,
+			expected:    []byte{0xFE, 0xD4, 0x17},
+			expectedErr: nil,
+		},
+		{
+			name:        "boundary - length 918745 (one past max)",
+			len:         918745,
+			expected:    nil,
+			expectedErr: ErrLengthPrefixTooLong,
 		},
 		{
 			name:        "length more than 918744",
@@ -59,6 +102,22 @@ func TestBinarySerializer_EncodeVariableLength(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
 			}
+		})
+	}
+}
+
+func TestBinarySerializer_VariableLength_RoundTrip(t *testing.T) {
+	lengths := []int{0, 192, 193, 12480, 12481, 918744}
+	for _, length := range lengths {
+		t.Run(fmt.Sprintf("length %d", length), func(t *testing.T) {
+			prefix, err := encodeVariableLength(length)
+			require.NoError(t, err)
+
+			parser := NewBinaryParser(prefix, definitions.Get())
+			decoded, err := parser.ReadVariableLength()
+			require.NoError(t, err)
+			require.Equal(t, length, decoded)
+			require.False(t, parser.HasMore(), "no extra bytes after prefix")
 		})
 	}
 }
