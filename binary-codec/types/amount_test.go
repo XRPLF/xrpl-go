@@ -38,9 +38,24 @@ func TestVerifyXrpValue(t *testing.T) {
 			expErr: nil,
 		},
 		{
+			name:   "pass - valid xrp value - zero drops",
+			input:  "0",
+			expErr: nil,
+		},
+		{
+			name:   "pass - valid xrp value - max drops",
+			input:  "100000000000000000",
+			expErr: nil,
+		},
+		{
 			name:   "pass - valid xrp value - no decimal - negative value",
 			input:  "-125000708",
 			expErr: &InvalidAmountError{Amount: "-125000708"},
+		},
+		{
+			name:   "fail - invalid xrp value - above max drops",
+			input:  "100000000000000001",
+			expErr: &InvalidAmountError{Amount: "100000000000000001"},
 		},
 	}
 	for _, tt := range tests {
@@ -201,7 +216,13 @@ func TestSerializeXrpAmount(t *testing.T) {
 			expErr:         nil,
 		},
 		{
-			name:           "boundary test - max xrp value",
+			name:           "boundary test - max drops",
+			input:          "100000000000000000",
+			expectedOutput: []byte{0x41, 0x63, 0x45, 0x78, 0x5d, 0x8a, 0x00, 0x00},
+			expErr:         nil,
+		},
+		{
+			name:           "boundary test - 10 billion XRP in drops",
 			input:          "10000000000000000",
 			expectedOutput: []byte{0x40, 0x23, 0x86, 0xf2, 0x6f, 0xc1, 0x00, 0x00},
 			expErr:         nil,
