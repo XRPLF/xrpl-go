@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "cleanupPeriodDays": 365,
+  "autoUpdatesChannel": "stable",
+  "enableAllProjectMcpServers": false,
+  "permissions": {
+    "ask": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)"
+    ],
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(mkfs *)",
+      "Bash(dd *)",
+      "Bash(chmod 777 *)",
+      "Bash(chmod -R 777 *)",
+      "Bash(chown *)",
+      "Bash(wget *|bash*)",
+      "Bash(wget *| bash*)",
+      "Bash(curl *|bash*)",
+      "Bash(curl *| bash*)",
+      "Bash(git push --force *)",
+      "Bash(git push --force-with-lease *)",
+      "Bash(git push * --force)",
+      "Bash(git push * --force *)",
+      "Bash(git push * --force-with-lease)",
+      "Bash(git push * --force-with-lease *)",
+      "Bash(git push -f *)",
+      "Bash(git push * -f)",
+      "Bash(git push * -f *)",
+      "Bash(git reset --hard*)",
+      "Bash(git branch -D *)",
+      "Bash(git branch * -D)",
+      "Bash(git branch * -D *)",
+      "Bash(git push * --delete *)",
+      "Bash(git push * :*)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.profile)",
+      "Edit(~/.bash_profile)",
+      "Edit(~/.ssh/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.git-credentials)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.kube/**)",
+      "Read(~/.npmrc)",
+      "Read(~/.npm/**)",
+      "Read(~/.pypirc)",
+      "Read(~/.gem/credentials)",
+      "Read(~/Library/Keychains/**)",
+      "Read(~/Library/Application Support/**/metamask*/**)",
+      "Read(~/Library/Application Support/**/electrum*/**)",
+      "Read(~/.config/google-chrome/**/Local Extension Settings/**)",
+      "Read(~/.config/chromium/**/Local Extension Settings/**)",
+      "Read(~/.config/BraveSoftware/**/Local Extension Settings/**)",
+      "Read(~/.mozilla/firefox/**/extensions/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CMD=$(jq -r '.tool_input.command'); if echo \"$CMD\" | grep -qE 'git[[:space:]]+push[[:space:]]+[^[:space:]]+[[:space:]]+(main|master)([[:space:]]|$)'; then echo 'BLOCKED: Use feature branches, not direct push to main' >&2; exit 2; fi"
+          },
+          {
+            "type": "command",
+            "command": "CMD=$(jq -r '.tool_input.command'); if echo \"$CMD\" | grep -qE 'git[[:space:]]+add[[:space:]]+(--all([[:space:]]|$)|-A([[:space:]]|$)|\\.([[:space:]]|$)|\\*([[:space:]]|$))'; then echo 'BLOCKED: Do not stage all files — they may contain secrets. Stage files individually.' >&2; exit 2; fi; if echo \"$CMD\" | grep -qE 'git[[:space:]]+add[[:space:]].*\\.env([[:space:]]|\\.|$)'; then echo 'BLOCKED: Do not stage .env files — they may contain secrets.' >&2; exit 2; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
