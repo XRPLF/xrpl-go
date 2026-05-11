@@ -1,4 +1,4 @@
-name: XRPL-GO Lint and Test
+name: Lint and Test
 on:
   push:
     branches: [main]
