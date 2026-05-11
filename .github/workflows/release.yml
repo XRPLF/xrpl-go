@@ -1,4 +1,4 @@
-name: XRPL-GO Release
+name: Release
 on:
   workflow_dispatch:
     inputs:
