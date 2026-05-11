@@ -131,8 +131,10 @@ func CombineLoanSetCounterpartySigners(transactions []transaction.FlatTransactio
 		return nil, "", err
 	}
 
-	// Sort signers ascending by numeric account ID.
-	xrpl.SortSigners(allSigners)
+	// Sort signers ascending by decoded account ID bytes.
+	if err := xrpl.SortSigners(allSigners); err != nil {
+		return nil, "", err
+	}
 
 	// Create a new transaction with all signers.
 	combined := make(transaction.FlatTransaction, len(transactions[0]))
