@@ -89,12 +89,12 @@ func shallowCopyWithoutSigners(tx map[string]any) map[string]any {
 func signersFromTx(tx map[string]any) ([]any, error) {
 	raw, ok := tx["Signers"]
 	if !ok {
-		return nil, fmt.Errorf("%w: missing Signers", ErrMultisignInvalidSigner)
+		return nil, fmt.Errorf("%w: missing Signers", ErrInvalidSigner)
 	}
 
 	signers, ok := raw.([]any)
 	if !ok || len(signers) == 0 {
-		return nil, fmt.Errorf("%w: Signers must be a non-empty array", ErrMultisignInvalidSigner)
+		return nil, fmt.Errorf("%w: Signers must be a non-empty array", ErrInvalidSigner)
 	}
 
 	return signers, nil
@@ -125,7 +125,10 @@ func validateSignerSignature(txWithoutSigners map[string]any, signer any) error 
 	}
 
 	valid, err := keypairs.Validate(string(payloadBytes), signingPubKey, txnSignature)
-	if err != nil || !valid {
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrMultisignInvalidSignature, err)
+	}
+	if !valid {
 		return ErrMultisignInvalidSignature
 	}
 	return nil
@@ -134,32 +137,32 @@ func validateSignerSignature(txWithoutSigners map[string]any, signer any) error 
 func signerFields(signer any) (account, signingPubKey, txnSignature string, err error) {
 	wrapper, ok := signer.(map[string]any)
 	if !ok {
-		return "", "", "", fmt.Errorf("%w: signer must be an object", ErrMultisignInvalidSigner)
+		return "", "", "", fmt.Errorf("%w: signer must be an object", ErrInvalidSigner)
 	}
 
 	rawSignerData, ok := wrapper["Signer"]
 	if !ok {
-		return "", "", "", fmt.Errorf("%w: missing Signer", ErrMultisignInvalidSigner)
+		return "", "", "", fmt.Errorf("%w: missing Signer", ErrInvalidSigner)
 	}
 
 	signerData, ok := rawSignerData.(map[string]any)
 	if !ok {
-		return "", "", "", fmt.Errorf("%w: Signer must be an object", ErrMultisignInvalidSigner)
+		return "", "", "", fmt.Errorf("%w: Signer must be an object", ErrInvalidSigner)
 	}
 
 	account, ok = signerData["Account"].(string)
 	if !ok || account == "" {
-		return "", "", "", fmt.Errorf("%w: missing Account", ErrMultisignInvalidSigner)
+		return "", "", "", fmt.Errorf("%w: missing Account", ErrInvalidSigner)
 	}
 
 	signingPubKey, ok = signerData["SigningPubKey"].(string)
 	if !ok || signingPubKey == "" {
-		return "", "", "", fmt.Errorf("%w: missing SigningPubKey", ErrMultisignInvalidSigner)
+		return "", "", "", fmt.Errorf("%w: missing SigningPubKey", ErrInvalidSigner)
 	}
 
 	txnSignature, ok = signerData["TxnSignature"].(string)
 	if !ok || txnSignature == "" {
-		return "", "", "", fmt.Errorf("%w: missing TxnSignature", ErrMultisignInvalidSigner)
+		return "", "", "", fmt.Errorf("%w: missing TxnSignature", ErrInvalidSigner)
 	}
 
 	return account, signingPubKey, txnSignature, nil
