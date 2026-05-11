@@ -1,12 +1,11 @@
 package wallet
 
 import (
-	"cmp"
 	"encoding/hex"
-	"slices"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/keypairs"
+	"github.com/Peersyst/xrpl-go/xrpl"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	wallettypes "github.com/Peersyst/xrpl-go/xrpl/wallet/types"
@@ -158,9 +157,11 @@ func CombineBatchSigners(transactions []transaction.Batch) (string, error) {
 		}
 	}
 
-	slices.SortFunc(signers, func(a, b types.BatchSigner) int {
-		return cmp.Compare(a.BatchSigner.Account, b.BatchSigner.Account)
-	})
+	if err := xrpl.SortByAccountID(signers, func(signer types.BatchSigner) (string, error) {
+		return signer.BatchSigner.Account.String(), nil
+	}); err != nil {
+		return "", err
+	}
 
 	tx := transactions[0]
 	tx.BatchSigners = signers
