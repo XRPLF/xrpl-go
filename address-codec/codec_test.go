@@ -91,7 +91,7 @@ func TestDecode(t *testing.T) {
 			res, err := Decode(tc.input, tc.inputPrefix)
 
 			if tc.expectedErr != nil {
-				require.EqualError(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedOutput, res)
@@ -478,7 +478,7 @@ func TestDecodeNodePublicKey(t *testing.T) {
 			res, err := DecodeNodePublicKey(tc.input)
 
 			if tc.expectedErr != nil {
-				require.EqualError(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedOutput, res)
@@ -548,7 +548,7 @@ func TestDecodeAccountPublicKey(t *testing.T) {
 			res, err := DecodeAccountPublicKey(tc.input)
 
 			if tc.expectedErr != nil {
-				require.EqualError(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.output, res)
