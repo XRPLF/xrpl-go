@@ -8,4 +8,6 @@ var (
 	// ErrMultisignNonEmptySigningPubKey is returned when SigningPubKey is not empty
 	// on one or more transactions passed to Multisign, it must be an empty string for all.
 	ErrMultisignNonEmptySigningPubKey = errors.New("SigningPubKey must be an empty string for all transactions when multisigning")
+	// ErrInvalidSigner is returned when a signer entry is malformed.
+	ErrInvalidSigner = errors.New("invalid signer")
 )
