@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -59,10 +58,8 @@ const (
 	// MPTAmountFlag is the flag used to identify MPToken amounts.
 	MPTAmountFlag = 0x20
 
-	// MinXRP is the minimum XRP amount in XRP units.
-	MinXRP = 1e-6
 	// MaxDrops is the maximum number of drops (100 billion XRP in drops).
-	MaxDrops = 1e17 // 100 billion XRP in drops aka 10^17
+	MaxDrops uint64 = 100_000_000_000_000_000
 
 	// IOUCodeRegex is the regular expression pattern for IOU currency codes.
 	IOUCodeRegex = `[0-9A-Za-z?!@#$%^&*<>(){}\[\]|]{3}`
@@ -86,7 +83,9 @@ var (
 	errInvalidCurrencyFormat         = errors.New("invalid currency")
 	errInvalidIssuerFormat           = errors.New("invalid issuer")
 	errInvalidAmountType             = errors.New("invalid amount type")
-	errFailedConvertStringToBigFloat = errors.New("failed to convert string to big.Float")
+	errFloat64AmountValue            = errors.New("float64 not allowed for amount value, string or json.Number must be used")
+
+	maxDropsBig = new(big.Int).SetUint64(MaxDrops)
 )
 
 // InvalidAmountError is a custom error type for invalid amounts.
@@ -344,29 +343,19 @@ func deserializeMPTAmount(data []byte) (map[string]any, error) {
 	}, nil
 }
 
-// verifyXrpValue validates the format of an XRP amount value.
-// XRP values should not contain a decimal point because they are represented as integers as drops.
+// verifyXrpValue validates the format and range of a native XRP amount in drops.
 func verifyXrpValue(value string) error {
-	r := regexp.MustCompile(`\d+`) // regex to match only digits
-	m := r.FindAllString(value, -1)
-
-	if len(m) != 1 {
+	drops, ok := new(big.Int).SetString(value, 10)
+	if !ok {
 		return errInvalidXRPValue
 	}
 
-	decimal := new(big.Float)
-	decimal, ok := decimal.SetString(value) // bigFloat for precision
-
-	if !ok {
-		return errFailedConvertStringToBigFloat
+	if drops.Sign() < 0 {
+		return &InvalidAmountError{Amount: value}
 	}
 
-	if decimal.Sign() == 0 {
-		return nil
-	}
-
-	if decimal.Cmp(big.NewFloat(MinXRP)) == -1 || decimal.Cmp(big.NewFloat(MaxDrops)) == 1 {
-		return &InvalidAmountError{value}
+	if drops.Cmp(maxDropsBig) > 0 {
+		return &InvalidAmountError{Amount: value}
 	}
 
 	return nil
@@ -432,8 +421,8 @@ func verifyMPTValue(value string) error {
 
 // serializeXrpAmount serializes an XRP amount value.
 func serializeXrpAmount(value string) ([]byte, error) {
-	if verifyXrpValue(value) != nil {
-		return nil, verifyXrpValue(value)
+	if err := verifyXrpValue(value); err != nil {
+		return nil, err
 	}
 
 	val, err := strconv.ParseUint(value, 10, 64)
@@ -688,10 +677,7 @@ func valueToString(v any) (string, error) {
 	case json.Number:
 		return x.String(), nil
 	case float64:
-		if x == math.Trunc(x) {
-			return strconv.FormatInt(int64(x), 10), nil
-		}
-		return strconv.FormatFloat(x, 'f', -1, 64), nil
+		return "", errFloat64AmountValue
 	default:
 		return "", fmt.Errorf("unsupported type %T for amount value", x)
 	}
