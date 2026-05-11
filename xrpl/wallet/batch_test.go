@@ -1,8 +1,10 @@
 package wallet
 
 import (
+	"bytes"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -523,7 +525,7 @@ func TestCombineBatchSigners(t *testing.T) {
 			postCheck: func(t *testing.T, result string, err error) {
 				require.NoError(t, err)
 
-				// Decode and verify that signers are sorted by account address
+				// Decode and verify that signers are sorted by account ID bytes
 				decoded, err := binarycodec.Decode(result)
 				require.NoError(t, err)
 
@@ -543,8 +545,13 @@ func TestCombineBatchSigners(t *testing.T) {
 					accounts[i] = account
 				}
 
-				// Verify that the accounts are sorted
-				require.Less(t, accounts[0], accounts[1], "Accounts should be sorted: %v", accounts)
+				_, accountID0, err := addresscodec.DecodeClassicAddressToAccountID(accounts[0])
+				require.NoError(t, err)
+
+				_, accountID1, err := addresscodec.DecodeClassicAddressToAccountID(accounts[1])
+				require.NoError(t, err)
+
+				require.Negative(t, bytes.Compare(accountID0, accountID1), "Accounts should be sorted: %v", accounts)
 			},
 		},
 		{

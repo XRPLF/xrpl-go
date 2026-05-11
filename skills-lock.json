@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "skills": {
+    "address-pr-comments": {
+      "source": "Peersyst/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/address-pr-comments/SKILL.md",
+      "computedHash": "73c92d1ef18710f617906fb1dc658e7a81454f38f03da232ef5ce8486519f90e"
+    },
+    "go-concurrency": {
+      "source": "Peersyst/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/go-concurrency/SKILL.md",
+      "computedHash": "7b5f6881bab99546dd893ca4b28791110f2c51f23570abf2c37142280291aa2f"
+    },
+    "go-data": {
+      "source": "Peersyst/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/go-data/SKILL.md",
+      "computedHash": "2951427c3555d9cabecb362ce2283f26d5636f43c03c33d7a569098c7092787e"
+    },
+    "go-design": {
+      "source": "Peersyst/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/go-design/SKILL.md",
+      "computedHash": "3b0780f1c161bb79c9eaf46a854b84904d3ae4bc389c6e4790acf548453042e9"
+    },
+    "go-errors": {
+      "source": "Peersyst/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/go-errors/SKILL.md",
+      "computedHash": "1eacee066199832d772ab5d1325c29571f428a9433481528a3f662c7c48ed35a"
+    },
+    "go-performance": {
+      "source": "Peersyst/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/go-performance/SKILL.md",
+      "computedHash": "3064c3255d56552ac9313bbe03836a234a14909789699ef25026f9ed74409295"
+    },
+    "grill-me": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/productivity/grill-me/SKILL.md",
+      "computedHash": "784f0dbb7403b0f00324bce9a112f715342777a0daee7bbb7385f9c6f0a170ea"
+    },
+    "pr-template": {
+      "source": "Peersyst/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/pr-template/SKILL.md",
+      "computedHash": "20b65ca3a32d7a6b1769aa1a4d5bc93ca4810a44d768ff01804b9bf561d2756e"
+    },
+    "xrpl-standards": {
+      "source": "Peersyst/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/xrpl-standards/SKILL.md",
+      "computedHash": "5e8d55dffad628bbfa66de0fb7810da4c32337f4cbcae8aa12ece5b12cc0e975"
+    }
+  }
+}
