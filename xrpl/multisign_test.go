@@ -3,8 +3,8 @@ package xrpl
 import (
 	"testing"
 
-	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,11 +34,9 @@ func TestMultisign(t *testing.T) {
 			err:   ErrNoTxToMultisign,
 		},
 		{
-			// Signer object encoded without an Account field, the codec round-trips it,
-			// so SortSigners is the one that rejects it via signerAccount.
-			name:  "fail - signer missing Account propagates ErrInvalidSigner",
+			name:  "fail - signer missing Account returns ErrMultisignInvalidSigner",
 			blobs: []string{"12000024000000016140000000000F424068400000000000000C81149A51260615192AF5A94692D5F02EAB105D129F5183147990EC5D1D8DF69E070A968D4B186986FDF06ED0F3E0107321ED4CC509EF081781B7F562A216A1C19F5FFDC8EA4F3E0D1FB2D153A5E55F88346174400BA2FE2E0C220B635F3CDC4BFEB07CE1EC197EC4E33AF3F5E6FBD4A3C58381309EAC3C326943F7F144A60C9B8161A7CBB5AF289385EA22DD059ED80A481D510AE1F1"},
-			err:   ErrInvalidSigner,
+			err:   ErrMultisignInvalidSigner,
 		},
 	}
 

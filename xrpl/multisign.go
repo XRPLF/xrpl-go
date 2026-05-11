@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"maps"
-	"sort"
 	"slices"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -67,7 +66,7 @@ func Multisign(blobs ...string) (string, error) {
 	if err := SortSigners(signers); err != nil {
 		return "", err
 	}
-	tx["Signers"] = signers
+	firstTx["Signers"] = signers
 
 	blob, err := binarycodec.Encode(firstTx)
 	if err != nil {
