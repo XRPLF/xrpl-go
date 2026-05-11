@@ -55,14 +55,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### binary-codec
+
+- `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
+- `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
+- 
 #### address-codec
 
 - `DecodeSeed` now returns errors for checksum-valid seeds with invalid decoded lengths or unknown prefixes instead of reading past the decoded payload or treating them as secp256k1 seeds.
 - `Decode` now validates Base58Check checksums and prefix lengths before slicing, preventing panics on malformed public key input.
-
-#### binary-codec
-
-- `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
 
 #### xrpl
 
