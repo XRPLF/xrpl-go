@@ -267,7 +267,7 @@ func TestDecodeSeed(t *testing.T) {
 			input:             "yurt",
 			expectedOutput:    nil,
 			expectedAlgorithm: crypto.ED25519(),
-			expectedErr:       errors.New("invalid seed; could not determine encoding algorithm"),
+			expectedErr:       ErrInvalidSeed,
 		},
 		{
 			name:              "fail - unsuccessful decode - invalid seed",
@@ -275,6 +275,34 @@ func TestDecodeSeed(t *testing.T) {
 			expectedOutput:    nil,
 			expectedAlgorithm: nil,
 			expectedErr:       ErrInvalidSeed,
+		},
+		{
+			name:              "fail - checksum valid decoded payload with length 1",
+			input:             Base58CheckEncode(nil, FamilySeedPrefix),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedLength,
+		},
+		{
+			name:              "fail - checksum valid secp256k1 seed with short entropy",
+			input:             Base58CheckEncode([]byte{0x00}, FamilySeedPrefix),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedLength,
+		},
+		{
+			name:              "fail - checksum valid ED25519 seed with short entropy",
+			input:             Base58CheckEncode([]byte{0x00}, crypto.ED25519().FamilySeedPrefix()...),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedLength,
+		},
+		{
+			name:              "fail - checksum valid unknown seed prefix",
+			input:             Base58CheckEncode([]byte("random"), 0x22),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedPrefix,
 		},
 	}
 
