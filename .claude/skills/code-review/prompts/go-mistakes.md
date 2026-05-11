@@ -28,7 +28,15 @@ You do **not** review: protocol/spec compliance (XRPL-domain reviewer covers it)
 - Include uncommitted: `{{INCLUDE_UNCOMMITTED}}`
 - Include untracked: `{{INCLUDE_UNTRACKED}}`
 
-Diff this branch against `{{BASE}}` for those files. If `INCLUDE_UNCOMMITTED=true`, include staged + unstaged changes. If `INCLUDE_UNTRACKED=true`, include untracked files. Read full files when context demands more than the diff.
+**Compute the diff from this branch's *own* commits only — do NOT use `git diff {{BASE}}...HEAD`.** That broader range can include commits brought in by merging sibling feature branches into this branch, which are out of scope. Use:
+
+```bash
+for sha in $(git log --first-parent {{BASE}}..HEAD --no-merges --reverse --format=%H); do
+  git show --format= "$sha" -- <file>
+done
+```
+
+If `INCLUDE_UNCOMMITTED=true`, also include staged + unstaged changes. If `INCLUDE_UNTRACKED=true`, include untracked files. Read full files when context demands more than the diff. Only flag what the *first-parent non-merge commits* introduce.
 
 ## Output
 

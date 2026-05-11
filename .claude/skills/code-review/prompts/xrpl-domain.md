@@ -26,7 +26,15 @@ You do **not** review Go anti-patterns (the go-mistakes reviewer does that), for
 - Include uncommitted: `{{INCLUDE_UNCOMMITTED}}`
 - Include untracked: `{{INCLUDE_UNTRACKED}}`
 
-Diff against `{{BASE}}` for those files; expand to staged/unstaged/untracked per the flags. Read full files when the diff alone isn't enough.
+**Compute the diff from this branch's *own* commits only — do NOT use `git diff {{BASE}}...HEAD`.** That broader range can include commits brought in by merging sibling feature branches into this branch, which are out of scope. Use:
+
+```bash
+for sha in $(git log --first-parent {{BASE}}..HEAD --no-merges --reverse --format=%H); do
+  git show --format= "$sha" -- <file>
+done
+```
+
+Expand to staged/unstaged/untracked per the flags. Read full files when the diff alone isn't enough. Only flag what the *first-parent non-merge commits* introduce.
 
 ## How to find specs — load the `xrpl-standards` skill
 
