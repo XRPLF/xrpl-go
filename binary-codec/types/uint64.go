@@ -2,13 +2,13 @@
 package types
 
 import (
-	"bytes"
 	"encoding/hex"
 	"errors"
 	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
 
 // UInt64 represents a 64-bit unsigned integer serialized from a hex JSON string.
@@ -18,19 +18,20 @@ type UInt64 struct{}
 var ErrInvalidUInt64String = errors.New("invalid UInt64 string, value should be a 1 to 16 character hex string")
 
 // FromJSON converts a JSON value into a serialized byte slice representing a 64-bit unsigned integer.
-// The input value must be a 1 to 16 character hex string. If the serialization fails, an error is returned.
+// The input value must be a 1 to 16 character hex string.
+//
+// Note: decimal-looking inputs are parsed as hex. "10" is read as 0x10 (= 16),
+// not decimal 10. Callers wanting decimal semantics must hex-encode first.
+//
+// Returns ErrInvalidUInt64String when the input is not a string, contains non-hex
+// characters, or exceeds 16 characters.
 func (u *UInt64) FromJSON(value any) ([]byte, error) {
-	buf := new(bytes.Buffer)
-
 	strValue, ok := value.(string)
 	if !ok {
 		return nil, ErrInvalidUInt64String
 	}
 
-	if len(strValue) > 16 {
-		return nil, ErrUInt64OutOfRange
-	}
-	if !isHex(strValue) {
+	if len(strValue) > 16 || !typecheck.IsHex(strValue) {
 		return nil, ErrInvalidUInt64String
 	}
 
@@ -40,9 +41,7 @@ func (u *UInt64) FromJSON(value any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	buf.Write(decoded)
-
-	return buf.Bytes(), nil
+	return decoded, nil
 }
 
 // ToJSON takes a BinaryParser and optional parameters, and converts the serialized byte data
@@ -54,23 +53,4 @@ func (u *UInt64) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 		return nil, err
 	}
 	return hexutil.EncodeToUpperHex(b), nil
-}
-
-func isHex(s string) bool {
-	if len(s) == 0 {
-		return false
-	}
-	for _, r := range s {
-		if r >= '0' && r <= '9' {
-			continue
-		}
-		if r >= 'A' && r <= 'F' {
-			continue
-		}
-		if r >= 'a' && r <= 'f' {
-			continue
-		}
-		return false
-	}
-	return true
 }

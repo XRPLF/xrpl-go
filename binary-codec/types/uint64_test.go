@@ -20,8 +20,20 @@ func TestUint64_FromJson(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name:        "fail - value is not a string",
+			name:        "fail - value is not a string (int)",
 			input:       1,
+			expected:    nil,
+			expectedErr: ErrInvalidUInt64String,
+		},
+		{
+			name:        "fail - value is not a string (nil)",
+			input:       nil,
+			expected:    nil,
+			expectedErr: ErrInvalidUInt64String,
+		},
+		{
+			name:        "fail - value is not a string (bool)",
+			input:       true,
 			expected:    nil,
 			expectedErr: ErrInvalidUInt64String,
 		},
@@ -38,10 +50,28 @@ func TestUint64_FromJson(t *testing.T) {
 			expectedErr: ErrInvalidUInt64String,
 		},
 		{
+			name:        "fail - 17-character hex string",
+			input:       "00000000000000000",
+			expected:    nil,
+			expectedErr: ErrInvalidUInt64String,
+		},
+		{
+			name:        "fail - smallest value above max uint64 (1 followed by 16 zeros)",
+			input:       "10000000000000000",
+			expected:    nil,
+			expectedErr: ErrInvalidUInt64String,
+		},
+		{
+			name:        "fail - 1 followed by 16 Fs",
+			input:       "1FFFFFFFFFFFFFFFF",
+			expected:    nil,
+			expectedErr: ErrInvalidUInt64String,
+		},
+		{
 			name:        "fail - decimal max uint64 exceeds hex string length",
 			input:       "18446744073709551615",
 			expected:    nil,
-			expectedErr: ErrUInt64OutOfRange,
+			expectedErr: ErrInvalidUInt64String,
 		},
 		{
 			name:        "pass - valid uint64 hex string",
@@ -157,6 +187,49 @@ func TestUint64_ToJson(t *testing.T) {
 			} else {
 				require.Equal(t, tc.expected, actual)
 			}
+		})
+	}
+}
+
+func TestUint64_RoundTrip(t *testing.T) {
+	defs := definitions.Get()
+
+	tt := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "lowercase short hex is zero-padded and upper-cased",
+			input: "abcdef",
+			want:  "0000000000ABCDEF",
+		},
+		{
+			name:  "single digit is zero-padded",
+			input: "1",
+			want:  "0000000000000001",
+		},
+		{
+			name:  "max value is preserved",
+			input: "FFFFFFFFFFFFFFFF",
+			want:  "FFFFFFFFFFFFFFFF",
+		},
+		{
+			name:  "mixed case is normalized to upper",
+			input: "AbCdEf",
+			want:  "0000000000ABCDEF",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			class := &UInt64{}
+			encoded, err := class.FromJSON(tc.input)
+			require.NoError(t, err)
+
+			decoded, err := class.ToJSON(serdes.NewBinaryParser(encoded, defs))
+			require.NoError(t, err)
+			require.Equal(t, tc.want, decoded)
 		})
 	}
 }
