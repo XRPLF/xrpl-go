@@ -133,7 +133,7 @@ func DecodeSeed(seed string) ([]byte, interfaces.CryptoImplementation, error) {
 
 	ed25519 := crypto.ED25519()
 	ed25519Prefix := ed25519.FamilySeedPrefix()
-	if len(decoded) >= len(ed25519Prefix) && bytes.Equal(decoded[:len(ed25519Prefix)], ed25519Prefix) {
+	if bytes.HasPrefix(decoded, ed25519Prefix) {
 		if len(decoded) != len(ed25519Prefix)+FamilySeedLength {
 			return nil, nil, ErrInvalidSeedLength
 		}
@@ -142,14 +142,14 @@ func DecodeSeed(seed string) ([]byte, interfaces.CryptoImplementation, error) {
 
 	secp256k1 := crypto.SECP256K1()
 	secp256k1Prefix := secp256k1.FamilySeedPrefix()
-	if len(decoded) == 0 || decoded[0] != FamilySeedPrefix {
-		return nil, nil, ErrInvalidSeedPrefix
-	}
-	if len(decoded) != len(secp256k1Prefix)+FamilySeedLength {
-		return nil, nil, ErrInvalidSeedLength
+	if bytes.HasPrefix(decoded, secp256k1Prefix) {
+		if len(decoded) != len(secp256k1Prefix)+FamilySeedLength {
+			return nil, nil, ErrInvalidSeedLength
+		}
+		return decoded[len(secp256k1Prefix):], secp256k1, nil
 	}
 
-	return decoded[len(secp256k1Prefix):], secp256k1, nil
+	return nil, nil, ErrInvalidSeedPrefix
 }
 
 // EncodeNodePublicKey returns the base58 encoding of a node public key byte slice.
