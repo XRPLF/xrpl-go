@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -84,6 +83,7 @@ var (
 	errInvalidCurrencyFormat         = errors.New("invalid currency")
 	errInvalidIssuerFormat           = errors.New("invalid issuer")
 	errInvalidAmountType             = errors.New("invalid amount type")
+	errFloat64AmountValue            = errors.New("float64 not allowed for amount value, string or json.Number must be used")
 
 	maxDropsBig = new(big.Int).SetUint64(MaxDrops)
 )
@@ -677,10 +677,7 @@ func valueToString(v any) (string, error) {
 	case json.Number:
 		return x.String(), nil
 	case float64:
-		if x == math.Trunc(x) {
-			return strconv.FormatInt(int64(x), 10), nil
-		}
-		return strconv.FormatFloat(x, 'f', -1, 64), nil
+		return "", errFloat64AmountValue
 	default:
 		return "", fmt.Errorf("unsupported type %T for amount value", x)
 	}
