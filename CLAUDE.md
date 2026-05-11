@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# XRPL-GO
 
 ## Essential Commands
 
@@ -158,9 +156,8 @@ The binary codec is critical for transaction signing and submission:
 - Use `binarycodec.EncodeForSigning()` when preparing transactions for signature
 
 ### Changelog
-Before finishing any task that changes code, update the changelog in **both** locations:
+Before finishing any task that changes code, update the changelog:
 1. `CHANGELOG.md` (root) — under the `[Unreleased]` section
-2. `docs/changelog/v0.1.x/<weight>_v0_1_<minor>.md` — the file for the current unreleased version
 
 Follow the existing format: group entries under `### Added`, `### Changed`, or `### Fixed`, with a `#### <package>` subheading. Keep entries concise but descriptive enough that users understand the impact.
 
