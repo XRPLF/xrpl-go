@@ -385,3 +385,49 @@ func TestNativeCurrencyRoundTripPreservesDrops(t *testing.T) {
 		})
 	}
 }
+
+func TestDecimalRatRejectsExpensiveInputs(t *testing.T) {
+	tt := []struct {
+		name  string
+		value string
+		ok    bool
+	}{
+		{
+			name:  "valid scientific notation",
+			value: "1e-6",
+			ok:    true,
+		},
+		{
+			name:  "valid exponent boundary",
+			value: "1e17",
+			ok:    true,
+		},
+		{
+			name:  "valid input length boundary",
+			value: "100000000000000000.000000",
+			ok:    true,
+		},
+		{
+			name:  "input too long",
+			value: "10000000000000000000000000000000000000000000000000000000000000000",
+			ok:    false,
+		},
+		{
+			name:  "positive exponent too large",
+			value: "1e18",
+			ok:    false,
+		},
+		{
+			name:  "negative exponent too large",
+			value: "1e-18",
+			ok:    false,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			_, ok := decimalRat(tc.value)
+			require.Equal(t, tc.ok, ok)
+		})
+	}
+}

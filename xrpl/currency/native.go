@@ -3,6 +3,7 @@ package currency
 
 import (
 	"math/big"
+	"strconv"
 	"strings"
 )
 
@@ -21,6 +22,10 @@ const (
 const (
 	dropsPerXRP = int64(1000000)
 	maxDrops    = uint64(100000000000000000)
+
+	maxNativeAmountDigits = 18
+	maxDecimalRatInputLen = maxNativeAmountDigits + 1 + int(MaxFractionLength)
+	maxDecimalRatExponent = maxNativeAmountDigits - 1
 )
 
 var (
@@ -88,8 +93,15 @@ func DropsToXrp(value string) (string, error) {
 }
 
 func decimalRat(value string) (*big.Rat, bool) {
-	if containsInvalidChar(value) {
+	if len(value) > maxDecimalRatInputLen || containsInvalidChar(value) {
 		return nil, false
+	}
+
+	if i := strings.IndexAny(value, "eE"); i >= 0 {
+		exp, err := strconv.Atoi(value[i+1:])
+		if err != nil || exp < -maxDecimalRatExponent || exp > maxDecimalRatExponent {
+			return nil, false
+		}
 	}
 
 	return new(big.Rat).SetString(value)
