@@ -83,7 +83,6 @@ var (
 	errInvalidCurrencyFormat         = errors.New("invalid currency")
 	errInvalidIssuerFormat           = errors.New("invalid issuer")
 	errInvalidAmountType             = errors.New("invalid amount type")
-	errFailedConvertStringToBigFloat = errors.New("failed to convert string to big.Float")
 	errFloat64AmountValue            = errors.New("float64 not allowed for amount value, string or json.Number must be used")
 
 	maxDropsBig = new(big.Int).SetUint64(MaxDrops)
