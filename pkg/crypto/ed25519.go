@@ -13,6 +13,9 @@ import (
 const (
 	// ed25519 prefix - value is 237
 	ed25519Prefix byte = 0xED
+	// XRPL Ed25519 keys are encoded as the ED prefix byte followed by the seed or public key bytes.
+	ed25519PrivateKeyLength = 1 + ed25519.SeedSize
+	ed25519PublicKeyLength  = 1 + ed25519.PublicKeySize
 )
 
 var (
@@ -63,7 +66,11 @@ func (c ED25519CryptoAlgorithm) DeriveKeypair(decodedSeed []byte, validator bool
 func (c ED25519CryptoAlgorithm) Sign(msg, privKey string) (string, error) {
 	b, err := hex.DecodeString(privKey)
 	if err != nil {
-		return "", err
+		return "", ErrInvalidPrivateKey
+	}
+	// The private key is sliced below to remove the ED prefix, so reject malformed lengths first.
+	if len(b) != ed25519PrivateKeyLength {
+		return "", ErrInvalidPrivateKey
 	}
 	rawPriv := ed25519.NewKeyFromSeed(b[1:])
 	signedMsg := ed25519.Sign(rawPriv, []byte(msg))
@@ -79,6 +86,10 @@ func (c ED25519CryptoAlgorithm) Validate(msg, pubkey, sig string) bool {
 
 	bs, err := hex.DecodeString(sig)
 	if err != nil {
+		return false
+	}
+	// Validate lengths before removing the ED prefix or passing malformed signatures to ed25519.Verify.
+	if len(bp) != ed25519PublicKeyLength || len(bs) != ed25519.SignatureSize {
 		return false
 	}
 

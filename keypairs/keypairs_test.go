@@ -211,6 +211,12 @@ func TestSign(t *testing.T) {
 			expectedErr:  ErrInvalidCryptoImplementation,
 		},
 		{
+			name:         "fail - malformed ED25519 private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "ED",
+			expectedErr:  crypto.ErrInvalidPrivateKey,
+		},
+		{
 			name:         "pass - sign a message with a ED25519 key",
 			inputMsg:     "hello world",
 			inputPrivKey: "EDBB3ECA8985E1484FA6A28C4B30FB0042A2CC5DF3EC8DC37B5F3D126DDFD3CA14",
@@ -224,7 +230,7 @@ func TestSign(t *testing.T) {
 			actual, err := Sign(tc.inputMsg, tc.inputPrivKey)
 			if tc.expectedErr != nil {
 				require.Empty(t, actual)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)

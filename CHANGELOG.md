@@ -79,6 +79,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
 - Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
 
+#### pkg/crypto
+
+- Ed25519 signing and validation now reject malformed key lengths before slicing decoded key bytes, preventing panics on malformed ED-prefixed keys.
+
 #### xrpl
 
 - `Multisign`, `CombineLoanSetCounterpartySigners`, and `CombineBatchSigners` now propagate signer sort errors and use canonical account ID byte ordering.
