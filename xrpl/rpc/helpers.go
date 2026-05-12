@@ -349,7 +349,7 @@ func (c *Client) getFeeXrp(cushion float32) (string, error) {
 	}
 
 	// Round fee to NUM_DECIMAL_PLACES
-	roundedFee := float32(math.Round(float64(fee)*math.Pow10(int(currency.MaxFractionLength)))) / float32(math.Pow10(int(currency.MaxFractionLength)))
+	roundedFee := float32(math.Round(float64(fee)*math.Pow10(currency.MaxFractionLength))) / float32(math.Pow10(currency.MaxFractionLength))
 
 	// Convert the rounded fee back to a string with NUM_DECIMAL_PLACES
 	return fmt.Sprintf("%.*f", currency.MaxFractionLength, roundedFee), nil

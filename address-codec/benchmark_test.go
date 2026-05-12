@@ -25,7 +25,6 @@ func BenchmarkEncodeBase58(b *testing.B) {
 
 // nolint
 func BenchmarkDecodeBase58(b *testing.B) {
-
 	tt := []struct {
 		description string
 		input       string
@@ -47,7 +46,6 @@ func BenchmarkDecodeBase58(b *testing.B) {
 
 // nolint
 func BenchmarkEncodeClassicAddressFromPublicKeyHex(b *testing.B) {
-
 	tt := []struct {
 		description string
 		input       string
@@ -77,7 +75,6 @@ func BenchmarkEncodeClassicAddressFromPublicKeyHex(b *testing.B) {
 			}
 		})
 	}
-
 }
 
 // nolint
