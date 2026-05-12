@@ -148,6 +148,41 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - valid sell offer with non-zero IOU amount",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					Currency: "USD",
+					Value:    "100",
+				},
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+		},
+		{
+			name: "pass - valid sell offer with non-zero MPT amount",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.MPTCurrencyAmount{
+					MPTIssuanceID: "00002A1F8B7E0C5E0A3B5B8B5B8B5B8B5B8B5B8B5B8B5B8B",
+					Value:         "42",
+				},
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+		},
+		{
 			name: "fail - invalid BaseTx, missing account",
 			input: &NFTokenCreateOffer{
 				BaseTx: BaseTx{

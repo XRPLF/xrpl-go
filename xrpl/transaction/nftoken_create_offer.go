@@ -1,8 +1,6 @@
 package transaction
 
 import (
-	"strconv"
-
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -71,6 +69,8 @@ func (*NFTokenCreateOffer) TxType() TxType {
 }
 
 // Flatten returns a map of the NFTokenCreateOffer transaction fields.
+// Optional or unset fields are omitted, callers must run Validate to enforce
+// presence of required fields before signing.
 func (n *NFTokenCreateOffer) Flatten() FlatTransaction {
 	flattened := n.BaseTx.Flatten()
 
@@ -112,7 +112,7 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 	}
 
 	isSellOffer := flag.Contains(n.Flags, TfSellNFToken)
-	if isZeroNFTokenOfferAmount(n.Amount) && (!isSellOffer || n.Amount.Kind() != types.XRP) {
+	if n.Amount.IsZero() && (!isSellOffer || n.Amount.Kind() != types.XRP) {
 		return false, ErrInvalidTokenValue
 	}
 
@@ -147,25 +147,4 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 	}
 
 	return true, nil
-}
-
-// isZeroNFTokenOfferAmount reports whether a valid amount represents zero.
-func isZeroNFTokenOfferAmount(amount types.CurrencyAmount) bool {
-	switch amount := amount.(type) {
-	case types.XRPCurrencyAmount:
-		return amount == 0
-	case types.IssuedCurrencyAmount:
-		value, err := strconv.ParseFloat(amount.Value, 64)
-		if err != nil {
-			return false
-		}
-		return value == 0
-	case types.MPTCurrencyAmount:
-		value, err := strconv.ParseInt(amount.Value, 10, 64)
-		if err != nil {
-			return false
-		}
-		return value == 0
-	}
-	return false
 }

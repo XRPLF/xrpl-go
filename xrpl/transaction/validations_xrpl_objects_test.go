@@ -776,6 +776,16 @@ func TestIsHex256(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "pass - valid 64 character uppercase hex",
+			input:    "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF",
+			expected: true,
+		},
+		{
+			name:     "pass - valid 64 character mixed-case hex",
+			input:    "1234567890AbCdEf1234567890aBcDeF1234567890ABcdef1234567890abCDEF",
+			expected: true,
+		},
+		{
 			name:     "fail - empty",
 			input:    "",
 			expected: false,

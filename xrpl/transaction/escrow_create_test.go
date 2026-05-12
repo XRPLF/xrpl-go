@@ -146,6 +146,52 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			expectedErr: ErrInvalidTokenFields,
 		},
 		{
+			name: "fail - zero XRP amount",
+			entry: &EscrowCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(0),
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				FinishAfter: 533171558,
+			},
+			expectedErr: ErrEscrowCreateZeroAmount,
+		},
+		{
+			name: "fail - zero IOU amount",
+			entry: &EscrowCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowCreateTx,
+				},
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					Currency: "USD",
+					Value:    "0",
+				},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				FinishAfter: 533171558,
+			},
+			expectedErr: ErrEscrowCreateZeroAmount,
+		},
+		{
+			name: "fail - zero MPT amount",
+			entry: &EscrowCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowCreateTx,
+				},
+				Amount: types.MPTCurrencyAmount{
+					MPTIssuanceID: "00002A1F8B7E0C5E0A3B5B8B5B8B5B8B5B8B5B8B5B8B5B8B",
+					Value:         "0",
+				},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				FinishAfter: 533171558,
+			},
+			expectedErr: ErrEscrowCreateZeroAmount,
+		},
+		{
 			name: "fail - invalid transaction with only CancelAfter",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{

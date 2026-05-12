@@ -45,6 +45,8 @@ func (*CheckCreate) TxType() TxType {
 }
 
 // Flatten returns the flattened map of the CheckCreate transaction.
+// Optional or unset fields are omitted, callers must run Validate to enforce
+// presence of required fields before signing.
 func (c *CheckCreate) Flatten() FlatTransaction {
 	flattened := c.BaseTx.Flatten()
 

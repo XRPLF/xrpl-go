@@ -49,6 +49,8 @@ func (*EscrowCreate) TxType() TxType {
 }
 
 // Flatten returns the flattened map of the EscrowCreate transaction.
+// Optional or unset fields are omitted, callers must run Validate to enforce
+// presence of required fields before signing.
 func (e *EscrowCreate) Flatten() FlatTransaction {
 	flattened := e.BaseTx.Flatten()
 
@@ -117,6 +119,10 @@ func (e *EscrowCreate) Validate() (bool, error) {
 
 	if ok, err := IsAmount(e.Amount, "Amount", true); !ok {
 		return false, err
+	}
+
+	if e.Amount.IsZero() {
+		return false, ErrEscrowCreateZeroAmount
 	}
 
 	if !addresscodec.IsValidAddress(e.Destination.String()) {

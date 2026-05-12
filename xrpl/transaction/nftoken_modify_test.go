@@ -84,6 +84,34 @@ func TestNFTokenModify_Validate(t *testing.T) {
 			errMessage:  nil,
 		},
 		{
+			name: "fail - invalid NFTokenID (short)",
+			nft: &NFTokenModify{
+				BaseTx: BaseTx{
+					Account:         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					TransactionType: NFTokenModifyTx,
+				},
+				Owner:     "rogue5HnPRSszD9CWGSUz8UGHMVwSSKF6",
+				NFTokenID: "deadbeef",
+			},
+			expectValid: false,
+			expectError: true,
+			errMessage:  ErrInvalidNFTokenID,
+		},
+		{
+			name: "fail - invalid NFTokenID (non-hex)",
+			nft: &NFTokenModify{
+				BaseTx: BaseTx{
+					Account:         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					TransactionType: NFTokenModifyTx,
+				},
+				Owner:     "rogue5HnPRSszD9CWGSUz8UGHMVwSSKF6",
+				NFTokenID: "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ",
+			},
+			expectValid: false,
+			expectError: true,
+			errMessage:  ErrInvalidNFTokenID,
+		},
+		{
 			name: "fail - invalid base transaction",
 			nft: &NFTokenModify{
 				BaseTx: BaseTx{

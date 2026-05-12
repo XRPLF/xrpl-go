@@ -238,6 +238,8 @@ var (
 
 	// ErrEscrowCreateInvalidDestinationAddress is returned when the destination address for EscrowCreate is invalid.
 	ErrEscrowCreateInvalidDestinationAddress = errors.New("escrow create: invalid destination address")
+	// ErrEscrowCreateZeroAmount is returned when the Amount field is zero.
+	ErrEscrowCreateZeroAmount = errors.New("escrow create: amount must be non-zero")
 	// ErrEscrowCreateNoConditionOrFinishAfterSet is returned when both Condition and FinishAfter are unset.
 	ErrEscrowCreateNoConditionOrFinishAfterSet = errors.New("escrow create: either Condition or FinishAfter must be specified")
 

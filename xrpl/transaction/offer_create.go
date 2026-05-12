@@ -92,6 +92,8 @@ func (*OfferCreate) TxType() TxType {
 }
 
 // Flatten returns a map of the OfferCreate transaction fields.
+// Optional or unset fields are omitted, callers must run Validate to enforce
+// presence of required fields before signing.
 func (o *OfferCreate) Flatten() FlatTransaction {
 	flattened := o.BaseTx.Flatten()
 

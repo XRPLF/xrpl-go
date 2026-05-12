@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `GetLedgerEntry` method to the testutil integration `Client` interface.
 - Updated lending protocol integration test with expanded lifecycle coverage.
 
+#### xrpl/transaction/types
+
+- Added `IsZero() bool` to the `CurrencyAmount` interface. Implementations check numeric value: `XRPCurrencyAmount` against `uint64` zero, `IssuedCurrencyAmount` via `math/big.Float` to stay faithful to the textual XLS-33 decimal (so amounts that underflow IEEE-754 are not falsely zero), and `MPTCurrencyAmount` via `strconv.ParseInt`. Renamed the existing `IssuedCurrencyAmount.IsZero` empty-struct check to `IsEmpty` to avoid clashing with the new value-zero semantics.
+
 #### xrpl/rpc
 
 - `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
@@ -60,6 +64,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/websocket
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+
+#### xrpl/transaction
+
+- `NFTokenCreateOffer.Validate` now reports `Amount` and `NFTokenID` errors before owner, destination, and flag errors. Callers that pattern-match on the first returned error from `Validate()` may observe a different error for the same input.
 
 ### Fixed
 
@@ -98,6 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `EscrowCreate`, `CheckCreate`, `NFTokenCreateOffer`, and `OfferCreate` now omit nil amount fields in `Flatten()` instead of panicking.
 - `EscrowCreate` and `NFTokenCreateOffer` now return validation errors for missing or malformed required amount fields. `NFTokenCreateOffer` also rejects missing or malformed 64-character hexadecimal `NFTokenID` values and zero amounts except XRP sell offers.
+- `EscrowCreate.Validate` now rejects zero `Amount` (XRP, IOU, or MPT) with `ErrEscrowCreateZeroAmount`, matching rippled's `temBAD_AMOUNT` rejection.
+- `NFTokenModify.Validate` now rejects short or non-hex `NFTokenID` values with `ErrInvalidNFTokenID`, matching the new `NFTokenBurn` and `NFTokenCreateOffer` checks.
 
 ## [v0.1.18]
 
