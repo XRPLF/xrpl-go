@@ -5,6 +5,7 @@ package wallet
 import (
 	"encoding/hex"
 	"fmt"
+	"maps"
 	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -138,9 +139,10 @@ func FromMnemonic(mnemonic string) (*Wallet, error) {
 // Sign signs a transaction offline, returning the transaction blob and its signature.
 // TODO: Refactor to accept a `Transaction` object instead of a map.
 func (w *Wallet) Sign(tx map[string]any) (string, string, error) {
-	tx["SigningPubKey"] = w.PublicKey
+	signTx := cloneTransactionMap(tx)
+	signTx["SigningPubKey"] = w.PublicKey
 
-	encodedTx, err := binarycodec.EncodeForSigning(tx)
+	encodedTx, err := binarycodec.EncodeForSigning(signTx)
 	if err != nil {
 		return "", "", err
 	}
@@ -150,9 +152,9 @@ func (w *Wallet) Sign(tx map[string]any) (string, string, error) {
 		return "", "", err
 	}
 
-	tx["TxnSignature"] = txHash
+	signTx["TxnSignature"] = txHash
 
-	txBlob, err := binarycodec.Encode(tx)
+	txBlob, err := binarycodec.Encode(signTx)
 	if err != nil {
 		return "", "", err
 	}
@@ -171,11 +173,12 @@ func (w *Wallet) GetAddress() types.Address {
 }
 
 // Multisign signs a multisigned transaction offline, returning the signed transaction blob and its transaction hash.
-// Note: this method sets tx["SigningPubKey"] = "" directly on the provided map (XRPL protocol requirement).
+// The transaction is signed using an internal copy and the provided map is not mutated.
 func (w *Wallet) Multisign(tx map[string]any) (string, string, error) {
+	signTx := cloneTransactionMap(tx)
 	// For regular multisigning, SigningPubKey must be empty per XRPL protocol.
-	tx["SigningPubKey"] = ""
-	encodedTx, err := binarycodec.EncodeForMultisigning(tx, w.ClassicAddress.String())
+	signTx["SigningPubKey"] = ""
+	encodedTx, err := binarycodec.EncodeForMultisigning(signTx, w.ClassicAddress.String())
 	if err != nil {
 		return "", "", err
 	}
@@ -193,8 +196,8 @@ func (w *Wallet) Multisign(tx map[string]any) (string, string, error) {
 		},
 	}
 
-	tx["Signers"] = []any{signer.Flatten()}
-	blob, err := binarycodec.Encode(tx)
+	signTx["Signers"] = []any{signer.Flatten()}
+	blob, err := binarycodec.Encode(signTx)
 	if err != nil {
 		return "", "", err
 	}
@@ -259,3 +262,9 @@ func ensureClassicAddress(account string) (types.Address, error) {
 // func (w *Wallet) GetXAddress() (string, error) {
 // 	return "", errors.New("not implemented")
 // }
+
+func cloneTransactionMap(tx map[string]any) map[string]any {
+	txCopy := make(map[string]any, len(tx))
+	maps.Copy(txCopy, tx)
+	return txCopy
+}

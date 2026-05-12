@@ -1,9 +1,12 @@
 package wallet
 
 import (
+	"maps"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewWalletFromSeed(t *testing.T) {
@@ -212,18 +215,43 @@ func TestSign(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			original := maps.Clone(tc.tx)
+
 			txBlob, hash, err := tc.wallet.Sign(tc.tx)
-			if err != nil {
-				t.Fatalf("Error signing transaction: %v", err)
-			}
+			require.NoError(t, err)
 
-			if txBlob == "" {
-				t.Error("Expected non-empty txBlob, got empty string")
-			}
-
-			if hash == "" {
-				t.Error("Expected non-empty hash, got empty string")
-			}
+			assert.Equal(t, tc.expectedTxBlob, txBlob)
+			assert.Equal(t, tc.expectedHash, hash)
+			assert.Equal(t, original, tc.tx, "Sign must not mutate the input transaction map")
+			assert.NotContains(t, tc.tx, "TxnSignature", "Sign must not add TxnSignature to the input map")
 		})
 	}
+}
+
+func TestMultisignDoesNotMutateInput(t *testing.T) {
+	wallet := &Wallet{
+		PublicKey:      "EDE5638D8055CCD45EBF7F5FFD59FC1703D6BC00800BBA19F158119DAA1A52A8D5",
+		PrivateKey:     "ED0A961B472E78B89F1AE6A7CC4FB55FD083B36661D3D124E1BA29998346AE1AA1",
+		ClassicAddress: "raJB6EHNSJa3jV7FqWNrAhcL6FEDE3PGc5",
+	}
+	tx := map[string]any{
+		"Account":         "raJB6EHNSJa3jV7FqWNrAhcL6FEDE3PGc5",
+		"TransactionType": "Payment",
+		"Amount":          "15",
+		"Destination":     "rDwvihpE48E48F8rvNrqTb2UGWv62xqYTg",
+		"Flags":           uint32(0),
+		"Fee":             "12",
+		"Sequence":        uint32(1798962),
+		"SigningPubKey":   "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+	}
+	original := maps.Clone(tx)
+
+	blob, hash, err := wallet.Multisign(tx)
+	require.NoError(t, err)
+	assert.NotEmpty(t, blob)
+	assert.NotEmpty(t, hash)
+
+	assert.Equal(t, original, tx, "Multisign must not mutate the input transaction map")
+	assert.NotContains(t, tx, "Signers", "Multisign must not add Signers to the input map")
+	assert.Equal(t, "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678", tx["SigningPubKey"], "Multisign must not overwrite SigningPubKey on the input map")
 }
