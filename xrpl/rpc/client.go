@@ -27,6 +27,12 @@ var (
 	fundWalletPollInterval = 1 * time.Second
 )
 
+// maxDrainBytes caps how much of an error response body is drained before
+// retrying. A small bounded drain lets the HTTP transport reuse the
+// connection via keep-alive when the body fits, and prevents a hostile
+// upstream from forcing an unbounded read when it doesn't.
+const maxDrainBytes = 4 << 10 // 4 KiB
+
 // Client is an XRPL RPC client for sending requests and managing transactions.
 type Client struct {
 	cfg *Config
@@ -52,12 +58,16 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 		return nil, err
 	}
 
-	maxRetries := 3
-	backoffDuration := 1 * time.Second
+	const maxAttempts = 4 // 1 initial attempt + 3 retries
+	backoffDuration := c.cfg.retryDelay
 
-	var response *http.Response
+	var (
+		response   *http.Response
+		cancelFunc context.CancelFunc
+	)
 
-	for attempt := 0; attempt <= maxRetries; attempt++ {
+	// cfg.timeout bounds a single attempt, not the full retry window.
+	for attempt := range maxAttempts {
 		ctx, cancel := context.WithTimeout(context.Background(), c.cfg.timeout)
 
 		req, err := http.NewRequestWithContext(
@@ -75,6 +85,11 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 
 		response, err = c.cfg.HTTPClient.Do(req)
 		if err != nil {
+			// net/http documents response as nil when Do returns an error, but
+			// custom HTTPClient impls may not follow that contract.
+			if response != nil {
+				_ = response.Body.Close()
+			}
 			cancel()
 			return nil, err
 		}
@@ -88,26 +103,29 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 		}
 
 		if response.StatusCode != http.StatusServiceUnavailable {
-			defer cancel()
-			defer func() {
-				_ = response.Body.Close()
-			}()
+			cancelFunc = cancel
 			break
 		}
 
 		// Drain and close the 503 response body before retrying so the connection
 		// can be reused by the HTTP client.
-		_, _ = io.Copy(io.Discard, response.Body)
+		_, _ = io.CopyN(io.Discard, response.Body, maxDrainBytes)
 		_ = response.Body.Close()
 		cancel()
 
-		if attempt == maxRetries {
+		if attempt == maxAttempts-1 {
 			return nil, &ClientError{ErrorString: "Server is overloaded, rate limit exceeded"}
 		}
 
+		// time.Sleep is non-cancellable. If Request ever accepts a caller
+		// context, switch to a select on ctx.Done() / time.After.
 		time.Sleep(backoffDuration)
 		backoffDuration *= 2
 	}
+	defer cancelFunc()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	var jr Response
 	jr, err = checkForError(response)
