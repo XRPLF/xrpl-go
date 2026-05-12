@@ -14,7 +14,7 @@ const (
 	// The conversion helpers use exact rational arithmetic internally instead of float64.
 	DropsPerXrp float64 = 1000000
 	// MaxFractionLength is the maximum allowed decimal places in an XRP value.
-	MaxFractionLength uint = 6
+	MaxFractionLength int = 6
 	// NativeCurrencySymbol is the symbol representing the native XRP currency.
 	NativeCurrencySymbol string = "XRP"
 )
@@ -24,7 +24,11 @@ const (
 	maxDrops    = uint64(100000000000000000)
 
 	maxNativeAmountDigits = 18
-	maxDecimalRatInputLen = maxNativeAmountDigits + 1 + int(MaxFractionLength)
+	// maxDecimalRatInputLen bounds plain decimal input to the largest drop amount plus a decimal point and XRP fraction
+	// 18 + 1 (decimal point) + 6 (fraction length).
+	maxDecimalRatInputLen = maxNativeAmountDigits + 1 + MaxFractionLength
+	// maxDecimalRatExponent bounds scientific notation before parsing to keep conversion work proportional to native amounts
+	// 1e17.
 	maxDecimalRatExponent = maxNativeAmountDigits - 1
 )
 
@@ -85,8 +89,8 @@ func DropsToXrp(value string) (string, error) {
 	}
 
 	fractionString := fraction.String()
-	if len(fractionString) < int(MaxFractionLength) {
-		fractionString = strings.Repeat("0", int(MaxFractionLength)-len(fractionString)) + fractionString
+	if len(fractionString) < MaxFractionLength {
+		fractionString = strings.Repeat("0", MaxFractionLength-len(fractionString)) + fractionString
 	}
 
 	return whole.String() + "." + strings.TrimRight(fractionString, "0"), nil
