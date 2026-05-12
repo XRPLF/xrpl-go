@@ -2,6 +2,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,17 +61,25 @@ type Client struct {
 	conn *Connection
 
 	// Channels
-	errChan          chan error
-	ledgerClosedChan chan *streamtypes.LedgerStream
-	validationChan   chan *streamtypes.ValidationStream
-	transactionChan  chan *streamtypes.TransactionStream
-	peerStatusChan   chan *streamtypes.PeerStatusStream
-	orderBookChan    chan *streamtypes.OrderBookStream
-	bookChangesChan  chan *streamtypes.BookChangesStream
-	consensusChan    chan *streamtypes.ConsensusStream
+	errorStream        lifecycleStream[error]
+	ledgerClosedStream lifecycleStream[*streamtypes.LedgerStream]
+	validationStream   lifecycleStream[*streamtypes.ValidationStream]
+	transactionStream  lifecycleStream[*streamtypes.TransactionStream]
+	peerStatusStream   lifecycleStream[*streamtypes.PeerStatusStream]
+	orderBookStream    lifecycleStream[*streamtypes.OrderBookStream]
+	bookChangesStream  lifecycleStream[*streamtypes.BookChangesStream]
+	consensusStream    lifecycleStream[*streamtypes.ConsensusStream]
 
-	pendingResponsesMu sync.Mutex
-	pendingResponses   map[int]chan *ClientResponse
+	// streamHandlerStateMu protects ctx, cancel, and coordinated start/reset
+	// operations on the registered lifecycleStream runners.
+	streamHandlerStateMu sync.Mutex
+	// streamHandlerResetMu serializes full lifecycle resets while old stream
+	// handler runners are waited on outside streamHandlerStateMu.
+	streamHandlerResetMu sync.Mutex
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	pendingResponsesMu   sync.Mutex
+	pendingResponses     map[int]chan *ClientResponse
 
 	idCounter atomic.Uint32
 	NetworkID uint32
@@ -79,26 +88,73 @@ type Client struct {
 // NewClient creates a new WebSocket client using the provided ClientConfig.
 // This client will open and close a websocket connection for each request.
 func NewClient(cfg ClientConfig) *Client {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
 	return &Client{
 		cfg:              cfg,
 		pendingResponses: make(map[int]chan *ClientResponse),
-		errChan:          make(chan error),
 		conn:             NewConnection(cfg.host),
+		ctx:              ctx,
+		cancel:           cancel,
 	}
 }
 
+func (c *Client) resetLifecycle() context.Context {
+	c.streamHandlerResetMu.Lock()
+	defer c.streamHandlerResetMu.Unlock()
+
+	c.streamHandlerStateMu.Lock()
+
+	c.cancel()
+	doneChannels := c.resetHandlerRunners()
+	c.streamHandlerStateMu.Unlock()
+
+	waitForHandlerRunners(doneChannels)
+
+	c.streamHandlerStateMu.Lock()
+	defer c.streamHandlerStateMu.Unlock()
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+	ctx := c.ctx
+	c.startRegisteredHandlers(ctx)
+
+	return ctx
+}
+
+func (c *Client) lifecycleContext() context.Context {
+	c.streamHandlerStateMu.Lock()
+	defer c.streamHandlerStateMu.Unlock()
+
+	return c.ctx
+}
+
+func (c *Client) cancelLifecycle() {
+	c.streamHandlerStateMu.Lock()
+	defer c.streamHandlerStateMu.Unlock()
+
+	c.cancel()
+	c.resetHandlerRunners()
+}
+
 // Connect opens a websocket connection to the server. It starts reading messages in a goroutine.
+// Do not call Connect synchronously from a stream or error handler. If a handler
+// needs to reconnect, start Connect in a separate goroutine or coordinate it
+// outside the handler callback.
 func (c *Client) Connect() error {
 	err := c.conn.Connect()
 	if err != nil {
 		return err
 	}
-	go c.readMessages()
+	ctx := c.resetLifecycle()
+	go c.readMessages(ctx)
 	return nil
 }
 
-// Disconnect closes the websocket connection.
+// Disconnect closes the websocket connection and cancels the current client
+// lifecycle, including registered handler runners, even when no connection is
+// currently open.
 func (c *Client) Disconnect() error {
+	c.cancelLifecycle()
 	return c.conn.Disconnect()
 }
 
@@ -771,19 +827,19 @@ func (c *Client) awaitResponse(responseChan <-chan *ClientResponse) (*ClientResp
 	}
 }
 
-func (c *Client) handleMessage(message []byte) {
+func (c *Client) handleMessage(ctx context.Context, message []byte) {
 	var stream wstypes.Message
-	c.unmarshalMessage(message, &stream)
+	c.unmarshalMessage(ctx, message, &stream)
 	if stream.IsRequest() {
-		c.handleRequest(message)
+		c.handleRequest(ctx, message)
 	} else if stream.IsStream() {
-		c.handleStream(stream.Type, message)
+		c.handleStream(ctx, stream.Type, message)
 	}
 }
 
-func (c *Client) handleRequest(message []byte) {
+func (c *Client) handleRequest(ctx context.Context, message []byte) {
 	var res ClientResponse
-	c.unmarshalMessage(message, &res)
+	c.unmarshalMessage(ctx, message, &res)
 	responseChan, ok := c.pendingResponse(res.ID)
 	if !ok {
 		return
@@ -795,93 +851,87 @@ func (c *Client) handleRequest(message []byte) {
 	}
 }
 
-func (c *Client) unmarshalMessage(message []byte, v any) {
+func (c *Client) unmarshalMessage(ctx context.Context, message []byte, v any) {
 	if err := json.Unmarshal(message, v); err != nil {
-		if c.errChan == nil {
-			c.errChan = make(chan error)
-		}
-		c.errChan <- err
+		c.reportError(ctx, err)
 	}
 }
 
-func (c *Client) handleStream(t streamtypes.Type, message []byte) {
+func (c *Client) handleStream(ctx context.Context, t streamtypes.Type, message []byte) {
 	switch t {
 	case streamtypes.LedgerStreamType:
 		var ledger streamtypes.LedgerStream
-		c.unmarshalMessage(message, &ledger)
-
-		if c.ledgerClosedChan != nil {
-			c.ledgerClosedChan <- &ledger
-		}
+		c.unmarshalMessage(ctx, message, &ledger)
+		c.reportLedgerClosed(ctx, &ledger)
 	case streamtypes.TransactionStreamType:
 		var transactionStream streamtypes.TransactionStream
-		c.unmarshalMessage(message, &transactionStream)
-		if c.transactionChan != nil {
-			c.transactionChan <- &transactionStream
-		}
+		c.unmarshalMessage(ctx, message, &transactionStream)
+		c.reportTransaction(ctx, &transactionStream)
 	case streamtypes.ValidationStreamType:
 		var validation streamtypes.ValidationStream
-		c.unmarshalMessage(message, &validation)
-		if c.validationChan != nil {
-			c.validationChan <- &validation
-		}
+		c.unmarshalMessage(ctx, message, &validation)
+		c.reportValidationReceived(ctx, &validation)
 	case streamtypes.PeerStatusStreamType:
 		var peerStatus streamtypes.PeerStatusStream
-		c.unmarshalMessage(message, &peerStatus)
-		if c.peerStatusChan != nil {
-			c.peerStatusChan <- &peerStatus
-		}
+		c.unmarshalMessage(ctx, message, &peerStatus)
+		c.reportPeerStatusChange(ctx, &peerStatus)
 	case streamtypes.ConsensusStreamType:
 		var consensus streamtypes.ConsensusStream
-		c.unmarshalMessage(message, &consensus)
-		if c.consensusChan != nil {
-			c.consensusChan <- &consensus
-		}
+		c.unmarshalMessage(ctx, message, &consensus)
+		c.reportConsensusPhase(ctx, &consensus)
 	default:
-		if c.errChan == nil {
-			c.errChan = make(chan error)
-		}
-		c.errChan <- ErrUnknownStreamType{
+		c.reportError(ctx, ErrUnknownStreamType{
 			Type: t,
-		}
+		})
 	}
 }
 
-func (c *Client) readMessages() {
+func (c *Client) readMessages(ctx context.Context) {
 	retryCount := 0
 	maxRetries := c.cfg.maxReconnects
 
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		if c.conn == nil {
 			return
 		}
 		message, err := c.conn.ReadMessage()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		switch {
 		case ws.IsCloseError(err) || ws.IsUnexpectedCloseError(err):
 			if retryCount >= maxRetries {
-				if c.errChan == nil {
-					c.errChan = make(chan error)
-				}
-				c.errChan <- ErrMaxReconnectionAttemptsReached{
+				c.reportError(ctx, ErrMaxReconnectionAttemptsReached{
 					Attempts: maxRetries,
-				}
+				})
 				return
 			}
 			retryCount++
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 			connErr := c.conn.Connect()
 			if connErr != nil {
-				if c.errChan == nil {
-					c.errChan = make(chan error)
-				}
-				c.errChan <- connErr
+				c.reportError(ctx, connErr)
 				return
 			}
 		case err != nil:
-			c.errChan <- err
+			c.reportError(ctx, err)
 			return
 		default:
 			// Send the message to the channel
-			c.handleMessage(message)
+			c.handleMessage(ctx, message)
 			// Reset retry count on successful message
 			retryCount = 0
 		}

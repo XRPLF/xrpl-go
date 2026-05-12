@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/websocket
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+- Documented that `Connect` must not be called synchronously from stream or error handlers.
 
 ### Fixed
 
@@ -59,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
 - `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
-- 
+
 #### address-codec
 
 - `DecodeSeed` now returns errors for checksum-valid seeds with invalid decoded lengths or unknown prefixes instead of reading past the decoded payload or treating them as secp256k1 seeds.
@@ -81,6 +82,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - WebSocket request responses are now dispatched by request ID, preventing late or out-of-order responses from blocking unrelated requests. Concurrent request writes are serialized on the shared connection.
 - Serialized concurrent WebSocket reads in `Connection.ReadMessage`, matching gorilla/websocket's single-reader contract.
+- WebSocket stream and error handlers now run through lifecycle-bound handler goroutines, avoiding handler leaks across disconnects.
+- WebSocket lifecycle reset and cancellation now serialize context swaps, handler runner resets, and handler restarts, preventing concurrent connect/disconnect interleavings from leaving stale stream runners.
+- WebSocket stream handler registration and stale reader dispatch now use the active lifecycle context atomically, preventing reconnect races from leaving handlers dormant or routing old messages into fresh handlers.
+- WebSocket lifecycle resets now wait for old stream runners to exit before starting replacements, preventing stale events from reaching fresh handlers after reconnect.
+- WebSocket stream reports now snapshot the active handler when queued, preventing in-flight stream events from being delivered to a later replacement handler.
+- WebSocket handler registration no longer starts handler runner goroutines before the first active client lifecycle.
 
 ## [v0.1.18]
 
