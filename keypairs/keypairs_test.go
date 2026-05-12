@@ -205,6 +205,18 @@ func TestSign(t *testing.T) {
 		expectedErr  error
 	}{
 		{
+			name:         "fail - empty private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "",
+			expectedErr:  ErrInvalidCryptoImplementation,
+		},
+		{
+			name:         "fail - short private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "E",
+			expectedErr:  ErrInvalidCryptoImplementation,
+		},
+		{
 			name:         "fail - invalid private key",
 			inputMsg:     "hello world",
 			inputPrivKey: "invalid",
@@ -248,6 +260,20 @@ func TestValidate(t *testing.T) {
 		expected    bool
 		expectedErr error
 	}{
+		{
+			name:        "fail - empty public key",
+			inputMsg:    "test message",
+			inputPubKey: "",
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidCryptoImplementation,
+		},
+		{
+			name:        "fail - short public key",
+			inputMsg:    "test message",
+			inputPubKey: "E",
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidCryptoImplementation,
+		},
 		{
 			name:        "fail - invalid public key",
 			inputMsg:    "test message",

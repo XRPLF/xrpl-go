@@ -12,6 +12,10 @@ import (
 // It returns nil if the key does not match any crypto implementation.
 // Currently, only ED25519 and SECP256K1 are supported.
 func getCryptoImplementationFromKey(k string) interfaces.KeypairCryptoAlg {
+	if len(k) < 2 {
+		return nil
+	}
+
 	prefix, err := hex.DecodeString(k[:2])
 	if err != nil {
 		return nil
