@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### xrpl/currency
+
+- Deprecated exported `DropsPerXrp`, it remains available for compatibility, but native amount conversion helpers use exact rational arithmetic internally instead of `float64`.
+- Changed `MaxFractionLength` from `uint` to `int` to match Go precision and length APIs without repeated casts.
+
 #### xrpl/rpc
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
@@ -60,6 +65,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `DecodeSeed` now returns errors for checksum-valid seeds with invalid decoded lengths or unknown prefixes instead of reading past the decoded payload or treating them as secp256k1 seeds.
 - `Decode` now validates Base58Check checksums and prefix lengths before slicing, preventing panics on malformed public key input.
+- IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
+- Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
+- Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
 
 #### binary-codec
 
@@ -78,6 +86,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Multisign` now rejects input blobs containing invalid signer signatures before returning an aggregated blob.
 - `Multisign` now returns `ErrInvalidSigner` for malformed signer data instead of panicking.
 - `MPTokenIssuanceCreate` integration tests now handle RPC numeric fields decoded as `json.Number`.
+
+#### xrpl/currency
+
+- XRP drops conversion helpers now use exact arithmetic and validate native amount bounds, preserving precision up to the maximum XRP supply.
+- Native amount conversion helpers now reject overly long decimal strings and large scientific-notation exponents before arbitrary-precision conversion.
 
 #### xrpl/rpc
 
