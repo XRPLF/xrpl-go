@@ -70,9 +70,9 @@ type Client struct {
 	consensusChan    chan *streamtypes.ConsensusStream
 
 	pendingResponsesMu sync.Mutex
-	pendingResponses   map[int]chan *ClientResponse
+	pendingResponses   map[uint64]chan *ClientResponse
 
-	idCounter atomic.Uint32
+	idCounter atomic.Uint64
 	NetworkID uint32
 }
 
@@ -81,7 +81,7 @@ type Client struct {
 func NewClient(cfg ClientConfig) *Client {
 	return &Client{
 		cfg:              cfg,
-		pendingResponses: make(map[int]chan *ClientResponse),
+		pendingResponses: make(map[uint64]chan *ClientResponse),
 		errChan:          make(chan error),
 		conn:             NewConnection(cfg.host),
 	}
@@ -240,22 +240,20 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 		return nil, err
 	}
 
-	id := int(c.idCounter.Add(1))
+	id := c.idCounter.Add(1)
 
 	msg, err := c.formatRequest(req, id, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if !c.IsConnected() {
-		return nil, ErrNotConnectedToServer
-	}
-
 	responseChan := c.registerPendingResponse(id)
 	defer c.unregisterPendingResponse(id)
 
-	err = c.conn.WriteMessage(msg)
-	if err != nil {
+	if err := c.conn.WriteMessage(msg); err != nil {
+		if errors.Is(err, ErrNotConnected) {
+			return nil, ErrNotConnectedToServer
+		}
 		return nil, err
 	}
 
@@ -264,9 +262,6 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 		return nil, err
 	}
 
-	if res.ID != id {
-		return nil, ErrIncorrectID
-	}
 	if err := res.CheckError(); err != nil {
 		return nil, err
 	}
@@ -462,7 +457,7 @@ func (c *Client) submitRequest(req *requests.SubmitRequest) (*requests.SubmitRes
 	return &subRes, nil
 }
 
-func (c *Client) formatRequest(req interfaces.Request, id int, marker any) ([]byte, error) {
+func (c *Client) formatRequest(req interfaces.Request, id uint64, marker any) ([]byte, error) {
 	m := make(map[string]any)
 	m["id"] = id
 	m["command"] = req.Method()
@@ -730,28 +725,25 @@ func (c *Client) setTransactionFlags(tx *transaction.FlatTransaction) error {
 	return nil
 }
 
-func (c *Client) registerPendingResponse(id int) chan *ClientResponse {
+func (c *Client) registerPendingResponse(id uint64) chan *ClientResponse {
 	responseChan := make(chan *ClientResponse, 1)
 
 	c.pendingResponsesMu.Lock()
 	defer c.pendingResponsesMu.Unlock()
 
-	if c.pendingResponses == nil {
-		c.pendingResponses = make(map[int]chan *ClientResponse)
-	}
 	c.pendingResponses[id] = responseChan
 
 	return responseChan
 }
 
-func (c *Client) unregisterPendingResponse(id int) {
+func (c *Client) unregisterPendingResponse(id uint64) {
 	c.pendingResponsesMu.Lock()
 	defer c.pendingResponsesMu.Unlock()
 
 	delete(c.pendingResponses, id)
 }
 
-func (c *Client) pendingResponse(id int) (chan *ClientResponse, bool) {
+func (c *Client) lookupPendingResponse(id uint64) (chan *ClientResponse, bool) {
 	c.pendingResponsesMu.Lock()
 	defer c.pendingResponsesMu.Unlock()
 
@@ -784,11 +776,13 @@ func (c *Client) handleMessage(message []byte) {
 func (c *Client) handleRequest(message []byte) {
 	var res ClientResponse
 	c.unmarshalMessage(message, &res)
-	responseChan, ok := c.pendingResponse(res.ID)
+	responseChan, ok := c.lookupPendingResponse(res.ID)
 	if !ok {
 		return
 	}
 
+	// Non-blocking send: drops duplicate or late responses for the same id
+	// rather than blocking the read loop.
 	select {
 	case responseChan <- &res:
 	default:

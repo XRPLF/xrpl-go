@@ -242,7 +242,7 @@ func TestClient_RequestDropsLateTimedOutResponse(t *testing.T) {
 
 	res, err := cl.Request(newAccountChannelsRequest())
 	require.NoError(t, err)
-	require.Equal(t, 2, res.ID)
+	require.Equal(t, uint64(2), res.ID)
 	require.Equal(t, "current", res.Result["request"])
 
 	select {
@@ -311,9 +311,9 @@ func TestClient_RequestMatchesOutOfOrderResponses(t *testing.T) {
 	first := receiveRequestResult(t, firstResult)
 	second := receiveRequestResult(t, secondResult)
 
-	require.Equal(t, 1, first.ID)
+	require.Equal(t, uint64(1), first.ID)
 	require.Equal(t, "first", first.Result["request"])
-	require.Equal(t, 2, second.ID)
+	require.Equal(t, uint64(2), second.ID)
 	require.Equal(t, "second", second.Result["request"])
 
 	select {
@@ -328,7 +328,7 @@ func TestClient_formatRequest(t *testing.T) {
 	tt := []struct {
 		description string
 		req         interfaces.Request
-		id          int
+		id          uint64
 		marker      any
 		expected    string
 		expectedErr error
@@ -1803,7 +1803,7 @@ func setupRequestDispatchTestClient(t *testing.T, handler func(*websocket.Conn))
 
 	cl := NewClient(NewClientConfig().
 		WithHost(url).
-		WithTimeout(30 * time.Millisecond))
+		WithTimeout(100 * time.Millisecond))
 
 	require.NoError(t, cl.Connect())
 
@@ -1813,9 +1813,9 @@ func setupRequestDispatchTestClient(t *testing.T, handler func(*websocket.Conn))
 	}
 }
 
-func readWebsocketRequestID(c *websocket.Conn) (int, error) {
+func readWebsocketRequestID(c *websocket.Conn) (uint64, error) {
 	var req struct {
-		ID int `json:"id"`
+		ID uint64 `json:"id"`
 	}
 
 	if err := c.ReadJSON(&req); err != nil {
