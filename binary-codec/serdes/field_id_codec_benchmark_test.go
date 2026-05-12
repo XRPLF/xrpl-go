@@ -10,7 +10,6 @@ import (
 
 // nolint
 func BenchmarkEncode(b *testing.B) {
-
 	tt := []struct {
 		input string
 	}{
@@ -34,7 +33,6 @@ func BenchmarkEncode(b *testing.B) {
 
 // nolint
 func BenchmarkDecode(b *testing.B) {
-
 	tt := []struct {
 		input []byte
 	}{
