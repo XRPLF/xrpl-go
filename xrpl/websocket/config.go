@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Peersyst/xrpl-go/xrpl/common"
+	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
 // ClientConfig configures options for the XRPL WebSocket client.
@@ -40,6 +41,7 @@ func NewClientConfig() *ClientConfig {
 // Default: "localhost"
 func (wc ClientConfig) WithHost(host string) ClientConfig {
 	wc.host = host
+	clientconfig.WarnIfInsecureScheme("websocket", wc.host)
 	return wc
 }
 

@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"bytes"
+	"log"
 	"net/http"
 	"testing"
 	"time"
@@ -54,6 +56,46 @@ func TestConfigCreation(t *testing.T) {
 		assert.Equal(t, &Config{HTTPClient: customHttpClient{}, URL: "http://s1.ripple.com:51234/", Headers: headers, maxRetries: common.DefaultMaxRetries, retryDelay: common.DefaultRetryDelay, feeCushion: common.DefaultFeeCushion, maxFeeXRP: common.DefaultMaxFeeXRP, faucetProvider: nil, timeout: common.DefaultTimeout}, cfg)
 		assert.NoError(t, err)
 	})
+}
+
+func TestNewClientConfigInsecureSchemeWarnings(t *testing.T) {
+	tests := []struct {
+		name        string
+		url         string
+		wantWarning string
+	}{
+		{
+			name:        "remote insecure scheme warns",
+			url:         "http://s1.ripple.com:51234",
+			wantWarning: `xrpl-go: warning: rpc client endpoint "http://s1.ripple.com:51234/" uses non-TLS scheme "http"`,
+		},
+		{
+			name: "local insecure scheme does not warn",
+			url:  "http://127.0.0.1:51234",
+		},
+		{
+			name: "remote tls scheme does not warn",
+			url:  "https://s1.ripple.com:51234",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logs := captureLogOutput(t, func() {
+				cfg, err := NewClientConfig(tt.url)
+
+				require.NoError(t, err)
+				require.NotNil(t, cfg)
+			})
+
+			if tt.wantWarning == "" {
+				require.Empty(t, logs)
+				return
+			}
+
+			require.Contains(t, logs, tt.wantWarning)
+		})
+	}
 }
 
 func TestWithMaxFeeXRP(t *testing.T) {
@@ -143,4 +185,22 @@ func TestWithRetryDelay(t *testing.T) {
 	cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithRetryDelay(retryDelay))
 
 	require.Equal(t, retryDelay, cfg.retryDelay)
+}
+
+func captureLogOutput(t *testing.T, fn func()) string {
+	t.Helper()
+
+	var buf bytes.Buffer
+	previousOutput := log.Writer()
+	previousFlags := log.Flags()
+	log.SetOutput(&buf)
+	log.SetFlags(0)
+	defer func() {
+		log.SetOutput(previousOutput)
+		log.SetFlags(previousFlags)
+	}()
+
+	fn()
+
+	return buf.String()
 }

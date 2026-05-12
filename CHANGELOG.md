@@ -79,6 +79,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Multisign` now returns `ErrInvalidSigner` for malformed signer data instead of panicking.
 - `MPTokenIssuanceCreate` integration tests now handle RPC numeric fields decoded as `json.Number`.
 
+#### xrpl/rpc
+
+- `NewClientConfig` now logs a warning when configured with a remote non-TLS URL scheme.
+
+#### xrpl/websocket
+
+- `ClientConfig.WithHost` now logs a warning when configured with a remote non-TLS URL scheme.
+
 ## [v0.1.18]
 
 ### Added

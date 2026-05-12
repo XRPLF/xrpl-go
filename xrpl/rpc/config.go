@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Peersyst/xrpl-go/xrpl/common"
+	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
 // HTTPClient defines the interface for sending HTTP requests.
@@ -116,6 +117,8 @@ func NewClientConfig(url string, opts ...ConfigOpt) (*Config, error) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+
+	clientconfig.WarnIfInsecureScheme("rpc", cfg.URL)
 
 	// Keep the default HTTP client aligned with the config timeout.
 	// If the HTTP client has a custom timeout, sync it to the config to prevent divergence.
