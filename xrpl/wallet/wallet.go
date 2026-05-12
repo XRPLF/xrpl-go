@@ -5,7 +5,6 @@ package wallet
 import (
 	"encoding/hex"
 	"fmt"
-	"maps"
 	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -141,11 +140,7 @@ func FromMnemonic(mnemonic string) (*Wallet, error) {
 func (w *Wallet) Sign(tx map[string]any) (string, string, error) {
 	tx["SigningPubKey"] = w.PublicKey
 
-	// Copy the transaction to avoid modifying the original transaction
-	signTx := make(map[string]any, len(tx))
-	maps.Copy(signTx, tx)
-
-	encodedTx, err := binarycodec.EncodeForSigning(signTx)
+	encodedTx, err := binarycodec.EncodeForSigning(tx)
 	if err != nil {
 		return "", "", err
 	}
