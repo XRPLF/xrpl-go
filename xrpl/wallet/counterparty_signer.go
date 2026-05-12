@@ -67,10 +67,7 @@ func SignLoanSetByCounterparty(
 	}
 	(*tx)["CounterpartySignature"] = counterpartySignatureMap
 
-	// Encode a copy because binarycodec.Encode mutates the map (deletes unknown fields).
-	encodeCopy := make(transaction.FlatTransaction, len(*tx))
-	maps.Copy(encodeCopy, *tx)
-	txBlob, err = binarycodec.Encode(encodeCopy)
+	txBlob, err = binarycodec.Encode(*tx)
 	if err != nil {
 		return "", "", err
 	}
@@ -141,10 +138,7 @@ func CombineLoanSetCounterpartySigners(transactions []transaction.FlatTransactio
 	maps.Copy(combined, transactions[0])
 	combined["CounterpartySignature"] = map[string]any{"Signers": allSigners}
 
-	// Encode a copy because binarycodec.Encode mutates the map (deletes unknown fields).
-	encodeCopy := make(transaction.FlatTransaction, len(combined))
-	maps.Copy(encodeCopy, combined)
-	encoded, err := binarycodec.Encode(encodeCopy)
+	encoded, err := binarycodec.Encode(combined)
 	if err != nil {
 		return nil, "", err
 	}
@@ -173,18 +167,13 @@ func CombineLoanSetCounterpartySignersBlob(blobs []string) (transaction.FlatTran
 }
 
 // encodeAndSign encodes tx for signing (multisig or single) and returns the hex signature.
-// A shallow copy of tx is used because EncodeForSigning/EncodeForMultisigning mutate the map
-// by removing non-signing fields, and the caller still needs the original fields (e.g. TxnSignature).
 func encodeAndSign(w *Wallet, tx transaction.FlatTransaction, multisign bool, addr string) (string, error) {
-	txCopy := make(transaction.FlatTransaction, len(tx))
-	maps.Copy(txCopy, tx)
-
 	var encoded string
 	var err error
 	if multisign {
-		encoded, err = binarycodec.EncodeForMultisigning(txCopy, addr)
+		encoded, err = binarycodec.EncodeForMultisigning(tx, addr)
 	} else {
-		encoded, err = binarycodec.EncodeForSigning(txCopy)
+		encoded, err = binarycodec.EncodeForSigning(tx)
 	}
 	if err != nil {
 		return "", err

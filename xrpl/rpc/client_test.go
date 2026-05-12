@@ -1,8 +1,11 @@
 package rpc
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"maps"
 	"net/http"
 	"reflect"
@@ -190,7 +193,7 @@ func TestClient_Request(t *testing.T) {
 			return testutil.MockResponse(response, 503, mc)(req)
 		}
 
-		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
+		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc), WithRetryDelay(0))
 		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
@@ -225,7 +228,7 @@ func TestClient_Request(t *testing.T) {
 			return testutil.MockResponse(sucessResponse, 200, mc)(req)
 		}
 
-		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
+		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc), WithRetryDelay(0))
 		require.NoError(t, err)
 
 		jsonRpcClient := NewClient(cfg)
@@ -250,16 +253,14 @@ func TestClient_Request(t *testing.T) {
 		assert.Equal(t, expected.LedgerHash, channelsResponse.LedgerHash)
 	})
 
-	t.Run("SendRequest - timeout", func(t *testing.T) {
+	t.Run("SendRequest - returns ClientError when HTTPClient returns (nil, nil)", func(t *testing.T) {
 		req := &account.ChannelsRequest{
 			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		}
 
 		mc := &testutil.JSONRPCMockClient{}
-		mc.DoFunc = func(req *http.Request) (*http.Response, error) {
-			// hit the timeout by not responding
-			time.Sleep(time.Second * 5)
-			return nil, errors.New("timeout")
+		mc.DoFunc = func(_ *http.Request) (*http.Response, error) {
+			return nil, nil
 		}
 
 		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
@@ -269,9 +270,88 @@ func TestClient_Request(t *testing.T) {
 
 		_, err = jsonRpcClient.Request(req)
 
-		// Check that the expected timeout error occurred
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "timeout")
+		var cerr *ClientError
+		require.ErrorAs(t, err, &cerr)
+		assert.Equal(t, "nil response from server", cerr.ErrorString)
+	})
+
+	t.Run("SendRequest - request body is rebuilt on every retry", func(t *testing.T) {
+		req := &account.ChannelsRequest{
+			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+		}
+
+		var bodiesSeen [][]byte
+		mc := &testutil.JSONRPCMockClient{}
+		mc.DoFunc = func(req *http.Request) (*http.Response, error) {
+			b, _ := io.ReadAll(req.Body)
+			bodiesSeen = append(bodiesSeen, b)
+			mc.RequestCount++
+			return testutil.MockResponse(`Service Unavailable`, 503, mc)(req)
+		}
+
+		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc), WithRetryDelay(0))
+		require.NoError(t, err)
+
+		jsonRpcClient := NewClient(cfg)
+
+		_, _ = jsonRpcClient.Request(req)
+
+		require.Equal(t, 4, mc.RequestCount)
+		require.Len(t, bodiesSeen, 4)
+		require.NotEmpty(t, bodiesSeen[0], "first attempt body should be non-empty")
+		for i := 1; i < len(bodiesSeen); i++ {
+			assert.Equal(t, bodiesSeen[0], bodiesSeen[i], "attempt %d should resend the same body", i+1)
+		}
+	})
+
+	t.Run("SendRequest - 503 response bodies are closed between retries", func(t *testing.T) {
+		req := &account.ChannelsRequest{
+			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+		}
+
+		var closes int
+		mc := &testutil.JSONRPCMockClient{}
+		mc.DoFunc = func(_ *http.Request) (*http.Response, error) {
+			mc.RequestCount++
+			return &http.Response{
+				StatusCode: 503,
+				Body: &countingReadCloser{
+					Reader:    bytes.NewReader([]byte(`Service Unavailable`)),
+					closeFunc: func() { closes++ },
+				},
+			}, nil
+		}
+
+		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc), WithRetryDelay(0))
+		require.NoError(t, err)
+
+		jsonRpcClient := NewClient(cfg)
+
+		_, _ = jsonRpcClient.Request(req)
+
+		assert.Equal(t, 4, mc.RequestCount)
+		assert.Equal(t, 4, closes, "Body.Close should be called once per 503 attempt")
+	})
+
+	t.Run("SendRequest - timeout", func(t *testing.T) {
+		req := &account.ChannelsRequest{
+			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+		}
+
+		mc := &testutil.JSONRPCMockClient{}
+		mc.DoFunc = func(req *http.Request) (*http.Response, error) {
+			<-req.Context().Done()
+			return nil, req.Context().Err()
+		}
+
+		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc), WithTimeout(time.Millisecond))
+		require.NoError(t, err)
+
+		jsonRpcClient := NewClient(cfg)
+
+		_, err = jsonRpcClient.Request(req)
+
+		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 }
 
@@ -1023,4 +1103,14 @@ func TestClient_FundWallet(t *testing.T) {
 			}
 		})
 	}
+}
+
+type countingReadCloser struct {
+	io.Reader
+	closeFunc func()
+}
+
+func (c *countingReadCloser) Close() error {
+	c.closeFunc()
+	return nil
 }
