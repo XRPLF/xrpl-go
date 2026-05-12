@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewWalletFromSeed(t *testing.T) {
@@ -224,6 +225,53 @@ func TestSign(t *testing.T) {
 			if hash == "" {
 				t.Error("Expected non-empty hash, got empty string")
 			}
+		})
+	}
+}
+
+func TestEnsureClassicAddress(t *testing.T) {
+	testCases := []struct {
+		name        string
+		input       string
+		expected    types.Address
+		expectedErr error
+	}{
+		{
+			name:     "pass - classic address is returned unchanged",
+			input:    "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+			expected: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+		},
+		{
+			name:     "pass - x-address without tag is converted to classic",
+			input:    "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+			expected: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+		},
+		{
+			name:        "fail - x-address with explicit zero tag is rejected",
+			input:       "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2m4Er6SnvjVLpMWPjR",
+			expectedErr: ErrAddressTagNotZero,
+		},
+		{
+			name:        "fail - x-address with non-zero tag is rejected",
+			input:       "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGZMhc9YTE92ehJ2Fu",
+			expectedErr: ErrAddressTagNotZero,
+		},
+		{
+			name:     "pass - non-x-address string is returned unchanged",
+			input:    "not-a-valid-address",
+			expected: "not-a-valid-address",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ensureClassicAddress(tc.input)
+			if tc.expectedErr != nil {
+				require.ErrorIs(t, err, tc.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, got)
 		})
 	}
 }

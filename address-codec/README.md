@@ -58,12 +58,12 @@ address, err := addresscodec.EncodeAccountIDToClassicAddress(accountID)
 // Encode an account ID + tag into an X-address
 xAddress, err := addresscodec.EncodeXAddress(accountID, tag, hasTag, isTestnet)
 
-// Decode an X-address back to account ID, tag, and network flag
-accountID, tag, isTestnet, err := addresscodec.DecodeXAddress(xAddress)
+// Decode an X-address back to account ID, tag, tag presence, and network flag
+accountID, tag, hasTag, isTestnet, err := addresscodec.DecodeXAddress(xAddress)
 
 // Convert between formats
 xAddress, err := addresscodec.ClassicAddressToXAddress(classicAddress, tag, hasTag, isTestnet)
-classicAddress, tag, isTestnet, err := addresscodec.XAddressToClassicAddress(xAddress)
+classicAddress, tag, hasTag, isTestnet, err := addresscodec.XAddressToClassicAddress(xAddress)
 ```
 
 ### Seeds and Keys
