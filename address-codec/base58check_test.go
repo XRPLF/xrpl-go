@@ -26,7 +26,6 @@ var testcases = []struct {
 }
 
 func TestCheckEncode(t *testing.T) {
-
 	for x, tc := range testcases {
 		// test encoding
 		if res := Base58CheckEncode([]byte(tc.in), tc.prefix...); res != tc.out {
@@ -36,7 +35,6 @@ func TestCheckEncode(t *testing.T) {
 }
 
 func TestCheckDecode(t *testing.T) {
-
 	for x, tc := range testcases {
 
 		res, err := Base58CheckDecode(tc.out)
