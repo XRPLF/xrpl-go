@@ -94,7 +94,7 @@ import (
 )
 
 func main() {
-	// Create a wallet from a seed
+	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
 	wallet, err := wallet.FromSeed("snGHNrPbHrdUcszeuDEigMdC1Lyyd", "")
 	if err != nil {
 		log.Fatal(err)

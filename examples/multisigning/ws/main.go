@@ -41,18 +41,21 @@ func main() {
 	fmt.Println("✅ Connected to testnet")
 	fmt.Println()
 
+	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
 	w1, err := wallet.FromSeed("sEdTtvLmJmrb7GaivhWoXRkvU4NDjVf", "")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
 	w2, err := wallet.FromSeed("sEdSFiKMQp7RvYLgH7t7FEpwNRWv2Gr", "")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
 	master, err := wallet.FromSeed("sEdTMm2yv8c8Rg8YHFHQA9TxVMFy1ze", "")
 	if err != nil {
 		fmt.Println(err)
