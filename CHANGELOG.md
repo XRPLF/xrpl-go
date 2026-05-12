@@ -90,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- `SignerListSet.Validate` now rejects duplicate signer accounts, signer entries that reference the transaction account, zero signer weights, and correctly handles signer weight sums above `uint16`.
+- `SignerListSet.Validate` now rejects duplicate signer accounts including classic/X-address equivalents, signer entries that reference the transaction account, zero signer weights, and correctly handles signer weight sums above `uint16`.
 
 #### xrpl/currency
 

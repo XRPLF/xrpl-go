@@ -119,10 +119,7 @@ func (s *SignerListSet) Validate() (bool, error) {
 
 	seenSignerAccounts := make(map[string]struct{}, len(s.SignerEntries))
 	sumSignerWeights := uint64(0)
-	txAccount, ok := classicAccountAddress(s.Account.String())
-	if !ok {
-		return false, ErrInvalidAccount
-	}
+	txAccount, _ := classicAccountAddress(s.Account.String())
 	for _, signerEntry := range s.SignerEntries {
 		// Check if WalletLocator is an hexadecimal string for each SignerEntry
 		if signerEntry.SignerEntry.WalletLocator != "" && !typecheck.IsHex(signerEntry.SignerEntry.WalletLocator.String()) {
@@ -140,7 +137,7 @@ func (s *SignerListSet) Validate() (bool, error) {
 			return false, ErrSignerAccountMatchesAccount
 		}
 
-		if _, ok := seenSignerAccounts[signerAccount]; ok {
+		if _, seen := seenSignerAccounts[signerAccount]; seen {
 			return false, ErrDuplicateSignerAccount
 		}
 		seenSignerAccounts[signerAccount] = struct{}{}
@@ -160,6 +157,10 @@ func (s *SignerListSet) Validate() (bool, error) {
 	return true, nil
 }
 
+// classicAccountAddress returns the classic form of either a classic or
+// X-address, ok is false if the input is neither. The X-address tag and
+// testnet flag are intentionally discarded, signer identity in XRPL is the
+// underlying account, not the destination tag.
 func classicAccountAddress(address string) (string, bool) {
 	if addresscodec.IsValidClassicAddress(address) {
 		return address, true

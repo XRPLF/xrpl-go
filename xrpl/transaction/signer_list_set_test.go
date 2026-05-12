@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -265,6 +266,40 @@ func TestSignerListSet_Validate(t *testing.T) {
 			entry: newSignerListSetTx(0),
 		},
 		{
+			name: "pass - SignerQuorum equal to sum of SignerWeights",
+			entry: newSignerListSetTx(
+				3,
+				newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 2),
+				newSignerListSetEntry("rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v", 1),
+			),
+		},
+		{
+			name:  "pass - MaxSigners unique SignerEntries",
+			entry: newSignerListSetTx(1, newUniqueSignerListSetEntries(MaxSigners)...),
+		},
+		{
+			name: "fail - malformed X-address signer entry",
+			entry: newSignerListSetTx(
+				1,
+				// Valid X-address corrupted in the checksum region.
+				newSignerListSetEntry("XVYRdEocC28DRx94ZFGP3qNJ1D5Ln7ecXFMd3vREB5Pesjz", 1),
+			),
+			expectedErr: ErrInvalidAccount,
+		},
+		{
+			name: "fail - X-address with tag matches classic signer account",
+			entry: &SignerListSet{
+				BaseTx: BaseTx{
+					Account:         "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGxLBw6rACm2heBxVn",
+					TransactionType: SignerListSetTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				SignerQuorum:  uint32(1),
+				SignerEntries: []ledger.SignerEntryWrapper{newSignerListSetEntry("r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", 1)},
+			},
+			expectedErr: ErrSignerAccountMatchesAccount,
+		},
+		{
 			name: "fail - invalid SignerListSet with SignerQuorum 0 but a SignerEntries not empty",
 			entry: newSignerListSetTx(
 				0,
@@ -322,6 +357,17 @@ func newSignerListSetEntries(count int) []ledger.SignerEntryWrapper {
 	entries := make([]ledger.SignerEntryWrapper, count)
 	for i := range entries {
 		entries[i] = newSignerListSetEntry("rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW", 1)
+	}
+	return entries
+}
+
+func newUniqueSignerListSetEntries(count int) []ledger.SignerEntryWrapper {
+	entries := make([]ledger.SignerEntryWrapper, count)
+	for i := range entries {
+		accountID := make([]byte, addresscodec.AccountAddressLength)
+		accountID[0] = byte(i + 1)
+		address, _ := addresscodec.EncodeAccountIDToClassicAddress(accountID)
+		entries[i] = newSignerListSetEntry(address, 1)
 	}
 	return entries
 }
