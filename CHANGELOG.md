@@ -46,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### pkg/decodehook
+
+- Replaced the archived mapstructure dependency with `github.com/go-viper/mapstructure/v2 v2.5.0` while preserving existing decode hook behavior.
+
 #### xrpl/currency
 
 - Deprecated exported `DropsPerXrp`, it remains available for compatibility, but native amount conversion helpers use exact rational arithmetic internally instead of `float64`.
