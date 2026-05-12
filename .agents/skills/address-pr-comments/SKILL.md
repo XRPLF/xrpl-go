@@ -44,6 +44,14 @@ Fetch general conversation comments (non-inline):
 gh api repos/OWNER/REPO/issues/PR_NUMBER/comments
 ```
 
+Fetch review submissions — these carry the **review body** (the top-level summary a reviewer writes when submitting a review), which is distinct from inline comments and is otherwise missed:
+
+```bash
+gh api repos/OWNER/REPO/pulls/PR_NUMBER/reviews
+```
+
+Treat every review entry whose `body` is non-empty as a comment to triage. Its `id` is the `review_id` used for replies. Ignore reviews with an empty `body` (they only carry inline comments, which are already fetched above).
+
 Also fetch PR metadata for context:
 
 ```bash
@@ -52,16 +60,24 @@ gh pr view PR_NUMBER --repo OWNER/REPO --json number,title,author,headRefName,st
 
 ## Step 2: Parse and group comments
 
+A "comment" in this skill means any of three things:
+
+-   **Inline review comment** — tied to a file and line (from `/pulls/{pr}/comments`)
+-   **Conversation comment** — general PR-level (from `/issues/{pr}/comments`)
+-   **Review body** — the top-level summary attached to a review submission (from `/pulls/{pr}/reviews`, when `body` is non-empty)
+
 Group comments by:
 
 1. **File + line** for inline review comments
 2. **Conversation thread** — group replies together, show only the root comment for triage
-3. **Author** — note who left the comment
+3. **Review body** — one entry per review with a non-empty body (no file/line; tag as `Review`)
+4. **Author** — note who left the comment
 
 Skip:
 
--   **Self-comments** — match against `git config user.name` and the PR author login
+-   **Self-comments** — match against `git config user.name` and the PR author login (applies to inline, conversation, and review bodies)
 -   **Reply comments** — comments with `in_reply_to_id` set (these are thread replies, shown under their parent)
+-   **Empty review bodies** — reviews whose `body` is empty/null (they only carry inline comments)
 -   **Unselected bot comments** — see bot filtering below
 
 ### Bot comment filtering
@@ -90,10 +106,13 @@ Before starting the interactive loop, show a summary:
 | --- | ------------------------ | ---- | --------- | ------------------------------ |
 | 1   | src/module/service.ts    | L42  | reviewer1 | "This should use BigNumber..." |
 | 2   | src/module/controller.ts | L15  | reviewer2 | "Missing validation for..."    |
+| 3   | _(Review summary)_       | —    | reviewer3 | "Nice fix — a couple items..." |
 | ... |                          |      |           |                                |
 
 Ready to walk through each comment.
 ```
+
+For review-body entries, use `_(Review summary)_` (or similar) in the File column and `—` in the Line column so they stand out from inline comments.
 
 ## Step 4: Interactive loop — one comment at a time
 
@@ -104,9 +123,11 @@ For each comment, present it in full, then use AskUserQuestion to let the user c
 Show:
 
 -   The **full comment text** (including any code suggestions from the reviewer)
--   The **file and line number**
--   The **surrounding code** (read ~10 lines around the referenced line)
+-   The **file and line number** (omit for review bodies — they have no anchor)
+-   The **surrounding code** (read ~10 lines around the referenced line; skip for review bodies)
 -   Any **thread replies** beneath the root comment
+
+For **review bodies**, the body often contains multiple distinct points (numbered or bulleted). Parse those out and address each point in turn during the Round 1 / Round 2 flow, rather than treating the whole review body as one atomic comment. If a point cites a specific file/line in prose (e.g., "`xrpl/wallet/wallet.go:144-146`"), read that file region as the "surrounding code" before presenting it.
 
 ### 4b. Ask the user what to do
 
@@ -209,7 +230,7 @@ For inline review comments, reply to the specific comment thread:
 gh api repos/{owner}/{repo}/pulls/<pr>/comments/<comment_id>/replies -f body="<reply>"
 ```
 
-For general conversation comments:
+For general conversation comments **and review bodies**, post a new conversation comment (GitHub has no "reply to review summary" endpoint, so the convention is a fresh PR-level comment; quote or reference the review when helpful):
 
 ```bash
 gh api repos/{owner}/{repo}/issues/<pr>/comments -f body="<reply>"
