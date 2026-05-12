@@ -60,6 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
 
+#### docs
+
+- Added wallet credential leakage warnings to the wallet docs and example comments.
+
 ### Fixed
 
 #### address-codec
