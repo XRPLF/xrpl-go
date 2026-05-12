@@ -55,27 +55,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-#### binary-codec
-
-- `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
-- `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
-- 
 #### address-codec
 
 - `DecodeSeed` now returns errors for checksum-valid seeds with invalid decoded lengths or unknown prefixes instead of reading past the decoded payload or treating them as secp256k1 seeds.
 - `Decode` now validates Base58Check checksums and prefix lengths before slicing, preventing panics on malformed public key input.
 
+#### binary-codec
+
+- `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
+- `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
+- IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
+- Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
+- Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
+
+
 #### xrpl
 
 - `Multisign`, `CombineLoanSetCounterpartySigners`, and `CombineBatchSigners` now propagate signer sort errors and use canonical account ID byte ordering.
 - `fetchCounterPartySignersCount` in the RPC client now uses `"current"` ledger index instead of `"validated"` when fetching the loan broker and counterparty signer information, avoiding lookup failures before the transaction is validated.
+- `Multisign` now validates that all input blobs represent the same transaction (ignoring `Signers`) and returns `ErrMultisignTxNotEqual` otherwise.
+- `Multisign` now rejects input blobs containing invalid signer signatures before returning an aggregated blob.
+- `Multisign` now returns `ErrInvalidSigner` for malformed signer data instead of panicking.
 - `MPTokenIssuanceCreate` integration tests now handle RPC numeric fields decoded as `json.Number`.
-
-#### binary-codec
-
-- IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
-- Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
-- Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
 
 ## [v0.1.18]
 
