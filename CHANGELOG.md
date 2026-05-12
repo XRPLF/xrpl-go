@@ -86,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### pkg/crypto
 
 - Ed25519 signing and validation now reject malformed key lengths before slicing decoded key bytes, preventing panics on malformed ED-prefixed keys.
+- Ed25519 signing and validation now reject decoded keys whose first byte is not the ED prefix before stripping the prefix.
 
 #### xrpl
 

@@ -68,8 +68,8 @@ func (c ED25519CryptoAlgorithm) Sign(msg, privKey string) (string, error) {
 	if err != nil {
 		return "", ErrInvalidPrivateKey
 	}
-	// The private key is sliced below to remove the ED prefix, so reject malformed lengths first.
-	if len(b) != ed25519PrivateKeyLength {
+	// The private key is sliced below to remove the ED prefix, so reject malformed keys first.
+	if len(b) != ed25519PrivateKeyLength || b[0] != ed25519Prefix {
 		return "", ErrInvalidPrivateKey
 	}
 	rawPriv := ed25519.NewKeyFromSeed(b[1:])
@@ -88,8 +88,8 @@ func (c ED25519CryptoAlgorithm) Validate(msg, pubkey, sig string) bool {
 	if err != nil {
 		return false
 	}
-	// Validate lengths before removing the ED prefix or passing malformed signatures to ed25519.Verify.
-	if len(bp) != ed25519PublicKeyLength || len(bs) != ed25519.SignatureSize {
+	// Validate the ED prefix and lengths before stripping the prefix or verifying the signature.
+	if len(bp) != ed25519PublicKeyLength || bp[0] != ed25519Prefix || len(bs) != ed25519.SignatureSize {
 		return false
 	}
 

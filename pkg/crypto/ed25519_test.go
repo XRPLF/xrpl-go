@@ -100,6 +100,13 @@ func TestED25519Sign(t *testing.T) {
 			expectedErr:  ErrInvalidPrivateKey,
 		},
 		{
+			name:         "fail - private key with invalid ED prefix",
+			inputMsg:     "hello world",
+			inputPrivKey: "00BB3ECA8985E1484FA6A28C4B30FB0042A2CC5DF3EC8DC37B5F3D126DDFD3CA14",
+			expected:     "",
+			expectedErr:  ErrInvalidPrivateKey,
+		},
+		{
 			name:         "pass - sign a valid message",
 			inputMsg:     "hello world",
 			inputPrivKey: "EDBB3ECA8985E1484FA6A28C4B30FB0042A2CC5DF3EC8DC37B5F3D126DDFD3CA14",
@@ -199,6 +206,13 @@ func TestED25519Validate(t *testing.T) {
 			inputMsg:    "test message",
 			inputPubKey: "ED4924A9045FE5ED8B22BAA7B6229A72A287CCF3EA287AADD3A032A24C0F008FA6",
 			inputSig:    "C001",
+			expected:    false,
+		},
+		{
+			name:        "fail - public key with invalid ED prefix",
+			inputMsg:    "test message",
+			inputPubKey: "004924A9045FE5ED8B22BAA7B6229A72A287CCF3EA287AADD3A032A24C0F008FA6",
+			inputSig:    "C001CB8A9883497518917DD16391930F4FEE39CEA76C846CFF4330BA44ED19DC4730056C2C6D7452873DE8120A5023C6807135C6329A89A13BA1D476FE8E7100",
 			expected:    false,
 		},
 		{
