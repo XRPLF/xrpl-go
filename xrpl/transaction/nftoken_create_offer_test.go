@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -86,6 +85,21 @@ func TestNFTokenCreateOffer_Flatten(t *testing.T) {
 				"Amount": "1000000"
 			}`,
 		},
+		{
+			name: "pass - nil Amount omitted",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+			},
+			expected: `{
+				"TransactionType": "NFTokenCreateOffer",
+				"Account": "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+				"NFTokenID": "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007"
+			}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -100,12 +114,10 @@ func TestNFTokenCreateOffer_Flatten(t *testing.T) {
 
 func TestNFTokenCreateOffer_Validate(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      *NFTokenCreateOffer
-		setter     func(*NFTokenCreateOffer)
-		wantValid  bool
-		wantErr    bool
-		errMessage error
+		name        string
+		input       *NFTokenCreateOffer
+		setter      func(*NFTokenCreateOffer)
+		expectedErr error
 	}{
 		{
 			name: "pass - valid sell offer",
@@ -120,8 +132,55 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 			setter: func(n *NFTokenCreateOffer) {
 				n.SetSellNFTokenFlag()
 			},
-			wantValid: true,
-			wantErr:   false,
+		},
+		{
+			name: "pass - valid sell offer with zero XRP amount",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount:    types.XRPCurrencyAmount(0),
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+		},
+		{
+			name: "pass - valid sell offer with non-zero IOU amount",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					Currency: "USD",
+					Value:    "100",
+				},
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+		},
+		{
+			name: "pass - valid sell offer with non-zero MPT amount",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.MPTCurrencyAmount{
+					MPTIssuanceID: "00002A1F8B7E0C5E0A3B5B8B5B8B5B8B5B8B5B8B5B8B5B8B",
+					Value:         "42",
+				},
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
 		},
 		{
 			name: "fail - invalid BaseTx, missing account",
@@ -132,9 +191,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
 				Amount:    types.XRPCurrencyAmount(1000000),
 			},
-			wantValid:  false,
-			wantErr:    true,
-			errMessage: ErrInvalidAccount,
+			expectedErr: ErrInvalidAccount,
 		},
 		{
 			name: "pass - valid buy offer",
@@ -147,8 +204,37 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
 				Amount:    types.XRPCurrencyAmount(1000000),
 			},
-			wantValid: true,
-			wantErr:   false,
+		},
+		{
+			name: "pass - valid buy offer with issued amount",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				Owner:     "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					Currency: "USD",
+					Value:    "1",
+				},
+			},
+		},
+		{
+			name: "pass - valid buy offer with MPT amount",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				Owner:     "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.MPTCurrencyAmount{
+					MPTIssuanceID: "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF",
+					Value:         "1",
+				},
+			},
 		},
 		{
 			name: "fail - owner and account are equal",
@@ -161,9 +247,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
 				Amount:    types.XRPCurrencyAmount(1000000),
 			},
-			wantValid:  false,
-			wantErr:    true,
-			errMessage: ErrOwnerAccountConflict,
+			expectedErr: ErrOwnerAccountConflict,
 		},
 		{
 			name: "fail - destination and account are equal",
@@ -176,9 +260,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 				Amount:      types.XRPCurrencyAmount(1000000),
 				Destination: "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
 			},
-			wantValid:  false,
-			wantErr:    true,
-			errMessage: ErrDestinationAccountConflict,
+			expectedErr: ErrDestinationAccountConflict,
 		},
 		{
 			name: "fail - invalid owner address",
@@ -191,9 +273,148 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
 				Amount:    types.XRPCurrencyAmount(1000000),
 			},
-			wantValid:  false,
-			wantErr:    true,
-			errMessage: ErrInvalidOwner,
+			expectedErr: ErrInvalidOwner,
+		},
+		{
+			name: "fail - missing Amount",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+			expectedErr: ErrMissingField{Field: "Amount"},
+		},
+		{
+			name: "fail - missing NFTokenID",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				Amount: types.XRPCurrencyAmount(1000000),
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+			expectedErr: ErrInvalidNFTokenID,
+		},
+		{
+			name: "fail - invalid NFTokenID",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "invalidNFTokenID",
+				Amount:    types.XRPCurrencyAmount(1000000),
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+			expectedErr: ErrInvalidNFTokenID,
+		},
+		{
+			name: "fail - short hex NFTokenID",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "ABC123",
+				Amount:    types.XRPCurrencyAmount(1000000),
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+			expectedErr: ErrInvalidNFTokenID,
+		},
+		{
+			name: "fail - buy offer XRP amount cannot be zero",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				Owner:     "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount:    types.XRPCurrencyAmount(0),
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - buy offer issued amount cannot be zero",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				Owner:     "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					Currency: "USD",
+					Value:    "0",
+				},
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - buy offer MPT amount cannot be zero",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				Owner:     "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.MPTCurrencyAmount{
+					MPTIssuanceID: "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF",
+					Value:         "0",
+				},
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - sell offer issued amount cannot be zero",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					Currency: "USD",
+					Value:    "0",
+				},
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - sell offer MPT amount cannot be zero",
+			input: &NFTokenCreateOffer{
+				BaseTx: BaseTx{
+					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
+					TransactionType: NFTokenCreateOfferTx,
+				},
+				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
+				Amount: types.MPTCurrencyAmount{
+					MPTIssuanceID: "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF",
+					Value:         "0",
+				},
+			},
+			setter: func(n *NFTokenCreateOffer) {
+				n.SetSellNFTokenFlag()
+			},
+			expectedErr: ErrInvalidTokenValue,
 		},
 		{
 			name: "fail - invalid destination address",
@@ -206,9 +427,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 				Amount:      types.XRPCurrencyAmount(1000000),
 				Destination: "invalidAddress",
 			},
-			wantValid:  false,
-			wantErr:    true,
-			errMessage: ErrInvalidDestination,
+			expectedErr: ErrInvalidDestination,
 		},
 		{
 			name: "fail - owner present for sell offer",
@@ -224,9 +443,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 			setter: func(n *NFTokenCreateOffer) {
 				n.SetSellNFTokenFlag()
 			},
-			wantValid:  false,
-			wantErr:    true,
-			errMessage: ErrOwnerPresentForSellOffer,
+			expectedErr: ErrOwnerPresentForSellOffer,
 		},
 		{
 			name: "invalid - owner not present for buy offer",
@@ -238,9 +455,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
 				Amount:    types.XRPCurrencyAmount(1000000),
 			},
-			wantValid:  false,
-			wantErr:    true,
-			errMessage: ErrOwnerNotPresentForBuyOffer,
+			expectedErr: ErrOwnerNotPresentForBuyOffer,
 		},
 	}
 
@@ -250,16 +465,15 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 				tt.setter(tt.input)
 			}
 			valid, err := tt.input.Validate()
-			if valid != tt.wantValid {
-				t.Errorf("expected valid to be %v, got %v", tt.wantValid, valid)
-			}
-			if (err != nil) && !errors.Is(err, tt.errMessage) {
-				t.Errorf("Validate() got error message = %v, want error message %v", err, tt.errMessage)
+
+			if tt.expectedErr != nil {
+				assert.False(t, valid)
+				assert.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
-			if (err != nil) != tt.wantErr {
-				t.Errorf("expected error presence to be %v, got %v, err: %s", tt.wantErr, err != nil, err)
-			}
+
+			assert.True(t, valid)
+			assert.NoError(t, err)
 		})
 	}
 }

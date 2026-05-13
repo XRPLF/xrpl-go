@@ -69,6 +69,8 @@ func (*NFTokenCreateOffer) TxType() TxType {
 }
 
 // Flatten returns a map of the NFTokenCreateOffer transaction fields.
+// Optional or unset fields are omitted, callers must run Validate to enforce
+// presence of required fields before signing.
 func (n *NFTokenCreateOffer) Flatten() FlatTransaction {
 	flattened := n.BaseTx.Flatten()
 
@@ -79,7 +81,9 @@ func (n *NFTokenCreateOffer) Flatten() FlatTransaction {
 	}
 
 	flattened["NFTokenID"] = n.NFTokenID.String()
-	flattened["Amount"] = n.Amount.Flatten()
+	if n.Amount != nil {
+		flattened["Amount"] = n.Amount.Flatten()
+	}
 
 	if n.Expiration != 0 {
 		flattened["Expiration"] = n.Expiration
@@ -97,6 +101,19 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 	ok, err := n.BaseTx.Validate()
 	if err != nil || !ok {
 		return false, err
+	}
+
+	if ok, err := IsAmount(n.Amount, "Amount", true); !ok {
+		return false, err
+	}
+
+	if !IsHex256(n.NFTokenID.String()) {
+		return false, ErrInvalidNFTokenID
+	}
+
+	isSellOffer := flag.Contains(n.Flags, TfSellNFToken)
+	if n.Amount.IsZero() && (!isSellOffer || n.Amount.Kind() != types.XRP) {
+		return false, ErrInvalidTokenValue
 	}
 
 	// check owner and account are not equal
@@ -120,12 +137,12 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 	}
 
 	// validate Sell Offer Cases
-	if flag.Contains(n.Flags, TfSellNFToken) && n.Owner != "" {
+	if isSellOffer && n.Owner != "" {
 		return false, ErrOwnerPresentForSellOffer
 	}
 
 	// validate Buy Offer Cases
-	if !flag.Contains(n.Flags, TfSellNFToken) && n.Owner == "" {
+	if !isSellOffer && n.Owner == "" {
 		return false, ErrOwnerNotPresentForBuyOffer
 	}
 

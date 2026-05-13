@@ -178,8 +178,8 @@ var (
 	// ErrEmptyNFTokenOffers is returned when the NFTokenOffers array contains no entries.
 	ErrEmptyNFTokenOffers = errors.New("the NFTokenOffers array must have at least one entry")
 
-	// ErrInvalidNFTokenID is returned when the NFTokenID is not a hexadecimal.
-	ErrInvalidNFTokenID = errors.New("invalid NFTokenID, must be a hexadecimal string")
+	// ErrInvalidNFTokenID is returned when the NFTokenID is not a 256-bit hexadecimal value.
+	ErrInvalidNFTokenID = errors.New("invalid NFTokenID, must be a 64-character hexadecimal string")
 
 	// ErrNFTokenBrokerFeeZero is returned when NFTokenBrokerFee is zero.
 	ErrNFTokenBrokerFeeZero = errors.New("nftoken accept offer: NFTokenBrokerFee cannot be zero")
@@ -238,6 +238,8 @@ var (
 
 	// ErrEscrowCreateInvalidDestinationAddress is returned when the destination address for EscrowCreate is invalid.
 	ErrEscrowCreateInvalidDestinationAddress = errors.New("escrow create: invalid destination address")
+	// ErrEscrowCreateZeroAmount is returned when the Amount field is zero.
+	ErrEscrowCreateZeroAmount = errors.New("escrow create: amount must be non-zero")
 	// ErrEscrowCreateNoConditionOrFinishAfterSet is returned when both Condition and FinishAfter are unset.
 	ErrEscrowCreateNoConditionOrFinishAfterSet = errors.New("escrow create: either Condition or FinishAfter must be specified")
 
