@@ -12,7 +12,7 @@ type Message struct {
 	// Type field from all streams
 	Type types.Type `json:"type"`
 	// ID field from all websocket requests
-	ID int `json:"id"`
+	ID uint64 `json:"id"`
 }
 
 // IsRequest returns true if the message has an ID.
