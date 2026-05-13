@@ -241,6 +241,10 @@ var (
 	ErrEscrowFinishMissingOwner = errors.New("escrow finish: missing owner")
 	// ErrEscrowFinishMissingOfferSequence is returned when the OfferSequence is zero in an EscrowFinish transaction.
 	ErrEscrowFinishMissingOfferSequence = errors.New("escrow finish: missing offer sequence")
+	// ErrEscrowFinishInvalidCondition is returned when the Condition field is set but not a valid hexadecimal string.
+	ErrEscrowFinishInvalidCondition = errors.New("escrow finish: Condition must be a valid hexadecimal string")
+	// ErrEscrowFinishInvalidFulfillment is returned when the Fulfillment field is set but not a valid hexadecimal string.
+	ErrEscrowFinishInvalidFulfillment = errors.New("escrow finish: Fulfillment must be a valid hexadecimal string")
 
 	// ErrEscrowCreateInvalidDestinationAddress is returned when the destination address for EscrowCreate is invalid.
 	ErrEscrowCreateInvalidDestinationAddress = errors.New("escrow create: invalid destination address")
