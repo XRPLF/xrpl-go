@@ -51,9 +51,58 @@ func TestConfigCreation(t *testing.T) {
 			"Content-Type": {"application/json"},
 		}
 		req.Header = cfg.Headers
-		assert.Equal(t, &Config{HTTPClient: customHttpClient{}, URL: "http://s1.ripple.com:51234/", Headers: headers, maxRetries: common.DefaultMaxRetries, retryDelay: common.DefaultRetryDelay, feeCushion: common.DefaultFeeCushion, maxFeeXRP: common.DefaultMaxFeeXRP, faucetProvider: nil, timeout: common.DefaultTimeout}, cfg)
+		expected := &Config{
+			HTTPClient:      customHttpClient{},
+			URL:             "http://s1.ripple.com:51234/",
+			Headers:         headers,
+			maxRetries:      common.DefaultMaxRetries,
+			retryDelay:      common.DefaultRetryDelay,
+			maxResponseSize: defaultMaxResponseSize,
+			feeCushion:      common.DefaultFeeCushion,
+			maxFeeXRP:       common.DefaultMaxFeeXRP,
+			faucetProvider:  nil,
+			timeout:         common.DefaultTimeout,
+		}
+		assert.Equal(t, expected, cfg)
 		assert.NoError(t, err)
 	})
+}
+
+func TestWithMaxResponseSize(t *testing.T) {
+	tests := []struct {
+		name     string
+		opts     []ConfigOpt
+		expected int64
+	}{
+		{
+			name:     "default max response size",
+			expected: defaultMaxResponseSize,
+		},
+		{
+			name:     "override max response size",
+			opts:     []ConfigOpt{WithMaxResponseSize(1024)},
+			expected: 1024,
+		},
+		{
+			name:     "zero max response size disables limit",
+			opts:     []ConfigOpt{WithMaxResponseSize(0)},
+			expected: 0,
+		},
+		{
+			name:     "negative max response size uses default",
+			opts:     []ConfigOpt{WithMaxResponseSize(-1)},
+			expected: defaultMaxResponseSize,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := NewClientConfig("http://s1.ripple.com:51234", tt.opts...)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, cfg.maxResponseSize)
+		})
+	}
 }
 
 func TestWithMaxFeeXRP(t *testing.T) {
