@@ -145,15 +145,15 @@ func TestCreateFieldInstanceMapFromJsonXAddressNonZeroTag(t *testing.T) {
 func TestCreateFieldInstanceMapFromJsonXAddressDuplicateNonZeroTag(t *testing.T) {
 	testcases := []struct {
 		name string
-		tag  any
+		tag  uint32
 	}{
 		{
 			name: "matching tag",
-			tag:  uint32(22),
+			tag:  22,
 		},
 		{
 			name: "mismatching tag",
-			tag:  uint32(99),
+			tag:  99,
 		},
 	}
 
