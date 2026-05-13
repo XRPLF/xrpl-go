@@ -31,17 +31,28 @@ The algorithm is detected automatically from the first byte of the private or pu
 
 ```go
 import (
+    addresscodec "github.com/Peersyst/xrpl-go/address-codec"
     "github.com/Peersyst/xrpl-go/keypairs"
     "github.com/Peersyst/xrpl-go/pkg/crypto"
     "github.com/Peersyst/xrpl-go/pkg/random"
 )
 
 // Random seed (recommended)
-seed, err := keypairs.GenerateSeed("", crypto.ED25519(), random.NewRandomizer())
-
-// Deterministic seed from a passphrase (not recommended for production)
-seed, err := keypairs.GenerateSeed("my passphrase", crypto.SECP256K1(), random.NewRandomizer())
+seed, err := keypairs.GenerateSeed(nil, crypto.ED25519(), random.NewRandomizer())
 ```
+
+Caller-supplied entropy must be exactly 16 raw bytes. Do not pass passphrases directly. If you need deterministic passphrase-based generation, derive 16 bytes before calling this function, for example with SHA-512 and the first 16 bytes, HKDF, or a password KDF. The resulting seed is still limited by the real entropy of the input.
+
+Migration only: older versions silently used the first 16 bytes of any non-empty string passed to `GenerateSeed`. If you need to recover the exact same seed from a legacy input, reproduce that truncation before calling this function:
+
+```go
+legacyEntropy := []byte("setPasswordOverLen16")
+seed, err := keypairs.GenerateSeed(legacyEntropy[:addresscodec.FamilySeedLength], crypto.ED25519(), nil)
+```
+
+If your legacy input was shorter than 16 bytes the old `GenerateSeed` would have panicked, so there is no deterministic seed to recover.
+
+Do not use this pattern for new wallets. New code should provide 16 bytes generated from a cryptographically secure random source, or 16 bytes derived deliberately outside this function.
 
 ### Derive a Key Pair
 

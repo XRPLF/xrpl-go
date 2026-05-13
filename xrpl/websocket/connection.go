@@ -10,8 +10,9 @@ import (
 // It provides a method to read messages from the connection.
 // All methods are safe for concurrent use.
 type Connection struct {
-	conn *websocket.Conn
-	url  string
+	conn            *websocket.Conn
+	url             string
+	maxResponseSize int64
 
 	mu      sync.Mutex
 	readMu  sync.Mutex
@@ -20,8 +21,13 @@ type Connection struct {
 
 // NewConnection creates a new Connection.
 func NewConnection(url string) *Connection {
+	return newConnection(url, defaultMaxResponseSize)
+}
+
+func newConnection(url string, maxResponseSize int64) *Connection {
 	return &Connection{
-		url: url,
+		url:             url,
+		maxResponseSize: maxResponseSize,
 	}
 }
 
@@ -30,9 +36,15 @@ func (c *Connection) Connect() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	conn, _, err := websocket.DefaultDialer.Dial(c.url, nil)
+	conn, resp, err := websocket.DefaultDialer.Dial(c.url, nil)
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
 	if err != nil {
 		return err
+	}
+	if c.maxResponseSize > 0 {
+		conn.SetReadLimit(c.maxResponseSize)
 	}
 	c.conn = conn
 	return nil
