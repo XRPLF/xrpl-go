@@ -1,11 +1,21 @@
 package websocket
 
 import (
+	"log"
 	"time"
 
 	"github.com/Peersyst/xrpl-go/xrpl/common"
 	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
+
+// SetLogger overrides the *log.Logger used for SDK-emitted warnings (currently
+// just the insecure-scheme warning). Pass nil to silence the warnings entirely.
+// The default logger writes to stdlib's log.Default(), preserving prior behavior.
+// The logger is shared across xrpl-go's client packages; calling SetLogger here
+// or in xrpl/rpc has the same effect.
+func SetLogger(l *log.Logger) {
+	clientconfig.SetLogger(l)
+}
 
 // ClientConfig configures options for the XRPL WebSocket client.
 type ClientConfig struct {
@@ -41,7 +51,6 @@ func NewClientConfig() *ClientConfig {
 // Default: "localhost"
 func (wc ClientConfig) WithHost(host string) ClientConfig {
 	wc.host = host
-	clientconfig.WarnIfInsecureScheme("websocket", wc.host)
 	return wc
 }
 

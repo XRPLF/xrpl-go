@@ -48,10 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/rpc
 
 - `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+- `SetLogger` lets consumers safely override (or `nil`-silence) the `*log.Logger` used for SDK-emitted warnings.
 
 #### xrpl/websocket
 
 - `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+- `SetLogger` lets consumers safely override (or `nil`-silence) the `*log.Logger` used for SDK-emitted warnings.
 
 ### Changed
 
@@ -123,11 +125,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
-- `NewClientConfig` now logs a warning when configured with a remote non-TLS URL scheme.
+- `NewClientConfig` now logs a warning when configured with a remote non-TLS URL scheme. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
 
 #### xrpl/websocket
 
-- `ClientConfig.WithHost` now logs a warning when configured with a remote non-TLS URL scheme.
+- `NewClient` now logs a warning when configured with a remote non-TLS URL scheme. The warning was previously emitted from `ClientConfig.WithHost`, which fired once per fluent-setter call; it now fires exactly once per client. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
 - WebSocket request responses are now dispatched by request ID, preventing late or out-of-order responses from blocking unrelated requests. Concurrent request writes are serialized on the shared connection.
 - Serialized concurrent WebSocket reads in `Connection.ReadMessage`, matching gorilla/websocket's single-reader contract.
 - WebSocket subscription tests now wait for request IDs before sending mock responses, avoiding dropped-response flakes with per-ID dispatch.
