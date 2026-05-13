@@ -18,6 +18,8 @@ const (
 )
 
 func main() {
+	// WARNING: Do not print or log real wallet secrets. Private keys, seeds, and
+	// mnemonics are credentials; exposing them leaks control of the account.
 	mnemonicWallet, err := wallet.FromMnemonic("monster march exile fee forget response seven push dragon oil clinic attack black miss craft surface patient stomach tank float cabbage visual image resource")
 	if err != nil {
 		panic(err)
