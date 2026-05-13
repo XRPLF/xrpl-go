@@ -24,6 +24,7 @@ type Client interface {
 	Autofill(tx *transaction.FlatTransaction) error
 	AutofillMultisigned(tx *transaction.FlatTransaction, nSigners uint64) error
 	GetXrpBalanceValidated(address types.Address) (string, error)
+	GetXrpDropsBalanceValidated(address types.Address) (types.XRPCurrencyAmount, error)
 	SubmitTxBlob(txBlob string, failHard bool) (*transactions.SubmitResponse, error)
 	SubmitTxBlobAndWait(txBlob string, failHard bool) (*transactions.TxResponse, error)
 	SubmitMultisigned(blob string, validate bool) (*transactions.SubmitMultisignedResponse, error)
