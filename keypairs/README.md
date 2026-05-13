@@ -50,6 +50,8 @@ legacyEntropy := []byte("setPasswordOverLen16")
 seed, err := keypairs.GenerateSeed(legacyEntropy[:addresscodec.FamilySeedLength], crypto.ED25519(), nil)
 ```
 
+If your legacy input was shorter than 16 bytes the old `GenerateSeed` would have panicked, so there is no deterministic seed to recover.
+
 Do not use this pattern for new wallets. New code should provide 16 bytes generated from a cryptographically secure random source, or 16 bytes derived deliberately outside this function.
 
 ### Derive a Key Pair

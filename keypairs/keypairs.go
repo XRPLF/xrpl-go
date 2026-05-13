@@ -1,6 +1,9 @@
 package keypairs
 
 import (
+	"errors"
+	"fmt"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/keypairs/interfaces"
 )
@@ -12,12 +15,17 @@ const (
 )
 
 // GenerateSeed generates a seed from raw entropy, a crypto algorithm implementation and a randomizer.
-// If entropy is nil or empty, it generates a random seed. Otherwise, entropy must be exactly
-// addresscodec.FamilySeedLength bytes. Do not pass passphrases directly. For deterministic
-// passphrase-based seeds, hash or KDF the passphrase outside this function and pass exactly 16 derived bytes.
+// If entropy is nil or empty, it generates a random seed using r, r must be non-nil in that case
+// (otherwise ErrRandomizerRequired is returned). When entropy is provided it must be exactly
+// addresscodec.FamilySeedLength bytes and r is not consulted, so callers may pass nil for r.
+// Do not pass passphrases directly. For deterministic passphrase-based seeds, hash or KDF the
+// passphrase outside this function and pass exactly 16 derived bytes.
 // The seed is encoded using the addresscodec package.
 func GenerateSeed(entropy []byte, alg interfaces.KeypairCryptoAlg, r interfaces.Randomizer) (string, error) {
 	if len(entropy) == 0 {
+		if r == nil {
+			return "", ErrRandomizerRequired
+		}
 		pe, err := r.GenerateBytes(addresscodec.FamilySeedLength)
 		if err != nil {
 			return "", err
@@ -25,7 +33,15 @@ func GenerateSeed(entropy []byte, alg interfaces.KeypairCryptoAlg, r interfaces.
 		return addresscodec.EncodeSeed(pe, alg)
 	}
 	// EncodeSeed validates that caller-supplied entropy is exactly FamilySeedLength bytes.
-	return addresscodec.EncodeSeed(entropy, alg)
+	encoded, err := addresscodec.EncodeSeed(entropy, alg)
+	if err != nil {
+		var lengthErr *addresscodec.EncodeLengthError
+		if errors.As(err, &lengthErr) {
+			return "", fmt.Errorf("%w: %w", ErrInvalidEntropyLength, err)
+		}
+		return "", err
+	}
+	return encoded, nil
 }
 
 // DeriveKeypair derives a key pair from a given seed. Returns a tuple of private key and public key.
