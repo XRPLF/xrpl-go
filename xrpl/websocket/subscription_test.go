@@ -55,12 +55,7 @@ func TestClient_Subscribe(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ws := &testutil.MockWebSocketServer{Msgs: tt.serverMessages}
 			s := ws.TestWebSocketServer(func(c *websocket.Conn) {
-				for _, m := range tt.serverMessages {
-					err := c.WriteJSON(m)
-					if err != nil {
-						t.Errorf("error writing message: %v", err)
-					}
-				}
+				writeMessagesAfterRequests(t, c, tt.serverMessages)
 			})
 			defer s.Close()
 
@@ -123,12 +118,7 @@ func TestClient_Unsubscribe(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ws := &testutil.MockWebSocketServer{Msgs: tt.serverMessages}
 			s := ws.TestWebSocketServer(func(c *websocket.Conn) {
-				for _, m := range tt.serverMessages {
-					err := c.WriteJSON(m)
-					if err != nil {
-						t.Errorf("error writing message: %v", err)
-					}
-				}
+				writeMessagesAfterRequests(t, c, tt.serverMessages)
 			})
 			defer s.Close()
 

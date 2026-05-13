@@ -31,12 +31,7 @@ import (
 func setupTestClient(t *testing.T, messages []map[string]any) (*Client, func()) {
 	ws := &testutil.MockWebSocketServer{Msgs: messages}
 	s := ws.TestWebSocketServer(func(c *websocket.Conn) {
-		for _, m := range messages {
-			err := c.WriteJSON(m)
-			if err != nil {
-				t.Errorf("error writing message: %v", err)
-			}
-		}
+		writeMessagesAfterRequests(t, c, messages)
 	})
 
 	url, _ := testutil.ConvertHTTPToWS(s.URL)
