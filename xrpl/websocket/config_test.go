@@ -17,6 +17,7 @@ func TestNewClientConfig(t *testing.T) {
 	require.InEpsilon(t, common.DefaultFeeCushion, config.feeCushion, 0)
 	require.InEpsilon(t, common.DefaultMaxFeeXRP, config.maxFeeXRP, 0)
 	require.Equal(t, common.DefaultTimeout, config.timeout)
+	require.Equal(t, defaultMaxResponseSize, config.maxResponseSize)
 }
 
 func TestWithMaxRetries(t *testing.T) {
@@ -47,4 +48,36 @@ func TestWithFaucetProvider(t *testing.T) {
 func TestWithTimeout(t *testing.T) {
 	config := NewClientConfig().WithTimeout(10 * time.Second)
 	require.Equal(t, 10*time.Second, config.timeout)
+}
+
+func TestWithMaxResponseSize(t *testing.T) {
+	tests := []struct {
+		name     string
+		size     int64
+		expected int64
+	}{
+		{
+			name:     "override max response size",
+			size:     32,
+			expected: 32,
+		},
+		{
+			name:     "zero max response size disables limit",
+			size:     0,
+			expected: 0,
+		},
+		{
+			name:     "negative max response size uses default",
+			size:     -1,
+			expected: defaultMaxResponseSize,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := NewClientConfig().WithMaxResponseSize(tt.size)
+
+			require.Equal(t, tt.expected, config.maxResponseSize)
+		})
+	}
 }

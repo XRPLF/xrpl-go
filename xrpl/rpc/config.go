@@ -8,6 +8,8 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/common"
 )
 
+const defaultMaxResponseSize int64 = 64 * 1024 * 1024
+
 // HTTPClient defines the interface for sending HTTP requests.
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
@@ -22,6 +24,9 @@ type Config struct {
 	// Retry config
 	maxRetries int
 	retryDelay time.Duration
+
+	// Response body config
+	maxResponseSize int64
 
 	// Fee config
 	maxFeeXRP  float32
@@ -54,6 +59,19 @@ func WithMaxRetries(maxRetries int) ConfigOpt {
 func WithRetryDelay(retryDelay time.Duration) ConfigOpt {
 	return func(c *Config) {
 		c.retryDelay = retryDelay
+	}
+}
+
+// WithMaxResponseSize returns a ConfigOpt that sets the maximum response body size.
+// Set to 0 to disable the response size limit.
+// Negative values are replaced with the default.
+func WithMaxResponseSize(maxResponseSize int64) ConfigOpt {
+	return func(c *Config) {
+		if maxResponseSize < 0 {
+			c.maxResponseSize = defaultMaxResponseSize
+			return
+		}
+		c.maxResponseSize = maxResponseSize
 	}
 }
 
@@ -106,11 +124,12 @@ func NewClientConfig(url string, opts ...ConfigOpt) (*Config, error) {
 			"Content-Type": {"application/json"},
 		},
 
-		maxRetries: common.DefaultMaxRetries,
-		retryDelay: common.DefaultRetryDelay,
-		maxFeeXRP:  common.DefaultMaxFeeXRP,
-		feeCushion: common.DefaultFeeCushion,
-		timeout:    common.DefaultTimeout,
+		maxRetries:      common.DefaultMaxRetries,
+		retryDelay:      common.DefaultRetryDelay,
+		maxResponseSize: defaultMaxResponseSize,
+		maxFeeXRP:       common.DefaultMaxFeeXRP,
+		feeCushion:      common.DefaultFeeCushion,
+		timeout:         common.DefaultTimeout,
 	}
 
 	for _, opt := range opts {
