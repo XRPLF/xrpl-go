@@ -126,6 +126,12 @@ var (
 	ErrInvalidSignerEntries = errors.New("invalid number of signer entries")
 	// ErrInvalidWalletLocator is returned when a SignerEntry's WalletLocator is not a valid hexadecimal string.
 	ErrInvalidWalletLocator = errors.New("invalid WalletLocator in SignerEntry, must be a hexadecimal string")
+	// ErrDuplicateSignerAccount is returned when a signer account appears more than once.
+	ErrDuplicateSignerAccount = errors.New("duplicate signer account in SignerEntries")
+	// ErrSignerAccountMatchesAccount is returned when a signer account matches the transaction account.
+	ErrSignerAccountMatchesAccount = errors.New("signer account must not match transaction account")
+	// ErrInvalidSignerWeight is returned when a SignerEntry's SignerWeight is invalid.
+	ErrInvalidSignerWeight = errors.New("invalid SignerWeight in SignerEntry")
 	// ErrSignerQuorumGreaterThanSumOfSignerWeights is returned when SignerQuorum exceeds sum of all SignerWeights.
 	ErrSignerQuorumGreaterThanSumOfSignerWeights = errors.New("signerQuorum must be less than or equal to the sum of all SignerWeights")
 	// ErrInvalidQuorumAndEntries is returned when SignerEntries is non-empty while SignerQuorum is zero.
@@ -343,10 +349,29 @@ var (
 
 	// account
 
-	// ErrAccountSetInvalidSetFlag is returned when SetFlag is outside the valid range (1 to 16).
-	ErrAccountSetInvalidSetFlag = errors.New("account set: SetFlag must be an integer between AsfRequireDest (1) and AsfAllowTrustLineClawback (16)")
+	// ErrAccountSetInvalidSetFlag is returned when SetFlag is not a valid AccountSet flag.
+	ErrAccountSetInvalidSetFlag = fmt.Errorf(
+		"account set: SetFlag must be 0 or a valid AccountSet flag (%d-%d, excluding %d reserved for Hooks)",
+		AsfRequireDest, AsfAllowTrustLineLocking, reservedAccountSetFlagHooks,
+	)
+	// ErrAccountSetInvalidClearFlag is returned when ClearFlag is not a valid AccountSet flag.
+	ErrAccountSetInvalidClearFlag = fmt.Errorf(
+		"account set: ClearFlag must be 0 or a valid AccountSet flag (%d-%d, excluding %d reserved for Hooks)",
+		AsfRequireDest, AsfAllowTrustLineLocking, reservedAccountSetFlagHooks,
+	)
+	// ErrAccountSetInvalidTransferRate is returned when TransferRate is outside the valid range.
+	ErrAccountSetInvalidTransferRate = fmt.Errorf(
+		"account set: TransferRate must be 0 or between %d and %d inclusive",
+		MinTransferRate, MaxTransferRate,
+	)
 	// ErrAccountSetInvalidTickSize is returned when TickSize is outside the valid range (0 to 15 inclusive).
-	ErrAccountSetInvalidTickSize = errors.New("account set: TickSize must be an integer between 0 and 15 inclusive")
+	ErrAccountSetInvalidTickSize = fmt.Errorf(
+		"account set: TickSize must be 0 or an integer between %d and %d inclusive",
+		MinTickSize, MaxTickSize,
+	)
+	// ErrAccountSetMutuallyExclusiveFlags is returned when SetFlag and ClearFlag have the same non-zero value.
+	// rippled returns temINVALID in that case.
+	ErrAccountSetMutuallyExclusiveFlags = errors.New("account set: SetFlag and ClearFlag must not be equal")
 
 	// loan
 
