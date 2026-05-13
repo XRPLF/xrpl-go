@@ -70,6 +70,10 @@ func (n *NFTokenModify) Validate() (bool, error) {
 		return false, err
 	}
 
+	if !IsHex256(n.NFTokenID.String()) {
+		return false, ErrInvalidNFTokenID
+	}
+
 	// Check if the owner and account are not equal
 	if n.Account == n.Owner {
 		return false, ErrOwnerAccountConflict
