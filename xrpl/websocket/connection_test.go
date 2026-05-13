@@ -4,9 +4,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
-	gorillawebsocket "github.com/gorilla/websocket"
+	"github.com/Peersyst/xrpl-go/xrpl/websocket/testutil"
+	gorillaws "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +24,7 @@ func TestConnection_ReadMessageEnforcesMaxResponseSize(t *testing.T) {
 			name:            "fail - rejects message over max size",
 			message:         strings.Repeat("a", 33),
 			maxResponseSize: 32,
-			expectedErr:     gorillawebsocket.ErrReadLimit,
+			expectedErr:     gorillaws.ErrReadLimit,
 		},
 		{
 			name:            "pass - allows message at max size",
@@ -62,7 +65,7 @@ func TestConnection_ReadMessageEnforcesMaxResponseSize(t *testing.T) {
 func newMessageServer(t *testing.T, msg string) *httptest.Server {
 	t.Helper()
 
-	upgrader := gorillawebsocket.Upgrader{
+	upgrader := gorillaws.Upgrader{
 		CheckOrigin: func(_ *http.Request) bool {
 			return true
 		},
@@ -76,18 +79,11 @@ func newMessageServer(t *testing.T, msg string) *httptest.Server {
 		}
 		defer conn.Close()
 
-		if err := conn.WriteMessage(gorillawebsocket.TextMessage, []byte(msg)); err != nil {
+		if err := conn.WriteMessage(gorillaws.TextMessage, []byte(msg)); err != nil {
 			t.Errorf("write websocket message: %v", err)
 		}
 	}))
-	"sync"
-	"testing"
-	"time"
-
-	"github.com/Peersyst/xrpl-go/xrpl/websocket/testutil"
-	"github.com/gorilla/websocket"
-	"github.com/stretchr/testify/require"
-)
+}
 
 // Exercises the fix that serializes concurrent ReadMessage calls under readMu.
 // Run with -race to expose a missing mutex; a lucky-scheduled run can pass without it.
@@ -96,12 +92,12 @@ func TestConnection_ReadMessageAllowsConcurrentCallers(t *testing.T) {
 	serverErr := make(chan error, 1)
 
 	ws := &testutil.MockWebSocketServer{}
-	server := ws.TestWebSocketServer(func(serverConn *websocket.Conn) {
+	server := ws.TestWebSocketServer(func(serverConn *gorillaws.Conn) {
 		defer serverConn.Close()
 		<-readyToWrite
 
 		for _, msg := range []string{"first", "second"} {
-			if err := serverConn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+			if err := serverConn.WriteMessage(gorillaws.TextMessage, []byte(msg)); err != nil {
 				serverErr <- err
 				return
 			}
@@ -167,7 +163,7 @@ func TestConnection_ReadMessageAllowsConcurrentCallers(t *testing.T) {
 
 func TestConnection_DisconnectUnblocksReadMessage(t *testing.T) {
 	ws := &testutil.MockWebSocketServer{}
-	server := ws.TestWebSocketServer(func(serverConn *websocket.Conn) {
+	server := ws.TestWebSocketServer(func(serverConn *gorillaws.Conn) {
 		defer serverConn.Close()
 		// Block until the client closes the connection.
 		_, _, _ = serverConn.ReadMessage()
@@ -194,13 +190,13 @@ func TestConnection_DisconnectUnblocksReadMessage(t *testing.T) {
 	case err := <-done:
 		require.Error(t, err, "ReadMessage should return an error after Disconnect")
 	case <-time.After(time.Second):
-		t.Fatal("ReadMessage did not return after Disconnect — possible goroutine leak")
+		t.Fatal("ReadMessage did not return after Disconnect, possible goroutine leak")
 	}
 }
 
 func TestConnection_DisconnectStopsConcurrentWriteMessage(t *testing.T) {
 	ws := &testutil.MockWebSocketServer{}
-	server := ws.TestWebSocketServer(func(serverConn *websocket.Conn) {
+	server := ws.TestWebSocketServer(func(serverConn *gorillaws.Conn) {
 		defer serverConn.Close()
 		for {
 			if _, _, err := serverConn.ReadMessage(); err != nil {
@@ -233,6 +229,6 @@ func TestConnection_DisconnectStopsConcurrentWriteMessage(t *testing.T) {
 	select {
 	case <-writerDone:
 	case <-time.After(time.Second):
-		t.Fatal("WriteMessage goroutine did not exit after Disconnect — possible goroutine leak")
+		t.Fatal("WriteMessage goroutine did not exit after Disconnect, possible goroutine leak")
 	}
 }
