@@ -145,10 +145,22 @@ func TestDeriveKeypair(t *testing.T) {
 			expectedErr:    addresscodec.ErrInvalidSeed,
 		},
 		{
+			name:           "fail - invalid seed length",
+			inputSeed:      addresscodec.Base58CheckEncode(nil, addresscodec.FamilySeedPrefix),
+			inputValidator: false,
+			expectedErr:    addresscodec.ErrInvalidSeedLength,
+		},
+		{
+			name:           "fail - invalid seed prefix",
+			inputSeed:      addresscodec.Base58CheckEncode([]byte("random"), 0x22),
+			inputValidator: false,
+			expectedErr:    addresscodec.ErrInvalidSeedPrefix,
+		},
+		{
 			name:           "fail - invalid ED25519 key",
 			inputSeed:      "ED4924A9045FE5ED8B22BAA7B6229A72A287CCF3EA287AADD3A032A24C0F008F",
 			inputValidator: false,
-			expectedErr:    ErrInvalidCryptoImplementation,
+			expectedErr:    addresscodec.ErrInvalidSeed,
 		},
 		{
 			name:           "pass - derive an ED25519 keypair",
@@ -175,7 +187,7 @@ func TestDeriveKeypair(t *testing.T) {
 			if tc.expectedErr != nil {
 				require.Empty(t, pub)
 				require.Empty(t, priv)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.pubKey, pub)

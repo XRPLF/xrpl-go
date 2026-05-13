@@ -50,10 +50,24 @@ func IsBool(b any) bool {
 }
 
 // IsHex checks if the given string is a valid hexadecimal string.
+// Empty strings return false.
 func IsHex(s string) bool {
-	// Define a regular expression for a valid hexadecimal string
-	validHexPattern := regexp.MustCompile(`^[0-9a-fA-F]+$`)
-	return validHexPattern.MatchString(s)
+	if len(s) == 0 {
+		return false
+	}
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			continue
+		}
+		if r >= 'A' && r <= 'F' {
+			continue
+		}
+		if r >= 'a' && r <= 'f' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // IsFloat32 checks if the given string is a valid Float32 number.
