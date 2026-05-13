@@ -240,7 +240,7 @@ func readResponseBody(body io.Reader, maxResponseSize int64) ([]byte, error) {
 	}
 
 	limit := maxResponseSize
-	if maxResponseSize < 1<<63-1 {
+	if maxResponseSize < math.MaxInt64 {
 		limit++
 	}
 
@@ -248,6 +248,8 @@ func readResponseBody(body io.Reader, maxResponseSize int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Deliberately do not drain the remaining body on oversize: closing without
+	// draining costs one TCP reconnect, but draining would defeat the memory cap.
 	if int64(len(b)) > maxResponseSize {
 		return nil, ErrResponseTooLarge
 	}

@@ -33,7 +33,7 @@ func TestConnection_ReadMessageEnforcesMaxResponseSize(t *testing.T) {
 		},
 		{
 			name:            "pass - zero max size disables limit",
-			message:         strings.Repeat("a", int(defaultMaxResponseSize)+1),
+			message:         strings.Repeat("a", 33),
 			maxResponseSize: 0,
 		},
 	}

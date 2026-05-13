@@ -64,6 +64,7 @@ func WithRetryDelay(retryDelay time.Duration) ConfigOpt {
 
 // WithMaxResponseSize returns a ConfigOpt that sets the maximum response body size.
 // Set to 0 to disable the response size limit.
+// Negative values are replaced with the default.
 func WithMaxResponseSize(maxResponseSize int64) ConfigOpt {
 	return func(c *Config) {
 		if maxResponseSize < 0 {

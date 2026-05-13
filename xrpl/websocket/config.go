@@ -97,7 +97,9 @@ func (wc ClientConfig) WithTimeout(timeout time.Duration) ClientConfig {
 }
 
 // WithMaxResponseSize sets the maximum inbound WebSocket response message size.
+// Applied per inbound message, long-lived subscriptions are not capped in aggregate.
 // Set to 0 to disable the response size limit.
+// Negative values are replaced with the default.
 func (wc ClientConfig) WithMaxResponseSize(maxResponseSize int64) ClientConfig {
 	if maxResponseSize < 0 {
 		wc.maxResponseSize = defaultMaxResponseSize

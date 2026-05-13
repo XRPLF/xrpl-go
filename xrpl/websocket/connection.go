@@ -43,7 +43,9 @@ func (c *Connection) Connect() error {
 	if err != nil {
 		return err
 	}
-	conn.SetReadLimit(c.maxResponseSize)
+	if c.maxResponseSize > 0 {
+		conn.SetReadLimit(c.maxResponseSize)
+	}
 	c.conn = conn
 	return nil
 }
