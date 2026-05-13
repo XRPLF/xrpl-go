@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
 - Removed exported `DomainIDLength` and `SHA512HalfLength` constants. Use `Hex256Length`, `IsHex256`, `IsDomainID`, or `IsLedgerEntryID` depending on whether the code needs a raw 256-bit hex length or semantic validation.
 
+#### keypairs
+
+- `GenerateSeed` now accepts caller-supplied entropy as `[]byte` instead of `string`. Empty or nil entropy still generates random entropy with the provided randomizer, while non-empty entropy must be exactly 16 raw bytes. Callers that need to recover old seeds generated from arbitrary strings must reproduce the legacy first-16-byte behavior outside this function.
+
 #### binary-codec
 
 - Changed the exported `MaxDrops` constant to a typed `uint64` drops limit.
@@ -34,8 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `SortByAccountID` helper for canonical account ID byte ordering.
 - Added `LoanObject` and `LoanBrokerObject` `ObjectType` constants for `account_objects` query.
-- Added `GetLedgerEntry` method to the testutil integration `Client` interface.
+- Added `GetLedgerEntry` and `GetXrpBalanceValidated` methods to the testutil integration `Client` interface.
+- Added `GetXrpDropsBalanceValidated` to `rpc.Client`, `websocket.Client`, and the testutil integration `Client` interface to read validated-ledger balances directly in drops without the XRP-string round trip.
 - Updated lending protocol integration test with expanded lifecycle coverage.
+- Added `AutofillMultisigned` to the testutil integration `Client` interface and multisigned payment integration coverage, including sub-quorum (`tefBAD_QUORUM`) and non-listed-signer (`tefBAD_SIGNATURE`) negative-path tests.
 
 #### xrpl/transaction
 
@@ -52,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/websocket
 
 - `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+
+#### keypairs
+
+- Exported `ErrRandomizerRequired` sentinel for `GenerateSeed` calls with empty entropy and a nil randomizer.
+- Exported `ErrInvalidEntropyLength` sentinel wrapping caller-supplied entropy length errors, so callers can `errors.Is` without importing `address-codec`.
 
 ### Changed
 
@@ -79,10 +90,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-#### xrpl/transaction
+#### xrpl/rpc
 
-- `AccountSet.Validate` now rejects invalid `TransferRate`, `ClearFlag`, and reserved `SetFlag` values before submission.
-- `AccountSet.Validate` now rejects `SetFlag == ClearFlag` (non-zero) locally, matching rippled's `temINVALID` and xrpl.js's `validateAccountSet`. Returned via the new `ErrAccountSetMutuallyExclusiveFlags` sentinel.
+- RPC client now caps HTTP response bodies at 64 MiB by default to prevent unbounded memory growth from oversized server responses. Use `WithMaxResponseSize(0)` to disable the limit.
+
+#### xrpl/websocket
+
+- WebSocket client now caps inbound messages at 16 MiB by default to prevent unbounded memory growth from oversized server messages. Use `WithMaxResponseSize(0)` to disable the limit.
+
+#### keypairs
+
+- `GenerateSeed` now rejects non-empty entropy whose length is not exactly 16 bytes, removing silent truncation of longer inputs and the panic on shorter inputs.
+- `GenerateSeed` returns `ErrRandomizerRequired` instead of panicking when called with empty entropy and a nil randomizer.
+- `GenerateSeed` no longer wraps unsupported algorithm errors with `ErrInvalidEntropyLength` when caller-supplied entropy has the correct length.
 
 #### address-codec
 
@@ -118,6 +138,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - `SignerListSet.Validate` now rejects duplicate signer accounts including classic/X-address equivalents, signer entries that reference the transaction account, zero signer weights, and correctly handles signer weight sums above `uint16`.
+- `AccountSet.Validate` now rejects invalid `TransferRate`, `ClearFlag`, and reserved `SetFlag` values before submission.
+- `AccountSet.Validate` now rejects `SetFlag == ClearFlag` (non-zero) locally, matching rippled's `temINVALID` and xrpl.js's `validateAccountSet`. Returned via the new `ErrAccountSetMutuallyExclusiveFlags` sentinel.
+
 
 #### xrpl/currency
 

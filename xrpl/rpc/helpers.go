@@ -203,10 +203,10 @@ func createRequest(reqParams XRPLRequest) ([]byte, error) {
 }
 
 // checkForError reads the http response and formats the error if it exists
-func checkForError(res *http.Response) (Response, error) {
+func checkForError(res *http.Response, maxResponseSize int64) (Response, error) {
 	var jr Response
 
-	b, err := io.ReadAll(res.Body)
+	b, err := readResponseBody(res.Body, maxResponseSize)
 	if err != nil || b == nil {
 		return jr, err
 	}
@@ -229,6 +229,32 @@ func checkForError(res *http.Response) (Response, error) {
 	}
 
 	return jr, nil
+}
+
+func readResponseBody(body io.Reader, maxResponseSize int64) ([]byte, error) {
+	if maxResponseSize == 0 {
+		return io.ReadAll(body)
+	}
+	if maxResponseSize < 0 {
+		maxResponseSize = defaultMaxResponseSize
+	}
+
+	limit := maxResponseSize
+	if maxResponseSize < math.MaxInt64 {
+		limit++
+	}
+
+	b, err := io.ReadAll(io.LimitReader(body, limit))
+	if err != nil {
+		return nil, err
+	}
+	// Deliberately do not drain the remaining body on oversize: closing without
+	// draining costs one TCP reconnect, but draining would defeat the memory cap.
+	if int64(len(b)) > maxResponseSize {
+		return nil, ErrResponseTooLarge
+	}
+
+	return b, nil
 }
 
 // Sets valid addresses for the transaction.
