@@ -425,6 +425,20 @@ func TestAccountSet_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - Valid AccountSet SetFlag at minimum",
+			accountSet: &AccountSet{
+				BaseTx:  validBaseTx,
+				SetFlag: AsfRequireDest,
+			},
+		},
+		{
+			name: "pass - Valid AccountSet SetFlag at maximum",
+			accountSet: &AccountSet{
+				BaseTx:  validBaseTx,
+				SetFlag: AsfAllowTrustLineLocking,
+			},
+		},
+		{
 			name: "fail - Invalid AccountSet with high SetFlag",
 			accountSet: &AccountSet{
 				BaseTx:  validBaseTx,
@@ -457,7 +471,7 @@ func TestAccountSet_Validate(t *testing.T) {
 			expectedErr: ErrAccountSetInvalidClearFlag,
 		},
 		{
-			name: "fail - Invalid AccountSet with TransferRate below minimum",
+			name: "fail - Invalid AccountSet with TransferRate just above zero",
 			accountSet: &AccountSet{
 				BaseTx:       validBaseTx,
 				TransferRate: types.TransferRate(1),
@@ -465,7 +479,7 @@ func TestAccountSet_Validate(t *testing.T) {
 			expectedErr: ErrAccountSetInvalidTransferRate,
 		},
 		{
-			name: "fail - Invalid AccountSet with TransferRate under minimum",
+			name: "fail - Invalid AccountSet with TransferRate just below minimum",
 			accountSet: &AccountSet{
 				BaseTx:       validBaseTx,
 				TransferRate: types.TransferRate(999999999),
@@ -502,6 +516,15 @@ func TestAccountSet_Validate(t *testing.T) {
 				BaseTx:   validBaseTx,
 				TickSize: types.TickSize(0),
 			},
+		},
+		{
+			name: "fail - Invalid AccountSet with SetFlag equal to ClearFlag",
+			accountSet: &AccountSet{
+				BaseTx:    validBaseTx,
+				SetFlag:   AsfRequireDest,
+				ClearFlag: AsfRequireDest,
+			},
+			expectedErr: ErrAccountSetMutuallyExclusiveFlags,
 		},
 	}
 

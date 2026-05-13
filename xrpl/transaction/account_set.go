@@ -74,9 +74,19 @@ const (
 	// Valid values are 3 to 15 inclusive, or 0 to disable.
 	MaxTickSize = 15
 
-	minTransferRate uint32 = 1000000000
-	maxTransferRate uint32 = 2000000000
+	// MinTransferRate is the minimum non-zero TransferRate. 1_000_000_000 represents a 1.0 net rate (no fee).
+	// Values strictly between 0 and MinTransferRate are rejected by rippled.
+	MinTransferRate uint32 = 1000000000
 
+	// MaxTransferRate is the maximum TransferRate. 2_000_000_000 represents a 2.0 rate (100% fee cap).
+	MaxTransferRate uint32 = 2000000000
+
+	// reservedAccountSetFlagHooks is the asf value (11) reserved by rippled on
+	// mainnet for the Hooks amendment. It currently sits in the otherwise
+	// contiguous Asf* range and is rejected by isValidAccountSetFlag.
+	// Trade-off: on Hooks-enabled networks (notably Xahau) legitimate
+	// transactions that set or clear flag 11 will be refused locally. Adding
+	// network-aware validation is tracked separately.
 	reservedAccountSetFlagHooks uint32 = 11
 )
 
@@ -416,16 +426,18 @@ func (s *AccountSet) Validate() (bool, error) {
 		return false, ErrAccountSetInvalidClearFlag
 	}
 
-	// check if SetFlag is within the valid range
 	if !isValidAccountSetFlag(s.SetFlag) {
 		return false, ErrAccountSetInvalidSetFlag
+	}
+
+	if s.SetFlag != 0 && s.SetFlag == s.ClearFlag {
+		return false, ErrAccountSetMutuallyExclusiveFlags
 	}
 
 	if s.TransferRate != nil && !isValidTransferRate(*s.TransferRate) {
 		return false, ErrAccountSetInvalidTransferRate
 	}
 
-	// check if TickSize is within the valid range
 	if s.TickSize != nil && *s.TickSize != 0 && (*s.TickSize < MinTickSize || *s.TickSize > MaxTickSize) {
 		return false, ErrAccountSetInvalidTickSize
 	}
@@ -433,6 +445,11 @@ func (s *AccountSet) Validate() (bool, error) {
 	return true, nil
 }
 
+// isValidAccountSetFlag reports whether flag is a valid value for SetFlag or
+// ClearFlag. The accepted range is the contiguous block of `Asf*` constants
+// from AsfRequireDest through AsfAllowTrustLineLocking, plus 0 (no flag).
+// 11 is excluded because rippled reserves it for the Hooks amendment, which
+// is not enabled on mainnet.
 func isValidAccountSetFlag(flag uint32) bool {
 	if flag == 0 {
 		return true
@@ -445,10 +462,13 @@ func isValidAccountSetFlag(flag uint32) bool {
 	return flag >= AsfRequireDest && flag <= AsfAllowTrustLineLocking
 }
 
+// isValidTransferRate reports whether transferRate is a valid TransferRate.
+// 0 disables fees entirely; non-zero values must fall in
+// [MinTransferRate, MaxTransferRate] (1.0x net to 2.0x cap, scaled by 1e9).
 func isValidTransferRate(transferRate uint32) bool {
 	if transferRate == 0 {
 		return true
 	}
 
-	return transferRate >= minTransferRate && transferRate <= maxTransferRate
+	return transferRate >= MinTransferRate && transferRate <= MaxTransferRate
 }
