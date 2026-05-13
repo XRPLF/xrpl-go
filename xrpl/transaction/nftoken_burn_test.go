@@ -148,6 +148,19 @@ func TestNFTokenBurn_Validate(t *testing.T) {
 			wantErr:    true,
 			errMessage: ErrInvalidNFTokenID,
 		},
+		{
+			name: "fail - Invalid NFTokenBurn with short hex NFTokenID",
+			nftBurn: &NFTokenBurn{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: NFTokenBurnTx,
+				},
+				NFTokenID: "ABC123",
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidNFTokenID,
+		},
 	}
 
 	for _, tt := range tests {
