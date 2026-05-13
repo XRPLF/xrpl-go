@@ -358,6 +358,13 @@ func TestDecodeAddressToAccountID(t *testing.T) {
 			expectedAccountID: nil,
 			expectedErr:       ErrInvalidClassicAddress,
 		},
+		{
+			name:              "fail - valid checksum with non-account prefix",
+			input:             Base58CheckEncode([]byte{0x88, 0xa5, 0xa5, 0x7c, 0x82, 0x9f, 0x40, 0xf2, 0x5e, 0xa8, 0x33, 0x85, 0xbb, 0xde, 0x6c, 0x3d, 0x8b, 0x4c, 0xa0, 0x82}, AccountPublicKeyPrefix),
+			expectedPrefix:    nil,
+			expectedAccountID: nil,
+			expectedErr:       ErrInvalidClassicAddress,
+		},
 	}
 
 	for _, tc := range tt {
@@ -430,6 +437,11 @@ func TestIsValidClassicAddress(t *testing.T) {
 		{
 			name:     "fail - invalid classic address",
 			input:    "yurt",
+			expected: false,
+		},
+		{
+			name:     "fail - valid checksum with non-account prefix",
+			input:    Base58CheckEncode([]byte{0x88, 0xa5, 0xa5, 0x7c, 0x82, 0x9f, 0x40, 0xf2, 0x5e, 0xa8, 0x33, 0x85, 0xbb, 0xde, 0x6c, 0x3d, 0x8b, 0x4c, 0xa0, 0x82}, AccountPublicKeyPrefix),
 			expected: false,
 		},
 	}
