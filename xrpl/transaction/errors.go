@@ -126,6 +126,12 @@ var (
 	ErrInvalidSignerEntries = errors.New("invalid number of signer entries")
 	// ErrInvalidWalletLocator is returned when a SignerEntry's WalletLocator is not a valid hexadecimal string.
 	ErrInvalidWalletLocator = errors.New("invalid WalletLocator in SignerEntry, must be a hexadecimal string")
+	// ErrDuplicateSignerAccount is returned when a signer account appears more than once.
+	ErrDuplicateSignerAccount = errors.New("duplicate signer account in SignerEntries")
+	// ErrSignerAccountMatchesAccount is returned when a signer account matches the transaction account.
+	ErrSignerAccountMatchesAccount = errors.New("signer account must not match transaction account")
+	// ErrInvalidSignerWeight is returned when a SignerEntry's SignerWeight is invalid.
+	ErrInvalidSignerWeight = errors.New("invalid SignerWeight in SignerEntry")
 	// ErrSignerQuorumGreaterThanSumOfSignerWeights is returned when SignerQuorum exceeds sum of all SignerWeights.
 	ErrSignerQuorumGreaterThanSumOfSignerWeights = errors.New("signerQuorum must be less than or equal to the sum of all SignerWeights")
 	// ErrInvalidQuorumAndEntries is returned when SignerEntries is non-empty while SignerQuorum is zero.
