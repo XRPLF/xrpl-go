@@ -3,6 +3,7 @@ package types
 
 import (
 	"encoding/json"
+	"math/big"
 	"strconv"
 )
 
@@ -23,6 +24,10 @@ const (
 type CurrencyAmount interface {
 	Kind() CurrencyKind
 	Flatten() any
+	// IsZero reports whether the amount's numeric value is zero. For IOU
+	// amounts, the check operates on the textual XLS-33 decimal so values
+	// that underflow IEEE-754 are not falsely classified as zero.
+	IsZero() bool
 }
 
 // UnmarshalCurrencyAmount parses JSON data into the appropriate CurrencyAmount implementation.
@@ -89,9 +94,20 @@ func (i IssuedCurrencyAmount) Flatten() any {
 	return json
 }
 
-// IsZero returns true if the IssuedCurrencyAmount is the zero value (empty object).
-func (i IssuedCurrencyAmount) IsZero() bool {
+// IsEmpty returns true if the IssuedCurrencyAmount is the zero value (empty object).
+func (i IssuedCurrencyAmount) IsEmpty() bool {
 	return i == IssuedCurrencyAmount{}
+}
+
+// IsZero reports whether the issued amount's value is numerically zero.
+// The check operates on the textual XLS-33 decimal via math/big.Float so
+// IEEE-754 underflow does not produce a false positive.
+func (i IssuedCurrencyAmount) IsZero() bool {
+	f, _, err := big.ParseFloat(i.Value, 10, 0, big.ToNearestEven)
+	if err != nil {
+		return false
+	}
+	return f.Sign() == 0
 }
 
 // XRPCurrencyAmount represents the native XRP amount in drops.
@@ -109,6 +125,11 @@ func (a XRPCurrencyAmount) String() string {
 // Kind returns the CurrencyKind for XRPCurrencyAmount.
 func (XRPCurrencyAmount) Kind() CurrencyKind {
 	return XRP
+}
+
+// IsZero reports whether the XRP amount is zero drops.
+func (a XRPCurrencyAmount) IsZero() bool {
+	return a == 0
 }
 
 // Flatten returns the XRP amount as a decimal string.
@@ -172,4 +193,15 @@ func (m MPTCurrencyAmount) Flatten() any {
 // IsValid returns true if the MPTCurrencyAmount has both issuance ID and value.
 func (m MPTCurrencyAmount) IsValid() bool {
 	return m.MPTIssuanceID != "" && m.Value != ""
+}
+
+// IsZero reports whether the MPT amount's value is numerically zero.
+// MPT values are signed 63-bit integers per the rippled encoding, so
+// strconv.ParseInt is the correct parser.
+func (m MPTCurrencyAmount) IsZero() bool {
+	v, err := strconv.ParseInt(m.Value, 10, 64)
+	if err != nil {
+		return false
+	}
+	return v == 0
 }
