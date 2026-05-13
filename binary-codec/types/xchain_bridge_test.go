@@ -88,6 +88,50 @@ func TestXChainBridge_FromJson(t *testing.T) {
 			want: nil,
 			err:  errNotValidXChainBridge,
 		},
+		{
+			name: "LockingChainDoor is not a string",
+			json: map[string]any{
+				"LockingChainDoor":  123,
+				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+			},
+			want: nil,
+			err:  errNotValidXChainBridge,
+		},
+		{
+			name: "LockingChainIssue is not a string",
+			json: map[string]any{
+				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"LockingChainIssue": 123,
+				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+			},
+			want: nil,
+			err:  errNotValidXChainBridge,
+		},
+		{
+			name: "IssuingChainDoor is not a string",
+			json: map[string]any{
+				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainDoor":  123,
+				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+			},
+			want: nil,
+			err:  errNotValidXChainBridge,
+		},
+		{
+			name: "IssuingChainIssue is not a string",
+			json: map[string]any{
+				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainIssue": 123,
+			},
+			want: nil,
+			err:  errNotValidXChainBridge,
+		},
 	}
 
 	for _, tc := range tt {
@@ -151,6 +195,32 @@ func TestXChainBridge_ToJson(t *testing.T) {
 				ctrl := gomock.NewController(t)
 				mock := testutil.NewMockBinaryParser(ctrl)
 				mock.EXPECT().ReadBytes(80).Return([]byte{}, errors.New("errReadBytes"))
+				return &XChainBridge{}, mock
+			},
+		},
+		{
+			name:  "Short bytes",
+			input: nil,
+			opts:  []int{80},
+			want:  nil,
+			err:   errNotValidXChainBridge,
+			setup: func(t *testing.T) (*XChainBridge, *testutil.MockBinaryParser) {
+				ctrl := gomock.NewController(t)
+				mock := testutil.NewMockBinaryParser(ctrl)
+				mock.EXPECT().ReadBytes(80).Return(make([]byte, 60), nil)
+				return &XChainBridge{}, mock
+			},
+		},
+		{
+			name:  "Nil bytes",
+			input: nil,
+			opts:  []int{80},
+			want:  nil,
+			err:   errNotValidXChainBridge,
+			setup: func(t *testing.T) (*XChainBridge, *testutil.MockBinaryParser) {
+				ctrl := gomock.NewController(t)
+				mock := testutil.NewMockBinaryParser(ctrl)
+				mock.EXPECT().ReadBytes(80).Return(nil, nil)
 				return &XChainBridge{}, mock
 			},
 		},

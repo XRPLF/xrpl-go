@@ -30,20 +30,123 @@ func serializePathCurrency(currency string) ([]byte, error) {
 type PathSet struct{}
 
 // ErrInvalidPathSet is an error that's thrown when an invalid path set is provided.
-var ErrInvalidPathSet = errors.New("invalid type to construct PathSet from. Expected []any of []any")
+var ErrInvalidPathSet = errors.New("invalid type to construct PathSet from. Expected non-empty []any of non-empty []any path steps")
 
 // FromJSON attempts to serialize a path set from a JSON representation of a slice of paths to a byte array.
 // It returns the byte array representation of the path set, or an error if the provided json does not represent a valid path set.
 func (p PathSet) FromJSON(json any) ([]byte, error) {
-	if _, ok := json.([]any)[0].([]any); !ok {
+	paths, ok := json.([]any)
+	if !ok || len(paths) == 0 {
 		return nil, ErrInvalidPathSet
 	}
 
-	if !isPathSet(json.([]any)) {
-		return nil, ErrInvalidPathSet
+	for _, rawPath := range paths {
+		path, ok := rawPath.([]any)
+		if !ok || len(path) == 0 {
+			return nil, ErrInvalidPathSet
+		}
+
+		for _, rawStep := range path {
+			step, ok := rawStep.(map[string]any)
+			if !ok {
+				return nil, ErrInvalidPathSet
+			}
+
+			if !isPathStep(step) {
+				return nil, ErrInvalidPathSet
+			}
+		}
 	}
 
-	return newPathSet(json.([]any)), nil
+	return newPathSet(paths)
+}
+
+// isPathStep determines if a map represents a valid path step.
+// It checks if any of the keys "account", "currency" or "issuer" are present in the map.
+func isPathStep(v map[string]any) bool {
+	return v["account"] != nil || v["currency"] != nil || v["issuer"] != nil
+}
+
+// newPathSet constructs a path set from a validated non-empty slice of paths.
+// Each element of v must be a []any path.
+// It generates a byte array representation of the path set, encoding each path and adding path separators as appropriate.
+func newPathSet(v []any) ([]byte, error) {
+	b := make([]byte, 0)
+
+	for _, path := range v { // for each path in the path set (slice of paths)
+		p, err := newPath(path.([]any))
+		if err != nil {
+			return nil, err
+		}
+		b = append(b, p...)              // append the path to the byte array
+		b = append(b, pathSeparatorByte) // between each path, append a path separator byte
+	}
+
+	b[len(b)-1] = pathsetEndByte // replace last path separator with path set end byte
+
+	return b, nil
+}
+
+// newPath constructs a path from a validated non-empty slice of path steps.
+// Each element of v must be a map[string]any path step.
+// It generates a byte array representation of the path, encoding each path step in turn.
+func newPath(v []any) ([]byte, error) {
+	b := make([]byte, 0)
+
+	for _, step := range v { // for each step in the path (slice of path steps)
+		s, err := newPathStep(step.(map[string]any))
+		if err != nil {
+			return nil, err
+		}
+		b = append(b, s...) // append the path step to the byte array
+	}
+	return b, nil
+}
+
+// newPathStep creates a path step from a map representation.
+// It generates a byte array representation of the path step, encoding account, currency, and issuer information as appropriate.
+func newPathStep(v map[string]any) ([]byte, error) {
+	dataType := 0x00
+	b := make([]byte, 0)
+
+	if v["account"] != nil {
+		accStr, ok := v["account"].(string)
+		if !ok {
+			return nil, ErrInvalidPathSet
+		}
+		_, account, err := addresscodec.DecodeClassicAddressToAccountID(accStr)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid account path step: %w", ErrInvalidPathSet, err)
+		}
+		b = append(b, account...)
+		dataType |= typeAccount
+	}
+	if v["currency"] != nil {
+		curStr, ok := v["currency"].(string)
+		if !ok {
+			return nil, ErrInvalidPathSet
+		}
+		currency, err := serializePathCurrency(curStr)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid currency path step: %w", ErrInvalidPathSet, err)
+		}
+		b = append(b, currency...)
+		dataType |= typeCurrency
+	}
+	if v["issuer"] != nil {
+		issStr, ok := v["issuer"].(string)
+		if !ok {
+			return nil, ErrInvalidPathSet
+		}
+		_, issuer, err := addresscodec.DecodeClassicAddressToAccountID(issStr)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid issuer path step: %w", ErrInvalidPathSet, err)
+		}
+		b = append(b, issuer...)
+		dataType |= typeIssuer
+	}
+
+	return append([]byte{byte(dataType)}, b...), nil
 }
 
 // ToJSON decodes a path set from a binary representation using a provided binary parser, then translates it to a JSON representation.
@@ -98,67 +201,37 @@ func (p PathSet) ToJSON(parser interfaces.BinaryParser, _ ...int) (any, error) {
 	return pathSet, nil
 }
 
-// isPathSet determines if an array represents a valid path set.
-// It checks if the array is either empty or if its first element is a valid path step.
-func isPathSet(v []any) bool {
-	return len(v) == 0 || len(v[0].([]any)) == 0 || isPathStep(v[0].([]any)[0].(map[string]any))
-}
+// parsePath decodes a path from a binary representation using a provided binary parser.
+// It returns a slice representing the path, or an error if the path could not be decoded.
+func parsePath(parser interfaces.BinaryParser) ([]any, error) {
+	var path []any
 
-// isPathStep determines if a map represents a valid path step.
-// It checks if any of the keys "account", "currency" or "issuer" are present in the map.
-func isPathStep(v map[string]any) bool {
-	return v["account"] != nil || v["currency"] != nil || v["issuer"] != nil
-}
+	for parser.HasMore() {
+		peek, err := parser.Peek()
+		if err != nil {
+			return nil, err
+		}
 
-// newPathStep creates a path step from a map representation.
-// It generates a byte array representation of the path step, encoding account, currency, and issuer information as appropriate.
-func newPathStep(v map[string]any) []byte {
-	dataType := 0x00
-	b := make([]byte, 0)
+		if peek == pathsetEndByte {
+			break
+		}
 
-	if v["account"] != nil {
-		_, account, _ := addresscodec.DecodeClassicAddressToAccountID(v["account"].(string))
-		b = append(b, account...)
-		dataType |= typeAccount
-	}
-	if v["currency"] != nil {
-		currency, _ := serializePathCurrency(v["currency"].(string))
-		b = append(b, currency...)
-		dataType |= typeCurrency
-	}
-	if v["issuer"] != nil {
-		_, issuer, _ := addresscodec.DecodeClassicAddressToAccountID(v["issuer"].(string))
-		b = append(b, issuer...)
-		dataType |= typeIssuer
+		if peek == pathSeparatorByte {
+			_, err := parser.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			break
+		}
+
+		step, err := parsePathStep(parser)
+		if err != nil {
+			return nil, err
+		}
+		path = append(path, step)
 	}
 
-	return append([]byte{byte(dataType)}, b...)
-}
-
-// newPath constructs a path from a slice of path steps.
-// It generates a byte array representation of the path, encoding each path step in turn.
-func newPath(v []any) []byte {
-	b := make([]byte, 0)
-
-	for _, step := range v { // for each step in the path (slice of path steps)
-		b = append(b, newPathStep(step.(map[string]any))...) // append the path step to the byte array
-	}
-	return b
-}
-
-// newPathSet constructs a path set from a slice of paths.
-// It generates a byte array representation of the path set, encoding each path and adding path separators as appropriate.
-func newPathSet(v []any) []byte {
-	b := make([]byte, 0)
-
-	for _, path := range v { // for each path in the path set (slice of paths)
-		b = append(b, newPath(path.([]any))...) // append the path to the byte array
-		b = append(b, pathSeparatorByte)        // between each path, append a path separator byte
-	}
-
-	b[len(b)-1] = pathsetEndByte // replace last path separator with path set end byte
-
-	return b
+	return path, nil
 }
 
 // parsePathStep decodes a path step from a binary representation using a provided binary parser.
@@ -204,37 +277,4 @@ func parsePathStep(parser interfaces.BinaryParser) (map[string]any, error) {
 	}
 
 	return step, nil
-}
-
-// parsePath decodes a path from a binary representation using a provided binary parser.
-// It returns a slice representing the path, or an error if the path could not be decoded.
-func parsePath(parser interfaces.BinaryParser) ([]any, error) {
-	var path []any
-
-	for parser.HasMore() {
-		peek, err := parser.Peek()
-		if err != nil {
-			return nil, err
-		}
-
-		if peek == pathsetEndByte {
-			break
-		}
-
-		if peek == pathSeparatorByte {
-			_, err := parser.ReadByte()
-			if err != nil {
-				return nil, err
-			}
-			break
-		}
-
-		step, err := parsePathStep(parser)
-		if err != nil {
-			return nil, err
-		}
-		path = append(path, step)
-	}
-
-	return path, nil
 }

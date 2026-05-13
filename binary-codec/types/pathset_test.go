@@ -20,17 +20,95 @@ func TestPathSet_FromJson(t *testing.T) {
 		err    error
 	}{
 		{
-			name: "fail - empty path set",
+			name:  "fail - input is not []any",
+			input: "not a path set",
+			err:   ErrInvalidPathSet,
+		},
+		{
+			name:  "fail - empty paths",
+			input: []any{},
+			err:   ErrInvalidPathSet,
+		},
+		{
+			name: "fail - path is not []any",
 			input: []any{
 				map[string]any{},
 			},
 			err: ErrInvalidPathSet,
 		},
 		{
-			name: "fail - invalid path set",
+			name: "fail - empty path",
+			input: []any{
+				[]any{},
+			},
+			err: ErrInvalidPathSet,
+		},
+		{
+			name: "fail - step is not a map",
+			input: []any{
+				[]any{"not a map"},
+			},
+			err: ErrInvalidPathSet,
+		},
+		{
+			name: "fail - step has no account/currency/issuer keys",
 			input: []any{
 				[]any{
 					map[string]any{},
+				},
+			},
+			err: ErrInvalidPathSet,
+		},
+		{
+			name: "fail - account is not a string",
+			input: []any{
+				[]any{
+					map[string]any{"account": 123},
+				},
+			},
+			err: ErrInvalidPathSet,
+		},
+		{
+			name: "fail - currency is not a string",
+			input: []any{
+				[]any{
+					map[string]any{"currency": 123},
+				},
+			},
+			err: ErrInvalidPathSet,
+		},
+		{
+			name: "fail - issuer is not a string",
+			input: []any{
+				[]any{
+					map[string]any{"issuer": 123},
+				},
+			},
+			err: ErrInvalidPathSet,
+		},
+		{
+			name: "fail - invalid account decode",
+			input: []any{
+				[]any{
+					map[string]any{"account": "not-a-valid-address"},
+				},
+			},
+			err: ErrInvalidPathSet,
+		},
+		{
+			name: "fail - invalid currency decode",
+			input: []any{
+				[]any{
+					map[string]any{"currency": "ZZ"},
+				},
+			},
+			err: ErrInvalidPathSet,
+		},
+		{
+			name: "fail - invalid issuer decode",
+			input: []any{
+				[]any{
+					map[string]any{"issuer": "not-a-valid-issuer"},
 				},
 			},
 			err: ErrInvalidPathSet,
@@ -56,8 +134,7 @@ func TestPathSet_FromJson(t *testing.T) {
 			pathset := PathSet{}
 			act, err := pathset.FromJSON(tc.input)
 			if tc.err != nil {
-				require.Error(t, err)
-				require.Equal(t, tc.err, err)
+				require.ErrorIs(t, err, tc.err)
 				return
 			}
 			require.NoError(t, err)
@@ -185,7 +262,9 @@ func TestNewPathStep(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.description, func(t *testing.T) {
-			require.Equal(t, tc.expected, newPathStep(tc.input))
+			actual, err := newPathStep(tc.input)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, actual)
 		})
 	}
 }
@@ -216,7 +295,9 @@ func TestNewPath(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.description, func(t *testing.T) {
-			require.Equal(t, tc.expected, newPath(tc.input))
+			actual, err := newPath(tc.input)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, actual)
 		})
 	}
 }
@@ -273,7 +354,9 @@ func TestNewPathSet(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.description, func(t *testing.T) {
-			require.Equal(t, tc.expected, newPathSet(tc.input))
+			actual, err := newPathSet(tc.input)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, actual)
 		})
 	}
 }

@@ -13,6 +13,8 @@ var (
 	errNotValidXChainBridge = errors.New("not a valid xchain bridge")
 )
 
+const xChainBridgeLength = 80
+
 // XChainBridge is a struct that represents an xchain bridge.
 type XChainBridge struct{}
 
@@ -24,26 +26,42 @@ func (x *XChainBridge) FromJSON(json any) ([]byte, error) {
 		return nil, errNotValidJSON
 	}
 
-	if v["LockingChainDoor"] == nil || v["LockingChainIssue"] == nil || v["IssuingChainDoor"] == nil || v["IssuingChainIssue"] == nil {
+	lockingChainDoorStr, ok := v["LockingChainDoor"].(string)
+	if !ok {
 		return nil, errNotValidXChainBridge
 	}
 
-	_, lockingChainDoor, err := addresscodec.DecodeClassicAddressToAccountID(v["LockingChainDoor"].(string))
+	lockingChainIssueStr, ok := v["LockingChainIssue"].(string)
+	if !ok {
+		return nil, errNotValidXChainBridge
+	}
+
+	issuingChainDoorStr, ok := v["IssuingChainDoor"].(string)
+	if !ok {
+		return nil, errNotValidXChainBridge
+	}
+
+	issuingChainIssueStr, ok := v["IssuingChainIssue"].(string)
+	if !ok {
+		return nil, errNotValidXChainBridge
+	}
+
+	_, lockingChainDoor, err := addresscodec.DecodeClassicAddressToAccountID(lockingChainDoorStr)
 	if err != nil {
 		return nil, errDecodeClassicAddress
 	}
 
-	_, lockingChainIssue, err := addresscodec.DecodeClassicAddressToAccountID(v["LockingChainIssue"].(string))
+	_, lockingChainIssue, err := addresscodec.DecodeClassicAddressToAccountID(lockingChainIssueStr)
 	if err != nil {
 		return nil, errDecodeClassicAddress
 	}
 
-	_, issuingChainDoor, err := addresscodec.DecodeClassicAddressToAccountID(v["IssuingChainDoor"].(string))
+	_, issuingChainDoor, err := addresscodec.DecodeClassicAddressToAccountID(issuingChainDoorStr)
 	if err != nil {
 		return nil, errDecodeClassicAddress
 	}
 
-	_, issuingChainIssue, err := addresscodec.DecodeClassicAddressToAccountID(v["IssuingChainIssue"].(string))
+	_, issuingChainIssue, err := addresscodec.DecodeClassicAddressToAccountID(issuingChainIssueStr)
 	if err != nil {
 		return nil, errDecodeClassicAddress
 	}
@@ -61,13 +79,17 @@ func (x *XChainBridge) FromJSON(json any) ([]byte, error) {
 // ToJSON converts a byte slice representation of an XChainBridge object to its json representation.
 // It returns an error if the bytes are not valid or if the classic addresses are not valid.
 func (x *XChainBridge) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
-	if opts == nil {
+	if len(opts) == 0 {
 		return nil, ErrNoLengthPrefix
 	}
 
 	bytes, err := p.ReadBytes(opts[0])
 	if err != nil {
 		return nil, errReadBytes
+	}
+
+	if len(bytes) != xChainBridgeLength {
+		return nil, errNotValidXChainBridge
 	}
 
 	json := make(map[string]string)
