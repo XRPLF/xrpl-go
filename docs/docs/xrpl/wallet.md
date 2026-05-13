@@ -23,6 +23,12 @@ func FromSecret(seed string) (Wallet, error)
 func FromMnemonic(mnemonic string) (*Wallet, error)
 ```
 
+:::warning
+
+`Wallet.Seed`, `Wallet.PrivateKey`, and mnemonic values are credentials. Do not print, log, commit, or send them to telemetry. Exposing these values leaks control of the account to anyone who can read the output.
+
+:::
+
 :::info
 
 When generating a random wallet, you will need to specify the algorithm you want to use.
@@ -94,7 +100,7 @@ import (
 )
 
 func main() {
-	// Create a wallet from a seed
+	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
 	wallet, err := wallet.FromSeed("snGHNrPbHrdUcszeuDEigMdC1Lyyd", "")
 	if err != nil {
 		log.Fatal(err)

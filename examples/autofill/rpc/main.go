@@ -22,12 +22,14 @@ func main() {
 
 	client := rpc.NewClient(cfg)
 
+	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
 	w, err := wallet.FromSeed("sEdSMVV4dJ1JbdBxmakRR4Puu3XVZz2", "")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
 	receiverWallet, err := wallet.FromSeed("sEd7d8Ci9nevdLCeUMctF3uGXp9WQqJ", "")
 	if err != nil {
 		fmt.Println(err)
