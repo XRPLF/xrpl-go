@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `GetLedgerEntry` method to the testutil integration `Client` interface.
 - Updated lending protocol integration test with expanded lifecycle coverage.
 
+#### xrpl/transaction
+
+- Exported `MinTransferRate` and `MaxTransferRate` constants alongside the existing `MinTickSize`/`MaxTickSize`, so callers can reference the AccountSet bounds without hardcoding values.
+
 #### xrpl/transaction/types
 
 - Added `IsZero() bool` to the `CurrencyAmount` interface. Implementations check numeric value: `XRPCurrencyAmount` against `uint64` zero, `IssuedCurrencyAmount` via `math/big.Float` to stay faithful to the textual XLS-33 decimal (so amounts that underflow IEEE-754 are not falsely zero), and `MPTCurrencyAmount` via `strconv.ParseInt`. Renamed the existing `IssuedCurrencyAmount.IsZero` empty-struct check to `IsEmpty` to avoid clashing with the new value-zero semantics.
@@ -74,6 +78,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added wallet credential leakage warnings to the wallet docs and example comments.
 
 ### Fixed
+
+#### xrpl/transaction
+
+- `AccountSet.Validate` now rejects invalid `TransferRate`, `ClearFlag`, and reserved `SetFlag` values before submission.
+- `AccountSet.Validate` now rejects `SetFlag == ClearFlag` (non-zero) locally, matching rippled's `temINVALID` and xrpl.js's `validateAccountSet`. Returned via the new `ErrAccountSetMutuallyExclusiveFlags` sentinel.
 
 #### address-codec
 

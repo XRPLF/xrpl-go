@@ -356,22 +356,24 @@ func TestAccountClearAsfFlags(t *testing.T) {
 }
 
 func TestAccountSet_Validate(t *testing.T) {
+	validBaseTx := BaseTx{
+		Account:         "r7dawf5hSG71faLnCrPiAQ5DkXfVxULPs",
+		TransactionType: AccountSetTx,
+		Fee:             types.XRPCurrencyAmount(1),
+		Sequence:        1234,
+		SigningPubKey:   "ghijk",
+		TxnSignature:    "A1B2C3D4E5F6",
+	}
+
 	testCases := []struct {
-		name       string
-		accountSet *AccountSet
-		valid      bool
+		name        string
+		accountSet  *AccountSet
+		expectedErr error
 	}{
 		{
 			name: "pass - Valid AccountSet",
 			accountSet: &AccountSet{
-				BaseTx: BaseTx{
-					Account:         "r7dawf5hSG71faLnCrPiAQ5DkXfVxULPs",
-					TransactionType: AccountSetTx,
-					Fee:             types.XRPCurrencyAmount(1),
-					Sequence:        1234,
-					SigningPubKey:   "ghijk",
-					TxnSignature:    "A1B2C3D4E5F6",
-				},
+				BaseTx:       validBaseTx,
 				ClearFlag:    1,
 				SetFlag:      2,
 				Domain:       types.Domain("A5B21758D2318FA2C"),
@@ -380,96 +382,164 @@ func TestAccountSet_Validate(t *testing.T) {
 				TransferRate: types.TransferRate(1000000001),
 				TickSize:     types.TickSize(5),
 			},
-			valid: true,
 		},
 		{
 			name: "pass - Valid AccountSet without options, just the commons fields",
 			accountSet: &AccountSet{
-				BaseTx: BaseTx{
-					Account:         "r7dawf5hSG71faLnCrPiAQ5DkXfVxULPs",
-					TransactionType: AccountSetTx,
-					Fee:             types.XRPCurrencyAmount(1),
-					Sequence:        1234,
-					SigningPubKey:   "ghijk",
-					TxnSignature:    "A1B2C3D4E5F6",
-				},
+				BaseTx: validBaseTx,
 			},
-			valid: true,
+		},
+		{
+			name: "pass - Valid AccountSet TransferRate set to 0 to disable it",
+			accountSet: &AccountSet{
+				BaseTx:       validBaseTx,
+				TransferRate: types.TransferRate(0),
+			},
+		},
+		{
+			name: "pass - Valid AccountSet TransferRate at minimum",
+			accountSet: &AccountSet{
+				BaseTx:       validBaseTx,
+				TransferRate: types.TransferRate(1000000000),
+			},
+		},
+		{
+			name: "pass - Valid AccountSet TransferRate at maximum",
+			accountSet: &AccountSet{
+				BaseTx:       validBaseTx,
+				TransferRate: types.TransferRate(2000000000),
+			},
+		},
+		{
+			name: "pass - Valid AccountSet ClearFlag at minimum",
+			accountSet: &AccountSet{
+				BaseTx:    validBaseTx,
+				ClearFlag: AsfRequireDest,
+			},
+		},
+		{
+			name: "pass - Valid AccountSet ClearFlag at maximum",
+			accountSet: &AccountSet{
+				BaseTx:    validBaseTx,
+				ClearFlag: AsfAllowTrustLineLocking,
+			},
+		},
+		{
+			name: "pass - Valid AccountSet SetFlag at minimum",
+			accountSet: &AccountSet{
+				BaseTx:  validBaseTx,
+				SetFlag: AsfRequireDest,
+			},
+		},
+		{
+			name: "pass - Valid AccountSet SetFlag at maximum",
+			accountSet: &AccountSet{
+				BaseTx:  validBaseTx,
+				SetFlag: AsfAllowTrustLineLocking,
+			},
 		},
 		{
 			name: "fail - Invalid AccountSet with high SetFlag",
 			accountSet: &AccountSet{
-				BaseTx: BaseTx{
-					Account:         "r7dawf5hSG71faLnCrPiAQ5DkXfVxULPs",
-					TransactionType: AccountSetTx,
-					Fee:             types.XRPCurrencyAmount(1),
-					Sequence:        1234,
-					SigningPubKey:   "ghijk",
-					TxnSignature:    "A1B2C3D4E5F6",
-				},
+				BaseTx:  validBaseTx,
 				SetFlag: 18, // too high
 			},
-			valid: false,
+			expectedErr: ErrAccountSetInvalidSetFlag,
+		},
+		{
+			name: "fail - Invalid AccountSet with reserved SetFlag",
+			accountSet: &AccountSet{
+				BaseTx:  validBaseTx,
+				SetFlag: reservedAccountSetFlagHooks,
+			},
+			expectedErr: ErrAccountSetInvalidSetFlag,
+		},
+		{
+			name: "fail - Invalid AccountSet with high ClearFlag",
+			accountSet: &AccountSet{
+				BaseTx:    validBaseTx,
+				ClearFlag: 18, // too high
+			},
+			expectedErr: ErrAccountSetInvalidClearFlag,
+		},
+		{
+			name: "fail - Invalid AccountSet with reserved ClearFlag",
+			accountSet: &AccountSet{
+				BaseTx:    validBaseTx,
+				ClearFlag: reservedAccountSetFlagHooks,
+			},
+			expectedErr: ErrAccountSetInvalidClearFlag,
+		},
+		{
+			name: "fail - Invalid AccountSet with TransferRate just above zero",
+			accountSet: &AccountSet{
+				BaseTx:       validBaseTx,
+				TransferRate: types.TransferRate(1),
+			},
+			expectedErr: ErrAccountSetInvalidTransferRate,
+		},
+		{
+			name: "fail - Invalid AccountSet with TransferRate just below minimum",
+			accountSet: &AccountSet{
+				BaseTx:       validBaseTx,
+				TransferRate: types.TransferRate(999999999),
+			},
+			expectedErr: ErrAccountSetInvalidTransferRate,
+		},
+		{
+			name: "fail - Invalid AccountSet with TransferRate above maximum",
+			accountSet: &AccountSet{
+				BaseTx:       validBaseTx,
+				TransferRate: types.TransferRate(2000000001),
+			},
+			expectedErr: ErrAccountSetInvalidTransferRate,
 		},
 		{
 			name: "fail - Invalid AccountSet with low TickSize",
 			accountSet: &AccountSet{
-				BaseTx: BaseTx{
-					Account:         "r7dawf5hSG71faLnCrPiAQ5DkXfVxULPs",
-					TransactionType: AccountSetTx,
-					Fee:             types.XRPCurrencyAmount(1),
-					Sequence:        1234,
-					SigningPubKey:   "ghijk",
-					TxnSignature:    "A1B2C3D4E5F6",
-				},
+				BaseTx:   validBaseTx,
 				TickSize: types.TickSize(2),
 			},
-			valid: false,
+			expectedErr: ErrAccountSetInvalidTickSize,
 		},
 		{
 			name: "fail - Invalid AccountSet with high TickSize",
 			accountSet: &AccountSet{
-				BaseTx: BaseTx{
-					Account:         "r7dawf5hSG71faLnCrPiAQ5DkXfVxULPs",
-					TransactionType: AccountSetTx,
-					Fee:             types.XRPCurrencyAmount(1),
-					Sequence:        1234,
-					SigningPubKey:   "ghijk",
-					TxnSignature:    "A1B2C3D4E5F6",
-				},
+				BaseTx:   validBaseTx,
 				TickSize: types.TickSize(16),
 			},
-			valid: false,
+			expectedErr: ErrAccountSetInvalidTickSize,
 		},
 		{
 			name: "pass - Valid AccountSet TickSize set to 0 to disable it",
 			accountSet: &AccountSet{
-				BaseTx: BaseTx{
-					Account:         "r7dawf5hSG71faLnCrPiAQ5DkXfVxULPs",
-					TransactionType: AccountSetTx,
-					Fee:             types.XRPCurrencyAmount(1),
-					Sequence:        1234,
-					SigningPubKey:   "ghijk",
-					TxnSignature:    "A1B2C3D4E5F6",
-				},
+				BaseTx:   validBaseTx,
 				TickSize: types.TickSize(0),
 			},
-			valid: true,
+		},
+		{
+			name: "fail - Invalid AccountSet with SetFlag equal to ClearFlag",
+			accountSet: &AccountSet{
+				BaseTx:    validBaseTx,
+				SetFlag:   AsfRequireDest,
+				ClearFlag: AsfRequireDest,
+			},
+			expectedErr: ErrAccountSetMutuallyExclusiveFlags,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			valid, err := tc.accountSet.Validate()
-			if valid != tc.valid {
-				t.Errorf("Validation result for %s is incorrect. Expected: %v, Got: %v", tc.name, tc.valid, valid)
+
+			if tc.expectedErr != nil {
+				require.False(t, valid)
+				require.ErrorIs(t, err, tc.expectedErr)
+				return
 			}
-			if err != nil && tc.valid {
-				t.Errorf("Validation failed for %s: %s", tc.name, err)
-			}
-			if err == nil && !tc.valid {
-				t.Errorf("Validation should have failed for %s", tc.name)
-			}
+
+			require.True(t, valid)
+			require.NoError(t, err)
 		})
 	}
 }
