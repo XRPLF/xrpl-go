@@ -137,6 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SignerListSet.Validate` now rejects duplicate signer accounts including classic/X-address equivalents, signer entries that reference the transaction account, zero signer weights, and correctly handles signer weight sums above `uint16`.
 - `AccountSet.Validate` now rejects invalid `TransferRate`, `ClearFlag`, and reserved `SetFlag` values before submission.
 - `AccountSet.Validate` now rejects `SetFlag == ClearFlag` (non-zero) locally, matching rippled's `temINVALID` and xrpl.js's `validateAccountSet`. Returned via the new `ErrAccountSetMutuallyExclusiveFlags` sentinel.
+- `NFTokenAcceptOffer.Validate` now rejects zero issued-currency `NFTokenBrokerFee` via canonical numeric comparison (`IssuedCurrencyAmount.IsZero`), so non-canonical zero representations like `"0.0"`, `"00"`, `"0e0"`, and `"-0"` are no longer accepted past the validator.
 
 
 #### xrpl/currency
