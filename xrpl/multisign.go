@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"maps"
-	"sort"
 	"slices"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
