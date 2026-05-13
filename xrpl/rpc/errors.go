@@ -90,6 +90,8 @@ var (
 
 	// ErrEmptyURL is returned when the provided URL is empty (no port or IP specified).
 	ErrEmptyURL = errors.New("empty port and IP provided")
+	// ErrResponseTooLarge is returned when an RPC response body exceeds the configured limit.
+	ErrResponseTooLarge = errors.New("rpc response body exceeds maximum size")
 )
 
 // Dynamic errors

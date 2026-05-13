@@ -8,6 +8,8 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
+const defaultMaxResponseSize int64 = 16 * 1024 * 1024
+
 // SetLogger overrides the *log.Logger used for SDK-emitted warnings (currently
 // just the insecure-scheme warning). Pass nil to silence the warnings entirely.
 // The default logger writes to stdlib's log.Default(), preserving prior behavior.
@@ -20,11 +22,12 @@ func SetLogger(l *log.Logger) {
 // ClientConfig configures options for the XRPL WebSocket client.
 type ClientConfig struct {
 	// Connection config
-	host          string
-	maxRetries    int
-	maxReconnects int
-	retryDelay    time.Duration
-	timeout       time.Duration
+	host            string
+	maxRetries      int
+	maxReconnects   int
+	retryDelay      time.Duration
+	timeout         time.Duration
+	maxResponseSize int64
 
 	// Fee config
 	feeCushion float32
@@ -37,13 +40,14 @@ type ClientConfig struct {
 // NewClientConfig returns a ClientConfig initialized with default settings.
 func NewClientConfig() *ClientConfig {
 	return &ClientConfig{
-		host:          common.DefaultHost,
-		feeCushion:    common.DefaultFeeCushion,
-		maxFeeXRP:     common.DefaultMaxFeeXRP,
-		maxRetries:    common.DefaultMaxRetries,
-		maxReconnects: common.DefaultMaxReconnects,
-		retryDelay:    common.DefaultRetryDelay,
-		timeout:       common.DefaultTimeout,
+		host:            common.DefaultHost,
+		feeCushion:      common.DefaultFeeCushion,
+		maxFeeXRP:       common.DefaultMaxFeeXRP,
+		maxRetries:      common.DefaultMaxRetries,
+		maxReconnects:   common.DefaultMaxReconnects,
+		retryDelay:      common.DefaultRetryDelay,
+		timeout:         common.DefaultTimeout,
+		maxResponseSize: defaultMaxResponseSize,
 	}
 }
 
@@ -100,5 +104,18 @@ func (wc ClientConfig) WithRetryDelay(retryDelay time.Duration) ClientConfig {
 // Default: 10 seconds
 func (wc ClientConfig) WithTimeout(timeout time.Duration) ClientConfig {
 	wc.timeout = timeout
+	return wc
+}
+
+// WithMaxResponseSize sets the maximum inbound WebSocket response message size.
+// Applied per inbound message, long-lived subscriptions are not capped in aggregate.
+// Set to 0 to disable the response size limit.
+// Negative values are replaced with the default.
+func (wc ClientConfig) WithMaxResponseSize(maxResponseSize int64) ClientConfig {
+	if maxResponseSize < 0 {
+		wc.maxResponseSize = defaultMaxResponseSize
+		return wc
+	}
+	wc.maxResponseSize = maxResponseSize
 	return wc
 }

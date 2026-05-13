@@ -181,6 +181,28 @@ func TestClient_Request(t *testing.T) {
 		assert.EqualError(t, err, "ledgerIndexMalformed")
 	})
 
+	t.Run("SendRequest - response over max size", func(t *testing.T) {
+		req := &account.ChannelsRequest{
+			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+		}
+
+		mc := &testutil.JSONRPCMockClient{}
+		mc.DoFunc = testutil.MockResponse("RandomRandomRandom", 200, mc)
+
+		cfg, err := NewClientConfig(
+			"http://testnode/",
+			WithHTTPClient(mc),
+			WithMaxResponseSize(10),
+		)
+		require.NoError(t, err)
+
+		jsonRpcClient := NewClient(cfg)
+
+		_, err = jsonRpcClient.Request(req)
+
+		assert.ErrorIs(t, err, ErrResponseTooLarge)
+	})
+
 	t.Run("SendRequest - 503 response", func(t *testing.T) {
 		req := &account.ChannelsRequest{
 			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",

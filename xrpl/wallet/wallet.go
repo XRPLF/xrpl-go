@@ -33,7 +33,7 @@ type Wallet struct {
 
 // New creates a new random Wallet. In order to make this a valid account on ledger, you must send XRP to it.
 func New(alg interfaces.CryptoImplementation) (Wallet, error) {
-	seed, err := keypairs.GenerateSeed("", alg, random.NewRandomizer())
+	seed, err := keypairs.GenerateSeed(nil, alg, random.NewRandomizer())
 	if err != nil {
 		return Wallet{}, err
 	}

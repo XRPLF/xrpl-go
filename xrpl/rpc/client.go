@@ -128,7 +128,7 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 	}()
 
 	var jr Response
-	jr, err = checkForError(response)
+	jr, err = checkForError(response, c.cfg.maxResponseSize)
 	if err != nil {
 		return nil, err
 	}
