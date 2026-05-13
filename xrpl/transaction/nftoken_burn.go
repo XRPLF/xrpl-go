@@ -2,7 +2,6 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -69,8 +68,7 @@ func (n *NFTokenBurn) Validate() (bool, error) {
 		return false, ErrInvalidOwner
 	}
 
-	// check NFTokenID is a valid hexadecimal string
-	if !typecheck.IsHex(n.NFTokenID.String()) {
+	if !IsHex256(n.NFTokenID.String()) {
 		return false, ErrInvalidNFTokenID
 	}
 
