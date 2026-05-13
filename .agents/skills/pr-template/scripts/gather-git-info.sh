@@ -100,17 +100,59 @@ if [ -z "$PR_TEMPLATE_PATH" ]; then
   fi
 fi
 
-# Output JSON
-cat <<ENDJSON
-{
-  "branch": "$RESOLVED_BRANCH",
-  "base_branch": "$BASE_BRANCH",
-  "merge_base": "$MERGE_BASE",
-  "commits": $COMMITS,
-  "files_changed": $(echo "$FILES_CHANGED" | jq -R -s 'split("\n") | map(select(. != ""))'),
-  "diff_stat": $(echo "$DIFF_STAT" | jq -R -s .),
-  "diff": $(echo "$FULL_DIFF" | jq -R -s .),
-  "pr_template_path": $(echo "$PR_TEMPLATE_PATH" | jq -R -s .),
-  "pr_template": $(echo "$PR_TEMPLATE_CONTENT" | jq -R -s .)
-}
-ENDJSON
+# Detect whether the feature branch is already pushed to a remote.
+BRANCH_PUSHED="false"
+REMOTE_NAME=""
+
+# Prefer the branch's configured upstream; fall back to checking origin.
+UPSTREAM_REF=$(git rev-parse --abbrev-ref --symbolic-full-name "${RESOLVED_BRANCH}@{upstream}" 2>/dev/null || echo "")
+if [ -n "$UPSTREAM_REF" ]; then
+  BRANCH_PUSHED="true"
+  REMOTE_NAME="${UPSTREAM_REF%%/*}"
+elif git ls-remote --exit-code --heads origin "$RESOLVED_BRANCH" >/dev/null 2>&1; then
+  BRANCH_PUSHED="true"
+  REMOTE_NAME="origin"
+fi
+
+# Resolve the GitHub repository that should be passed to gh pr create --repo.
+TARGET_REMOTE_NAME="${REMOTE_NAME:-origin}"
+TARGET_REPO=""
+REMOTE_URL=$(git remote get-url "$TARGET_REMOTE_NAME" 2>/dev/null || echo "")
+REMOTE_URL="${REMOTE_URL%.git}"
+if [[ "$REMOTE_URL" =~ ^git@github\.com:(.+/.+)$ ]]; then
+  TARGET_REPO="${BASH_REMATCH[1]}"
+elif [[ "$REMOTE_URL" =~ ^https://github\.com/(.+/.+)$ ]]; then
+  TARGET_REPO="${BASH_REMATCH[1]}"
+elif [[ "$REMOTE_URL" =~ ^ssh://git@github\.com/(.+/.+)$ ]]; then
+  TARGET_REPO="${BASH_REMATCH[1]}"
+fi
+
+# Output JSON. Use jq -n --arg for scalars so trailing newlines from shell expansion
+# don't leak into the JSON strings (echo "$X" | jq -R -s . keeps the \n).
+jq -n \
+  --arg branch "$RESOLVED_BRANCH" \
+  --arg base_branch "$BASE_BRANCH" \
+  --arg merge_base "$MERGE_BASE" \
+  --argjson commits "$COMMITS" \
+  --arg files_changed "$FILES_CHANGED" \
+  --arg diff_stat "$DIFF_STAT" \
+  --arg diff "$FULL_DIFF" \
+  --arg pr_template_path "$PR_TEMPLATE_PATH" \
+  --arg pr_template "$PR_TEMPLATE_CONTENT" \
+  --argjson branch_pushed "$BRANCH_PUSHED" \
+  --arg remote_name "$REMOTE_NAME" \
+  --arg target_repo "$TARGET_REPO" \
+  '{
+    branch: $branch,
+    base_branch: $base_branch,
+    merge_base: $merge_base,
+    commits: $commits,
+    files_changed: ($files_changed | split("\n") | map(select(. != ""))),
+    diff_stat: $diff_stat,
+    diff: $diff,
+    pr_template_path: $pr_template_path,
+    pr_template: $pr_template,
+    branch_pushed: $branch_pushed,
+    remote_name: $remote_name,
+    target_repo: $target_repo
+  }'
