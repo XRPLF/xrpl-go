@@ -120,7 +120,7 @@ func (a *AMMWithdraw) Flatten() FlatTransaction {
 	if a.EPrice != nil {
 		flattened["EPrice"] = a.EPrice.Flatten()
 	}
-	if !a.LPTokenIn.IsZero() {
+	if !a.LPTokenIn.IsEmpty() {
 		flattened["LPTokenIn"] = a.LPTokenIn.Flatten()
 	}
 

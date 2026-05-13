@@ -25,7 +25,7 @@ func (e *ErrorWebsocketClientXrplResponse) Error() string {
 
 // ClientResponse represents a generic XRPL WebSocket client response, including status, result, and warnings.
 type ClientResponse struct {
-	ID        int               `json:"id"`
+	ID        uint64            `json:"id"`
 	Status    string            `json:"status"`
 	Type      string            `json:"type"`
 	Error     string            `json:"error,omitempty"`
