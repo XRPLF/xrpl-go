@@ -93,6 +93,14 @@ func (c *Client) GetXrpBalanceValidated(address types.Address) (string, error) {
 	return c.getXrpBalance(address, common.Validated)
 }
 
+// GetXrpDropsBalanceValidated retrieves the XRP balance of a given account
+// address from the most recently validated ledger in drops. Prefer this over
+// GetXrpBalanceValidated when callers need integer drops (avoids a round-trip
+// through a decimal XRP string).
+func (c *Client) GetXrpDropsBalanceValidated(address types.Address) (types.XRPCurrencyAmount, error) {
+	return c.getXrpDropsBalance(address, common.Validated)
+}
+
 func (c *Client) getXrpBalance(address types.Address, ledgerIndex common.LedgerSpecifier) (string, error) {
 	balance, err := c.getXrpDropsBalance(address, ledgerIndex)
 	if err != nil {

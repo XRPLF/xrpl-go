@@ -34,8 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `SortByAccountID` helper for canonical account ID byte ordering.
 - Added `LoanObject` and `LoanBrokerObject` `ObjectType` constants for `account_objects` query.
-- Added `GetLedgerEntry` method to the testutil integration `Client` interface.
+- Added `GetLedgerEntry` and `GetXrpBalanceValidated` methods to the testutil integration `Client` interface.
+- Added `GetXrpDropsBalanceValidated` to `rpc.Client`, `websocket.Client`, and the testutil integration `Client` interface to read validated-ledger balances directly in drops without the XRP-string round trip.
 - Updated lending protocol integration test with expanded lifecycle coverage.
+- Added `AutofillMultisigned` to the testutil integration `Client` interface and multisigned payment integration coverage, including sub-quorum (`tefBAD_QUORUM`) and non-listed-signer (`tefBAD_SIGNATURE`) negative-path tests.
 
 #### xrpl/transaction
 
