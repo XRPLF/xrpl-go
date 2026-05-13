@@ -77,6 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added wallet credential leakage warnings to the wallet docs and example comments.
 
+#### pkg/crypto
+
+- Ed25519 and SECP256K1 `Sign` now wrap the underlying `hex.DecodeString` error with `ErrInvalidPrivateKey`. `errors.Is(err, ErrInvalidPrivateKey)` still matches, and the hex offset / invalid-byte detail is now reachable via `errors.As` and `errors.Unwrap`.
+
 ### Fixed
 
 #### xrpl/transaction
@@ -109,8 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### pkg/crypto
 
-- Ed25519 signing and validation now reject malformed key lengths before slicing decoded key bytes, preventing panics on malformed ED-prefixed keys.
-- Ed25519 signing and validation now reject decoded keys whose first byte is not the ED prefix before stripping the prefix.
+- Ed25519 signing and validation now reject malformed keys and signatures by length and ED prefix before slicing decoded bytes or verifying, preventing panics on malformed inputs.
 
 #### xrpl
 

@@ -314,6 +314,11 @@ func TestDeriveNodeAddress(t *testing.T) {
 		expectedErr error
 	}{
 		{
+			name:        "fail - derive node address - input too short to base58check-decode",
+			inputPubKey: "x",
+			expectedErr: addresscodec.ErrInvalidFormat,
+		},
+		{
 			name:        "fail - derive node address - node prefix mismatch",
 			inputPubKey: "rfZG9pC1cKF7q96TNZR264H9ykzKCxMyk44ZK8hFL8cNv1G3c8J",
 			expectedErr: addresscodec.ErrB58PrefixMismatch,

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
@@ -66,7 +67,7 @@ func (c ED25519CryptoAlgorithm) DeriveKeypair(decodedSeed []byte, validator bool
 func (c ED25519CryptoAlgorithm) Sign(msg, privKey string) (string, error) {
 	b, err := hex.DecodeString(privKey)
 	if err != nil {
-		return "", ErrInvalidPrivateKey
+		return "", fmt.Errorf("%w: %w", ErrInvalidPrivateKey, err)
 	}
 	// The private key is sliced below to remove the ED prefix, so reject malformed keys first.
 	if len(b) != ed25519PrivateKeyLength || b[0] != ed25519Prefix {
