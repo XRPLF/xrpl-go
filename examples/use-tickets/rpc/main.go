@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
 	walletSeed = "sn3nxiW7v8KXzPzAqzyHXbSSKNuN9"
 )
 
