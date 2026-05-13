@@ -698,8 +698,7 @@ func TestClient_DisconnectFromStreamHandlerDoesNotDeadlock(t *testing.T) {
 }
 
 func TestLifecycleStreamReportUsesHandlerSnapshot(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var stream lifecycleStream[int]
 	firstCalled := make(chan int, 1)
@@ -798,8 +797,7 @@ func requireStreamHandlerStateMutexHeld(t *testing.T, cl *Client, duration time.
 }
 
 func TestLifecycleStreamStartRunsRegisteredHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	var stream lifecycleStream[int]
 	received := make(chan int, 1)

@@ -30,7 +30,10 @@ func (c *Connection) Connect() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	conn, _, err := websocket.DefaultDialer.Dial(c.url, nil)
+	conn, resp, err := websocket.DefaultDialer.Dial(c.url, nil)
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
 	if err != nil {
 		return err
 	}

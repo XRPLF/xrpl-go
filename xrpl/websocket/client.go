@@ -886,6 +886,14 @@ func (c *Client) handleStream(ctx context.Context, t streamtypes.Type, message [
 	}
 }
 
+// reconnectBaseDelay and reconnectMaxDelay control the capped exponential
+// backoff applied between reconnect attempts in readMessages. They are vars
+// (not consts) so tests can shrink the wait without exposing a public knob.
+var (
+	reconnectBaseDelay = 1 * time.Second
+	reconnectMaxDelay  = 30 * time.Second
+)
+
 func (c *Client) readMessages(ctx context.Context) {
 	retryCount := 0
 	maxRetries := c.cfg.maxReconnects
@@ -909,21 +917,7 @@ func (c *Client) readMessages(ctx context.Context) {
 
 		switch {
 		case ws.IsCloseError(err) || ws.IsUnexpectedCloseError(err):
-			if retryCount >= maxRetries {
-				c.reportError(ctx, ErrMaxReconnectionAttemptsReached{
-					Attempts: maxRetries,
-				})
-				return
-			}
-			retryCount++
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-			connErr := c.conn.Connect()
-			if connErr != nil {
-				c.reportError(ctx, connErr)
+			if !c.reconnectWithBackoff(ctx, &retryCount, maxRetries) {
 				return
 			}
 		case err != nil:
@@ -936,6 +930,51 @@ func (c *Client) readMessages(ctx context.Context) {
 			retryCount = 0
 		}
 	}
+}
+
+// reconnectWithBackoff retries c.conn.Connect() with capped exponential
+// backoff until it succeeds or the budget is exhausted. Returns true on
+// success and false when the budget is exhausted or ctx is cancelled.
+// retryCount is updated in place so it persists across disconnect events.
+func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxRetries int) bool {
+	for {
+		if *retryCount >= maxRetries {
+			c.reportError(ctx, ErrMaxReconnectionAttemptsReached{
+				Attempts: maxRetries,
+			})
+			return false
+		}
+		*retryCount++
+
+		timer := time.NewTimer(reconnectDelay(*retryCount))
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return false
+		case <-timer.C:
+		}
+
+		if connErr := c.conn.Connect(); connErr != nil {
+			continue
+		}
+		return true
+	}
+}
+
+// reconnectDelay returns reconnectBaseDelay * 2^(attempt-1), capped at
+// reconnectMaxDelay. attempt is 1-indexed.
+func reconnectDelay(attempt int) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	backoff := reconnectBaseDelay
+	for i := 1; i < attempt && backoff < reconnectMaxDelay; i++ {
+		backoff *= 2
+	}
+	if backoff > reconnectMaxDelay {
+		return reconnectMaxDelay
+	}
+	return backoff
 }
 
 // getSignedTx ensures the transaction is fully signed and returns the transaction blob.
