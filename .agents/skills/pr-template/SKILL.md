@@ -1,18 +1,19 @@
 ---
 name: pr-template
-description: "Generate a filled PR description from a branch's changes compared to a base branch. Autodetects the repo's GitHub PR template (.github/PULL_REQUEST_TEMPLATE.md and variants), falling back to a built-in template if none exists. Trigger when the user asks: 'create a PR template', 'create a PR template for X branch to Y', 'generate PR description', 'write PR template', 'PR template for feature-branch to main', 'prepare PR', 'draft PR', 'PR description for X to Y'. The user may specify a feature branch and/or a base branch (e.g., 'for feat/foo to main'). If the feature branch is omitted, use the current branch. If the base branch is omitted, default to main."
+description: "Generate a filled PR description from a branch's changes compared to a base branch, then optionally open the PR on GitHub via `gh pr create`. Autodetects the repo's GitHub PR template (.github/PULL_REQUEST_TEMPLATE.md and variants), falling back to a built-in template if none exists. The PR target repo is resolved from the branch remote and passed explicitly via `--repo`; the target must be printed for user verification before creation. Trigger when the user asks: 'create a PR template', 'create a PR template for X branch to Y', 'generate PR description', 'write PR template', 'PR template for feature-branch to main', 'prepare PR', 'draft PR', 'PR description for X to Y', 'create the PR', 'open the PR', 'submit PR'. The user may specify a feature branch and/or a base branch (e.g., 'for feat/foo to main'). If the feature branch is omitted, use the current branch. If the base branch is omitted, default to main."
 ---
 
 # PR Template Generator
 
-Analyzes a branch's commits and diff against a base branch, then generates a fully filled PR description. Autodetects the repo's GitHub PR template if one exists, otherwise uses a built-in fallback. Writes the result to `PR/<descriptive-name>.md`.
+Analyzes a branch's commits and diff against a base branch, generates a fully filled PR description, and offers to open the PR on GitHub. Autodetects the repo's GitHub PR template if one exists (falling back to a built-in template).
 
 ## How It Works
 
-1. **Gather git data** — runs the script to collect branch name, commits, diff stats, and the full diff
+1. **Gather git data** — runs the script to collect branch name, commits, diff stats, the full diff, and whether the branch is already pushed
 2. **Analyze changes** — you read the output and understand what changed, why, and what type of change it is
 3. **Generate template** — fill in the PR template with all sections populated
 4. **Write file** — save to `PR/<descriptive-name>.md` in the project root
+5. **Offer to open the PR** — show the user title/base/branch/body-file/target repo and ask whether to run `gh pr create`
 
 ## Parsing User Input
 
@@ -77,6 +78,69 @@ When using a repo's PR template, preserve its exact structure, sections, and for
 Create the `PR/` directory if it doesn't exist, then write the filled template to `PR/<descriptive-name>.md`.
 
 The `<descriptive-name>` should be a kebab-case slug derived from the PR title (e.g., `add-counterparty-signing-utils.md`, `fix-amm-deposit-validation.md`).
+
+### Step 4: Offer to open the PR
+
+After writing the file, ask the user whether to open the PR via `gh pr create`. Resolve the target GitHub repository from the branch remote and pass it explicitly with `--repo`.
+
+Do not rely on `gh` default-repo inference for PR creation. Forks and local defaults can point somewhere surprising, especially when the user has multiple remotes.
+
+**Make the action obvious before running it.** Print the exact target repo before creating or dry-running the PR, then ask the user to verify it.
+
+**Fields produced by the script for this step:**
+- `branch_pushed` — `true` if the feature branch already has a remote tracking ref or is visible on `origin`
+- `remote_name` — the remote the branch is (or would be) pushed to
+- `target_repo` — GitHub `OWNER/REPO` parsed from `remote_name`'s URL; this must be passed to `gh pr create --repo`
+
+**Flow:**
+
+1. **Present the plan and ask.** Show the user what will be created:
+
+   ```text
+   Ready to open PR:
+     Title:  <pr title>
+     Base:   <base_branch>
+     Branch: <feature_branch>
+     Body:   PR/<descriptive-name>.md
+     Repo:   <target_repo>
+
+   Verify that Repo is the exact GitHub repository where this PR should be opened.
+
+   Create the PR now? (y/n)
+   ```
+
+   If the user declines, stop here — the file on disk is enough.
+
+2. **Handle the unpushed-branch case.** If `branch_pushed` is `false`, do not push silently. Ask first:
+
+   ```text
+   Branch <branch> is not pushed to <remote_name or "origin">. Push it now? (y/n)
+   ```
+
+   On yes, run `git push -u <remote_name or "origin"> <branch>`. On no, stop — the PR cannot be created without a remote ref.
+
+3. **Create the PR.** If `target_repo` is empty, stop and ask the user for the intended `OWNER/REPO`; do not create the PR by inference. Use `--repo` to pin the target and `--body-file` so the markdown is sent verbatim:
+
+   ```bash
+   gh pr create \
+     --repo "<target_repo>" \
+     --base "<base_branch>" \
+     --title "<pr title>" \
+     --body-file "PR/<descriptive-name>.md"
+   ```
+
+   Add `--draft` if the user asked for a draft PR. Add `--dry-run` first when the user wants to verify the resolved target without creating the PR.
+
+4. **Report the URL prominently.** `gh pr create` prints the PR URL on success. Surface it back to the user front-and-center so they can verify it landed on the expected org/repo:
+
+   ```text
+   PR opened: <url>
+   ```
+
+**Edge cases:**
+- `gh` is missing → tell the user to install it; the markdown file is still written
+- `gh` not authenticated → surface the error; offer to write the file only
+- Unable to parse a GitHub repo from the remote URL → ask the user for the target `OWNER/REPO` and show it before running `gh pr create`
 
 ## Fallback Template
 
@@ -154,7 +218,7 @@ Follow these rules when generating the template. When using the repo's own PR te
 
 ## Present Results to User
 
-After writing the file:
+After writing the file (Step 3), summarize what was produced. Then proceed to Step 4 to ask about opening the PR.
 
 ```text
 PR template written to `PR/<descriptive-name>.md`
@@ -162,7 +226,14 @@ PR template written to `PR/<descriptive-name>.md`
 **Title:** <the title>
 **Template:** <repo template path, or "built-in fallback">
 **File:** `PR/<descriptive-name>.md`
+**Target repo:** <target_repo>
 **Changes detected:** <N> commits, <N> files changed
+```
+
+After Step 4, if the PR was created, also report:
+
+```text
+**PR opened:** <url from gh pr create>
 ```
 
 ## Troubleshooting
