@@ -49,14 +49,16 @@ func Encode(b []byte, typePrefix []byte, expectedLength int) (string, error) {
 func Decode(b58string string, typePrefix []byte) ([]byte, error) {
 	prefixLength := len(typePrefix)
 
-	if !bytes.Equal(DecodeBase58(b58string)[:prefixLength], typePrefix) {
-		return nil, errors.New("b58string prefix and typeprefix not equal")
+	result, err := Base58CheckDecode(b58string)
+	if err != nil {
+		return nil, err
 	}
 
-	result, err := Base58CheckDecode(b58string)
-	result = result[prefixLength:]
+	if len(result) < prefixLength || !bytes.Equal(result[:prefixLength], typePrefix) {
+		return nil, ErrB58PrefixMismatch
+	}
 
-	return result, err
+	return result[prefixLength:], nil
 }
 
 // EncodeClassicAddressFromPublicKeyHex returns the classic address from a public key hex string.
@@ -124,17 +126,30 @@ func EncodeSeed(entropy []byte, encodingType interfaces.CryptoImplementation) (s
 
 // DecodeSeed returns the decoded seed and its corresponding algorithm.
 func DecodeSeed(seed string) ([]byte, interfaces.CryptoImplementation, error) {
-	// decoded := DecodeBase58(seed)
 	decoded, err := Base58CheckDecode(seed)
 	if err != nil {
 		return nil, nil, ErrInvalidSeed
 	}
 
-	if bytes.Equal(decoded[:3], []byte{0x01, 0xe1, 0x4b}) {
-		return decoded[3:], crypto.ED25519(), nil
+	ed25519 := crypto.ED25519()
+	ed25519Prefix := ed25519.FamilySeedPrefix()
+	if bytes.HasPrefix(decoded, ed25519Prefix) {
+		if len(decoded) != len(ed25519Prefix)+FamilySeedLength {
+			return nil, nil, ErrInvalidSeedLength
+		}
+		return decoded[len(ed25519Prefix):], ed25519, nil
 	}
 
-	return decoded[1:], crypto.SECP256K1(), nil
+	secp256k1 := crypto.SECP256K1()
+	secp256k1Prefix := secp256k1.FamilySeedPrefix()
+	if bytes.HasPrefix(decoded, secp256k1Prefix) {
+		if len(decoded) != len(secp256k1Prefix)+FamilySeedLength {
+			return nil, nil, ErrInvalidSeedLength
+		}
+		return decoded[len(secp256k1Prefix):], secp256k1, nil
+	}
+
+	return nil, nil, ErrInvalidSeedPrefix
 }
 
 // EncodeNodePublicKey returns the base58 encoding of a node public key byte slice.
