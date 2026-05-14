@@ -2119,6 +2119,59 @@ func TestClient_ReconnectConsumesBudgetOnConnectFailures(t *testing.T) {
 	require.GreaterOrEqual(t, dialCount.Load(), int32(1+budget))
 }
 
+// TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage verifies
+// that a reconnect only resets the retry budget after the socket becomes
+// usable by delivering a message. The server accepts every upgrade and
+// immediately closes the socket, so the client must eventually exhaust
+// WithMaxReconnects instead of looping forever.
+func TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage(t *testing.T) {
+	const budget = 2
+
+	var dialCount atomic.Int32
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dialCount.Add(1)
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		c.Close()
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+
+	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
+
+	cfg := NewClientConfig().
+		WithHost(url).
+		WithTimeout(1 * time.Second).
+		WithMaxReconnects(budget)
+
+	cl := NewClient(cfg)
+
+	errCh := make(chan error, 1)
+	cl.OnError(func(err error) {
+		select {
+		case errCh <- err:
+		default:
+		}
+	})
+
+	require.NoError(t, cl.Connect())
+	defer cl.Disconnect()
+
+	select {
+	case got := <-errCh:
+		var maxErr ErrMaxReconnectionAttemptsReached
+		require.ErrorAs(t, got, &maxErr)
+		require.Equal(t, budget, maxErr.Attempts)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for ErrMaxReconnectionAttemptsReached, dial count=%d", dialCount.Load())
+	}
+}
+
 func TestReconnectDelayUsesCappedExponentialBackoff(t *testing.T) {
 	t.Cleanup(swapReconnectDelays(time.Millisecond, 30*time.Millisecond))
 

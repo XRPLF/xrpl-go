@@ -91,6 +91,8 @@ type Client struct {
 func NewClient(cfg ClientConfig) *Client {
 	clientconfig.WarnIfInsecureScheme("websocket", cfg.host)
 
+	// Pre-canceled so handlers registered before Connect are deferred to the
+	// first lifecycle reset, and any stray reportError before Connect is dropped.
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -103,6 +105,11 @@ func NewClient(cfg ClientConfig) *Client {
 	}
 }
 
+// resetLifecycle cancels the current lifecycle, waits for existing handler
+// runners to exit, then starts a fresh lifecycle. Lock order is
+// streamHandlerResetMu -> streamHandlerStateMu, streamHandlerStateMu is
+// released across waitForHandlerRunners so Report callers (which acquire
+// streamHandlerStateMu) cannot deadlock the runners they are draining.
 func (c *Client) resetLifecycle() context.Context {
 	c.streamHandlerResetMu.Lock()
 	defer c.streamHandlerResetMu.Unlock()
@@ -124,6 +131,8 @@ func (c *Client) resetLifecycle() context.Context {
 	return ctx
 }
 
+// lifecycleContext returns the current lifecycle context under
+// streamHandlerStateMu.
 func (c *Client) lifecycleContext() context.Context {
 	c.streamHandlerStateMu.Lock()
 	defer c.streamHandlerStateMu.Unlock()
@@ -131,6 +140,11 @@ func (c *Client) lifecycleContext() context.Context {
 	return c.ctx
 }
 
+// cancelLifecycle cancels the current lifecycle and clears registered handler
+// runners under streamHandlerStateMu. It does not wait for runners to exit:
+// Disconnect is supported from inside a stream handler, where waiting would
+// deadlock the calling runner. Orphaned runners exit asynchronously when they
+// observe ctx.Done.
 func (c *Client) cancelLifecycle() {
 	c.streamHandlerStateMu.Lock()
 	defer c.streamHandlerStateMu.Unlock()
@@ -155,7 +169,16 @@ func (c *Client) Connect() error {
 
 // Disconnect closes the websocket connection and cancels the current client
 // lifecycle, including registered handler runners, even when no connection is
-// currently open.
+// currently open. Disconnect does not wait for runners or readMessages to
+// exit: doing so would deadlock when Disconnect is called from inside a
+// stream handler. The lifecycle context is canceled and handler runners are
+// detached so they drain asynchronously, and the readMessages goroutine is
+// unblocked by the socket close performed by conn.Disconnect rather than by
+// context cancellation. On* registrations themselves persist across
+// Disconnect, a subsequent successful Connect restarts handler runners
+// against the new lifecycle (and resetLifecycle waits for the previous
+// runners before starting fresh ones). Callers must serialize concurrent
+// calls to Connect and Disconnect externally.
 func (c *Client) Disconnect() error {
 	c.cancelLifecycle()
 	return c.conn.Disconnect()
@@ -311,6 +334,9 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 
 	err = c.conn.WriteMessage(msg)
 	if err != nil {
+		if errors.Is(err, ErrNotConnected) {
+			return nil, ErrNotConnectedToServer
+		}
 		return nil, err
 	}
 

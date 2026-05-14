@@ -87,6 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
 - Documented that `Connect` must not be called synchronously from stream or error handlers.
+- `OnXxx` now atomically replaces previously registered handlers on the same stream instead of spawning an additional goroutine; an event already queued for delivery may still be dispatched to the previously registered handler.
+- `Request` now translates the connection-layer `ErrNotConnected` into the public `ErrNotConnectedToServer` so `errors.Is(err, ErrNotConnectedToServer)` keeps matching across the read-loop refactor.
 - Updated `client.go` and `response.go` to import `github.com/go-viper/mapstructure/v2` in place of the archived `github.com/mitchellh/mapstructure`.
 
 #### xrpl/transaction
@@ -109,6 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
+- WebSocket reconnects now preserve the reconnect attempt budget until the connection receives a message, preventing immediate-close loops from bypassing `WithMaxReconnects`.
 - WebSocket client now caps inbound messages at 16 MiB by default to prevent unbounded memory growth from oversized server messages. Use `WithMaxResponseSize(0)` to disable the limit.
 
 #### xrpl/wallet

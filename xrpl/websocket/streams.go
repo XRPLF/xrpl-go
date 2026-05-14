@@ -23,7 +23,11 @@ type lifecycleEvent[T any] struct {
 
 // On registers handler and starts delivery immediately when ctx is active.
 // If ctx is canceled, the handler is still registered so a later Start can
-// activate it for a fresh client lifecycle.
+// activate it for a fresh client lifecycle. On atomically replaces any
+// previously registered handler on this stream rather than spawning an
+// additional runner. Handler replacement is best-effort: an event already
+// queued for delivery may still be dispatched to the previously registered
+// handler.
 func (s *lifecycleStream[T]) On(ctx context.Context, handler func(T)) {
 	s.stateMu.Lock()
 	s.handler = handler
@@ -57,6 +61,13 @@ func (s *lifecycleStream[T]) Start(ctx context.Context) {
 	}
 }
 
+// Report delivers value to the runner. The send is synchronous on an
+// unbuffered channel so handlers apply backpressure rather than buffering
+// unbounded events. Because the caller is the single readMessages goroutine
+// (which also dispatches Request responses via handleRequest), a slow user
+// stream handler stalls request dispatch and can time out unrelated requests.
+// Callers that need request throughput in the presence of slow handlers
+// should offload work inside their handler.
 func (s *lifecycleStream[T]) Report(ctx context.Context, value T) {
 	if ctx == nil || ctx.Err() != nil {
 		return
@@ -136,6 +147,12 @@ func (s *lifecycleStream[T]) run(ctx context.Context, ch <-chan lifecycleEvent[T
 	}
 }
 
+// registerLifecycleHandler atomically replaces the registered handler on
+// stream under streamHandlerStateMu. Handlers run on the single readMessages
+// goroutine that also dispatches Request responses, slow OnXxx handlers
+// therefore stall response dispatch and can time out unrelated Request calls.
+// Callers that need request throughput in the presence of slow stream work
+// should offload that work inside their handler.
 func registerLifecycleHandler[T any](c *Client, stream *lifecycleStream[T], handler func(T)) {
 	c.streamHandlerStateMu.Lock()
 	defer c.streamHandlerStateMu.Unlock()
