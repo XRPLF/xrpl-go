@@ -54,10 +54,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/rpc
 
 - `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+- `SetLogger` lets consumers safely override (or `nil`-silence) the `*log.Logger` used for SDK-emitted warnings.
 
 #### xrpl/websocket
 
 - `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+- `SetLogger` lets consumers safely override (or `nil`-silence) the `*log.Logger` used for SDK-emitted warnings.
 
 #### keypairs
 
@@ -87,6 +89,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### docs
 
 - Added wallet credential leakage warnings to the wallet docs and example comments.
+
+#### pkg/crypto
+
+- Ed25519 and SECP256K1 `Sign` now wrap the underlying `hex.DecodeString` error with `ErrInvalidPrivateKey`. `errors.Is(err, ErrInvalidPrivateKey)` still matches, and the hex offset / invalid-byte detail is now reachable via `errors.As` and `errors.Unwrap`.
 
 ### Fixed
 
@@ -123,6 +129,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
 - Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
 
+#### keypairs
+
+- Keypair signing and validation now reject keys shorter than the crypto prefix before slicing, preventing panics on empty or one-character keys.
+
+#### pkg/crypto
+
+- Ed25519 signing and validation now reject malformed keys and signatures by length and ED prefix before slicing decoded bytes or verifying, preventing panics on malformed inputs.
+
 #### xrpl
 
 - `Wallet.Sign` and `Wallet.Multisign` no longer mutate caller-provided transaction maps while adding signing fields.
@@ -138,6 +152,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SignerListSet.Validate` now rejects duplicate signer accounts including classic/X-address equivalents, signer entries that reference the transaction account, zero signer weights, and correctly handles signer weight sums above `uint16`.
 - `AccountSet.Validate` now rejects invalid `TransferRate`, `ClearFlag`, and reserved `SetFlag` values before submission.
 - `AccountSet.Validate` now rejects `SetFlag == ClearFlag` (non-zero) locally, matching rippled's `temINVALID` and xrpl.js's `validateAccountSet`. Returned via the new `ErrAccountSetMutuallyExclusiveFlags` sentinel.
+- `NFTokenAcceptOffer.Validate` now rejects zero issued-currency `NFTokenBrokerFee` via canonical numeric comparison (`IssuedCurrencyAmount.IsZero`), so non-canonical zero representations like `"0.0"`, `"00"`, `"0e0"`, and `"-0"` are no longer accepted past the validator.
 
 
 #### xrpl/currency
@@ -145,8 +160,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XRP drops conversion helpers now use exact arithmetic and validate native amount bounds, preserving precision up to the maximum XRP supply.
 - Native amount conversion helpers now reject overly long decimal strings and large scientific-notation exponents before arbitrary-precision conversion.
 
+#### xrpl/rpc
+
+- `NewClientConfig` now logs a warning when configured with a remote non-TLS URL scheme. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
+
 #### xrpl/websocket
 
+- `NewClient` now logs a warning when configured with a remote non-TLS URL scheme. The warning was previously emitted from `ClientConfig.WithHost`, which fired once per fluent-setter call; it now fires exactly once per client. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
 - WebSocket request responses are now dispatched by request ID, preventing late or out-of-order responses from blocking unrelated requests. Concurrent request writes are serialized on the shared connection.
 - Serialized concurrent WebSocket reads in `Connection.ReadMessage`, matching gorilla/websocket's single-reader contract.
 - WebSocket subscription tests now wait for request IDs before sending mock responses, avoiding dropped-response flakes with per-ID dispatch.

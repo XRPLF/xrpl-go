@@ -148,6 +148,23 @@ func TestNFTokenAcceptOffer_Validate(t *testing.T) {
 			errMessage: ErrNFTokenBrokerFeeZero,
 		},
 		{
+			name: "fail - NFTokenBrokerFee issued amount zero with non-canonical representation",
+			tx: &NFTokenAcceptOffer{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: NFTokenAcceptOfferTx,
+				},
+				NFTokenBrokerFee: types.IssuedCurrencyAmount{
+					Issuer:   "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					Currency: "USD",
+					Value:    "0.00",
+				},
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrNFTokenBrokerFeeZero,
+		},
+		{
 			name: "pass - Valid with Sell Offer",
 			tx: &NFTokenAcceptOffer{
 				BaseTx: BaseTx{

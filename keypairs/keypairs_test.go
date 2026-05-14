@@ -272,7 +272,7 @@ func TestDeriveClassicAddress(t *testing.T) {
 			actual, err := DeriveClassicAddress(tc.input)
 			if tc.expectedErr != nil {
 				require.Empty(t, actual)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
@@ -290,10 +290,28 @@ func TestSign(t *testing.T) {
 		expectedErr  error
 	}{
 		{
+			name:         "fail - empty private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "",
+			expectedErr:  ErrInvalidCryptoImplementation,
+		},
+		{
+			name:         "fail - short private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "E",
+			expectedErr:  ErrInvalidCryptoImplementation,
+		},
+		{
 			name:         "fail - invalid private key",
 			inputMsg:     "hello world",
 			inputPrivKey: "invalid",
 			expectedErr:  ErrInvalidCryptoImplementation,
+		},
+		{
+			name:         "fail - malformed ED25519 private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "ED",
+			expectedErr:  crypto.ErrInvalidPrivateKey,
 		},
 		{
 			name:         "pass - sign a message with a ED25519 key",
@@ -309,7 +327,7 @@ func TestSign(t *testing.T) {
 			actual, err := Sign(tc.inputMsg, tc.inputPrivKey)
 			if tc.expectedErr != nil {
 				require.Empty(t, actual)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
@@ -327,6 +345,20 @@ func TestValidate(t *testing.T) {
 		expected    bool
 		expectedErr error
 	}{
+		{
+			name:        "fail - empty public key",
+			inputMsg:    "test message",
+			inputPubKey: "",
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidCryptoImplementation,
+		},
+		{
+			name:        "fail - short public key",
+			inputMsg:    "test message",
+			inputPubKey: "E",
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidCryptoImplementation,
+		},
 		{
 			name:        "fail - invalid public key",
 			inputMsg:    "test message",
@@ -349,7 +381,7 @@ func TestValidate(t *testing.T) {
 			actual, err := Validate(tc.inputMsg, tc.inputPubKey, tc.inputSig)
 			if tc.expectedErr != nil {
 				require.Zero(t, actual)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
@@ -366,9 +398,14 @@ func TestDeriveNodeAddress(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name:        "fail - derive node address - node prefix not found",
-			inputPubKey: "x9KHn8NfbBsZV5q8bLfS72XyGqwFt5mgoPbcTV4c6qKiuPTAtXYk",
-			expectedErr: &addresscodec.EncodeLengthError{Instance: "NodePublicKey", Expected: addresscodec.NodePublicKeyLength, Input: 3},
+			name:        "fail - derive node address - input too short to base58check-decode",
+			inputPubKey: "x",
+			expectedErr: addresscodec.ErrInvalidFormat,
+		},
+		{
+			name:        "fail - derive node address - node prefix mismatch",
+			inputPubKey: "rfZG9pC1cKF7q96TNZR264H9ykzKCxMyk44ZK8hFL8cNv1G3c8J",
+			expectedErr: addresscodec.ErrB58PrefixMismatch,
 		},
 		{
 			name:        "pass - derive correct node address from public key",
@@ -382,7 +419,7 @@ func TestDeriveNodeAddress(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := DeriveNodeAddress(tc.inputPubKey, crypto.SECP256K1())
 			if tc.expectedErr != nil {
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
