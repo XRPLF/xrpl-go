@@ -100,16 +100,14 @@ const config: Config = {
               type: "docSidebar",
               sidebarId: "changelogSidebar1",
               docsPluginId: "changelogPlugin",
+              label: "v0.2.x",
+            },
+            {
+              type: "docSidebar",
+              sidebarId: "changelogSidebar2",
+              docsPluginId: "changelogPlugin",
               label: "v0.1.x",
             },
-            // Uncomment in sidebarsChangelog.ts changelog2 line to enable the second changelog version
-            // add the next major version files in ./changelog/v0.2.x
-            //   {
-            //     type: "docSidebar",
-            //     sidebarId: "changelogSidebar2",
-            //     docsPluginId: "changelogPlugin",
-            //     label: "v0.2.x",
-            //   },
           ],
         },
         {
@@ -143,7 +141,7 @@ const config: Config = {
             },
             {
               label: "Changelog",
-              to: "changelog/v0.1.x/changelog", // When adding a new changelog version, update this path
+              to: "changelog/v0.2.x/changelog",
             },
           ],
         },

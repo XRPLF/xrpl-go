@@ -51,6 +51,22 @@ The `WithFeeCushion` option allows you to set the fee cushion for a transaction.
 func (wc ClientConfig) WithFeeCushion(feeCushion float32) ClientConfig
 ```
 
+### MaxResponseSize
+
+The `WithMaxResponseSize` option caps HTTP response bodies. The default is 64 MiB. Set it to `0` to disable the limit.
+
+```go
+func WithMaxResponseSize(maxResponseSize int64) ConfigOpt
+```
+
+### Logger
+
+The `SetLogger` function overrides the logger used for SDK warnings, such as remote non-TLS URL warnings. Pass `nil` to silence these warnings.
+
+```go
+func SetLogger(l *log.Logger)
+```
+
 So, for example, if you want to set a custom `FaucetProvider` and `FeeCushion`, you can do it this way:
 
 ```go
