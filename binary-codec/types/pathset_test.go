@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/definitions"
 	"github.com/Peersyst/xrpl-go/binary-codec/serdes"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
@@ -14,10 +15,11 @@ import (
 
 func TestPathSet_FromJson(t *testing.T) {
 	testcases := []struct {
-		name   string
-		input  any
-		output []byte
-		err    error
+		name       string
+		input      any
+		output     []byte
+		err        error
+		innerCheck func(t *testing.T, err error)
 	}{
 		{
 			name:  "fail - input is not []any",
@@ -94,6 +96,9 @@ func TestPathSet_FromJson(t *testing.T) {
 				},
 			},
 			err: ErrInvalidPathSet,
+			innerCheck: func(t *testing.T, err error) {
+				require.ErrorIs(t, err, addresscodec.ErrInvalidClassicAddress)
+			},
 		},
 		{
 			name: "fail - invalid currency decode",
@@ -103,6 +108,10 @@ func TestPathSet_FromJson(t *testing.T) {
 				},
 			},
 			err: ErrInvalidPathSet,
+			innerCheck: func(t *testing.T, err error) {
+				var codeErr *InvalidCodeError
+				require.ErrorAs(t, err, &codeErr)
+			},
 		},
 		{
 			name: "fail - invalid issuer decode",
@@ -112,6 +121,9 @@ func TestPathSet_FromJson(t *testing.T) {
 				},
 			},
 			err: ErrInvalidPathSet,
+			innerCheck: func(t *testing.T, err error) {
+				require.ErrorIs(t, err, addresscodec.ErrInvalidClassicAddress)
+			},
 		},
 		{
 			name: "pass - valid path set",
@@ -135,6 +147,9 @@ func TestPathSet_FromJson(t *testing.T) {
 			act, err := pathset.FromJSON(tc.input)
 			if tc.err != nil {
 				require.ErrorIs(t, err, tc.err)
+				if tc.innerCheck != nil {
+					tc.innerCheck(t, err)
+				}
 				return
 			}
 			require.NoError(t, err)
@@ -206,6 +221,60 @@ func TestPathSet_ToJson(t *testing.T) {
 	}
 }
 
+func TestPathSet_FromJsonToJsonRoundTrip(t *testing.T) {
+	pathset := PathSet{}
+	input := []any{
+		[]any{
+			map[string]any{
+				"account":  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				"currency": "USD",
+				"issuer":   "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+			},
+			map[string]any{
+				"currency": "EUR",
+				"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
+			},
+		},
+		[]any{
+			map[string]any{
+				"account": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+			},
+		},
+	}
+
+	encoded, err := pathset.FromJSON(input)
+	require.NoError(t, err)
+
+	decoded, err := pathset.ToJSON(serdes.NewBinaryParser(encoded, definitions.Get()))
+	require.NoError(t, err)
+
+	expected := []any{
+		[]any{
+			map[string]any{
+				"account":  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				"currency": "USD",
+				"issuer":   "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+				"type":     49, // typeAccount | typeCurrency | typeIssuer
+				"type_hex": "0000000000000031",
+			},
+			map[string]any{
+				"currency": "EUR",
+				"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
+				"type":     48, // typeCurrency | typeIssuer
+				"type_hex": "0000000000000030",
+			},
+		},
+		[]any{
+			map[string]any{
+				"account":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"type":     1, // typeAccount
+				"type_hex": "0000000000000001",
+			},
+		},
+	}
+	require.Equal(t, expected, decoded)
+}
+
 func TestIsPathStep(t *testing.T) {
 	tt := []struct {
 		description string
@@ -272,18 +341,18 @@ func TestNewPathStep(t *testing.T) {
 func TestNewPath(t *testing.T) {
 	tt := []struct {
 		description string
-		input       []any
+		input       []map[string]any
 		expected    []byte
 	}{
 		{
 			description: "created valid path",
-			input: []any{
-				map[string]any{
+			input: []map[string]any{
+				{
 					"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
 					"currency": "USD",
 					"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
 				},
-				map[string]any{
+				{
 					"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
 					"currency": "USD",
 					"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
@@ -305,43 +374,43 @@ func TestNewPath(t *testing.T) {
 func TestNewPathSet(t *testing.T) {
 	tt := []struct {
 		description string
-		input       []any
+		input       [][]map[string]any
 		expected    []byte
 	}{
 		{
 			description: "created valid path set with multiple paths",
-			input: []any{
-				[]any{
-					map[string]any{
+			input: [][]map[string]any{
+				{
+					{
 						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
 						"currency": "USD",
 						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
 					},
-					map[string]any{
-						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
-						"currency": "USD",
-						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
-					},
-				},
-				[]any{
-					map[string]any{
-						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
-						"currency": "USD",
-						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
-					},
-					map[string]any{
+					{
 						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
 						"currency": "USD",
 						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
 					},
 				},
-				[]any{
-					map[string]any{
+				{
+					{
 						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
 						"currency": "USD",
 						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
 					},
-					map[string]any{
+					{
+						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+						"currency": "USD",
+						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
+					},
+				},
+				{
+					{
+						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+						"currency": "USD",
+						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",
+					},
+					{
 						"account":  "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
 						"currency": "USD",
 						"issuer":   "r3Y6vCE8XqfZmYBRngy22uFYkmz3y9eCRA",

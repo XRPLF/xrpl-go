@@ -30,32 +30,42 @@ func serializePathCurrency(currency string) ([]byte, error) {
 type PathSet struct{}
 
 // ErrInvalidPathSet is an error that's thrown when an invalid path set is provided.
-var ErrInvalidPathSet = errors.New("invalid type to construct PathSet from. Expected non-empty []any of non-empty []any path steps")
+var ErrInvalidPathSet = errors.New("invalid path set")
 
 // FromJSON attempts to serialize a path set from a JSON representation of a slice of paths to a byte array.
 // It returns the byte array representation of the path set, or an error if the provided json does not represent a valid path set.
 func (p PathSet) FromJSON(json any) ([]byte, error) {
-	paths, ok := json.([]any)
-	if !ok || len(paths) == 0 {
-		return nil, ErrInvalidPathSet
+	rawPaths, ok := json.([]any)
+	if !ok {
+		return nil, fmt.Errorf("%w: input is not a []any", ErrInvalidPathSet)
+	}
+	if len(rawPaths) == 0 {
+		return nil, fmt.Errorf("%w: empty path set", ErrInvalidPathSet)
 	}
 
-	for _, rawPath := range paths {
-		path, ok := rawPath.([]any)
-		if !ok || len(path) == 0 {
-			return nil, ErrInvalidPathSet
+	paths := make([][]map[string]any, 0, len(rawPaths))
+	for _, rawPath := range rawPaths {
+		rawSteps, ok := rawPath.([]any)
+		if !ok {
+			return nil, fmt.Errorf("%w: path is not a []any", ErrInvalidPathSet)
+		}
+		if len(rawSteps) == 0 {
+			return nil, fmt.Errorf("%w: empty path", ErrInvalidPathSet)
 		}
 
-		for _, rawStep := range path {
+		steps := make([]map[string]any, 0, len(rawSteps))
+		for _, rawStep := range rawSteps {
 			step, ok := rawStep.(map[string]any)
 			if !ok {
-				return nil, ErrInvalidPathSet
+				return nil, fmt.Errorf("%w: path step is not a map[string]any", ErrInvalidPathSet)
 			}
 
 			if !isPathStep(step) {
-				return nil, ErrInvalidPathSet
+				return nil, fmt.Errorf("%w: path step has no account/currency/issuer", ErrInvalidPathSet)
 			}
+			steps = append(steps, step)
 		}
+		paths = append(paths, steps)
 	}
 
 	return newPathSet(paths)
@@ -67,14 +77,13 @@ func isPathStep(v map[string]any) bool {
 	return v["account"] != nil || v["currency"] != nil || v["issuer"] != nil
 }
 
-// newPathSet constructs a path set from a validated non-empty slice of paths.
-// Each element of v must be a []any path.
+// newPathSet constructs a path set from a non-empty slice of paths.
 // It generates a byte array representation of the path set, encoding each path and adding path separators as appropriate.
-func newPathSet(v []any) ([]byte, error) {
+func newPathSet(v [][]map[string]any) ([]byte, error) {
 	b := make([]byte, 0)
 
 	for _, path := range v { // for each path in the path set (slice of paths)
-		p, err := newPath(path.([]any))
+		p, err := newPath(path)
 		if err != nil {
 			return nil, err
 		}
@@ -87,14 +96,13 @@ func newPathSet(v []any) ([]byte, error) {
 	return b, nil
 }
 
-// newPath constructs a path from a validated non-empty slice of path steps.
-// Each element of v must be a map[string]any path step.
+// newPath constructs a path from a non-empty slice of path steps.
 // It generates a byte array representation of the path, encoding each path step in turn.
-func newPath(v []any) ([]byte, error) {
+func newPath(v []map[string]any) ([]byte, error) {
 	b := make([]byte, 0)
 
 	for _, step := range v { // for each step in the path (slice of path steps)
-		s, err := newPathStep(step.(map[string]any))
+		s, err := newPathStep(step)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +120,7 @@ func newPathStep(v map[string]any) ([]byte, error) {
 	if v["account"] != nil {
 		accStr, ok := v["account"].(string)
 		if !ok {
-			return nil, ErrInvalidPathSet
+			return nil, fmt.Errorf("%w: account is not a string", ErrInvalidPathSet)
 		}
 		_, account, err := addresscodec.DecodeClassicAddressToAccountID(accStr)
 		if err != nil {
@@ -124,7 +132,7 @@ func newPathStep(v map[string]any) ([]byte, error) {
 	if v["currency"] != nil {
 		curStr, ok := v["currency"].(string)
 		if !ok {
-			return nil, ErrInvalidPathSet
+			return nil, fmt.Errorf("%w: currency is not a string", ErrInvalidPathSet)
 		}
 		currency, err := serializePathCurrency(curStr)
 		if err != nil {
@@ -136,7 +144,7 @@ func newPathStep(v map[string]any) ([]byte, error) {
 	if v["issuer"] != nil {
 		issStr, ok := v["issuer"].(string)
 		if !ok {
-			return nil, ErrInvalidPathSet
+			return nil, fmt.Errorf("%w: issuer is not a string", ErrInvalidPathSet)
 		}
 		_, issuer, err := addresscodec.DecodeClassicAddressToAccountID(issStr)
 		if err != nil {
