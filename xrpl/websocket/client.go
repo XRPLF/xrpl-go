@@ -17,7 +17,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	transaction "github.com/Peersyst/xrpl-go/xrpl/transaction"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
@@ -31,6 +31,7 @@ import (
 	ws "github.com/gorilla/websocket"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
+	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
 const (
@@ -79,6 +80,7 @@ type Client struct {
 // NewClient creates a new WebSocket client using the provided ClientConfig.
 // This client will open and close a websocket connection for each request.
 func NewClient(cfg ClientConfig) *Client {
+	clientconfig.WarnIfInsecureScheme("websocket", cfg.host)
 	return &Client{
 		cfg:              cfg,
 		pendingResponses: make(map[uint64]chan *ClientResponse),

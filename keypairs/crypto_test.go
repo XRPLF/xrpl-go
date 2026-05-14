@@ -15,6 +15,16 @@ func TestGetCryptoImplementationFromKey(t *testing.T) {
 		expected interfaces.KeypairCryptoAlg
 	}{
 		{
+			name:     "fail - empty key",
+			input:    "",
+			expected: nil,
+		},
+		{
+			name:     "fail - short key",
+			input:    "E",
+			expected: nil,
+		},
+		{
 			name:     "fail - invalid key",
 			input:    "invalid",
 			expected: nil,
