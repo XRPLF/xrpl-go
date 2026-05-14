@@ -55,8 +55,18 @@ func TestWarnIfInsecureScheme(t *testing.T) {
 			wantWarning: false,
 		},
 		{
+			name:        "unspecified ipv4 http does not warn",
+			rawURL:      "http://0.0.0.0:5005/",
+			wantWarning: false,
+		},
+		{
 			name:        "ipv6 loopback does not warn",
 			rawURL:      "http://[::1]:51234/",
+			wantWarning: false,
+		},
+		{
+			name:        "unspecified ipv6 http does not warn",
+			rawURL:      "http://[::]:5005/",
 			wantWarning: false,
 		},
 		{
