@@ -129,8 +129,9 @@ func decodeTag(xAddressBytes []byte) (uint32, bool, error) {
 		return 0, false, ErrUnsupportedXAddress
 	}
 	if flag == 1 {
-		// TAG_32 uses bytes 23..26 for the little-endian tag. Bytes 27..30 are
-		// reserved for future 64-bit tag support and must be zero.
+		// flag==1 uses bytes 23..26 as the little-endian 32-bit tag; bytes
+		// 27..30 must be zero (used by flag==2 / TAG_64, which is not
+		// supported here).
 		for i := 27; i < 31; i++ {
 			if xAddressBytes[i] != 0 {
 				return 0, false, ErrInvalidTag
@@ -144,8 +145,8 @@ func decodeTag(xAddressBytes []byte) (uint32, bool, error) {
 			uint32(xAddressBytes[26])*0x1000000
 		return tag, true, nil
 	}
-	// flag == 0 means no tag
-	// Verify remaining bytes are zero (reserved for 64-bit tags)
+	// flag == 0 means no tag; bytes 23..30 must be zero (used by flag==2 /
+	// TAG_64, which is not supported here).
 	for i := 23; i < 31; i++ {
 		if xAddressBytes[i] != 0 {
 			return 0, false, ErrInvalidTag

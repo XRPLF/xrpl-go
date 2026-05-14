@@ -249,12 +249,12 @@ func TestEnsureClassicAddress(t *testing.T) {
 		{
 			name:        "fail - x-address with explicit zero tag is rejected",
 			input:       "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2m4Er6SnvjVLpMWPjR",
-			expectedErr: ErrAddressTagNotZero,
+			expectedErr: ErrAddressHasTag,
 		},
 		{
 			name:        "fail - x-address with non-zero tag is rejected",
 			input:       "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGZMhc9YTE92ehJ2Fu",
-			expectedErr: ErrAddressTagNotZero,
+			expectedErr: ErrAddressHasTag,
 		},
 		{
 			name:     "pass - non-x-address string is returned unchanged",

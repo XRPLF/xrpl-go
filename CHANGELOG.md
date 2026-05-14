@@ -16,10 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### binary-codec
 
 - `Amount` serialization no longer accepts `float64` values. Use strings, `json.Number`, or exact amount types to preserve precision.
+- X-address encoding now rejects duplicate `SourceTag`/`DestinationTag` whenever the X-address carries an embedded tag (zero or non-zero), including the previously-accepted case where both values matched.
+- `AccountID.FromJSON` now rejects X-addresses that carry an embedded tag (returning `ErrAccountIDTagNotAllowed`). Previously the tag was silently dropped for non-`Account`/`Destination` AccountID fields (e.g. nested `SignerEntry.Account`, `EncodeForMultisigning`).
 
 #### xrpl
 
 - `SortSigners` now returns an error when signer extraction or address decoding fails. Errors are wrapped with the failing item index to help diagnose which signer caused the failure.
+
+#### xrpl/wallet
+
+- Renamed `ErrAddressTagNotZero` to `ErrAddressHasTag` and updated its message to `"X-address must not carry a tag"`. The error now fires for any embedded tag, including explicit tag `0`.
 
 #### xrpl/transaction
 
@@ -41,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### binary-codec
 
 - Added `ErrDuplicateXAddressTag` for detecting duplicate tag fields when encoding tagged X-addresses.
+- Added `ErrAccountIDTagNotAllowed` for `AccountID`-typed fields that receive a tagged X-address (used by both `AccountID.FromJSON` and the `STObject` X-address preprocessor for non-`Account`/`Destination` fields).
 
 #### xrpl
 

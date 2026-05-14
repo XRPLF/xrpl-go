@@ -239,7 +239,7 @@ func ensureClassicAddress(account string) (types.Address, error) {
 		}
 
 		if hasTag {
-			return "", ErrAddressTagNotZero
+			return "", ErrAddressHasTag
 		}
 
 		return types.Address(classicAddr), nil

@@ -142,6 +142,44 @@ func TestCreateFieldInstanceMapFromJsonXAddressNonZeroTag(t *testing.T) {
 	})
 }
 
+func TestCreateFieldInstanceMapFromJsonXAddressTagNotAllowed(t *testing.T) {
+	testcases := []struct {
+		name      string
+		fieldName string
+		xAddress  string
+	}{
+		{
+			name:      "Issuer rejects tagged X-address",
+			fieldName: "Issuer",
+			xAddress:  "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGxLBw6rACm2heBxVn", // tag 22
+		},
+		{
+			name:      "RegularKey rejects tagged X-address",
+			fieldName: "RegularKey",
+			xAddress:  "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGxLBw6rACm2heBxVn", // tag 22
+		},
+		{
+			name:      "Owner rejects tagged X-address",
+			fieldName: "Owner",
+			xAddress:  "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGxLBw6rACm2heBxVn", // tag 22
+		},
+		{
+			name:      "Issuer rejects zero-tag X-address",
+			fieldName: "Issuer",
+			xAddress:  "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2m4Er6SnvjVLpMWPjR", // tag 0
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := createFieldInstanceMapFromJson(map[string]any{
+				tc.fieldName: tc.xAddress,
+			})
+			require.ErrorIs(t, err, ErrAccountIDTagNotAllowed)
+		})
+	}
+}
+
 func TestCreateFieldInstanceMapFromJsonXAddressDuplicateNonZeroTag(t *testing.T) {
 	testcases := []struct {
 		name string

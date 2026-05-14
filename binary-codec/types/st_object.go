@@ -148,7 +148,7 @@ func createFieldInstanceMapFromJson(json map[string]any) (map[definitions.FieldI
 			case "Account":
 				tagFieldName = "SourceTag"
 			default:
-				return nil, fmt.Errorf("%s cannot have an associated tag", k)
+				return nil, fmt.Errorf("%w: %s", ErrAccountIDTagNotAllowed, k)
 			}
 
 			if existing, exists := processedJSON[tagFieldName]; exists {
