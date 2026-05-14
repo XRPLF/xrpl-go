@@ -1158,20 +1158,38 @@ func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (uint64, er
 	return totalFees, nil
 }
 
+type validatedInnerTx struct {
+	rawTx   map[string]any
+	account string
+}
+
 func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
 	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
 		return ErrRawTransactionsFieldIsNotAnArray
 	}
 
-	innerRawTxs := make([]map[string]any, 0, len(rawTxs))
+	var outerNetworkID *uint32
+	if outer := (*tx)["NetworkID"]; outer != nil {
+		outerNetworkIDUint, ok := outer.(uint32)
+		if !ok {
+			return ErrNetworkIDFieldIsNotAUint32
+		}
+		if outerNetworkIDUint != c.NetworkID {
+			return ErrNetworkIDFieldMismatch
+		}
+		outerNetworkID = &outerNetworkIDUint
+	}
+
+	inners := make([]validatedInnerTx, 0, len(rawTxs))
 	for _, rawTx := range rawTxs {
 		innerRawTx, ok := rawTx["RawTransaction"].(map[string]any)
 		if !ok {
 			return ErrRawTransactionFieldIsNotAnObject
 		}
 
-		if _, ok := innerRawTx["Account"].(string); !ok {
+		acc, ok := innerRawTx["Account"].(string)
+		if !ok {
 			return ErrAccountFieldIsNotAString
 		}
 
@@ -1192,18 +1210,18 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 
 		if networkID := innerRawTx["NetworkID"]; networkID != nil {
 			innerNetworkID, ok := networkID.(uint32)
-			if !ok || innerNetworkID != c.NetworkID {
+			if !ok {
+				return ErrNetworkIDFieldIsNotAUint32
+			}
+			if innerNetworkID != c.NetworkID {
 				return ErrNetworkIDFieldMismatch
 			}
-			if outerNetworkID := (*tx)["NetworkID"]; outerNetworkID != nil {
-				outerNetworkID, ok := outerNetworkID.(uint32)
-				if !ok || innerNetworkID != outerNetworkID {
-					return ErrNetworkIDFieldMismatch
-				}
+			if outerNetworkID != nil && innerNetworkID != *outerNetworkID {
+				return ErrNetworkIDFieldMismatch
 			}
 		}
 
-		innerRawTxs = append(innerRawTxs, innerRawTx)
+		inners = append(inners, validatedInnerTx{rawTx: innerRawTx, account: acc})
 	}
 
 	needsNetworkID, err := c.txNeedsNetworkID()
@@ -1211,9 +1229,10 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 		return err
 	}
 
-	accountSeq := make(map[string]uint32, len(rawTxs))
+	accountSeq := make(map[string]uint32, len(inners))
 
-	for _, innerRawTx := range innerRawTxs {
+	for _, inner := range inners {
+		innerRawTx := inner.rawTx
 		if innerRawTx["Fee"] == nil {
 			innerRawTx["Fee"] = "0"
 		}
@@ -1227,7 +1246,7 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 		}
 
 		if innerRawTx["Sequence"] == nil && innerRawTx["TicketSequence"] == nil {
-			acc := innerRawTx["Account"].(string)
+			acc := inner.account
 
 			if accountSeq[acc] != 0 {
 				innerRawTx["Sequence"] = accountSeq[acc]
