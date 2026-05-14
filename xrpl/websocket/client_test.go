@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"errors"
-	"maps"
 	"reflect"
 	"testing"
 	"time"
@@ -1543,6 +1542,44 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 		},
 		// Error cases
 		{
+			name: "fail - NetworkID field conflicts with client NetworkID",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2001),
+						},
+					},
+				},
+			},
+			serverMessages: []map[string]any{},
+			networkID:      uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2001),
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldMismatch,
+		},
+		{
 			name: "fail - RawTransactions field not an array",
 			tx: transaction.FlatTransaction{
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
@@ -1666,8 +1703,19 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			serverMessages: []map[string]any{},
 			networkID:      0,
-			expectedTx:     transaction.FlatTransaction{},
-			expectedErr:    ErrAccountFieldIsNotAString,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         12345,
+						},
+					},
+				},
+			},
+			expectedErr: ErrAccountFieldIsNotAString,
 		},
 		{
 			name: "fail - Error from GetAccountInfo",
@@ -1705,10 +1753,6 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			// Set NetworkID for test
 			cl.NetworkID = tt.networkID
 
-			// Make a copy of the original tx for comparison
-			originalTx := make(transaction.FlatTransaction)
-			maps.Copy(originalTx, tt.tx)
-
 			err := cl.autofillRawTransactions(&tt.tx)
 
 			if tt.expectedErr != nil {
@@ -1731,6 +1775,9 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 					if err.Error() != tt.expectedErr.Error() {
 						t.Errorf("Expected error %v, but got %v", tt.expectedErr, err)
 					}
+				}
+				if len(tt.expectedTx) > 0 {
+					require.Equal(t, tt.expectedTx, tt.tx)
 				}
 				return
 			}

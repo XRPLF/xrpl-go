@@ -47,6 +47,8 @@ var (
 	ErrSignersFieldMustBeEmpty = errors.New("field Signers must be empty")
 	// ErrAccountFieldIsNotAString is returned when the account field is not a string type.
 	ErrAccountFieldIsNotAString = errors.New("field Account must be a string")
+	// ErrNetworkIDFieldMismatch is returned when the NetworkID field does not match the expected NetworkID.
+	ErrNetworkIDFieldMismatch = errors.New("field NetworkID must match expected NetworkID")
 	// ErrRawTransactionsFieldMissing is returned when the RawTransactions field is missing from a Batch transaction.
 	ErrRawTransactionsFieldMissing = errors.New("RawTransactions field missing from Batch transaction")
 	// ErrRawTransactionFieldMissing is returned when the RawTransaction field is missing from a wrapper.
