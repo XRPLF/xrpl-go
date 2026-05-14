@@ -279,6 +279,53 @@ func TestMultisignRejectsNilTransaction(t *testing.T) {
 	assert.Empty(t, hash)
 }
 
+func TestEnsureClassicAddress(t *testing.T) {
+	testCases := []struct {
+		name        string
+		input       string
+		expected    types.Address
+		expectedErr error
+	}{
+		{
+			name:     "pass - classic address is returned unchanged",
+			input:    "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+			expected: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+		},
+		{
+			name:     "pass - x-address without tag is converted to classic",
+			input:    "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+			expected: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+		},
+		{
+			name:        "fail - x-address with explicit zero tag is rejected",
+			input:       "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2m4Er6SnvjVLpMWPjR",
+			expectedErr: ErrAddressHasTag,
+		},
+		{
+			name:        "fail - x-address with non-zero tag is rejected",
+			input:       "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGZMhc9YTE92ehJ2Fu",
+			expectedErr: ErrAddressHasTag,
+		},
+		{
+			name:     "pass - non-x-address string is returned unchanged",
+			input:    "not-a-valid-address",
+			expected: "not-a-valid-address",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ensureClassicAddress(tc.input)
+			if tc.expectedErr != nil {
+				require.ErrorIs(t, err, tc.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, got)
+		})
+	}
+}
+
 // TestSignAndMultisignPreserveNestedSliceIdentity pins the shallow-copy contract:
 // nested slices in the input transaction are not deep-cloned, and after Sign or
 // Multisign the input map's nested values still reference the same underlying

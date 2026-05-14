@@ -9,13 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### address-codec
+
+- `DecodeXAddress` and `XAddressToClassicAddress` now return whether an X-address tag is present, preserving explicit tag `0` separately from no tag.
+
 #### binary-codec
 
 - `Amount` serialization no longer accepts `float64` values. Use strings, `json.Number`, or exact amount types to preserve precision.
+- X-address encoding now rejects duplicate `SourceTag`/`DestinationTag` whenever the X-address carries an embedded tag (zero or non-zero), including the previously-accepted case where both values matched.
+- `AccountID.FromJSON` now rejects X-addresses that carry an embedded tag (returning `ErrAccountIDTagNotAllowed`). Previously the tag was silently dropped for non-`Account`/`Destination` AccountID fields (e.g. nested `SignerEntry.Account`, `EncodeForMultisigning`).
 
 #### xrpl
 
 - `SortSigners` now returns an error when signer extraction or address decoding fails. Errors are wrapped with the failing item index to help diagnose which signer caused the failure.
+
+#### xrpl/wallet
+
+- Renamed `ErrAddressTagNotZero` to `ErrAddressHasTag` and updated its message to `"X-address must not carry a tag"`. The error now fires for any embedded tag, including explicit tag `0`.
 
 #### xrpl/transaction
 
@@ -33,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the exported `ErrUInt64OutOfRange` error variable. `UInt64.FromJSON` now returns `ErrInvalidUInt64String` for all invalid inputs (non-string, non-hex characters, or length > 16).
 
 ### Added
+
+#### binary-codec
+
+- Added `ErrDuplicateXAddressTag` for detecting duplicate tag fields when encoding tagged X-addresses.
+- Added `ErrAccountIDTagNotAllowed` for `AccountID`-typed fields that receive a tagged X-address (used by both `AccountID.FromJSON` and the `STObject` X-address preprocessor for non-`Account`/`Destination` fields).
 
 #### xrpl
 
@@ -90,6 +105,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/websocket
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+- Documented that `Connect` must not be called synchronously from stream or error handlers.
+- `OnXxx` now atomically replaces previously registered handlers on the same stream instead of spawning an additional goroutine; an event already queued for delivery may still be dispatched to the previously registered handler.
+- `Request` now translates the connection-layer `ErrNotConnected` into the public `ErrNotConnectedToServer` so `errors.Is(err, ErrNotConnectedToServer)` keeps matching across the read-loop refactor.
 - Updated `client.go` and `response.go` to import `github.com/go-viper/mapstructure/v2` in place of the archived `github.com/mitchellh/mapstructure`.
 
 #### xrpl/transaction
@@ -119,6 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/websocket
 
 - `Batch` inner transaction autofill now validates inner accounts and supplied `NetworkID` before filling missing fields, preventing partial mutation on validation errors.
+- WebSocket reconnects now preserve the reconnect attempt budget until the connection receives a message, preventing immediate-close loops from bypassing `WithMaxReconnects`.
 - WebSocket client now caps inbound messages at 16 MiB by default to prevent unbounded memory growth from oversized server messages. Use `WithMaxResponseSize(0)` to disable the limit.
 
 #### xrpl/wallet
@@ -130,9 +149,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GenerateSeed` now rejects non-empty entropy whose length is not exactly 16 bytes, removing silent truncation of longer inputs and the panic on shorter inputs.
 - `GenerateSeed` returns `ErrRandomizerRequired` instead of panicking when called with empty entropy and a nil randomizer.
 - `GenerateSeed` no longer wraps unsupported algorithm errors with `ErrInvalidEntropyLength` when caller-supplied entropy has the correct length.
+- `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
+- `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
 
 #### address-codec
 
+- X-address decoding now rejects `TAG_32` addresses with non-zero reserved high-order tag bytes.
 - `DecodeClassicAddressToAccountID` and `IsValidClassicAddress` now reject checksum-valid classic-address payloads with non-account prefixes.
 - `DecodeSeed` now returns errors for checksum-valid seeds with invalid decoded lengths or unknown prefixes instead of reading past the decoded payload or treating them as secp256k1 seeds.
 - `Decode` now validates Base58Check checksums and prefix lengths before slicing, preventing panics on malformed public key input.
@@ -142,6 +164,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
+- X-address encoding now rejects duplicate `SourceTag` and `DestinationTag` fields consistently when the X-address already carries a tag, including explicit tag `0`.
 - `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
 - `FieldIDCodec.Decode` no longer writes decode errors or input lengths to stdout.
 - `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
@@ -201,6 +224,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `EscrowCreate` and `NFTokenCreateOffer` now return validation errors for missing or malformed required amount fields. `NFTokenCreateOffer` also rejects missing or malformed 64-character hexadecimal `NFTokenID` values and zero amounts except XRP sell offers.
 - `EscrowCreate.Validate` now rejects zero `Amount` (XRP, IOU, or MPT) with `ErrEscrowCreateZeroAmount`, matching rippled's `temBAD_AMOUNT` rejection.
 - `NFTokenModify.Validate` now rejects short or non-hex `NFTokenID` values with `ErrInvalidNFTokenID`, matching the new `NFTokenBurn` and `NFTokenCreateOffer` checks.
+
+#### xrpl/websocket
+
+- WebSocket request responses are now dispatched by request ID, preventing late or out-of-order responses from blocking unrelated requests. Concurrent request writes are serialized on the shared connection.
+- Serialized concurrent WebSocket reads in `Connection.ReadMessage`, matching gorilla/websocket's single-reader contract.
+- WebSocket stream and error handlers now run through lifecycle-bound handler goroutines, avoiding handler leaks across disconnects.
+- WebSocket lifecycle reset and cancellation now serialize context swaps, handler runner resets, and handler restarts, preventing concurrent connect/disconnect interleavings from leaving stale stream runners.
+- WebSocket stream handler registration and stale reader dispatch now use the active lifecycle context atomically, preventing reconnect races from leaving handlers dormant or routing old messages into fresh handlers.
+- WebSocket lifecycle resets now wait for old stream runners to exit before starting replacements, preventing stale events from reaching fresh handlers after reconnect.
+- WebSocket stream reports now snapshot the active handler when queued, preventing in-flight stream events from being delivered to a later replacement handler.
+- WebSocket handler registration no longer starts handler runner goroutines before the first active client lifecycle.
+- WebSocket reconnect now applies capped exponential backoff between attempts and consumes the full `WithMaxReconnects` budget before surfacing `ErrMaxReconnectionAttemptsReached`, instead of hot-looping and aborting on the first failed reconnect.
 
 ## [v0.1.18]
 
