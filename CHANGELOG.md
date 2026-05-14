@@ -138,6 +138,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
 - Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
 - Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
+- `PathSet.FromJSON` now returns errors for malformed inputs (non-`[]any` paths, empty paths, non-map steps, non-string `account`/`currency`/`issuer` values) instead of panicking, and propagates account, currency, and issuer decode errors that were previously swallowed and produced malformed signed paths.
+- `XChainBridge.FromJSON` now returns errors for non-string `LockingChainDoor`, `LockingChainIssue`, `IssuingChainDoor`, and `IssuingChainIssue` values instead of panicking on the type assertions.
+- `XChainBridge.ToJSON` now returns an error when the read byte buffer is not 80 bytes instead of panicking on out-of-range slice access.
 
 #### keypairs
 
