@@ -256,6 +256,48 @@ func TestEscrowCreate_Validate(t *testing.T) {
 			expectedErr: ErrInvalidTransactionType,
 		},
 		{
+			name: "fail - non-hex Condition (odd length)",
+			entry: &EscrowCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				CancelAfter: 533257958,
+				Condition:   "not-hex",
+			},
+			expectedErr: ErrEscrowCreateInvalidCondition,
+		},
+		{
+			name: "fail - non-hex Condition (even length)",
+			entry: &EscrowCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				CancelAfter: 533257958,
+				Condition:   "GG",
+			},
+			expectedErr: ErrEscrowCreateInvalidCondition,
+		},
+		{
+			name: "fail - odd-length Condition",
+			entry: &EscrowCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				CancelAfter: 533257958,
+				Condition:   "F",
+			},
+			expectedErr: ErrEscrowCreateInvalidCondition,
+		},
+		{
 			name: "pass - valid transaction - Conditional with expiration",
 			entry: &EscrowCreate{
 				BaseTx: BaseTx{

@@ -269,6 +269,63 @@ func TestIsHex(t *testing.T) {
 	}
 }
 
+func TestIsHexBlob(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want bool
+	}{
+		{
+			name: "pass - valid even-length hex",
+			s:    "A0028000",
+			want: true,
+		},
+		{
+			name: "pass - valid even-length hex lowercase",
+			s:    "deadbeef",
+			want: true,
+		},
+		{
+			name: "fail - odd-length hex",
+			s:    "ABC",
+			want: false,
+		},
+		{
+			name: "fail - single hex digit",
+			s:    "F",
+			want: false,
+		},
+		{
+			name: "fail - even-length non-hex",
+			s:    "GG",
+			want: false,
+		},
+		{
+			name: "fail - even-length mixed hex and non-hex",
+			s:    "AB0Z",
+			want: false,
+		},
+		{
+			name: "fail - odd-length non-hex",
+			s:    "not-hex",
+			want: false,
+		},
+		{
+			name: "fail - empty string",
+			s:    "",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsHexBlob(tt.s); got != tt.want {
+				t.Errorf("IsHexBlob(%q) = %v, want %v", tt.s, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestIsInt(t *testing.T) {
 	tests := []struct {
 		name string

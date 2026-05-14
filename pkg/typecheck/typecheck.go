@@ -70,6 +70,12 @@ func IsHex(s string) bool {
 	return true
 }
 
+// IsHexBlob reports whether s is a hex string that encodes whole bytes
+// (valid hex characters and even length). Empty strings return false.
+func IsHexBlob(s string) bool {
+	return IsHex(s) && len(s)%2 == 0
+}
+
 // IsFloat32 checks if the given string is a valid Float32 number.
 func IsFloat32(s string) bool {
 	_, err := strconv.ParseFloat(s, 32)

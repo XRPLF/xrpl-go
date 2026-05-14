@@ -86,10 +86,9 @@ func TestEscrowFinish_Flatten(t *testing.T) {
 
 func TestEscrowFinish_Validate(t *testing.T) {
 	tests := []struct {
-		name      string
-		entry     *EscrowFinish
-		wantValid bool
-		wantErr   bool
+		name        string
+		entry       *EscrowFinish
+		expectedErr error
 	}{
 		{
 			name: "pass - valid EscrowFinish",
@@ -101,11 +100,9 @@ func TestEscrowFinish_Validate(t *testing.T) {
 				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 			},
-			wantValid: true,
-			wantErr:   false,
 		},
 		{
-			name: "fail - invalid EscrowFinish BaseTx",
+			name: "fail - missing TransactionType",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
 					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -113,8 +110,7 @@ func TestEscrowFinish_Validate(t *testing.T) {
 				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrInvalidTransactionType,
 		},
 		{
 			name: "fail - invalid Owner Address",
@@ -126,8 +122,7 @@ func TestEscrowFinish_Validate(t *testing.T) {
 				Owner:         "invalidAddress",
 				OfferSequence: 7,
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrEscrowFinishMissingOwner,
 		},
 		{
 			name: "fail - missing OfferSequence",
@@ -138,8 +133,85 @@ func TestEscrowFinish_Validate(t *testing.T) {
 				},
 				Owner: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrEscrowFinishMissingOfferSequence,
+		},
+		{
+			name: "fail - non-hex Condition (odd length)",
+			entry: &EscrowFinish{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowFinishTx,
+				},
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				OfferSequence: 7,
+				Condition:     "not-hex",
+			},
+			expectedErr: ErrEscrowFinishInvalidCondition,
+		},
+		{
+			name: "fail - non-hex Condition (even length)",
+			entry: &EscrowFinish{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowFinishTx,
+				},
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				OfferSequence: 7,
+				Condition:     "GG",
+			},
+			expectedErr: ErrEscrowFinishInvalidCondition,
+		},
+		{
+			name: "fail - non-hex Fulfillment (odd length)",
+			entry: &EscrowFinish{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowFinishTx,
+				},
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				OfferSequence: 7,
+				Fulfillment:   "not-hex",
+			},
+			expectedErr: ErrEscrowFinishInvalidFulfillment,
+		},
+		{
+			name: "fail - non-hex Fulfillment (even length)",
+			entry: &EscrowFinish{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowFinishTx,
+				},
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				OfferSequence: 7,
+				Fulfillment:   "AB0Z",
+			},
+			expectedErr: ErrEscrowFinishInvalidFulfillment,
+		},
+		{
+			name: "fail - odd-length Condition",
+			entry: &EscrowFinish{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowFinishTx,
+				},
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				OfferSequence: 7,
+				Condition:     "F",
+			},
+			expectedErr: ErrEscrowFinishInvalidCondition,
+		},
+		{
+			name: "fail - odd-length Fulfillment",
+			entry: &EscrowFinish{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowFinishTx,
+				},
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				OfferSequence: 7,
+				Fulfillment:   "F",
+			},
+			expectedErr: ErrEscrowFinishInvalidFulfillment,
 		},
 		{
 			name: "fail - invalid CredentialIDs",
@@ -152,21 +224,35 @@ func TestEscrowFinish_Validate(t *testing.T) {
 				OfferSequence: 7,
 				CredentialIDs: types.CredentialIDs{"invalid"},
 			},
-			wantValid: false,
-			wantErr:   true,
+			expectedErr: ErrInvalidCredentialIDs,
+		},
+		{
+			name: "pass - valid hex Condition and Fulfillment",
+			entry: &EscrowFinish{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowFinishTx,
+				},
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				OfferSequence: 7,
+				Condition:     "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
+				Fulfillment:   "A0028000",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			valid, err := tt.entry.Validate()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("escrowFinish.Validate() error = %v, wantErr %v", err, tt.wantErr)
+
+			if tt.expectedErr != nil {
+				assert.False(t, valid)
+				assert.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
-			if valid != tt.wantValid {
-				t.Errorf("escrowFinish.Validate() = %v, want %v", valid, tt.wantValid)
-			}
+
+			assert.True(t, valid)
+			assert.NoError(t, err)
 		})
 	}
 }
