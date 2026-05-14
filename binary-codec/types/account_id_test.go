@@ -46,15 +46,10 @@ func TestAccountID_FromJson(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:  "Valid AccountID with XAddress and tag",
-			input: "XVYRdEocC28DRx94ZFGP3qNJ1D5Ln7kXKTG5X57UCKzEwYx", // rLJ9FwQ3opJZBMsTjhqhHrbhRNALqAQJ5U:12345
-			expected: []byte{
-				211, 168, 209, 109, 176,
-				55, 12, 60, 93, 57, 103,
-				89, 62, 51, 191, 128,
-				222, 149, 106, 66,
-			},
-			expectedErr: nil,
+			name:        "AccountID with tagged XAddress is rejected",
+			input:       "XVYRdEocC28DRx94ZFGP3qNJ1D5Ln7kXKTG5X57UCKzEwYx", // rLJ9FwQ3opJZBMsTjhqhHrbhRNALqAQJ5U:12345
+			expected:    nil,
+			expectedErr: ErrAccountIDTagNotAllowed,
 		},
 		{
 			name:        "Invalid AccountID with invalid XAddress",

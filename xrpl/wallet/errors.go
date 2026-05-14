@@ -10,8 +10,8 @@ var (
 
 	// address
 
-	// ErrAddressTagNotZero is returned when the address tag is not zero.
-	ErrAddressTagNotZero = errors.New("address tag is not zero")
+	// ErrAddressHasTag is returned when an X-address carries an embedded tag (zero or non-zero).
+	ErrAddressHasTag = errors.New("x-address must not carry a tag")
 
 	// batch
 

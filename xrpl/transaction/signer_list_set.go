@@ -166,6 +166,6 @@ func classicAccountAddress(address string) (string, bool) {
 		return address, true
 	}
 
-	classicAddress, _, _, err := addresscodec.XAddressToClassicAddress(address)
+	classicAddress, _, _, _, err := addresscodec.XAddressToClassicAddress(address)
 	return classicAddress, err == nil
 }
