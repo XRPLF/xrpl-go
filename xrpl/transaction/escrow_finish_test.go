@@ -136,7 +136,7 @@ func TestEscrowFinish_Validate(t *testing.T) {
 			expectedErr: ErrEscrowFinishMissingOfferSequence,
 		},
 		{
-			name: "fail - non-hex Condition",
+			name: "fail - non-hex Condition (odd length)",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -149,7 +149,20 @@ func TestEscrowFinish_Validate(t *testing.T) {
 			expectedErr: ErrEscrowFinishInvalidCondition,
 		},
 		{
-			name: "fail - non-hex Fulfillment",
+			name: "fail - non-hex Condition (even length)",
+			entry: &EscrowFinish{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowFinishTx,
+				},
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				OfferSequence: 7,
+				Condition:     "GG",
+			},
+			expectedErr: ErrEscrowFinishInvalidCondition,
+		},
+		{
+			name: "fail - non-hex Fulfillment (odd length)",
 			entry: &EscrowFinish{
 				BaseTx: BaseTx{
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -158,6 +171,19 @@ func TestEscrowFinish_Validate(t *testing.T) {
 				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				OfferSequence: 7,
 				Fulfillment:   "not-hex",
+			},
+			expectedErr: ErrEscrowFinishInvalidFulfillment,
+		},
+		{
+			name: "fail - non-hex Fulfillment (even length)",
+			entry: &EscrowFinish{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: EscrowFinishTx,
+				},
+				Owner:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				OfferSequence: 7,
+				Fulfillment:   "AB0Z",
 			},
 			expectedErr: ErrEscrowFinishInvalidFulfillment,
 		},

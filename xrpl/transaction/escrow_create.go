@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -131,6 +132,11 @@ func (e *EscrowCreate) Validate() (bool, error) {
 
 	if (e.FinishAfter == 0 && e.CancelAfter == 0) || (e.Condition == "" && e.FinishAfter == 0) {
 		return false, ErrEscrowCreateNoConditionOrFinishAfterSet
+	}
+
+	// Condition is a Blob field, so the hex string must encode whole bytes (even length).
+	if e.Condition != "" && !typecheck.IsHexBlob(e.Condition) {
+		return false, ErrEscrowCreateInvalidCondition
 	}
 
 	return true, nil

@@ -88,11 +88,11 @@ func (e *EscrowFinish) Validate() (bool, error) {
 	}
 
 	// Condition and Fulfillment are Blob fields, so the hex string must encode whole bytes (even length).
-	if e.Condition != "" && (!typecheck.IsHex(e.Condition) || len(e.Condition)%2 != 0) {
+	if e.Condition != "" && !typecheck.IsHexBlob(e.Condition) {
 		return false, ErrEscrowFinishInvalidCondition
 	}
 
-	if e.Fulfillment != "" && (!typecheck.IsHex(e.Fulfillment) || len(e.Fulfillment)%2 != 0) {
+	if e.Fulfillment != "" && !typecheck.IsHexBlob(e.Fulfillment) {
 		return false, ErrEscrowFinishInvalidFulfillment
 	}
 
