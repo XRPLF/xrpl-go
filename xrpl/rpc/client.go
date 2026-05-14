@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"time"
 
@@ -26,6 +27,12 @@ var (
 	fundWalletPollInterval = 1 * time.Second
 )
 
+// maxDrainBytes caps how much of an error response body is drained before
+// retrying. A small bounded drain lets the HTTP transport reuse the
+// connection via keep-alive when the body fits, and prevents a hostile
+// upstream from forcing an unbounded read when it doesn't.
+const maxDrainBytes = 4 << 10 // 4 KiB
+
 // Client is an XRPL RPC client for sending requests and managing transactions.
 type Client struct {
 	cfg *Config
@@ -42,8 +49,7 @@ func NewClient(cfg *Config) *Client {
 
 // Request sends a request to the XRPL server and returns the response and any error encountered.
 func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
-	err := reqParams.Validate()
-	if err != nil {
+	if err := reqParams.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -52,61 +58,77 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.cfg.URL, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
+	const maxAttempts = 4 // 1 initial attempt + 3 retries
+	backoffDuration := c.cfg.retryDelay
 
-	// add timeout context to prevent hanging
-	ctx, cancel := context.WithTimeout(context.Background(), c.cfg.timeout)
-	defer cancel()
-	req = req.WithContext(ctx)
+	var (
+		response   *http.Response
+		cancelFunc context.CancelFunc
+	)
 
-	req.Header = c.cfg.Headers
+	// cfg.timeout bounds a single attempt, not the full retry window.
+	for attempt := range maxAttempts {
+		ctx, cancel := context.WithTimeout(context.Background(), c.cfg.timeout)
 
-	var response *http.Response
-
-	response, err = c.cfg.HTTPClient.Do(req)
-	if err != nil || response == nil {
-		return nil, err
-	}
-
-	// allow client to reuse persistent connection
-	defer func() {
-		_ = response.Body.Close()
-	}()
-	// Check for service unavailable response and retry if so
-	if response.StatusCode == 503 {
-
-		maxRetries := 3
-		backoffDuration := 1 * time.Second
-
-		for range maxRetries {
-			time.Sleep(backoffDuration)
-
-			// Make request again after waiting
-			response, err = c.cfg.HTTPClient.Do(req)
-			if err != nil {
-				return nil, err
-			}
-
-			if response.StatusCode != 503 {
-				break
-			}
-
-			// Increase backoff duration for the next retry
-			backoffDuration *= 2
+		req, err := http.NewRequestWithContext(
+			ctx,
+			http.MethodPost,
+			c.cfg.URL,
+			bytes.NewReader(body),
+		)
+		if err != nil {
+			cancel()
+			return nil, err
 		}
 
-		if response.StatusCode == 503 {
-			// Return service unavailable error here after retry 3 times
+		req.Header = c.cfg.Headers
+
+		response, err = c.cfg.HTTPClient.Do(req)
+		if err != nil {
+			// net/http documents response as nil when Do returns an error, but
+			// custom HTTPClient impls may not follow that contract.
+			if response != nil {
+				_ = response.Body.Close()
+			}
+			cancel()
+			return nil, err
+		}
+
+		// HTTPClient is an interface, custom impls may return (nil, nil),
+		// violating net/http's contract. Standard *http.Client never hits
+		// this branch.
+		if response == nil {
+			cancel()
+			return nil, &ClientError{ErrorString: "nil response from server"}
+		}
+
+		if response.StatusCode != http.StatusServiceUnavailable {
+			cancelFunc = cancel
+			break
+		}
+
+		// Drain and close the 503 response body before retrying so the connection
+		// can be reused by the HTTP client.
+		_, _ = io.CopyN(io.Discard, response.Body, maxDrainBytes)
+		_ = response.Body.Close()
+		cancel()
+
+		if attempt == maxAttempts-1 {
 			return nil, &ClientError{ErrorString: "Server is overloaded, rate limit exceeded"}
 		}
 
+		// time.Sleep is non-cancellable. If Request ever accepts a caller
+		// context, switch to a select on ctx.Done() / time.After.
+		time.Sleep(backoffDuration)
+		backoffDuration *= 2
 	}
+	defer cancelFunc()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	var jr Response
-	jr, err = checkForError(response)
+	jr, err = checkForError(response, c.cfg.maxResponseSize)
 	if err != nil {
 		return nil, err
 	}

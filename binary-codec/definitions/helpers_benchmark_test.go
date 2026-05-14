@@ -7,7 +7,6 @@ import (
 
 // nolint
 func BenchmarkGetTypeNameByFieldName(b *testing.B) {
-
 	tt := []struct {
 		input string
 	}{
@@ -30,7 +29,6 @@ func BenchmarkGetTypeNameByFieldName(b *testing.B) {
 
 // nolint
 func BenchmarkGetTypeCodeByTypeName(b *testing.B) {
-
 	tt := []struct {
 		input string
 	}{

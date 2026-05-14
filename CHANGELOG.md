@@ -20,11 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
+- Removed exported `DomainIDLength` and `SHA512HalfLength` constants. Use `Hex256Length`, `IsHex256`, `IsDomainID`, or `IsLedgerEntryID` depending on whether the code needs a raw 256-bit hex length or semantic validation.
+
+#### keypairs
+
+- `GenerateSeed` now accepts caller-supplied entropy as `[]byte` instead of `string`. Empty or nil entropy still generates random entropy with the provided randomizer, while non-empty entropy must be exactly 16 raw bytes. Callers that need to recover old seeds generated from arbitrary strings must reproduce the legacy first-16-byte behavior outside this function.
 
 #### binary-codec
 
 - Changed the exported `MaxDrops` constant to a typed `uint64` drops limit.
 - Removed the exported `MinXRP` constant. Native XRP amount serialization validates drops, not XRP-denominated decimal values.
+- Removed the exported `ErrUInt64OutOfRange` error variable. `UInt64.FromJSON` now returns `ErrInvalidUInt64String` for all invalid inputs (non-string, non-hex characters, or length > 16).
 
 ### Added
 
@@ -32,51 +38,134 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `SortByAccountID` helper for canonical account ID byte ordering.
 - Added `LoanObject` and `LoanBrokerObject` `ObjectType` constants for `account_objects` query.
-- Added `GetLedgerEntry` method to the testutil integration `Client` interface.
+- Added `GetLedgerEntry` and `GetXrpBalanceValidated` methods to the testutil integration `Client` interface.
+- Added `GetXrpDropsBalanceValidated` to `rpc.Client`, `websocket.Client`, and the testutil integration `Client` interface to read validated-ledger balances directly in drops without the XRP-string round trip.
 - Updated lending protocol integration test with expanded lifecycle coverage.
+- Added `AutofillMultisigned` to the testutil integration `Client` interface and multisigned payment integration coverage, including sub-quorum (`tefBAD_QUORUM`) and non-listed-signer (`tefBAD_SIGNATURE`) negative-path tests.
+
+#### xrpl/transaction
+
+- Exported `MinTransferRate` and `MaxTransferRate` constants alongside the existing `MinTickSize`/`MaxTickSize`, so callers can reference the AccountSet bounds without hardcoding values.
+
+#### xrpl/transaction/types
+
+- Added `IsZero() bool` to the `CurrencyAmount` interface. Implementations check numeric value: `XRPCurrencyAmount` against `uint64` zero, `IssuedCurrencyAmount` via `math/big.Float` to stay faithful to the textual XLS-33 decimal (so amounts that underflow IEEE-754 are not falsely zero), and `MPTCurrencyAmount` via `strconv.ParseInt`. Renamed the existing `IssuedCurrencyAmount.IsZero` empty-struct check to `IsEmpty` to avoid clashing with the new value-zero semantics.
 
 #### xrpl/rpc
 
 - `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+- `SetLogger` lets consumers safely override (or `nil`-silence) the `*log.Logger` used for SDK-emitted warnings.
 
 #### xrpl/websocket
 
 - `GetXrpBalanceValidated` retrieves the XRP balance from the most recently validated ledger.
+- `SetLogger` lets consumers safely override (or `nil`-silence) the `*log.Logger` used for SDK-emitted warnings.
+
+#### keypairs
+
+- Exported `ErrRandomizerRequired` sentinel for `GenerateSeed` calls with empty entropy and a nil randomizer.
+- Exported `ErrInvalidEntropyLength` sentinel wrapping caller-supplied entropy length errors, so callers can `errors.Is` without importing `address-codec`.
 
 ### Changed
+
+#### xrpl/currency
+
+- Deprecated exported `DropsPerXrp`, it remains available for compatibility, but native amount conversion helpers use exact rational arithmetic internally instead of `float64`.
+- Changed `MaxFractionLength` from `uint` to `int` to match Go precision and length APIs without repeated casts.
 
 #### xrpl/rpc
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+- HTTP 503 retries now recreate the RPC request, close retry response bodies before retrying, and respect the configured retry delay. Each attempt also gets a fresh context, so `cfg.timeout` now bounds a single attempt rather than the full retry window.
 
 #### xrpl/websocket
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
 - Documented that `Connect` must not be called synchronously from stream or error handlers.
 
+#### xrpl/transaction
+
+- `NFTokenCreateOffer.Validate` now reports `Amount` and `NFTokenID` errors before owner, destination, and flag errors. Callers that pattern-match on the first returned error from `Validate()` may observe a different error for the same input.
+
+#### docs
+
+- Added wallet credential leakage warnings to the wallet docs and example comments.
+
 ### Fixed
 
-#### binary-codec
+#### xrpl/rpc
 
+- RPC client now caps HTTP response bodies at 64 MiB by default to prevent unbounded memory growth from oversized server responses. Use `WithMaxResponseSize(0)` to disable the limit.
+
+#### xrpl/websocket
+
+- WebSocket client now caps inbound messages at 16 MiB by default to prevent unbounded memory growth from oversized server messages. Use `WithMaxResponseSize(0)` to disable the limit.
+
+#### keypairs
+
+- `GenerateSeed` now rejects non-empty entropy whose length is not exactly 16 bytes, removing silent truncation of longer inputs and the panic on shorter inputs.
+- `GenerateSeed` returns `ErrRandomizerRequired` instead of panicking when called with empty entropy and a nil randomizer.
+- `GenerateSeed` no longer wraps unsupported algorithm errors with `ErrInvalidEntropyLength` when caller-supplied entropy has the correct length.
 - `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
 - `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
 
 #### address-codec
 
+- `DecodeClassicAddressToAccountID` and `IsValidClassicAddress` now reject checksum-valid classic-address payloads with non-account prefixes.
 - `DecodeSeed` now returns errors for checksum-valid seeds with invalid decoded lengths or unknown prefixes instead of reading past the decoded payload or treating them as secp256k1 seeds.
 - `Decode` now validates Base58Check checksums and prefix lengths before slicing, preventing panics on malformed public key input.
+- IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
+- Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
+- Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
+
+#### binary-codec
+
+- `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
+- `FieldIDCodec.Decode` no longer writes decode errors or input lengths to stdout.
+- `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
+- `UInt64` JSON serialization now treats input as 1 to 16 character hex strings instead of applying decimal range validation before hex encoding. Empty-string inputs are now rejected (previously silently produced 0 bytes).
+- IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
+- Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
+- Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
 
 #### xrpl
 
 - `Multisign`, `CombineLoanSetCounterpartySigners`, and `CombineBatchSigners` now propagate signer sort errors and use canonical account ID byte ordering.
 - `fetchCounterPartySignersCount` in the RPC client now uses `"current"` ledger index instead of `"validated"` when fetching the loan broker and counterparty signer information, avoiding lookup failures before the transaction is validated.
+- `Multisign` now validates that all input blobs represent the same transaction (ignoring `Signers`) and returns `ErrMultisignTxNotEqual` otherwise.
+- `Multisign` now rejects input blobs containing invalid signer signatures before returning an aggregated blob.
+- `Multisign` now returns `ErrInvalidSigner` for malformed signer data instead of panicking.
 - `MPTokenIssuanceCreate` integration tests now handle RPC numeric fields decoded as `json.Number`.
 
-#### binary-codec
+#### xrpl/transaction
 
-- IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
-- Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
-- Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
+- `SignerListSet.Validate` now rejects duplicate signer accounts including classic/X-address equivalents, signer entries that reference the transaction account, zero signer weights, and correctly handles signer weight sums above `uint16`.
+- `AccountSet.Validate` now rejects invalid `TransferRate`, `ClearFlag`, and reserved `SetFlag` values before submission.
+- `AccountSet.Validate` now rejects `SetFlag == ClearFlag` (non-zero) locally, matching rippled's `temINVALID` and xrpl.js's `validateAccountSet`. Returned via the new `ErrAccountSetMutuallyExclusiveFlags` sentinel.
+
+
+#### xrpl/currency
+
+- XRP drops conversion helpers now use exact arithmetic and validate native amount bounds, preserving precision up to the maximum XRP supply.
+- Native amount conversion helpers now reject overly long decimal strings and large scientific-notation exponents before arbitrary-precision conversion.
+
+#### xrpl/rpc
+
+- `NewClientConfig` now logs a warning when configured with a remote non-TLS URL scheme. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
+
+#### xrpl/websocket
+
+- `NewClient` now logs a warning when configured with a remote non-TLS URL scheme. The warning was previously emitted from `ClientConfig.WithHost`, which fired once per fluent-setter call; it now fires exactly once per client. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
+- WebSocket request responses are now dispatched by request ID, preventing late or out-of-order responses from blocking unrelated requests. Concurrent request writes are serialized on the shared connection.
+- Serialized concurrent WebSocket reads in `Connection.ReadMessage`, matching gorilla/websocket's single-reader contract.
+- WebSocket subscription tests now wait for request IDs before sending mock responses, avoiding dropped-response flakes with per-ID dispatch.
+
+#### xrpl/transaction
+
+- `EscrowCreate`, `CheckCreate`, `NFTokenCreateOffer`, and `OfferCreate` now omit nil amount fields in `Flatten()` instead of panicking.
+- `EscrowCreate` and `NFTokenCreateOffer` now return validation errors for missing or malformed required amount fields. `NFTokenCreateOffer` also rejects missing or malformed 64-character hexadecimal `NFTokenID` values and zero amounts except XRP sell offers.
+- `EscrowCreate.Validate` now rejects zero `Amount` (XRP, IOU, or MPT) with `ErrEscrowCreateZeroAmount`, matching rippled's `temBAD_AMOUNT` rejection.
+- `NFTokenModify.Validate` now rejects short or non-hex `NFTokenID` values with `ErrInvalidNFTokenID`, matching the new `NFTokenBurn` and `NFTokenCreateOffer` checks.
 
 #### xrpl/websocket
 

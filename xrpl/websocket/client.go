@@ -32,6 +32,7 @@ import (
 	ws "github.com/gorilla/websocket"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
+	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
 const (
@@ -76,25 +77,27 @@ type Client struct {
 	// streamHandlerResetMu serializes full lifecycle resets while old stream
 	// handler runners are waited on outside streamHandlerStateMu.
 	streamHandlerResetMu sync.Mutex
-	ctx                  context.Context
-	cancel               context.CancelFunc
-	pendingResponsesMu   sync.Mutex
-	pendingResponses     map[int]chan *ClientResponse
+	ctx                context.Context
+	cancel             context.CancelFunc
+	pendingResponsesMu sync.Mutex
+	pendingResponses   map[uint64]chan *ClientResponse
 
-	idCounter atomic.Uint32
+	idCounter atomic.Uint64
 	NetworkID uint32
 }
 
 // NewClient creates a new WebSocket client using the provided ClientConfig.
 // This client will open and close a websocket connection for each request.
 func NewClient(cfg ClientConfig) *Client {
+	clientconfig.WarnIfInsecureScheme("websocket", cfg.host)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	return &Client{
 		cfg:              cfg,
-		pendingResponses: make(map[int]chan *ClientResponse),
-		conn:             NewConnection(cfg.host),
+		pendingResponses: make(map[uint64]chan *ClientResponse),
+		conn:             newConnection(cfg.host, cfg.maxResponseSize),
 		ctx:              ctx,
 		cancel:           cancel,
 	}
@@ -296,15 +299,11 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 		return nil, err
 	}
 
-	id := int(c.idCounter.Add(1))
+	id := c.idCounter.Add(1)
 
 	msg, err := c.formatRequest(req, id, nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if !c.IsConnected() {
-		return nil, ErrNotConnectedToServer
 	}
 
 	responseChan := c.registerPendingResponse(id)
@@ -320,9 +319,6 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 		return nil, err
 	}
 
-	if res.ID != id {
-		return nil, ErrIncorrectID
-	}
 	if err := res.CheckError(); err != nil {
 		return nil, err
 	}
@@ -518,7 +514,7 @@ func (c *Client) submitRequest(req *requests.SubmitRequest) (*requests.SubmitRes
 	return &subRes, nil
 }
 
-func (c *Client) formatRequest(req interfaces.Request, id int, marker any) ([]byte, error) {
+func (c *Client) formatRequest(req interfaces.Request, id uint64, marker any) ([]byte, error) {
 	m := make(map[string]any)
 	m["id"] = id
 	m["command"] = req.Method()
@@ -626,7 +622,7 @@ func (c *Client) getFeeXrp(cushion float32) (string, error) {
 	}
 
 	// Round fee to NUM_DECIMAL_PLACES
-	roundedFee := float32(math.Round(float64(fee)*math.Pow10(int(currency.MaxFractionLength)))) / float32(math.Pow10(int(currency.MaxFractionLength)))
+	roundedFee := float32(math.Round(float64(fee)*math.Pow10(currency.MaxFractionLength))) / float32(math.Pow10(currency.MaxFractionLength))
 
 	// Convert the rounded fee back to a string with NUM_DECIMAL_PLACES
 	return fmt.Sprintf("%.*f", currency.MaxFractionLength, roundedFee), nil
@@ -786,28 +782,25 @@ func (c *Client) setTransactionFlags(tx *transaction.FlatTransaction) error {
 	return nil
 }
 
-func (c *Client) registerPendingResponse(id int) chan *ClientResponse {
+func (c *Client) registerPendingResponse(id uint64) chan *ClientResponse {
 	responseChan := make(chan *ClientResponse, 1)
 
 	c.pendingResponsesMu.Lock()
 	defer c.pendingResponsesMu.Unlock()
 
-	if c.pendingResponses == nil {
-		c.pendingResponses = make(map[int]chan *ClientResponse)
-	}
 	c.pendingResponses[id] = responseChan
 
 	return responseChan
 }
 
-func (c *Client) unregisterPendingResponse(id int) {
+func (c *Client) unregisterPendingResponse(id uint64) {
 	c.pendingResponsesMu.Lock()
 	defer c.pendingResponsesMu.Unlock()
 
 	delete(c.pendingResponses, id)
 }
 
-func (c *Client) pendingResponse(id int) (chan *ClientResponse, bool) {
+func (c *Client) lookupPendingResponse(id uint64) (chan *ClientResponse, bool) {
 	c.pendingResponsesMu.Lock()
 	defer c.pendingResponsesMu.Unlock()
 
@@ -840,11 +833,13 @@ func (c *Client) handleMessage(ctx context.Context, message []byte) {
 func (c *Client) handleRequest(ctx context.Context, message []byte) {
 	var res ClientResponse
 	c.unmarshalMessage(ctx, message, &res)
-	responseChan, ok := c.pendingResponse(res.ID)
+	responseChan, ok := c.lookupPendingResponse(res.ID)
 	if !ok {
 		return
 	}
 
+	// Non-blocking send: drops duplicate or late responses for the same id
+	// rather than blocking the read loop.
 	select {
 	case responseChan <- &res:
 	default:
