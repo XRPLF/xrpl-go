@@ -3,6 +3,11 @@ package wallet
 import "errors"
 
 var (
+	// signing
+
+	// ErrNilTransaction is returned when a nil transaction map is provided.
+	ErrNilTransaction = errors.New("transaction cannot be nil")
+
 	// address
 
 	// ErrAddressHasTag is returned when an X-address carries an embedded tag (zero or non-zero).

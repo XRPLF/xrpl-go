@@ -2,7 +2,7 @@ package websocket
 
 import (
 	"github.com/Peersyst/xrpl-go/pkg/decodehook"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 // ResponseWarning represents a warning returned in a WebSocket response.

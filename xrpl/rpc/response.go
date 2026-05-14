@@ -3,7 +3,7 @@ package rpc
 import (
 	"github.com/Peersyst/xrpl-go/pkg/decodehook"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 // Response represents a JSON-RPC response from an XRPL server.
