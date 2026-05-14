@@ -241,17 +241,17 @@ func (w *Wallet) ComputeSignature(encodedTx string) (string, error) {
 }
 
 // Ensures that the address is a classic address.
-// If the address is an x-address with a tag of 0 (no tag), it will be converted to a classic address.
+// If the address is an x-address without a tag, it will be converted to a classic address.
 // If the address is not a classic address, it will be returned as is.
 func ensureClassicAddress(account string) (types.Address, error) {
 	if ok := addresscodec.IsValidXAddress(account); ok {
-		classicAddr, tag, _, err := addresscodec.XAddressToClassicAddress(account)
+		classicAddr, _, hasTag, _, err := addresscodec.XAddressToClassicAddress(account)
 		if err != nil {
 			return "", err
 		}
 
-		if tag != 0 {
-			return "", ErrAddressTagNotZero
+		if hasTag {
+			return "", ErrAddressHasTag
 		}
 
 		return types.Address(classicAddr), nil

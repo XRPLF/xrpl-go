@@ -2,6 +2,7 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -84,6 +85,15 @@ func (e *EscrowFinish) Validate() (bool, error) {
 
 	if e.OfferSequence == 0 {
 		return false, ErrEscrowFinishMissingOfferSequence
+	}
+
+	// Condition and Fulfillment are Blob fields, so the hex string must encode whole bytes (even length).
+	if e.Condition != "" && !typecheck.IsHexBlob(e.Condition) {
+		return false, ErrEscrowFinishInvalidCondition
+	}
+
+	if e.Fulfillment != "" && !typecheck.IsHexBlob(e.Fulfillment) {
+		return false, ErrEscrowFinishInvalidFulfillment
 	}
 
 	if e.CredentialIDs != nil && !e.CredentialIDs.IsValid() {

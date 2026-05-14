@@ -9,13 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### address-codec
+
+- `DecodeXAddress` and `XAddressToClassicAddress` now return whether an X-address tag is present, preserving explicit tag `0` separately from no tag.
+
 #### binary-codec
 
 - `Amount` serialization no longer accepts `float64` values. Use strings, `json.Number`, or exact amount types to preserve precision.
+- X-address encoding now rejects duplicate `SourceTag`/`DestinationTag` whenever the X-address carries an embedded tag (zero or non-zero), including the previously-accepted case where both values matched.
+- `AccountID.FromJSON` now rejects X-addresses that carry an embedded tag (returning `ErrAccountIDTagNotAllowed`). Previously the tag was silently dropped for non-`Account`/`Destination` AccountID fields (e.g. nested `SignerEntry.Account`, `EncodeForMultisigning`).
 
 #### xrpl
 
 - `SortSigners` now returns an error when signer extraction or address decoding fails. Errors are wrapped with the failing item index to help diagnose which signer caused the failure.
+
+#### xrpl/wallet
+
+- Renamed `ErrAddressTagNotZero` to `ErrAddressHasTag` and updated its message to `"X-address must not carry a tag"`. The error now fires for any embedded tag, including explicit tag `0`.
 
 #### xrpl/transaction
 
@@ -33,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the exported `ErrUInt64OutOfRange` error variable. `UInt64.FromJSON` now returns `ErrInvalidUInt64String` for all invalid inputs (non-string, non-hex characters, or length > 16).
 
 ### Added
+
+#### binary-codec
+
+- Added `ErrDuplicateXAddressTag` for detecting duplicate tag fields when encoding tagged X-addresses.
+- Added `ErrAccountIDTagNotAllowed` for `AccountID`-typed fields that receive a tagged X-address (used by both `AccountID.FromJSON` and the `STObject` X-address preprocessor for non-`Account`/`Destination` fields).
 
 #### xrpl
 
@@ -65,6 +80,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Exported `ErrRandomizerRequired` sentinel for `GenerateSeed` calls with empty entropy and a nil randomizer.
 - Exported `ErrInvalidEntropyLength` sentinel wrapping caller-supplied entropy length errors, so callers can `errors.Is` without importing `address-codec`.
+
+#### pkg/typecheck
+
+- Added `IsHexBlob` helper that reports whether a string is a hex-encoded whole-byte sequence (valid hex characters and even length). Used by the Escrow transaction validators.
 
 ### Changed
 
@@ -105,6 +124,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### xrpl/transaction
+
+- `EscrowFinish.Validate` now rejects `Condition` and `Fulfillment` values that are not valid hex-encoded byte sequences (non-hex characters or odd length) with the new `ErrEscrowFinishInvalidCondition` and `ErrEscrowFinishInvalidFulfillment` sentinels. Previously malformed values were forwarded to the binary codec and the fee calculator.
+- `EscrowCreate.Validate` now rejects `Condition` values that are not valid hex-encoded byte sequences with the new `ErrEscrowCreateInvalidCondition` sentinel, matching the parity check on `EscrowFinish`.
+
 #### xrpl/rpc
 
 - RPC client now caps HTTP response bodies at 64 MiB by default to prevent unbounded memory growth from oversized server responses. Use `WithMaxResponseSize(0)` to disable the limit.
@@ -128,6 +152,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### address-codec
 
+- X-address decoding now rejects `TAG_32` addresses with non-zero reserved high-order tag bytes.
 - `DecodeClassicAddressToAccountID` and `IsValidClassicAddress` now reject checksum-valid classic-address payloads with non-account prefixes.
 - `DecodeSeed` now returns errors for checksum-valid seeds with invalid decoded lengths or unknown prefixes instead of reading past the decoded payload or treating them as secp256k1 seeds.
 - `Decode` now validates Base58Check checksums and prefix lengths before slicing, preventing panics on malformed public key input.
@@ -137,6 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
+- X-address encoding now rejects duplicate `SourceTag` and `DestinationTag` fields consistently when the X-address already carries a tag, including explicit tag `0`.
 - `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
 - `FieldIDCodec.Decode` no longer writes decode errors or input lengths to stdout.
 - `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
@@ -144,6 +170,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
 - Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
 - Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
+- `PathSet.FromJSON` now returns errors for malformed inputs (non-`[]any` paths, empty paths, non-map steps, non-string `account`/`currency`/`issuer` values) instead of panicking, and propagates account, currency, and issuer decode errors that were previously swallowed and produced malformed signed paths.
+- `XChainBridge.FromJSON` now returns errors for non-string `LockingChainDoor`, `LockingChainIssue`, `IssuingChainDoor`, and `IssuingChainIssue` values instead of panicking on the type assertions.
+- `XChainBridge.ToJSON` now returns an error when the read byte buffer is not 80 bytes instead of panicking on out-of-range slice access.
 
 #### keypairs
 

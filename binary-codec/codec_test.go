@@ -1,6 +1,7 @@
 package binarycodec
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types"
@@ -330,7 +331,10 @@ func TestEncode(t *testing.T) {
 			got, err := Encode(tc.input)
 
 			if tc.expectedErr != nil {
-				require.EqualError(t, err, tc.expectedErr.Error())
+				require.Error(t, err)
+				if !errors.Is(err, tc.expectedErr) {
+					require.EqualError(t, err, tc.expectedErr.Error())
+				}
 				require.Empty(t, got)
 			} else {
 				require.NoError(t, err)
