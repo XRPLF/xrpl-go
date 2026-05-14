@@ -1934,6 +1934,16 @@ func writeMessagesAfterRequests(t *testing.T, c *websocket.Conn, messages []map[
 			return
 		}
 	}
+
+	// Drain until the client closes the connection. Without this, the orphaned
+	// server-side conn is finalized by GC, surfacing as close-1006 on the
+	// client and triggering an auto-reconnect that spawns a second handler
+	// goroutine which can outlive the test and panic via t.Errorf.
+	for {
+		if _, _, err := c.ReadMessage(); err != nil {
+			return
+		}
+	}
 }
 
 func receiveRequestResult(t *testing.T, resultChan <-chan requestResult) *ClientResponse {

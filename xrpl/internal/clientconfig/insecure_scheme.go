@@ -73,5 +73,5 @@ func isLocalHost(host string) bool {
 	}
 
 	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
+	return ip != nil && (ip.IsLoopback() || ip.IsUnspecified())
 }
