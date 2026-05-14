@@ -77,10 +77,10 @@ type Client struct {
 	// streamHandlerResetMu serializes full lifecycle resets while old stream
 	// handler runners are waited on outside streamHandlerStateMu.
 	streamHandlerResetMu sync.Mutex
-	ctx                context.Context
-	cancel             context.CancelFunc
-	pendingResponsesMu sync.Mutex
-	pendingResponses   map[uint64]chan *ClientResponse
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	pendingResponsesMu   sync.Mutex
+	pendingResponses     map[uint64]chan *ClientResponse
 
 	idCounter atomic.Uint64
 	NetworkID uint32
