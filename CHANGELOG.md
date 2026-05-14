@@ -177,6 +177,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WebSocket lifecycle resets now wait for old stream runners to exit before starting replacements, preventing stale events from reaching fresh handlers after reconnect.
 - WebSocket stream reports now snapshot the active handler when queued, preventing in-flight stream events from being delivered to a later replacement handler.
 - WebSocket handler registration no longer starts handler runner goroutines before the first active client lifecycle.
+- WebSocket reconnect now applies capped exponential backoff between attempts and consumes the full `WithMaxReconnects` budget before surfacing `ErrMaxReconnectionAttemptsReached`, instead of hot-looping and aborting on the first failed reconnect.
 
 ## [v0.1.18]
 
