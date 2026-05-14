@@ -3,7 +3,10 @@ package websocket
 import (
 	"errors"
 	"maps"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1138,6 +1141,7 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 			if err := cl.Connect(); err != nil {
 				t.Errorf("Error connecting to server: %v", err)
 			}
+			defer cl.Disconnect()
 
 			err := cl.checkAccountDeleteBlockers(tt.address)
 
@@ -2053,4 +2057,140 @@ func TestClient_FundWallet(t *testing.T) {
 		err := cl.FundWallet(w)
 		require.ErrorIs(t, err, ErrCannotFundWalletWithoutClassicAddress)
 	})
+}
+
+// TestClient_ReconnectConsumesBudgetOnConnectFailures verifies that a failed
+// reconnect Connect() does not abort the read loop early: the loop must keep
+// retrying until the full WithMaxReconnects budget is exhausted, and only then
+// report ErrMaxReconnectionAttemptsReached. The server accepts the initial
+// upgrade once (then closes the conn to trigger the reconnect path) and
+// rejects every subsequent dial with HTTP 500, so every retry's Connect()
+// fails. Before the fix, the first failed Connect() would surface the dial
+// error and return, after the fix, retries continue and the budget exhausts.
+func TestClient_ReconnectConsumesBudgetOnConnectFailures(t *testing.T) {
+	const budget = 3
+	var dialCount atomic.Int32
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if dialCount.Add(1) == 1 {
+			c, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
+				return
+			}
+			c.Close()
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+
+	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
+
+	cfg := NewClientConfig().
+		WithHost(url).
+		WithTimeout(1 * time.Second).
+		WithMaxReconnects(budget)
+
+	cl := NewClient(cfg)
+
+	errCh := make(chan error, 1)
+	cl.OnError(func(err error) {
+		select {
+		case errCh <- err:
+		default:
+		}
+	})
+
+	require.NoError(t, cl.Connect())
+	defer cl.Disconnect()
+
+	select {
+	case got := <-errCh:
+		var maxErr ErrMaxReconnectionAttemptsReached
+		require.ErrorAs(t, got, &maxErr)
+		require.Equal(t, budget, maxErr.Attempts)
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting for ErrMaxReconnectionAttemptsReached, dial count=%d", dialCount.Load())
+	}
+
+	require.GreaterOrEqual(t, dialCount.Load(), int32(1+budget))
+}
+
+// TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage verifies
+// that a reconnect only resets the retry budget after the socket becomes
+// usable by delivering a message. The server accepts every upgrade and
+// immediately closes the socket, so the client must eventually exhaust
+// WithMaxReconnects instead of looping forever.
+func TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage(t *testing.T) {
+	const budget = 2
+
+	var dialCount atomic.Int32
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dialCount.Add(1)
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		c.Close()
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+
+	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
+
+	cfg := NewClientConfig().
+		WithHost(url).
+		WithTimeout(1 * time.Second).
+		WithMaxReconnects(budget)
+
+	cl := NewClient(cfg)
+
+	errCh := make(chan error, 1)
+	cl.OnError(func(err error) {
+		select {
+		case errCh <- err:
+		default:
+		}
+	})
+
+	require.NoError(t, cl.Connect())
+	defer cl.Disconnect()
+
+	select {
+	case got := <-errCh:
+		var maxErr ErrMaxReconnectionAttemptsReached
+		require.ErrorAs(t, got, &maxErr)
+		require.Equal(t, budget, maxErr.Attempts)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for ErrMaxReconnectionAttemptsReached, dial count=%d", dialCount.Load())
+	}
+}
+
+func TestReconnectDelayUsesCappedExponentialBackoff(t *testing.T) {
+	t.Cleanup(swapReconnectDelays(time.Millisecond, 30*time.Millisecond))
+
+	require.Equal(t, time.Millisecond, reconnectDelay(1))
+	require.Equal(t, 2*time.Millisecond, reconnectDelay(2))
+	require.Equal(t, 4*time.Millisecond, reconnectDelay(3))
+	require.Equal(t, 30*time.Millisecond, reconnectDelay(6))
+	require.Equal(t, 30*time.Millisecond, reconnectDelay(100))
+}
+
+// swapReconnectDelays overrides the package-level reconnect backoff vars and
+// returns a function that restores their previous values. Intended for use
+// with t.Cleanup. Not safe under t.Parallel: the vars are read/written without
+// synchronization, so callers must not run in parallel with each other or with
+// any test that exercises the reconnect path.
+func swapReconnectDelays(base, maxDelay time.Duration) func() {
+	prevBase, prevMax := reconnectBaseDelay, reconnectMaxDelay
+	reconnectBaseDelay, reconnectMaxDelay = base, maxDelay
+	return func() {
+		reconnectBaseDelay, reconnectMaxDelay = prevBase, prevMax
+	}
 }

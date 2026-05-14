@@ -87,7 +87,7 @@ func newMessageServer(t *testing.T, msg string) *httptest.Server {
 
 // Exercises the fix that serializes concurrent ReadMessage calls under readMu.
 // Run with -race to expose a missing mutex; a lucky-scheduled run can pass without it.
-func TestConnection_ReadMessageAllowsConcurrentCallers(t *testing.T) {
+func TestConnection_ReadMessageSerializesConcurrentReaders(t *testing.T) {
 	readyToWrite := make(chan struct{})
 	serverErr := make(chan error, 1)
 
