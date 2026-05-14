@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -59,6 +58,21 @@ func TestCheckCreate_Flatten(t *testing.T) {
 				"SendMax":         "10000",
 			},
 		},
+		{
+			name: "pass - nil SendMax omitted",
+			tx: &CheckCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: CheckCreateTx,
+				},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+			},
+			expected: FlatTransaction{
+				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"TransactionType": "CheckCreate",
+				"Destination":     "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -72,8 +86,6 @@ func TestCheckCreate_Validate(t *testing.T) {
 	tests := []struct {
 		name        string
 		tx          *CheckCreate
-		wantValid   bool
-		wantErr     bool
 		expectedErr error
 	}{
 		{
@@ -89,9 +101,6 @@ func TestCheckCreate_Validate(t *testing.T) {
 				Expiration:     533257958,
 				InvoiceID:      "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 			},
-			wantValid:   true,
-			wantErr:     false,
-			expectedErr: nil,
 		},
 		{
 			name: "fail - BaseTx missing TransactionType",
@@ -105,8 +114,6 @@ func TestCheckCreate_Validate(t *testing.T) {
 				Expiration:     533257958,
 				InvoiceID:      "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
 			},
-			wantValid:   false,
-			wantErr:     true,
 			expectedErr: ErrInvalidTransactionType,
 		},
 		{
@@ -119,9 +126,21 @@ func TestCheckCreate_Validate(t *testing.T) {
 				Destination: "invalidAddress",
 				SendMax:     types.XRPCurrencyAmount(10000),
 			},
-			wantValid:   false,
-			wantErr:     true,
 			expectedErr: ErrInvalidDestination,
+		},
+		{
+			name: "fail - Missing SendMax amount",
+			tx: &CheckCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: CheckCreateTx,
+				},
+				Destination:    "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				DestinationTag: types.DestinationTag(23480),
+				Expiration:     533257958,
+				InvoiceID:      "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
+			},
+			expectedErr: ErrMissingField{Field: "SendMax"},
 		},
 		{
 			name: "fail - Invalid SendMax amount, missing Issuer",
@@ -136,8 +155,6 @@ func TestCheckCreate_Validate(t *testing.T) {
 					Value:    "10000",
 				},
 			},
-			wantValid:   false,
-			wantErr:     true,
 			expectedErr: ErrInvalidTokenFields,
 		},
 	}
@@ -145,11 +162,12 @@ func TestCheckCreate_Validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			valid, err := tt.tx.Validate()
-			assert.Equal(t, tt.wantValid, valid)
-			assert.Equal(t, tt.wantErr, err != nil)
-			if err != nil && !errors.Is(err, tt.expectedErr) {
-				t.Errorf("Validate() error = %v, expectedErr %v", err, tt.expectedErr)
+			assert.Equal(t, tt.expectedErr == nil, valid)
+			if tt.expectedErr != nil {
+				assert.ErrorIs(t, err, tt.expectedErr)
+				return
 			}
+			assert.NoError(t, err)
 		})
 	}
 }

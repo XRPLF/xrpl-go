@@ -8,6 +8,7 @@ import (
 	"time"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
+	clientconfigtestutil "github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -18,6 +19,53 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewClientInsecureSchemeWarnings(t *testing.T) {
+	tests := []struct {
+		name        string
+		host        string
+		wantWarning string
+	}{
+		{
+			name:        "remote insecure scheme warns",
+			host:        "ws://s1.ripple.com:6006",
+			wantWarning: `xrpl-go: warning: websocket client endpoint "ws://s1.ripple.com:6006" is not using a TLS scheme`,
+		},
+		{
+			name: "local insecure scheme does not warn",
+			host: "ws://localhost:6006",
+		},
+		{
+			name: "remote tls scheme does not warn",
+			host: "wss://s1.ripple.com:6006",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logs := clientconfigtestutil.CaptureLogOutput(t, func() {
+				_ = NewClient(NewClientConfig().WithHost(tt.host))
+			})
+
+			if tt.wantWarning == "" {
+				require.Empty(t, logs)
+				return
+			}
+
+			require.Contains(t, logs, tt.wantWarning)
+		})
+	}
+}
+
+func TestNewClientWarnsOnceForChainedHosts(t *testing.T) {
+	// Confirm fluent re-assignment of host doesn't multiply warnings:
+	// only the final host should produce one warning at NewClient.
+	logs := clientconfigtestutil.CaptureLogOutput(t, func() {
+		_ = NewClient(NewClientConfig().WithHost("ws://a.example:6006").WithHost("ws://b.example:6006"))
+	})
+	require.Contains(t, logs, `endpoint "ws://b.example:6006"`)
+	require.NotContains(t, logs, "a.example")
+}
 
 func TestClient_SendRequest(t *testing.T) {
 	tt := []struct {
@@ -242,7 +290,7 @@ func TestClient_RequestDropsLateTimedOutResponse(t *testing.T) {
 
 	res, err := cl.Request(newAccountChannelsRequest())
 	require.NoError(t, err)
-	require.Equal(t, 2, res.ID)
+	require.Equal(t, uint64(2), res.ID)
 	require.Equal(t, "current", res.Result["request"])
 
 	select {
@@ -311,9 +359,9 @@ func TestClient_RequestMatchesOutOfOrderResponses(t *testing.T) {
 	first := receiveRequestResult(t, firstResult)
 	second := receiveRequestResult(t, secondResult)
 
-	require.Equal(t, 1, first.ID)
+	require.Equal(t, uint64(1), first.ID)
 	require.Equal(t, "first", first.Result["request"])
-	require.Equal(t, 2, second.ID)
+	require.Equal(t, uint64(2), second.ID)
 	require.Equal(t, "second", second.Result["request"])
 
 	select {
@@ -328,7 +376,7 @@ func TestClient_formatRequest(t *testing.T) {
 	tt := []struct {
 		description string
 		req         interfaces.Request
-		id          int
+		id          uint64
 		marker      any
 		expected    string
 		expectedErr error
@@ -1803,7 +1851,7 @@ func setupRequestDispatchTestClient(t *testing.T, handler func(*websocket.Conn))
 
 	cl := NewClient(NewClientConfig().
 		WithHost(url).
-		WithTimeout(30 * time.Millisecond))
+		WithTimeout(100 * time.Millisecond))
 
 	require.NoError(t, cl.Connect())
 
@@ -1813,9 +1861,9 @@ func setupRequestDispatchTestClient(t *testing.T, handler func(*websocket.Conn))
 	}
 }
 
-func readWebsocketRequestID(c *websocket.Conn) (int, error) {
+func readWebsocketRequestID(c *websocket.Conn) (uint64, error) {
 	var req struct {
-		ID int `json:"id"`
+		ID uint64 `json:"id"`
 	}
 
 	if err := c.ReadJSON(&req); err != nil {

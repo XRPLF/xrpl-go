@@ -21,10 +21,8 @@ const (
 	IssuedCurrencySize = 3
 	// StandardCurrencyCodeLen is the required length of a standard three-character currency code.
 	StandardCurrencyCodeLen = 3
-	// DomainIDLength is the required length of a domain id
-	DomainIDLength = 64
-	// SHA512HalfLength is the length of a SHA-512 half hash (64 hex characters).
-	SHA512HalfLength = 64
+	// Hex256Length is the number of characters in a 256-bit hexadecimal value.
+	Hex256Length = 64
 )
 
 // *************************
@@ -269,13 +267,18 @@ func IsAsset(asset ledger.Asset) (bool, error) {
 
 // IsDomainID checks if the given domain ID is valid.
 func IsDomainID(id string) bool {
-	return len(id) == DomainIDLength && typecheck.IsHex(id)
+	return IsHex256(id)
+}
+
+// IsHex256 checks if the input is a 256-bit value encoded as hexadecimal.
+func IsHex256(input string) bool {
+	return len(input) == Hex256Length && typecheck.IsHex(input)
 }
 
 // IsLedgerEntryID checks if the input is a valid ledger entry id.
-// A valid ledger entry id is a 64-character hexadecimal string (SHA-512 half length).
+// A valid ledger entry id is a 256-bit value encoded as hexadecimal.
 func IsLedgerEntryID(input string) bool {
-	return len(input) == SHA512HalfLength && typecheck.IsHex(input)
+	return IsHex256(input)
 }
 
 // ValidateHexMetadata validates input is non-empty hex string of up to a certain length.

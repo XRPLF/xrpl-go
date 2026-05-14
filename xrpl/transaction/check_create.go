@@ -45,12 +45,16 @@ func (*CheckCreate) TxType() TxType {
 }
 
 // Flatten returns the flattened map of the CheckCreate transaction.
+// Optional or unset fields are omitted, callers must run Validate to enforce
+// presence of required fields before signing.
 func (c *CheckCreate) Flatten() FlatTransaction {
 	flattened := c.BaseTx.Flatten()
 
 	flattened["TransactionType"] = c.TxType().String()
 	flattened["Destination"] = c.Destination.String()
-	flattened["SendMax"] = c.SendMax.Flatten()
+	if c.SendMax != nil {
+		flattened["SendMax"] = c.SendMax.Flatten()
+	}
 	if c.DestinationTag != nil {
 		flattened["DestinationTag"] = *c.DestinationTag
 	}
