@@ -131,10 +131,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
+- `Batch` inner transaction autofill now validates inner accounts and supplied `NetworkID` values (both inner and outer) before filling missing fields, preventing partial mutation on syntactic validation errors. Type-only `NetworkID` failures return the new `ErrNetworkIDFieldIsNotAUint32` sentinel; `ErrNetworkIDFieldMismatch` is reserved for actual value disagreement. Note: this guarantee covers syntactic validation only; if a later `GetAccountInfo` call fails while filling sequences, earlier inner transactions may have already had `Fee` and `SigningPubKey` filled.
 - RPC client now caps HTTP response bodies at 64 MiB by default to prevent unbounded memory growth from oversized server responses. Use `WithMaxResponseSize(0)` to disable the limit.
 
 #### xrpl/websocket
 
+- `Batch` inner transaction autofill now validates inner accounts and supplied `NetworkID` values (both inner and outer) before filling missing fields, preventing partial mutation on syntactic validation errors. Type-only `NetworkID` failures return the new `ErrNetworkIDFieldIsNotAUint32` sentinel; `ErrNetworkIDFieldMismatch` is reserved for actual value disagreement. Note: this guarantee covers syntactic validation only; if a later `GetAccountInfo` call fails while filling sequences, earlier inner transactions may have already had `Fee` and `SigningPubKey` filled.
 - WebSocket reconnects now preserve the reconnect attempt budget until the connection receives a message, preventing immediate-close loops from bypassing `WithMaxReconnects`.
 - WebSocket client now caps inbound messages at 16 MiB by default to prevent unbounded memory growth from oversized server messages. Use `WithMaxResponseSize(0)` to disable the limit.
 

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"maps"
 	"net/http"
 	"reflect"
 	"testing"
@@ -754,6 +753,228 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 		},
 		// Error cases
 		{
+			name: "pass - inner NetworkID matches client NetworkID and outer NetworkID",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2000),
+							"TicketSequence":  uint32(7),
+						},
+					},
+				},
+			},
+			mockResponses: []string{
+				`{
+					"result": {
+						"info": {
+							"build_version": "1.12.0"
+						}
+					}
+				}`,
+			},
+			networkID: uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2000),
+							"TicketSequence":  uint32(7),
+							"Fee":             "0",
+							"SigningPubKey":   "",
+						},
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "fail - inner NetworkID does not match client NetworkID",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2001),
+						},
+					},
+				},
+			},
+			mockResponses: []string{},
+			networkID:     uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2001),
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldMismatch,
+		},
+		{
+			name: "fail - inner NetworkID is not a uint32",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       "2000",
+						},
+					},
+				},
+			},
+			mockResponses: []string{},
+			networkID:     uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       "2000",
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldIsNotAUint32,
+		},
+		{
+			name: "fail - outer NetworkID does not match client NetworkID",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(3000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       uint32(2000),
+						},
+					},
+				},
+			},
+			mockResponses: []string{},
+			networkID:     uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(3000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       uint32(2000),
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldMismatch,
+		},
+		{
+			name: "fail - outer NetworkID does not match default client NetworkID",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"TicketSequence":  uint32(7),
+						},
+					},
+				},
+			},
+			mockResponses: []string{},
+			networkID:     0,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"TicketSequence":  uint32(7),
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldMismatch,
+		},
+		{
+			name: "fail - outer NetworkID is not a uint32",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       "2000",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       uint32(2000),
+						},
+					},
+				},
+			},
+			mockResponses: []string{},
+			networkID:     uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       "2000",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       uint32(2000),
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldIsNotAUint32,
+		},
+		{
 			name: "fail - RawTransactions field not an array",
 			tx: transaction.FlatTransaction{
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
@@ -762,8 +983,12 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			mockResponses: []string{},
 			networkID:     0,
-			expectedTx:    transaction.FlatTransaction{},
-			expectedErr:   ErrRawTransactionsFieldIsNotAnArray,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": "not_an_array",
+			},
+			expectedErr: ErrRawTransactionsFieldIsNotAnArray,
 		},
 		{
 			name: "fail - RawTransaction field not an object",
@@ -778,8 +1003,16 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			mockResponses: []string{},
 			networkID:     0,
-			expectedTx:    transaction.FlatTransaction{},
-			expectedErr:   ErrRawTransactionFieldIsNotAnObject,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": "not_an_object",
+					},
+				},
+			},
+			expectedErr: ErrRawTransactionFieldIsNotAnObject,
 		},
 		{
 			name: "fail - Fee field set to non-zero value - error",
@@ -798,8 +1031,20 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			mockResponses: []string{},
 			networkID:     0,
-			expectedTx:    transaction.FlatTransaction{},
-			expectedErr:   types.ErrBatchInnerTransactionInvalid,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Fee":             "10",
+						},
+					},
+				},
+			},
+			expectedErr: types.ErrBatchInnerTransactionInvalid,
 		},
 		{
 			name: "fail - SigningPubKey field set to non-empty value - error",
@@ -818,8 +1063,20 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			mockResponses: []string{},
 			networkID:     0,
-			expectedTx:    transaction.FlatTransaction{},
-			expectedErr:   ErrSigningPubKeyFieldMustBeEmpty,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"SigningPubKey":   "03ABC123",
+						},
+					},
+				},
+			},
+			expectedErr: ErrSigningPubKeyFieldMustBeEmpty,
 		},
 		{
 			name: "fail - TxnSignature field present - error",
@@ -838,8 +1095,20 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			mockResponses: []string{},
 			networkID:     0,
-			expectedTx:    transaction.FlatTransaction{},
-			expectedErr:   ErrTxnSignatureFieldMustBeEmpty,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"TxnSignature":    "304502",
+						},
+					},
+				},
+			},
+			expectedErr: ErrTxnSignatureFieldMustBeEmpty,
 		},
 		{
 			name: "fail - Signers field present - error",
@@ -858,8 +1127,20 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			mockResponses: []string{},
 			networkID:     0,
-			expectedTx:    transaction.FlatTransaction{},
-			expectedErr:   ErrSignersFieldMustBeEmpty,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Signers":         []any{},
+						},
+					},
+				},
+			},
+			expectedErr: ErrSignersFieldMustBeEmpty,
 		},
 		{
 			name: "fail - Account field not a string - error",
@@ -877,35 +1158,19 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			mockResponses: []string{},
 			networkID:     0,
-			expectedTx:    transaction.FlatTransaction{},
-			expectedErr:   ErrAccountFieldIsNotAString,
-		},
-		{
-			name: "fail - Error from GetAccountInfo",
-			tx: transaction.FlatTransaction{
+			expectedTx: transaction.FlatTransaction{
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"TransactionType": "Batch",
 				"RawTransactions": []map[string]any{
 					{
 						"RawTransaction": map[string]any{
 							"TransactionType": "Payment",
-							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
-							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
-							"Amount":          "1000000",
+							"Account":         12345,
 						},
 					},
 				},
 			},
-			mockResponses: []string{
-				`{
-					"result": {
-						"error": "actNotFound"
-					}
-				}`,
-			},
-			networkID:   0,
-			expectedTx:  transaction.FlatTransaction{},
-			expectedErr: &ClientError{ErrorString: "actNotFound"},
+			expectedErr: ErrAccountFieldIsNotAString,
 		},
 	}
 
@@ -915,10 +1180,6 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 
 			// Set NetworkID for test
 			cl.NetworkID = tt.networkID
-
-			// Make a copy of the original tx for comparison
-			originalTx := make(transaction.FlatTransaction)
-			maps.Copy(originalTx, tt.tx)
 
 			err := cl.autofillRawTransactions(&tt.tx)
 
@@ -936,6 +1197,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 				default:
 					require.Equal(t, tt.expectedErr.Error(), err.Error())
 				}
+				require.Equal(t, tt.expectedTx, tt.tx)
 				return
 			}
 

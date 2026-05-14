@@ -374,40 +374,49 @@ func isFundWalletActNotFound(err error) bool {
 	return errors.As(err, &clientErr) && clientErr.ErrorString == actNotFound
 }
 
-func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
-	needsNetworkID, err := c.txNeedsNetworkID()
-	if err != nil {
-		return err
-	}
+type validatedInnerTx struct {
+	rawTx   map[string]any
+	account string
+}
 
+func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
 	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
 		return ErrRawTransactionsFieldIsNotAnArray
 	}
 
-	accountSeq := make(map[string]uint32, len(rawTxs))
+	var outerNetworkID *uint32
+	if outer := (*tx)["NetworkID"]; outer != nil {
+		outerNetworkIDUint, ok := outer.(uint32)
+		if !ok {
+			return ErrNetworkIDFieldIsNotAUint32
+		}
+		if outerNetworkIDUint != c.NetworkID {
+			return ErrNetworkIDFieldMismatch
+		}
+		outerNetworkID = &outerNetworkIDUint
+	}
 
+	inners := make([]validatedInnerTx, 0, len(rawTxs))
 	for _, rawTx := range rawTxs {
 		innerRawTx, ok := rawTx["RawTransaction"].(map[string]any)
 		if !ok {
 			return ErrRawTransactionFieldIsNotAnObject
 		}
 
-		// Validate `Fee` field
-		if innerRawTx["Fee"] == nil {
-			innerRawTx["Fee"] = "0"
-		} else if innerRawTx["Fee"] != "0" {
+		acc, ok := innerRawTx["Account"].(string)
+		if !ok {
+			return ErrAccountFieldIsNotAString
+		}
+
+		if fee := innerRawTx["Fee"]; fee != nil && fee != "0" {
 			return types.ErrBatchInnerTransactionInvalid
 		}
 
-		// Validate `SigningPubKey` field
-		if innerRawTx["SigningPubKey"] == nil {
-			innerRawTx["SigningPubKey"] = ""
-		} else if innerRawTx["SigningPubKey"] != "" {
+		if signingPubKey := innerRawTx["SigningPubKey"]; signingPubKey != nil && signingPubKey != "" {
 			return ErrSigningPubKeyFieldMustBeEmpty
 		}
 
-		// Validate `TxnSignature` field
 		if innerRawTx["TxnSignature"] != nil {
 			return ErrTxnSignatureFieldMustBeEmpty
 		}
@@ -415,18 +424,45 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 			return ErrSignersFieldMustBeEmpty
 		}
 
-		// Validate `NetworkID` field
+		if networkID := innerRawTx["NetworkID"]; networkID != nil {
+			innerNetworkID, ok := networkID.(uint32)
+			if !ok {
+				return ErrNetworkIDFieldIsNotAUint32
+			}
+			if innerNetworkID != c.NetworkID {
+				return ErrNetworkIDFieldMismatch
+			}
+			if outerNetworkID != nil && innerNetworkID != *outerNetworkID {
+				return ErrNetworkIDFieldMismatch
+			}
+		}
+
+		inners = append(inners, validatedInnerTx{rawTx: innerRawTx, account: acc})
+	}
+
+	needsNetworkID, err := c.txNeedsNetworkID()
+	if err != nil {
+		return err
+	}
+
+	accountSeq := make(map[string]uint32, len(inners))
+
+	for _, inner := range inners {
+		innerRawTx := inner.rawTx
+		if innerRawTx["Fee"] == nil {
+			innerRawTx["Fee"] = "0"
+		}
+
+		if innerRawTx["SigningPubKey"] == nil {
+			innerRawTx["SigningPubKey"] = ""
+		}
+
 		if innerRawTx["NetworkID"] == nil && needsNetworkID {
 			innerRawTx["NetworkID"] = c.NetworkID
 		}
 
-		// Validate `Sequence` field
 		if innerRawTx["Sequence"] == nil && innerRawTx["TicketSequence"] == nil {
-
-			acc, ok := innerRawTx["Account"].(string)
-			if !ok {
-				return ErrAccountFieldIsNotAString
-			}
+			acc := inner.account
 
 			if accountSeq[acc] != 0 {
 				innerRawTx["Sequence"] = accountSeq[acc]
