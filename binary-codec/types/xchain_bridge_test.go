@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/binary-codec/definitions"
+	"github.com/Peersyst/xrpl-go/binary-codec/serdes"
+	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/testutil"
 	"github.com/golang/mock/gomock"
 )
@@ -88,6 +91,50 @@ func TestXChainBridge_FromJson(t *testing.T) {
 			want: nil,
 			err:  errNotValidXChainBridge,
 		},
+		{
+			name: "LockingChainDoor is not a string",
+			json: map[string]any{
+				"LockingChainDoor":  123,
+				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+			},
+			want: nil,
+			err:  errNotValidXChainBridge,
+		},
+		{
+			name: "LockingChainIssue is not a string",
+			json: map[string]any{
+				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"LockingChainIssue": 123,
+				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+			},
+			want: nil,
+			err:  errNotValidXChainBridge,
+		},
+		{
+			name: "IssuingChainDoor is not a string",
+			json: map[string]any{
+				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainDoor":  123,
+				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+			},
+			want: nil,
+			err:  errNotValidXChainBridge,
+		},
+		{
+			name: "IssuingChainIssue is not a string",
+			json: map[string]any{
+				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainIssue": 123,
+			},
+			want: nil,
+			err:  errNotValidXChainBridge,
+		},
 	}
 
 	for _, tc := range tt {
@@ -111,7 +158,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 		opts  []int
 		want  map[string]string
 		err   error
-		setup func(t *testing.T) (*XChainBridge, *testutil.MockBinaryParser)
+		setup func(t *testing.T) (*XChainBridge, interfaces.BinaryParser)
 	}{
 		{
 			name:  "Valid xchain bridge",
@@ -124,11 +171,27 @@ func TestXChainBridge_ToJson(t *testing.T) {
 				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
 			},
 			err: nil,
-			setup: func(t *testing.T) (*XChainBridge, *testutil.MockBinaryParser) {
+			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
 				ctrl := gomock.NewController(t)
 				mock := testutil.NewMockBinaryParser(ctrl)
 				mock.EXPECT().ReadBytes(80).Return([]byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18}, nil)
 				return &XChainBridge{}, mock
+			},
+		},
+		{
+			name:  "Valid xchain bridge - real parser",
+			input: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
+			opts:  []int{80},
+			want: map[string]string{
+				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
+			},
+			err: nil,
+			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
+				payload := []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18}
+				return &XChainBridge{}, serdes.NewBinaryParser(payload, definitions.Get())
 			},
 		},
 		{
@@ -137,7 +200,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 			opts:  nil,
 			want:  nil,
 			err:   ErrNoLengthPrefix,
-			setup: func(t *testing.T) (*XChainBridge, *testutil.MockBinaryParser) {
+			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
 				return &XChainBridge{}, nil
 			},
 		},
@@ -147,10 +210,36 @@ func TestXChainBridge_ToJson(t *testing.T) {
 			opts:  []int{80},
 			want:  nil,
 			err:   errReadBytes,
-			setup: func(t *testing.T) (*XChainBridge, *testutil.MockBinaryParser) {
+			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
 				ctrl := gomock.NewController(t)
 				mock := testutil.NewMockBinaryParser(ctrl)
 				mock.EXPECT().ReadBytes(80).Return([]byte{}, errors.New("errReadBytes"))
+				return &XChainBridge{}, mock
+			},
+		},
+		{
+			name:  "Short bytes",
+			input: nil,
+			opts:  []int{80},
+			want:  nil,
+			err:   errNotValidXChainBridge,
+			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
+				ctrl := gomock.NewController(t)
+				mock := testutil.NewMockBinaryParser(ctrl)
+				mock.EXPECT().ReadBytes(80).Return(make([]byte, 60), nil)
+				return &XChainBridge{}, mock
+			},
+		},
+		{
+			name:  "Nil bytes",
+			input: nil,
+			opts:  []int{80},
+			want:  nil,
+			err:   errNotValidXChainBridge,
+			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
+				ctrl := gomock.NewController(t)
+				mock := testutil.NewMockBinaryParser(ctrl)
+				mock.EXPECT().ReadBytes(80).Return(nil, nil)
 				return &XChainBridge{}, mock
 			},
 		},
@@ -158,8 +247,8 @@ func TestXChainBridge_ToJson(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			xcb, mock := tc.setup(t)
-			got, err := xcb.ToJSON(mock, tc.opts...)
+			xcb, parser := tc.setup(t)
+			got, err := xcb.ToJSON(parser, tc.opts...)
 			if !errors.Is(err, tc.err) {
 				t.Errorf("ToJson() error = %v, want %v", err.Error(), tc.err.Error())
 			} else if tc.err == nil && !reflect.DeepEqual(got, tc.want) {

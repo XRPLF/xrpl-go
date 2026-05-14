@@ -66,6 +66,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exported `ErrRandomizerRequired` sentinel for `GenerateSeed` calls with empty entropy and a nil randomizer.
 - Exported `ErrInvalidEntropyLength` sentinel wrapping caller-supplied entropy length errors, so callers can `errors.Is` without importing `address-codec`.
 
+#### pkg/typecheck
+
+- Added `IsHexBlob` helper that reports whether a string is a hex-encoded whole-byte sequence (valid hex characters and even length). Used by the Escrow transaction validators.
+
 ### Changed
 
 #### pkg/decodehook
@@ -101,6 +105,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ed25519 and SECP256K1 `Sign` now wrap the underlying `hex.DecodeString` error with `ErrInvalidPrivateKey`. `errors.Is(err, ErrInvalidPrivateKey)` still matches, and the hex offset / invalid-byte detail is now reachable via `errors.As` and `errors.Unwrap`.
 
 ### Fixed
+
+#### xrpl/transaction
+
+- `EscrowFinish.Validate` now rejects `Condition` and `Fulfillment` values that are not valid hex-encoded byte sequences (non-hex characters or odd length) with the new `ErrEscrowFinishInvalidCondition` and `ErrEscrowFinishInvalidFulfillment` sentinels. Previously malformed values were forwarded to the binary codec and the fee calculator.
+- `EscrowCreate.Validate` now rejects `Condition` values that are not valid hex-encoded byte sequences with the new `ErrEscrowCreateInvalidCondition` sentinel, matching the parity check on `EscrowFinish`.
 
 #### xrpl/rpc
 
@@ -140,6 +149,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
 - Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
 - Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
+- `PathSet.FromJSON` now returns errors for malformed inputs (non-`[]any` paths, empty paths, non-map steps, non-string `account`/`currency`/`issuer` values) instead of panicking, and propagates account, currency, and issuer decode errors that were previously swallowed and produced malformed signed paths.
+- `XChainBridge.FromJSON` now returns errors for non-string `LockingChainDoor`, `LockingChainIssue`, `IssuingChainDoor`, and `IssuingChainIssue` values instead of panicking on the type assertions.
+- `XChainBridge.ToJSON` now returns an error when the read byte buffer is not 80 bytes instead of panicking on out-of-range slice access.
 
 #### keypairs
 
