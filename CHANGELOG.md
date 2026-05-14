@@ -104,6 +104,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - WebSocket client now caps inbound messages at 16 MiB by default to prevent unbounded memory growth from oversized server messages. Use `WithMaxResponseSize(0)` to disable the limit.
 
+#### xrpl/wallet
+
+- `Sign` and `Multisign` now return `ErrNilTransaction` for nil transaction maps instead of panicking.
+
 #### keypairs
 
 - `GenerateSeed` now rejects non-empty entropy whose length is not exactly 16 bytes, removing silent truncation of longer inputs and the panic on shorter inputs.

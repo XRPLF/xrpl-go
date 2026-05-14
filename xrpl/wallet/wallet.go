@@ -137,9 +137,14 @@ func FromMnemonic(mnemonic string) (*Wallet, error) {
 }
 
 // Sign signs a transaction offline, returning the transaction blob and its signature.
+// The transaction is signed using an internal copy and the provided map is not mutated.
 // TODO: Refactor to accept a `Transaction` object instead of a map.
 func (w *Wallet) Sign(tx map[string]any) (string, string, error) {
-	signTx := cloneTransactionMap(tx)
+	if tx == nil {
+		return "", "", ErrNilTransaction
+	}
+
+	signTx := maps.Clone(tx)
 	signTx["SigningPubKey"] = w.PublicKey
 
 	encodedTx, err := binarycodec.EncodeForSigning(signTx)
@@ -175,7 +180,11 @@ func (w *Wallet) GetAddress() types.Address {
 // Multisign signs a multisigned transaction offline, returning the signed transaction blob and its transaction hash.
 // The transaction is signed using an internal copy and the provided map is not mutated.
 func (w *Wallet) Multisign(tx map[string]any) (string, string, error) {
-	signTx := cloneTransactionMap(tx)
+	if tx == nil {
+		return "", "", ErrNilTransaction
+	}
+
+	signTx := maps.Clone(tx)
 	// For regular multisigning, SigningPubKey must be empty per XRPL protocol.
 	signTx["SigningPubKey"] = ""
 	encodedTx, err := binarycodec.EncodeForMultisigning(signTx, w.ClassicAddress.String())
@@ -262,9 +271,3 @@ func ensureClassicAddress(account string) (types.Address, error) {
 // func (w *Wallet) GetXAddress() (string, error) {
 // 	return "", errors.New("not implemented")
 // }
-
-func cloneTransactionMap(tx map[string]any) map[string]any {
-	txCopy := make(map[string]any, len(tx))
-	maps.Copy(txCopy, tx)
-	return txCopy
-}
