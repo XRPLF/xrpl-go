@@ -1,14 +1,25 @@
 package rpc
 
 import (
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/Peersyst/xrpl-go/xrpl/common"
+	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
 const defaultMaxResponseSize int64 = 64 * 1024 * 1024
+
+// SetLogger overrides the *log.Logger used for SDK-emitted warnings (currently
+// just the insecure-scheme warning). Pass nil to silence the warnings entirely.
+// The default logger writes to stdlib's log.Default(), preserving prior behavior.
+// The logger is shared across xrpl-go's client packages; calling SetLogger here
+// or in xrpl/websocket has the same effect.
+func SetLogger(l *log.Logger) {
+	clientconfig.SetLogger(l)
+}
 
 // HTTPClient defines the interface for sending HTTP requests.
 type HTTPClient interface {
@@ -135,6 +146,8 @@ func NewClientConfig(url string, opts ...ConfigOpt) (*Config, error) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+
+	clientconfig.WarnIfInsecureScheme("rpc", cfg.URL)
 
 	// Keep the default HTTP client aligned with the config timeout.
 	// If the HTTP client has a custom timeout, sync it to the config to prevent divergence.
