@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### BREAKING CHANGES
+
+#### xrpl
+
+- Removed the exported `ErrTransactionTypeMissing` error variable from the `rpc` and `websocket` packages. The equivalent error now lives in the `transaction` package as `transaction.ErrTransactionTypeMissing`.
+
+### Added
+
+#### pkg/typecheck
+
+- Added `ToUint32`, which coerces any integer, whole-number float, or `json.Number` to a `uint32` when the exact value fits the `[0, 4294967295]` range.
+
+#### xrpl/transaction
+
+- Added `FlatTransaction.NormalizeFlags`, which defaults a missing `Flags` field to `uint32(0)` and coerces a present `Flags` (any integer, whole-number float, or `json.Number`) to `uint32` when the exact value fits the `[0, 4294967295]` range, returning the new `ErrInvalidFlagsValue` otherwise.
+- Added `FlatTransaction.RequireTransactionType`, which returns `ErrTransactionTypeMissing` when `TransactionType` is absent.
+
+### Fixed
+
+#### pkg/typecheck
+
+- `ToUint32` now rejects `json.Number` values with non-zero fractional digits instead of allowing `float64` rounding to normalize them to a different `uint32` value.
+- `ToUint32` now accepts narrower Go integer types such as `uint8`, `uint16`, `int8`, and `int16` when they fit in `uint32`.
+
+#### xrpl
+
+- `Autofill` now validates `TransactionType` before normalizing `Flags`, then correctly defaults a missing `Flags` field to `0`. The previous internal `setTransactionFlags` helper had an unsatisfiable condition (`!ok && flags > 0`) that meant the default was never applied; the logic now lives in the shared `FlatTransaction.NormalizeFlags` helper used by both the `rpc` and `websocket` clients.
+
 ## [v0.2.0-rc1]
 
 ### BREAKING CHANGES

@@ -8,6 +8,10 @@ import (
 var (
 	// ErrDestinationAccountConflict is returned when the Destination matches the Account.
 	ErrDestinationAccountConflict = errors.New("destination cannot be the same as the Account")
+	// ErrTransactionTypeMissing is returned when the transaction type is missing from a transaction.
+	ErrTransactionTypeMissing = errors.New("transaction type is missing in transaction")
+	// ErrInvalidFlagsValue is returned when the Flags field is present but not a uint32.
+	ErrInvalidFlagsValue = errors.New("invalid Flags: must be a uint32")
 	// ErrInvalidAccount is returned when the Account field does not meet XRPL address standards.
 	ErrInvalidAccount = errors.New("invalid xrpl address for Account")
 	// ErrInvalidDelegate is returned when the Delegate field does not meet XRPL address standards.

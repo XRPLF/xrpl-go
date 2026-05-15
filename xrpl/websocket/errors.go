@@ -25,8 +25,6 @@ var (
 	ErrTransactionNotFound = errors.New("transaction not found")
 	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
-	// ErrTransactionTypeMissing is returned when the transaction type is missing from a transaction.
-	ErrTransactionTypeMissing = errors.New("transaction type is missing in transaction")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
 	ErrInvalidFulfillmentLength = errors.New("invalid fulfillment length")
 

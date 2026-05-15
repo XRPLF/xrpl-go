@@ -1157,61 +1157,6 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 	}
 }
 
-func TestClient_setTransactionFlags(t *testing.T) {
-	tests := []struct {
-		name     string
-		tx       transaction.FlatTransaction
-		expected uint32
-		wantErr  bool
-	}{
-		{
-			name: "No flags set",
-			tx: transaction.FlatTransaction{
-				"TransactionType": string(transaction.PaymentTx),
-			},
-			expected: uint32(0),
-			wantErr:  false,
-		},
-		{
-			name: "Flags already set",
-			tx: transaction.FlatTransaction{
-				"TransactionType": string(transaction.PaymentTx),
-				"Flags":           uint32(1),
-			},
-			expected: 1,
-			wantErr:  false,
-		},
-		{
-			name: "Missing TransactionType",
-			tx: transaction.FlatTransaction{
-				"Flags": uint32(1),
-			},
-			expected: 0,
-			wantErr:  true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &Client{}
-			err := c.setTransactionFlags(&tt.tx)
-
-			if (err != nil) != tt.wantErr {
-
-				t.Errorf("setTransactionFlags() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			if !tt.wantErr {
-				flags, ok := tt.tx["Flags"]
-				if !ok && tt.expected != 0 {
-					t.Errorf("setTransactionFlags() got = %v (type %T), want %v (type %T)", flags, flags, tt.expected, tt.expected)
-				}
-			}
-		})
-	}
-}
-
 func TestClient_autofillRawTransactions(t *testing.T) {
 	tests := []struct {
 		name           string
