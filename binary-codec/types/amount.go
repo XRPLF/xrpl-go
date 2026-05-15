@@ -265,7 +265,7 @@ func deserializeValue(data []byte) (string, error) {
 		return "", err
 	}
 	val := d.GetScaledValue()
-	err = verifyIOUValue(val)
+	err = VerifyIOUValue(val)
 	if err != nil {
 		return "", err
 	}
@@ -369,33 +369,6 @@ func verifyXrpValue(value string) error {
 	return nil
 }
 
-// verifyIOUValue validates the format of an issued currency amount value.
-func verifyIOUValue(value string) error {
-	bigDecimal, err := bigdecimal.NewBigDecimal(value)
-	if err != nil {
-		return err
-	}
-
-	if bigDecimal.UnscaledValue == "" {
-		return nil
-	}
-
-	if bigDecimal.Precision > MaxIOUPrecision {
-		return &OutOfRangeError{Type: "Precision"}
-	}
-
-	adjustedExp := bigDecimal.Scale + bigDecimal.Precision - 16
-
-	if adjustedExp < MinIOUExponent {
-		return &OutOfRangeError{Type: "Exponent"}
-	}
-	if adjustedExp > MaxIOUExponent {
-		return &OutOfRangeError{Type: "Exponent"}
-	}
-
-	return nil
-}
-
 // verifyMPTValue validates the format of an MPT amount value.
 // MPT values must be integers (no decimal point) and must not have the high bit set.
 func verifyMPTValue(value string) error {
@@ -456,19 +429,15 @@ func serializeXrpAmount(value string) ([]byte, error) {
 
 // SerializeIssuedCurrencyValue serializes the value field of an issued currency amount to its bytes representation.
 func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
-	if err := verifyIOUValue(value); err != nil {
-		return nil, err
-	}
-
-	bigDecimal, err := bigdecimal.NewBigDecimal(value)
+	bigDecimal, isZero, err := parseIOUValue(value)
 	if err != nil {
 		return nil, err
 	}
 
-	if bigDecimal.UnscaledValue == "" {
+	if isZero {
 		zeroAmount := make([]byte, 8)
 		binary.BigEndian.PutUint64(zeroAmount, uint64(ZeroCurrencyAmountHex))
-		return zeroAmount, nil // if the value is zero, then return the zero currency amount hex
+		return zeroAmount, nil
 	}
 
 	mantissa, err := strconv.ParseUint(bigDecimal.UnscaledValue, 10, 64) // convert the unscaled value to an unsigned integer
@@ -576,15 +545,7 @@ func serializeIssuedCurrencyCodeChars(currency string) ([]byte, error) {
 // The currency code can be 3 allowed string characters, or 20 bytes of hex in standard currency format (e.g. with "00" prefix)
 // or non-standard currency format (e.g. without "00" prefix)
 func serializeIssuedCurrencyAmount(value, currency, issuer string) ([]byte, error) {
-	var valBytes []byte
-	var err error
-	if value == "0" {
-		valBytes = make([]byte, 8)
-		binary.BigEndian.PutUint64(valBytes, uint64(ZeroCurrencyAmountHex))
-	} else {
-		valBytes, err = SerializeIssuedCurrencyValue(value) // serialize the value
-	}
-
+	valBytes, err := SerializeIssuedCurrencyValue(value) // serialize the value
 	if err != nil {
 		return nil, err
 	}

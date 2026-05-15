@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### binary-codec
+
+- Exported `VerifyIOUValue` for issued-currency value validation and `IsZeroIOUValue` for XRPL String Number zero checks covering `"0"`, `"0.0"`, `"-0"`, and `"0e5"`.
+
+### Fixed
+
+#### binary-codec
+
+- `VerifyIOUValue` and `SerializeIssuedCurrencyValue` now validate issued-currency values as XRPL String Numbers, rejecting malformed float-like inputs while accepting zero token values. `SerializeIssuedCurrencyValue` emits the XRPL zero amount encoding (`0x8000000000000000`) for those zero values.
+
+#### xrpl/transaction
+
+- `IsIssuedCurrency` now validates token values as XRPL String Numbers (the same gate the binary codec applies at encode time) instead of `strconv.ParseFloat`. Inputs that previously passed `Validate` (`NaN`, `Inf`, hex-floats like `0x1p10`, prefixed or suffixed strings, leading-zero values, and out-of-range exponents such as `1e1000`) are now rejected. Zero is accepted as a valid token amount; negative amounts are still rejected.
+
 ## [v0.2.0-rc1]
 
 ### BREAKING CHANGES

@@ -87,9 +87,34 @@ func TestVerifyIOUValue(t *testing.T) {
 			expErr: nil,
 		},
 		{
-			name:   "pass - valid iou value - negative value & multiple leading zeros before decimal",
-			input:  "-000.2345",
+			name:   "pass - valid iou value - negative value",
+			input:  "-0.2345",
 			expErr: nil,
+		},
+		{
+			name:   "fail - invalid iou value - leading zeros before decimal",
+			input:  "-000.2345",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - invalid iou value - leading space",
+			input:  " 1",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - invalid iou value - trailing characters",
+			input:  "1abc",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - invalid iou value - prefixed characters",
+			input:  "abc1",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - invalid iou value - comma",
+			input:  "1,2",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
 		},
 		{
 			name:   "fail - invalid iou value - out of range precision",
@@ -113,8 +138,9 @@ func TestVerifyIOUValue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := verifyIOUValue(tt.input)
+			err := VerifyIOUValue(tt.input)
 			if tt.expErr != nil {
+				require.Error(t, err)
 				require.EqualError(t, tt.expErr, err.Error())
 			} else {
 				require.NoError(t, err)
@@ -262,10 +288,28 @@ func TestSerializeIssuedCurrencyValue(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name:        "fail - invalid zero value",
+			name:        "pass - canonical zero value",
 			input:       "0",
-			expected:    nil,
-			expectedErr: bigdecimal.ErrInvalidZeroValue,
+			expected:    []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - canonical zero value - decimal form",
+			input:       "0.0",
+			expected:    []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - canonical zero value - signed",
+			input:       "-0",
+			expected:    []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - canonical zero value - exponent form",
+			input:       "0e5",
+			expected:    []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
 		},
 		{
 			name:        "pass - valid value - 2",

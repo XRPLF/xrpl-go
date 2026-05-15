@@ -189,6 +189,15 @@ func TestIsIssuedCurrency(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "pass - valid IssuedCurrency object with signed zero value",
+			input: types.IssuedCurrencyAmount{
+				Value:    "-0",
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+			},
+			expected: true,
+		},
+		{
 			name:     "fail - invalid IssuedCurrency object",
 			input:    types.XRPCurrencyAmount(100), // should be non XRP
 			expected: false,
@@ -247,6 +256,15 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Issuer:   "invalid",
 				Currency: "USD",
 				Value:    "100",
+			},
+			expected: false,
+		},
+		{
+			name: "fail - issuedCurrency object with leading-space negative value",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    " -1",
 			},
 			expected: false,
 		},
