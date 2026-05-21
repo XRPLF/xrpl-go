@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 
@@ -15,17 +16,6 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	wstypes "github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 )
-
-// safeInt64ToUint32 safely converts int64 to uint32 with bounds checking
-func safeInt64ToUint32(value int64) uint32 {
-	if value < 0 {
-		return 0
-	}
-	if value > int64(^uint32(0)) {
-		return ^uint32(0) // max uint32 value
-	}
-	return uint32(value)
-}
 
 func main() {
 	//
@@ -228,6 +218,16 @@ func mintToken(client *websocket.Client, issuerWallet, holderWallet wallet.Walle
 // createEscrow creates an escrow for the holder wallet.
 func createEscrow(client *websocket.Client, issuerWallet, holderWallet, holderWallet2 wallet.Wallet) (offerSequence uint32) {
 	fmt.Println("⏳ Creating escrow...")
+	cancelAfter, ok := typecheck.ToUint32(rippleTime.UnixTimeToRippleTime(time.Now().Unix()) + 4000)
+	if !ok {
+		fmt.Println("❌ CancelAfter is out of uint32 range")
+		return
+	}
+	finishAfter, ok := typecheck.ToUint32(rippleTime.UnixTimeToRippleTime(time.Now().Unix() + 5))
+	if !ok {
+		fmt.Println("❌ FinishAfter is out of uint32 range")
+		return
+	}
 	escrow := &transactions.EscrowCreate{
 		BaseTx: transactions.BaseTx{
 			Account: holderWallet.ClassicAddress,
@@ -238,8 +238,8 @@ func createEscrow(client *websocket.Client, issuerWallet, holderWallet, holderWa
 			Value:    "100",
 		},
 		Destination: holderWallet2.ClassicAddress,
-		CancelAfter: safeInt64ToUint32(rippleTime.UnixTimeToRippleTime(time.Now().Unix()) + 4000),
-		FinishAfter: safeInt64ToUint32(rippleTime.UnixTimeToRippleTime(time.Now().Unix() + 5)),
+		CancelAfter: cancelAfter,
+		FinishAfter: finishAfter,
 	}
 	escrowResponse, err := client.SubmitTxAndWait(escrow.Flatten(), &wstypes.SubmitOptions{
 		Autofill: true,
