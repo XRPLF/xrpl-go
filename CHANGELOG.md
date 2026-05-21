@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### binary-codec
+
+- Removed the exported `ErrInvalidJSONNumber` error variable. `PermissionValue.FromJSON` now returns `ErrPermissionValueOutOfRange` for any `json.Number` input that cannot be coerced to a `uint32` in the `[0, 4294967295]` range (including malformed, fractional, or negative values that previously surfaced as `ErrInvalidJSONNumber`).
+
 #### xrpl
 
 - Removed the exported `ErrTransactionTypeMissing` error variable from the `rpc` and `websocket` packages. The equivalent error now lives in the `transaction` package as `transaction.ErrTransactionTypeMissing`.
@@ -22,7 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Added `FlatTransaction.NormalizeFlags`, which defaults a missing `Flags` field to `uint32(0)` and coerces a present `Flags` (any integer, whole-number float, or `json.Number`) to `uint32` when the exact value fits the `[0, 4294967295]` range, returning the new `ErrInvalidFlagsValue` otherwise.
-- Added `FlatTransaction.RequireTransactionType`, which returns `ErrTransactionTypeMissing` when `TransactionType` is absent.
+- Added `FlatTransaction.RequireTransactionType`, which returns `ErrTransactionTypeMissing` when `TransactionType` is absent or not a string.
+
+### Changed
+
+#### binary-codec
+
+- `UInt32.FromJSON` and `PermissionValue.FromJSON` now delegate numeric coercion to `pkg/typecheck.ToUint32`, accepting the broader set of integer and whole-number float types it supports (including `uint8`, `uint16`, `int8`, `int16`, `int32`, `float32`, and `json.Number`).
+
+#### xrpl/transaction
+
+- After `Autofill` (and any direct `FlatTransaction.NormalizeFlags` call), the `Flags` entry in a `FlatTransaction` is always stored as `uint32`. Callers that previously relied on the original Go type of a present `Flags` value (e.g. `int`) surviving `Autofill` must update their assertions.
 
 ### Fixed
 

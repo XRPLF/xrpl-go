@@ -16,6 +16,13 @@ type FlatTransaction map[string]any
 // present it is coerced to a uint32 from any integer or whole-number floating
 // point representation (including json.Number), provided the exact value fits
 // in the [0, 4294967295] range. ErrInvalidFlagsValue is returned otherwise.
+//
+// TODO: Add support for converting named boolean flag maps (e.g.
+// {"tfPartialPayment": true}) into a numeric bitmask for transactions that
+// carry tf flags (AccountSet, AMMClawback, AMMDeposit, AMMWithdraw, Batch,
+// LoanManage, LoanPay, LoanSet, MPTokenAuthorize, MPTokenIssuanceCreate,
+// MPTokenIssuanceSet, NFTokenCreateOffer, NFTokenMint, OfferCreate, Payment,
+// PaymentChannelClaim, TrustSet, VaultCreate, XChainModifyBridge).
 func (f FlatTransaction) NormalizeFlags() error {
 	raw, present := f["Flags"]
 	if !present {
@@ -31,7 +38,8 @@ func (f FlatTransaction) NormalizeFlags() error {
 }
 
 // RequireTransactionType returns ErrTransactionTypeMissing when the
-// flattened transaction has no TransactionType set.
+// flattened transaction has no TransactionType set, or when TransactionType
+// is present with a non-string value.
 func (f FlatTransaction) RequireTransactionType() error {
 	if f.TxType() == "" {
 		return ErrTransactionTypeMissing

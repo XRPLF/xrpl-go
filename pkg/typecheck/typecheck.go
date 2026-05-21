@@ -31,6 +31,11 @@ func IsUint32(num any) bool {
 // ToUint32 converts any integer or whole-number floating point value
 // (including json.Number) to a uint32 when the exact value fits the
 // [0, math.MaxUint32] range. The second return value reports success.
+//
+// Caveat: float32 has only 24 mantissa bits, so any value above 2^24
+// (16,777,216) may have already been silently rounded by the caller
+// before reaching ToUint32. For exact integer round-tripping prefer
+// an integer type or json.Number.
 func ToUint32(v any) (uint32, bool) {
 	switch n := v.(type) {
 	case uint32:

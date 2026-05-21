@@ -1157,6 +1157,65 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 	}
 }
 
+func TestClient_Autofill(t *testing.T) {
+	tests := []struct {
+		name        string
+		tx          transaction.FlatTransaction
+		expectedTx  transaction.FlatTransaction
+		expectedErr error
+	}{
+		{
+			name: "fail - missing TransactionType",
+			tx: transaction.FlatTransaction{
+				"Account": "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+			},
+			expectedErr: transaction.ErrTransactionTypeMissing,
+		},
+		{
+			name: "fail - invalid Flags type",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "AccountSet",
+				"Flags":           "abc",
+			},
+			expectedErr: transaction.ErrInvalidFlagsValue,
+		},
+		{
+			name: "pass - missing Flags defaults to uint32(0)",
+			tx: transaction.FlatTransaction{
+				"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType":    "AccountSet",
+				"Sequence":           uint32(42),
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(100),
+			},
+			expectedTx: transaction.FlatTransaction{
+				"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType":    "AccountSet",
+				"Flags":              uint32(0),
+				"Sequence":           uint32(42),
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(100),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cl, cleanup := setupTestClientForAutofill(t, nil)
+			defer cleanup()
+
+			err := cl.Autofill(&tt.tx)
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedTx, tt.tx)
+		})
+	}
+}
+
 func TestClient_autofillRawTransactions(t *testing.T) {
 	tests := []struct {
 		name           string
