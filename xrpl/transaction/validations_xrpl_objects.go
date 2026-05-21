@@ -1,10 +1,12 @@
 package transaction
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	maputils "github.com/Peersyst/xrpl-go/pkg/map_utils"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
@@ -136,9 +138,14 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 		return false, ErrInvalidIssuer
 	}
 
-	// Check if the value is a valid positive number
-	value, err := strconv.ParseFloat(issuedAmount.Value, 64)
-	if err != nil || value < 0 {
+	// Check that the value is an XRPL String Number (same gate the binary codec
+	// applies at encode time), then reject negative amounts.
+	// Zero is a valid token amount; "-0" parses as zero and is not treated as negative.
+	isZero, err := bctypes.VerifyIOUValue(issuedAmount.Value)
+	if err != nil {
+		return false, fmt.Errorf("%w: %w", ErrInvalidTokenValue, err)
+	}
+	if strings.HasPrefix(issuedAmount.Value, "-") && !isZero {
 		return false, ErrInvalidTokenValue
 	}
 

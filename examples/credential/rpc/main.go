@@ -3,11 +3,11 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/Peersyst/xrpl-go/examples/clients"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	rippleTime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -65,11 +65,9 @@ func main() {
 		return
 	}
 
-	if expiration < 0 || expiration > int64(math.MaxUint32) {
-		fmt.Printf(
-			"❌ Expiration %d is out of uint32 range [0…%d]\n",
-			expiration, math.MaxUint32,
-		)
+	expirationUint32, ok := typecheck.ToUint32(expiration)
+	if !ok {
+		fmt.Printf("❌ Expiration %d is out of uint32 range\n", expiration)
 		return
 	}
 	txn := &transaction.CredentialCreate{
@@ -78,7 +76,7 @@ func main() {
 		},
 		CredentialType: credentialType,
 		Subject:        types.Address(subjectWallet.ClassicAddress),
-		Expiration:     uint32(expiration),
+		Expiration:     expirationUint32,
 		URI:            hex.EncodeToString([]byte("https://example.com")),
 	}
 

@@ -20,4 +20,8 @@ var (
 	ErrUInt32OutOfRange = errors.New("value out of uint32 range (0-4294967295)")
 	// ErrInt32OutOfRange is returned when a value is outside the int32 range (-2147483648 to 2147483647).
 	ErrInt32OutOfRange = errors.New("value out of int32 range (-2147483648 to 2147483647)")
+	// ErrInvalidStringNumber is returned when a value contains only legal XRPL String Number characters
+	// but does not match the grammar (e.g. "00.1", ".5", "1.", "1e", "", "-", "+1"). Distinct from
+	// bigdecimal.ErrInvalidCharacter, which signals an out-of-set character.
+	ErrInvalidStringNumber = errors.New("value is not a valid XRPL String Number")
 )

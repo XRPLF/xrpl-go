@@ -258,8 +258,11 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 		return err
 	}
 
-	err := c.setTransactionFlags(tx)
-	if err != nil {
+	if err := tx.RequireTransactionType(); err != nil {
+		return err
+	}
+
+	if err := tx.NormalizeFlags(); err != nil {
 		return err
 	}
 

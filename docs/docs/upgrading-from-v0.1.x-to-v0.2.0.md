@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Upgrade from v0.1.x to v0.2.0
 
-This guide covers the source changes most likely to affect applications upgrading from `v0.1.x` to `v0.2.0-rc1`.
+This guide covers the source changes most likely to affect applications upgrading from `v0.1.x` to `v0.2.0`.
 
 ## Keypairs
 
@@ -130,3 +130,56 @@ wsCfg := websocket.NewClientConfig().WithMaxResponseSize(0)
 Remote non-TLS client URLs now emit SDK warnings with userinfo redacted. Use `rpc.SetLogger` or `websocket.SetLogger` to override or silence those warnings.
 
 WebSocket stream handlers now run under lifecycle-bound handler goroutines. Do not call `Connect` synchronously from stream or error handlers.
+
+## Flags After Autofill
+
+After `Autofill` (and any direct call to `FlatTransaction.NormalizeFlags`), the `Flags` entry in a `FlatTransaction` is always stored as `uint32`. A missing `Flags` field is defaulted to `uint32(0)`, and any present integer, whole-number float, or `json.Number` value is coerced to `uint32` when it fits in `[0, 4294967295]`.
+
+Callers that previously relied on the original Go type of a present `Flags` value (for example, asserting `flatTx["Flags"].(int)` after autofill) must update their assertions to `uint32`:
+
+```go
+flags, ok := flatTx["Flags"].(uint32)
+```
+
+Values that fall outside the `uint32` range now return the new `transaction.ErrInvalidFlagsValue` sentinel from `NormalizeFlags`.
+
+## Error Sentinels
+
+`ErrTransactionTypeMissing` no longer lives in the `rpc` or `websocket` packages. Use the canonical sentinel from the `transaction` package:
+
+```go
+import "github.com/Peersyst/xrpl-go/xrpl/transaction"
+
+if errors.Is(err, transaction.ErrTransactionTypeMissing) {
+    // ...
+}
+```
+
+`binary-codec` removed the exported `ErrInvalidJSONNumber`. `PermissionValue.FromJSON` now returns `ErrPermissionValueOutOfRange` for any `json.Number` input that cannot be coerced to a `uint32` in the `[0, 4294967295]` range (including malformed, fractional, or negative values that previously surfaced as `ErrInvalidJSONNumber`):
+
+```go
+if errors.Is(err, types.ErrPermissionValueOutOfRange) {
+    // ...
+}
+```
+
+## Issued-Currency Values
+
+`binary-codec` and `xrpl/transaction` now validate issued-currency `value` strings as XRPL String Numbers at both encode time (`VerifyIOUValue`, `SerializeIssuedCurrencyValue`) and validation time (`IsIssuedCurrency`). Inputs that previously slipped through are now rejected:
+
+- `NaN`, `Inf`, `+Inf`, `-Inf`
+- Hex floats such as `0x1p10`
+- Prefixed or suffixed strings
+- Leading-zero mantissas such as `-000.2345` or `00.5`
+- Incomplete exponents like `1e`, `1e+`, `1e-`
+- Out-of-range exponents such as `1e1000`
+
+Canonical zero forms (`"0"`, `"0.0"`, `"-0"`, `"0e5"`, etc.) are accepted as valid token amounts; `SerializeIssuedCurrencyValue` emits the XRPL zero encoding (`0x8000000000000000`) for them. Negative amounts remain rejected.
+
+`IsIssuedCurrency` now returns errors that wrap both `ErrInvalidTokenValue` and the underlying binary-codec cause via `errors.Is`, so existing checks against `ErrInvalidTokenValue` keep matching:
+
+```go
+if errors.Is(err, transaction.ErrInvalidTokenValue) {
+    // ...
+}
+```

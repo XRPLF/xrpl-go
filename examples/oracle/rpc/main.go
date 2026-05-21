@@ -8,22 +8,13 @@ import (
 
 	"github.com/Peersyst/xrpl-go/examples/clients"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 )
-
-func safeInt64ToUint32(value int64) uint32 {
-	if value < 0 {
-		return 0
-	}
-	if value > int64(^uint32(0)) {
-		return ^uint32(0) // max uint32 value
-	}
-	return uint32(value)
-}
 
 func printJSON(data any) {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
@@ -64,7 +55,11 @@ func main() {
 	fmt.Println("⏳ Creating oracle set transaction...")
 
 	// 1 minute ago
-	lastUpdatedTime := safeInt64ToUint32(time.Now().Add(-time.Second).Unix())
+	lastUpdatedTime, ok := typecheck.ToUint32(time.Now().Add(-time.Second).Unix())
+	if !ok {
+		fmt.Println("❌ current timestamp is out of uint32 range")
+		return
+	}
 	oracleDocumentID := uint32(1)
 
 	oracleSet := transaction.OracleSet{

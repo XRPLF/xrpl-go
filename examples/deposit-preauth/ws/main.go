@@ -7,6 +7,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/examples/clients"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	rippletime "github.com/Peersyst/xrpl-go/xrpl/time"
@@ -90,7 +91,8 @@ func main() {
 		return
 	}
 	credentialType := types.CredentialType("6D795F63726564656E7469616C") // my_credential
-	if expiration < 0 || expiration > 0xFFFFFFFF {
+	expirationUint32, ok := typecheck.ToUint32(expiration)
+	if !ok {
 		fmt.Printf("❌ Expiration time %d is out of uint32 range\n", expiration)
 		return
 	}
@@ -100,7 +102,7 @@ func main() {
 			Account:         issuer.ClassicAddress,
 			TransactionType: transaction.CredentialCreateTx,
 		},
-		Expiration:     uint32(expiration),
+		Expiration:     expirationUint32,
 		CredentialType: credentialType,
 		Subject:        types.Address(holderWallet1.ClassicAddress),
 		URI:            hex.EncodeToString([]byte("https://example.com")),
