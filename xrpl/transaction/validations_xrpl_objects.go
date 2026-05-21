@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -139,11 +140,12 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 
 	// Check that the value is an XRPL String Number (same gate the binary codec
 	// applies at encode time), then reject negative amounts.
-	// Zero is a valid token amount, "-0" is zero, so it is not negative.
-	if err := bctypes.VerifyIOUValue(issuedAmount.Value); err != nil {
-		return false, ErrInvalidTokenValue
+	// Zero is a valid token amount; "-0" parses as zero and is not treated as negative.
+	isZero, err := bctypes.VerifyIOUValue(issuedAmount.Value)
+	if err != nil {
+		return false, fmt.Errorf("%w: %w", ErrInvalidTokenValue, err)
 	}
-	if strings.HasPrefix(issuedAmount.Value, "-") && !bctypes.IsZeroIOUValue(issuedAmount.Value) {
+	if strings.HasPrefix(issuedAmount.Value, "-") && !isZero {
 		return false, ErrInvalidTokenValue
 	}
 

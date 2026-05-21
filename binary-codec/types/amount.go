@@ -265,8 +265,7 @@ func deserializeValue(data []byte) (string, error) {
 		return "", err
 	}
 	val := d.GetScaledValue()
-	err = VerifyIOUValue(val)
-	if err != nil {
+	if _, err = VerifyIOUValue(val); err != nil {
 		return "", err
 	}
 	return val, nil

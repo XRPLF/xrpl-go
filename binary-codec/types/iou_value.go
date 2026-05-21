@@ -12,18 +12,20 @@ import (
 // encoded separately as ZeroCurrencyAmountHex (0x8000000000000000).
 // Reference: https://xrpl.org/docs/references/protocol/binary-format#token-amount-format
 
-// IsZeroIOUValue reports whether value is a valid XRPL String Number whose
-// numeric value is zero.
-func IsZeroIOUValue(value string) bool {
-	return isXRPLStringNumber(value) && isZeroMantissa(value)
-}
+// xrplStringNumberAllowedChars is the full set of characters that can legally
+// appear anywhere in an XRPL String Number. '+' is only meaningful as an
+// exponent sign, but is included here so the character-set check only fires
+// for inputs that contain truly out-of-set characters.
+const xrplStringNumberAllowedChars = "0123456789.-+eE"
 
 // VerifyIOUValue validates that value is an XRPL String Number within the IOU
 // precision and exponent bounds. A numeric zero (for example "0", "0.0",
-// "-0", or "0e5") is valid per the XRPL protocol.
-func VerifyIOUValue(value string) error {
-	_, _, err := parseIOUValue(value)
-	return err
+// "-0", or "0e5") is valid per the XRPL protocol. The first return reports
+// whether the validated value is numerically zero, so callers do not need to
+// repeat the grammar check to distinguish signed zero from negative non-zero.
+func VerifyIOUValue(value string) (bool, error) {
+	_, isZero, err := parseIOUValue(value)
+	return isZero, err
 }
 
 // parseIOUValue validates value once and returns its decoded form. For a
@@ -32,7 +34,10 @@ func VerifyIOUValue(value string) error {
 // VerifyIOUValue and SerializeIssuedCurrencyValue.
 func parseIOUValue(value string) (bigDecimal *bigdecimal.BigDecimal, isZero bool, err error) {
 	if !isXRPLStringNumber(value) {
-		return nil, false, bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters}
+		if !hasOnlyXRPLStringNumberChars(value) {
+			return nil, false, bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters}
+		}
+		return nil, false, ErrInvalidStringNumber
 	}
 	if isZeroMantissa(value) {
 		return nil, true, nil
@@ -135,6 +140,16 @@ func isValidXRPLExponent(exponent string) bool {
 func isAllDecimalDigits(value string) bool {
 	for _, r := range value {
 		if r < '0' || r > '9' {
+			return false
+		}
+	}
+
+	return true
+}
+
+func hasOnlyXRPLStringNumberChars(value string) bool {
+	for _, r := range value {
+		if !strings.ContainsRune(xrplStringNumberAllowedChars, r) {
 			return false
 		}
 	}

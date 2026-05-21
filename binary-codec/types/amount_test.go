@@ -72,29 +72,67 @@ func TestVerifyXrpValue(t *testing.T) {
 
 func TestVerifyIOUValue(t *testing.T) {
 	tests := []struct {
-		name   string
-		input  string
-		expErr error
+		name      string
+		input     string
+		expIsZero bool
+		expErr    error
 	}{
 		{
-			name:   "pass - valid iou value with decimal",
-			input:  "3.6",
-			expErr: nil,
+			name:  "pass - valid iou value with decimal",
+			input: "3.6",
 		},
 		{
-			name:   "pass - valid iou value - leading zero after decimal",
-			input:  "345.023857",
-			expErr: nil,
+			name:  "pass - valid iou value - leading zero after decimal",
+			input: "345.023857",
 		},
 		{
-			name:   "pass - valid iou value - negative value",
-			input:  "-0.2345",
-			expErr: nil,
+			name:  "pass - valid iou value - negative value",
+			input: "-0.2345",
+		},
+		{
+			name:      "pass - canonical zero",
+			input:     "0",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - zero in decimal form",
+			input:     "0.0",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - signed zero",
+			input:     "-0",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - signed zero in decimal form",
+			input:     "-0.0",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - zero with exponent",
+			input:     "0e5",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - signed zero with exponent",
+			input:     "-0e5",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - signed zero with fractional zeros",
+			input:     "-0.00",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - zero with many fractional zeros",
+			input:     "0.00000000000000000000000",
+			expIsZero: true,
 		},
 		{
 			name:   "fail - invalid iou value - leading zeros before decimal",
 			input:  "-000.2345",
-			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+			expErr: ErrInvalidStringNumber,
 		},
 		{
 			name:   "fail - invalid iou value - leading space",
@@ -117,6 +155,81 @@ func TestVerifyIOUValue(t *testing.T) {
 			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
 		},
 		{
+			name:   "fail - NaN literal",
+			input:  "NaN",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - Inf literal",
+			input:  "Inf",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - +Inf literal",
+			input:  "+Inf",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - -Inf literal",
+			input:  "-Inf",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - hex float",
+			input:  "0x1p10",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - empty value",
+			input:  "",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - bare minus sign",
+			input:  "-",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - leading plus sign",
+			input:  "+1",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - trailing decimal point",
+			input:  "1.",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - leading decimal point",
+			input:  ".5",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - missing exponent digits",
+			input:  "1e",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - missing exponent digits with plus sign",
+			input:  "1e+",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - missing exponent digits with minus sign",
+			input:  "1e-",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - missing mantissa with exponent",
+			input:  "-e5",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - bare signed decimal point",
+			input:  "-.",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
 			name:   "fail - invalid iou value - out of range precision",
 			input:  "0.000000000000000000007265675687436598345739475",
 			expErr: &OutOfRangeError{Type: "Precision"},
@@ -135,15 +248,22 @@ func TestVerifyIOUValue(t *testing.T) {
 			input:  "1e-113",
 			expErr: &OutOfRangeError{Type: "Exponent"},
 		},
+		{
+			name:   "fail - exponent far out of range",
+			input:  "1e1000",
+			expErr: &OutOfRangeError{Type: "Exponent"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := VerifyIOUValue(tt.input)
+			isZero, err := VerifyIOUValue(tt.input)
 			if tt.expErr != nil {
 				require.Error(t, err)
 				require.EqualError(t, tt.expErr, err.Error())
+				require.False(t, isZero)
 			} else {
 				require.NoError(t, err)
+				require.Equal(t, tt.expIsZero, isZero)
 			}
 		})
 	}
@@ -358,6 +478,12 @@ func TestSerializeIssuedCurrencyValue(t *testing.T) {
 			input:       "9999999999999999e80",
 			expected:    []byte{0xec, 0x63, 0x86, 0xf2, 0x6f, 0xc0, 0xff, 0xff},
 			expectedErr: nil,
+		},
+		{
+			name:        "fail - non-canonical leading-zero mantissa",
+			input:       "00.5",
+			expected:    nil,
+			expectedErr: ErrInvalidStringNumber,
 		},
 	}
 	for _, tt := range tests {
