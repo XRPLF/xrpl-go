@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### binary-codec
+
+- Exported `VerifyIOUValue(value) (isZero bool, err error)` for issued-currency value validation. The `isZero` return distinguishes canonical zero forms (`"0"`, `"0.0"`, `"-0"`, `"0e5"`, etc.) so callers don't need to repeat grammar checks to handle signed zero.
+- Exported `ErrInvalidStringNumber` (sentinel error) for inputs whose characters are all legal but whose structure violates the XRPL String Number grammar (e.g. `"00.1"`, `".5"`, `"1."`, `"1e"`, `""`, `"-"`, `"+1"`). Distinct from `bigdecimal.ErrInvalidCharacter`, which signals an out-of-set character.
+
 #### pkg/typecheck
 
 - Added `ToUint32`, which coerces any integer, whole-number float, or `json.Number` to a `uint32` when the exact value fits the `[0, 4294967295]` range.
@@ -40,6 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### binary-codec
+
+- `VerifyIOUValue` and `SerializeIssuedCurrencyValue` now validate issued-currency values as XRPL String Numbers, rejecting malformed float-like inputs (`NaN`, `Inf`, `+Inf`, `-Inf`, hex-floats like `0x1p10`, prefixed or suffixed strings, leading-zero mantissas such as `-000.2345` or `00.5`, incomplete exponents like `1e`/`1e+`/`1e-`, and out-of-range exponents such as `1e1000`) while accepting zero token values. `SerializeIssuedCurrencyValue` emits the XRPL zero amount encoding (`0x8000000000000000`) for those zero values.
+
 #### pkg/typecheck
 
 - `ToUint32` now rejects `json.Number` values with non-zero fractional digits instead of allowing `float64` rounding to normalize them to a different `uint32` value.
@@ -48,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - `Autofill` now validates `TransactionType` before normalizing `Flags`, then correctly defaults a missing `Flags` field to `0`. The previous internal `setTransactionFlags` helper had an unsatisfiable condition (`!ok && flags > 0`) that meant the default was never applied; the logic now lives in the shared `FlatTransaction.NormalizeFlags` helper used by both the `rpc` and `websocket` clients.
+
+#### xrpl/transaction
+
+- `IsIssuedCurrency` now validates token values as XRPL String Numbers (the same gate the binary codec applies at encode time) instead of `strconv.ParseFloat`. Inputs that previously passed `Validate` (`NaN`, `Inf`, hex-floats like `0x1p10`, prefixed or suffixed strings, leading-zero values, and out-of-range exponents such as `1e1000`) are now rejected. Zero is accepted as a valid token amount; negative amounts are still rejected. The returned error now wraps both `ErrInvalidTokenValue` and the underlying binary-codec cause via `errors.Is`, preserving diagnostic context for callers.
 
 ## [v0.2.0-rc1]
 
