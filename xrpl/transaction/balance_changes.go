@@ -76,6 +76,7 @@ func newNormalizedNode(node AffectedNode) *normalizedNode {
 }
 
 // GetBalanceChanges returns the balance changes for each account based on transaction metadata.
+// Affected AccountRoot and RippleState nodes without a balance change are skipped.
 func GetBalanceChanges(meta *TxObjMeta) ([]AccountBalanceChanges, error) {
 	nodes := normalizeNodes(meta.AffectedNodes)
 
@@ -120,6 +121,14 @@ func normalizeNodes(nodes []AffectedNode) []*normalizedNode {
 }
 
 func getXRPQuantity(node *normalizedNode) (*balanceChange, error) {
+	value, hasBalanceChange, err := computeBalanceChange(node)
+	if err != nil {
+		return nil, err
+	}
+	if !hasBalanceChange {
+		return nil, nil
+	}
+
 	var account string
 	if finalFieldsAccount, ok := node.FinalFields["Account"]; ok {
 		account = finalFieldsAccount.(string)
@@ -127,11 +136,6 @@ func getXRPQuantity(node *normalizedNode) (*balanceChange, error) {
 		account = newFieldsAccount.(string)
 	} else {
 		return nil, errAccountNotFoundForXRPQuantity
-	}
-
-	value, err := computeBalanceChange(node)
-	if err != nil {
-		return nil, err
 	}
 
 	var isNegative bool
@@ -159,9 +163,12 @@ func getXRPQuantity(node *normalizedNode) (*balanceChange, error) {
 }
 
 func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
-	value, err := computeBalanceChange(node)
+	value, hasBalanceChange, err := computeBalanceChange(node)
 	if err != nil {
 		return nil, err
+	}
+	if !hasBalanceChange {
+		return nil, nil
 	}
 
 	var fields ledger.FlatLedgerObject
@@ -223,7 +230,7 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 	return []balanceChange{result, flippedResult}, nil
 }
 
-func computeBalanceChange(node *normalizedNode) (string, error) {
+func computeBalanceChange(node *normalizedNode) (delta string, hasBalanceChange bool, err error) {
 	newBalance, okNewBalance := node.NewFields["Balance"]
 	previousBalance, okPreviousBalance := node.PreviousFields["Balance"]
 	finalBalance, okFinalBalance := node.FinalFields["Balance"]
@@ -234,39 +241,43 @@ func computeBalanceChange(node *normalizedNode) (string, error) {
 	case okNewBalance:
 		balanceValue, err := getValue(newBalance)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
 
 		value, ok = new(big.Float).SetString(balanceValue)
 		if !ok {
-			return "", errInvalidBalanceValue
+			return "", false, errInvalidBalanceValue
 		}
 	case okPreviousBalance && okFinalBalance:
 		balanceValue, err := getValue(previousBalance)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
 
 		previousBalanceBigDecimal, ok := new(big.Float).SetString(balanceValue)
 		if !ok {
-			return "", errInvalidBalanceValue
+			return "", false, errInvalidBalanceValue
 		}
 		balanceValue, err = getValue(finalBalance)
 		if err != nil {
-			return "", err
+			return "", false, err
 		}
 
 		finalBalanceBigInt, ok := new(big.Float).SetString(balanceValue)
 		if !ok {
-			return "", errInvalidBalanceValue
+			return "", false, errInvalidBalanceValue
 		}
 
 		value = finalBalanceBigInt.Sub(finalBalanceBigInt, previousBalanceBigDecimal)
 	default:
-		return "", errBalanceNotFound
+		return "", false, nil
 	}
 
-	return value.String(), nil
+	if value.Sign() == 0 {
+		return "", false, nil
+	}
+
+	return value.String(), true, nil
 }
 
 func getValue(balance any) (string, error) {

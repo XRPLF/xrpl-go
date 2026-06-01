@@ -261,6 +261,195 @@ func TestGetBalanceChanges(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - skip trustline limit change without balance change",
+			meta: &TxObjMeta{
+				AffectedNodes: []AffectedNode{
+					{
+						ModifiedNode: &ModifiedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Balance": map[string]any{
+									"currency": "USD",
+									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
+									"value":    "0.02",
+								},
+								"Flags": 1114112,
+								"HighLimit": map[string]any{
+									"currency": "USD",
+									"issuer":   "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
+									"value":    "0",
+								},
+								"LowLimit": map[string]any{
+									"currency": "USD",
+									"issuer":   "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
+									"value":    "200",
+								},
+							},
+							LedgerEntryType: ledger.RippleStateEntry,
+							PreviousFields: map[string]any{
+								"LowLimit": map[string]any{
+									"currency": "USD",
+									"issuer":   "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
+									"value":    "100",
+								},
+							},
+						},
+					},
+					{
+						ModifiedNode: &ModifiedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Account":  "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
+								"Balance":  "99884302",
+								"Sequence": 11,
+							},
+							LedgerEntryType: ledger.AccountRootEntry,
+							PreviousFields: map[string]any{
+								"Balance":  "99896302",
+								"Sequence": 10,
+							},
+						},
+					},
+				},
+			},
+			expected: []AccountBalanceChanges{
+				{
+					Account: "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
+					Balances: []Balance{
+						{
+							// 99884302 - 99896302 = -12000 drops = -0.012 XRP.
+							Value:    "-0.012",
+							Currency: "XRP",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "pass - skip account root owner count change without balance change",
+			meta: &TxObjMeta{
+				AffectedNodes: []AffectedNode{
+					{
+						ModifiedNode: &ModifiedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Account":    "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
+								"Balance":    "239567992",
+								"Flags":      0,
+								"OwnerCount": 2,
+								"Sequence":   37,
+							},
+							LedgerEntryType: ledger.AccountRootEntry,
+							PreviousFields: map[string]any{
+								"OwnerCount": 1,
+							},
+						},
+					},
+					{
+						ModifiedNode: &ModifiedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Account":  "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
+								"Balance":  "239555992",
+								"Sequence": 38,
+							},
+							LedgerEntryType: ledger.AccountRootEntry,
+							PreviousFields: map[string]any{
+								"Balance":  "239567992",
+								"Sequence": 37,
+							},
+						},
+					},
+				},
+			},
+			expected: []AccountBalanceChanges{
+				{
+					Account: "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
+					Balances: []Balance{
+						{
+							// 239555992 - 239567992 = -12000 drops = -0.012 XRP.
+							Value:    "-0.012",
+							Currency: "XRP",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "pass - skip deleted zero balance trustline without balance change",
+			meta: &TxObjMeta{
+				AffectedNodes: []AffectedNode{
+					{
+						DeletedNode: &DeletedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Balance": map[string]any{
+									"currency": "USD",
+									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
+									"value":    "0",
+								},
+								"HighLimit": map[string]any{
+									"currency": "USD",
+									"issuer":   "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
+									"value":    "0",
+								},
+								"LowLimit": map[string]any{
+									"currency": "USD",
+									"issuer":   "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
+									"value":    "0",
+								},
+							},
+							LedgerEntryType: ledger.RippleStateEntry,
+							PreviousFields: map[string]any{
+								"Flags": 65536,
+							},
+						},
+					},
+					{
+						ModifiedNode: &ModifiedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Account":  "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
+								"Balance":  "99752302",
+								"Sequence": 22,
+							},
+							LedgerEntryType: ledger.AccountRootEntry,
+							PreviousFields: map[string]any{
+								"Balance":  "99764302",
+								"Sequence": 21,
+							},
+						},
+					},
+				},
+			},
+			expected: []AccountBalanceChanges{
+				{
+					Account: "rLDYrujdKUfVx28T9vRDAbyJ7G2WVXKo4K",
+					Balances: []Balance{
+						{
+							// 99752302 - 99764302 = -12000 drops = -0.012 XRP.
+							Value:    "-0.012",
+							Currency: "XRP",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "pass - skip account root zero balance delta",
+			meta: &TxObjMeta{
+				AffectedNodes: []AffectedNode{
+					{
+						ModifiedNode: &ModifiedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Account": "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
+								"Balance": "239567992",
+							},
+							LedgerEntryType: ledger.AccountRootEntry,
+							PreviousFields: map[string]any{
+								"Balance": "239567992",
+							},
+						},
+					},
+				},
+			},
+			expected: []AccountBalanceChanges{},
+		},
+		{
 			name: "pass - USD payment of all USD in source account",
 			meta: &TxObjMeta{
 				AffectedNodes: []AffectedNode{
@@ -546,4 +735,27 @@ func TestGetBalanceChanges(t *testing.T) {
 			require.ElementsMatch(t, tc.expected, balanceChanges)
 		})
 	}
+}
+
+func TestGetBalanceChangesReturnsInvalidBalanceErrors(t *testing.T) {
+	meta := &TxObjMeta{
+		AffectedNodes: []AffectedNode{
+			{
+				ModifiedNode: &ModifiedNode{
+					FinalFields: ledger.FlatLedgerObject{
+						"Account": "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
+						"Balance": "239567992",
+					},
+					LedgerEntryType: ledger.AccountRootEntry,
+					PreviousFields: map[string]any{
+						"Balance": "not-a-balance",
+					},
+				},
+			},
+		},
+	}
+
+	_, err := GetBalanceChanges(meta)
+
+	require.ErrorIs(t, err, errInvalidBalanceValue)
 }
