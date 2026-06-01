@@ -68,6 +68,7 @@ func newNormalizedNode(node AffectedNode) *normalizedNode {
 			LedgerEntryType: node.DeletedNode.LedgerEntryType,
 			LedgerIndex:     node.DeletedNode.LedgerIndex,
 			FinalFields:     node.DeletedNode.FinalFields,
+			PreviousFields:  node.DeletedNode.PreviousFields,
 		}
 	default:
 		return nil
