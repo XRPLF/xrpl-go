@@ -14,6 +14,57 @@ func TestGetBalanceChanges(t *testing.T) {
 		expected []AccountBalanceChanges
 	}{
 		{
+			name: "pass - account delete",
+			meta: &TxObjMeta{
+				AffectedNodes: []AffectedNode{
+					{
+						ModifiedNode: &ModifiedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+								"Balance": "1039483986",
+							},
+							LedgerEntryType: ledger.AccountRootEntry,
+							PreviousFields: map[string]any{
+								"Balance": "1026818191",
+							},
+						},
+					},
+					{
+						DeletedNode: &DeletedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Account": "rf2c74F1Z2BrvL1dV7WMHYo6Jyaw446Fre",
+								"Balance": "0",
+							},
+							LedgerEntryType: ledger.AccountRootEntry,
+							PreviousFields: map[string]any{
+								"Balance": "14665795",
+							},
+						},
+					},
+				},
+			},
+			expected: []AccountBalanceChanges{
+				{
+					Account: "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
+					Balances: []Balance{
+						{
+							Value:    "12.665795",
+							Currency: "XRP",
+						},
+					},
+				},
+				{
+					Account: "rf2c74F1Z2BrvL1dV7WMHYo6Jyaw446Fre",
+					Balances: []Balance{
+						{
+							Value:    "-14.665795",
+							Currency: "XRP",
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "pass - USD payment to account with no USD",
 			meta: &TxObjMeta{
 				AffectedNodes: []AffectedNode{
