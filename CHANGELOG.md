@@ -5,73 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Fixed
-
-#### xrpl/transaction
-
-- Preserved `DeletedNode.PreviousFields` in transaction metadata so balance changes can be decoded for deleted ledger entries.
-- `GetBalanceChanges` now skips affected `AccountRoot` and `RippleState` nodes without balance changes instead of aborting the entire balance change computation.
-
-## [v0.2.0-rc2]
-
-### BREAKING CHANGES
-
-#### binary-codec
-
-- Removed the exported `ErrInvalidJSONNumber` error variable. `PermissionValue.FromJSON` now returns `ErrPermissionValueOutOfRange` for any `json.Number` input that cannot be coerced to a `uint32` in the `[0, 4294967295]` range (including malformed, fractional, or negative values that previously surfaced as `ErrInvalidJSONNumber`).
-
-#### xrpl
-
-- Removed the exported `ErrTransactionTypeMissing` error variable from the `rpc` and `websocket` packages. The equivalent error now lives in the `transaction` package as `transaction.ErrTransactionTypeMissing`.
-
-### Added
-
-#### binary-codec
-
-- Exported `VerifyIOUValue(value) (isZero bool, err error)` for issued-currency value validation. The `isZero` return distinguishes canonical zero forms (`"0"`, `"0.0"`, `"-0"`, `"0e5"`, etc.) so callers don't need to repeat grammar checks to handle signed zero.
-- Exported `ErrInvalidStringNumber` (sentinel error) for inputs whose characters are all legal but whose structure violates the XRPL String Number grammar (e.g. `"00.1"`, `".5"`, `"1."`, `"1e"`, `""`, `"-"`, `"+1"`). Distinct from `bigdecimal.ErrInvalidCharacter`, which signals an out-of-set character.
-
-#### pkg/typecheck
-
-- Added `ToUint32`, which coerces any integer, whole-number float, or `json.Number` to a `uint32` when the exact value fits the `[0, 4294967295]` range.
-
-#### xrpl/transaction
-
-- Added `FlatTransaction.NormalizeFlags`, which defaults a missing `Flags` field to `uint32(0)` and coerces a present `Flags` (any integer, whole-number float, or `json.Number`) to `uint32` when the exact value fits the `[0, 4294967295]` range, returning the new `ErrInvalidFlagsValue` otherwise.
-- Added `FlatTransaction.RequireTransactionType`, which returns `ErrTransactionTypeMissing` when `TransactionType` is absent or not a string.
-
-### Changed
-
-#### binary-codec
-
-- `UInt32.FromJSON` and `PermissionValue.FromJSON` now delegate numeric coercion to `pkg/typecheck.ToUint32`, accepting the broader set of integer and whole-number float types it supports (including `uint8`, `uint16`, `int8`, `int16`, `int32`, `float32`, and `json.Number`).
-
-#### xrpl/transaction
-
-- After `Autofill` (and any direct `FlatTransaction.NormalizeFlags` call), the `Flags` entry in a `FlatTransaction` is always stored as `uint32`. Callers that previously relied on the original Go type of a present `Flags` value (e.g. `int`) surviving `Autofill` must update their assertions.
-
-### Fixed
-
-#### binary-codec
-
-- `VerifyIOUValue` and `SerializeIssuedCurrencyValue` now validate issued-currency values as XRPL String Numbers, rejecting malformed float-like inputs (`NaN`, `Inf`, `+Inf`, `-Inf`, hex-floats like `0x1p10`, prefixed or suffixed strings, leading-zero mantissas such as `-000.2345` or `00.5`, incomplete exponents like `1e`/`1e+`/`1e-`, and out-of-range exponents such as `1e1000`) while accepting zero token values. `SerializeIssuedCurrencyValue` emits the XRPL zero amount encoding (`0x8000000000000000`) for those zero values.
-
-#### pkg/typecheck
-
-- `ToUint32` now rejects `json.Number` values with non-zero fractional digits instead of allowing `float64` rounding to normalize them to a different `uint32` value.
-- `ToUint32` now accepts narrower Go integer types such as `uint8`, `uint16`, `int8`, and `int16` when they fit in `uint32`.
-
-#### xrpl
-
-- `Autofill` now validates `TransactionType` before normalizing `Flags`, then correctly defaults a missing `Flags` field to `0`. The previous internal `setTransactionFlags` helper had an unsatisfiable condition (`!ok && flags > 0`) that meant the default was never applied; the logic now lives in the shared `FlatTransaction.NormalizeFlags` helper used by both the `rpc` and `websocket` clients.
-
-#### xrpl/transaction
-
-- `IsIssuedCurrency` now validates token values as XRPL String Numbers (the same gate the binary codec applies at encode time) instead of `strconv.ParseFloat`. Inputs that previously passed `Validate` (`NaN`, `Inf`, hex-floats like `0x1p10`, prefixed or suffixed strings, leading-zero values, and out-of-range exponents such as `1e1000`) are now rejected. Zero is accepted as a valid token amount; negative amounts are still rejected. The returned error now wraps both `ErrInvalidTokenValue` and the underlying binary-codec cause via `errors.Is`, preserving diagnostic context for callers.
-
-## [v0.2.0-rc1]
+## [v0.2.0]
 
 ### BREAKING CHANGES
 
@@ -88,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the exported `MinXRP` constant. Native XRP amount serialization validates drops, not XRP-denominated decimal values.
 - `UInt64.FromJSON` now accepts only 1 to 16 character hex strings. Decimal-looking inputs are parsed as hex, so `"10"` is `0x10`, not decimal `10`.
 - X-address encoding now rejects duplicate `SourceTag`/`DestinationTag` whenever the X-address carries an embedded tag (zero or non-zero), including the previously accepted case where both values matched.
+- Removed the exported `ErrInvalidJSONNumber` error variable. `PermissionValue.FromJSON` now returns `ErrPermissionValueOutOfRange` for any `json.Number` input that cannot be coerced to a `uint32` in the `[0, 4294967295]` range (including malformed, fractional, or negative values that previously surfaced as `ErrInvalidJSONNumber`).
 
 #### keypairs
 
@@ -96,11 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - `SortSigners` now returns an error when signer extraction or address decoding fails. Errors are wrapped with the failing item index to help diagnose which signer caused the failure.
+- Removed the exported `ErrTransactionTypeMissing` error variable from the `rpc` and `websocket` packages. The equivalent error now lives in the `transaction` package as `transaction.ErrTransactionTypeMissing`.
 
 #### xrpl/transaction
 
 - All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
 - Removed exported `DomainIDLength` and `SHA512HalfLength` constants. Use `Hex256Length`, `IsHex256`, `IsDomainID`, or `IsLedgerEntryID` depending on whether the code needs a raw 256-bit hex length or semantic validation.
+- `GetBalanceChanges` no longer returns an error for affected `AccountRoot` and `RippleState` nodes without a balance change. Previously a balance-neutral affected node aborted the entire computation with an error, that case is now handled silently by skipping the node and returning the remaining balance changes. Affected nodes whose net balance delta is zero are likewise skipped instead of being emitted as `0`-value entries. Callers that relied on the returned error to detect these conditions will no longer receive it. Genuinely malformed balance values still return an error.
 
 #### xrpl/wallet
 
@@ -112,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `ErrDuplicateXAddressTag` for detecting duplicate tag fields when encoding tagged X-addresses.
 - Added `ErrAccountIDTagNotAllowed` for `AccountID`-typed fields that receive a tagged X-address (used by both `AccountID.FromJSON` and the `STObject` X-address preprocessor for non-`Account`/`Destination` fields).
+- Exported `VerifyIOUValue(value) (isZero bool, err error)` for issued-currency value validation. The `isZero` return distinguishes canonical zero forms (`"0"`, `"0.0"`, `"-0"`, `"0e5"`, etc.) so callers don't need to repeat grammar checks to handle signed zero.
+- Exported `ErrInvalidStringNumber` (sentinel error) for inputs whose characters are all legal but whose structure violates the XRPL String Number grammar (e.g. `"00.1"`, `".5"`, `"1."`, `"1e"`, `""`, `"-"`, `"+1"`). Distinct from `bigdecimal.ErrInvalidCharacter`, which signals an out-of-set character.
 
 #### keypairs
 
@@ -121,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### pkg/typecheck
 
 - Added `IsHexBlob` helper that reports whether a string is a hex-encoded whole-byte sequence (valid hex characters and even length). Used by the Escrow transaction validators.
+- Added `ToUint32`, which coerces any integer, whole-number float, or `json.Number` to a `uint32` when the exact value fits the `[0, 4294967295]` range.
 
 #### xrpl
 
@@ -144,6 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Exported `MinTransferRate` and `MaxTransferRate` constants alongside the existing `MinTickSize`/`MaxTickSize`, so callers can reference the AccountSet bounds without hardcoding values.
+- Added `FlatTransaction.NormalizeFlags`, which defaults a missing `Flags` field to `uint32(0)` and coerces a present `Flags` (any integer, whole-number float, or `json.Number`) to `uint32` when the exact value fits the `[0, 4294967295]` range, returning the new `ErrInvalidFlagsValue` otherwise.
+- Added `FlatTransaction.RequireTransactionType`, which returns `ErrTransactionTypeMissing` when `TransactionType` is absent or not a string.
 
 #### xrpl/transaction/types
 
@@ -156,9 +98,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### binary-codec
+
+- `UInt32.FromJSON` and `PermissionValue.FromJSON` now delegate numeric coercion to `pkg/typecheck.ToUint32`, accepting the broader set of integer and whole-number float types it supports (including `uint8`, `uint16`, `int8`, `int16`, `int32`, `float32`, and `json.Number`).
+
 #### docs
 
-- Added a v0.1.x to v0.2.0 upgrade guide and v0.2.x changelog docs for the release candidate.
+- Added a v0.1.x to v0.2.0 upgrade guide and v0.2.x changelog docs.
 - Added wallet credential leakage warnings to the wallet docs and example comments.
 
 #### pkg/crypto
@@ -183,12 +129,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - `NFTokenCreateOffer.Validate` now reports `Amount` and `NFTokenID` errors before owner, destination, and flag errors. Callers that pattern-match on the first returned error from `Validate()` may observe a different error for the same input.
+- After `Autofill` (and any direct `FlatTransaction.NormalizeFlags` call), the `Flags` entry in a `FlatTransaction` is always stored as `uint32`. Callers that previously relied on the original Go type of a present `Flags` value (e.g. `int`) surviving `Autofill` must update their assertions.
 
 #### xrpl/websocket
 
 - `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
 - Documented that `Connect` must not be called synchronously from stream or error handlers.
-- `OnXxx` now atomically replaces previously registered handlers on the same stream instead of spawning an additional goroutine; an event already queued for delivery may still be dispatched to the previously registered handler.
+- `OnXxx` now atomically replaces previously registered handlers on the same stream instead of spawning an additional goroutine, an event already queued for delivery may still be dispatched to the previously registered handler.
 - `Request` now translates the connection-layer `ErrNotConnected` into the public `ErrNotConnectedToServer` so `errors.Is(err, ErrNotConnectedToServer)` keeps matching across the read-loop refactor.
 - Updated `client.go` and `response.go` to import `github.com/go-viper/mapstructure/v2` in place of the archived `github.com/mitchellh/mapstructure`.
 
@@ -214,6 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - X-address encoding now rejects duplicate `SourceTag` and `DestinationTag` fields consistently when the X-address already carries a tag, including explicit tag `0`.
 - `XChainBridge.FromJSON` now returns errors for non-string `LockingChainDoor`, `LockingChainIssue`, `IssuingChainDoor`, and `IssuingChainIssue` values instead of panicking on the type assertions.
 - `XChainBridge.ToJSON` now returns an error when the read byte buffer is not 80 bytes instead of panicking on out-of-range slice access.
+- `VerifyIOUValue` and `SerializeIssuedCurrencyValue` now validate issued-currency values as XRPL String Numbers, rejecting malformed float-like inputs (`NaN`, `Inf`, `+Inf`, `-Inf`, hex-floats like `0x1p10`, prefixed or suffixed strings, leading-zero mantissas such as `-000.2345` or `00.5`, incomplete exponents like `1e`/`1e+`/`1e-`, and out-of-range exponents such as `1e1000`) while accepting zero token values. `SerializeIssuedCurrencyValue` emits the XRPL zero amount encoding (`0x8000000000000000`) for those zero values.
 
 #### keypairs
 
@@ -226,6 +174,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Ed25519 signing and validation now reject malformed keys and signatures by length and ED prefix before slicing decoded bytes or verifying, preventing panics on malformed inputs.
 
+#### pkg/typecheck
+
+- `ToUint32` now rejects `json.Number` values with non-zero fractional digits instead of allowing `float64` rounding to normalize them to a different `uint32` value.
+- `ToUint32` now accepts narrower Go integer types such as `uint8`, `uint16`, `int8`, and `int16` when they fit in `uint32`.
+
 #### xrpl
 
 - `Multisign`, `CombineLoanSetCounterpartySigners`, and `CombineBatchSigners` now propagate signer sort errors and use canonical account ID byte ordering.
@@ -233,6 +186,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Multisign` now rejects input blobs containing invalid signer signatures before returning an aggregated blob.
 - `Multisign` now returns `ErrInvalidSigner` for malformed signer data instead of panicking.
 - `MPTokenIssuanceCreate` integration tests now handle RPC numeric fields decoded as `json.Number`.
+- `Autofill` now validates `TransactionType` before normalizing `Flags`, then correctly defaults a missing `Flags` field to `0`. The previous internal `setTransactionFlags` helper had an unsatisfiable condition (`!ok && flags > 0`) that meant the default was never applied, the logic now lives in the shared `FlatTransaction.NormalizeFlags` helper used by both the `rpc` and `websocket` clients.
 
 #### xrpl/currency
 
@@ -241,7 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
-- `Batch` inner transaction autofill now validates inner accounts and supplied `NetworkID` values (both inner and outer) before filling missing fields, preventing partial mutation on syntactic validation errors. Type-only `NetworkID` failures return the new `ErrNetworkIDFieldIsNotAUint32` sentinel; `ErrNetworkIDFieldMismatch` is reserved for actual value disagreement. Note: this guarantee covers syntactic validation only; if a later `GetAccountInfo` call fails while filling sequences, earlier inner transactions may have already had `Fee` and `SigningPubKey` filled.
+- `Batch` inner transaction autofill now validates inner accounts and supplied `NetworkID` values (both inner and outer) before filling missing fields, preventing partial mutation on syntactic validation errors. Type-only `NetworkID` failures return the new `ErrNetworkIDFieldIsNotAUint32` sentinel, `ErrNetworkIDFieldMismatch` is reserved for actual value disagreement. Note: this guarantee covers syntactic validation only, if a later `GetAccountInfo` call fails while filling sequences, earlier inner transactions may have already had `Fee` and `SigningPubKey` filled.
 - `fetchCounterPartySignersCount` in the RPC client now uses `"current"` ledger index instead of `"validated"` when fetching the loan broker and counterparty signer information, avoiding lookup failures before the transaction is validated.
 - `NewClientConfig` now logs a warning when configured with a remote non-TLS URL scheme. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
 - RPC client now caps HTTP response bodies at 64 MiB by default to prevent unbounded memory growth from oversized server responses. Use `WithMaxResponseSize(0)` to disable the limit.
@@ -258,6 +212,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `NFTokenAcceptOffer.Validate` now rejects zero issued-currency `NFTokenBrokerFee` via canonical numeric comparison (`IssuedCurrencyAmount.IsZero`), so non-canonical zero representations like `"0.0"`, `"00"`, `"0e0"`, and `"-0"` are no longer accepted past the validator.
 - `NFTokenModify.Validate` now rejects short or non-hex `NFTokenID` values with `ErrInvalidNFTokenID`, matching the new `NFTokenBurn` and `NFTokenCreateOffer` checks.
 - `SignerListSet.Validate` now rejects duplicate signer accounts including classic/X-address equivalents, signer entries that reference the transaction account, zero signer weights, and correctly handles signer weight sums above `uint16`.
+- `IsIssuedCurrency` now validates token values as XRPL String Numbers (the same gate the binary codec applies at encode time) instead of `strconv.ParseFloat`. Inputs that previously passed `Validate` (`NaN`, `Inf`, hex-floats like `0x1p10`, prefixed or suffixed strings, leading-zero values, and out-of-range exponents such as `1e1000`) are now rejected. Zero is accepted as a valid token amount, negative amounts are still rejected. The returned error now wraps both `ErrInvalidTokenValue` and the underlying binary-codec cause via `errors.Is`, preserving diagnostic context for callers.
 
 #### xrpl/wallet
 
@@ -266,8 +221,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
-- `Batch` inner transaction autofill now validates inner accounts and supplied `NetworkID` values (both inner and outer) before filling missing fields, preventing partial mutation on syntactic validation errors. Type-only `NetworkID` failures return the new `ErrNetworkIDFieldIsNotAUint32` sentinel; `ErrNetworkIDFieldMismatch` is reserved for actual value disagreement. Note: this guarantee covers syntactic validation only; if a later `GetAccountInfo` call fails while filling sequences, earlier inner transactions may have already had `Fee` and `SigningPubKey` filled.
-- `NewClient` now logs a warning when configured with a remote non-TLS URL scheme. The warning was previously emitted from `ClientConfig.WithHost`, which fired once per fluent-setter call; it now fires exactly once per client. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
+- `Batch` inner transaction autofill now validates inner accounts and supplied `NetworkID` values (both inner and outer) before filling missing fields, preventing partial mutation on syntactic validation errors. Type-only `NetworkID` failures return the new `ErrNetworkIDFieldIsNotAUint32` sentinel, `ErrNetworkIDFieldMismatch` is reserved for actual value disagreement. Note: this guarantee covers syntactic validation only, if a later `GetAccountInfo` call fails while filling sequences, earlier inner transactions may have already had `Fee` and `SigningPubKey` filled.
+- `NewClient` now logs a warning when configured with a remote non-TLS URL scheme. The warning was previously emitted from `ClientConfig.WithHost`, which fired once per fluent-setter call, it now fires exactly once per client. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
 - Serialized concurrent WebSocket reads in `Connection.ReadMessage`, matching gorilla/websocket's single-reader contract.
 - WebSocket client now caps inbound messages at 16 MiB by default to prevent unbounded memory growth from oversized server messages. Use `WithMaxResponseSize(0)` to disable the limit.
 - WebSocket reconnects now preserve the reconnect attempt budget until the connection receives a message, preventing immediate-close loops from bypassing `WithMaxReconnects`.
@@ -280,6 +235,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WebSocket stream handler registration and stale reader dispatch now use the active lifecycle context atomically, preventing reconnect races from leaving handlers dormant or routing old messages into fresh handlers.
 - WebSocket stream reports now snapshot the active handler when queued, preventing in-flight stream events from being delivered to a later replacement handler.
 - WebSocket subscription tests now wait for request IDs before sending mock responses, avoiding dropped-response flakes with per-ID dispatch.
+
+## [v0.1.19]
+
+### Fixed
+
+#### xrpl
+
+- Preserved `DeletedNode.PreviousFields` in transaction metadata so balance changes can be decoded for deleted ledger entries.
 
 ## [v0.1.18]
 
