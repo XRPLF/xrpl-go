@@ -336,7 +336,6 @@ var (
 	errHighLimitIssuerNotFound       = errors.New("high limit issuer not found")
 	errBalanceCurrencyNotFound       = errors.New("balance currency not found")
 	errInvalidBalanceValue           = errors.New("invalid balance value")
-	errBalanceNotFound               = errors.New("balance not found")
 	errAccountNotFoundForXRPQuantity = errors.New("account not found for XRP quantity")
 
 	// amm
