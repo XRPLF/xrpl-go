@@ -56,6 +56,8 @@ classic, tag, hasTag, testnet, err := addresscodec.XAddressToClassicAddress(xAdd
 
 When encoding or signing a transaction, do not provide both an embedded X-address tag and a separate `SourceTag` or `DestinationTag`. The binary codec now rejects duplicate tag data, including the case where both values are `0`.
 
+`AccountID.FromJSON` now rejects any X-address that carries an embedded tag with `ErrAccountIDTagNotAllowed`, including non-`Account`/`Destination` fields such as `SignerEntry.Account` and inputs to `EncodeForMultisigning`. Previously the tag was silently dropped. Pass the classic address (without an embedded tag) for these fields.
+
 `wallet.ErrAddressTagNotZero` was renamed to `wallet.ErrAddressHasTag`. The new sentinel applies to any embedded X-address tag, including explicit tag `0`.
 
 ## Amounts
@@ -118,6 +120,16 @@ var flatTx transaction.FlatTransaction = loanSet.Flatten()
 
 The exported `DomainIDLength` and `SHA512HalfLength` constants were removed. Use `Hex256Length`, `IsHex256`, `IsDomainID`, or `IsLedgerEntryID` depending on whether the code needs raw 256-bit hex validation or semantic ledger-entry validation.
 
+## Balance Changes
+
+`transaction.GetBalanceChanges` no longer returns an error when an affected `AccountRoot` or `RippleState` node carries no balance change. Previously a single balance-neutral affected node aborted the whole computation, those nodes are now skipped, and affected nodes whose net balance delta is zero are skipped instead of being emitted as `0`-value entries.
+
+```go
+changes, err := transaction.GetBalanceChanges(meta)
+```
+
+If your code relied on that error to detect balance-neutral metadata, it will no longer fire, inspect the returned slice instead. Genuinely malformed balance values still return an error.
+
 ## Clients
 
 RPC responses are capped at 64 MiB by default, and WebSocket inbound messages are capped at 16 MiB by default. Set the max response size to `0` only when you deliberately need to disable the cap:
@@ -174,7 +186,7 @@ if errors.Is(err, types.ErrPermissionValueOutOfRange) {
 - Incomplete exponents like `1e`, `1e+`, `1e-`
 - Out-of-range exponents such as `1e1000`
 
-Canonical zero forms (`"0"`, `"0.0"`, `"-0"`, `"0e5"`, etc.) are accepted as valid token amounts; `SerializeIssuedCurrencyValue` emits the XRPL zero encoding (`0x8000000000000000`) for them. Negative amounts remain rejected.
+Canonical zero forms (`"0"`, `"0.0"`, `"-0"`, `"0e5"`, etc.) are accepted as valid token amounts, `SerializeIssuedCurrencyValue` emits the XRPL zero encoding (`0x8000000000000000`) for them. Negative amounts remain rejected.
 
 `IsIssuedCurrency` now returns errors that wrap both `ErrInvalidTokenValue` and the underlying binary-codec cause via `errors.Is`, so existing checks against `ErrInvalidTokenValue` keep matching:
 
