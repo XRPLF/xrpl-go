@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
@@ -450,6 +451,43 @@ func TestGetBalanceChanges(t *testing.T) {
 			expected: []AccountBalanceChanges{},
 		},
 		{
+			name: "pass - skip ripple state zero balance delta",
+			meta: &TxObjMeta{
+				AffectedNodes: []AffectedNode{
+					{
+						ModifiedNode: &ModifiedNode{
+							FinalFields: ledger.FlatLedgerObject{
+								"Balance": map[string]any{
+									"currency": "USD",
+									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
+									"value":    "1.545330905250352",
+								},
+								"HighLimit": map[string]any{
+									"currency": "USD",
+									"issuer":   "rMwjYedjc7qqtKYVLiAccJSmCwih4LnE2q",
+									"value":    "0",
+								},
+								"LowLimit": map[string]any{
+									"currency": "USD",
+									"issuer":   "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
+									"value":    "1000000000",
+								},
+							},
+							LedgerEntryType: ledger.RippleStateEntry,
+							PreviousFields: map[string]any{
+								"Balance": map[string]any{
+									"currency": "USD",
+									"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
+									"value":    "1.545330905250352",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []AccountBalanceChanges{},
+		},
+		{
 			name: "pass - USD payment of all USD in source account",
 			meta: &TxObjMeta{
 				AffectedNodes: []AffectedNode{
@@ -735,6 +773,48 @@ func TestGetBalanceChanges(t *testing.T) {
 			require.ElementsMatch(t, tc.expected, balanceChanges)
 		})
 	}
+}
+
+func TestGetBalanceChangesPreservesDeletedNodePreviousFieldsFromJSON(t *testing.T) {
+	const accountDeleteMetaJSON = `{
+		"AffectedNodes": [
+			{
+				"DeletedNode": {
+					"FinalFields": {
+						"Account": "rf2c74F1Z2BrvL1dV7WMHYo6Jyaw446Fre",
+						"Balance": "0"
+					},
+					"LedgerEntryType": "AccountRoot",
+					"PreviousFields": {
+						"Balance": "14665795"
+					}
+				}
+			}
+		],
+		"TransactionIndex": 0,
+		"TransactionResult": "tesSUCCESS"
+	}`
+
+	var meta TxObjMeta
+	err := json.Unmarshal([]byte(accountDeleteMetaJSON), &meta)
+	require.NoError(t, err)
+	require.NotNil(t, meta.AffectedNodes[0].DeletedNode)
+	require.Equal(t, "14665795", meta.AffectedNodes[0].DeletedNode.PreviousFields["Balance"])
+
+	balanceChanges, err := GetBalanceChanges(&meta)
+
+	require.NoError(t, err)
+	require.ElementsMatch(t, []AccountBalanceChanges{
+		{
+			Account: "rf2c74F1Z2BrvL1dV7WMHYo6Jyaw446Fre",
+			Balances: []Balance{
+				{
+					Value:    "-14.665795",
+					Currency: "XRP",
+				},
+			},
+		},
+	}, balanceChanges)
 }
 
 func TestGetBalanceChangesReturnsInvalidBalanceErrors(t *testing.T) {

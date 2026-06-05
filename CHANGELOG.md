@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
 - Removed exported `DomainIDLength` and `SHA512HalfLength` constants. Use `Hex256Length`, `IsHex256`, `IsDomainID`, or `IsLedgerEntryID` depending on whether the code needs a raw 256-bit hex length or semantic validation.
 - `GetBalanceChanges` no longer returns an error for affected `AccountRoot` and `RippleState` nodes without a balance change. Previously a balance-neutral affected node aborted the entire computation with an error, that case is now handled silently by skipping the node and returning the remaining balance changes. Affected nodes whose net balance delta is zero are likewise skipped instead of being emitted as `0`-value entries. Callers that relied on the returned error to detect these conditions will no longer receive it. Genuinely malformed balance values still return an error.
+- Added regression coverage for `GetBalanceChanges` deleted-node JSON metadata, `AccountDelete` integration metadata, and zero-delta trustline changes.
 
 #### xrpl/wallet
 

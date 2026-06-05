@@ -76,7 +76,9 @@ func newNormalizedNode(node AffectedNode) *normalizedNode {
 }
 
 // GetBalanceChanges returns the balance changes for each account based on transaction metadata.
-// Affected AccountRoot and RippleState nodes without a balance change are skipped.
+// Affected AccountRoot and RippleState nodes whose Balance did not change
+// are skipped. This includes nodes that do not surface a Balance field at
+// all, net-zero deltas, and newly-created entries with Balance=0.
 func GetBalanceChanges(meta *TxObjMeta) ([]AccountBalanceChanges, error) {
 	nodes := normalizeNodes(meta.AffectedNodes)
 
@@ -126,6 +128,7 @@ func getXRPQuantity(node *normalizedNode) (*balanceChange, error) {
 		return nil, err
 	}
 	if !hasBalanceChange {
+		// Balance-neutral nodes are skipped before requiring Account.
 		return nil, nil
 	}
 
