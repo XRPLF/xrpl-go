@@ -11,14 +11,14 @@ const config: Config = {
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
-  url: "https://peersyst.github.io",
+  url: "https://xrplf.github.io",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/xrpl-go",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: "Peersyst", // Usually your GitHub org/user name.
+  organizationName: "XRPLF", // Usually your GitHub org/user name.
   projectName: "xrpl-go", // Usually your repo name.
 
   onBrokenLinks: "throw",
@@ -41,7 +41,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: require.resolve("./sidebars.ts"),
-          editUrl: "https://github.com/Peersyst/xrpl-go/tree/main/docs",
+          editUrl: "https://github.com/XRPLF/xrpl-go/tree/main/docs",
 
           // Custom sidebar items generator check /src/theme/sidebar/sidebarLabelGenerator.ts
           sidebarItemsGenerator: sidebarLabelGenerator,
@@ -111,7 +111,7 @@ const config: Config = {
           ],
         },
         {
-          href: "https://github.com/Peersyst/xrpl-go",
+          href: "https://github.com/XRPLF/xrpl-go",
           label: "GitHub",
           position: "right",
         },
@@ -150,7 +150,7 @@ const config: Config = {
           items: [
             {
               label: "GitHub",
-              href: "https://github.com/Peersyst/xrpl-go",
+              href: "https://github.com/XRPLF/xrpl-go",
             },
             {
               label: "Reference",

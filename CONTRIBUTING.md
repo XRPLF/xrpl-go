@@ -1,8 +1,8 @@
 # Contributing to xrpl-go
 
-## How to Contribute
+## How to contribute
 
-You can contribute to the project by:
+You can contribute by:
 
 - Reporting bugs
 - Suggesting enhancements
@@ -10,98 +10,109 @@ You can contribute to the project by:
 - Writing documentation
 - Writing tests
 
-### Reporting Bugs
+## Reporting bugs
 
-1. Check existing issues to ensure the bug hasn't already been reported.
-2. Use the bug report template when opening a new issue.
-3. Include:
-   - A clear, descriptive title
-   - Steps to reproduce the issue
-   - Expected vs. actual behavior
-   - Environment details (OS, version, etc.)
-   - Any relevant screenshots or error logs
+Before opening an issue, check whether it has already been reported. Include:
 
-### Suggesting Enhancements
+- A clear title
+- Steps to reproduce
+- Expected and actual behavior
+- Environment details, including Go version and OS
+- Relevant logs, screenshots, or transaction data
 
-1. Check existing enhancement issues to avoid duplicates.
-2. Use the enhancement proposal template.
-3. Provide:
-   - Detailed description of the proposed feature
-   - Potential implementation approaches
-   - Potential benefits and use cases
+## Suggesting enhancements
 
-### Making Pull Requests
+Before opening an enhancement request, check for duplicates. Include the use case, expected behavior, and any compatibility or security considerations.
 
-#### Setup
+## Development setup
 
-1. Fork the repository
-2. Clone your fork locally
-3. Create a new branch for your contribution
-4. Make your changes and commit them
-5. Push your changes to your fork
-6. Open a pull request from your fork to the main repository
+### Prerequisites
 
-#### Development Guidelines
+- Go `1.24.3` or later, matching `go.mod`
+- `make`
+- Docker, for localnet integration tests
+- Yarn, for the documentation site
 
-1. Follow the project's coding style and conventions
-2. Write clear, concise commit messages
-3. Include tests for new features or bug fixes
-4. Update documentation as needed
-5. Ensure all tests pass before submitting
+`make lint` installs the pinned `golangci-lint` version from the [`Makefile`](Makefile).
 
-#### Pull Request Process
-
-1. Push your changes to your fork
-2. Open a pull request with:
-   - Clear title describing the change
-   - Detailed description of modifications
-   - Reference any related issues
-3. Await code review from maintainers
-
-### Development Setup
-
-#### Prerequisites
-
-- Go 1.22.0 or later
-- Go toolchain 1.22.5 or later
-
-#### Installation
+### Clone and install
 
 ```bash
-# Clone the repository
-git clone https://github.com/Peersyst/xrpl-go
-
-# Install dependencies
+git clone https://github.com/XRPLF/xrpl-go
+cd xrpl-go
 go mod tidy
+```
 
-# Run linting
+If you need vendored dependencies:
+
+```bash
+go mod vendor
+```
+
+### Lint and test
+
+```bash
 make lint
-
-# Run tests
 make test-ci
 ```
 
-## Style Guide
+Useful focused checks:
 
-- Use consistent indentation
-- Write clear, self-documenting code
-- Add comments for complex logic
+```bash
+go test ./xrpl/transaction
+go test -run TestPayment ./xrpl/transaction
+make test-binary-codec
+make test-address-codec
+make test-keypairs
+make test-xrpl
+```
 
-## Code Review Process
+Integration tests require a target network. For localnet:
 
-- All submissions require review from project maintainers
-- We may request changes or provide feedback
-- Expect a response within [X] business days
-- Maintain a respectful and constructive dialogue
+```bash
+make run-localnet-linux/amd64
+make test-integration-localnet
+```
+
+Use `make run-localnet-linux/arm64` on arm64 machines.
+
+## Documentation
+
+The documentation site lives in [`docs/`](docs/).
+
+```bash
+cd docs
+yarn
+yarn start
+yarn build
+```
+
+Published docs are hosted at <https://xrplf.github.io/xrpl-go/>.
+
+## Pull requests
+
+1. Fork the repository.
+2. Create a branch for your change.
+3. Make the smallest focused change that solves the issue.
+4. Add or update tests for code changes.
+5. Update documentation when behavior or user-facing APIs change.
+6. Update `CHANGELOG.md` under `[Unreleased]` for code changes.
+7. Run the relevant checks before opening the pull request.
+
+Use conventional commits, for example:
+
+```text
+docs: update contributing guide
+fix: validate account delete metadata
+```
+
+## Code style
+
+- Match the existing package style.
+- Keep changes surgical.
+- Prefer simple, readable code over new abstractions.
+- Add comments only when they explain non-obvious behavior.
 
 ## Licensing
 
-By contributing, you agree that your contributions will be licensed under the project's MIT license.
-
-## Questions?
-
-If you have any questions, please:
-- Check the documentation
-- Open an issue for clarification
-
-**Happy Contributing!** 🚀
+By contributing, you agree that your contributions will be licensed under the MIT license.
