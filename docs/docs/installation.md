@@ -14,8 +14,7 @@ The minimum version of Go required to use `xrpl-go` is:
 
 | Software | Version |
 |------------|---------|
-| Go | >= 1.22 |
-| Go toolchain | >= 1.22.5 |
+| Go | >= 1.24.3 |
 
 ## Download package
 
@@ -65,4 +64,3 @@ To learn more about the `xrpl-go` packages, you can find the documentation for e
 
 - [keypairs](/docs/keypairs)
 - [xrpl](/docs/xrpl/currency)
-
