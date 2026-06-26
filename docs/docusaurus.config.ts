@@ -22,7 +22,11 @@ const config: Config = {
   projectName: "xrpl-go", // Usually your repo name.
 
   onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "warn",
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: "warn",
+    },
+  },
 
   deploymentBranch: "gh-pages",
   trailingSlash: false,
@@ -46,6 +50,7 @@ const config: Config = {
           // Custom sidebar items generator check /src/theme/sidebar/sidebarLabelGenerator.ts
           sidebarItemsGenerator: sidebarLabelGenerator,
         },
+        blog: false,
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },
@@ -59,6 +64,7 @@ const config: Config = {
       {
         hashed: true,
         docsRouteBasePath: "/docs",
+        indexBlog: false,
       },
     ],
     [
