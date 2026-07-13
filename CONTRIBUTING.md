@@ -28,7 +28,7 @@ Before opening an enhancement request, check for duplicates. Include the use cas
 
 ### Prerequisites
 
-- Go `1.24.3` or later, matching `go.mod`
+- Go `1.25.12` or later, matching `go.mod`
 - `make`
 - Docker, for localnet integration tests
 - Yarn, for the documentation site

@@ -122,16 +122,14 @@ func TestConnection_ReadMessageSerializesConcurrentReaders(t *testing.T) {
 
 	var wg sync.WaitGroup
 	for range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			message, err := conn.ReadMessage()
 			results <- readResult{
 				message: message,
 				err:     err,
 			}
-		}()
+		})
 	}
 
 	close(start)
