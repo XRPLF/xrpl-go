@@ -12,7 +12,7 @@ See the [xrpl-go documentation](https://xrplf.github.io/xrpl-go/docs/installatio
 
 ## Installation
 
-`xrpl-go` requires Go `1.24.3` or later.
+`xrpl-go` requires Go `1.25.12` or later.
 
 ```bash
 go get github.com/Peersyst/xrpl-go
