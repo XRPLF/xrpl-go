@@ -1,0 +1,46 @@
+name: Localnet Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  localnet-integration:
+    name: Localnet Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LOCALNET_CONTAINER: rippled_standalone
+      RIPPLED_IMAGE: rippleci/xrpld@sha256:d76a7dccf5dbfad408eb0183014f5d5dabc34371f1e7fd540fd6757f5aec3f61 # rippleci/xrpld:3.2.0-b5
+      KEEP_LOCALNET: "1"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Run localnet integration tests
+        run: make integration-localnet
+
+      - name: Capture localnet logs
+        if: always()
+        run: docker logs "$LOCALNET_CONTAINER" > localnet.log 2>&1 || true
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: localnet-integration-failure-logs
+          path: localnet.log
+          if-no-files-found: ignore
+
+      - name: Stop localnet
+        if: always()
+        run: make stop-localnet
