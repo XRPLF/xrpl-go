@@ -1,8 +1,10 @@
 package hash
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
@@ -106,7 +108,6 @@ func MPToken(issuanceIDHex string, holder string) (string, error) {
 	}
 
 	holderHex := hex.EncodeToString(accountID)
-
 	payload := ledgerSpaceMPToken + issuanceKey + holderHex
 	payloadBytes, err := hex.DecodeString(payload)
 	if err != nil {
@@ -133,4 +134,53 @@ func MPTokenIssuance(issuanceIDHex string) (string, error) {
 	}
 
 	return EncodeToHashString(payloadBytes), nil
+}
+
+// PaymentChannel computes the hash (channel ID) of a PaymentChannel ledger entry.
+// The hash is computed as SHA-512Half(0x0078 + sourceAccountID + destAccountID + sequence as 8-char hex).
+//
+// source is the source address of the payment channel.
+// destination is the destination address of the payment channel.
+// sequence is the sequence number of the PaymentChannelCreate transaction.
+// Returns the computed channel ID.
+func PaymentChannel(source, destination string, sequence uint32) (string, error) {
+	_, sourceID, err := addresscodec.DecodeClassicAddressToAccountID(source)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode source classic address: %w", err)
+	}
+
+	_, destID, err := addresscodec.DecodeClassicAddressToAccountID(destination)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode destination classic address: %w", err)
+	}
+
+	ledgerSpaceHex := "0078"
+	sourceHex := hex.EncodeToString(sourceID)
+	destHex := hex.EncodeToString(destID)
+	sequenceHex := fmt.Sprintf("%08x", sequence)
+	payload := ledgerSpaceHex + sourceHex + destHex + sequenceHex
+	payloadBytes, err := hex.DecodeString(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode hex payload: %w", err)
+	}
+
+	return EncodeToHashString(payloadBytes), nil
+}
+
+// MPTID computes the unique identifier for a Multi-Purpose Token (MPT).
+// The ID is computed by concatenating the sequence number (as 8-char hex)
+// and the account ID of the issuer.
+//
+// sequence is the sequence number of the MPTokenIssuance transaction.
+// issuer is the account address that issued the token.
+// Returns the computed MPT ID as an uppercase hexadecimal string.
+func MPTID(sequence uint32, issuer string) (string, error) {
+	_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(issuer)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode issuer classic address: %w", err)
+	}
+
+	seqBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(seqBytes, sequence)
+	return strings.ToUpper(hex.EncodeToString(seqBytes) + hex.EncodeToString(accountID)), nil
 }

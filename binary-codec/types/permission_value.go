@@ -4,18 +4,16 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"math"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/definitions"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
 
 var (
-	// ErrInvalidJSONNumber is returned when a json.Number cannot be parsed to an integer.
-	ErrInvalidJSONNumber = errors.New("invalid json.Number")
 	// ErrUnsupportedPermissionType is returned when the JSON type is unsupported for PermissionValue.
 	ErrUnsupportedPermissionType = errors.New("unsupported JSON type for PermissionValue")
-	// ErrPermissionValueOutOfRange is returned when the permission value is outside the uint32 range.
+	// ErrPermissionValueOutOfRange is returned when the permission value cannot be coerced to a uint32 in the [0, 4294967295] range.
 	ErrPermissionValueOutOfRange = errors.New("permission value out of uint32 range")
 )
 
@@ -34,46 +32,16 @@ func (p *PermissionValue) FromJSON(value any) ([]byte, error) {
 		value = pv
 	}
 
-	var ui64 uint64
-	switch v := value.(type) {
-	case int:
-		if v < 0 {
+	ui32, ok := typecheck.ToUint32(value)
+	if !ok {
+		switch value.(type) {
+		case int, int8, int16, int32, int64, uint, uint64, float32, float64, json.Number:
 			return nil, ErrPermissionValueOutOfRange
+		default:
+			return nil, ErrUnsupportedPermissionType
 		}
-		ui64 = uint64(v)
-	case int32:
-		if v < 0 {
-			return nil, ErrPermissionValueOutOfRange
-		}
-		ui64 = uint64(v)
-	case int64:
-		if v < 0 {
-			return nil, ErrPermissionValueOutOfRange
-		}
-		ui64 = uint64(v)
-	case uint32:
-		ui64 = uint64(v)
-	case float64:
-		if v < 0 || v > float64(math.MaxUint32) {
-			return nil, ErrPermissionValueOutOfRange
-		}
-		ui64 = uint64(v)
-	case json.Number:
-		num, err := v.Int64()
-		if err != nil || num < 0 {
-			return nil, ErrInvalidJSONNumber
-		}
-		ui64 = uint64(num)
-	default:
-		return nil, ErrUnsupportedPermissionType
 	}
 
-	if ui64 > math.MaxUint32 {
-		return nil, ErrPermissionValueOutOfRange
-	}
-
-	// Now safe to cast
-	ui32 := uint32(ui64)
 	buf := make([]byte, 4)
 	binary.BigEndian.PutUint32(buf, ui32)
 	return buf, nil

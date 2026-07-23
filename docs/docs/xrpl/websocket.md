@@ -63,6 +63,22 @@ The `WithMaxFeeXRP` option allows you to set the maximum fee in XRP that the Web
 func (wc ClientConfig) WithMaxFeeXRP(maxFeeXrp float32) ClientConfig
 ```
 
+### MaxResponseSize
+
+The `WithMaxResponseSize` option caps inbound WebSocket messages. The default is 16 MiB per message. Set it to `0` to disable the limit.
+
+```go
+func (wc ClientConfig) WithMaxResponseSize(maxResponseSize int64) ClientConfig
+```
+
+### Logger
+
+The `SetLogger` function overrides the logger used for SDK warnings, such as remote non-TLS URL warnings. Pass `nil` to silence these warnings.
+
+```go
+func SetLogger(l *log.Logger)
+```
+
 ## Connection
 
 As the `websocket` package is a WebSocket client, it needs to be connected to a WebSocket server. The `Client` type exposes the following methods to connect to a WebSocket server:

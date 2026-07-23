@@ -55,7 +55,7 @@ func (tx *LoanPay) SetLatePaymentFlag() {
 }
 
 // Flatten returns a map representation of the LoanPay transaction for JSON-RPC submission.
-func (tx *LoanPay) Flatten() map[string]any {
+func (tx *LoanPay) Flatten() FlatTransaction {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

@@ -3,8 +3,10 @@ package transaction
 import (
 	"testing"
 
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsSigner(t *testing.T) {
@@ -174,10 +176,13 @@ func TestIsAmount(t *testing.T) {
 }
 
 func TestIsIssuedCurrency(t *testing.T) {
+	// IsIssuedCurrency returns (true, nil) on success and (false, err) on every
+	// failure, so a non-nil expectedErr both selects the failure path and locks
+	// in which sentinel must appear in the error chain.
 	tests := []struct {
-		name     string
-		input    types.CurrencyAmount
-		expected bool
+		name        string
+		input       types.CurrencyAmount
+		expectedErr error
 	}{
 		{
 			name: "pass - valid IssuedCurrency object",
@@ -186,33 +191,64 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 				Currency: "USD",
 			},
-			expected: true,
 		},
 		{
-			name:     "fail - invalid IssuedCurrency object",
-			input:    types.XRPCurrencyAmount(100), // should be non XRP
-			expected: false,
+			name: "pass - valid IssuedCurrency object with signed zero value",
+			input: types.IssuedCurrencyAmount{
+				Value:    "-0",
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+			},
+		},
+		{
+			name: "pass - valid IssuedCurrency object with zero value 0.0",
+			input: types.IssuedCurrencyAmount{
+				Value:    "0.0",
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+			},
+		},
+		{
+			name: "pass - valid IssuedCurrency object with signed zero value -0.0",
+			input: types.IssuedCurrencyAmount{
+				Value:    "-0.0",
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+			},
+		},
+		{
+			name: "pass - valid IssuedCurrency object with zero scientific value 0e5",
+			input: types.IssuedCurrencyAmount{
+				Value:    "0e5",
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+			},
+		},
+		{
+			name:        "fail - invalid IssuedCurrency object",
+			input:       types.XRPCurrencyAmount(100), // should be non XRP
+			expectedErr: ErrInvalidTokenType,
 		},
 		{
 			name: "fail - issuedCurrency object with missing currency and issuer fields",
 			input: types.IssuedCurrencyAmount{
 				Value: "100",
 			},
-			expected: false,
+			expectedErr: ErrInvalidTokenFields,
 		},
 		{
 			name: "fail - issuedCurrency object with missing issuer and value fields",
 			input: types.IssuedCurrencyAmount{
 				Currency: "USD",
 			},
-			expected: false,
+			expectedErr: ErrInvalidTokenFields,
 		},
 		{
 			name: "fail - issuedCurrency object with missing currency and value fields",
 			input: types.IssuedCurrencyAmount{
 				Issuer: "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 			},
-			expected: false,
+			expectedErr: ErrInvalidTokenFields,
 		},
 		{
 			name: "fail - issuedCurrency object with empty currency",
@@ -221,7 +257,7 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Currency: "   ",
 				Value:    "100",
 			},
-			expected: false,
+			expectedErr: ErrMissingTokenCurrency,
 		},
 		{
 			name: "fail - issuedCurrency object with XRP currency",
@@ -230,7 +266,7 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Currency: "XRp", // will be uppercased during validation
 				Value:    "100",
 			},
-			expected: false,
+			expectedErr: ErrInvalidTokenCurrency,
 		},
 		{
 			name: "fail - issuedCurrency object with empty value",
@@ -239,7 +275,7 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Currency: "USD",
 				Value:    "  ",
 			},
-			expected: false,
+			expectedErr: ErrInvalidTokenValue,
 		},
 		{
 			name: "fail - issuedCurrency object with invalid issuer",
@@ -248,20 +284,115 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Currency: "USD",
 				Value:    "100",
 			},
-			expected: false,
+			expectedErr: ErrInvalidIssuer,
 		},
 		{
-			name:     "fail - empty object",
-			input:    types.IssuedCurrencyAmount{},
-			expected: false,
+			name: "fail - issuedCurrency object with leading-space negative value",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    " -1",
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - issuedCurrency object with negative integer value",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    "-1",
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - issuedCurrency object with negative decimal value",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    "-0.5",
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - issuedCurrency object with negative scientific value",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    "-1e2",
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - issuedCurrency object with leading-plus sign",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    "+1",
+			},
+			expectedErr: bctypes.ErrInvalidStringNumber,
+		},
+		{
+			name: "fail - issuedCurrency object with leading-zero mantissa",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    "00.1",
+			},
+			expectedErr: bctypes.ErrInvalidStringNumber,
+		},
+		{
+			name: "fail - issuedCurrency object with multiple decimal points",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    "1.2.3",
+			},
+			expectedErr: bctypes.ErrInvalidStringNumber,
+		},
+		{
+			name: "fail - issuedCurrency object with bare decimal point",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    ".",
+			},
+			expectedErr: bctypes.ErrInvalidStringNumber,
+		},
+		{
+			name: "fail - issuedCurrency object with exponent out of range",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    "1e500",
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - issuedCurrency object with precision overflow (17 digits)",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "USD",
+				Value:    "12345678901234567",
+			},
+			expectedErr: ErrInvalidTokenValue,
+		},
+		{
+			name:        "fail - empty object",
+			input:       types.IssuedCurrencyAmount{},
+			expectedErr: ErrInvalidTokenFields,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if ok, err := IsIssuedCurrency(tt.input); ok != tt.expected {
-				t.Errorf("Expected IsIssuedCurrency to return %v, but got %v with error: %v", tt.expected, ok, err)
+			ok, err := IsIssuedCurrency(tt.input)
+			if err != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+				require.False(t, ok)
+				return
 			}
+			require.NoError(t, tt.expectedErr)
+			require.True(t, ok)
 		})
 	}
 }
@@ -759,6 +890,53 @@ func TestIsDomainID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if result := IsDomainID(tt.input); result != tt.expected {
 				t.Errorf("Expected IsDomainID to return %v, but got %v", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestIsHex256(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "pass - valid 64 character hex",
+			input:    "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			expected: true,
+		},
+		{
+			name:     "pass - valid 64 character uppercase hex",
+			input:    "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF",
+			expected: true,
+		},
+		{
+			name:     "pass - valid 64 character mixed-case hex",
+			input:    "1234567890AbCdEf1234567890aBcDeF1234567890ABcdef1234567890abCDEF",
+			expected: true,
+		},
+		{
+			name:     "fail - empty",
+			input:    "",
+			expected: false,
+		},
+		{
+			name:     "fail - short hex",
+			input:    "ABC123",
+			expected: false,
+		},
+		{
+			name:     "fail - 64 character non-hex",
+			input:    "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if result := IsHex256(tt.input); result != tt.expected {
+				t.Errorf("Expected IsHex256 to return %v, but got %v", tt.expected, result)
 			}
 		})
 	}

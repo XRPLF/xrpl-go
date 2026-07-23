@@ -221,9 +221,10 @@ func TestCompat_XAddressMainnet(t *testing.T) {
 			require.Equal(t, tc.MainnetAddress, xAddr, "Classic to X-address conversion failed for %s", tc.ClassicAddress)
 
 			// Test X-address -> classic conversion
-			classicAddr, decodedTag, isTestnet, err := XAddressToClassicAddress(tc.MainnetAddress)
+			classicAddr, decodedTag, hasTag, isTestnet, err := XAddressToClassicAddress(tc.MainnetAddress)
 			require.NoError(t, err)
 			require.Equal(t, tc.ClassicAddress, classicAddr, "X-address to classic conversion failed for %s", tc.MainnetAddress)
+			require.Equal(t, tc.Tag != nil, hasTag, "Tag presence mismatch for %s", tc.MainnetAddress)
 			require.False(t, isTestnet, "Expected mainnet address")
 
 			if tc.Tag != nil {
@@ -261,9 +262,10 @@ func TestCompat_XAddressTestnet(t *testing.T) {
 			require.Equal(t, tc.TestnetAddress, xAddr, "Classic to X-address conversion failed for %s", tc.ClassicAddress)
 
 			// Test X-address -> classic conversion
-			classicAddr, decodedTag, isTestnet, err := XAddressToClassicAddress(tc.TestnetAddress)
+			classicAddr, decodedTag, hasTag, isTestnet, err := XAddressToClassicAddress(tc.TestnetAddress)
 			require.NoError(t, err)
 			require.Equal(t, tc.ClassicAddress, classicAddr, "X-address to classic conversion failed for %s", tc.TestnetAddress)
+			require.Equal(t, tc.Tag != nil, hasTag, "Tag presence mismatch for %s", tc.TestnetAddress)
 			require.True(t, isTestnet, "Expected testnet address")
 
 			if tc.Tag != nil {
@@ -284,7 +286,7 @@ func TestCompat_InvalidXAddresses(t *testing.T) {
 		t.Run(tc.Address[:20], func(t *testing.T) {
 			require.False(t, IsValidXAddress(tc.Address), "Expected %s to be invalid", tc.Address)
 
-			_, _, _, err := XAddressToClassicAddress(tc.Address)
+			_, _, _, _, err := XAddressToClassicAddress(tc.Address)
 			require.Error(t, err, "Expected error for invalid X-address: %s", tc.Address)
 		})
 	}

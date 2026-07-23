@@ -1,10 +1,12 @@
 package transaction
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	maputils "github.com/Peersyst/xrpl-go/pkg/map_utils"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
@@ -21,10 +23,8 @@ const (
 	IssuedCurrencySize = 3
 	// StandardCurrencyCodeLen is the required length of a standard three-character currency code.
 	StandardCurrencyCodeLen = 3
-	// DomainIDLength is the required length of a domain id
-	DomainIDLength = 64
-	// SHA512HalfLength is the length of a SHA-512 half hash (64 hex characters).
-	SHA512HalfLength = 64
+	// Hex256Length is the number of characters in a 256-bit hexadecimal value.
+	Hex256Length = 64
 	// MPTIssuanceIDLength is the hex-encoded length of a 24-byte MPT issuance ID (48 hex chars).
 	MPTIssuanceIDLength = 48
 )
@@ -140,9 +140,14 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 		return false, ErrInvalidIssuer
 	}
 
-	// Check if the value is a valid positive number
-	value, err := strconv.ParseFloat(issuedAmount.Value, 64)
-	if err != nil || value < 0 {
+	// Check that the value is an XRPL String Number (same gate the binary codec
+	// applies at encode time), then reject negative amounts.
+	// Zero is a valid token amount; "-0" parses as zero and is not treated as negative.
+	isZero, err := bctypes.VerifyIOUValue(issuedAmount.Value)
+	if err != nil {
+		return false, fmt.Errorf("%w: %w", ErrInvalidTokenValue, err)
+	}
+	if strings.HasPrefix(issuedAmount.Value, "-") && !isZero {
 		return false, ErrInvalidTokenValue
 	}
 
@@ -271,13 +276,18 @@ func IsAsset(asset ledger.Asset) (bool, error) {
 
 // IsDomainID checks if the given domain ID is valid.
 func IsDomainID(id string) bool {
-	return len(id) == DomainIDLength && typecheck.IsHex(id)
+	return IsHex256(id)
+}
+
+// IsHex256 checks if the input is a 256-bit value encoded as hexadecimal.
+func IsHex256(input string) bool {
+	return len(input) == Hex256Length && typecheck.IsHex(input)
 }
 
 // IsLedgerEntryID checks if the input is a valid ledger entry id.
-// A valid ledger entry id is a 64-character hexadecimal string (SHA-512 half length).
+// A valid ledger entry id is a 256-bit value encoded as hexadecimal.
 func IsLedgerEntryID(input string) bool {
-	return len(input) == SHA512HalfLength && typecheck.IsHex(input)
+	return IsHex256(input)
 }
 
 // IsMPTIssuanceID checks if the given hex string is a valid 24-byte MPT issuance ID (48 hex chars).

@@ -11,56 +11,300 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### docs
 
-- Added a Docusaurus `confidential` section documenting the confidential MPT package layout, CGo requirement, confidential transaction types, and `confidential/builder` workflows.
+- Added confidential MPT documentation covering the CGo requirement, package layout, transaction types, and high-level builders.
 
 #### confidential
 
-- Added `confidential/mptcrypto` package with CGo bindings to the XRPLF `mpt-crypto` C library for XLS-96 Confidential MPT Transfers (ElGamal encryption, ZK proofs, Pedersen commitments).
-  - `GenerateKeypair()` creates a new secp256k1 ElGamal keypair (32-byte private key, 33-byte compressed public key).
-  - Platform-specific static libraries vendored for `linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`.
-  - Graceful `!cgo` build tag fallback returning `ErrCgoRequired`.
-- Added `confidential/deps/update.sh` maintainer script for fetching and vendoring `mpt-crypto` static libraries from the XRPLF Conan remote.
-- Added `update-mpt-crypto` GitHub Actions workflow to automatically check for new `mpt-crypto` releases weekly and open a PR with updated vendored dependencies.
-- Added `test-confidential` and `update-mpt-crypto` Makefile targets.
-- Added `confidential/elgamal` package providing a hex-string API for ElGamal keypair generation, encryption, and decryption, wrapping `mptcrypto` CGo bindings for use with XRPL transaction fields.
-  - `GenerateKeypair()`, `GenerateBlindingFactor()`, `Encrypt()`, `Decrypt()` with hex-encoded inputs/outputs.
-  - Sentinel errors with wrapped underlying causes for debuggability.
-- Extended `mptcrypto` with `GenerateBlindingFactor()`, `EncryptAmount()`, and `DecryptAmount()` CGo bindings (with `!cgo` stubs).
-- Extended `mptcrypto` with ZK proof CGo bindings (with `!cgo` stubs):
-  - Context hash functions: `ConvertContextHash()`, `ConvertBackContextHash()`, `SendContextHash()`, `ClawbackContextHash()`.
-  - Pedersen commitment: `PedersenCommitment()`.
-  - Proof generation: `GenerateConvertProof()`, `GenerateConvertBackProof()`, `GenerateSendProof()`, `GenerateClawbackProof()`.
-  - Proof verification: `VerifyConvertProof()`, `VerifyConvertBackProof()`, `VerifySendProof()`, `VerifyClawbackProof()`, `VerifyRevealedAmount()`, `VerifySendRangeProof()`.
-  - Utilities: `ComputeConvertBackRemainder()`.
-  - New types: `Participant`, `PedersenProofParams`.
-- Added `confidential/commitment` package providing a hex-string API for Pedersen commitment creation (`Create()`), wrapping `mptcrypto.PedersenCommitment()`.
-- Added `confidential/proof` package providing a hex-string API for ZK proof generation and verification with classic XRPL address support:
-  - Context hashes: `ConvertContextHash()`, `ConvertBackContextHash()`, `SendContextHash()`, `ClawbackContextHash()` (accept classic addresses).
-  - Proof generation/verification: `GenerateConvertProof()`/`VerifyConvertProof()`, `GenerateConvertBackProof()`/`VerifyConvertBackProof()`, `GenerateSendProof()`/`VerifySendProof()`, `GenerateClawbackProof()`/`VerifyClawbackProof()`.
-  - Component verifiers: `VerifyRevealedAmount()`, `VerifySendRangeProof()`.
+- Added CGo bindings and vendored native libraries for XRPLF `mpt-crypto`, with a `!cgo` fallback and maintainer tooling for dependency updates.
+- Added hex-string APIs for ElGamal encryption, Pedersen commitments, context hashes, and zero-knowledge proof generation and verification.
+- Added `test-confidential` and `update-mpt-crypto` Makefile targets and an automated dependency-update workflow.
 
 #### confidential/builder
 
-- Added `confidential/builder` package with high-level transaction builders for all XLS-96 confidential MPT operations.
-  - `BuildSend()` / `PrepareSend()` for confidential MPT transfers between accounts (encrypts amounts, creates Pedersen commitments, generates ZK proofs).
-  - `BuildConvert()` / `PrepareConvert()` for converting public MPT balance into confidential balance with optional holder key registration.
-  - `BuildConvertBack()` / `PrepareConvertBack()` for converting confidential balance back to public with ZK proof of sufficient balance.
-  - `BuildClawback()` / `PrepareClawback()` for issuer clawback of a holder's confidential balance with equality proof.
-  - `BuildMergeInbox()` / `PrepareMergeInbox()` for merging confidential inbox balance into spending balance.
-  - `Build*` functions accept a `LedgerQuerier` interface (satisfied by both RPC and WebSocket clients) and auto-resolve encryption keys, balances, and sequence numbers from ledger state.
-  - `Prepare*` functions accept explicit parameters for offline transaction construction without ledger queries.
+- Added online `Build*` and offline `Prepare*` helpers for confidential MPT send, convert, convert-back, clawback, and inbox-merge transactions.
 
 #### pkg/hexutil
 
-- Added `DecodeFixedHex()` to decode a hex string and validate it decodes to exactly N bytes.
+- Added `DecodeFixedHex()` to decode hexadecimal values and enforce their decoded byte length.
 
 #### binary-codec
 
-- Added XLS-96 confidential MPT field and transaction type definitions (`ConfidentialMPTSend`, `ConfidentialMPTConvert`, `ConfidentialMPTConvertBack`, `ConfidentialMPTMergeInbox`, `ConfidentialMPTClawback`).
-
+- Added XLS-96 confidential MPT fields and transaction definitions for `ConfidentialMPTSend`, `ConfidentialMPTConvert`, `ConfidentialMPTConvertBack`, `ConfidentialMPTMergeInbox`, and `ConfidentialMPTClawback`.
 
 #### xrpl
 
+- Added confidential-transfer flags and encryption-key fields to MPT issuance transaction and ledger-entry models.
+- Added confidential balance fields to `MPToken`, five confidential MPT transaction models, and supporting amount, encryption-key, hex-blob, blinding-factor, and proof validation helpers.
+
+#### xrpl/hash
+
+- Added `MPToken()` and `MPTokenIssuance()` helpers for computing MPT ledger-entry keylet indexes.
+
+### Changed
+
+#### dependencies
+
+- Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
+
+### Fixed
+
+#### confidential
+
+- Tightened participant and fixed-size proof validation before invoking the native verifier, and aligned proof helper naming with the current `mpt-crypto` contract.
+
+#### xrpl/transaction
+
+- Corrected confidential transaction key encoding and proof-size validation.
+- Rejected `MPTokenIssuanceSet` transactions that combine encryption keys with `tmfMPTClearCanConfidentialAmount`.
+
+## [v0.2.0]
+
+### BREAKING CHANGES
+
+#### address-codec
+
+- `DecodeXAddress` and `XAddressToClassicAddress` now return `hasTag`, preserving explicit tag `0` separately from no tag.
+
+#### binary-codec
+
+- `AccountID.FromJSON` now rejects X-addresses that carry an embedded tag (returning `ErrAccountIDTagNotAllowed`). Previously the tag was silently dropped for non-`Account`/`Destination` AccountID fields, including nested `SignerEntry.Account` and `EncodeForMultisigning`.
+- `Amount` serialization no longer accepts `float64` values. Use strings, `json.Number`, or exact amount types to preserve precision.
+- Removed the exported `ErrUInt64OutOfRange` error variable. `UInt64.FromJSON` now returns `ErrInvalidUInt64String` for all invalid inputs (non-string, non-hex characters, or length > 16).
+- Changed the exported `MaxDrops` constant to a typed `uint64` drops limit.
+- Removed the exported `MinXRP` constant. Native XRP amount serialization validates drops, not XRP-denominated decimal values.
+- `UInt64.FromJSON` now accepts only 1 to 16 character hex strings. Decimal-looking inputs are parsed as hex, so `"10"` is `0x10`, not decimal `10`.
+- X-address encoding now rejects duplicate `SourceTag`/`DestinationTag` whenever the X-address carries an embedded tag (zero or non-zero), including the previously accepted case where both values matched.
+- Removed the exported `ErrInvalidJSONNumber` error variable. `PermissionValue.FromJSON` now returns `ErrPermissionValueOutOfRange` for any `json.Number` input that cannot be coerced to a `uint32` in the `[0, 4294967295]` range (including malformed, fractional, or negative values that previously surfaced as `ErrInvalidJSONNumber`).
+
+#### keypairs
+
+- `GenerateSeed` now accepts caller-supplied entropy as `[]byte` instead of `string`. Empty or nil entropy still generates random entropy with the provided randomizer, while non-empty entropy must be exactly 16 raw bytes. Callers that need to recover old seeds generated from arbitrary strings must reproduce the legacy first-16-byte behavior outside this function.
+
+#### xrpl
+
+- `SortSigners` now returns an error when signer extraction or address decoding fails. Errors are wrapped with the failing item index to help diagnose which signer caused the failure.
+- Removed the exported `ErrTransactionTypeMissing` error variable from the `rpc` and `websocket` packages. The equivalent error now lives in the `transaction` package as `transaction.ErrTransactionTypeMissing`.
+
+#### xrpl/transaction
+
+- All loan transaction `Flatten()` methods now return `FlatTransaction` instead of `map[string]any`, consistent with the rest of the transaction types. Affected transactions: `LoanSet`, `LoanDelete`, `LoanManage`, `LoanPay`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`.
+- Removed exported `DomainIDLength` and `SHA512HalfLength` constants. Use `Hex256Length`, `IsHex256`, `IsDomainID`, or `IsLedgerEntryID` depending on whether the code needs a raw 256-bit hex length or semantic validation.
+- `GetBalanceChanges` no longer returns an error for affected `AccountRoot` and `RippleState` nodes without a balance change. Previously a balance-neutral affected node aborted the entire computation with an error, that case is now handled silently by skipping the node and returning the remaining balance changes. Affected nodes whose net balance delta is zero are likewise skipped instead of being emitted as `0`-value entries. Callers that relied on the returned error to detect these conditions will no longer receive it. Genuinely malformed balance values still return an error.
+- Added regression coverage for `GetBalanceChanges` deleted-node JSON metadata, `AccountDelete` integration metadata, and zero-delta trustline changes.
+
+#### xrpl/wallet
+
+- Renamed `ErrAddressTagNotZero` to `ErrAddressHasTag`. The error now fires for any embedded X-address tag, including explicit tag `0`.
+
+### Added
+
+#### binary-codec
+
+- Added `ErrDuplicateXAddressTag` for detecting duplicate tag fields when encoding tagged X-addresses.
+- Added `ErrAccountIDTagNotAllowed` for `AccountID`-typed fields that receive a tagged X-address (used by both `AccountID.FromJSON` and the `STObject` X-address preprocessor for non-`Account`/`Destination` fields).
+- Exported `VerifyIOUValue(value) (isZero bool, err error)` for issued-currency value validation. The `isZero` return distinguishes canonical zero forms (`"0"`, `"0.0"`, `"-0"`, `"0e5"`, etc.) so callers don't need to repeat grammar checks to handle signed zero.
+- Exported `ErrInvalidStringNumber` (sentinel error) for inputs whose characters are all legal but whose structure violates the XRPL String Number grammar (e.g. `"00.1"`, `".5"`, `"1."`, `"1e"`, `""`, `"-"`, `"+1"`). Distinct from `bigdecimal.ErrInvalidCharacter`, which signals an out-of-set character.
+
+#### keypairs
+
+- Exported `ErrRandomizerRequired` sentinel for `GenerateSeed` calls with empty entropy and a nil randomizer.
+- Exported `ErrInvalidEntropyLength` sentinel wrapping caller-supplied entropy length errors, so callers can `errors.Is` without importing `address-codec`.
+
+#### pkg/typecheck
+
+- Added `IsHexBlob` helper that reports whether a string is a hex-encoded whole-byte sequence (valid hex characters and even length). Used by the Escrow transaction validators.
+- Added `ToUint32`, which coerces any integer, whole-number float, or `json.Number` to a `uint32` when the exact value fits the `[0, 4294967295]` range.
+
+#### xrpl
+
+- Added `SortByAccountID` helper for canonical account ID byte ordering.
+- Added multisigned payment integration coverage, including sub-quorum (`tefBAD_QUORUM`) and non-listed-signer (`tefBAD_SIGNATURE`) negative-path tests.
+- Expanded lending protocol integration coverage.
+
+#### xrpl/queries/account
+
+- Added `LoanObject` and `LoanBrokerObject` `ObjectType` constants for `account_objects` query.
+
+#### xrpl/rpc
+
+- Added `GetXrpBalanceValidated` and `GetXrpDropsBalanceValidated` to read validated-ledger balances. The drops variant avoids the XRP string round trip.
+- `SetLogger` lets consumers safely override or silence the `*log.Logger` used for SDK-emitted warnings.
+
+#### xrpl/testutil
+
+- Added `GetLedgerEntry`, `GetXrpBalanceValidated`, `GetXrpDropsBalanceValidated`, and `AutofillMultisigned` methods to the testutil integration `Client` interface.
+
+#### xrpl/transaction
+
+- Exported `MinTransferRate` and `MaxTransferRate` constants alongside the existing `MinTickSize`/`MaxTickSize`, so callers can reference the AccountSet bounds without hardcoding values.
+- Added `FlatTransaction.NormalizeFlags`, which defaults a missing `Flags` field to `uint32(0)` and coerces a present `Flags` (any integer, whole-number float, or `json.Number`) to `uint32` when the exact value fits the `[0, 4294967295]` range, returning the new `ErrInvalidFlagsValue` otherwise.
+- Added `FlatTransaction.RequireTransactionType`, which returns `ErrTransactionTypeMissing` when `TransactionType` is absent or not a string.
+
+#### xrpl/transaction/types
+
+- Added `IsZero() bool` to the `CurrencyAmount` interface. Implementations check numeric value: `XRPCurrencyAmount` against `uint64` zero, `IssuedCurrencyAmount` via `math/big.Float` to stay faithful to the textual XLS-33 decimal (so amounts that underflow IEEE-754 are not falsely zero), and `MPTCurrencyAmount` via `strconv.ParseInt`. Renamed the existing `IssuedCurrencyAmount.IsZero` empty-struct check to `IsEmpty` to avoid clashing with the new value-zero semantics.
+
+#### xrpl/websocket
+
+- Added `GetXrpBalanceValidated` and `GetXrpDropsBalanceValidated` to read validated-ledger balances. The drops variant avoids the XRP string round trip.
+- `SetLogger` lets consumers safely override or silence the `*log.Logger` used for SDK-emitted warnings.
+
+### Changed
+
+#### binary-codec
+
+- `UInt32.FromJSON` and `PermissionValue.FromJSON` now delegate numeric coercion to `pkg/typecheck.ToUint32`, accepting the broader set of integer and whole-number float types it supports (including `uint8`, `uint16`, `int8`, `int16`, `int32`, `float32`, and `json.Number`).
+
+#### docs
+
+- Added a v0.1.x to v0.2.0 upgrade guide and v0.2.x changelog docs.
+- Added wallet credential leakage warnings to the wallet docs and example comments.
+
+#### pkg/crypto
+
+- Ed25519 and SECP256K1 `Sign` now wrap the underlying `hex.DecodeString` error with `ErrInvalidPrivateKey`. `errors.Is(err, ErrInvalidPrivateKey)` still matches, and the hex offset / invalid-byte detail is now reachable via `errors.As` and `errors.Unwrap`.
+
+#### pkg/decodehook
+
+- Replaced the archived mapstructure dependency with `github.com/go-viper/mapstructure/v2 v2.5.0` while preserving existing decode hook behavior.
+
+#### xrpl/currency
+
+- Deprecated exported `DropsPerXrp`, it remains available for compatibility, but native amount conversion helpers use exact rational arithmetic internally instead of `float64`.
+- Changed `MaxFractionLength` from `uint` to `int` to match Go precision and length APIs without repeated casts.
+
+#### xrpl/rpc
+
+- `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+- HTTP 503 retries now recreate the RPC request, close retry response bodies before retrying, and respect the configured retry delay. Each attempt also gets a fresh context, so `cfg.timeout` now bounds a single attempt rather than the full retry window.
+- Updated `response.go` to import `github.com/go-viper/mapstructure/v2` in place of the archived `github.com/mitchellh/mapstructure`.
+
+#### xrpl/transaction
+
+- `NFTokenCreateOffer.Validate` now reports `Amount` and `NFTokenID` errors before owner, destination, and flag errors. Callers that pattern-match on the first returned error from `Validate()` may observe a different error for the same input.
+- After `Autofill` (and any direct `FlatTransaction.NormalizeFlags` call), the `Flags` entry in a `FlatTransaction` is always stored as `uint32`. Callers that previously relied on the original Go type of a present `Flags` value (e.g. `int`) surviving `Autofill` must update their assertions.
+
+#### xrpl/websocket
+
+- `FundWallet` now polls the validated ledger after calling the faucet, treats `actNotFound` as an unfunded account while polling, and returns `ErrFundWalletBalanceNotUpdated` if the balance never increases.
+- Documented that `Connect` must not be called synchronously from stream or error handlers.
+- `OnXxx` now atomically replaces previously registered handlers on the same stream instead of spawning an additional goroutine, an event already queued for delivery may still be dispatched to the previously registered handler.
+- `Request` now translates the connection-layer `ErrNotConnected` into the public `ErrNotConnectedToServer` so `errors.Is(err, ErrNotConnectedToServer)` keeps matching across the read-loop refactor.
+- Updated `client.go` and `response.go` to import `github.com/go-viper/mapstructure/v2` in place of the archived `github.com/mitchellh/mapstructure`.
+
+### Fixed
+
+#### address-codec
+
+- `Decode` now validates Base58Check checksums and prefix lengths before slicing, preventing panics on malformed public key input.
+- `DecodeClassicAddressToAccountID` and `IsValidClassicAddress` now reject checksum-valid classic-address payloads with non-account prefixes.
+- `DecodeSeed` now returns errors for checksum-valid seeds with invalid decoded lengths or unknown prefixes instead of reading past the decoded payload or treating them as secp256k1 seeds.
+- X-address decoding now rejects `TAG_32` addresses with non-zero reserved high-order tag bytes.
+
+#### binary-codec
+
+- `Amount` serialization now rejects `float64` values, preventing precision loss when encoding amounts parsed from JSON without `UseNumber`.
+- `Encode`, `EncodeForSigning`, and `EncodeForMultisigning` no longer remove fields from the caller's input map. Callers throughout `xrpl/` no longer need to defensively copy input maps before encoding.
+- `FieldIDCodec.Decode` no longer writes decode errors or input lengths to stdout.
+- Fixed off-by-one in the variable-length prefix encoder (`serdes.encodeVariableLength`) at the 2-byte/3-byte boundary. Length 12480 was routed to the 3-byte branch and underflowed to bytes `[0xF0, 0xFF, 0xFF]`, corrupting the next field on decode. The 2-byte branch now correctly covers lengths 193..12480 inclusive per the XRPL serialization spec.
+- IOU amount decoding now rejects non-canonical wire values whose mantissa or exponent fall outside the XRPL token amount ranges.
+- Native XRP amount serialization now validates drops with exact integer bounds instead of float comparisons.
+- `PathSet.FromJSON` now returns errors for malformed inputs (non-`[]any` paths, empty paths, non-map steps, non-string `account`/`currency`/`issuer` values) instead of panicking, and propagates account, currency, and issuer decode errors that were previously swallowed and produced malformed signed paths.
+- `UInt64` JSON serialization now treats input as 1 to 16 character hex strings instead of applying decimal range validation before hex encoding. Empty-string inputs are now rejected (previously silently produced 0 bytes).
+- X-address encoding now rejects duplicate `SourceTag` and `DestinationTag` fields consistently when the X-address already carries a tag, including explicit tag `0`.
+- `XChainBridge.FromJSON` now returns errors for non-string `LockingChainDoor`, `LockingChainIssue`, `IssuingChainDoor`, and `IssuingChainIssue` values instead of panicking on the type assertions.
+- `XChainBridge.ToJSON` now returns an error when the read byte buffer is not 80 bytes instead of panicking on out-of-range slice access.
+- `VerifyIOUValue` and `SerializeIssuedCurrencyValue` now validate issued-currency values as XRPL String Numbers, rejecting malformed float-like inputs (`NaN`, `Inf`, `+Inf`, `-Inf`, hex-floats like `0x1p10`, prefixed or suffixed strings, leading-zero mantissas such as `-000.2345` or `00.5`, incomplete exponents like `1e`/`1e+`/`1e-`, and out-of-range exponents such as `1e1000`) while accepting zero token values. `SerializeIssuedCurrencyValue` emits the XRPL zero amount encoding (`0x8000000000000000`) for those zero values.
+
+#### keypairs
+
+- `GenerateSeed` now rejects non-empty entropy whose length is not exactly 16 bytes, removing silent truncation of longer inputs and the panic on shorter inputs.
+- `GenerateSeed` returns `ErrRandomizerRequired` instead of panicking when called with empty entropy and a nil randomizer.
+- `GenerateSeed` no longer wraps unsupported algorithm errors with `ErrInvalidEntropyLength` when caller-supplied entropy has the correct length.
+- Keypair signing and validation now reject keys shorter than the crypto prefix before slicing, preventing panics on empty or one-character keys.
+
+#### pkg/crypto
+
+- Ed25519 signing and validation now reject malformed keys and signatures by length and ED prefix before slicing decoded bytes or verifying, preventing panics on malformed inputs.
+
+#### pkg/typecheck
+
+- `ToUint32` now rejects `json.Number` values with non-zero fractional digits instead of allowing `float64` rounding to normalize them to a different `uint32` value.
+- `ToUint32` now accepts narrower Go integer types such as `uint8`, `uint16`, `int8`, and `int16` when they fit in `uint32`.
+
+#### xrpl
+
+- `Multisign`, `CombineLoanSetCounterpartySigners`, and `CombineBatchSigners` now propagate signer sort errors and use canonical account ID byte ordering.
+- `Multisign` now validates that all input blobs represent the same transaction (ignoring `Signers`) and returns `ErrMultisignTxNotEqual` otherwise.
+- `Multisign` now rejects input blobs containing invalid signer signatures before returning an aggregated blob.
+- `Multisign` now returns `ErrInvalidSigner` for malformed signer data instead of panicking.
+- `MPTokenIssuanceCreate` integration tests now handle RPC numeric fields decoded as `json.Number`.
+- `Autofill` now validates `TransactionType` before normalizing `Flags`, then correctly defaults a missing `Flags` field to `0`. The previous internal `setTransactionFlags` helper had an unsatisfiable condition (`!ok && flags > 0`) that meant the default was never applied, the logic now lives in the shared `FlatTransaction.NormalizeFlags` helper used by both the `rpc` and `websocket` clients.
+
+#### xrpl/currency
+
+- Native amount conversion helpers now reject overly long decimal strings and large scientific-notation exponents before arbitrary-precision conversion.
+- XRP drops conversion helpers now use exact arithmetic and validate native amount bounds, preserving precision up to the maximum XRP supply.
+
+#### xrpl/rpc
+
+- `Batch` inner transaction autofill now validates inner accounts and supplied `NetworkID` values (both inner and outer) before filling missing fields, preventing partial mutation on syntactic validation errors. Type-only `NetworkID` failures return the new `ErrNetworkIDFieldIsNotAUint32` sentinel, `ErrNetworkIDFieldMismatch` is reserved for actual value disagreement. Note: this guarantee covers syntactic validation only, if a later `GetAccountInfo` call fails while filling sequences, earlier inner transactions may have already had `Fee` and `SigningPubKey` filled.
+- `fetchCounterPartySignersCount` in the RPC client now uses `"current"` ledger index instead of `"validated"` when fetching the loan broker and counterparty signer information, avoiding lookup failures before the transaction is validated.
+- `NewClientConfig` now logs a warning when configured with a remote non-TLS URL scheme. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
+- RPC client now caps HTTP response bodies at 64 MiB by default to prevent unbounded memory growth from oversized server responses. Use `WithMaxResponseSize(0)` to disable the limit.
+
+#### xrpl/transaction
+
+- `AccountSet.Validate` now rejects invalid `TransferRate`, `ClearFlag`, and reserved `SetFlag` values before submission.
+- `AccountSet.Validate` now rejects `SetFlag == ClearFlag` (non-zero) locally, matching rippled's `temINVALID` and xrpl.js's `validateAccountSet`. Returned via the new `ErrAccountSetMutuallyExclusiveFlags` sentinel.
+- `EscrowCreate`, `CheckCreate`, `NFTokenCreateOffer`, and `OfferCreate` now omit nil amount fields in `Flatten()` instead of panicking.
+- `EscrowCreate.Validate` now rejects `Condition` values that are not valid hex-encoded byte sequences with the new `ErrEscrowCreateInvalidCondition` sentinel, matching the parity check on `EscrowFinish`.
+- `EscrowCreate.Validate` now rejects zero `Amount` (XRP, IOU, or MPT) with `ErrEscrowCreateZeroAmount`, matching rippled's `temBAD_AMOUNT` rejection.
+- `EscrowFinish.Validate` now rejects `Condition` and `Fulfillment` values that are not valid hex-encoded byte sequences (non-hex characters or odd length) with the new `ErrEscrowFinishInvalidCondition` and `ErrEscrowFinishInvalidFulfillment` sentinels. Previously malformed values were forwarded to the binary codec and the fee calculator.
+- `EscrowCreate` and `NFTokenCreateOffer` now return validation errors for missing or malformed required amount fields. `NFTokenCreateOffer` also rejects missing or malformed 64-character hexadecimal `NFTokenID` values and zero amounts except XRP sell offers.
+- `NFTokenAcceptOffer.Validate` now rejects zero issued-currency `NFTokenBrokerFee` via canonical numeric comparison (`IssuedCurrencyAmount.IsZero`), so non-canonical zero representations like `"0.0"`, `"00"`, `"0e0"`, and `"-0"` are no longer accepted past the validator.
+- `NFTokenModify.Validate` now rejects short or non-hex `NFTokenID` values with `ErrInvalidNFTokenID`, matching the new `NFTokenBurn` and `NFTokenCreateOffer` checks.
+- `SignerListSet.Validate` now rejects duplicate signer accounts including classic/X-address equivalents, signer entries that reference the transaction account, zero signer weights, and correctly handles signer weight sums above `uint16`.
+- `IsIssuedCurrency` now validates token values as XRPL String Numbers (the same gate the binary codec applies at encode time) instead of `strconv.ParseFloat`. Inputs that previously passed `Validate` (`NaN`, `Inf`, hex-floats like `0x1p10`, prefixed or suffixed strings, leading-zero values, and out-of-range exponents such as `1e1000`) are now rejected. Zero is accepted as a valid token amount, negative amounts are still rejected. The returned error now wraps both `ErrInvalidTokenValue` and the underlying binary-codec cause via `errors.Is`, preserving diagnostic context for callers.
+
+#### xrpl/wallet
+
+- `Sign` and `Multisign` now return `ErrNilTransaction` for nil transaction maps instead of panicking.
+- `Wallet.Sign` and `Wallet.Multisign` no longer mutate caller-provided transaction maps while adding signing fields.
+
+#### xrpl/websocket
+
+- `Batch` inner transaction autofill now validates inner accounts and supplied `NetworkID` values (both inner and outer) before filling missing fields, preventing partial mutation on syntactic validation errors. Type-only `NetworkID` failures return the new `ErrNetworkIDFieldIsNotAUint32` sentinel, `ErrNetworkIDFieldMismatch` is reserved for actual value disagreement. Note: this guarantee covers syntactic validation only, if a later `GetAccountInfo` call fails while filling sequences, earlier inner transactions may have already had `Fee` and `SigningPubKey` filled.
+- `NewClient` now logs a warning when configured with a remote non-TLS URL scheme. The warning was previously emitted from `ClientConfig.WithHost`, which fired once per fluent-setter call, it now fires exactly once per client. Bare-host inputs (e.g. `"s1.ripple.com:6006"`) are now detected instead of being misparsed as schemes. URL userinfo is removed before logging.
+- Serialized concurrent WebSocket reads in `Connection.ReadMessage`, matching gorilla/websocket's single-reader contract.
+- WebSocket client now caps inbound messages at 16 MiB by default to prevent unbounded memory growth from oversized server messages. Use `WithMaxResponseSize(0)` to disable the limit.
+- WebSocket reconnects now preserve the reconnect attempt budget until the connection receives a message, preventing immediate-close loops from bypassing `WithMaxReconnects`.
+- WebSocket reconnect now applies capped exponential backoff between attempts and consumes the full `WithMaxReconnects` budget before surfacing `ErrMaxReconnectionAttemptsReached`, instead of hot-looping and aborting on the first failed reconnect.
+- WebSocket request responses are now dispatched by request ID, preventing late or out-of-order responses from blocking unrelated requests. Concurrent request writes are serialized on the shared connection.
+- WebSocket handler registration no longer starts handler runner goroutines before the first active client lifecycle.
+- WebSocket lifecycle reset and cancellation now serialize context swaps, handler runner resets, and handler restarts, preventing concurrent connect/disconnect interleavings from leaving stale stream runners.
+- WebSocket lifecycle resets now wait for old stream runners to exit before starting replacements, preventing stale events from reaching fresh handlers after reconnect.
+- WebSocket stream and error handlers now run through lifecycle-bound handler goroutines, avoiding handler leaks across disconnects.
+- WebSocket stream handler registration and stale reader dispatch now use the active lifecycle context atomically, preventing reconnect races from leaving handlers dormant or routing old messages into fresh handlers.
+- WebSocket stream reports now snapshot the active handler when queued, preventing in-flight stream events from being delivered to a later replacement handler.
+- WebSocket subscription tests now wait for request IDs before sending mock responses, avoiding dropped-response flakes with per-ID dispatch.
+
+## [v0.1.19]
+
+### Fixed
+
+#### xrpl
+
+- Preserved `DeletedNode.PreviousFields` in transaction metadata so balance changes can be decoded for deleted ledger entries.
+
+## [v0.1.18]
+
+### Added
+
+#### xrpl
+
+- Added method `GetAccountObjects` and `GetAccountLines` to testutil `client` interface-
+- Added integration tests for `TrustSet` transaction
 - Added Dynamic MPT support for `MPTokenIssuanceCreate`:
   - `MutableFlags` field to declare which properties can be mutated after creation.
   - `DomainID` field to associate a permissioned domain (requires `TfMPTRequireAuth` flag).
@@ -71,56 +315,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - MutableFlags set/clear constant pairs: `TmfMPTSetCanLock`/`TmfMPTClearCanLock`, `TmfMPTSetRequireAuth`/`TmfMPTClearRequireAuth`, `TmfMPTSetCanEscrow`/`TmfMPTClearCanEscrow`, `TmfMPTSetCanTrade`/`TmfMPTClearCanTrade`, `TmfMPTSetCanTransfer`/`TmfMPTClearCanTransfer`, `TmfMPTSetCanClawback`/`TmfMPTClearCanClawback`.
   - Flag setter methods for all set/clear mutable flags.
   - Validation: mutual exclusivity between `Holder`/`Flags` and DynamicMPT fields, set/clear conflict detection, `TransferFee` + `ClearCanTransfer` conflict, `DomainID` format validation, no-op transaction detection.
-- Added XLS-96 confidential transfer support to `MPTokenIssuanceCreate`:
-  - `TfMPTCanConfidentialAmount` flag to enable confidential transfers for a token issuance.
-  - `TmfMPTCannotMutateCanConfidentialAmount` mutable flag to prevent changing the confidential amount flag after creation.
-  - Flag setter methods: `SetMPTCanConfidentialAmountFlag()`, `SetMPTCannotMutateCanConfidentialAmountFlag()`.
-- Added XLS-96 confidential transfer support to `MPTokenIssuanceSet`:
-  - `IssuerEncryptionKey` and `AuditorEncryptionKey` fields for setting issuer/auditor ElGamal public keys.
-  - `TmfMPTSetCanConfidentialAmount`/`TmfMPTClearCanConfidentialAmount` mutable flag pair with flag setter methods.
-  - Validation: `AuditorEncryptionKey` requires `IssuerEncryptionKey`, encryption key length validation (33-byte compressed), encryption keys mutually exclusive with `Holder`.
-- Added `EncryptionKey` helper function in `types` package.
-- Added `IsValidCompressedEncryptionKey` validation helper for 33-byte compressed EC public keys.
 - Added `MutableFlags` and `DomainID` fields to `MPTokenIssuance` ledger entry type with ledger-state mutable flags constants (`Lsmf` prefix) and flag setter methods.
 - Added `MutableFlags` helper function in `types` package.
-- Added XLS-96 confidential transfer fields to `MPToken` ledger entry type: `HolderEncryptionKey`, `IssuerEncryptedBalance`, `AuditorEncryptedBalance`, `ConfidentialBalanceInbox`, `ConfidentialBalanceSpending`, `ConfidentialBalanceVersion`.
-- Added XLS-96 confidential transfer fields to `MPTokenIssuance` ledger entry type: `LsfMPTCanConfidentialAmount` flag, `LsmfMPTCannotMutateCanConfidentialAmount` mutable flag, `IssuerEncryptionKey`, `AuditorEncryptionKey`, `ConfidentialOutstandingAmount`, and corresponding flag setter methods.
-- Added `ConfidentialMPTClawback` transaction type: allows issuer to reclaim a holder's entire confidential MPT balance with a ZK equality proof.
-- Added `ConfidentialMPTConvert` transaction type: converts public MPT balance into confidential (encrypted) balance using EC-ElGamal encryption, with optional holder key registration.
-- Added `ConfidentialMPTConvertBack` transaction type: converts confidential MPT balance back into public balance with a ZK proof of sufficient balance.
-- Added `ConfidentialMPTMergeInbox` transaction type: merges holder's confidential inbox balance into their spending balance.
-- Added `ConfidentialMPTSend` transaction type: sends confidential MPT between accounts with encrypted amounts for sender, destination, issuer, and optional auditor, verified by ZK proof.
-- Added `MPTPlainAmount` type for bare MPT token quantities with JSON string serialization.
-- Added `HexBlob` helper function in `types` package for optional hex blob fields.
-- Added confidential transfer validation helpers: `IsValidBlindingFactor`, `IsValidSchnorrProof`, `IsValidHexBlob`.
-
-#### xrpl/hash
-
-- Added `MPToken()` and `MPTokenIssuance()` ledger entry hash functions for computing MPToken and MPTokenIssuance keylet indices.
-- Extracted ledger space hex values into package-level constants.
+- Added integration tests for account transactions `AccountSet` and `AccountDelete`
+- Added integration test for permissioned domain transactions
+- Added integration test for check transactions `CheckCreate`, `CheckCash` and `CheckCancel`
+- Added integration tests for did transactions `DIDSet` and `DIDDelete`
+- Added integration test for credential transactions `CredentialAccept` and `CredentialDelete`
+- Added integration test for `DepositPreauth` transaction
+- Added integration test for escrow transactions.
+- Added integration test for payment and payment channels transactions.
+- Added integration test for vault transactions 
+- Added integration test for oracle transactions `OracleSet` and `OracleDelete`
+- Added integration test for NFT transaction `NFTModify`
+- Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`
+- Added `RippleTimeToUnixSeconds` function
+- Added `GetAMMInfo` query for both RPC and WebSocket clients
+- Added unit tests for `amm_info` request and response serialization
+- Added integration test for amm transactions
+- Added `pkg/decodehook` package with shared `JSON()` decode hook for `mapstructure`
+- Added `hash.PaymentChannel()` function to compute payment channel ID from source, destination, and sequence
+- Added `hash.MPTID()` function to compute MPT ID from sequence and issuer
+- Added `ObjectType` constants for `DID`, `MPToken`, `MPTIssuance`, `Oracle`, `PermissionedDomain`, and `Vault` in account objects query
 
 ### Changed
-
-#### docs
-
-- Changed the Docusaurus docs navigation to place `confidential` under a dedicated `Packages` section instead of surfacing it alongside the introduction docs, and added a `Packages` overview page.
 
 #### Makefile
 
 - Changed localnet rippled image to `develop`
 - Exposed RPC port in localnet command
+- Use `gotest` (colorized output) with fallback to `go test`
 
 ### Fixed
-
-#### confidential
-
-- Fixed confidential send proof verification to reject any proof whose length differs from the fixed 946-byte compact proof blob before passing it to the C verifier.
-- Fixed `VerifySendRangeProof()` docs and helper naming to match the current `mpt-crypto` contract, which expects the sender's original balance commitment.
-
-#### xrpl/transaction
-
-- Fixed `ConfidentialMPTConvert` to use compressed EC public key for `HolderEncryptionKey` field instead of uncompressed key.
-- Fixed confidential MPT transaction validation to enforce fixed `ZKProof` sizes for `ConfidentialMPTSend`, `ConfidentialMPTConvertBack`, and `ConfidentialMPTClawback`.
 
 #### xrpl
 
@@ -128,7 +354,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validate `MPTokenMetadata` length (max 1024 bytes) in `MPTokenIssuanceCreate` (previously only checked hex format).
 - Reject `MPTokenIssuanceSet` when `Holder` equals `Account` (`temMALFORMED` per rippled spec).
 - Validate `MPTokenIssuanceID` is valid hexadecimal in `MPTokenIssuanceSet`, `MPTokenIssuanceDestroy`, and `MPTokenAuthorize` (previously only checked non-empty).
-- Reject `MPTokenIssuanceSet` when encryption keys are provided together with `tmfMPTClearCanConfidentialAmount`.
+- `PaymentChannelCreate.Flatten()` and `PaymentChannelFund.Flatten()` now set `TransactionType` in flattened output.
+
+#### binary-codec
+
+- `UInt64` type now validates hex string length (max 16 chars) before padding, preventing silent overflow.
+
+#### xrpl/websocket
+
+- `GetResult` now composes a `jsonUnmarshalerHookFunc` alongside the existing `TextUnmarshallerHookFunc`, so any target type implementing `json.Unmarshaler` is decoded via its own `UnmarshalJSON` rather than by mapstructure directly.
+
+#### xrpl/queries/server/types
+
+- `State.ValidatorListExpires` remains a `string`; a custom `UnmarshalJSON` on `State` now accepts both a JSON string and a JSON number for that field, converting the number to its string representation. This fixes a crash when rippled returns `0` for `validator_list_expires` over WebSocket.
+
+#### xrpl/ledger-entry-types
+
+- Fixed `AuthAccount.Flatten()` storing `types.Address` without converting to `string`, causing binary codec serialization to fail.
+
+#### Makefile
+
+- Corrected localnet setup to automatically create ledgers periodically
 
 ### Removed
 
@@ -150,7 +396,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- **`BaseTx.Flatten()` now preserves `Sequence: 0` when `TicketSequence` is set.** Previously, the condition `if tx.Sequence != 0` caused `Sequence` to be omitted from the flattened transaction when its value was `0`. This caused `Autofill` to overwrite it with the account's current sequence number, resulting in both a non-zero `Sequence` and a `TicketSequence` being present — which the server rejects with `temSEQ_AND_TICKET`.
+- **`BaseTx.Flatten()` now preserves `Sequence: 0` when `TicketSequence` is set.** Previously, the condition `if tx.Sequence != 0` caused `Sequence` to be omitted from the flattened transaction when its value was `0`. This caused `Autofill` to overwrite it with the account's current sequence number, resulting in both a non-zero `Sequence` and a `TicketSequence` being present, which the server rejects with `temSEQ_AND_TICKET`.
 
 #### xrpl
 
@@ -189,7 +435,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `SignLoanSetByCounterpartyBlob` convenience wrapper that accepts a hex-encoded transaction blob.
 - Added `CombineLoanSetCounterpartySigners` to merge multiple counterparty multisig transactions into one.
 - Added `CombineLoanSetCounterpartySignersBlob` convenience wrapper that accepts hex-encoded transaction blobs.
-- Added integration test for full lending protocol lifecycle (VaultCreate → VaultDeposit → LoanBrokerSet → LoanSet with counterparty signing).
+- Added integration test for full lending protocol lifecycle (VaultCreate -> VaultDeposit -> LoanBrokerSet -> LoanSet with counterparty signing).
 
 ### Changed
 

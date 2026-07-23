@@ -35,9 +35,12 @@ func (a *AccountID) FromJSON(value any) ([]byte, error) {
 		return accountID, nil
 
 	case strings.HasPrefix(strValue, "X"):
-		accountID, _, _, err := addresscodec.DecodeXAddress(strValue)
+		accountID, _, hasTag, _, err := addresscodec.DecodeXAddress(strValue)
 		if err != nil {
 			return nil, err
+		}
+		if hasTag {
+			return nil, ErrAccountIDTagNotAllowed
 		}
 		return accountID, nil
 

@@ -42,8 +42,8 @@ type Tx interface {
 | `Fee` | Cost in drops (must be set before signing) |
 | `Sequence` | Account sequence number (0 if using a Ticket) |
 | `LastLedgerSequence` | Expiry ledger — always set to avoid stuck transactions |
-| `SigningPubKey` | Public key of the signer (set by `wallet.Sign`) |
-| `TxnSignature` | Signature (set by `wallet.Sign`) |
+| `SigningPubKey` | Public key of the signer, included in the signed blob produced by `wallet.Sign` |
+| `TxnSignature` | Signature, included in the signed blob produced by `wallet.Sign` |
 | `Signers` | Multi-signature entries |
 | `Memos` | Arbitrary attached data |
 | `Flags` | Bitmask of transaction-specific flags |
@@ -84,10 +84,10 @@ w, err := wallet.FromMnemonic("word1 word2 ...")
 ### Signing
 
 ```go
-// Single signature — sets SigningPubKey and TxnSignature on the tx map
+// Single signature — returns the signed blob and its hash; flatTx is not mutated
 txBlob, txHash, err := w.Sign(flatTx)
 
-// Multi-signature — sets SigningPubKey = "" and appends a Signer entry
+// Multi-signature — returns the signed blob and its hash; flatTx is not mutated
 txBlob, txHash, err := w.Multisign(flatTx)
 ```
 

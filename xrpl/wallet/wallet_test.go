@@ -1,9 +1,12 @@
 package wallet
 
 import (
+	"maps"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewWalletFromSeed(t *testing.T) {
@@ -212,18 +215,172 @@ func TestSign(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			original := maps.Clone(tc.tx)
+
 			txBlob, hash, err := tc.wallet.Sign(tc.tx)
-			if err != nil {
-				t.Fatalf("Error signing transaction: %v", err)
-			}
+			require.NoError(t, err)
 
-			if txBlob == "" {
-				t.Error("Expected non-empty txBlob, got empty string")
-			}
-
-			if hash == "" {
-				t.Error("Expected non-empty hash, got empty string")
-			}
+			assert.Equal(t, tc.expectedTxBlob, txBlob)
+			assert.Equal(t, tc.expectedHash, hash)
+			assert.Equal(t, original, tc.tx, "Sign must not mutate the input transaction map")
+			assert.NotContains(t, tc.tx, "TxnSignature", "Sign must not add TxnSignature to the input map")
 		})
 	}
+}
+
+func TestSignRejectsNilTransaction(t *testing.T) {
+	wallet := &Wallet{}
+
+	blob, hash, err := wallet.Sign(nil)
+
+	require.ErrorIs(t, err, ErrNilTransaction)
+	assert.Empty(t, blob)
+	assert.Empty(t, hash)
+}
+
+func TestMultisignDoesNotMutateInput(t *testing.T) {
+	wallet := &Wallet{
+		PublicKey:      "EDE5638D8055CCD45EBF7F5FFD59FC1703D6BC00800BBA19F158119DAA1A52A8D5",
+		PrivateKey:     "ED0A961B472E78B89F1AE6A7CC4FB55FD083B36661D3D124E1BA29998346AE1AA1",
+		ClassicAddress: "raJB6EHNSJa3jV7FqWNrAhcL6FEDE3PGc5",
+	}
+	tx := map[string]any{
+		"Account":         "raJB6EHNSJa3jV7FqWNrAhcL6FEDE3PGc5",
+		"TransactionType": "Payment",
+		"Amount":          "15",
+		"Destination":     "rDwvihpE48E48F8rvNrqTb2UGWv62xqYTg",
+		"Flags":           uint32(0),
+		"Fee":             "12",
+		"Sequence":        uint32(1798962),
+		"SigningPubKey":   "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+	}
+	original := maps.Clone(tx)
+
+	const expectedBlob = "120000220000000024001B733261400000000000000F68400000000000000C730081143A18A088CF12B2D3E51F47A75D2A9859EF61ECA78314858233827B488ECB8D0EB940E7AC85CE41E343CFF3E0107321EDE5638D8055CCD45EBF7F5FFD59FC1703D6BC00800BBA19F158119DAA1A52A8D57440F5F19EE8DEDC11F40DE59A9F18F6EF4FED39AD222A4A65271FDC2F9A7CFF70D185EA5F49536EDA24EE4D9B73FC376AFD01758C9F7CEB54F6EADC7E10DD23C60C81143A18A088CF12B2D3E51F47A75D2A9859EF61ECA7E1F1"
+	const expectedHash = "6AC79CD0EF2855667E8C77445CCA052515AC7F570E0CC20C142A4131D7BC1852"
+
+	blob, hash, err := wallet.Multisign(tx)
+	require.NoError(t, err)
+	assert.Equal(t, expectedBlob, blob)
+	assert.Equal(t, expectedHash, hash)
+
+	assert.Equal(t, original, tx, "Multisign must not mutate the input transaction map")
+	assert.NotContains(t, tx, "Signers", "Multisign must not add Signers to the input map")
+	assert.Equal(t, "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678", tx["SigningPubKey"], "Multisign must not overwrite SigningPubKey on the input map")
+}
+
+func TestMultisignRejectsNilTransaction(t *testing.T) {
+	wallet := &Wallet{}
+
+	blob, hash, err := wallet.Multisign(nil)
+
+	require.ErrorIs(t, err, ErrNilTransaction)
+	assert.Empty(t, blob)
+	assert.Empty(t, hash)
+}
+
+func TestEnsureClassicAddress(t *testing.T) {
+	testCases := []struct {
+		name        string
+		input       string
+		expected    types.Address
+		expectedErr error
+	}{
+		{
+			name:     "pass - classic address is returned unchanged",
+			input:    "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+			expected: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+		},
+		{
+			name:     "pass - x-address without tag is converted to classic",
+			input:    "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+			expected: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+		},
+		{
+			name:        "fail - x-address with explicit zero tag is rejected",
+			input:       "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2m4Er6SnvjVLpMWPjR",
+			expectedErr: ErrAddressHasTag,
+		},
+		{
+			name:        "fail - x-address with non-zero tag is rejected",
+			input:       "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGZMhc9YTE92ehJ2Fu",
+			expectedErr: ErrAddressHasTag,
+		},
+		{
+			name:     "pass - non-x-address string is returned unchanged",
+			input:    "not-a-valid-address",
+			expected: "not-a-valid-address",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ensureClassicAddress(tc.input)
+			if tc.expectedErr != nil {
+				require.ErrorIs(t, err, tc.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+// TestSignAndMultisignPreserveNestedSliceIdentity pins the shallow-copy contract:
+// nested slices in the input transaction are not deep-cloned, and after Sign or
+// Multisign the input map's nested values still reference the same underlying
+// arrays as before the call.
+func TestSignAndMultisignPreserveNestedSliceIdentity(t *testing.T) {
+	w := &Wallet{
+		PublicKey:      "EDE5638D8055CCD45EBF7F5FFD59FC1703D6BC00800BBA19F158119DAA1A52A8D5",
+		PrivateKey:     "ED0A961B472E78B89F1AE6A7CC4FB55FD083B36661D3D124E1BA29998346AE1AA1",
+		ClassicAddress: "raJB6EHNSJa3jV7FqWNrAhcL6FEDE3PGc5",
+	}
+	buildTx := func() (map[string]any, []any) {
+		memos := []any{
+			map[string]any{
+				"Memo": map[string]any{
+					"MemoType": "657363726F77",
+					"MemoData": "457363726F77206372656174656420666F72207061796D656E74",
+				},
+			},
+		}
+		return map[string]any{
+			"Account":         "raJB6EHNSJa3jV7FqWNrAhcL6FEDE3PGc5",
+			"TransactionType": "Payment",
+			"Amount":          "15",
+			"Destination":     "rDwvihpE48E48F8rvNrqTb2UGWv62xqYTg",
+			"Flags":           uint32(0),
+			"Fee":             "12",
+			"Sequence":        uint32(1798962),
+			"SigningPubKey":   "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			"Memos":           memos,
+		}, memos
+	}
+
+	t.Run("Sign", func(t *testing.T) {
+		tx, memosBefore := buildTx()
+		contentsBefore := []any{maps.Clone(memosBefore[0].(map[string]any))}
+
+		_, _, err := w.Sign(tx)
+		require.NoError(t, err)
+
+		memosAfter, ok := tx["Memos"].([]any)
+		require.True(t, ok, "Memos must still be []any in the input map")
+		assert.Same(t, &memosBefore[0], &memosAfter[0], "Sign must preserve nested slice identity (shallow copy)")
+		assert.Equal(t, contentsBefore, memosAfter, "Sign must not mutate nested slice contents")
+	})
+
+	t.Run("Multisign", func(t *testing.T) {
+		tx, memosBefore := buildTx()
+		contentsBefore := []any{maps.Clone(memosBefore[0].(map[string]any))}
+
+		_, _, err := w.Multisign(tx)
+		require.NoError(t, err)
+
+		memosAfter, ok := tx["Memos"].([]any)
+		require.True(t, ok, "Memos must still be []any in the input map")
+		assert.Same(t, &memosBefore[0], &memosAfter[0], "Multisign must preserve nested slice identity (shallow copy)")
+		assert.Equal(t, contentsBefore, memosAfter, "Multisign must not mutate nested slice contents")
+	})
 }

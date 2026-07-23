@@ -2,7 +2,11 @@
 // revive:disable:var-naming
 package types
 
-import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+import (
+	"encoding/json"
+
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+)
 
 // Info represents the server info response, including load, ledger, and network metrics.
 type Info struct {
@@ -87,6 +91,46 @@ type State struct {
 	ValidatedLedger         LedgerState          `json:"validated_ledger,omitzero"`
 	ValidationQuorum        uint                 `json:"validation_quorum"`
 	ValidatorListExpires    string               `json:"validator_list_expires,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler for State. It decodes all fields normally
+// except validator_list_expires, which the server may return as either a string or a
+// number (e.g. 0 when no expiry is set). Both representations are accepted and the
+// value is always stored as a string.
+func (s *State) UnmarshalJSON(data []byte) error {
+	// Alias breaks the recursion — it has the same fields but no UnmarshalJSON method.
+	type Alias State
+	aux := struct {
+		// ValidatorListExpires shadows the same-named field on Alias so the standard
+		// decoder fills this RawMessage instead of trying to put a number into a string.
+		ValidatorListExpires json.RawMessage `json:"validator_list_expires,omitempty"`
+		Alias
+	}{}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Copy all normally-decoded fields.
+	*s = State(aux.Alias)
+
+	// Handle validator_list_expires: accept a JSON string or any numeric value.
+	if len(aux.ValidatorListExpires) > 0 {
+		raw := aux.ValidatorListExpires
+		if raw[0] == '"' {
+			// JSON string — strip the surrounding quotes.
+			var str string
+			if err := json.Unmarshal(raw, &str); err != nil {
+				return err
+			}
+			s.ValidatorListExpires = str
+		} else {
+			// JSON number or other scalar — use the raw text as the string value.
+			s.ValidatorListExpires = string(raw)
+		}
+	}
+
+	return nil
 }
 
 // ClosedLedgerState contains metadata for a closed ledger, such as age, fees, and sequence.

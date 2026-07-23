@@ -3,6 +3,7 @@ package rpc
 import (
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/amm"
 	channel "github.com/Peersyst/xrpl-go/xrpl/queries/channel"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
@@ -82,17 +83,43 @@ func (c *Client) GetAccountLines(req *account.LinesRequest) (*account.LinesRespo
 // GetXrpBalance retrieves the XRP balance of a given account address.
 // It returns the balance as a string in XRP (not drops) and any error encountered.
 func (c *Client) GetXrpBalance(address types.Address) (string, error) {
+	return c.getXrpBalance(address, nil)
+}
+
+// GetXrpBalanceValidated retrieves the XRP balance of a given account address
+// from the most recently validated ledger. It returns the balance as a string
+// in XRP (not drops) and any error encountered.
+func (c *Client) GetXrpBalanceValidated(address types.Address) (string, error) {
+	return c.getXrpBalance(address, common.Validated)
+}
+
+// GetXrpDropsBalanceValidated retrieves the XRP balance of a given account
+// address from the most recently validated ledger in drops. Prefer this over
+// GetXrpBalanceValidated when callers need integer drops (avoids a round-trip
+// through a decimal XRP string).
+func (c *Client) GetXrpDropsBalanceValidated(address types.Address) (types.XRPCurrencyAmount, error) {
+	return c.getXrpDropsBalance(address, common.Validated)
+}
+
+func (c *Client) getXrpBalance(address types.Address, ledgerIndex common.LedgerSpecifier) (string, error) {
+	balance, err := c.getXrpDropsBalance(address, ledgerIndex)
+	if err != nil {
+		return "", err
+	}
+	return currency.DropsToXrp(balance.String())
+}
+
+// getXrpDropsBalance returns the account's XRP balance in drops at the given
+// ledger specifier. A nil ledgerIndex lets rippled apply its default.
+func (c *Client) getXrpDropsBalance(address types.Address, ledgerIndex common.LedgerSpecifier) (types.XRPCurrencyAmount, error) {
 	res, err := c.GetAccountInfo(&account.InfoRequest{
-		Account: address,
+		Account:     address,
+		LedgerIndex: ledgerIndex,
 	})
 	if err != nil {
-		return "", err
+		return 0, err
 	}
-	xrpBalance, err := currency.DropsToXrp(res.AccountData.Balance.String())
-	if err != nil {
-		return "", err
-	}
-	return xrpBalance, nil
+	return res.AccountData.Balance, nil
 }
 
 // GetAccountNFTs retrieves a list of NFTs owned by an account on the XRP Ledger.
@@ -533,6 +560,24 @@ func (c *Client) GetAggregatePrice(req *oracle.GetAggregatePriceRequest) (*oracl
 		return nil, err
 	}
 	var lr oracle.GetAggregatePriceResponse
+	err = res.GetResult(&lr)
+	if err != nil {
+		return nil, err
+	}
+	return &lr, nil
+}
+
+// AMM queries
+
+// GetAMMInfo retrieves information about an AMM instance.
+// It takes an InfoRequest as input and returns an InfoResponse,
+// along with any error encountered.
+func (c *Client) GetAMMInfo(req *amm.InfoRequest) (*amm.InfoResponse, error) {
+	res, err := c.Request(req)
+	if err != nil {
+		return nil, err
+	}
+	var lr amm.InfoResponse
 	err = res.GetResult(&lr)
 	if err != nil {
 		return nil, err

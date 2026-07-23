@@ -11,18 +11,22 @@ const config: Config = {
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
-  url: "https://peersyst.github.io",
+  url: "https://xrplf.github.io",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/xrpl-go",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: "Peersyst", // Usually your GitHub org/user name.
+  organizationName: "XRPLF", // Usually your GitHub org/user name.
   projectName: "xrpl-go", // Usually your repo name.
 
   onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "warn",
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: "warn",
+    },
+  },
 
   deploymentBranch: "gh-pages",
   trailingSlash: false,
@@ -41,11 +45,12 @@ const config: Config = {
       {
         docs: {
           sidebarPath: require.resolve("./sidebars.ts"),
-          editUrl: "https://github.com/Peersyst/xrpl-go/tree/main/docs",
+          editUrl: "https://github.com/XRPLF/xrpl-go/tree/main/docs",
 
           // Custom sidebar items generator check /src/theme/sidebar/sidebarLabelGenerator.ts
           sidebarItemsGenerator: sidebarLabelGenerator,
         },
+        blog: false,
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },
@@ -59,6 +64,7 @@ const config: Config = {
       {
         hashed: true,
         docsRouteBasePath: "/docs",
+        indexBlog: false,
       },
     ],
     [
@@ -100,20 +106,18 @@ const config: Config = {
               type: "docSidebar",
               sidebarId: "changelogSidebar1",
               docsPluginId: "changelogPlugin",
+              label: "v0.2.x",
+            },
+            {
+              type: "docSidebar",
+              sidebarId: "changelogSidebar2",
+              docsPluginId: "changelogPlugin",
               label: "v0.1.x",
             },
-            // Uncomment in sidebarsChangelog.ts changelog2 line to enable the second changelog version
-            // add the next major version files in ./changelog/v0.2.x
-            //   {
-            //     type: "docSidebar",
-            //     sidebarId: "changelogSidebar2",
-            //     docsPluginId: "changelogPlugin",
-            //     label: "v0.2.x",
-            //   },
           ],
         },
         {
-          href: "https://github.com/Peersyst/xrpl-go",
+          href: "https://github.com/XRPLF/xrpl-go",
           label: "GitHub",
           position: "right",
         },
@@ -143,7 +147,7 @@ const config: Config = {
             },
             {
               label: "Changelog",
-              to: "changelog/v0.1.x/changelog", // When adding a new changelog version, update this path
+              to: "changelog/v0.2.x/changelog",
             },
           ],
         },
@@ -152,7 +156,7 @@ const config: Config = {
           items: [
             {
               label: "GitHub",
-              href: "https://github.com/Peersyst/xrpl-go",
+              href: "https://github.com/XRPLF/xrpl-go",
             },
             {
               label: "Reference",

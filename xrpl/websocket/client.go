@@ -2,11 +2,14 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -15,7 +18,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	transaction "github.com/Peersyst/xrpl-go/xrpl/transaction"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
@@ -29,6 +32,7 @@ import (
 	ws "github.com/gorilla/websocket"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
+	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
 const (
@@ -47,49 +51,136 @@ const (
 	RequiredNetworkIDVersion = "1.11.0"
 )
 
+var (
+	fundWalletMaxAttempts  = 20
+	fundWalletPollInterval = 1 * time.Second
+)
+
 // Client is a WebSocket client for interacting with an XRPL server.
 type Client struct {
 	cfg  ClientConfig
 	conn *Connection
 
 	// Channels
-	errChan          chan error
-	requestChan      chan *ClientResponse
-	ledgerClosedChan chan *streamtypes.LedgerStream
-	validationChan   chan *streamtypes.ValidationStream
-	transactionChan  chan *streamtypes.TransactionStream
-	peerStatusChan   chan *streamtypes.PeerStatusStream
-	orderBookChan    chan *streamtypes.OrderBookStream
-	bookChangesChan  chan *streamtypes.BookChangesStream
-	consensusChan    chan *streamtypes.ConsensusStream
+	errorStream        lifecycleStream[error]
+	ledgerClosedStream lifecycleStream[*streamtypes.LedgerStream]
+	validationStream   lifecycleStream[*streamtypes.ValidationStream]
+	transactionStream  lifecycleStream[*streamtypes.TransactionStream]
+	peerStatusStream   lifecycleStream[*streamtypes.PeerStatusStream]
+	orderBookStream    lifecycleStream[*streamtypes.OrderBookStream]
+	bookChangesStream  lifecycleStream[*streamtypes.BookChangesStream]
+	consensusStream    lifecycleStream[*streamtypes.ConsensusStream]
 
-	idCounter atomic.Uint32
+	// streamHandlerStateMu protects ctx, cancel, and coordinated start/reset
+	// operations on the registered lifecycleStream runners.
+	streamHandlerStateMu sync.Mutex
+	// streamHandlerResetMu serializes full lifecycle resets while old stream
+	// handler runners are waited on outside streamHandlerStateMu.
+	streamHandlerResetMu sync.Mutex
+	ctx                  context.Context
+	cancel               context.CancelFunc
+	pendingResponsesMu   sync.Mutex
+	pendingResponses     map[uint64]chan *ClientResponse
+
+	idCounter atomic.Uint64
 	NetworkID uint32
 }
 
 // NewClient creates a new WebSocket client using the provided ClientConfig.
 // This client will open and close a websocket connection for each request.
 func NewClient(cfg ClientConfig) *Client {
+	clientconfig.WarnIfInsecureScheme("websocket", cfg.host)
+
+	// Pre-canceled so handlers registered before Connect are deferred to the
+	// first lifecycle reset, and any stray reportError before Connect is dropped.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
 	return &Client{
-		cfg:         cfg,
-		requestChan: make(chan *ClientResponse),
-		errChan:     make(chan error),
-		conn:        NewConnection(cfg.host),
+		cfg:              cfg,
+		pendingResponses: make(map[uint64]chan *ClientResponse),
+		conn:             newConnection(cfg.host, cfg.maxResponseSize),
+		ctx:              ctx,
+		cancel:           cancel,
 	}
 }
 
+// resetLifecycle cancels the current lifecycle, waits for existing handler
+// runners to exit, then starts a fresh lifecycle. Lock order is
+// streamHandlerResetMu -> streamHandlerStateMu, streamHandlerStateMu is
+// released across waitForHandlerRunners so Report callers (which acquire
+// streamHandlerStateMu) cannot deadlock the runners they are draining.
+func (c *Client) resetLifecycle() context.Context {
+	c.streamHandlerResetMu.Lock()
+	defer c.streamHandlerResetMu.Unlock()
+
+	c.streamHandlerStateMu.Lock()
+
+	c.cancel()
+	doneChannels := c.resetHandlerRunners()
+	c.streamHandlerStateMu.Unlock()
+
+	waitForHandlerRunners(doneChannels)
+
+	c.streamHandlerStateMu.Lock()
+	defer c.streamHandlerStateMu.Unlock()
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+	ctx := c.ctx
+	c.startRegisteredHandlers(ctx)
+
+	return ctx
+}
+
+// lifecycleContext returns the current lifecycle context under
+// streamHandlerStateMu.
+func (c *Client) lifecycleContext() context.Context {
+	c.streamHandlerStateMu.Lock()
+	defer c.streamHandlerStateMu.Unlock()
+
+	return c.ctx
+}
+
+// cancelLifecycle cancels the current lifecycle and clears registered handler
+// runners under streamHandlerStateMu. It does not wait for runners to exit:
+// Disconnect is supported from inside a stream handler, where waiting would
+// deadlock the calling runner. Orphaned runners exit asynchronously when they
+// observe ctx.Done.
+func (c *Client) cancelLifecycle() {
+	c.streamHandlerStateMu.Lock()
+	defer c.streamHandlerStateMu.Unlock()
+
+	c.cancel()
+	c.resetHandlerRunners()
+}
+
 // Connect opens a websocket connection to the server. It starts reading messages in a goroutine.
+// Do not call Connect synchronously from a stream or error handler. If a handler
+// needs to reconnect, start Connect in a separate goroutine or coordinate it
+// outside the handler callback.
 func (c *Client) Connect() error {
 	err := c.conn.Connect()
 	if err != nil {
 		return err
 	}
-	go c.readMessages()
+	ctx := c.resetLifecycle()
+	go c.readMessages(ctx)
 	return nil
 }
 
-// Disconnect closes the websocket connection.
+// Disconnect closes the websocket connection and cancels the current client
+// lifecycle, including registered handler runners, even when no connection is
+// currently open. Disconnect does not wait for runners or readMessages to
+// exit: doing so would deadlock when Disconnect is called from inside a
+// stream handler. The lifecycle context is canceled and handler runners are
+// detached so they drain asynchronously, and the readMessages goroutine is
+// unblocked by the socket close performed by conn.Disconnect rather than by
+// context cancellation. On* registrations themselves persist across
+// Disconnect, a subsequent successful Connect restarts handler runners
+// against the new lifecycle (and resetLifecycle waits for the previous
+// runners before starting fresh ones). Callers must serialize concurrent
+// calls to Connect and Disconnect externally.
 func (c *Client) Disconnect() error {
+	c.cancelLifecycle()
 	return c.conn.Disconnect()
 }
 
@@ -109,8 +200,11 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 		return err
 	}
 
-	err := c.setTransactionFlags(tx)
-	if err != nil {
+	if err := tx.RequireTransactionType(); err != nil {
+		return err
+	}
+
+	if err := tx.NormalizeFlags(); err != nil {
 		return err
 	}
 
@@ -178,19 +272,48 @@ func (c *Client) AutofillMultisigned(tx *transaction.FlatTransaction, nSigners u
 	return nil
 }
 
-// FundWallet funds a wallet with XRP from the faucet.
-// If the wallet does not have a classic address, it will return an error.
+// FundWallet funds a wallet with XRP from the faucet and polls the validated
+// ledger until the account's balance increases. It returns
+// ErrFundWalletBalanceNotUpdated if the balance fails to update within the
+// poll window. If the wallet does not have a classic address, it returns an
+// error.
 func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 	if wallet.ClassicAddress == "" {
 		return ErrCannotFundWalletWithoutClassicAddress
 	}
 
-	err := c.cfg.faucetProvider.FundWallet(wallet.ClassicAddress)
-	if err != nil {
+	// Starting balance. An error here (typically actNotFound for a
+	// brand-new account) is treated as a zero balance so polling can still
+	// detect the faucet deposit.
+	startBalance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
+	if err != nil && !isFundWalletActNotFound(err) {
 		return err
 	}
 
-	return nil
+	if err := c.cfg.faucetProvider.FundWallet(wallet.ClassicAddress); err != nil {
+		return err
+	}
+
+	for range fundWalletMaxAttempts {
+		time.Sleep(fundWalletPollInterval)
+		balance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
+		if err != nil {
+			if isFundWalletActNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if balance > startBalance {
+			return nil
+		}
+	}
+
+	return ErrFundWalletBalanceNotUpdated
+}
+
+func isFundWalletActNotFound(err error) bool {
+	var wsErr *ErrorWebsocketClientXrplResponse
+	return errors.As(err, &wsErr) && wsErr.Type == actNotFound
 }
 
 // Request sends a request to the server and returns the response.
@@ -204,28 +327,27 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 
 	id := c.idCounter.Add(1)
 
-	msg, err := c.formatRequest(req, int(id), nil)
+	msg, err := c.formatRequest(req, id, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if !c.IsConnected() {
-		return nil, ErrNotConnectedToServer
-	}
+	responseChan := c.registerPendingResponse(id)
+	defer c.unregisterPendingResponse(id)
 
 	err = c.conn.WriteMessage(msg)
 	if err != nil {
+		if errors.Is(err, ErrNotConnected) {
+			return nil, ErrNotConnectedToServer
+		}
 		return nil, err
 	}
 
-	res, err := c.awaitResponse(int(id))
+	res, err := c.awaitResponse(responseChan)
 	if err != nil {
 		return nil, err
 	}
 
-	if res.ID != int(id) {
-		return nil, ErrIncorrectID
-	}
 	if err := res.CheckError(); err != nil {
 		return nil, err
 	}
@@ -421,7 +543,7 @@ func (c *Client) submitRequest(req *requests.SubmitRequest) (*requests.SubmitRes
 	return &subRes, nil
 }
 
-func (c *Client) formatRequest(req interfaces.Request, id int, marker any) ([]byte, error) {
+func (c *Client) formatRequest(req interfaces.Request, id uint64, marker any) ([]byte, error) {
 	m := make(map[string]any)
 	m["id"] = id
 	m["command"] = req.Method()
@@ -529,7 +651,7 @@ func (c *Client) getFeeXrp(cushion float32) (string, error) {
 	}
 
 	// Round fee to NUM_DECIMAL_PLACES
-	roundedFee := float32(math.Round(float64(fee)*math.Pow10(int(currency.MaxFractionLength)))) / float32(math.Pow10(int(currency.MaxFractionLength)))
+	roundedFee := float32(math.Round(float64(fee)*math.Pow10(currency.MaxFractionLength))) / float32(math.Pow10(currency.MaxFractionLength))
 
 	// Convert the rounded fee back to a string with NUM_DECIMAL_PLACES
 	return fmt.Sprintf("%.*f", currency.MaxFractionLength, roundedFee), nil
@@ -671,144 +793,194 @@ func (c *Client) checkPaymentAmounts(tx *transaction.FlatTransaction) error {
 	return nil
 }
 
-// Sets a transaction's flags to its numeric representation.
-// TODO: Add flag support for AMMDeposit, AMMWithdraw,
-// NFTTOkenCreateOffer, NFTokenMint, OfferCreate, XChainModifyBridge (not supported).
-func (c *Client) setTransactionFlags(tx *transaction.FlatTransaction) error {
-	flags, ok := (*tx)["Flags"].(uint32)
-	if !ok && flags > 0 {
-		(*tx)["Flags"] = int(0)
-		return nil
-	}
+func (c *Client) registerPendingResponse(id uint64) chan *ClientResponse {
+	responseChan := make(chan *ClientResponse, 1)
 
-	_, ok = (*tx)["TransactionType"].(string)
-	if !ok {
-		return ErrTransactionTypeMissing
-	}
+	c.pendingResponsesMu.Lock()
+	defer c.pendingResponsesMu.Unlock()
 
-	return nil
+	c.pendingResponses[id] = responseChan
+
+	return responseChan
 }
 
-func (c *Client) awaitResponse(id int) (*ClientResponse, error) {
-	for {
-		select {
-		case res := <-c.requestChan:
-			if res.ID == id {
-				return res, nil
-			}
-		case <-time.After(c.cfg.timeout):
-			return nil, ErrRequestTimedOut
-		}
+func (c *Client) unregisterPendingResponse(id uint64) {
+	c.pendingResponsesMu.Lock()
+	defer c.pendingResponsesMu.Unlock()
+
+	delete(c.pendingResponses, id)
+}
+
+func (c *Client) lookupPendingResponse(id uint64) (chan *ClientResponse, bool) {
+	c.pendingResponsesMu.Lock()
+	defer c.pendingResponsesMu.Unlock()
+
+	responseChan, ok := c.pendingResponses[id]
+	return responseChan, ok
+}
+
+func (c *Client) awaitResponse(responseChan <-chan *ClientResponse) (*ClientResponse, error) {
+	timer := time.NewTimer(c.cfg.timeout)
+	defer timer.Stop()
+
+	select {
+	case res := <-responseChan:
+		return res, nil
+	case <-timer.C:
+		return nil, ErrRequestTimedOut
 	}
 }
 
-func (c *Client) handleMessage(message []byte) {
+func (c *Client) handleMessage(ctx context.Context, message []byte) {
 	var stream wstypes.Message
-	c.unmarshalMessage(message, &stream)
+	c.unmarshalMessage(ctx, message, &stream)
 	if stream.IsRequest() {
-		c.handleRequest(message)
+		c.handleRequest(ctx, message)
 	} else if stream.IsStream() {
-		c.handleStream(stream.Type, message)
+		c.handleStream(ctx, stream.Type, message)
 	}
 }
 
-func (c *Client) handleRequest(message []byte) {
+func (c *Client) handleRequest(ctx context.Context, message []byte) {
 	var res ClientResponse
-	c.unmarshalMessage(message, &res)
-	c.requestChan <- &res
-}
+	c.unmarshalMessage(ctx, message, &res)
+	responseChan, ok := c.lookupPendingResponse(res.ID)
+	if !ok {
+		return
+	}
 
-func (c *Client) unmarshalMessage(message []byte, v any) {
-	if err := json.Unmarshal(message, v); err != nil {
-		if c.errChan == nil {
-			c.errChan = make(chan error)
-		}
-		c.errChan <- err
+	// Non-blocking send: drops duplicate or late responses for the same id
+	// rather than blocking the read loop.
+	select {
+	case responseChan <- &res:
+	default:
 	}
 }
 
-func (c *Client) handleStream(t streamtypes.Type, message []byte) {
+func (c *Client) unmarshalMessage(ctx context.Context, message []byte, v any) {
+	if err := json.Unmarshal(message, v); err != nil {
+		c.reportError(ctx, err)
+	}
+}
+
+func (c *Client) handleStream(ctx context.Context, t streamtypes.Type, message []byte) {
 	switch t {
 	case streamtypes.LedgerStreamType:
 		var ledger streamtypes.LedgerStream
-		c.unmarshalMessage(message, &ledger)
-
-		if c.ledgerClosedChan != nil {
-			c.ledgerClosedChan <- &ledger
-		}
+		c.unmarshalMessage(ctx, message, &ledger)
+		c.reportLedgerClosed(ctx, &ledger)
 	case streamtypes.TransactionStreamType:
 		var transactionStream streamtypes.TransactionStream
-		c.unmarshalMessage(message, &transactionStream)
-		if c.transactionChan != nil {
-			c.transactionChan <- &transactionStream
-		}
+		c.unmarshalMessage(ctx, message, &transactionStream)
+		c.reportTransaction(ctx, &transactionStream)
 	case streamtypes.ValidationStreamType:
 		var validation streamtypes.ValidationStream
-		c.unmarshalMessage(message, &validation)
-		if c.validationChan != nil {
-			c.validationChan <- &validation
-		}
+		c.unmarshalMessage(ctx, message, &validation)
+		c.reportValidationReceived(ctx, &validation)
 	case streamtypes.PeerStatusStreamType:
 		var peerStatus streamtypes.PeerStatusStream
-		c.unmarshalMessage(message, &peerStatus)
-		if c.peerStatusChan != nil {
-			c.peerStatusChan <- &peerStatus
-		}
+		c.unmarshalMessage(ctx, message, &peerStatus)
+		c.reportPeerStatusChange(ctx, &peerStatus)
 	case streamtypes.ConsensusStreamType:
 		var consensus streamtypes.ConsensusStream
-		c.unmarshalMessage(message, &consensus)
-		if c.consensusChan != nil {
-			c.consensusChan <- &consensus
-		}
+		c.unmarshalMessage(ctx, message, &consensus)
+		c.reportConsensusPhase(ctx, &consensus)
 	default:
-		if c.errChan == nil {
-			c.errChan = make(chan error)
-		}
-		c.errChan <- ErrUnknownStreamType{
+		c.reportError(ctx, ErrUnknownStreamType{
 			Type: t,
-		}
+		})
 	}
 }
 
-func (c *Client) readMessages() {
+// reconnectBaseDelay and reconnectMaxDelay control the capped exponential
+// backoff applied between reconnect attempts in readMessages. They are vars
+// (not consts) so tests can shrink the wait without exposing a public knob.
+var (
+	reconnectBaseDelay = 1 * time.Second
+	reconnectMaxDelay  = 30 * time.Second
+)
+
+func (c *Client) readMessages(ctx context.Context) {
 	retryCount := 0
 	maxRetries := c.cfg.maxReconnects
 
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		if c.conn == nil {
 			return
 		}
 		message, err := c.conn.ReadMessage()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		switch {
 		case ws.IsCloseError(err) || ws.IsUnexpectedCloseError(err):
-			if retryCount >= maxRetries {
-				if c.errChan == nil {
-					c.errChan = make(chan error)
-				}
-				c.errChan <- ErrMaxReconnectionAttemptsReached{
-					Attempts: maxRetries,
-				}
-				return
-			}
-			retryCount++
-			connErr := c.conn.Connect()
-			if connErr != nil {
-				if c.errChan == nil {
-					c.errChan = make(chan error)
-				}
-				c.errChan <- connErr
+			if !c.reconnectWithBackoff(ctx, &retryCount, maxRetries) {
 				return
 			}
 		case err != nil:
-			c.errChan <- err
+			c.reportError(ctx, err)
 			return
 		default:
 			// Send the message to the channel
-			c.handleMessage(message)
+			c.handleMessage(ctx, message)
 			// Reset retry count on successful message
 			retryCount = 0
 		}
 	}
+}
+
+// reconnectWithBackoff retries c.conn.Connect() with capped exponential
+// backoff until it succeeds or the budget is exhausted. Returns true on
+// success and false when the budget is exhausted or ctx is cancelled.
+// retryCount is updated in place so it persists across disconnect events.
+func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxRetries int) bool {
+	for {
+		if *retryCount >= maxRetries {
+			c.reportError(ctx, ErrMaxReconnectionAttemptsReached{
+				Attempts: maxRetries,
+			})
+			return false
+		}
+		*retryCount++
+
+		timer := time.NewTimer(reconnectDelay(*retryCount))
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return false
+		case <-timer.C:
+		}
+
+		if connErr := c.conn.Connect(); connErr != nil {
+			continue
+		}
+		return true
+	}
+}
+
+// reconnectDelay returns reconnectBaseDelay * 2^(attempt-1), capped at
+// reconnectMaxDelay. attempt is 1-indexed.
+func reconnectDelay(attempt int) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	backoff := reconnectBaseDelay
+	for i := 1; i < attempt && backoff < reconnectMaxDelay; i++ {
+		backoff *= 2
+	}
+	if backoff > reconnectMaxDelay {
+		return reconnectMaxDelay
+	}
+	return backoff
 }
 
 // getSignedTx ensures the transaction is fully signed and returns the transaction blob.
@@ -885,7 +1057,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 		// Make ledger_entry request
 		res, err := c.GetLedgerEntry(&ledger.EntryRequest{
 			Index:       loanBrokerID,
-			LedgerIndex: common.LedgerTitle("validated"),
+			LedgerIndex: common.LedgerTitle("current"),
 		})
 		if err != nil {
 			return 0, err
@@ -906,7 +1078,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 	// Fetch account info with signer lists
 	accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
 		Account:     counterparty,
-		LedgerIndex: common.LedgerTitle("validated"),
+		LedgerIndex: common.LedgerTitle("current"),
 		SignerLists: true,
 	})
 	if err != nil {
@@ -971,40 +1143,49 @@ func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (uint64, er
 	return totalFees, nil
 }
 
-func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
-	needsNetworkID, err := c.txNeedsNetworkID()
-	if err != nil {
-		return err
-	}
+type validatedInnerTx struct {
+	rawTx   map[string]any
+	account string
+}
 
+func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
 	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
 		return ErrRawTransactionsFieldIsNotAnArray
 	}
 
-	accountSeq := make(map[string]uint32, len(rawTxs))
+	var outerNetworkID *uint32
+	if outer := (*tx)["NetworkID"]; outer != nil {
+		outerNetworkIDUint, ok := outer.(uint32)
+		if !ok {
+			return ErrNetworkIDFieldIsNotAUint32
+		}
+		if outerNetworkIDUint != c.NetworkID {
+			return ErrNetworkIDFieldMismatch
+		}
+		outerNetworkID = &outerNetworkIDUint
+	}
 
+	inners := make([]validatedInnerTx, 0, len(rawTxs))
 	for _, rawTx := range rawTxs {
 		innerRawTx, ok := rawTx["RawTransaction"].(map[string]any)
 		if !ok {
 			return ErrRawTransactionFieldIsNotAnObject
 		}
 
-		// Validate `Fee` field
-		if innerRawTx["Fee"] == nil {
-			innerRawTx["Fee"] = "0"
-		} else if innerRawTx["Fee"] != "0" {
+		acc, ok := innerRawTx["Account"].(string)
+		if !ok {
+			return ErrAccountFieldIsNotAString
+		}
+
+		if fee := innerRawTx["Fee"]; fee != nil && fee != "0" {
 			return types.ErrBatchInnerTransactionInvalid
 		}
 
-		// Validate `SigningPubKey` field
-		if innerRawTx["SigningPubKey"] == nil {
-			innerRawTx["SigningPubKey"] = ""
-		} else if innerRawTx["SigningPubKey"] != "" {
+		if signingPubKey := innerRawTx["SigningPubKey"]; signingPubKey != nil && signingPubKey != "" {
 			return ErrSigningPubKeyFieldMustBeEmpty
 		}
 
-		// Validate `TxnSignature` field
 		if innerRawTx["TxnSignature"] != nil {
 			return ErrTxnSignatureFieldMustBeEmpty
 		}
@@ -1012,18 +1193,45 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 			return ErrSignersFieldMustBeEmpty
 		}
 
-		// Validate `NetworkID` field
+		if networkID := innerRawTx["NetworkID"]; networkID != nil {
+			innerNetworkID, ok := networkID.(uint32)
+			if !ok {
+				return ErrNetworkIDFieldIsNotAUint32
+			}
+			if innerNetworkID != c.NetworkID {
+				return ErrNetworkIDFieldMismatch
+			}
+			if outerNetworkID != nil && innerNetworkID != *outerNetworkID {
+				return ErrNetworkIDFieldMismatch
+			}
+		}
+
+		inners = append(inners, validatedInnerTx{rawTx: innerRawTx, account: acc})
+	}
+
+	needsNetworkID, err := c.txNeedsNetworkID()
+	if err != nil {
+		return err
+	}
+
+	accountSeq := make(map[string]uint32, len(inners))
+
+	for _, inner := range inners {
+		innerRawTx := inner.rawTx
+		if innerRawTx["Fee"] == nil {
+			innerRawTx["Fee"] = "0"
+		}
+
+		if innerRawTx["SigningPubKey"] == nil {
+			innerRawTx["SigningPubKey"] = ""
+		}
+
 		if innerRawTx["NetworkID"] == nil && needsNetworkID {
 			innerRawTx["NetworkID"] = c.NetworkID
 		}
 
-		// Validate `Sequence` field
 		if innerRawTx["Sequence"] == nil && innerRawTx["TicketSequence"] == nil {
-
-			acc, ok := innerRawTx["Account"].(string)
-			if !ok {
-				return ErrAccountFieldIsNotAString
-			}
+			acc := inner.account
 
 			if accountSeq[acc] != 0 {
 				innerRawTx["Sequence"] = accountSeq[acc]

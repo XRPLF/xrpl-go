@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -49,12 +50,16 @@ func (*EscrowCreate) TxType() TxType {
 }
 
 // Flatten returns the flattened map of the EscrowCreate transaction.
+// Optional or unset fields are omitted, callers must run Validate to enforce
+// presence of required fields before signing.
 func (e *EscrowCreate) Flatten() FlatTransaction {
 	flattened := e.BaseTx.Flatten()
 
 	flattened["TransactionType"] = "EscrowCreate"
 
-	flattened["Amount"] = e.Amount.Flatten()
+	if e.Amount != nil {
+		flattened["Amount"] = e.Amount.Flatten()
+	}
 
 	if e.Destination != "" {
 		flattened["Destination"] = e.Destination.String()
@@ -113,12 +118,25 @@ func (e *EscrowCreate) Validate() (bool, error) {
 		return false, err
 	}
 
+	if ok, err := IsAmount(e.Amount, "Amount", true); !ok {
+		return false, err
+	}
+
+	if e.Amount.IsZero() {
+		return false, ErrEscrowCreateZeroAmount
+	}
+
 	if !addresscodec.IsValidAddress(e.Destination.String()) {
 		return false, ErrEscrowCreateInvalidDestinationAddress
 	}
 
 	if (e.FinishAfter == 0 && e.CancelAfter == 0) || (e.Condition == "" && e.FinishAfter == 0) {
 		return false, ErrEscrowCreateNoConditionOrFinishAfterSet
+	}
+
+	// Condition is a Blob field, so the hex string must encode whole bytes (even length).
+	if e.Condition != "" && !typecheck.IsHexBlob(e.Condition) {
+		return false, ErrEscrowCreateInvalidCondition
 	}
 
 	return true, nil

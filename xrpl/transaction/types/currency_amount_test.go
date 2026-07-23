@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIssuedCurrencyAmount_IsZero(t *testing.T) {
+func TestIssuedCurrencyAmount_IsEmpty(t *testing.T) {
 	tests := []struct {
 		name string
 		ica  IssuedCurrencyAmount
@@ -52,9 +52,36 @@ func TestIssuedCurrencyAmount_IsZero(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.ica.IsZero(); got != tt.want {
-				t.Errorf("IssuedCurrencyAmount.IsZero() = %v, want %v", got, tt.want)
+			if got := tt.ica.IsEmpty(); got != tt.want {
+				t.Errorf("IssuedCurrencyAmount.IsEmpty() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestCurrencyAmount_IsZero(t *testing.T) {
+	tests := []struct {
+		name   string
+		amount CurrencyAmount
+		want   bool
+	}{
+		{name: "XRP - zero", amount: XRPCurrencyAmount(0), want: true},
+		{name: "XRP - non-zero", amount: XRPCurrencyAmount(1), want: false},
+		{name: "IOU - zero", amount: IssuedCurrencyAmount{Value: "0"}, want: true},
+		{name: "IOU - zero with sign and decimals", amount: IssuedCurrencyAmount{Value: "-0.000"}, want: true},
+		{name: "IOU - non-zero", amount: IssuedCurrencyAmount{Value: "100"}, want: false},
+		// 1e-400 underflows IEEE-754 to 0.0 but is non-zero in the textual decimal.
+		{name: "IOU - underflow non-zero", amount: IssuedCurrencyAmount{Value: "1e-400"}, want: false},
+		{name: "IOU - in-spec minimum 1e-96", amount: IssuedCurrencyAmount{Value: "1e-96"}, want: false},
+		{name: "IOU - invalid value", amount: IssuedCurrencyAmount{Value: "not-a-number"}, want: false},
+		{name: "MPT - zero", amount: MPTCurrencyAmount{Value: "0"}, want: true},
+		{name: "MPT - non-zero", amount: MPTCurrencyAmount{Value: "42"}, want: false},
+		{name: "MPT - invalid value", amount: MPTCurrencyAmount{Value: "abc"}, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.amount.IsZero())
 		})
 	}
 }

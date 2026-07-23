@@ -63,12 +63,39 @@ func TestDecode(t *testing.T) {
 			expectedOutput: []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 			expectedErr:    nil,
 		},
+		{
+			name:           "fail - invalid base58 character",
+			input:          "0",
+			inputPrefix:    []byte{AccountAddressPrefix},
+			expectedOutput: nil,
+			expectedErr:    ErrInvalidFormat,
+		},
+		{
+			name:           "fail - invalid checksum",
+			input:          "rrrrrrrrrrrrrrrrrp9U13c",
+			inputPrefix:    []byte{AccountAddressPrefix},
+			expectedOutput: nil,
+			expectedErr:    ErrChecksum,
+		},
+		{
+			name:           "fail - decoded payload shorter than prefix",
+			input:          Base58CheckEncode(nil, AccountAddressPrefix),
+			inputPrefix:    []byte{AccountAddressPrefix, AccountPublicKeyPrefix},
+			expectedOutput: nil,
+			expectedErr:    ErrB58PrefixMismatch,
+		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			res, _ := Decode(tc.input, tc.inputPrefix)
-			require.Equal(t, tc.expectedOutput, res)
+			res, err := Decode(tc.input, tc.inputPrefix)
+
+			if tc.expectedErr != nil {
+				require.ErrorIs(t, err, tc.expectedErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedOutput, res)
+			}
 		})
 	}
 }
@@ -240,7 +267,7 @@ func TestDecodeSeed(t *testing.T) {
 			input:             "yurt",
 			expectedOutput:    nil,
 			expectedAlgorithm: crypto.ED25519(),
-			expectedErr:       errors.New("invalid seed; could not determine encoding algorithm"),
+			expectedErr:       ErrInvalidSeed,
 		},
 		{
 			name:              "fail - unsuccessful decode - invalid seed",
@@ -248,6 +275,34 @@ func TestDecodeSeed(t *testing.T) {
 			expectedOutput:    nil,
 			expectedAlgorithm: nil,
 			expectedErr:       ErrInvalidSeed,
+		},
+		{
+			name:              "fail - checksum valid decoded payload with length 1",
+			input:             Base58CheckEncode(nil, FamilySeedPrefix),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedLength,
+		},
+		{
+			name:              "fail - checksum valid secp256k1 seed with short entropy",
+			input:             Base58CheckEncode([]byte{0x00}, FamilySeedPrefix),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedLength,
+		},
+		{
+			name:              "fail - checksum valid ED25519 seed with short entropy",
+			input:             Base58CheckEncode([]byte{0x00}, crypto.ED25519().FamilySeedPrefix()...),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedLength,
+		},
+		{
+			name:              "fail - checksum valid unknown seed prefix",
+			input:             Base58CheckEncode([]byte("random"), 0x22),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedPrefix,
 		},
 	}
 
@@ -299,6 +354,13 @@ func TestDecodeAddressToAccountID(t *testing.T) {
 		{
 			name:              "fail - unsuccessful decode - 2",
 			input:             "davidschwartz",
+			expectedPrefix:    nil,
+			expectedAccountID: nil,
+			expectedErr:       ErrInvalidClassicAddress,
+		},
+		{
+			name:              "fail - valid checksum with non-account prefix",
+			input:             Base58CheckEncode([]byte{0x88, 0xa5, 0xa5, 0x7c, 0x82, 0x9f, 0x40, 0xf2, 0x5e, 0xa8, 0x33, 0x85, 0xbb, 0xde, 0x6c, 0x3d, 0x8b, 0x4c, 0xa0, 0x82}, AccountPublicKeyPrefix),
 			expectedPrefix:    nil,
 			expectedAccountID: nil,
 			expectedErr:       ErrInvalidClassicAddress,
@@ -377,6 +439,11 @@ func TestIsValidClassicAddress(t *testing.T) {
 			input:    "yurt",
 			expected: false,
 		},
+		{
+			name:     "fail - valid checksum with non-account prefix",
+			input:    Base58CheckEncode([]byte{0x88, 0xa5, 0xa5, 0x7c, 0x82, 0x9f, 0x40, 0xf2, 0x5e, 0xa8, 0x33, 0x85, 0xbb, 0xde, 0x6c, 0x3d, 0x8b, 0x4c, 0xa0, 0x82}, AccountPublicKeyPrefix),
+			expected: false,
+		},
 	}
 
 	for _, tc := range tt {
@@ -442,7 +509,7 @@ func TestDecodeNodePublicKey(t *testing.T) {
 			name:           "fail - length error",
 			input:          "rfZG9pC1cKF7q96TNZR264H9ykzKCxMyk44ZK8hFL8cNv1G3c8J",
 			expectedOutput: nil,
-			expectedErr:    errors.New("b58string prefix and typeprefix not equal"),
+			expectedErr:    ErrB58PrefixMismatch,
 		},
 	}
 
@@ -451,7 +518,7 @@ func TestDecodeNodePublicKey(t *testing.T) {
 			res, err := DecodeNodePublicKey(tc.input)
 
 			if tc.expectedErr != nil {
-				require.EqualError(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedOutput, res)
@@ -512,7 +579,7 @@ func TestDecodeAccountPublicKey(t *testing.T) {
 			name:        "fail - length error",
 			input:       "nHU75pVH2Tak7adBWNP3H2CU3wcUtSgf45sKrd1uGyFyRcTozXNm",
 			output:      nil,
-			expectedErr: errors.New("b58string prefix and typeprefix not equal"),
+			expectedErr: ErrB58PrefixMismatch,
 		},
 	}
 
@@ -521,7 +588,7 @@ func TestDecodeAccountPublicKey(t *testing.T) {
 			res, err := DecodeAccountPublicKey(tc.input)
 
 			if tc.expectedErr != nil {
-				require.EqualError(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.output, res)

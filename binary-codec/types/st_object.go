@@ -131,7 +131,7 @@ func createFieldInstanceMapFromJson(json map[string]any) (map[definitions.FieldI
 		}
 
 		// Decode X-address
-		classicAddr, tag, _, err := addresscodec.XAddressToClassicAddress(strVal)
+		classicAddr, tag, hasTag, _, err := addresscodec.XAddressToClassicAddress(strVal)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode X-address for field %s: %w", k, err)
 		}
@@ -140,7 +140,7 @@ func createFieldInstanceMapFromJson(json map[string]any) (map[definitions.FieldI
 		processedJSON[k] = classicAddr
 
 		// If there's an embedded tag, add it as SourceTag or DestinationTag
-		if tag != 0 {
+		if hasTag {
 			var tagFieldName string
 			switch k {
 			case "Destination":
@@ -148,14 +148,11 @@ func createFieldInstanceMapFromJson(json map[string]any) (map[definitions.FieldI
 			case "Account":
 				tagFieldName = "SourceTag"
 			default:
-				return nil, fmt.Errorf("%s cannot have an associated tag", k)
+				return nil, fmt.Errorf("%w: %s", ErrAccountIDTagNotAllowed, k)
 			}
 
-			// Check for duplicate tags
-			if existingTag, exists := processedJSON[tagFieldName]; exists {
-				if existingTag != tag {
-					return nil, fmt.Errorf("duplicate %s: X-address tag (%d) does not match existing tag (%v)", tagFieldName, tag, existingTag)
-				}
+			if existing, exists := processedJSON[tagFieldName]; exists {
+				return nil, fmt.Errorf("%w: %s X-address has embedded tag %d but %s=%v is also set", ErrDuplicateXAddressTag, k, tag, tagFieldName, existing)
 			}
 			processedJSON[tagFieldName] = tag
 		}

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,9 +39,24 @@ func TestVerifyXrpValue(t *testing.T) {
 			expErr: nil,
 		},
 		{
+			name:   "pass - valid xrp value - zero drops",
+			input:  "0",
+			expErr: nil,
+		},
+		{
+			name:   "pass - valid xrp value - max drops",
+			input:  "100000000000000000",
+			expErr: nil,
+		},
+		{
 			name:   "pass - valid xrp value - no decimal - negative value",
 			input:  "-125000708",
 			expErr: &InvalidAmountError{Amount: "-125000708"},
+		},
+		{
+			name:   "fail - invalid xrp value - above max drops",
+			input:  "100000000000000001",
+			expErr: &InvalidAmountError{Amount: "100000000000000001"},
 		},
 	}
 	for _, tt := range tests {
@@ -56,24 +72,162 @@ func TestVerifyXrpValue(t *testing.T) {
 
 func TestVerifyIOUValue(t *testing.T) {
 	tests := []struct {
-		name   string
-		input  string
-		expErr error
+		name      string
+		input     string
+		expIsZero bool
+		expErr    error
 	}{
 		{
-			name:   "pass - valid iou value with decimal",
-			input:  "3.6",
-			expErr: nil,
+			name:  "pass - valid iou value with decimal",
+			input: "3.6",
 		},
 		{
-			name:   "pass - valid iou value - leading zero after decimal",
-			input:  "345.023857",
-			expErr: nil,
+			name:  "pass - valid iou value - leading zero after decimal",
+			input: "345.023857",
 		},
 		{
-			name:   "pass - valid iou value - negative value & multiple leading zeros before decimal",
+			name:  "pass - valid iou value - negative value",
+			input: "-0.2345",
+		},
+		{
+			name:      "pass - canonical zero",
+			input:     "0",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - zero in decimal form",
+			input:     "0.0",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - signed zero",
+			input:     "-0",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - signed zero in decimal form",
+			input:     "-0.0",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - zero with exponent",
+			input:     "0e5",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - signed zero with exponent",
+			input:     "-0e5",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - signed zero with fractional zeros",
+			input:     "-0.00",
+			expIsZero: true,
+		},
+		{
+			name:      "pass - zero with many fractional zeros",
+			input:     "0.00000000000000000000000",
+			expIsZero: true,
+		},
+		{
+			name:   "fail - invalid iou value - leading zeros before decimal",
 			input:  "-000.2345",
-			expErr: nil,
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - invalid iou value - leading space",
+			input:  " 1",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - invalid iou value - trailing characters",
+			input:  "1abc",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - invalid iou value - prefixed characters",
+			input:  "abc1",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - invalid iou value - comma",
+			input:  "1,2",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - NaN literal",
+			input:  "NaN",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - Inf literal",
+			input:  "Inf",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - +Inf literal",
+			input:  "+Inf",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - -Inf literal",
+			input:  "-Inf",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - hex float",
+			input:  "0x1p10",
+			expErr: bigdecimal.ErrInvalidCharacter{Allowed: bigdecimal.AllowedCharacters},
+		},
+		{
+			name:   "fail - empty value",
+			input:  "",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - bare minus sign",
+			input:  "-",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - leading plus sign",
+			input:  "+1",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - trailing decimal point",
+			input:  "1.",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - leading decimal point",
+			input:  ".5",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - missing exponent digits",
+			input:  "1e",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - missing exponent digits with plus sign",
+			input:  "1e+",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - missing exponent digits with minus sign",
+			input:  "1e-",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - missing mantissa with exponent",
+			input:  "-e5",
+			expErr: ErrInvalidStringNumber,
+		},
+		{
+			name:   "fail - bare signed decimal point",
+			input:  "-.",
+			expErr: ErrInvalidStringNumber,
 		},
 		{
 			name:   "fail - invalid iou value - out of range precision",
@@ -94,14 +248,22 @@ func TestVerifyIOUValue(t *testing.T) {
 			input:  "1e-113",
 			expErr: &OutOfRangeError{Type: "Exponent"},
 		},
+		{
+			name:   "fail - exponent far out of range",
+			input:  "1e1000",
+			expErr: &OutOfRangeError{Type: "Exponent"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := verifyIOUValue(tt.input)
+			isZero, err := VerifyIOUValue(tt.input)
 			if tt.expErr != nil {
+				require.Error(t, err)
 				require.EqualError(t, tt.expErr, err.Error())
+				require.False(t, isZero)
 			} else {
 				require.NoError(t, err)
+				require.Equal(t, tt.expIsZero, isZero)
 			}
 		})
 	}
@@ -201,7 +363,13 @@ func TestSerializeXrpAmount(t *testing.T) {
 			expErr:         nil,
 		},
 		{
-			name:           "boundary test - max xrp value",
+			name:           "boundary test - max drops",
+			input:          "100000000000000000",
+			expectedOutput: []byte{0x41, 0x63, 0x45, 0x78, 0x5d, 0x8a, 0x00, 0x00},
+			expErr:         nil,
+		},
+		{
+			name:           "boundary test - 10 billion XRP in drops",
 			input:          "10000000000000000",
 			expectedOutput: []byte{0x40, 0x23, 0x86, 0xf2, 0x6f, 0xc1, 0x00, 0x00},
 			expErr:         nil,
@@ -240,10 +408,28 @@ func TestSerializeIssuedCurrencyValue(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name:        "fail - invalid zero value",
+			name:        "pass - canonical zero value",
 			input:       "0",
-			expected:    nil,
-			expectedErr: bigdecimal.ErrInvalidZeroValue,
+			expected:    []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - canonical zero value - decimal form",
+			input:       "0.0",
+			expected:    []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - canonical zero value - signed",
+			input:       "-0",
+			expected:    []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - canonical zero value - exponent form",
+			input:       "0e5",
+			expected:    []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
 		},
 		{
 			name:        "pass - valid value - 2",
@@ -292,6 +478,12 @@ func TestSerializeIssuedCurrencyValue(t *testing.T) {
 			input:       "9999999999999999e80",
 			expected:    []byte{0xec, 0x63, 0x86, 0xf2, 0x6f, 0xc0, 0xff, 0xff},
 			expectedErr: nil,
+		},
+		{
+			name:        "fail - non-canonical leading-zero mantissa",
+			input:       "00.5",
+			expected:    nil,
+			expectedErr: ErrInvalidStringNumber,
 		},
 	}
 	for _, tt := range tests {
@@ -930,22 +1122,15 @@ func TestAmount_FromJson(t *testing.T) {
 			expPass:  false,
 		},
 		{
-			name: "pass - issued currency value as float64",
+			name: "fail - issued currency value as float64",
 			input: map[string]any{
 				"value":    float64(10000000000000000),
 				"currency": "USD",
 				"issuer":   "rweYz56rfmQ98cAdRaeTxQS9wVMGnrdsFp",
 			},
-			expected: []byte{
-				0xd8, 0x83, 0x8d, 0x7e, 0xa4, 0xc6, 0x80, 0x00,
-				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-				0x00, 0x00, 0x00, 0x00, 0x55, 0x53, 0x44, 0x00,
-				0x00, 0x00, 0x00, 0x00, 0x69, 0xd3, 0x3b, 0x18,
-				0xd5, 0x33, 0x85, 0xf8, 0xa3, 0x18, 0x55, 0x16,
-				0xc2, 0xed, 0xa5, 0xde, 0xdb, 0x8a, 0xc5, 0xc6,
-			},
-			err:     nil,
-			expPass: true,
+			expected: nil,
+			err:      errFloat64AmountValue,
+			expPass:  false,
 		},
 		{
 			name: "pass - issued currency value as json.Number",
@@ -966,19 +1151,14 @@ func TestAmount_FromJson(t *testing.T) {
 			expPass: true,
 		},
 		{
-			name: "pass - mpt currency value as float64",
+			name: "fail - mpt currency value as float64",
 			input: map[string]any{
 				"value":           float64(1000000),
 				"mpt_issuance_id": "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF",
 			},
-			expected: []byte{
-				0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x42, 0x40,
-				0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF,
-				0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF,
-				0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF,
-			},
-			err:     nil,
-			expPass: true,
+			expected: nil,
+			err:      errFloat64AmountValue,
+			expPass:  false,
 		},
 		{
 			name: "pass - mpt currency value as json.Number",
@@ -1007,6 +1187,73 @@ func TestAmount_FromJson(t *testing.T) {
 			} else {
 				require.Error(t, err)
 			}
+		})
+	}
+}
+
+func TestAmount_FromJson_JSONNumberValuePrecision(t *testing.T) {
+	testcases := []struct {
+		name  string
+		value string
+	}{
+		{
+			name:  "safe value matches exact string",
+			value: "1000",
+		},
+		{
+			name:  "unsafe value matches exact string",
+			value: "9007199254740993",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			expected, err := (&Amount{}).FromJSON(map[string]any{
+				"value":    tc.value,
+				"currency": "USD",
+				"issuer":   "rweYz56rfmQ98cAdRaeTxQS9wVMGnrdsFp",
+			})
+			require.NoError(t, err)
+
+			actual, err := (&Amount{}).FromJSON(map[string]any{
+				"value":    json.Number(tc.value),
+				"currency": "USD",
+				"issuer":   "rweYz56rfmQ98cAdRaeTxQS9wVMGnrdsFp",
+			})
+			require.NoError(t, err)
+			require.Equal(t, expected, actual)
+		})
+	}
+}
+
+func TestAmount_FromJson_RejectsFloat64Value(t *testing.T) {
+	testcases := []struct {
+		name  string
+		value string
+	}{
+		{
+			name:  "safe value is rejected",
+			value: "1000",
+		},
+		{
+			name:  "unsafe value is rejected",
+			value: "9007199254740993",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			var input map[string]any
+			err := json.Unmarshal(fmt.Appendf(nil, `{
+				"value": %s,
+				"currency": "USD",
+				"issuer": "rweYz56rfmQ98cAdRaeTxQS9wVMGnrdsFp"
+			}`, tc.value), &input)
+			require.NoError(t, err)
+			require.IsType(t, float64(0), input["value"])
+
+			_, err = (&Amount{}).FromJSON(input)
+			require.ErrorIs(t, err, errFloat64AmountValue)
 		})
 	}
 }
@@ -1110,6 +1357,107 @@ func TestAmount_ToJson(t *testing.T) {
 	}
 }
 
+func TestAmount_ToJSONEnforcesCanonicalIOUValue(t *testing.T) {
+	defs := definitions.Get()
+	tests := []struct {
+		name        string
+		exponent    int
+		mantissa    uint64
+		expectedErr error
+	}{
+		{
+			name:        "fail - zero mantissa outside zero sentinel",
+			exponent:    0,
+			mantissa:    0,
+			expectedErr: errInvalidAmountValue,
+		},
+		{
+			name:        "fail - mantissa below canonical range",
+			exponent:    MaxIOUExponent,
+			mantissa:    MinIOUMantissa - 1,
+			expectedErr: errInvalidAmountValue,
+		},
+		{
+			name:        "fail - mantissa above canonical range",
+			exponent:    0,
+			mantissa:    MaxIOUMantissa + 1,
+			expectedErr: errInvalidAmountValue,
+		},
+		{
+			name:        "fail - exponent below canonical range",
+			exponent:    MinIOUExponent - 1,
+			mantissa:    MinIOUMantissa,
+			expectedErr: &OutOfRangeError{Type: "Exponent"},
+		},
+		{
+			name:        "fail - exponent above canonical range",
+			exponent:    MaxIOUExponent + 1,
+			mantissa:    MinIOUMantissa,
+			expectedErr: &OutOfRangeError{Type: "Exponent"},
+		},
+		{
+			name:        "pass - min exponent and min mantissa",
+			exponent:    MinIOUExponent,
+			mantissa:    MinIOUMantissa,
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - max exponent and max mantissa",
+			exponent:    MaxIOUExponent,
+			mantissa:    MaxIOUMantissa,
+			expectedErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := serdes.NewBinaryParser(issuedCurrencyAmountBytes(tt.exponent, tt.mantissa), defs)
+
+			actual, err := (&Amount{}).ToJSON(parser)
+
+			if tt.expectedErr != nil {
+				require.Nil(t, actual)
+				require.Equal(t, tt.expectedErr, err)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, actual)
+		})
+	}
+}
+
+func issuedCurrencyAmountBytes(exponent int, mantissa uint64) []byte {
+	serial := uint64(ZeroCurrencyAmountHex) // Set the not-XRP bit and start from the issued-currency zero pattern.
+	serial |= PosSignBitMask                // Set the positive sign bit so these fixtures only vary exponent and mantissa.
+	serial |= uint64(exponent+97) << 54     // Store the XRPL biased exponent in bits 54 through 61.
+	serial |= mantissa                      // Store the mantissa in the low 54 bits.
+
+	valueBytes := make([]byte, NativeAmountByteLength) // Allocate the 8-byte issued-currency value prefix.
+	binary.BigEndian.PutUint64(valueBytes, serial)     // Encode the 64-bit value in XRPL wire byte order.
+
+	currencyBytes := []byte{ // Build the 20-byte standard currency slot for USD.
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		'U', 'S', 'D', // Bytes 12 through 14 contain the standard currency code.
+		0x00, 0x00, 0x00, 0x00, 0x00,
+	}
+	issuerBytes := []byte{ // AccountID bytes for rweYz56rfmQ98cAdRaeTxQS9wVMGnrdsFp.
+		0x69, 0xd3, 0x3b, 0x18,
+		0xd5, 0x33, 0x85, 0xf8,
+		0xa3, 0x18, 0x55, 0x16,
+		0xc2, 0xed, 0xa5, 0xde,
+		0xdb, 0x8a, 0xc5, 0xc6,
+	}
+
+	data := make([]byte, 0, CurrencyAmountByteLength)
+	data = append(data, valueBytes...)
+	data = append(data, currencyBytes...)
+	data = append(data, issuerBytes...)
+
+	return data // Return value + currency + issuer in the binary amount layout.
+}
+
 // TestValueToString covers all branches of valueToString
 func TestValueToString(t *testing.T) {
 	tests := []struct {
@@ -1120,11 +1468,11 @@ func TestValueToString(t *testing.T) {
 	}{
 		{"pass - string", "foo", "foo", false},
 		{"pass - json.Number", json.Number("123.45"), "123.45", false},
-		{"pass - float64 integer", float64(42), "42", false},
-		{"pass - float64 decimal", float64(3.14), "3.14", false},
-		{"pass - float64 negative", float64(-2.5), "-2.5", false},
-		{"pass - float64 zero", float64(0), "0", false},
-		{"pass - float64 large integer", float64(1000000), "1000000", false},
+		{"fail - float64 integer", float64(42), "", true},
+		{"fail - float64 decimal", float64(3.14), "", true},
+		{"fail - float64 negative", float64(-2.5), "", true},
+		{"fail - float64 zero", float64(0), "", true},
+		{"fail - float64 large integer", float64(1000000), "", true},
 		{"fail - unsupported int", int(7), "", true},
 		{"fail - unsupported int64", int64(8), "", true},
 		{"fail - unsupported uint64", uint64(9), "", true},
@@ -1138,7 +1486,6 @@ func TestValueToString(t *testing.T) {
 			got, err := valueToString(tc.input)
 			if tc.expErr {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), "unsupported type")
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.exp, got)
