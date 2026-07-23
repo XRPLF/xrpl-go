@@ -7,11 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### docs
+
+- Added confidential MPT documentation covering the CGo requirement, package layout, transaction types, and high-level builders.
+
+#### confidential
+
+- Added CGo bindings and vendored native libraries for XRPLF `mpt-crypto`, with a `!cgo` fallback and maintainer tooling for dependency updates.
+- Added hex-string APIs for ElGamal encryption, Pedersen commitments, context hashes, and zero-knowledge proof generation and verification.
+- Added `test-confidential` and `update-mpt-crypto` Makefile targets and an automated dependency-update workflow.
+
+#### confidential/builder
+
+- Added online `Build*` and offline `Prepare*` helpers for confidential MPT send, convert, convert-back, clawback, and inbox-merge transactions.
+
+#### pkg/hexutil
+
+- Added `DecodeFixedHex()` to decode hexadecimal values and enforce their decoded byte length.
+
+#### binary-codec
+
+- Added XLS-96 confidential MPT fields and transaction definitions for `ConfidentialMPTSend`, `ConfidentialMPTConvert`, `ConfidentialMPTConvertBack`, `ConfidentialMPTMergeInbox`, and `ConfidentialMPTClawback`.
+
+#### xrpl
+
+- Added confidential-transfer flags and encryption-key fields to MPT issuance transaction and ledger-entry models.
+- Added confidential balance fields to `MPToken`, five confidential MPT transaction models, and supporting amount, encryption-key, hex-blob, blinding-factor, and proof validation helpers.
+
+#### xrpl/hash
+
+- Added `MPToken()` and `MPTokenIssuance()` helpers for computing MPT ledger-entry keylet indexes.
+
 ### Changed
 
 #### dependencies
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
+
+### Fixed
+
+#### confidential
+
+- Tightened participant and fixed-size proof validation before invoking the native verifier, and aligned proof helper naming with the current `mpt-crypto` contract.
+
+#### xrpl/transaction
+
+- Corrected confidential transaction key encoding and proof-size validation.
+- Rejected `MPTokenIssuanceSet` transactions that combine encryption keys with `tmfMPTClearCanConfidentialAmount`.
 
 ## [v0.2.0]
 

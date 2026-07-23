@@ -167,6 +167,47 @@ func (a *XRPCurrencyAmount) UnmarshalText(data []byte) error {
 	return nil
 }
 
+// MPTPlainAmount represents a bare MPT token quantity as a uint64.
+// Unlike MPTCurrencyAmount, it does not carry an issuance ID — use it for
+// transaction fields where the MPTokenIssuanceID is a separate field.
+type MPTPlainAmount uint64
+
+// Uint64 returns the MPT amount as a uint64.
+func (a MPTPlainAmount) Uint64() uint64 {
+	return uint64(a)
+}
+
+func (a MPTPlainAmount) String() string {
+	return strconv.FormatUint(uint64(a), 10)
+}
+
+// Kind returns the CurrencyKind for MPTPlainAmount.
+func (MPTPlainAmount) Kind() CurrencyKind {
+	return MPT
+}
+
+// Flatten returns the MPT amount as a decimal string.
+func (a MPTPlainAmount) Flatten() any {
+	return a.String()
+}
+
+// MarshalJSON serializes the MPT amount as a JSON string.
+func (a MPTPlainAmount) MarshalJSON() ([]byte, error) {
+	s := strconv.FormatUint(uint64(a), 10)
+	return json.Marshal(s)
+}
+
+// UnmarshalText parses a text representation into an MPTPlainAmount.
+// encoding/json automatically calls UnmarshalText for JSON strings.
+func (a *MPTPlainAmount) UnmarshalText(data []byte) error {
+	v, err := strconv.ParseUint(string(data), 10, 64)
+	if err != nil {
+		return err
+	}
+	*a = MPTPlainAmount(v)
+	return nil
+}
+
 // MPTCurrencyAmount represents a multi-party token currency amount with issuance ID and value.
 type MPTCurrencyAmount struct {
 	MPTIssuanceID string `json:"mpt_issuance_id"`

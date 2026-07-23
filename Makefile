@@ -1,7 +1,7 @@
 .PHONY: lint test benchmark
 
-EXCLUDED_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces)
-EXCLUDED_COVERAGE_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces)
+EXCLUDED_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential)
+EXCLUDED_COVERAGE_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential)
 
 INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration
 
@@ -102,5 +102,17 @@ coverage-unit:
 
 benchmark:
 	@echo "Running Go benchmarks..."
-	@$(GOTEST) -bench=. ./...
+	@$(GOTEST) -bench=. $(EXCLUDED_TEST_PACKAGES)
 	@echo "Benchmarks complete!"
+
+################################################################################
+######################### CONFIDENTIAL MPT #####################################
+################################################################################
+
+test-confidential:
+	@echo "Running confidential MPT tests (CGo required)..."
+	@CGO_ENABLED=1 go test ./confidential/... -v -timeout $(TEST_TIMEOUT)
+	@echo "Confidential tests complete!"
+
+update-mpt-crypto:
+	@bash confidential/deps/update.sh

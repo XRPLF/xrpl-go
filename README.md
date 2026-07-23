@@ -120,6 +120,7 @@ See [`examples/send-xrp/rpc`](examples/send-xrp/rpc) for a longer payment exampl
 | --- | --- |
 | `address-codec` | Encode and decode XRPL classic addresses and X-addresses |
 | `binary-codec` | Encode and decode XRPL objects and transactions in canonical binary format |
+| `confidential` | Build XLS-96 confidential MPT transactions and use CGo-backed cryptographic primitives |
 | `keypairs` | Generate seeds, derive keypairs, sign payloads, and verify signatures |
 | `xrpl/rpc` | Send JSON-RPC requests, autofill transactions, submit transactions, and fund Testnet or Devnet wallets |
 | `xrpl/websocket` | Connect to WebSocket servers, make requests, submit transactions, and subscribe to ledger streams |
@@ -132,6 +133,7 @@ See [`examples/send-xrp/rpc`](examples/send-xrp/rpc) for a longer payment exampl
 - [Use the RPC client](https://xrplf.github.io/xrpl-go/docs/xrpl/rpc)
 - [Use the WebSocket client](https://xrplf.github.io/xrpl-go/docs/xrpl/websocket)
 - [Build transactions](https://xrplf.github.io/xrpl-go/docs/xrpl/transaction)
+- [Build confidential MPT transactions](https://xrplf.github.io/xrpl-go/docs/confidential)
 - [Learn XRPL concepts and protocol rules](https://xrpl.org/docs)
 
 ## Security and audits
