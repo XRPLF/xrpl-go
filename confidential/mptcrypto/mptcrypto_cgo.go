@@ -109,13 +109,19 @@ func EncryptAmount(amount uint64, pubkey [PubKeySize]byte, bf [BlindingFactorSiz
 }
 
 // DecryptAmount decrypts a 66-byte ElGamal ciphertext using a private key.
-// Returns the plaintext uint64 amount.
-func DecryptAmount(ciphertext [CiphertextSize]byte, privkey [PrivKeySize]byte) (uint64, error) {
+// It searches the inclusive [rangeLow, rangeHigh] interval with linear cost.
+func DecryptAmount(ciphertext Ciphertext, privateKey PrivateKey, rangeLow, rangeHigh uint64) (uint64, error) {
+	if err := validateAmountRange(rangeLow, rangeHigh); err != nil {
+		return 0, err
+	}
+
 	var amount C.uint64_t
 	ret := C.mpt_decrypt_amount(
 		uint8Ptr(&ciphertext[0]),
-		uint8Ptr(&privkey[0]),
+		uint8Ptr(&privateKey[0]),
 		&amount,
+		C.uint64_t(rangeLow),
+		C.uint64_t(rangeHigh),
 	)
 	if ret != 0 {
 		return 0, fmt.Errorf("mpt_decrypt_amount failed with code %d", ret)

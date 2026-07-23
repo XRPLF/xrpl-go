@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
 
 package mptcrypto_test
 
@@ -49,38 +49,57 @@ func TestGenerateBlindingFactor(t *testing.T) {
 	require.NotEqual(t, bf1, bf2, "two consecutive blinding factors are identical")
 }
 
-func TestEncryptDecryptRoundtrip(t *testing.T) {
-	tests := []struct {
-		name   string
-		amount uint64
-		// skipOnDecryptErr skips the subtest instead of failing when the C
-		// library cannot recover the plaintext (BSGS table limitation).
-		skipOnDecryptErr bool
-	}{
-		{"pass - zero", 0, false},
-		{"pass - small value", 42, false},
-		{"pass - one million", 1_000_000, false},
-		{"pass - max uint64", math.MaxUint64, true},
-	}
+func TestDecryptAmountBounds(t *testing.T) {
+	const amount uint64 = 42
 
-	priv, pub, err := mptcrypto.GenerateKeypair()
+	privateKey, publicKey, err := mptcrypto.GenerateKeypair()
 	require.NoError(t, err)
+	blindingFactor, err := mptcrypto.GenerateBlindingFactor()
+	require.NoError(t, err)
+	ciphertext, err := mptcrypto.EncryptAmount(amount, publicKey, blindingFactor)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		rangeLow  uint64
+		rangeHigh uint64
+		wantErr   bool
+	}{
+		{name: "pass - found at lower bound", rangeLow: amount, rangeHigh: 50},
+		{name: "pass - found at upper bound", rangeLow: 40, rangeHigh: amount},
+		{name: "pass - found inside range", rangeLow: 40, rangeHigh: 50},
+		{name: "pass - single-value interval", rangeLow: amount, rangeHigh: amount},
+		{name: "fail - amount below range", rangeLow: 43, rangeHigh: 50, wantErr: true},
+		{name: "fail - amount above range", rangeLow: 0, rangeHigh: 41, wantErr: true},
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bf, err := mptcrypto.GenerateBlindingFactor()
-			require.NoError(t, err)
-
-			ct, err := mptcrypto.EncryptAmount(tt.amount, pub, bf)
-			require.NoError(t, err)
-			require.NotEqual(t, [mptcrypto.CiphertextSize]byte{}, ct, "ciphertext is all zeros")
-
-			got, err := mptcrypto.DecryptAmount(ct, priv)
-			if err != nil && tt.skipOnDecryptErr {
-				t.Skipf("DecryptAmount not supported for this value: %v", err)
+			got, err := mptcrypto.DecryptAmount(ciphertext, privateKey, tt.rangeLow, tt.rangeHigh)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.amount, got)
+			require.Equal(t, amount, got)
+		})
+	}
+}
+
+func TestDecryptAmountInvalidRange(t *testing.T) {
+	tests := []struct {
+		name      string
+		rangeLow  uint64
+		rangeHigh uint64
+	}{
+		{name: "fail - low exceeds high", rangeLow: 2, rangeHigh: 1},
+		{name: "fail - high is max uint64", rangeLow: 0, rangeHigh: math.MaxUint64},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := mptcrypto.DecryptAmount(mptcrypto.Ciphertext{}, mptcrypto.PrivateKey{}, tt.rangeLow, tt.rangeHigh)
+			require.ErrorIs(t, err, mptcrypto.ErrInvalidAmountRange)
 		})
 	}
 }

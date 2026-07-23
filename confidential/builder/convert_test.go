@@ -1,3 +1,5 @@
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
+
 package builder
 
 import (

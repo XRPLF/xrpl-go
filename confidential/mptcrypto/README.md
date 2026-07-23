@@ -4,7 +4,7 @@ Go bindings for the [XRPLF/mpt-crypto](https://github.com/xrplf/mpt-crypto) C li
 
 ## Build requirements
 
-CGo must be enabled (`CGO_ENABLED=1`). The vendored C libraries live in `confidential/deps/libs/<os-arch>/`. If you build without CGo, every function returns `ErrCgoRequired`.
+CGo must be enabled (`CGO_ENABLED=1`). The vendored C libraries live in `confidential/deps/libs/<os-arch>/`. If you build without CGo, valid crypto calls return `ErrCgoRequired`; ordinary Go argument validation still runs first.
 
 ```bash
 # normal build (CGo on by default)
@@ -18,10 +18,12 @@ CGO_ENABLED=0 go test ./confidential/mptcrypto/...
 
 ```
 mptcrypto/
-  types.go             # Size constants, Participant, PedersenProofParams
-  mptcrypto_cgo.go     # Real implementations (only built with CGo)
-  mptcrypto_nocgo.go   # Stubs that return ErrCgoRequired (built without CGo)
-  mptcrypto_test.go    # Tests (build tag: cgo)
+  types.go                  # Size constants, Participant, PedersenProofParams
+  errors.go                 # Shared errors, aliases, and range validation
+  mptcrypto_cgo.go          # Real implementations (only built with CGo)
+  mptcrypto_nocgo.go        # Stubs that return ErrCgoRequired (built without CGo)
+  mptcrypto_test.go         # CGo-backed tests
+  mptcrypto_nocgo_test.go   # No-CGo contract tests
 ```
 
 Every function works with **fixed-size byte arrays** (`[32]byte`, `[33]byte`, `[66]byte`, etc.). Hex encoding/decoding happens in the layers above (elgamal/, proofs/, commitment/), never here.
@@ -105,12 +107,12 @@ ct, err := mptcrypto.EncryptAmount(1000, pubkey, blindingFactor)
 // ct: 66-byte ciphertext
 ```
 
-#### `DecryptAmount(ciphertext [66]byte, privkey [32]byte) (uint64, error)`
+#### `DecryptAmount(ciphertext Ciphertext, privateKey PrivateKey, rangeLow, rangeHigh uint64) (uint64, error)`
 
-Decrypts an ElGamal ciphertext back to the original amount. Uses a baby-step giant-step (BSGS) lookup table internally, so very large values (close to `math.MaxUint64`) may fail to decrypt.
+Decrypts an ElGamal ciphertext by linearly searching the inclusive `[rangeLow, rangeHigh]` interval. The lower bound must not exceed the upper bound, and `rangeHigh` must be less than `math.MaxUint64`. Search cost grows linearly with the interval size, so callers should always choose the narrowest practical bounds.
 
 ```go
-amount, err := mptcrypto.DecryptAmount(ciphertext, privkey)
+amount, err := mptcrypto.DecryptAmount(ciphertext, privateKey, 0, 10_000)
 ```
 
 ### 2. Context hashes
