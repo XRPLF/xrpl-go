@@ -2,20 +2,72 @@ package websocket
 
 import (
 	"errors"
-	"maps"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
+	clientconfigtestutil "github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/interfaces"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/testutil"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
+
+func TestNewClientInsecureSchemeWarnings(t *testing.T) {
+	tests := []struct {
+		name        string
+		host        string
+		wantWarning string
+	}{
+		{
+			name:        "remote insecure scheme warns",
+			host:        "ws://s1.ripple.com:6006",
+			wantWarning: `xrpl-go: warning: websocket client endpoint "ws://s1.ripple.com:6006" is not using a TLS scheme`,
+		},
+		{
+			name: "local insecure scheme does not warn",
+			host: "ws://localhost:6006",
+		},
+		{
+			name: "remote tls scheme does not warn",
+			host: "wss://s1.ripple.com:6006",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logs := clientconfigtestutil.CaptureLogOutput(t, func() {
+				_ = NewClient(NewClientConfig().WithHost(tt.host))
+			})
+
+			if tt.wantWarning == "" {
+				require.Empty(t, logs)
+				return
+			}
+
+			require.Contains(t, logs, tt.wantWarning)
+		})
+	}
+}
+
+func TestNewClientWarnsOnceForChainedHosts(t *testing.T) {
+	// Confirm fluent re-assignment of host doesn't multiply warnings:
+	// only the final host should produce one warning at NewClient.
+	logs := clientconfigtestutil.CaptureLogOutput(t, func() {
+		_ = NewClient(NewClientConfig().WithHost("ws://a.example:6006").WithHost("ws://b.example:6006"))
+	})
+	require.Contains(t, logs, `endpoint "ws://b.example:6006"`)
+	require.NotContains(t, logs, "a.example")
+}
 
 func TestClient_SendRequest(t *testing.T) {
 	tt := []struct {
@@ -187,12 +239,146 @@ func TestClient_SendRequest(t *testing.T) {
 	}
 }
 
+func TestClient_RequestDropsLateTimedOutResponse(t *testing.T) {
+	serverErr := make(chan error, 1)
+	allowLateResponse := make(chan struct{})
+	lateResponseWritten := make(chan struct{})
+
+	cl, cleanup := setupRequestDispatchTestClient(t, func(c *websocket.Conn) {
+		defer c.Close()
+
+		firstID, err := readWebsocketRequestID(c)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+
+		<-allowLateResponse
+		if err := c.WriteJSON(map[string]any{
+			"id":     firstID,
+			"result": map[string]any{"request": "late"},
+		}); err != nil {
+			serverErr <- err
+			return
+		}
+		close(lateResponseWritten)
+
+		secondID, err := readWebsocketRequestID(c)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+
+		if err := c.WriteJSON(map[string]any{
+			"id":     secondID,
+			"result": map[string]any{"request": "current"},
+		}); err != nil {
+			serverErr <- err
+		}
+	})
+	defer cleanup()
+
+	_, err := cl.Request(newAccountChannelsRequest())
+	require.ErrorIs(t, err, ErrRequestTimedOut)
+
+	close(allowLateResponse)
+	select {
+	case <-lateResponseWritten:
+	case err := <-serverErr:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for late response")
+	}
+
+	res, err := cl.Request(newAccountChannelsRequest())
+	require.NoError(t, err)
+	require.Equal(t, uint64(2), res.ID)
+	require.Equal(t, "current", res.Result["request"])
+
+	select {
+	case err := <-serverErr:
+		require.NoError(t, err)
+	default:
+	}
+}
+
+func TestClient_RequestMatchesOutOfOrderResponses(t *testing.T) {
+	serverErr := make(chan error, 1)
+	firstRequestRead := make(chan struct{})
+
+	cl, cleanup := setupRequestDispatchTestClient(t, func(c *websocket.Conn) {
+		defer c.Close()
+
+		firstID, err := readWebsocketRequestID(c)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+		close(firstRequestRead)
+
+		secondID, err := readWebsocketRequestID(c)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+
+		if err := c.WriteJSON(map[string]any{
+			"id":     secondID,
+			"result": map[string]any{"request": "second"},
+		}); err != nil {
+			serverErr <- err
+			return
+		}
+		if err := c.WriteJSON(map[string]any{
+			"id":     firstID,
+			"result": map[string]any{"request": "first"},
+		}); err != nil {
+			serverErr <- err
+		}
+	})
+	defer cleanup()
+
+	firstResult := make(chan requestResult, 1)
+	go func() {
+		res, err := cl.Request(newAccountChannelsRequest())
+		firstResult <- requestResult{res: res, err: err}
+	}()
+
+	select {
+	case <-firstRequestRead:
+	case err := <-serverErr:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for first request")
+	}
+
+	secondResult := make(chan requestResult, 1)
+	go func() {
+		res, err := cl.Request(newAccountChannelsRequest())
+		secondResult <- requestResult{res: res, err: err}
+	}()
+
+	first := receiveRequestResult(t, firstResult)
+	second := receiveRequestResult(t, secondResult)
+
+	require.Equal(t, uint64(1), first.ID)
+	require.Equal(t, "first", first.Result["request"])
+	require.Equal(t, uint64(2), second.ID)
+	require.Equal(t, "second", second.Result["request"])
+
+	select {
+	case err := <-serverErr:
+		require.NoError(t, err)
+	default:
+	}
+}
+
 func TestClient_formatRequest(t *testing.T) {
 	ws := &Client{}
 	tt := []struct {
 		description string
 		req         interfaces.Request
-		id          int
+		id          uint64
 		marker      any
 		expected    string
 		expectedErr error
@@ -944,12 +1130,7 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ws := &testutil.MockWebSocketServer{Msgs: tt.serverMessages}
 			s := ws.TestWebSocketServer(func(c *websocket.Conn) {
-				for _, m := range tt.serverMessages {
-					err := c.WriteJSON(m)
-					if err != nil {
-						t.Errorf("error writing message: %v", err)
-					}
-				}
+				writeMessagesAfterRequests(t, c, tt.serverMessages)
 			})
 			defer s.Close()
 
@@ -959,6 +1140,7 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 			if err := cl.Connect(); err != nil {
 				t.Errorf("Error connecting to server: %v", err)
 			}
+			defer cl.Disconnect()
 
 			err := cl.checkAccountDeleteBlockers(tt.address)
 
@@ -975,57 +1157,61 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 	}
 }
 
-func TestClient_setTransactionFlags(t *testing.T) {
+func TestClient_Autofill(t *testing.T) {
 	tests := []struct {
-		name     string
-		tx       transaction.FlatTransaction
-		expected uint32
-		wantErr  bool
+		name        string
+		tx          transaction.FlatTransaction
+		expectedTx  transaction.FlatTransaction
+		expectedErr error
 	}{
 		{
-			name: "No flags set",
+			name: "fail - missing TransactionType",
 			tx: transaction.FlatTransaction{
-				"TransactionType": string(transaction.PaymentTx),
+				"Account": "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 			},
-			expected: uint32(0),
-			wantErr:  false,
+			expectedErr: transaction.ErrTransactionTypeMissing,
 		},
 		{
-			name: "Flags already set",
+			name: "fail - invalid Flags type",
 			tx: transaction.FlatTransaction{
-				"TransactionType": string(transaction.PaymentTx),
-				"Flags":           uint32(1),
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "AccountSet",
+				"Flags":           "abc",
 			},
-			expected: 1,
-			wantErr:  false,
+			expectedErr: transaction.ErrInvalidFlagsValue,
 		},
 		{
-			name: "Missing TransactionType",
+			name: "pass - missing Flags defaults to uint32(0)",
 			tx: transaction.FlatTransaction{
-				"Flags": uint32(1),
+				"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType":    "AccountSet",
+				"Sequence":           uint32(42),
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(100),
 			},
-			expected: 0,
-			wantErr:  true,
+			expectedTx: transaction.FlatTransaction{
+				"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType":    "AccountSet",
+				"Flags":              uint32(0),
+				"Sequence":           uint32(42),
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(100),
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &Client{}
-			err := c.setTransactionFlags(&tt.tx)
+			cl, cleanup := setupTestClientForAutofill(t, nil)
+			defer cleanup()
 
-			if (err != nil) != tt.wantErr {
-
-				t.Errorf("setTransactionFlags() error = %v, wantErr %v", err, tt.wantErr)
+			err := cl.Autofill(&tt.tx)
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
-
-			if !tt.wantErr {
-				flags, ok := tt.tx["Flags"]
-				if !ok && tt.expected != 0 {
-					t.Errorf("setTransactionFlags() got = %v (type %T), want %v (type %T)", flags, flags, tt.expected, tt.expected)
-				}
-			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedTx, tt.tx)
 		})
 	}
 }
@@ -1412,6 +1598,231 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 		},
 		// Error cases
 		{
+			name: "pass - inner NetworkID matches client NetworkID and outer NetworkID",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2000),
+							"TicketSequence":  uint32(7),
+						},
+					},
+				},
+			},
+			serverMessages: []map[string]any{
+				{
+					"id":     1,
+					"status": "success",
+					"type":   "response",
+					"result": map[string]any{
+						"info": map[string]any{
+							"build_version": "1.12.0",
+						},
+					},
+				},
+			},
+			networkID: uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2000),
+							"TicketSequence":  uint32(7),
+							"Fee":             "0",
+							"SigningPubKey":   "",
+						},
+					},
+				},
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "fail - inner NetworkID does not match client NetworkID",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2001),
+						},
+					},
+				},
+			},
+			serverMessages: []map[string]any{},
+			networkID:      uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
+							"Amount":          "1000000",
+							"NetworkID":       uint32(2001),
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldMismatch,
+		},
+		{
+			name: "fail - inner NetworkID is not a uint32",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       "2000",
+						},
+					},
+				},
+			},
+			serverMessages: []map[string]any{},
+			networkID:      uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       "2000",
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldIsNotAUint32,
+		},
+		{
+			name: "fail - outer NetworkID does not match client NetworkID",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(3000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       uint32(2000),
+						},
+					},
+				},
+			},
+			serverMessages: []map[string]any{},
+			networkID:      uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(3000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       uint32(2000),
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldMismatch,
+		},
+		{
+			name: "fail - outer NetworkID does not match default client NetworkID",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"TicketSequence":  uint32(7),
+						},
+					},
+				},
+			},
+			serverMessages: []map[string]any{},
+			networkID:      0,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       uint32(2000),
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"TicketSequence":  uint32(7),
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldMismatch,
+		},
+		{
+			name: "fail - outer NetworkID is not a uint32",
+			tx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       "2000",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       uint32(2000),
+						},
+					},
+				},
+			},
+			serverMessages: []map[string]any{},
+			networkID:      uint32(2000),
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"NetworkID":       "2000",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"NetworkID":       uint32(2000),
+						},
+					},
+				},
+			},
+			expectedErr: ErrNetworkIDFieldIsNotAUint32,
+		},
+		{
 			name: "fail - RawTransactions field not an array",
 			tx: transaction.FlatTransaction{
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
@@ -1420,8 +1831,12 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			serverMessages: []map[string]any{},
 			networkID:      0,
-			expectedTx:     transaction.FlatTransaction{},
-			expectedErr:    ErrRawTransactionsFieldIsNotAnArray,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": "not_an_array",
+			},
+			expectedErr: ErrRawTransactionsFieldIsNotAnArray,
 		},
 		{
 			name: "fail - RawTransaction field not an object",
@@ -1436,8 +1851,16 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			serverMessages: []map[string]any{},
 			networkID:      0,
-			expectedTx:     transaction.FlatTransaction{},
-			expectedErr:    ErrRawTransactionFieldIsNotAnObject,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": "not_an_object",
+					},
+				},
+			},
+			expectedErr: ErrRawTransactionFieldIsNotAnObject,
 		},
 		{
 			name: "fail - Fee field set to non-zero value - error",
@@ -1456,8 +1879,20 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			serverMessages: []map[string]any{},
 			networkID:      0,
-			expectedTx:     transaction.FlatTransaction{},
-			expectedErr:    types.ErrBatchInnerTransactionInvalid,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Fee":             "10",
+						},
+					},
+				},
+			},
+			expectedErr: types.ErrBatchInnerTransactionInvalid,
 		},
 		{
 			name: "fail - SigningPubKey field set to non-empty value - error",
@@ -1476,8 +1911,20 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			serverMessages: []map[string]any{},
 			networkID:      0,
-			expectedTx:     transaction.FlatTransaction{},
-			expectedErr:    ErrSigningPubKeyFieldMustBeEmpty,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"SigningPubKey":   "03ABC123",
+						},
+					},
+				},
+			},
+			expectedErr: ErrSigningPubKeyFieldMustBeEmpty,
 		},
 		{
 			name: "fail - TxnSignature field present - error",
@@ -1496,8 +1943,20 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			serverMessages: []map[string]any{},
 			networkID:      0,
-			expectedTx:     transaction.FlatTransaction{},
-			expectedErr:    ErrTxnSignatureFieldMustBeEmpty,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"TxnSignature":    "304502",
+						},
+					},
+				},
+			},
+			expectedErr: ErrTxnSignatureFieldMustBeEmpty,
 		},
 		{
 			name: "fail - Signers field present - error",
@@ -1516,8 +1975,20 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			serverMessages: []map[string]any{},
 			networkID:      0,
-			expectedTx:     transaction.FlatTransaction{},
-			expectedErr:    ErrSignersFieldMustBeEmpty,
+			expectedTx: transaction.FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{
+						"RawTransaction": map[string]any{
+							"TransactionType": "Payment",
+							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+							"Signers":         []any{},
+						},
+					},
+				},
+			},
+			expectedErr: ErrSignersFieldMustBeEmpty,
 		},
 		{
 			name: "fail - Account field not a string - error",
@@ -1535,34 +2006,19 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			},
 			serverMessages: []map[string]any{},
 			networkID:      0,
-			expectedTx:     transaction.FlatTransaction{},
-			expectedErr:    ErrAccountFieldIsNotAString,
-		},
-		{
-			name: "fail - Error from GetAccountInfo",
-			tx: transaction.FlatTransaction{
+			expectedTx: transaction.FlatTransaction{
 				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"TransactionType": "Batch",
 				"RawTransactions": []map[string]any{
 					{
 						"RawTransaction": map[string]any{
 							"TransactionType": "Payment",
-							"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
-							"Destination":     "rLNaPoKeeBjZe2qs6x52yVPZpZ8td4dc6w",
-							"Amount":          "1000000",
+							"Account":         12345,
 						},
 					},
 				},
 			},
-			serverMessages: []map[string]any{
-				{
-					"id":    1,
-					"error": "actNotFound",
-				},
-			},
-			networkID:   0,
-			expectedTx:  transaction.FlatTransaction{},
-			expectedErr: &ErrorWebsocketClientXrplResponse{Type: "actNotFound"},
+			expectedErr: ErrAccountFieldIsNotAString,
 		},
 	}
 
@@ -1573,10 +2029,6 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 
 			// Set NetworkID for test
 			cl.NetworkID = tt.networkID
-
-			// Make a copy of the original tx for comparison
-			originalTx := make(transaction.FlatTransaction)
-			maps.Copy(originalTx, tt.tx)
 
 			err := cl.autofillRawTransactions(&tt.tx)
 
@@ -1601,6 +2053,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 						t.Errorf("Expected error %v, but got %v", tt.expectedErr, err)
 					}
 				}
+				require.Equal(t, tt.expectedTx, tt.tx)
 				return
 			}
 
@@ -1632,12 +2085,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 func setupTestClientForAutofill(t *testing.T, serverMessages []map[string]any) (*Client, func()) {
 	ws := &testutil.MockWebSocketServer{Msgs: serverMessages}
 	s := ws.TestWebSocketServer(func(c *websocket.Conn) {
-		for _, m := range serverMessages {
-			err := c.WriteJSON(m)
-			if err != nil {
-				t.Errorf("error writing message: %v", err)
-			}
-		}
+		writeMessagesAfterRequests(t, c, serverMessages)
 	})
 
 	url, _ := testutil.ConvertHTTPToWS(s.URL)
@@ -1650,5 +2098,369 @@ func setupTestClientForAutofill(t *testing.T, serverMessages []map[string]any) (
 	return cl, func() {
 		cl.Disconnect()
 		s.Close()
+	}
+}
+
+type mockFaucetProvider struct {
+	err error
+}
+
+func (m *mockFaucetProvider) FundWallet(_ types.Address) error {
+	return m.err
+}
+
+type requestResult struct {
+	res *ClientResponse
+	err error
+}
+
+func setupRequestDispatchTestClient(t *testing.T, handler func(*websocket.Conn)) (*Client, func()) {
+	t.Helper()
+
+	ws := &testutil.MockWebSocketServer{}
+	s := ws.TestWebSocketServer(handler)
+
+	url, err := testutil.ConvertHTTPToWS(s.URL)
+	require.NoError(t, err)
+
+	cl := NewClient(NewClientConfig().
+		WithHost(url).
+		WithTimeout(100 * time.Millisecond))
+
+	require.NoError(t, cl.Connect())
+
+	return cl, func() {
+		_ = cl.Disconnect()
+		s.Close()
+	}
+}
+
+func readWebsocketRequestID(c *websocket.Conn) (uint64, error) {
+	var req struct {
+		ID uint64 `json:"id"`
+	}
+
+	if err := c.ReadJSON(&req); err != nil {
+		return 0, err
+	}
+
+	return req.ID, nil
+}
+
+func writeMessagesAfterRequests(t *testing.T, c *websocket.Conn, messages []map[string]any) {
+	t.Helper()
+
+	for _, m := range messages {
+		if _, err := readWebsocketRequestID(c); err != nil {
+			t.Errorf("read websocket request id: %v", err)
+			return
+		}
+
+		if err := c.WriteJSON(m); err != nil {
+			t.Errorf("write websocket response: %v", err)
+			return
+		}
+	}
+
+	// Drain until the client closes the connection. Without this, the orphaned
+	// server-side conn is finalized by GC, surfacing as close-1006 on the
+	// client and triggering an auto-reconnect that spawns a second handler
+	// goroutine which can outlive the test and panic via t.Errorf.
+	for {
+		if _, _, err := c.ReadMessage(); err != nil {
+			return
+		}
+	}
+}
+
+func receiveRequestResult(t *testing.T, resultChan <-chan requestResult) *ClientResponse {
+	t.Helper()
+
+	select {
+	case result := <-resultChan:
+		require.NoError(t, result.err)
+		return result.res
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for request result")
+	}
+
+	return nil
+}
+
+func newAccountChannelsRequest() *account.ChannelsRequest {
+	return &account.ChannelsRequest{
+		Account: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+	}
+}
+
+func TestClient_FundWallet(t *testing.T) {
+	const testAddr = "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"
+	prevMaxAttempts := fundWalletMaxAttempts
+	prevPollInterval := fundWalletPollInterval
+	fundWalletMaxAttempts = 3
+	fundWalletPollInterval = time.Millisecond
+	t.Cleanup(func() {
+		fundWalletMaxAttempts = prevMaxAttempts
+		fundWalletPollInterval = prevPollInterval
+	})
+
+	accountInfoMsg := func(id int, balance string) map[string]any {
+		return map[string]any{
+			"id": id,
+			"result": map[string]any{
+				"account_data": map[string]any{
+					"Account": testAddr,
+					"Balance": balance,
+				},
+			},
+		}
+	}
+
+	actNotFoundMsg := func(id int) map[string]any {
+		return map[string]any{
+			"id":    id,
+			"error": actNotFound,
+		}
+	}
+	invalidParamsMsg := func(id int) map[string]any {
+		return map[string]any{
+			"id":    id,
+			"error": "invalidParams",
+		}
+	}
+
+	tests := []struct {
+		name           string
+		address        string
+		faucetErr      error
+		serverMessages []map[string]any
+		expectedErr    error
+	}{
+		{
+			name:      "pass - new account funded successfully",
+			address:   testAddr,
+			faucetErr: nil,
+			serverMessages: []map[string]any{
+				actNotFoundMsg(1),
+				accountInfoMsg(2, "1000000000"),
+			},
+			expectedErr: nil,
+		},
+		{
+			name:      "pass - existing account balance increases",
+			address:   testAddr,
+			faucetErr: nil,
+			serverMessages: []map[string]any{
+				accountInfoMsg(1, "1000"),
+				accountInfoMsg(2, "1000"),
+				accountInfoMsg(3, "2000"),
+			},
+			expectedErr: nil,
+		},
+		{
+			name:      "fail - balance never updates",
+			address:   testAddr,
+			faucetErr: nil,
+			serverMessages: []map[string]any{
+				accountInfoMsg(1, "1000"),
+				accountInfoMsg(2, "1000"),
+				accountInfoMsg(3, "1000"),
+				accountInfoMsg(4, "1000"),
+			},
+			expectedErr: ErrFundWalletBalanceNotUpdated,
+		},
+		{
+			name:      "fail - polling balance error returns immediately",
+			address:   testAddr,
+			faucetErr: nil,
+			serverMessages: []map[string]any{
+				accountInfoMsg(1, "1000"),
+				invalidParamsMsg(2),
+			},
+			expectedErr: &ErrorWebsocketClientXrplResponse{Type: "invalidParams"},
+		},
+		{
+			name:      "fail - faucet returns error",
+			address:   testAddr,
+			faucetErr: errors.New("faucet unavailable"),
+			serverMessages: []map[string]any{
+				actNotFoundMsg(1),
+			},
+			expectedErr: errors.New("faucet unavailable"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ws := &testutil.MockWebSocketServer{Msgs: tt.serverMessages}
+			s := ws.TestWebSocketServer(func(c *websocket.Conn) {
+				writeMessagesAfterRequests(t, c, tt.serverMessages)
+			})
+			defer s.Close()
+
+			url, _ := testutil.ConvertHTTPToWS(s.URL)
+			cl := NewClient(
+				NewClientConfig().
+					WithHost(url).
+					WithTimeout(1 * time.Second).
+					WithFaucetProvider(&mockFaucetProvider{err: tt.faucetErr}),
+			)
+
+			require.NoError(t, cl.Connect())
+			defer cl.Disconnect()
+
+			w := &wallet.Wallet{ClassicAddress: types.Address(tt.address)}
+			err := cl.FundWallet(w)
+
+			if tt.expectedErr != nil {
+				require.Error(t, err)
+				require.Equal(t, tt.expectedErr.Error(), err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+
+	t.Run("fail - missing classic address", func(t *testing.T) {
+		cl := NewClient(*NewClientConfig())
+		w := &wallet.Wallet{ClassicAddress: ""}
+		err := cl.FundWallet(w)
+		require.ErrorIs(t, err, ErrCannotFundWalletWithoutClassicAddress)
+	})
+}
+
+// TestClient_ReconnectConsumesBudgetOnConnectFailures verifies that a failed
+// reconnect Connect() does not abort the read loop early: the loop must keep
+// retrying until the full WithMaxReconnects budget is exhausted, and only then
+// report ErrMaxReconnectionAttemptsReached. The server accepts the initial
+// upgrade once (then closes the conn to trigger the reconnect path) and
+// rejects every subsequent dial with HTTP 500, so every retry's Connect()
+// fails. Before the fix, the first failed Connect() would surface the dial
+// error and return, after the fix, retries continue and the budget exhausts.
+func TestClient_ReconnectConsumesBudgetOnConnectFailures(t *testing.T) {
+	const budget = 3
+	var dialCount atomic.Int32
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if dialCount.Add(1) == 1 {
+			c, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
+				return
+			}
+			c.Close()
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+
+	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
+
+	cfg := NewClientConfig().
+		WithHost(url).
+		WithTimeout(1 * time.Second).
+		WithMaxReconnects(budget)
+
+	cl := NewClient(cfg)
+
+	errCh := make(chan error, 1)
+	cl.OnError(func(err error) {
+		select {
+		case errCh <- err:
+		default:
+		}
+	})
+
+	require.NoError(t, cl.Connect())
+	defer cl.Disconnect()
+
+	select {
+	case got := <-errCh:
+		var maxErr ErrMaxReconnectionAttemptsReached
+		require.ErrorAs(t, got, &maxErr)
+		require.Equal(t, budget, maxErr.Attempts)
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting for ErrMaxReconnectionAttemptsReached, dial count=%d", dialCount.Load())
+	}
+
+	require.GreaterOrEqual(t, dialCount.Load(), int32(1+budget))
+}
+
+// TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage verifies
+// that a reconnect only resets the retry budget after the socket becomes
+// usable by delivering a message. The server accepts every upgrade and
+// immediately closes the socket, so the client must eventually exhaust
+// WithMaxReconnects instead of looping forever.
+func TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage(t *testing.T) {
+	const budget = 2
+
+	var dialCount atomic.Int32
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dialCount.Add(1)
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		c.Close()
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+
+	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
+
+	cfg := NewClientConfig().
+		WithHost(url).
+		WithTimeout(1 * time.Second).
+		WithMaxReconnects(budget)
+
+	cl := NewClient(cfg)
+
+	errCh := make(chan error, 1)
+	cl.OnError(func(err error) {
+		select {
+		case errCh <- err:
+		default:
+		}
+	})
+
+	require.NoError(t, cl.Connect())
+	defer cl.Disconnect()
+
+	select {
+	case got := <-errCh:
+		var maxErr ErrMaxReconnectionAttemptsReached
+		require.ErrorAs(t, got, &maxErr)
+		require.Equal(t, budget, maxErr.Attempts)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for ErrMaxReconnectionAttemptsReached, dial count=%d", dialCount.Load())
+	}
+}
+
+func TestReconnectDelayUsesCappedExponentialBackoff(t *testing.T) {
+	t.Cleanup(swapReconnectDelays(time.Millisecond, 30*time.Millisecond))
+
+	require.Equal(t, time.Millisecond, reconnectDelay(1))
+	require.Equal(t, 2*time.Millisecond, reconnectDelay(2))
+	require.Equal(t, 4*time.Millisecond, reconnectDelay(3))
+	require.Equal(t, 30*time.Millisecond, reconnectDelay(6))
+	require.Equal(t, 30*time.Millisecond, reconnectDelay(100))
+}
+
+// swapReconnectDelays overrides the package-level reconnect backoff vars and
+// returns a function that restores their previous values. Intended for use
+// with t.Cleanup. Not safe under t.Parallel: the vars are read/written without
+// synchronization, so callers must not run in parallel with each other or with
+// any test that exercises the reconnect path.
+func swapReconnectDelays(base, maxDelay time.Duration) func() {
+	prevBase, prevMax := reconnectBaseDelay, reconnectMaxDelay
+	reconnectBaseDelay, reconnectMaxDelay = base, maxDelay
+	return func() {
+		reconnectBaseDelay, reconnectMaxDelay = prevBase, prevMax
 	}
 }

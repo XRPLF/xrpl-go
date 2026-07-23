@@ -13,11 +13,30 @@ import (
 )
 
 func TestGenerateEncodeSeed(t *testing.T) {
-	defaultEntropy := "fakeRandomString"
+	generatedEntropy := []byte("fakeRandomString")
+	legacyOverlongEntropy := []byte("setPasswordOverLen16")
+	legacyTruncatedEntropy := legacyOverlongEntropy[:addresscodec.FamilySeedLength]
+	rawEntropy := []byte{
+		0x10, 0x11, 0x12, 0x13,
+		0x14, 0x15, 0x16, 0x17,
+		0x18, 0x19, 0x1A, 0x1B,
+		0x1C, 0x1D, 0x1E, 0x1F,
+	}
+	shortEntropy := rawEntropy[:addresscodec.FamilySeedLength-1]
+	overlongEntropy := append(append([]byte{}, rawEntropy...), 0x20)
+
+	require.Len(t, generatedEntropy, addresscodec.FamilySeedLength)
+	require.Greater(t, len(legacyOverlongEntropy), addresscodec.FamilySeedLength)
+	require.Len(t, legacyTruncatedEntropy, addresscodec.FamilySeedLength)
+	require.Len(t, rawEntropy, addresscodec.FamilySeedLength)
+	require.Len(t, shortEntropy, addresscodec.FamilySeedLength-1)
+	require.Len(t, overlongEntropy, addresscodec.FamilySeedLength+1)
+
+	randomizerErr := errors.New("error")
 
 	tt := []struct {
 		name        string
-		entropy     string
+		entropy     []byte
 		malleate    func() interfaces.Randomizer
 		algorithm   interfaces.KeypairCryptoAlg
 		expected    string
@@ -27,18 +46,18 @@ func TestGenerateEncodeSeed(t *testing.T) {
 			name: "fail - generate bytes error",
 			malleate: func() interfaces.Randomizer {
 				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return(nil, errors.New("error"))
+				rand.EXPECT().GenerateBytes(addresscodec.FamilySeedLength).Times(1).Return(nil, randomizerErr)
 				return rand
 			},
-			expectedErr: errors.New("error"),
+			expectedErr: randomizerErr,
 			algorithm:   crypto.ED25519(),
 		},
 		{
-			name:    "pass - empty entropy should generate random seed (ED25519)",
-			entropy: "",
+			name:    "pass - nil entropy should generate random seed (ED25519)",
+			entropy: nil,
 			malleate: func() interfaces.Randomizer {
 				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return([]byte(defaultEntropy), nil)
+				rand.EXPECT().GenerateBytes(addresscodec.FamilySeedLength).Times(1).Return(generatedEntropy, nil)
 				return rand
 			},
 			algorithm:   crypto.ED25519(),
@@ -46,23 +65,38 @@ func TestGenerateEncodeSeed(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:    "pass - entropy defined and above family seed length (ED25519)",
-			entropy: "setPasswordOverLen16",
-			malleate: func() interfaces.Randomizer {
-				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return([]byte("setPasswordOverLen16"), nil)
-				return rand
-			},
+			name:        "pass - raw 16-byte entropy (ED25519)",
+			entropy:     rawEntropy,
+			algorithm:   crypto.ED25519(),
+			expected:    "sEdSXGRS5wtAcH33J9e4H7E78vue4iK",
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - raw 16-byte entropy (SECP256K1)",
+			entropy:     rawEntropy,
+			algorithm:   crypto.SECP256K1(),
+			expected:    "spvHRYpBKVWy8aYvjDrEJxG79mwN3",
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - manually truncated legacy entropy keeps previous seed (ED25519)",
+			entropy:     legacyTruncatedEntropy,
 			algorithm:   crypto.ED25519(),
 			expected:    "sEdTuXdrgQobjDidph2oMDN36jGZX2U",
 			expectedErr: nil,
 		},
 		{
+			name:        "fail - raw entropy below family seed length",
+			entropy:     shortEntropy,
+			algorithm:   crypto.ED25519(),
+			expectedErr: ErrInvalidEntropyLength,
+		},
+		{
 			name:    "pass - empty entropy should generate random seed (SECP256K1)",
-			entropy: "",
+			entropy: []byte{},
 			malleate: func() interfaces.Randomizer {
 				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return([]byte(defaultEntropy), nil)
+				rand.EXPECT().GenerateBytes(addresscodec.FamilySeedLength).Times(1).Return(generatedEntropy, nil)
 				return rand
 			},
 			algorithm:   crypto.SECP256K1(),
@@ -70,31 +104,82 @@ func TestGenerateEncodeSeed(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:    "pass - entropy defined and above family seed length (SECP256K1)",
-			entropy: "setPasswordOverLen16",
-			malleate: func() interfaces.Randomizer {
-				rand := testutil.NewMockRandomizer(gomock.NewController(t))
-				rand.EXPECT().GenerateBytes(gomock.Any()).AnyTimes().Return([]byte("setPasswordOverLen16"), nil)
-				return rand
-			},
+			name:        "pass - manually truncated legacy entropy keeps previous seed (SECP256K1)",
+			entropy:     legacyTruncatedEntropy,
 			algorithm:   crypto.SECP256K1(),
 			expected:    "shJYdazRN9dvWbGqCehzHcBKWBaFR",
 			expectedErr: nil,
+		},
+		{
+			name:        "fail - raw entropy above family seed length",
+			entropy:     overlongEntropy,
+			algorithm:   crypto.SECP256K1(),
+			expectedErr: ErrInvalidEntropyLength,
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			randomizer := tc.malleate()
+			var randomizer interfaces.Randomizer
+			if tc.malleate != nil {
+				randomizer = tc.malleate()
+			}
 			a, err := GenerateSeed(tc.entropy, tc.algorithm, randomizer)
 
 			if tc.expectedErr != nil {
 				require.Empty(t, a)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, a)
 			}
+		})
+	}
+}
+
+type unsupportedCryptoAlgorithm struct{}
+
+func (unsupportedCryptoAlgorithm) DeriveKeypair([]byte, bool) (string, string, error) {
+	return "", "", nil
+}
+
+func (unsupportedCryptoAlgorithm) Sign(string, string) (string, error) {
+	return "", nil
+}
+
+func (unsupportedCryptoAlgorithm) Validate(string, string, string) bool {
+	return false
+}
+
+func TestGenerateSeedDoesNotWrapUnsupportedAlgorithmAsEntropyLength(t *testing.T) {
+	rawEntropy := []byte{
+		0x10, 0x11, 0x12, 0x13,
+		0x14, 0x15, 0x16, 0x17,
+		0x18, 0x19, 0x1A, 0x1B,
+		0x1C, 0x1D, 0x1E, 0x1F,
+	}
+
+	tt := []struct {
+		name      string
+		algorithm interfaces.KeypairCryptoAlg
+	}{
+		{
+			name: "nil algorithm",
+		},
+		{
+			name:      "unsupported algorithm",
+			algorithm: unsupportedCryptoAlgorithm{},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			seed, err := GenerateSeed(rawEntropy, tc.algorithm, nil)
+
+			require.Empty(t, seed)
+			require.Error(t, err)
+			require.NotErrorIs(t, err, ErrInvalidEntropyLength)
+			require.EqualError(t, err, "encoding type must be `ed25519` or `secp256k1`")
 		})
 	}
 }
@@ -115,10 +200,22 @@ func TestDeriveKeypair(t *testing.T) {
 			expectedErr:    addresscodec.ErrInvalidSeed,
 		},
 		{
+			name:           "fail - invalid seed length",
+			inputSeed:      addresscodec.Base58CheckEncode(nil, addresscodec.FamilySeedPrefix),
+			inputValidator: false,
+			expectedErr:    addresscodec.ErrInvalidSeedLength,
+		},
+		{
+			name:           "fail - invalid seed prefix",
+			inputSeed:      addresscodec.Base58CheckEncode([]byte("random"), 0x22),
+			inputValidator: false,
+			expectedErr:    addresscodec.ErrInvalidSeedPrefix,
+		},
+		{
 			name:           "fail - invalid ED25519 key",
 			inputSeed:      "ED4924A9045FE5ED8B22BAA7B6229A72A287CCF3EA287AADD3A032A24C0F008F",
 			inputValidator: false,
-			expectedErr:    ErrInvalidCryptoImplementation,
+			expectedErr:    addresscodec.ErrInvalidSeed,
 		},
 		{
 			name:           "pass - derive an ED25519 keypair",
@@ -145,7 +242,7 @@ func TestDeriveKeypair(t *testing.T) {
 			if tc.expectedErr != nil {
 				require.Empty(t, pub)
 				require.Empty(t, priv)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.pubKey, pub)
@@ -175,7 +272,7 @@ func TestDeriveClassicAddress(t *testing.T) {
 			actual, err := DeriveClassicAddress(tc.input)
 			if tc.expectedErr != nil {
 				require.Empty(t, actual)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
@@ -193,10 +290,28 @@ func TestSign(t *testing.T) {
 		expectedErr  error
 	}{
 		{
+			name:         "fail - empty private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "",
+			expectedErr:  ErrInvalidCryptoImplementation,
+		},
+		{
+			name:         "fail - short private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "E",
+			expectedErr:  ErrInvalidCryptoImplementation,
+		},
+		{
 			name:         "fail - invalid private key",
 			inputMsg:     "hello world",
 			inputPrivKey: "invalid",
 			expectedErr:  ErrInvalidCryptoImplementation,
+		},
+		{
+			name:         "fail - malformed ED25519 private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "ED",
+			expectedErr:  crypto.ErrInvalidPrivateKey,
 		},
 		{
 			name:         "pass - sign a message with a ED25519 key",
@@ -212,7 +327,7 @@ func TestSign(t *testing.T) {
 			actual, err := Sign(tc.inputMsg, tc.inputPrivKey)
 			if tc.expectedErr != nil {
 				require.Empty(t, actual)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
@@ -230,6 +345,20 @@ func TestValidate(t *testing.T) {
 		expected    bool
 		expectedErr error
 	}{
+		{
+			name:        "fail - empty public key",
+			inputMsg:    "test message",
+			inputPubKey: "",
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidCryptoImplementation,
+		},
+		{
+			name:        "fail - short public key",
+			inputMsg:    "test message",
+			inputPubKey: "E",
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidCryptoImplementation,
+		},
 		{
 			name:        "fail - invalid public key",
 			inputMsg:    "test message",
@@ -252,7 +381,7 @@ func TestValidate(t *testing.T) {
 			actual, err := Validate(tc.inputMsg, tc.inputPubKey, tc.inputSig)
 			if tc.expectedErr != nil {
 				require.Zero(t, actual)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
@@ -269,9 +398,14 @@ func TestDeriveNodeAddress(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name:        "fail - derive node address - node prefix not found",
-			inputPubKey: "x9KHn8NfbBsZV5q8bLfS72XyGqwFt5mgoPbcTV4c6qKiuPTAtXYk",
-			expectedErr: &addresscodec.EncodeLengthError{Instance: "NodePublicKey", Expected: addresscodec.NodePublicKeyLength, Input: 3},
+			name:        "fail - derive node address - input too short to base58check-decode",
+			inputPubKey: "x",
+			expectedErr: addresscodec.ErrInvalidFormat,
+		},
+		{
+			name:        "fail - derive node address - node prefix mismatch",
+			inputPubKey: "rfZG9pC1cKF7q96TNZR264H9ykzKCxMyk44ZK8hFL8cNv1G3c8J",
+			expectedErr: addresscodec.ErrB58PrefixMismatch,
 		},
 		{
 			name:        "pass - derive correct node address from public key",
@@ -285,7 +419,7 @@ func TestDeriveNodeAddress(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := DeriveNodeAddress(tc.inputPubKey, crypto.SECP256K1())
 			if tc.expectedErr != nil {
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)

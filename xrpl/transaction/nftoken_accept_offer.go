@@ -89,7 +89,7 @@ func (n *NFTokenAcceptOffer) Validate() (bool, error) {
 			return false, ErrNFTokenBrokerFeeZero
 		}
 	} else if issuedAmount, ok := n.NFTokenBrokerFee.(types.IssuedCurrencyAmount); ok {
-		if issuedAmount.Value == "0" {
+		if issuedAmount.IsZero() {
 			return false, ErrNFTokenBrokerFeeZero
 		}
 	}

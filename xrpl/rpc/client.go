@@ -4,13 +4,16 @@ package rpc
 import (
 	"bytes"
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"time"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
-	"github.com/Peersyst/xrpl-go/xrpl/common"
+	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	requests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -18,6 +21,17 @@ import (
 
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 )
+
+var (
+	fundWalletMaxAttempts  = 20
+	fundWalletPollInterval = 1 * time.Second
+)
+
+// maxDrainBytes caps how much of an error response body is drained before
+// retrying. A small bounded drain lets the HTTP transport reuse the
+// connection via keep-alive when the body fits, and prevents a hostile
+// upstream from forcing an unbounded read when it doesn't.
+const maxDrainBytes = 4 << 10 // 4 KiB
 
 // Client is an XRPL RPC client for sending requests and managing transactions.
 type Client struct {
@@ -35,8 +49,7 @@ func NewClient(cfg *Config) *Client {
 
 // Request sends a request to the XRPL server and returns the response and any error encountered.
 func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
-	err := reqParams.Validate()
-	if err != nil {
+	if err := reqParams.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -45,61 +58,77 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.cfg.URL, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
+	const maxAttempts = 4 // 1 initial attempt + 3 retries
+	backoffDuration := c.cfg.retryDelay
 
-	// add timeout context to prevent hanging
-	ctx, cancel := context.WithTimeout(context.Background(), c.cfg.timeout)
-	defer cancel()
-	req = req.WithContext(ctx)
+	var (
+		response   *http.Response
+		cancelFunc context.CancelFunc
+	)
 
-	req.Header = c.cfg.Headers
+	// cfg.timeout bounds a single attempt, not the full retry window.
+	for attempt := range maxAttempts {
+		ctx, cancel := context.WithTimeout(context.Background(), c.cfg.timeout)
 
-	var response *http.Response
-
-	response, err = c.cfg.HTTPClient.Do(req)
-	if err != nil || response == nil {
-		return nil, err
-	}
-
-	// allow client to reuse persistent connection
-	defer func() {
-		_ = response.Body.Close()
-	}()
-	// Check for service unavailable response and retry if so
-	if response.StatusCode == 503 {
-
-		maxRetries := 3
-		backoffDuration := 1 * time.Second
-
-		for range maxRetries {
-			time.Sleep(backoffDuration)
-
-			// Make request again after waiting
-			response, err = c.cfg.HTTPClient.Do(req)
-			if err != nil {
-				return nil, err
-			}
-
-			if response.StatusCode != 503 {
-				break
-			}
-
-			// Increase backoff duration for the next retry
-			backoffDuration *= 2
+		req, err := http.NewRequestWithContext(
+			ctx,
+			http.MethodPost,
+			c.cfg.URL,
+			bytes.NewReader(body),
+		)
+		if err != nil {
+			cancel()
+			return nil, err
 		}
 
-		if response.StatusCode == 503 {
-			// Return service unavailable error here after retry 3 times
+		req.Header = c.cfg.Headers
+
+		response, err = c.cfg.HTTPClient.Do(req)
+		if err != nil {
+			// net/http documents response as nil when Do returns an error, but
+			// custom HTTPClient impls may not follow that contract.
+			if response != nil {
+				_ = response.Body.Close()
+			}
+			cancel()
+			return nil, err
+		}
+
+		// HTTPClient is an interface, custom impls may return (nil, nil),
+		// violating net/http's contract. Standard *http.Client never hits
+		// this branch.
+		if response == nil {
+			cancel()
+			return nil, &ClientError{ErrorString: "nil response from server"}
+		}
+
+		if response.StatusCode != http.StatusServiceUnavailable {
+			cancelFunc = cancel
+			break
+		}
+
+		// Drain and close the 503 response body before retrying so the connection
+		// can be reused by the HTTP client.
+		_, _ = io.CopyN(io.Discard, response.Body, maxDrainBytes)
+		_ = response.Body.Close()
+		cancel()
+
+		if attempt == maxAttempts-1 {
 			return nil, &ClientError{ErrorString: "Server is overloaded, rate limit exceeded"}
 		}
 
+		// time.Sleep is non-cancellable. If Request ever accepts a caller
+		// context, switch to a select on ctx.Done() / time.After.
+		time.Sleep(backoffDuration)
+		backoffDuration *= 2
 	}
+	defer cancelFunc()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	var jr Response
-	jr, err = checkForError(response)
+	jr, err = checkForError(response, c.cfg.maxResponseSize)
 	if err != nil {
 		return nil, err
 	}
@@ -229,8 +258,11 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 		return err
 	}
 
-	err := c.setTransactionFlags(tx)
-	if err != nil {
+	if err := tx.RequireTransactionType(); err != nil {
+		return err
+	}
+
+	if err := tx.NormalizeFlags(); err != nil {
 		return err
 	}
 
@@ -298,58 +330,96 @@ func (c *Client) AutofillMultisigned(tx *transaction.FlatTransaction, nSigners u
 }
 
 // FaucetProvider returns the faucet provider for the client.
-func (c *Client) FaucetProvider() common.FaucetProvider {
+func (c *Client) FaucetProvider() commonconstants.FaucetProvider {
 	return c.cfg.faucetProvider
 }
 
-// FundWallet funds a wallet with the client's faucet provider.
+// FundWallet funds a wallet with the client's faucet provider and polls the
+// validated ledger until the account's balance increases. It returns
+// ErrFundWalletBalanceNotUpdated if the balance fails to update within the
+// poll window.
 func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 	if wallet.ClassicAddress == "" {
 		return ErrCannotFundWalletWithoutClassicAddress
 	}
 
-	err := c.cfg.faucetProvider.FundWallet(wallet.ClassicAddress)
-	if err != nil {
+	// Starting balance. An error here (typically actNotFound for a
+	// brand-new account) is treated as a zero balance so polling can still
+	// detect the faucet deposit.
+	startBalance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
+	if err != nil && !isFundWalletActNotFound(err) {
 		return err
 	}
 
-	return nil
+	if err := c.cfg.faucetProvider.FundWallet(wallet.ClassicAddress); err != nil {
+		return err
+	}
+
+	for range fundWalletMaxAttempts {
+		time.Sleep(fundWalletPollInterval)
+		balance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
+		if err != nil {
+			if isFundWalletActNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if balance > startBalance {
+			return nil
+		}
+	}
+
+	return ErrFundWalletBalanceNotUpdated
+}
+
+func isFundWalletActNotFound(err error) bool {
+	var clientErr *ClientError
+	return errors.As(err, &clientErr) && clientErr.ErrorString == actNotFound
+}
+
+type validatedInnerTx struct {
+	rawTx   map[string]any
+	account string
 }
 
 func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
-	needsNetworkID, err := c.txNeedsNetworkID()
-	if err != nil {
-		return err
-	}
-
 	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
 		return ErrRawTransactionsFieldIsNotAnArray
 	}
 
-	accountSeq := make(map[string]uint32, len(rawTxs))
+	var outerNetworkID *uint32
+	if outer := (*tx)["NetworkID"]; outer != nil {
+		outerNetworkIDUint, ok := outer.(uint32)
+		if !ok {
+			return ErrNetworkIDFieldIsNotAUint32
+		}
+		if outerNetworkIDUint != c.NetworkID {
+			return ErrNetworkIDFieldMismatch
+		}
+		outerNetworkID = &outerNetworkIDUint
+	}
 
+	inners := make([]validatedInnerTx, 0, len(rawTxs))
 	for _, rawTx := range rawTxs {
 		innerRawTx, ok := rawTx["RawTransaction"].(map[string]any)
 		if !ok {
 			return ErrRawTransactionFieldIsNotAnObject
 		}
 
-		// Validate `Fee` field
-		if innerRawTx["Fee"] == nil {
-			innerRawTx["Fee"] = "0"
-		} else if innerRawTx["Fee"] != "0" {
+		acc, ok := innerRawTx["Account"].(string)
+		if !ok {
+			return ErrAccountFieldIsNotAString
+		}
+
+		if fee := innerRawTx["Fee"]; fee != nil && fee != "0" {
 			return types.ErrBatchInnerTransactionInvalid
 		}
 
-		// Validate `SigningPubKey` field
-		if innerRawTx["SigningPubKey"] == nil {
-			innerRawTx["SigningPubKey"] = ""
-		} else if innerRawTx["SigningPubKey"] != "" {
+		if signingPubKey := innerRawTx["SigningPubKey"]; signingPubKey != nil && signingPubKey != "" {
 			return ErrSigningPubKeyFieldMustBeEmpty
 		}
 
-		// Validate `TxnSignature` field
 		if innerRawTx["TxnSignature"] != nil {
 			return ErrTxnSignatureFieldMustBeEmpty
 		}
@@ -357,18 +427,45 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 			return ErrSignersFieldMustBeEmpty
 		}
 
-		// Validate `NetworkID` field
+		if networkID := innerRawTx["NetworkID"]; networkID != nil {
+			innerNetworkID, ok := networkID.(uint32)
+			if !ok {
+				return ErrNetworkIDFieldIsNotAUint32
+			}
+			if innerNetworkID != c.NetworkID {
+				return ErrNetworkIDFieldMismatch
+			}
+			if outerNetworkID != nil && innerNetworkID != *outerNetworkID {
+				return ErrNetworkIDFieldMismatch
+			}
+		}
+
+		inners = append(inners, validatedInnerTx{rawTx: innerRawTx, account: acc})
+	}
+
+	needsNetworkID, err := c.txNeedsNetworkID()
+	if err != nil {
+		return err
+	}
+
+	accountSeq := make(map[string]uint32, len(inners))
+
+	for _, inner := range inners {
+		innerRawTx := inner.rawTx
+		if innerRawTx["Fee"] == nil {
+			innerRawTx["Fee"] = "0"
+		}
+
+		if innerRawTx["SigningPubKey"] == nil {
+			innerRawTx["SigningPubKey"] = ""
+		}
+
 		if innerRawTx["NetworkID"] == nil && needsNetworkID {
 			innerRawTx["NetworkID"] = c.NetworkID
 		}
 
-		// Validate `Sequence` field
 		if innerRawTx["Sequence"] == nil && innerRawTx["TicketSequence"] == nil {
-
-			acc, ok := innerRawTx["Account"].(string)
-			if !ok {
-				return ErrAccountFieldIsNotAString
-			}
+			acc := inner.account
 
 			if accountSeq[acc] != 0 {
 				innerRawTx["Sequence"] = accountSeq[acc]

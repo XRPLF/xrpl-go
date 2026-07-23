@@ -86,6 +86,56 @@ func TestOfferCreateFlatten(t *testing.T) {
 			}`,
 		},
 		{
+			name: "pass - nil TakerGets omitted",
+			input: OfferCreate{
+				BaseTx: BaseTx{
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType:    OfferCreateTx,
+					Fee:                types.XRPCurrencyAmount(12),
+					Sequence:           8,
+					LastLedgerSequence: 7108682,
+				},
+				TakerPays: types.IssuedCurrencyAmount{
+					Issuer:   "ruazs5h1qEsqpke88pcqnaseXdm6od2xc",
+					Currency: "GKO",
+					Value:    "2",
+				},
+			},
+			expected: `{
+				"Account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+				"TransactionType": "OfferCreate",
+				"Fee": "12",
+				"Sequence": 8,
+				"LastLedgerSequence": 7108682,
+				"TakerPays": {
+					"issuer": "ruazs5h1qEsqpke88pcqnaseXdm6od2xc",
+					"currency": "GKO",
+					"value": "2"
+				}
+			}`,
+		},
+		{
+			name: "pass - nil TakerPays omitted",
+			input: OfferCreate{
+				BaseTx: BaseTx{
+					Account:            "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType:    OfferCreateTx,
+					Fee:                types.XRPCurrencyAmount(12),
+					Sequence:           8,
+					LastLedgerSequence: 7108682,
+				},
+				TakerGets: types.XRPCurrencyAmount(6000000),
+			},
+			expected: `{
+				"Account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+				"TransactionType": "OfferCreate",
+				"Fee": "12",
+				"Sequence": 8,
+				"LastLedgerSequence": 7108682,
+				"TakerGets": "6000000"
+			}`,
+		},
+		{
 			name: "pass - with DomainID",
 			input: OfferCreate{
 				BaseTx: BaseTx{

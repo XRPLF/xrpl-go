@@ -7,6 +7,8 @@ import (
 )
 
 func TestIsValidXAddress(t *testing.T) {
+	invalidReservedTagBytes := xAddressWithTagReservedBytes()
+
 	testcases := []struct {
 		name     string
 		input    string
@@ -20,6 +22,11 @@ func TestIsValidXAddress(t *testing.T) {
 		{
 			name:     "pass - invalid x-address",
 			input:    "invalid",
+			expected: false,
+		},
+		{
+			name:     "fail - invalid x-address with non-zero reserved tag bytes",
+			input:    invalidReservedTagBytes,
 			expected: false,
 		},
 	}
@@ -123,11 +130,21 @@ func TestEncodeXAddress(t *testing.T) {
 }
 
 func TestDecodeXAddress(t *testing.T) {
+	invalidReservedTagBytes := xAddressWithTagReservedBytes()
+	explicitZeroTag, err := EncodeXAddress([]byte{
+		94, 123, 17, 37, 35, 246,
+		141, 47, 94, 135, 157, 180,
+		234, 197, 28, 102, 152, 166,
+		147, 4,
+	}, 0, true, false)
+	require.NoError(t, err)
+
 	testcases := []struct {
 		name              string
 		input             string
 		expectedAccountId []byte
 		expectedTag       uint32
+		expectedHasTag    bool
 		expectedTestnet   bool
 		expectedErr       error
 	}{
@@ -146,6 +163,7 @@ func TestDecodeXAddress(t *testing.T) {
 				147, 4,
 			},
 			expectedTag:     0,
+			expectedHasTag:  false,
 			expectedTestnet: true,
 			expectedErr:     nil,
 		},
@@ -159,6 +177,7 @@ func TestDecodeXAddress(t *testing.T) {
 				147, 4,
 			},
 			expectedTag:     22,
+			expectedHasTag:  true,
 			expectedTestnet: true,
 			expectedErr:     nil,
 		},
@@ -172,6 +191,7 @@ func TestDecodeXAddress(t *testing.T) {
 				147, 4,
 			},
 			expectedTag:     0,
+			expectedHasTag:  false,
 			expectedTestnet: false,
 			expectedErr:     nil,
 		},
@@ -185,20 +205,41 @@ func TestDecodeXAddress(t *testing.T) {
 				147, 4,
 			},
 			expectedTag:     22,
+			expectedHasTag:  true,
 			expectedTestnet: false,
 			expectedErr:     nil,
+		},
+		{
+			name:  "pass - valid mainnet x-address with explicit zero tag",
+			input: explicitZeroTag,
+			expectedAccountId: []byte{
+				94, 123, 17, 37, 35, 246,
+				141, 47, 94, 135, 157, 180,
+				234, 197, 28, 102, 152, 166,
+				147, 4,
+			},
+			expectedTag:     0,
+			expectedHasTag:  true,
+			expectedTestnet: false,
+			expectedErr:     nil,
+		},
+		{
+			name:        "fail - x-address with non-zero reserved tag bytes",
+			input:       invalidReservedTagBytes,
+			expectedErr: ErrInvalidTag,
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			actualAccountId, actualTag, actualTestnet, err := DecodeXAddress(tc.input)
+			actualAccountId, actualTag, actualHasTag, actualTestnet, err := DecodeXAddress(tc.input)
 			if tc.expectedErr != nil {
-				require.Error(t, err)
-				require.Equal(t, tc.expectedErr.Error(), err.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
+				require.NoError(t, err)
 				require.Equal(t, tc.expectedAccountId, actualAccountId)
 				require.Equal(t, tc.expectedTag, actualTag)
+				require.Equal(t, tc.expectedHasTag, actualHasTag)
 				require.Equal(t, tc.expectedTestnet, actualTestnet)
 			}
 		})
@@ -211,6 +252,7 @@ func TestXAddressToClassicAddress(t *testing.T) {
 		input                  string
 		expectedClassicAddress string
 		expectedTag            uint32
+		expectedHasTag         bool
 		expectedTestnet        bool
 		expectedErr            error
 	}{
@@ -224,6 +266,7 @@ func TestXAddressToClassicAddress(t *testing.T) {
 			input:                  "T719a5UwUCnEs54UsxG9CJYYDhwmFCqkr7wxCcNcfZ6p5GZ",
 			expectedClassicAddress: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 			expectedTag:            0,
+			expectedHasTag:         false,
 			expectedTestnet:        true,
 			expectedErr:            nil,
 		},
@@ -232,6 +275,16 @@ func TestXAddressToClassicAddress(t *testing.T) {
 			input:                  "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
 			expectedClassicAddress: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 			expectedTag:            0,
+			expectedHasTag:         false,
+			expectedTestnet:        false,
+			expectedErr:            nil,
+		},
+		{
+			name:                   "pass - valid mainnet x-address with explicit zero tag",
+			input:                  "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2m4Er6SnvjVLpMWPjR",
+			expectedClassicAddress: "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
+			expectedTag:            0,
+			expectedHasTag:         true,
 			expectedTestnet:        false,
 			expectedErr:            nil,
 		},
@@ -239,13 +292,14 @@ func TestXAddressToClassicAddress(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			actualClassicAddress, actualTag, actualTestnet, err := XAddressToClassicAddress(tc.input)
+			actualClassicAddress, actualTag, actualHasTag, actualTestnet, err := XAddressToClassicAddress(tc.input)
 			if tc.expectedErr != nil {
-				require.Error(t, err)
-				require.Equal(t, tc.expectedErr.Error(), err.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
+				require.NoError(t, err)
 				require.Equal(t, tc.expectedClassicAddress, actualClassicAddress)
 				require.Equal(t, tc.expectedTag, actualTag)
+				require.Equal(t, tc.expectedHasTag, actualHasTag)
 				require.Equal(t, tc.expectedTestnet, actualTestnet)
 			}
 		})
@@ -321,6 +375,18 @@ func TestDecodeTag(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
+			name:        "pass - valid tag - 0",
+			input:       []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			expectedTag: 0,
+			hasTag:      true,
+			expectedErr: nil,
+		},
+		{
+			name:        "fail - non-zero reserved bytes with 32-bit tag",
+			input:       []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0},
+			expectedErr: ErrInvalidTag,
+		},
+		{
 			name:        "pass - no tag (flag = 0)",
 			input:       []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 			expectedTag: 0,
@@ -340,8 +406,7 @@ func TestDecodeTag(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, hasTag, err := decodeTag(tc.input)
 			if tc.expectedErr != nil {
-				require.Error(t, err)
-				require.Equal(t, tc.expectedErr.Error(), err.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedTag, actual)
@@ -349,4 +414,19 @@ func TestDecodeTag(t *testing.T) {
 			}
 		})
 	}
+}
+
+func xAddressWithTagReservedBytes() string {
+	accountID := []byte{
+		94, 123, 17, 37, 35, 246,
+		141, 47, 94, 135, 157, 180,
+		234, 197, 28, 102, 152, 166,
+		147, 4,
+	}
+
+	payload := make([]byte, 0, AccountAddressLength+9)
+	payload = append(payload, accountID...)
+	payload = append(payload, 1, 22, 0, 0, 0, 1, 0, 0, 0)
+
+	return Base58CheckEncode(payload, MainnetXAddressPrefix...)
 }

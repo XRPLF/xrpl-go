@@ -34,7 +34,7 @@ type Wallet struct {
 
 // New creates a new random Wallet. In order to make this a valid account on ledger, you must send XRP to it.
 func New(alg interfaces.CryptoImplementation) (Wallet, error) {
-	seed, err := keypairs.GenerateSeed("", alg, random.NewRandomizer())
+	seed, err := keypairs.GenerateSeed(nil, alg, random.NewRandomizer())
 	if err != nil {
 		return Wallet{}, err
 	}
@@ -137,13 +137,15 @@ func FromMnemonic(mnemonic string) (*Wallet, error) {
 }
 
 // Sign signs a transaction offline, returning the transaction blob and its signature.
+// The transaction is signed using an internal copy and the provided map is not mutated.
 // TODO: Refactor to accept a `Transaction` object instead of a map.
 func (w *Wallet) Sign(tx map[string]any) (string, string, error) {
-	tx["SigningPubKey"] = w.PublicKey
+	if tx == nil {
+		return "", "", ErrNilTransaction
+	}
 
-	// Copy the transaction to avoid modifying the original transaction
-	signTx := make(map[string]any, len(tx))
-	maps.Copy(signTx, tx)
+	signTx := maps.Clone(tx)
+	signTx["SigningPubKey"] = w.PublicKey
 
 	encodedTx, err := binarycodec.EncodeForSigning(signTx)
 	if err != nil {
@@ -155,9 +157,9 @@ func (w *Wallet) Sign(tx map[string]any) (string, string, error) {
 		return "", "", err
 	}
 
-	tx["TxnSignature"] = txHash
+	signTx["TxnSignature"] = txHash
 
-	txBlob, err := binarycodec.Encode(tx)
+	txBlob, err := binarycodec.Encode(signTx)
 	if err != nil {
 		return "", "", err
 	}
@@ -176,11 +178,16 @@ func (w *Wallet) GetAddress() types.Address {
 }
 
 // Multisign signs a multisigned transaction offline, returning the signed transaction blob and its transaction hash.
-// Note: this method sets tx["SigningPubKey"] = "" directly on the provided map (XRPL protocol requirement).
+// The transaction is signed using an internal copy and the provided map is not mutated.
 func (w *Wallet) Multisign(tx map[string]any) (string, string, error) {
+	if tx == nil {
+		return "", "", ErrNilTransaction
+	}
+
+	signTx := maps.Clone(tx)
 	// For regular multisigning, SigningPubKey must be empty per XRPL protocol.
-	tx["SigningPubKey"] = ""
-	encodedTx, err := binarycodec.EncodeForMultisigning(tx, w.ClassicAddress.String())
+	signTx["SigningPubKey"] = ""
+	encodedTx, err := binarycodec.EncodeForMultisigning(signTx, w.ClassicAddress.String())
 	if err != nil {
 		return "", "", err
 	}
@@ -198,8 +205,8 @@ func (w *Wallet) Multisign(tx map[string]any) (string, string, error) {
 		},
 	}
 
-	tx["Signers"] = []any{signer.Flatten()}
-	blob, err := binarycodec.Encode(tx)
+	signTx["Signers"] = []any{signer.Flatten()}
+	blob, err := binarycodec.Encode(signTx)
 	if err != nil {
 		return "", "", err
 	}
@@ -234,17 +241,17 @@ func (w *Wallet) ComputeSignature(encodedTx string) (string, error) {
 }
 
 // Ensures that the address is a classic address.
-// If the address is an x-address with a tag of 0 (no tag), it will be converted to a classic address.
+// If the address is an x-address without a tag, it will be converted to a classic address.
 // If the address is not a classic address, it will be returned as is.
 func ensureClassicAddress(account string) (types.Address, error) {
 	if ok := addresscodec.IsValidXAddress(account); ok {
-		classicAddr, tag, _, err := addresscodec.XAddressToClassicAddress(account)
+		classicAddr, _, hasTag, _, err := addresscodec.XAddressToClassicAddress(account)
 		if err != nil {
 			return "", err
 		}
 
-		if tag != 0 {
-			return "", ErrAddressTagNotZero
+		if hasTag {
+			return "", ErrAddressHasTag
 		}
 
 		return types.Address(classicAddr), nil

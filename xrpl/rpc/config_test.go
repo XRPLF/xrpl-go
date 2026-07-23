@@ -1,12 +1,18 @@
 package rpc
 
 import (
+	"bytes"
+	"io"
+	"log"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/Peersyst/xrpl-go/xrpl/common"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
+	clientconfigtestutil "github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,9 +57,146 @@ func TestConfigCreation(t *testing.T) {
 			"Content-Type": {"application/json"},
 		}
 		req.Header = cfg.Headers
-		assert.Equal(t, &Config{HTTPClient: customHttpClient{}, URL: "http://s1.ripple.com:51234/", Headers: headers, maxRetries: common.DefaultMaxRetries, retryDelay: common.DefaultRetryDelay, feeCushion: common.DefaultFeeCushion, maxFeeXRP: common.DefaultMaxFeeXRP, faucetProvider: nil, timeout: common.DefaultTimeout}, cfg)
+		expected := &Config{
+			HTTPClient:      customHttpClient{},
+			URL:             "http://s1.ripple.com:51234/",
+			Headers:         headers,
+			maxRetries:      common.DefaultMaxRetries,
+			retryDelay:      common.DefaultRetryDelay,
+			maxResponseSize: defaultMaxResponseSize,
+			feeCushion:      common.DefaultFeeCushion,
+			maxFeeXRP:       common.DefaultMaxFeeXRP,
+			faucetProvider:  nil,
+			timeout:         common.DefaultTimeout,
+		}
+		assert.Equal(t, expected, cfg)
 		assert.NoError(t, err)
 	})
+}
+
+func TestSetLogger(t *testing.T) {
+	t.Run("nil silences warnings", func(t *testing.T) {
+		logs := clientconfigtestutil.CaptureLogOutput(t, func() {
+			SetLogger(nil)
+			cfg, err := NewClientConfig("http://s1.ripple.com:51234")
+			require.NoError(t, err)
+			require.NotNil(t, cfg)
+		})
+		require.Empty(t, logs)
+	})
+
+	t.Run("custom logger receives warnings", func(t *testing.T) {
+		var buf bytes.Buffer
+		previous := clientconfig.SetLogger(log.New(&buf, "custom:", 0))
+		t.Cleanup(func() { clientconfig.SetLogger(previous) })
+
+		cfg, err := NewClientConfig("http://s1.ripple.com:51234")
+		require.NoError(t, err)
+		require.NotNil(t, cfg)
+		require.Contains(t, buf.String(), "custom:")
+		require.Contains(t, buf.String(), "is not using a TLS scheme")
+	})
+}
+
+// Race-detector test, success = no race report.
+func TestSetLoggerConcurrentWarning(t *testing.T) {
+	previous := clientconfig.SetLogger(log.Default())
+	t.Cleanup(func() { clientconfig.SetLogger(previous) })
+
+	var wg sync.WaitGroup
+	for i := range 100 {
+		wg.Add(2)
+		go func(i int) {
+			defer wg.Done()
+			if i%2 == 0 {
+				SetLogger(nil)
+				return
+			}
+			SetLogger(log.New(io.Discard, "", 0))
+		}(i)
+		go func() {
+			defer wg.Done()
+			_, _ = NewClientConfig("http://s1.ripple.com:51234")
+		}()
+	}
+	wg.Wait()
+}
+
+func TestNewClientConfigInsecureSchemeWarnings(t *testing.T) {
+	tests := []struct {
+		name        string
+		url         string
+		wantWarning string
+	}{
+		{
+			name:        "remote insecure scheme warns",
+			url:         "http://s1.ripple.com:51234",
+			wantWarning: `xrpl-go: warning: rpc client endpoint "http://s1.ripple.com:51234/" is not using a TLS scheme`,
+		},
+		{
+			name: "local insecure scheme does not warn",
+			url:  "http://127.0.0.1:51234",
+		},
+		{
+			name: "remote tls scheme does not warn",
+			url:  "https://s1.ripple.com:51234",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logs := clientconfigtestutil.CaptureLogOutput(t, func() {
+				cfg, err := NewClientConfig(tt.url)
+
+				require.NoError(t, err)
+				require.NotNil(t, cfg)
+			})
+
+			if tt.wantWarning == "" {
+				require.Empty(t, logs)
+				return
+			}
+
+			require.Contains(t, logs, tt.wantWarning)
+		})
+	}
+}
+
+func TestWithMaxResponseSize(t *testing.T) {
+	tests := []struct {
+		name     string
+		opts     []ConfigOpt
+		expected int64
+	}{
+		{
+			name:     "default max response size",
+			expected: defaultMaxResponseSize,
+		},
+		{
+			name:     "override max response size",
+			opts:     []ConfigOpt{WithMaxResponseSize(1024)},
+			expected: 1024,
+		},
+		{
+			name:     "zero max response size disables limit",
+			opts:     []ConfigOpt{WithMaxResponseSize(0)},
+			expected: 0,
+		},
+		{
+			name:     "negative max response size uses default",
+			opts:     []ConfigOpt{WithMaxResponseSize(-1)},
+			expected: defaultMaxResponseSize,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := NewClientConfig("http://s1.ripple.com:51234", tt.opts...)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, cfg.maxResponseSize)
+		})
+	}
 }
 
 func TestWithMaxFeeXRP(t *testing.T) {

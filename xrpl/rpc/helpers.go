@@ -203,10 +203,10 @@ func createRequest(reqParams XRPLRequest) ([]byte, error) {
 }
 
 // checkForError reads the http response and formats the error if it exists
-func checkForError(res *http.Response) (Response, error) {
+func checkForError(res *http.Response, maxResponseSize int64) (Response, error) {
 	var jr Response
 
-	b, err := io.ReadAll(res.Body)
+	b, err := readResponseBody(res.Body, maxResponseSize)
 	if err != nil || b == nil {
 		return jr, err
 	}
@@ -229,6 +229,32 @@ func checkForError(res *http.Response) (Response, error) {
 	}
 
 	return jr, nil
+}
+
+func readResponseBody(body io.Reader, maxResponseSize int64) ([]byte, error) {
+	if maxResponseSize == 0 {
+		return io.ReadAll(body)
+	}
+	if maxResponseSize < 0 {
+		maxResponseSize = defaultMaxResponseSize
+	}
+
+	limit := maxResponseSize
+	if maxResponseSize < math.MaxInt64 {
+		limit++
+	}
+
+	b, err := io.ReadAll(io.LimitReader(body, limit))
+	if err != nil {
+		return nil, err
+	}
+	// Deliberately do not drain the remaining body on oversize: closing without
+	// draining costs one TCP reconnect, but draining would defeat the memory cap.
+	if int64(len(b)) > maxResponseSize {
+		return nil, ErrResponseTooLarge
+	}
+
+	return b, nil
 }
 
 // Sets valid addresses for the transaction.
@@ -325,7 +351,7 @@ func (c *Client) getFeeXrp(cushion float32) (string, error) {
 	}
 
 	// Round fee to NUM_DECIMAL_PLACES
-	roundedFee := float32(math.Round(float64(fee)*math.Pow10(int(currency.MaxFractionLength)))) / float32(math.Pow10(int(currency.MaxFractionLength)))
+	roundedFee := float32(math.Round(float64(fee)*math.Pow10(currency.MaxFractionLength))) / float32(math.Pow10(currency.MaxFractionLength))
 
 	// Convert the rounded fee back to a string with NUM_DECIMAL_PLACES
 	return fmt.Sprintf("%.*f", currency.MaxFractionLength, roundedFee), nil
@@ -464,24 +490,6 @@ func (c *Client) checkPaymentAmounts(tx *transaction.FlatTransaction) error {
 			return ErrAmountAndDeliverMaxMustBeIdentical
 		}
 	}
-	return nil
-}
-
-// Sets a transaction's flags to its numeric representation.
-// TODO: Add flag support for AMMDeposit, AMMWithdraw,
-// NFTTOkenCreateOffer, NFTokenMint, OfferCreate, XChainModifyBridge (not supported).
-func (c *Client) setTransactionFlags(tx *transaction.FlatTransaction) error {
-	flags, ok := (*tx)["Flags"].(uint32)
-	if !ok && flags > 0 {
-		(*tx)["Flags"] = int(0)
-		return nil
-	}
-
-	_, ok = (*tx)["TransactionType"].(string)
-	if !ok {
-		return ErrTransactionTypeMissing
-	}
-
 	return nil
 }
 
@@ -636,7 +644,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 		// Make ledger_entry request
 		res, err := c.GetLedgerEntry(&ledger.EntryRequest{
 			Index:       loanBrokerID,
-			LedgerIndex: common.LedgerTitle("validated"),
+			LedgerIndex: common.LedgerTitle("current"),
 		})
 		if err != nil {
 			return 0, err
@@ -657,7 +665,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 	// Fetch account info with signer lists
 	accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
 		Account:     counterparty,
-		LedgerIndex: common.LedgerTitle("validated"),
+		LedgerIndex: common.LedgerTitle("current"),
 		SignerLists: true,
 	})
 	if err != nil {

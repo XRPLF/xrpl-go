@@ -16,12 +16,12 @@ func TestLoanDelete_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanDelete
-		expected map[string]any
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanDelete{},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType": LoanDeleteTx.String(),
 				"LoanID":          "",
 			},
@@ -37,7 +37,7 @@ func TestLoanDelete_Flatten(t *testing.T) {
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 			},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType":    LoanDeleteTx.String(),
 				"Account":            "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
 				"Fee":                "1000000",

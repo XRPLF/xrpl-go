@@ -10,16 +10,24 @@ import (
 // It provides a method to read messages from the connection.
 // All methods are safe for concurrent use.
 type Connection struct {
-	conn *websocket.Conn
-	url  string
+	conn            *websocket.Conn
+	url             string
+	maxResponseSize int64
 
-	mu sync.Mutex
+	mu      sync.Mutex
+	readMu  sync.Mutex
+	writeMu sync.Mutex
 }
 
 // NewConnection creates a new Connection.
 func NewConnection(url string) *Connection {
+	return newConnection(url, defaultMaxResponseSize)
+}
+
+func newConnection(url string, maxResponseSize int64) *Connection {
 	return &Connection{
-		url: url,
+		url:             url,
+		maxResponseSize: maxResponseSize,
 	}
 }
 
@@ -28,9 +36,15 @@ func (c *Connection) Connect() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	conn, _, err := websocket.DefaultDialer.Dial(c.url, nil)
+	conn, resp, err := websocket.DefaultDialer.Dial(c.url, nil)
+	if resp != nil && resp.Body != nil {
+		_ = resp.Body.Close()
+	}
 	if err != nil {
 		return err
+	}
+	if c.maxResponseSize > 0 {
+		conn.SetReadLimit(c.maxResponseSize)
 	}
 	c.conn = conn
 	return nil
@@ -40,21 +54,25 @@ func (c *Connection) Connect() error {
 // It returns an error if the connection is not connected.
 func (c *Connection) Disconnect() error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if !c.IsConnected() {
+	conn := c.conn
+	if conn == nil {
+		c.mu.Unlock()
 		return ErrNotConnected
 	}
+	c.conn = nil
+	c.mu.Unlock()
 
-	if err := c.conn.Close(); err != nil {
+	if err := conn.Close(); err != nil {
 		return err
 	}
-	c.conn = nil
 	return nil
 }
 
 // IsConnected returns true if the connection is connected.
 func (c *Connection) IsConnected() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	return c.conn != nil
 }
 
@@ -62,10 +80,17 @@ func (c *Connection) IsConnected() bool {
 // It returns the message and an error if the message is not read.
 // This method is blocking, it will block until a message is read.
 func (c *Connection) ReadMessage() ([]byte, error) {
-	if !c.IsConnected() {
+	c.readMu.Lock()
+	defer c.readMu.Unlock()
+
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
+
+	if conn == nil {
 		return nil, ErrNotConnected
 	}
-	_, message, err := c.conn.ReadMessage()
+	_, message, err := conn.ReadMessage()
 	if err != nil {
 		return nil, err
 	}
@@ -75,8 +100,15 @@ func (c *Connection) ReadMessage() ([]byte, error) {
 // WriteMessage writes a message to the connection.
 // It returns an error if the message is not written.
 func (c *Connection) WriteMessage(message []byte) error {
-	if !c.IsConnected() {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
+
+	if conn == nil {
 		return ErrNotConnected
 	}
-	return c.conn.WriteMessage(websocket.TextMessage, message)
+	return conn.WriteMessage(websocket.TextMessage, message)
 }

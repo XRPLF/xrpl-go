@@ -80,79 +80,104 @@ func TestCreateRequest(t *testing.T) {
 }
 
 func TestCheckForError(t *testing.T) {
-	t.Run("Error Response", func(t *testing.T) {
-		json := `{
-			"result": {
-				"error": "ledgerIndexMalformed",
-				"request": {
-					"account": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
-					"command": "account_info",
-					"ledger_index": "-",
-					"strict": true
-				},
-				"status": "error"
+	jsonRPCError := `{"result":{"error":"ledgerIndexMalformed","status":"error"}}`
+	simpleSuccess := `{"result":{"status":"success"}}`
+	nullMethod := "Null Method" // https://xrpl.org/error-formatting.html#universal-errors
+
+	tests := []struct {
+		name              string
+		body              []byte
+		statusCode        int
+		maxResponseSize   int64
+		expectedClientErr string
+		expectedErr       error
+		expectedResultErr string
+		expectedStatus    string
+		expectedEmpty     bool
+	}{
+		{
+			name:              "fail - error response",
+			body:              []byte(jsonRPCError),
+			statusCode:        200,
+			maxResponseSize:   defaultMaxResponseSize,
+			expectedClientErr: "ledgerIndexMalformed",
+			expectedResultErr: "ledgerIndexMalformed",
+		},
+		{
+			name:              "fail - error response with error code",
+			body:              []byte(nullMethod),
+			statusCode:        400,
+			maxResponseSize:   defaultMaxResponseSize,
+			expectedClientErr: "Null Method",
+		},
+		{
+			name:            "pass - no error response",
+			body:            []byte(simpleSuccess),
+			statusCode:      200,
+			maxResponseSize: defaultMaxResponseSize,
+			expectedStatus:  "success",
+		},
+		{
+			name:            "pass - no error response under max size",
+			body:            []byte(simpleSuccess),
+			statusCode:      200,
+			maxResponseSize: int64(len(simpleSuccess)),
+			expectedStatus:  "success",
+		},
+		{
+			name:              "fail - error response with error code under max size",
+			body:              []byte(nullMethod),
+			statusCode:        400,
+			maxResponseSize:   int64(len(nullMethod)),
+			expectedClientErr: "Null Method",
+		},
+		{
+			name:            "fail - response over max size",
+			body:            bytes.Repeat([]byte("a"), 11),
+			statusCode:      200,
+			maxResponseSize: 10,
+			expectedErr:     ErrResponseTooLarge,
+			expectedEmpty:   true,
+		},
+		{
+			name:            "pass - zero max size disables limit",
+			body:            []byte(simpleSuccess),
+			statusCode:      200,
+			maxResponseSize: 0,
+			expectedStatus:  "success",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := &http.Response{
+				StatusCode: tt.statusCode,
+				Body:       io.NopCloser(bytes.NewReader(tt.body)),
 			}
-		}`
 
-		b := io.NopCloser(bytes.NewReader([]byte(json)))
-		res := &http.Response{
-			StatusCode: 200, // error response still returns a 200
-			Body:       b,
-		}
+			response, err := checkForError(res, tt.maxResponseSize)
 
-		bodyBytes, err := checkForError(res)
-		assert.NotNil(t, bodyBytes)
-		expError := &ClientError{ErrorString: "ledgerIndexMalformed"}
-		assert.Equal(t, expError, err)
-	})
-
-	t.Run("Error Response with error code", func(t *testing.T) {
-		json := "Null Method" // https://xrpl.org/error-formatting.html#universal-errors
-
-		b := io.NopCloser(bytes.NewReader([]byte(json)))
-		res := &http.Response{
-			StatusCode: 400,
-			Body:       b,
-		}
-
-		bodyBytes, err := checkForError(res)
-		assert.NotNil(t, bodyBytes)
-		expErrpr := &ClientError{ErrorString: "Null Method"}
-		assert.Equal(t, expErrpr, err)
-	})
-
-	t.Run("No error Response", func(t *testing.T) {
-		json := `{
-			"result": {
-			  "account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-			  "channels": [
-				{
-				  "account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				  "amount": "1000",
-				  "balance": "0",
-				  "channel_id": "C7F634794B79DB40E87179A9D1BF05D05797AE7E92DF8E93FD6656E8C4BE3AE7",
-				  "destination_account": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
-				  "public_key": "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
-				  "public_key_hex": "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
-				  "settle_delay": 60
-				}
-			  ],
-			  "ledger_hash": "27F530E5C93ED5C13994812787C1ED073C822BAEC7597964608F2C049C2ACD2D",
-			  "ledger_index": 71766343,
-			  "status": "success",
-			  "validated": true
+			switch {
+			case tt.expectedErr != nil:
+				require.ErrorIs(t, err, tt.expectedErr)
+			case tt.expectedClientErr != "":
+				var clientErr *ClientError
+				require.ErrorAs(t, err, &clientErr)
+				assert.Equal(t, tt.expectedClientErr, clientErr.ErrorString)
+			default:
+				require.NoError(t, err)
 			}
-		  }`
 
-		b := io.NopCloser(bytes.NewReader([]byte(json)))
-		res := &http.Response{
-			StatusCode: 200,
-			Body:       b,
-		}
-
-		bodyBytes, err := checkForError(res)
-
-		require.NoError(t, err)
-		assert.NotNil(t, bodyBytes)
-	})
+			if tt.expectedEmpty {
+				assert.Empty(t, response)
+				return
+			}
+			if tt.expectedResultErr != "" {
+				assert.Equal(t, tt.expectedResultErr, response.Result["error"])
+			}
+			if tt.expectedStatus != "" {
+				assert.Equal(t, tt.expectedStatus, response.Result["status"])
+			}
+		})
+	}
 }

@@ -1,6 +1,10 @@
 package typecheck
 
-import "testing"
+import (
+	"encoding/json"
+	"math"
+	"testing"
+)
 
 func TestIsString(t *testing.T) {
 	tests := []struct {
@@ -264,6 +268,63 @@ func TestIsHex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsHex(tt.s); got != tt.want {
 				t.Errorf("IsValidHex(%q) = %v, want %v", tt.s, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsHexBlob(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		want bool
+	}{
+		{
+			name: "pass - valid even-length hex",
+			s:    "A0028000",
+			want: true,
+		},
+		{
+			name: "pass - valid even-length hex lowercase",
+			s:    "deadbeef",
+			want: true,
+		},
+		{
+			name: "fail - odd-length hex",
+			s:    "ABC",
+			want: false,
+		},
+		{
+			name: "fail - single hex digit",
+			s:    "F",
+			want: false,
+		},
+		{
+			name: "fail - even-length non-hex",
+			s:    "GG",
+			want: false,
+		},
+		{
+			name: "fail - even-length mixed hex and non-hex",
+			s:    "AB0Z",
+			want: false,
+		},
+		{
+			name: "fail - odd-length non-hex",
+			s:    "not-hex",
+			want: false,
+		},
+		{
+			name: "fail - empty string",
+			s:    "",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsHexBlob(tt.s); got != tt.want {
+				t.Errorf("IsHexBlob(%q) = %v, want %v", tt.s, got, tt.want)
 			}
 		})
 	}
@@ -829,6 +890,74 @@ func TestIsXRPLNumber(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsXRPLNumber(tt.value); got != tt.want {
 				t.Errorf("IsXRPLNumber(%v) = %v, want %v", tt.value, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestToUint32(t *testing.T) {
+	okTests := []struct {
+		name     string
+		in       any
+		expected uint32
+	}{
+		{"uint32", uint32(131072), 131072},
+		{"uint", uint(8), 8},
+		{"uint8", uint8(8), 8},
+		{"uint16", uint16(8), 8},
+		{"uint64", uint64(2147483648), 2147483648},
+		{"int", 131072, 131072},
+		{"int8", int8(8), 8},
+		{"int16", int16(8), 8},
+		{"int32", int32(8), 8},
+		{"int64", int64(8), 8},
+		{"int zero", 0, 0},
+		{"int64 max uint32", int64(math.MaxUint32), math.MaxUint32},
+		{"float32 whole", float32(8), 8},
+		{"float64 whole", float64(131072), 131072},
+		{"json.Number int", json.Number("131072"), 131072},
+		{"json.Number whole float", json.Number("131072.0"), 131072},
+		{"json.Number exponent", json.Number("1e3"), 1000},
+	}
+	for _, tt := range okTests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := ToUint32(tt.in)
+			if !ok {
+				t.Fatalf("ToUint32(%v) ok = false, want true", tt.in)
+			}
+			if got != tt.expected {
+				t.Errorf("ToUint32(%v) = %d, want %d", tt.in, got, tt.expected)
+			}
+		})
+	}
+
+	failTests := []struct {
+		name string
+		in   any
+	}{
+		{"negative int", -1},
+		{"int64 above max", int64(math.MaxUint32) + 1},
+		{"uint64 above max", uint64(math.MaxUint32) + 1},
+		{"fractional float", 1.5},
+		{"negative float", float64(-2)},
+		{"float above max", float64(math.MaxUint32) + 1},
+		{"NaN", math.NaN()},
+		{"+Inf", math.Inf(1)},
+		{"-Inf", math.Inf(-1)},
+		{"json.Number above max", json.Number("4294967296")},
+		{"json.Number fractional", json.Number("1.5")},
+		{"json.Number fractional exponent", json.Number("1.5e-1")},
+		{"json.Number rounds down to max uint32", json.Number("4294967295.0000001")},
+		{"json.Number rounds up to max uint32", json.Number("4294967294.9999999999")},
+		{"json.Number garbage", json.Number("abc")},
+		{"string", "131072"},
+		{"nil", nil},
+		{"bool", true},
+	}
+	for _, tt := range failTests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, ok := ToUint32(tt.in); ok {
+				t.Errorf("ToUint32(%v) ok = true (got %d), want false", tt.in, got)
 			}
 		})
 	}

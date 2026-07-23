@@ -72,6 +72,41 @@ func TestED25519Sign(t *testing.T) {
 			expectedErr:  ErrInvalidPrivateKey,
 		},
 		{
+			name:         "fail - empty private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "",
+			expected:     "",
+			expectedErr:  ErrInvalidPrivateKey,
+		},
+		{
+			name:         "fail - prefix-only private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "ED",
+			expected:     "",
+			expectedErr:  ErrInvalidPrivateKey,
+		},
+		{
+			name:         "fail - short private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "EDBB3ECA",
+			expected:     "",
+			expectedErr:  ErrInvalidPrivateKey,
+		},
+		{
+			name:         "fail - oversized private key",
+			inputMsg:     "hello world",
+			inputPrivKey: "EDBB3ECA8985E1484FA6A28C4B30FB0042A2CC5DF3EC8DC37B5F3D126DDFD3CA1400",
+			expected:     "",
+			expectedErr:  ErrInvalidPrivateKey,
+		},
+		{
+			name:         "fail - private key with invalid ED prefix",
+			inputMsg:     "hello world",
+			inputPrivKey: "00BB3ECA8985E1484FA6A28C4B30FB0042A2CC5DF3EC8DC37B5F3D126DDFD3CA14",
+			expected:     "",
+			expectedErr:  ErrInvalidPrivateKey,
+		},
+		{
 			name:         "pass - sign a valid message",
 			inputMsg:     "hello world",
 			inputPrivKey: "EDBB3ECA8985E1484FA6A28C4B30FB0042A2CC5DF3EC8DC37B5F3D126DDFD3CA14",
@@ -100,7 +135,7 @@ func TestED25519Sign(t *testing.T) {
 
 			if tc.expectedErr != nil {
 				require.Empty(t, actual)
-				require.Error(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
@@ -135,6 +170,48 @@ func TestED25519Validate(t *testing.T) {
 			name:        "fail - invalid public key hex",
 			inputMsg:    "test message",
 			inputPubKey: "invalid_key",
+			inputSig:    "C001CB8A9883497518917DD16391930F4FEE39CEA76C846CFF4330BA44ED19DC4730056C2C6D7452873DE8120A5023C6807135C6329A89A13BA1D476FE8E7100",
+			expected:    false,
+		},
+		{
+			name:        "fail - empty public key",
+			inputMsg:    "test message",
+			inputPubKey: "",
+			inputSig:    "C001CB8A9883497518917DD16391930F4FEE39CEA76C846CFF4330BA44ED19DC4730056C2C6D7452873DE8120A5023C6807135C6329A89A13BA1D476FE8E7100",
+			expected:    false,
+		},
+		{
+			name:        "fail - prefix-only public key",
+			inputMsg:    "test message",
+			inputPubKey: "ED",
+			inputSig:    "C001CB8A9883497518917DD16391930F4FEE39CEA76C846CFF4330BA44ED19DC4730056C2C6D7452873DE8120A5023C6807135C6329A89A13BA1D476FE8E7100",
+			expected:    false,
+		},
+		{
+			name:        "fail - short public key",
+			inputMsg:    "test message",
+			inputPubKey: "ED4924A9",
+			inputSig:    "C001CB8A9883497518917DD16391930F4FEE39CEA76C846CFF4330BA44ED19DC4730056C2C6D7452873DE8120A5023C6807135C6329A89A13BA1D476FE8E7100",
+			expected:    false,
+		},
+		{
+			name:        "fail - oversized public key",
+			inputMsg:    "test message",
+			inputPubKey: "ED4924A9045FE5ED8B22BAA7B6229A72A287CCF3EA287AADD3A032A24C0F008FA600",
+			inputSig:    "C001CB8A9883497518917DD16391930F4FEE39CEA76C846CFF4330BA44ED19DC4730056C2C6D7452873DE8120A5023C6807135C6329A89A13BA1D476FE8E7100",
+			expected:    false,
+		},
+		{
+			name:        "fail - invalid signature length",
+			inputMsg:    "test message",
+			inputPubKey: "ED4924A9045FE5ED8B22BAA7B6229A72A287CCF3EA287AADD3A032A24C0F008FA6",
+			inputSig:    "C001",
+			expected:    false,
+		},
+		{
+			name:        "fail - public key with invalid ED prefix",
+			inputMsg:    "test message",
+			inputPubKey: "004924A9045FE5ED8B22BAA7B6229A72A287CCF3EA287AADD3A032A24C0F008FA6",
 			inputSig:    "C001CB8A9883497518917DD16391930F4FEE39CEA76C846CFF4330BA44ED19DC4730056C2C6D7452873DE8120A5023C6807135C6329A89A13BA1D476FE8E7100",
 			expected:    false,
 		},

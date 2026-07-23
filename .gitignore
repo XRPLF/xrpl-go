@@ -55,3 +55,9 @@ debug
 
 # Coverage report
 coverage.html
+
+# Multi-review skill output (per-run subdirectories)
+/reviews/
+
+# PR template skill output
+/PR/

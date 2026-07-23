@@ -46,21 +46,14 @@ const (
 func Encode(json map[string]any) (string, error) {
 	st := types.NewSTObject(serdes.NewBinarySerializer(serdes.NewFieldIDCodec(definitions.Get())))
 
-	// Iterate over the keys in the provided JSON
-	for k := range json {
-
-		// Get the FieldIdNameMap from the definitions package
-		fh := definitions.Get().Fields[k]
-
-		// If the field is not found in the FieldIdNameMap, delete it from the JSON
-
-		if fh == nil {
-			delete(json, k)
-			continue
+	filteredJSON := make(map[string]any, len(json))
+	for k, v := range json {
+		if definitions.Get().Fields[k] != nil {
+			filteredJSON[k] = v
 		}
 	}
 
-	b, err := st.FromJSON(json)
+	b, err := st.FromJSON(filteredJSON)
 	if err != nil {
 		return "", err
 	}
@@ -82,7 +75,7 @@ func EncodeForMultisigning(json map[string]any, xrpAccountID string) (string, er
 		return "", err
 	}
 
-	encoded, err := Encode(removeNonSigningFields(json))
+	encoded, err := Encode(signingFieldsOnly(json))
 	if err != nil {
 		return "", err
 	}
@@ -92,7 +85,7 @@ func EncodeForMultisigning(json map[string]any, xrpAccountID string) (string, er
 
 // EncodeForSigning encodes a transaction into binary format in preparation for signing.
 func EncodeForSigning(json map[string]any) (string, error) {
-	encoded, err := Encode(removeNonSigningFields(json))
+	encoded, err := Encode(signingFieldsOnly(json))
 	if err != nil {
 		return "", err
 	}
@@ -180,17 +173,17 @@ func EncodeForSigningBatch(json map[string]any) (string, error) {
 	return strings.ToUpper(result.String()), nil
 }
 
-// removeNonSigningFields removes the fields from a JSON transaction object that should not be signed.
-func removeNonSigningFields(json map[string]any) map[string]any {
-	for k := range json {
+// signingFieldsOnly returns a new map containing only the fields from the JSON transaction that are signing fields.
+func signingFieldsOnly(json map[string]any) map[string]any {
+	signingFields := make(map[string]any, len(json))
+	for k, v := range json {
 		fi, _ := definitions.Get().GetFieldInstanceByFieldName(k)
-
-		if fi != nil && !fi.IsSigningField {
-			delete(json, k)
+		if fi != nil && fi.IsSigningField {
+			signingFields[k] = v
 		}
 	}
 
-	return json
+	return signingFields
 }
 
 // Decode decodes a hex string in the canonical binary format into a JSON transaction object.

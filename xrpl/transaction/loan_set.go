@@ -121,7 +121,7 @@ func (tx *LoanSet) SetLoanOverpaymentFlag() {
 }
 
 // Flatten returns a map representation of the LoanSet transaction for JSON-RPC submission.
-func (tx *LoanSet) Flatten() map[string]any {
+func (tx *LoanSet) Flatten() FlatTransaction {
 	flattened := tx.BaseTx.Flatten()
 
 	flattened["TransactionType"] = tx.TxType().String()

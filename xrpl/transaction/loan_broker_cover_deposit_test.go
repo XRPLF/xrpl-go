@@ -17,12 +17,12 @@ func TestLoanBrokerCoverDeposit_Flatten(t *testing.T) {
 	testcases := []struct {
 		name     string
 		tx       *LoanBrokerCoverDeposit
-		expected map[string]any
+		expected FlatTransaction
 	}{
 		{
 			name: "pass - empty",
 			tx:   &LoanBrokerCoverDeposit{},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType": LoanBrokerCoverDepositTx.String(),
 				"LoanBrokerID":    "",
 			},
@@ -39,7 +39,7 @@ func TestLoanBrokerCoverDeposit_Flatten(t *testing.T) {
 				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				Amount:       types.XRPCurrencyAmount(10000),
 			},
-			expected: map[string]any{
+			expected: FlatTransaction{
 				"TransactionType":    LoanBrokerCoverDepositTx.String(),
 				"Account":            "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
 				"Fee":                "1000000",

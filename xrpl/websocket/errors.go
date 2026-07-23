@@ -8,6 +8,8 @@ import (
 const (
 	// txnNotFound is the error message returned by the xrpl node when requesting for a not found transaction.
 	txnNotFound = "txnNotFound"
+	// actNotFound is the error message returned by the xrpl node when requesting for a not found account.
+	actNotFound = "actNotFound"
 )
 
 var (
@@ -23,8 +25,6 @@ var (
 	ErrTransactionNotFound = errors.New("transaction not found")
 	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
-	// ErrTransactionTypeMissing is returned when the transaction type is missing from a transaction.
-	ErrTransactionTypeMissing = errors.New("transaction type is missing in transaction")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
 	ErrInvalidFulfillmentLength = errors.New("invalid fulfillment length")
 
@@ -42,6 +42,10 @@ var (
 	ErrSignersFieldMustBeEmpty = errors.New("field Signers must be empty")
 	// ErrAccountFieldIsNotAString is returned when the Account field is not a string type.
 	ErrAccountFieldIsNotAString = errors.New("field Account must be a string")
+	// ErrNetworkIDFieldIsNotAUint32 is returned when the NetworkID field is set but not a uint32.
+	ErrNetworkIDFieldIsNotAUint32 = errors.New("field NetworkID must be a uint32")
+	// ErrNetworkIDFieldMismatch is returned when the NetworkID field does not match the expected NetworkID.
+	ErrNetworkIDFieldMismatch = errors.New("field NetworkID must match expected NetworkID")
 	// ErrRawTransactionsFieldMissing is returned when the RawTransactions field is missing from a Batch transaction.
 	ErrRawTransactionsFieldMissing = errors.New("RawTransactions field missing from Batch transaction")
 	// ErrRawTransactionFieldMissing is returned when the RawTransaction field is missing from a wrapper.
@@ -64,6 +68,8 @@ var (
 
 	// ErrCannotFundWalletWithoutClassicAddress is returned when attempting to fund a wallet without a classic address.
 	ErrCannotFundWalletWithoutClassicAddress = errors.New("cannot fund a wallet without a classic address")
+	// ErrFundWalletBalanceNotUpdated is returned when the wallet balance does not update on the validated ledger after polling.
+	ErrFundWalletBalanceNotUpdated = errors.New("fund wallet: balance did not update on validated ledger after polling")
 
 	// fees
 

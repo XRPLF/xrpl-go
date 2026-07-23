@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -473,8 +474,8 @@ func TestPayment_Validate(t *testing.T) {
 			if valid != tt.wantValid {
 				t.Errorf("expected valid to be %v, got %v", tt.wantValid, valid)
 			}
-			if (err != nil) && err.Error() != tt.expectedErr.Error() {
-				t.Errorf("Validate() got error message: %v, want error message: %v", err, tt.expectedErr)
+			if err != nil && !errors.Is(err, tt.expectedErr) {
+				t.Errorf("Validate() got error: %v, want error wrapping: %v", err, tt.expectedErr)
 				return
 			}
 			if (err != nil) != tt.wantErr {
