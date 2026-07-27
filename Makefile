@@ -1,7 +1,10 @@
-.PHONY: lint test benchmark
+.PHONY: lint lint-fix
+.PHONY: test-all test-binary-codec test-address-codec test-keypairs test-xrpl test-ci
+.PHONY: run-localnet run-localnet-linux/amd64 run-localnet-linux/arm64 stop-localnet integration-localnet
+.PHONY: test-integration-localnet test-integration-devnet test-integration-testnet
+.PHONY: coverage-unit benchmark
 
-EXCLUDED_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces)
-EXCLUDED_COVERAGE_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces)
+UNIT_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces) ./xrpl/testutil/integration/...
 
 INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration/...
 
@@ -39,7 +42,7 @@ lint-fix:
 
 test-all:
 	@echo "Running Go tests..."
-	@$(GOTEST) $(EXCLUDED_TEST_PACKAGES)
+	@$(GOTEST) $(UNIT_TEST_PACKAGES)
 	@echo "Tests complete!"
 
 test-binary-codec:
@@ -65,7 +68,7 @@ test-xrpl:
 test-ci:
 	@echo "Running Go tests..."
 	@go clean -testcache
-	@$(GOTEST) $(EXCLUDED_TEST_PACKAGES) -parallel $(PARALLEL_TESTS) -timeout $(TEST_TIMEOUT)
+	@$(GOTEST) $(UNIT_TEST_PACKAGES) -parallel $(PARALLEL_TESTS) -timeout $(TEST_TIMEOUT)
 	@echo "Tests complete!"
 
 run-localnet: run-localnet-linux/amd64
@@ -106,7 +109,7 @@ test-integration-testnet:
 
 coverage-unit:
 	@echo "Generating unit test coverage report..."
-	@$(GOTEST) -coverprofile=coverage.out $(EXCLUDED_COVERAGE_PACKAGES)
+	@$(GOTEST) -coverprofile=coverage.out $(UNIT_TEST_PACKAGES)
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated at coverage.html"
 
