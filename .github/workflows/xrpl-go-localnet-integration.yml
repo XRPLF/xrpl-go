@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 30
     env:
       LOCALNET_CONTAINER: rippled_standalone
-      RIPPLED_IMAGE: rippleci/xrpld@sha256:d76a7dccf5dbfad408eb0183014f5d5dabc34371f1e7fd540fd6757f5aec3f61 # rippleci/xrpld:3.2.0-b5
+      RIPPLED_IMAGE: rippleci/xrpld@sha256:21537d84a134fdffc89604200da6c94d593da73ed59688e6a580569f5fef3f12 # rippleci/xrpld:3.2.0
       KEEP_LOCALNET: "1"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
