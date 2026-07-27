@@ -493,24 +493,6 @@ func (c *Client) checkPaymentAmounts(tx *transaction.FlatTransaction) error {
 	return nil
 }
 
-// Sets a transaction's flags to its numeric representation.
-// TODO: Add flag support for AMMDeposit, AMMWithdraw,
-// NFTTOkenCreateOffer, NFTokenMint, OfferCreate, XChainModifyBridge (not supported).
-func (c *Client) setTransactionFlags(tx *transaction.FlatTransaction) error {
-	flags, ok := (*tx)["Flags"].(uint32)
-	if !ok && flags > 0 {
-		(*tx)["Flags"] = int(0)
-		return nil
-	}
-
-	_, ok = (*tx)["TransactionType"].(string)
-	if !ok {
-		return ErrTransactionTypeMissing
-	}
-
-	return nil
-}
-
 func (c *Client) submitMultisignedRequest(req *requests.SubmitMultisignedRequest) (*requests.SubmitMultisignedResponse, error) {
 	res, err := c.Request(req)
 	if err != nil {

@@ -25,8 +25,6 @@ var (
 	ErrMissingWallet = errors.New("wallet must be provided when submitting an unsigned transaction")
 	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
-	// ErrTransactionTypeMissing is returned when the transaction type is missing from a transaction.
-	ErrTransactionTypeMissing = errors.New("transaction type is missing in transaction")
 	// ErrTransactionNotFound is returned when a transaction cannot be found.
 	ErrTransactionNotFound = errors.New("transaction not found")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.

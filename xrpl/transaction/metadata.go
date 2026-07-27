@@ -57,4 +57,5 @@ type DeletedNode struct {
 	LedgerEntryType ledger.EntryType        `json:"LedgerEntryType,omitempty"`
 	LedgerIndex     string                  `json:"LedgerIndex,omitempty"`
 	FinalFields     ledger.FlatLedgerObject `json:"FinalFields,omitempty"`
+	PreviousFields  ledger.FlatLedgerObject `json:"PreviousFields,omitempty"`
 }

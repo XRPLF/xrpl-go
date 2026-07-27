@@ -1157,57 +1157,61 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 	}
 }
 
-func TestClient_setTransactionFlags(t *testing.T) {
+func TestClient_Autofill(t *testing.T) {
 	tests := []struct {
-		name     string
-		tx       transaction.FlatTransaction
-		expected uint32
-		wantErr  bool
+		name        string
+		tx          transaction.FlatTransaction
+		expectedTx  transaction.FlatTransaction
+		expectedErr error
 	}{
 		{
-			name: "No flags set",
+			name: "fail - missing TransactionType",
 			tx: transaction.FlatTransaction{
-				"TransactionType": string(transaction.PaymentTx),
+				"Account": "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 			},
-			expected: uint32(0),
-			wantErr:  false,
+			expectedErr: transaction.ErrTransactionTypeMissing,
 		},
 		{
-			name: "Flags already set",
+			name: "fail - invalid Flags type",
 			tx: transaction.FlatTransaction{
-				"TransactionType": string(transaction.PaymentTx),
-				"Flags":           uint32(1),
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "AccountSet",
+				"Flags":           "abc",
 			},
-			expected: 1,
-			wantErr:  false,
+			expectedErr: transaction.ErrInvalidFlagsValue,
 		},
 		{
-			name: "Missing TransactionType",
+			name: "pass - missing Flags defaults to uint32(0)",
 			tx: transaction.FlatTransaction{
-				"Flags": uint32(1),
+				"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType":    "AccountSet",
+				"Sequence":           uint32(42),
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(100),
 			},
-			expected: 0,
-			wantErr:  true,
+			expectedTx: transaction.FlatTransaction{
+				"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType":    "AccountSet",
+				"Flags":              uint32(0),
+				"Sequence":           uint32(42),
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(100),
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &Client{}
-			err := c.setTransactionFlags(&tt.tx)
+			cl, cleanup := setupTestClientForAutofill(t, nil)
+			defer cleanup()
 
-			if (err != nil) != tt.wantErr {
-
-				t.Errorf("setTransactionFlags() error = %v, wantErr %v", err, tt.wantErr)
+			err := cl.Autofill(&tt.tx)
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
-
-			if !tt.wantErr {
-				flags, ok := tt.tx["Flags"]
-				if !ok && tt.expected != 0 {
-					t.Errorf("setTransactionFlags() got = %v (type %T), want %v (type %T)", flags, flags, tt.expected, tt.expected)
-				}
-			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedTx, tt.tx)
 		})
 	}
 }
