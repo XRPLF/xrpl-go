@@ -32,6 +32,7 @@
   },
   "resolutions": {
     "ajv": "8.18.0",
+    "brace-expansion": "1.1.16",
     "schema-utils": "^4.3.0",
     "serialize-javascript": "7.0.5",
     "uuid": "11.1.1",
