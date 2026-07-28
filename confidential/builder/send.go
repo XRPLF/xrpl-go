@@ -13,15 +13,17 @@ import (
 
 // BuildSendParams holds minimal inputs for BuildSend.
 // Sequence, ReceiverPubKey, IssuerPubKey, AuditorPubKey, BalanceVersion, CurrentBalanceCt,
-// and CurrentBalance are auto-resolved from the ledger. Balance is decrypted using SenderPrivKey.
+// and CurrentBalance are auto-resolved from the ledger. Balance is decrypted using SenderPrivKey
+// within BalanceRange's inclusive bounds.
 type BuildSendParams struct {
 	Account       string
 	Destination   string
 	IssuanceID    string
 	Amount        uint64
-	SenderPrivKey string   // 64 hex chars, also used to decrypt balance from ledger
-	SenderPubKey  string   // 66 hex chars (compressed)
-	CredentialIDs []string // Optional
+	SenderPrivKey string              // 64 hex chars, also used to decrypt balance from ledger
+	SenderPubKey  string              // 66 hex chars (compressed)
+	BalanceRange  elgamal.AmountRange // Inclusive balance decryption bounds
+	CredentialIDs []string            // Optional
 }
 
 // SendParams holds inputs for PrepareSend.
@@ -82,6 +84,9 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 	if err := validateSendBase(p); err != nil {
 		return nil, err
 	}
+	if err := p.BalanceRange.Validate(); err != nil {
+		return nil, err
+	}
 
 	seq, err := getSequence(q, p.Account)
 	if err != nil {
@@ -103,7 +108,7 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 		return nil, fmt.Errorf("%w: sender pubkey does not match ledger", ErrCryptoFailed)
 	}
 
-	currentBalance, err := elgamal.Decrypt(senderBalanceCt, p.SenderPrivKey)
+	currentBalance, err := elgamal.Decrypt(senderBalanceCt, p.SenderPrivKey, p.BalanceRange)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decrypt balance: %w", ErrCryptoFailed, err)
 	}

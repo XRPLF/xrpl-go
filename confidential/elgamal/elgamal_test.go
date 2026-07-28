@@ -4,6 +4,7 @@ package elgamal_test
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
@@ -46,16 +47,13 @@ func TestGenerateBlindingFactor(t *testing.T) {
 
 func TestEncryptDecryptRoundtrip(t *testing.T) {
 	tests := []struct {
-		name   string
-		amount uint64
-		// skipOnDecryptErr skips the subtest instead of failing when the C
-		// library cannot recover the plaintext (BSGS table limitation).
-		skipOnDecryptErr bool
+		name        string
+		amount      uint64
+		amountRange elgamal.AmountRange
 	}{
-		{"pass - zero", 0, false},
-		{"pass - small value", 42, false},
-		{"pass - one million", 1_000_000, false},
-		{"pass - max uint64", math.MaxUint64, true},
+		{name: "pass - zero", amount: 0, amountRange: elgamal.AmountRange{Low: 0, High: 0}},
+		{name: "pass - small value", amount: 42, amountRange: elgamal.AmountRange{Low: 40, High: 50}},
+		{name: "pass - one million", amount: 1_000_000, amountRange: elgamal.AmountRange{Low: 1_000_000, High: 1_000_000}},
 	}
 
 	kp, err := elgamal.GenerateKeypair()
@@ -70,12 +68,41 @@ func TestEncryptDecryptRoundtrip(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, ct, mptcrypto.CiphertextSize*2)
 
-			got, err := elgamal.Decrypt(ct, kp.PrivKeyHex)
-			if err != nil && tt.skipOnDecryptErr {
-				t.Skipf("Decrypt not supported for this value: %v", err)
-			}
+			got, err := elgamal.Decrypt(ct, kp.PrivKeyHex, tt.amountRange)
 			require.NoError(t, err)
 			require.Equal(t, tt.amount, got)
+		})
+	}
+}
+
+func TestDecryptOutsideRange(t *testing.T) {
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	bf, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	ciphertext, err := elgamal.Encrypt(42, kp.PubKeyHex, bf)
+	require.NoError(t, err)
+
+	_, err = elgamal.Decrypt(ciphertext, kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 41})
+	require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
+}
+
+func TestAmountRangeValidate(t *testing.T) {
+	tests := []struct {
+		name        string
+		amountRange elgamal.AmountRange
+		wantErr     error
+	}{
+		{name: "pass - inclusive range", amountRange: elgamal.AmountRange{Low: 1, High: 2}},
+		{name: "pass - single-value range", amountRange: elgamal.AmountRange{Low: 1, High: 1}},
+		{name: "fail - low exceeds high", amountRange: elgamal.AmountRange{Low: 2, High: 1}, wantErr: elgamal.ErrInvalidAmountRange},
+		{name: "fail - high is max uint64", amountRange: elgamal.AmountRange{Low: 0, High: math.MaxUint64}, wantErr: elgamal.ErrInvalidAmountRange},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.amountRange.Validate()
+			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }
@@ -111,7 +138,7 @@ func TestDecryptWithWrongKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// Decrypting with a different private key should fail.
-	_, err = elgamal.Decrypt(ct, kp2.PrivKeyHex)
+	_, err = elgamal.Decrypt(ct, kp2.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 100})
 	require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
 }
 
@@ -151,7 +178,23 @@ func TestInvalidHexInputs(t *testing.T) {
 		{
 			name: "fail - decrypt bad ciphertext",
 			fn: func() error {
-				_, err := elgamal.Decrypt("zz", kp.PrivKeyHex)
+				_, err := elgamal.Decrypt("zz", kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 1})
+				return err
+			},
+			wantErr: elgamal.ErrInvalidCiphertext,
+		},
+		{
+			name: "fail - decrypt short ciphertext",
+			fn: func() error {
+				_, err := elgamal.Decrypt(strings.Repeat("00", mptcrypto.CiphertextSize-1), kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 1})
+				return err
+			},
+			wantErr: elgamal.ErrInvalidCiphertext,
+		},
+		{
+			name: "fail - decrypt long ciphertext",
+			fn: func() error {
+				_, err := elgamal.Decrypt(strings.Repeat("00", mptcrypto.CiphertextSize+1), kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 1})
 				return err
 			},
 			wantErr: elgamal.ErrInvalidCiphertext,
@@ -160,10 +203,36 @@ func TestInvalidHexInputs(t *testing.T) {
 			name: "fail - decrypt bad privkey",
 			fn: func() error {
 				ct, _ := elgamal.Encrypt(1, kp.PubKeyHex, bf)
-				_, err := elgamal.Decrypt(ct, "short")
+				_, err := elgamal.Decrypt(ct, "short", elgamal.AmountRange{Low: 0, High: 1})
 				return err
 			},
 			wantErr: elgamal.ErrInvalidKey,
+		},
+		{
+			name: "fail - decrypt short privkey",
+			fn: func() error {
+				ct, _ := elgamal.Encrypt(1, kp.PubKeyHex, bf)
+				_, err := elgamal.Decrypt(ct, strings.Repeat("00", mptcrypto.PrivKeySize-1), elgamal.AmountRange{Low: 0, High: 1})
+				return err
+			},
+			wantErr: elgamal.ErrInvalidKey,
+		},
+		{
+			name: "fail - decrypt long privkey",
+			fn: func() error {
+				ct, _ := elgamal.Encrypt(1, kp.PubKeyHex, bf)
+				_, err := elgamal.Decrypt(ct, strings.Repeat("00", mptcrypto.PrivKeySize+1), elgamal.AmountRange{Low: 0, High: 1})
+				return err
+			},
+			wantErr: elgamal.ErrInvalidKey,
+		},
+		{
+			name: "fail - decrypt invalid range before decoding inputs",
+			fn: func() error {
+				_, err := elgamal.Decrypt("zz", "short", elgamal.AmountRange{Low: 2, High: 1})
+				return err
+			},
+			wantErr: elgamal.ErrInvalidAmountRange,
 		},
 	}
 	for _, tc := range tests {

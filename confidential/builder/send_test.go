@@ -1,3 +1,5 @@
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
+
 package builder
 
 import (
@@ -308,11 +310,68 @@ func TestBuildSend_Pass(t *testing.T) {
 		Amount:        sendAmount,
 		SenderPrivKey: senderKP.PrivKeyHex,
 		SenderPubKey:  senderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, uint32(8), result.Sequence)
 	require.NotEmpty(t, result.ZKProof)
+}
+
+func TestBuildSend_FailBalanceOutsideRange(t *testing.T) {
+	senderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	const currentBalance uint64 = 1000
+
+	bf, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	senderBalanceCt, err := elgamal.Encrypt(currentBalance, senderKP.PubKeyHex, bf)
+	require.NoError(t, err)
+
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
+
+	q := &mockQuerier{
+		accountSeq: 8,
+		entries: map[string]ledgerentries.FlatLedgerObject{
+			issuanceIndex:  buildIssuanceEntry(issuerKP.PubKeyHex, ""),
+			senderMPTIndex: buildMPTokenEntry(senderKP.PubKeyHex, senderBalanceCt, 2, ""),
+		},
+	}
+
+	_, err = BuildSend(q, BuildSendParams{
+		Account:       testAccount,
+		Destination:   testDestination,
+		IssuanceID:    testIssuanceID,
+		Amount:        300,
+		SenderPrivKey: senderKP.PrivKeyHex,
+		SenderPubKey:  senderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: 0, High: currentBalance - 1},
+	})
+	require.ErrorIs(t, err, ErrCryptoFailed)
+	require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
+}
+
+func TestBuildSend_InvalidRangeBeforeLedgerQueries(t *testing.T) {
+	senderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	_, err = BuildSend(&mockQuerier{accountErr: ErrLedgerQuery}, BuildSendParams{
+		Account:       testAccount,
+		Destination:   testDestination,
+		IssuanceID:    testIssuanceID,
+		Amount:        1,
+		SenderPrivKey: senderKP.PrivKeyHex,
+		SenderPubKey:  senderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: 2, High: 1},
+	})
+	require.ErrorIs(t, err, elgamal.ErrInvalidAmountRange)
+	require.NotErrorIs(t, err, ErrLedgerQuery)
 }
 
 func TestBuildSend_FailReceiverNotOptedIn(t *testing.T) {
@@ -348,6 +407,7 @@ func TestBuildSend_FailReceiverNotOptedIn(t *testing.T) {
 		Amount:        100,
 		SenderPrivKey: senderKP.PrivKeyHex,
 		SenderPubKey:  senderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
 	})
 	require.ErrorIs(t, err, ErrReceiverNotOptedIn)
 }

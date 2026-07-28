@@ -1,3 +1,5 @@
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
+
 package builder
 
 import (
@@ -205,8 +207,63 @@ func TestBuildConvertBack_Pass(t *testing.T) {
 		Amount:        withdrawAmount,
 		HolderPrivKey: holderKP.PrivKeyHex,
 		HolderPubKey:  holderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, uint32(3), result.Sequence)
+}
+
+func TestBuildConvertBack_FailBalanceOutsideRange(t *testing.T) {
+	holderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	const currentBalance uint64 = 1000
+
+	bf, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	balanceCt, err := elgamal.Encrypt(currentBalance, holderKP.PubKeyHex, bf)
+	require.NoError(t, err)
+
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	mptokenIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
+
+	q := &mockQuerier{
+		accountSeq: 3,
+		entries: map[string]ledgerentries.FlatLedgerObject{
+			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
+			mptokenIndex:  buildMPTokenEntry(holderKP.PubKeyHex, balanceCt, 1, ""),
+		},
+	}
+
+	_, err = BuildConvertBack(q, BuildConvertBackParams{
+		Account:       testAccount,
+		IssuanceID:    testIssuanceID,
+		Amount:        100,
+		HolderPrivKey: holderKP.PrivKeyHex,
+		HolderPubKey:  holderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: 0, High: currentBalance - 1},
+	})
+	require.ErrorIs(t, err, ErrCryptoFailed)
+	require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
+}
+
+func TestBuildConvertBack_InvalidRangeBeforeLedgerQueries(t *testing.T) {
+	holderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	_, err = BuildConvertBack(&mockQuerier{accountErr: ErrLedgerQuery}, BuildConvertBackParams{
+		Account:       testAccount,
+		IssuanceID:    testIssuanceID,
+		Amount:        1,
+		HolderPrivKey: holderKP.PrivKeyHex,
+		HolderPubKey:  holderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: 2, High: 1},
+	})
+	require.ErrorIs(t, err, elgamal.ErrInvalidAmountRange)
+	require.NotErrorIs(t, err, ErrLedgerQuery)
 }
