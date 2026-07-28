@@ -25,6 +25,11 @@ These are the transaction types available in the XRPL:
 - [CredentialAccept](https://xrpl.org/docs/references/protocol/transactions/types/credentialaccept)
 - [CredentialCreate](https://xrpl.org/docs/references/protocol/transactions/types/credentialcreate)
 - [CredentialDelete](https://xrpl.org/docs/references/protocol/transactions/types/credentialdelete)
+- `ConfidentialMPTClawback`
+- `ConfidentialMPTConvert`
+- `ConfidentialMPTConvertBack`
+- `ConfidentialMPTMergeInbox`
+- `ConfidentialMPTSend`
 - [DelegateSet](https://xrpl.org/docs/references/protocol/transactions/types/delegateset)
 - [DepositPreauth](https://xrpl.org/docs/references/protocol/transactions/types/depositpreauth)
 - [DIDDelete](https://xrpl.org/docs/references/protocol/transactions/types/diddelete)

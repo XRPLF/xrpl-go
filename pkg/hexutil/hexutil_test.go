@@ -46,3 +46,55 @@ func TestEncodeToUpperHex(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeFixedHex(t *testing.T) {
+	tt := []struct {
+		name    string
+		hex     string
+		size    int
+		wantErr bool
+	}{
+		{
+			name:    "pass - valid 4 bytes",
+			hex:     "deadbeef",
+			size:    4,
+			wantErr: false,
+		},
+		{
+			name:    "pass - empty string with size 0",
+			hex:     "",
+			size:    0,
+			wantErr: false,
+		},
+		{
+			name:    "fail - wrong byte length",
+			hex:     "0102",
+			size:    32,
+			wantErr: true,
+		},
+		{
+			name:    "fail - invalid hex chars",
+			hex:     "zzzz",
+			size:    2,
+			wantErr: true,
+		},
+		{
+			name:    "fail - odd length hex",
+			hex:     "012",
+			size:    1,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := DecodeFixedHex(tc.hex, tc.size)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, got, tc.size)
+		})
+	}
+}

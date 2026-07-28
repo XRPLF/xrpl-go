@@ -11,6 +11,14 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
+const (
+	ledgerSpaceVault           = "0056"
+	ledgerSpaceLoanBroker      = "006C"
+	ledgerSpaceLoan            = "004C"
+	ledgerSpaceMPToken         = "0074"
+	ledgerSpaceMPTokenIssuance = "007E"
+)
+
 // Vault computes the hash of a Vault ledger entry.
 // The hash is computed as SHA-512Half(ledgerSpaceHex('vault') + addressToHex(address) + sequence as 8-char hex).
 //
@@ -23,11 +31,10 @@ func Vault(address string, sequence uint32) (string, error) {
 		return "", fmt.Errorf("failed to decode address: %w", err)
 	}
 
-	ledgerSpaceHex := "0056"
 	addressHex := hex.EncodeToString(accountID)
 	sequenceHex := fmt.Sprintf("%08x", sequence)
 
-	payload := ledgerSpaceHex + addressHex + sequenceHex
+	payload := ledgerSpaceVault + addressHex + sequenceHex
 	payloadBytes, err := hex.DecodeString(payload)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode hex payload: %w", err)
@@ -48,11 +55,10 @@ func LoanBroker(address string, sequence uint32) (string, error) {
 		return "", fmt.Errorf("failed to decode address: %w", err)
 	}
 
-	ledgerSpaceHex := "006C"
 	addressHex := hex.EncodeToString(accountID)
 	sequenceHex := fmt.Sprintf("%08x", sequence)
 
-	payload := ledgerSpaceHex + addressHex + sequenceHex
+	payload := ledgerSpaceLoanBroker + addressHex + sequenceHex
 	payloadBytes, err := hex.DecodeString(payload)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode hex payload: %w", err)
@@ -68,10 +74,9 @@ func LoanBroker(address string, sequence uint32) (string, error) {
 // loanSequence is the sequence number of the Loan.
 // Returns the computed hash of the Loan object.
 func Loan(loanBrokerID string, loanSequence uint32) (string, error) {
-	ledgerSpaceHex := "004C"
 	sequenceHex := fmt.Sprintf("%08x", loanSequence)
 
-	payload := ledgerSpaceHex + loanBrokerID + sequenceHex
+	payload := ledgerSpaceLoan + loanBrokerID + sequenceHex
 	payloadBytes, err := hex.DecodeString(payload)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode hex payload: %w", err)
@@ -83,6 +88,52 @@ func Loan(loanBrokerID string, loanSequence uint32) (string, error) {
 // EncodeToHashString computes SHA-512Half of the given bytes and returns it as an uppercase hex string.
 func EncodeToHashString(bytes []byte) string {
 	return hexutil.EncodeToUpperHex(crypto.Sha512Half(bytes))
+}
+
+// MPToken computes the hash of an MPToken ledger entry.
+// The hash is computed as SHA-512Half(ledgerSpaceHex('mptoken') + MPTokenIssuance(issuanceIDHex) + addressToHex(holder)).
+//
+// issuanceIDHex is the 48-character hex-encoded MPTokenIssuanceID (Hash192, 24 bytes).
+// holder is the classic address of the MPToken holder.
+// Returns the computed hash of the MPToken object.
+func MPToken(issuanceIDHex string, holder string) (string, error) {
+	issuanceKey, err := MPTokenIssuance(issuanceIDHex)
+	if err != nil {
+		return "", fmt.Errorf("failed to compute issuance key: %w", err)
+	}
+
+	_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(holder)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode holder address: %w", err)
+	}
+
+	holderHex := hex.EncodeToString(accountID)
+	payload := ledgerSpaceMPToken + issuanceKey + holderHex
+	payloadBytes, err := hex.DecodeString(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode hex payload: %w", err)
+	}
+
+	return EncodeToHashString(payloadBytes), nil
+}
+
+// MPTokenIssuance computes the hash of an MPTokenIssuance ledger entry.
+// The hash is computed as SHA512Half(ledgerSpaceHex('mptIssuance') + issuanceIDHex).
+//
+// issuanceIDHex is the 48-character hex-encoded MPTokenIssuanceID (Hash192, 24 bytes).
+// Returns the computed hash of the MPTokenIssuance object.
+func MPTokenIssuance(issuanceIDHex string) (string, error) {
+	if len(issuanceIDHex) != 48 {
+		return "", fmt.Errorf("issuance ID must be 48 hex chars (24 bytes), got %d", len(issuanceIDHex))
+	}
+
+	payload := ledgerSpaceMPTokenIssuance + issuanceIDHex
+	payloadBytes, err := hex.DecodeString(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode hex payload: %w", err)
+	}
+
+	return EncodeToHashString(payloadBytes), nil
 }
 
 // PaymentChannel computes the hash (channel ID) of a PaymentChannel ledger entry.
@@ -107,7 +158,6 @@ func PaymentChannel(source, destination string, sequence uint32) (string, error)
 	sourceHex := hex.EncodeToString(sourceID)
 	destHex := hex.EncodeToString(destID)
 	sequenceHex := fmt.Sprintf("%08x", sequence)
-
 	payload := ledgerSpaceHex + sourceHex + destHex + sequenceHex
 	payloadBytes, err := hex.DecodeString(payload)
 	if err != nil {

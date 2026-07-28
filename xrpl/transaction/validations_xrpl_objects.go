@@ -25,6 +25,8 @@ const (
 	StandardCurrencyCodeLen = 3
 	// Hex256Length is the number of characters in a 256-bit hexadecimal value.
 	Hex256Length = 64
+	// MPTIssuanceIDLength is the hex-encoded length of a 24-byte MPT issuance ID (48 hex chars).
+	MPTIssuanceIDLength = 48
 )
 
 // *************************
@@ -286,6 +288,11 @@ func IsHex256(input string) bool {
 // A valid ledger entry id is a 256-bit value encoded as hexadecimal.
 func IsLedgerEntryID(input string) bool {
 	return IsHex256(input)
+}
+
+// IsMPTIssuanceID checks if the given hex string is a valid 24-byte MPT issuance ID (48 hex chars).
+func IsMPTIssuanceID(id string) bool {
+	return len(id) == MPTIssuanceIDLength && typecheck.IsHex(id)
 }
 
 // ValidateHexMetadata validates input is non-empty hex string of up to a certain length.

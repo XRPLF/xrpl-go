@@ -36,6 +36,24 @@ type MPToken struct {
 	PreviousTxnLgrSeq uint32
 	// A hint indicating which page of the owner directory links to this entry, in case the directory consists of multiple pages.
 	OwnerNode uint64
+	// The holder's encryption key for confidential transfers.
+	// Required for participating in confidential transfers.
+	HolderEncryptionKey string `json:",omitempty"`
+	// Encrypted balance value for issuer tracking purposes.
+	// This allows the issuer to track confidential balances.
+	IssuerEncryptedBalance string `json:",omitempty"`
+	// Encrypted balance value for auditor tracking purposes (if configured).
+	// This allows an auditor to track confidential balances.
+	AuditorEncryptedBalance string `json:",omitempty"`
+	// The confidential balance inbox for pending incoming transfers.
+	// Contains encrypted amounts that have not yet been merged.
+	ConfidentialBalanceInbox string `json:",omitempty"`
+	// The confidential balance available for spending.
+	// Contains the merged encrypted balance.
+	ConfidentialBalanceSpending string `json:",omitempty"`
+	// Version counter for the confidential balance.
+	// Incremented with each update to prevent replay attacks.
+	ConfidentialBalanceVersion uint32 `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.

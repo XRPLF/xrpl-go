@@ -13,6 +13,12 @@ func TestMPTokenIssuanceSet_TxType(t *testing.T) {
 	require.Equal(t, MPTokenIssuanceSetTx, tx.TxType())
 }
 
+// validCompressedKey is a 66-char hex string representing a valid compressed EC public key for testing.
+var validCompressedKey = strings.Repeat("AB", 33)
+
+// validUncompressedKey is a 128-char hex string representing a valid uncompressed EC public key for testing.
+var validUncompressedKey = strings.Repeat("CD", 64)
+
 func TestMPTokenIssuanceSet_Flatten(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -135,6 +141,40 @@ func TestMPTokenIssuanceSet_Flatten(t *testing.T) {
 				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 				"DomainID":          "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+			},
+		},
+		{
+			name: "pass - with IssuerEncryptionKey",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				},
+				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				IssuerEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			expected: FlatTransaction{
+				"TransactionType":     "MPTokenIssuanceSet",
+				"Account":             "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"MPTokenIssuanceID":   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				"IssuerEncryptionKey": validCompressedKey,
+			},
+		},
+		{
+			name: "pass - with both encryption keys",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				},
+				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				IssuerEncryptionKey:  types.EncryptionKey(validCompressedKey),
+				AuditorEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			expected: FlatTransaction{
+				"TransactionType":      "MPTokenIssuanceSet",
+				"Account":              "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"MPTokenIssuanceID":    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				"IssuerEncryptionKey":  validCompressedKey,
+				"AuditorEncryptionKey": validCompressedKey,
 			},
 		},
 	}
@@ -447,6 +487,142 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantErr: ErrMPTIssuanceSetHolderMutuallyExclusive,
 		},
 		{
+			name: "pass - valid with IssuerEncryptionKey compressed",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				IssuerEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			wantOk:  true,
+			wantErr: nil,
+		},
+		{
+			name: "fail - IssuerEncryptionKey uncompressed not allowed",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				IssuerEncryptionKey: types.EncryptionKey(validUncompressedKey),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetInvalidKeyLength,
+		},
+		{
+			name: "pass - valid with both encryption keys",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				IssuerEncryptionKey:  types.EncryptionKey(validCompressedKey),
+				AuditorEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			wantOk:  true,
+			wantErr: nil,
+		},
+		{
+			name: "pass - enable confidential with both encryption keys",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MutableFlags:         types.MutableFlags(TmfMPTSetCanConfidentialAmount),
+				IssuerEncryptionKey:  types.EncryptionKey(validCompressedKey),
+				AuditorEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			wantOk:  true,
+			wantErr: nil,
+		},
+		{
+			name: "fail - AuditorEncryptionKey without IssuerEncryptionKey",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				AuditorEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetAuditorRequiresIssuerKey,
+		},
+		{
+			name: "fail - encryption keys with clear confidential amount",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MutableFlags:        types.MutableFlags(TmfMPTClearCanConfidentialAmount),
+				IssuerEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetKeysWithClearCanConfidentialAmount,
+		},
+		{
+			name: "fail - IssuerEncryptionKey invalid length",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				IssuerEncryptionKey: types.EncryptionKey("AABB"),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetInvalidKeyLength,
+		},
+		{
+			name: "fail - IssuerEncryptionKey invalid hex",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				IssuerEncryptionKey: types.EncryptionKey(strings.Repeat("GG", 33)),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetInvalidKeyLength,
+		},
+		{
+			name: "fail - AuditorEncryptionKey invalid length",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				IssuerEncryptionKey:  types.EncryptionKey(validCompressedKey),
+				AuditorEncryptionKey: types.EncryptionKey("AABB"),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetInvalidKeyLength,
+		},
+		{
+			name: "fail - encryption keys with Holder",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				Holder:              types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2"),
+				IssuerEncryptionKey: types.EncryptionKey(validCompressedKey),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetKeyConflict,
+		},
+		{
 			name: "fail - non-zero TransferFee with tmfMPTClearCanTransfer",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
@@ -566,6 +742,19 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantOk:  false,
 			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
 		},
+		{
+			name: "fail - MutableFlags set/clear conflict CanConfidentialAmount",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MutableFlags:      types.MutableFlags(TmfMPTSetCanConfidentialAmount | TmfMPTClearCanConfidentialAmount),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
+		},
 	}
 
 	for _, tt := range tests {
@@ -643,6 +832,16 @@ func TestMPTokenIssuanceSet_MutableFlags(t *testing.T) {
 			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanClawbackMutableFlag,
 			flagMask: TmfMPTClearCanClawback,
 		},
+		{
+			name:     "MPTSetCanConfidentialAmount",
+			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanConfidentialAmountMutableFlag,
+			flagMask: TmfMPTSetCanConfidentialAmount,
+		},
+		{
+			name:     "MPTClearCanConfidentialAmount",
+			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanConfidentialAmountMutableFlag,
+			flagMask: TmfMPTClearCanConfidentialAmount,
+		},
 	}
 
 	for _, tt := range tests {
@@ -665,7 +864,8 @@ func TestMPTokenIssuanceSet_MutableFlags(t *testing.T) {
 		TmfMPTSetCanEscrow | TmfMPTClearCanEscrow |
 		TmfMPTSetCanTrade | TmfMPTClearCanTrade |
 		TmfMPTSetCanTransfer | TmfMPTClearCanTransfer |
-		TmfMPTSetCanClawback | TmfMPTClearCanClawback
+		TmfMPTSetCanClawback | TmfMPTClearCanClawback |
+		TmfMPTSetCanConfidentialAmount | TmfMPTClearCanConfidentialAmount
 	require.Equal(t, expectedMutableFlags, *tx.MutableFlags)
 }
 

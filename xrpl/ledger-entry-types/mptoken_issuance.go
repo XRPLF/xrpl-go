@@ -19,6 +19,8 @@ const (
 	LsfMPTCanTransfer uint32 = 0x00000020
 	// LsfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
 	LsfMPTCanClawback uint32 = 0x00000040
+	// LsfMPTCanConfidentialAmount if set, indicates that confidential transfers are enabled for this token issuance.
+	LsfMPTCanConfidentialAmount uint32 = 0x00000080
 )
 
 // Ledger-state mutable flags for MPTokenIssuance (Lsmf prefix).
@@ -39,6 +41,8 @@ const (
 	LsmfMPTCanMutateMetadata uint32 = 0x00010000
 	// LsmfMPTCanMutateTransferFee indicates the TransferFee can be mutated.
 	LsmfMPTCanMutateTransferFee uint32 = 0x00020000
+	// LsmfMPTCannotMutateCanConfidentialAmount if set, the lsfMPTCanConfidentialAmount flag can never be changed after the token is issued.
+	LsmfMPTCannotMutateCanConfidentialAmount uint32 = 0x00040000
 )
 
 // An MPTokenIssuance entry represents a single MPT issuance and holds data associated with the issuance itself.
@@ -85,6 +89,15 @@ type MPTokenIssuance struct {
 	DomainID string `json:",omitempty"`
 	// MutableFlags indicates which properties of this MPT can be mutated after creation.
 	MutableFlags uint32 `json:",omitempty"`
+	// The issuer's encryption key for confidential transfers.
+	// Required if confidential transfers are enabled.
+	IssuerEncryptionKey string `json:",omitempty"`
+	// The auditor's encryption key for confidential transfers.
+	// Optional; allows an auditor to decrypt confidential balances.
+	AuditorEncryptionKey string `json:",omitempty"`
+	// The encrypted outstanding amount for confidential transfers.
+	// Tracks total confidential MPT in circulation.
+	ConfidentialOutstandingAmount uint64 `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.

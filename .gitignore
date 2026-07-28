@@ -40,6 +40,9 @@ Thumbs.db
 *.o
 *.a
 
+# Exception: vendored mpt-crypto static libraries
+!confidential/deps/libs/**/*.a
+
 # Debug files
 debug
 
