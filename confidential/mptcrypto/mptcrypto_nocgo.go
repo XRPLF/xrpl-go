@@ -2,14 +2,6 @@
 
 package mptcrypto
 
-import "errors"
-
-// ErrCgoRequired is returned by all crypto functions when built without CGo.
-var ErrCgoRequired = errors.New(
-	"mptcrypto: CGo is required for confidential MPT operations; " +
-		"rebuild with CGO_ENABLED=1 and vendored mpt-crypto libraries",
-)
-
 // region ElGamal
 
 // GenerateKeypair creates a new secp256k1 ElGamal keypair.
@@ -32,9 +24,6 @@ func EncryptAmount(amount uint64, pubkey PublicKey, bf BlindingFactor) (ct Ciphe
 // DecryptAmount decrypts a 66-byte ElGamal ciphertext using a private key.
 // It searches the inclusive [rangeLow, rangeHigh] interval with linear cost.
 func DecryptAmount(ciphertext Ciphertext, privateKey PrivateKey, rangeLow, rangeHigh uint64) (uint64, error) {
-	if err := validateAmountRange(rangeLow, rangeHigh); err != nil {
-		return 0, err
-	}
 	return 0, ErrCgoRequired
 }
 
@@ -108,7 +97,7 @@ func VerifyConvertProof(proof [SchnorrProofSize]byte, pubkey PublicKey, ctxHash 
 }
 
 // VerifyConvertBackProof verifies a linkage + range proof for a ConfidentialMPTConvertBack transaction.
-// balanceCommit must be the original balance commitment, not the remainder after subtraction;
+// balanceCommit must be the original balance commitment, not the remainder after subtraction,
 // the C library internally subtracts the transparent amount before checking the range proof.
 func VerifyConvertBackProof(proof [ConvertBackProofSize]byte, pubkey PublicKey, ciphertext Ciphertext, balanceCommit Commitment, amount uint64, ctxHash ContextHash) error {
 	return ErrCgoRequired
@@ -129,7 +118,7 @@ func VerifyClawbackProof(proof [CompactClawbackProofSize]byte, amount uint64, pu
 // region Internal component verifiers
 
 // VerifyRevealedAmount verifies that a revealed amount and blinding factor are consistent
-// with the participants' ciphertexts.
+// with the participants' ciphertexts. auditor may be nil if no auditor is present.
 func VerifyRevealedAmount(amount uint64, bf BlindingFactor, holder, issuer Participant, auditor *Participant) error {
 	return ErrCgoRequired
 }

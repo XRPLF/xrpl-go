@@ -4,7 +4,7 @@ Go bindings for the [XRPLF/mpt-crypto](https://github.com/xrplf/mpt-crypto) C li
 
 ## Build requirements
 
-CGo is required to run confidential cryptographic operations (`CGO_ENABLED=1`). The vendored C libraries live in `confidential/deps/libs/<os-arch>/`. Without CGo, bounded-decryption range validation still runs before otherwise valid calls return `ErrCgoRequired`.
+CGo is required to run confidential cryptographic operations (`CGO_ENABLED=1`). The vendored C libraries live in `confidential/deps/libs/<os-arch>/`. Without CGo, no confidential cryptographic operation is available and every `mptcrypto` function returns `ErrCgoRequired` without processing its inputs.
 
 ```bash
 # normal build (CGo on by default)
@@ -21,9 +21,9 @@ mptcrypto/
   types.go                  # Size constants, defined value types, and proof types
   errors.go                 # Shared errors and range validation
   mptcrypto_cgo.go          # Real implementations (only built with CGo)
-  mptcrypto_nocgo.go        # Range validation and ErrCgoRequired fallbacks
+  mptcrypto_nocgo.go        # ErrCgoRequired stubs for builds without CGo
   mptcrypto_test.go         # CGo-backed tests
-  mptcrypto_nocgo_test.go   # No-CGo contract tests
+  mptcrypto_nocgo_test.go   # No-CGo availability contract
 ```
 
 Every function uses **defined, fixed-size byte-array types** such as `PrivateKey`, `PublicKey`, and `Ciphertext`. These prevent callers from mixing semantically different values with the same underlying size. Hex encoding/decoding happens in the layers above (elgamal/, proof/, commitment/), never here.
@@ -362,4 +362,4 @@ if ret != 0 {
 
 ### The no-CGo build
 
-`mptcrypto_nocgo.go` provides identical function signatures without linking the C library. `DecryptAmount` still validates its search range first; other calls return `ErrCgoRequired`. This lets the rest of the codebase compile and run tests for pure-Go packages without CGo.
+`mptcrypto_nocgo.go` provides identical function signatures without linking the C library. Every function immediately returns `ErrCgoRequired`; no argument validation or cryptographic work is performed. This lets applications handle unavailable confidential functionality as a normal error while the rest of the codebase continues to compile without CGo.
