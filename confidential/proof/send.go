@@ -41,14 +41,10 @@ func GenerateSendProof(privkeyHex string, pubkeyHex string, amount uint64, parti
 		return "", err
 	}
 
-	var priv [mptcrypto.PrivKeySize]byte
-	var pub [mptcrypto.PubKeySize]byte
-	var bf [mptcrypto.BlindingFactorSize]byte
-	var hash [mptcrypto.HashOutputSize]byte
-	copy(priv[:], privBytes)
-	copy(pub[:], pubBytes)
-	copy(bf[:], bfBytes)
-	copy(hash[:], hashBytes)
+	priv := mptcrypto.PrivateKey(privBytes)
+	pub := mptcrypto.PublicKey(pubBytes)
+	bf := mptcrypto.BlindingFactor(bfBytes)
+	hash := mptcrypto.ContextHash(hashBytes)
 
 	proof, err := mptcrypto.GenerateSendProof(priv, pub, amount, parts, bf, hash, ap.Commitment, bp)
 	if err != nil {
@@ -85,14 +81,10 @@ func VerifySendProof(proofHex string, participants []Participant, senderCtHex, a
 		return fmt.Errorf("%w: %w", ErrInvalidContextHash, err)
 	}
 
-	var senderCt [mptcrypto.CiphertextSize]byte
-	var amountCommit [mptcrypto.CommitmentSize]byte
-	var balanceCommit [mptcrypto.CommitmentSize]byte
-	var hash [mptcrypto.HashOutputSize]byte
-	copy(senderCt[:], senderCtBytes)
-	copy(amountCommit[:], amountCommitBytes)
-	copy(balanceCommit[:], balanceCommitBytes)
-	copy(hash[:], hashBytes)
+	senderCt := mptcrypto.Ciphertext(senderCtBytes)
+	amountCommit := mptcrypto.Commitment(amountCommitBytes)
+	balanceCommit := mptcrypto.Commitment(balanceCommitBytes)
+	hash := mptcrypto.ContextHash(hashBytes)
 
 	if err := mptcrypto.VerifySendProof(proofBytes, parts, senderCt, amountCommit, balanceCommit, hash); err != nil {
 		return fmt.Errorf("%w: %w", ErrProofVerificationFailed, err)

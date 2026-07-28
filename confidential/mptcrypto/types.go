@@ -29,16 +29,34 @@ const (
 	MaxParticipants = math.MaxUint8 // C API uses uint8_t for participant count
 )
 
+// PrivateKey is a fixed-size ElGamal private key.
+type PrivateKey [PrivKeySize]byte
+
+// PublicKey is a fixed-size compressed ElGamal public key.
+type PublicKey [PubKeySize]byte
+
+// BlindingFactor is a fixed-size scalar used for encryption and commitments.
+type BlindingFactor [BlindingFactorSize]byte
+
+// Ciphertext is a fixed-size ElGamal ciphertext.
+type Ciphertext [CiphertextSize]byte
+
+// Commitment is a fixed-size compressed Pedersen commitment.
+type Commitment [CommitmentSize]byte
+
+// ContextHash binds a proof to its transaction context.
+type ContextHash [HashOutputSize]byte
+
 // Participant represents a party in a Confidential Send transaction.
 type Participant struct {
-	PubKey     [PubKeySize]byte
-	Ciphertext [CiphertextSize]byte
+	PubKey     PublicKey
+	Ciphertext Ciphertext
 }
 
 // PedersenProofParams holds the parameters required to generate a Pedersen linkage proof.
 type PedersenProofParams struct {
-	Commitment     [CommitmentSize]byte
+	Commitment     Commitment
 	Amount         uint64
-	Ciphertext     [CiphertextSize]byte
-	BlindingFactor [BlindingFactorSize]byte
+	Ciphertext     Ciphertext
+	BlindingFactor BlindingFactor
 }

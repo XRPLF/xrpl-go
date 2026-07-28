@@ -41,8 +41,8 @@ func decodeParticipant(hp Participant) (mptcrypto.Participant, error) {
 	if err != nil {
 		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
-	copy(p.PubKey[:], pubBytes)
-	copy(p.Ciphertext[:], ctBytes)
+	p.PubKey = mptcrypto.PublicKey(pubBytes)
+	p.Ciphertext = mptcrypto.Ciphertext(ctBytes)
 	return p, nil
 }
 
@@ -77,9 +77,9 @@ func decodeProofParams(hp Params) (mptcrypto.PedersenProofParams, error) {
 	if err != nil {
 		return p, fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
 	}
-	copy(p.Commitment[:], commitBytes)
+	p.Commitment = mptcrypto.Commitment(commitBytes)
 	p.Amount = hp.Amount
-	copy(p.Ciphertext[:], ctBytes)
-	copy(p.BlindingFactor[:], bfBytes)
+	p.Ciphertext = mptcrypto.Ciphertext(ctBytes)
+	p.BlindingFactor = mptcrypto.BlindingFactor(bfBytes)
 	return p, nil
 }

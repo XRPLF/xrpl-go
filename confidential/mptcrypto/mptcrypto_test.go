@@ -33,7 +33,7 @@ func testIssuanceID() [mptcrypto.IssuanceIDSize]byte {
 func TestGenerateKeypair(t *testing.T) {
 	priv, pub, err := mptcrypto.GenerateKeypair()
 	require.NoError(t, err)
-	require.NotEqual(t, [mptcrypto.PrivKeySize]byte{}, priv, "privkey is all zeros")
+	require.NotEqual(t, mptcrypto.PrivateKey{}, priv, "privkey is all zeros")
 	// compressed secp256k1 pubkey starts with 0x02 or 0x03
 	require.Contains(t, []byte{0x02, 0x03}, pub[0], "unexpected pubkey prefix: 0x%02x", pub[0])
 }
@@ -41,7 +41,7 @@ func TestGenerateKeypair(t *testing.T) {
 func TestGenerateBlindingFactor(t *testing.T) {
 	bf1, err := mptcrypto.GenerateBlindingFactor()
 	require.NoError(t, err)
-	require.NotEqual(t, [mptcrypto.BlindingFactorSize]byte{}, bf1, "blinding factor is all zeros")
+	require.NotEqual(t, mptcrypto.BlindingFactor{}, bf1, "blinding factor is all zeros")
 
 	// two calls should produce different values (non-deterministic RNG)
 	bf2, err := mptcrypto.GenerateBlindingFactor()
@@ -107,7 +107,7 @@ func TestDecryptAmountInvalidRange(t *testing.T) {
 // endregion
 
 // region Context hashes
-type contextHashFn func() ([mptcrypto.HashOutputSize]byte, error)
+type contextHashFn func() (mptcrypto.ContextHash, error)
 
 func TestContextHashes(t *testing.T) {
 	account := testAccountID(0x01)
@@ -121,33 +121,33 @@ func TestContextHashes(t *testing.T) {
 	}{
 		{
 			"pass - Convert",
-			func() ([mptcrypto.HashOutputSize]byte, error) { return mptcrypto.ConvertContextHash(account, iss, 1) },
-			func() ([mptcrypto.HashOutputSize]byte, error) { return mptcrypto.ConvertContextHash(account, iss, 2) },
+			func() (mptcrypto.ContextHash, error) { return mptcrypto.ConvertContextHash(account, iss, 1) },
+			func() (mptcrypto.ContextHash, error) { return mptcrypto.ConvertContextHash(account, iss, 2) },
 		},
 		{
 			"pass - ConvertBack",
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.ConvertBackContextHash(account, iss, 1, 1)
 			},
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.ConvertBackContextHash(account, iss, 1, 2)
 			},
 		},
 		{
 			"pass - Send",
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.SendContextHash(account, iss, 1, account2, 1)
 			},
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.SendContextHash(account, iss, 1, testAccountID(0x30), 1)
 			},
 		},
 		{
 			"pass - Clawback",
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.ClawbackContextHash(account, iss, 1, account2)
 			},
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.ClawbackContextHash(account, iss, 1, testAccountID(0x30))
 			},
 		},
@@ -157,7 +157,7 @@ func TestContextHashes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hash, err := tt.hash()
 			require.NoError(t, err)
-			require.NotEqual(t, [mptcrypto.HashOutputSize]byte{}, hash)
+			require.NotEqual(t, mptcrypto.ContextHash{}, hash)
 
 			// deterministic
 			hash2, err := tt.hash()
@@ -366,9 +366,9 @@ func TestSendProofRoundtrip(t *testing.T) {
 func TestVerifySendProofRejectsShortProof(t *testing.T) {
 	shortProof := make([]byte, mptcrypto.SendProofSize-1)
 
-	var senderCT [mptcrypto.CiphertextSize]byte
-	var amountCommit, balanceCommit [mptcrypto.CommitmentSize]byte
-	var ctxHash [mptcrypto.HashOutputSize]byte
+	var senderCT mptcrypto.Ciphertext
+	var amountCommit, balanceCommit mptcrypto.Commitment
+	var ctxHash mptcrypto.ContextHash
 
 	err := mptcrypto.VerifySendProof(shortProof, nil, senderCT, amountCommit, balanceCommit, ctxHash)
 	require.EqualError(t, err, fmt.Sprintf("mptcrypto: proof must be %d bytes, got %d", mptcrypto.SendProofSize, len(shortProof)))

@@ -4,13 +4,13 @@ Go bindings for the [XRPLF/mpt-crypto](https://github.com/xrplf/mpt-crypto) C li
 
 ## Build requirements
 
-CGo is required to run confidential cryptographic operations (`CGO_ENABLED=1`). The vendored C libraries live in `confidential/deps/libs/<os-arch>/`. Without CGo, argument validation still runs before otherwise valid calls return `ErrCgoRequired`.
+CGo is required to run confidential cryptographic operations (`CGO_ENABLED=1`). The vendored C libraries live in `confidential/deps/libs/<os-arch>/`. Without CGo, bounded-decryption range validation still runs before otherwise valid calls return `ErrCgoRequired`.
 
 ```bash
 # normal build (CGo on by default)
 go test ./confidential/mptcrypto/...
 
-# force CGo off (all functions return ErrCgoRequired)
+# force CGo off (exercise no-CGo fallbacks)
 CGO_ENABLED=0 go test ./confidential/mptcrypto/...
 ```
 
@@ -18,15 +18,15 @@ CGO_ENABLED=0 go test ./confidential/mptcrypto/...
 
 ```
 mptcrypto/
-  types.go                  # Size constants, Participant, PedersenProofParams
-  errors.go                 # Shared errors, aliases, and range validation
+  types.go                  # Size constants, defined value types, and proof types
+  errors.go                 # Shared errors and range validation
   mptcrypto_cgo.go          # Real implementations (only built with CGo)
-  mptcrypto_nocgo.go        # No-CGo fallbacks: validate, then return ErrCgoRequired
+  mptcrypto_nocgo.go        # Range validation and ErrCgoRequired fallbacks
   mptcrypto_test.go         # CGo-backed tests
   mptcrypto_nocgo_test.go   # No-CGo contract tests
 ```
 
-Every function works with **fixed-size byte arrays** (`[32]byte`, `[33]byte`, `[66]byte`, etc.). Hex encoding/decoding happens in the layers above (elgamal/, proofs/, commitment/), never here.
+Every function uses **defined, fixed-size byte-array types** such as `PrivateKey`, `PublicKey`, and `Ciphertext`. These prevent callers from mixing semantically different values with the same underlying size. Hex encoding/decoding happens in the layers above (elgamal/, proof/, commitment/), never here.
 
 ---
 
@@ -54,21 +54,34 @@ Every function works with **fixed-size byte arrays** (`[32]byte`, `[33]byte`, `[
 | `SendProofSize` | 946 | Compact sigma + double bulletproof (192 + 754) |
 | `MaxParticipants` | 255 | Max participants in a send (C API uses uint8_t) |
 
+### Value types
+
+```go
+type PrivateKey [PrivKeySize]byte
+type PublicKey [PubKeySize]byte
+type BlindingFactor [BlindingFactorSize]byte
+type Ciphertext [CiphertextSize]byte
+type Commitment [CommitmentSize]byte
+type ContextHash [HashOutputSize]byte
+```
+
+These are defined types rather than aliases, so Go rejects accidental substitutions such as passing a `BlindingFactor` where a `PrivateKey` is required. They enforce semantic separation, while the C library remains responsible for validating key and curve-point contents.
+
 ### Structs
 
 ```go
 // A party in a confidential send (public key + their encrypted amount).
 type Participant struct {
-    PubKey     [PubKeySize]byte     // 33 bytes
-    Ciphertext [CiphertextSize]byte // 66 bytes
+    PubKey     PublicKey
+    Ciphertext Ciphertext
 }
 
 // Parameters for generating Pedersen linkage proofs.
 type PedersenProofParams struct {
-    Commitment     [CommitmentSize]byte     // 33 bytes
+    Commitment     Commitment
     Amount         uint64
-    Ciphertext     [CiphertextSize]byte     // 66 bytes
-    BlindingFactor [BlindingFactorSize]byte // 32 bytes
+    Ciphertext     Ciphertext
+    BlindingFactor BlindingFactor
 }
 ```
 
@@ -80,7 +93,7 @@ type PedersenProofParams struct {
 
 These handle key generation, encryption, and decryption for confidential amounts.
 
-#### `GenerateKeypair() (privkey [32]byte, pubkey [33]byte, err error)`
+#### `GenerateKeypair() (privkey PrivateKey, pubkey PublicKey, err error)`
 
 Creates a new secp256k1 ElGamal keypair.
 
@@ -90,7 +103,7 @@ priv, pub, err := mptcrypto.GenerateKeypair()
 // pub:  33-byte compressed public key (starts with 0x02 or 0x03)
 ```
 
-#### `GenerateBlindingFactor() (bf [32]byte, err error)`
+#### `GenerateBlindingFactor() (bf BlindingFactor, err error)`
 
 Generates a cryptographically random 32-byte scalar. Used as the randomness parameter (`r`) when encrypting amounts or creating Pedersen commitments.
 
@@ -98,7 +111,7 @@ Generates a cryptographically random 32-byte scalar. Used as the randomness para
 bf, err := mptcrypto.GenerateBlindingFactor()
 ```
 
-#### `EncryptAmount(amount uint64, pubkey [33]byte, bf [32]byte) (ct [66]byte, err error)`
+#### `EncryptAmount(amount uint64, pubkey PublicKey, bf BlindingFactor) (ct Ciphertext, err error)`
 
 Encrypts an amount using ElGamal. The ciphertext is 66 bytes: two compressed EC points concatenated (C1 || C2).
 
@@ -119,9 +132,9 @@ amount, err := mptcrypto.DecryptAmount(ciphertext, privateKey, 0, 10_000)
 
 Every ZK proof is bound to a specific transaction via a **context hash**. This prevents proof reuse across transactions. Each transaction type has its own hash function because the inputs differ.
 
-All context hash functions return a `[32]byte` hash.
+All context hash functions return a `ContextHash`.
 
-#### `ConvertContextHash(account [20]byte, iss [24]byte, seq uint32) ([32]byte, error)`
+#### `ConvertContextHash(account [20]byte, iss [24]byte, seq uint32) (ContextHash, error)`
 
 For **ConfidentialMPTConvert** transactions (public amount -> confidential).
 
@@ -129,19 +142,19 @@ For **ConfidentialMPTConvert** transactions (public amount -> confidential).
 - `iss`: the 24-byte MPTokenIssuance ID
 - `seq`: the transaction sequence number
 
-#### `ConvertBackContextHash(account [20]byte, iss [24]byte, seq, ver uint32) ([32]byte, error)`
+#### `ConvertBackContextHash(account [20]byte, iss [24]byte, seq, ver uint32) (ContextHash, error)`
 
 For **ConfidentialMPTConvertBack** transactions (confidential -> public amount).
 
 Same as above plus `ver` (the version counter from the ledger object).
 
-#### `SendContextHash(account [20]byte, iss [24]byte, seq uint32, dest [20]byte, ver uint32) ([32]byte, error)`
+#### `SendContextHash(account [20]byte, iss [24]byte, seq uint32, dest [20]byte, ver uint32) (ContextHash, error)`
 
 For **ConfidentialMPTSend** transactions (confidential transfer between accounts).
 
 Adds `dest` (destination account ID) and `ver`.
 
-#### `ClawbackContextHash(account [20]byte, iss [24]byte, seq uint32, holder [20]byte) ([32]byte, error)`
+#### `ClawbackContextHash(account [20]byte, iss [24]byte, seq uint32, holder [20]byte) (ContextHash, error)`
 
 For **ConfidentialMPTClawback** transactions (issuer reclaims tokens from a holder).
 
@@ -149,7 +162,7 @@ Adds `holder` (the account being clawed back from).
 
 ### 3. Pedersen commitment
 
-#### `PedersenCommitment(amount uint64, bf [32]byte) (commitment [33]byte, err error)`
+#### `PedersenCommitment(amount uint64, bf BlindingFactor) (commitment Commitment, err error)`
 
 Computes `C = amount*G + bf*H` where G and H are generator points. The result is a 33-byte compressed point. Two commitments with the same amount and blinding factor always produce the same output (deterministic).
 
@@ -162,13 +175,13 @@ commitment, err := mptcrypto.PedersenCommitment(1000, blindingFactor)
 
 Each XRPL confidential transaction type requires a specific proof. The proof convinces validators that the transaction is valid without revealing the actual amounts.
 
-#### `GenerateConvertProof(pubkey [33]byte, privkey [32]byte, ctxHash [32]byte) ([64]byte, error)`
+#### `GenerateConvertProof(pubkey PublicKey, privkey PrivateKey, ctxHash ContextHash) ([64]byte, error)`
 
 **Schnorr proof of knowledge.** Proves you own the private key for the public key being registered, bound to the transaction via ctxHash.
 
 Used in: **ConfidentialMPTConvert** (registering a keypair on the ledger).
 
-#### `GenerateConvertBackProof(privkey [32]byte, pubkey [33]byte, ctxHash [32]byte, amount uint64, params PedersenProofParams) ([816]byte, error)`
+#### `GenerateConvertBackProof(privkey PrivateKey, pubkey PublicKey, ctxHash ContextHash, amount uint64, params PedersenProofParams) ([816]byte, error)`
 
 **Compact AND-composed sigma proof + single Bulletproof range proof.** Proves:
 1. Your encrypted balance matches the Pedersen commitment (sigma proof over balance witness)
@@ -176,13 +189,13 @@ Used in: **ConfidentialMPTConvert** (registering a keypair on the ledger).
 
 Used in: **ConfidentialMPTConvertBack**.
 
-#### `GenerateClawbackProof(privkey [32]byte, pubkey [33]byte, ctxHash [32]byte, amount uint64, ciphertext [66]byte) ([64]byte, error)`
+#### `GenerateClawbackProof(privkey PrivateKey, pubkey PublicKey, ctxHash ContextHash, amount uint64, ciphertext Ciphertext) ([64]byte, error)`
 
 **Compact sigma proof.** Proves that the ciphertext decrypts to exactly the claimed amount, without revealing the private key.
 
 Used in: **ConfidentialMPTClawback** (issuer proves the amount they're clawing back matches the encrypted balance).
 
-#### `GenerateSendProof(privkey [32]byte, pubkey [33]byte, amount uint64, participants []Participant, txBF [32]byte, ctxHash [32]byte, amountCommitment [33]byte, balanceParams PedersenProofParams) ([]byte, error)`
+#### `GenerateSendProof(privkey PrivateKey, pubkey PublicKey, amount uint64, participants []Participant, txBF BlindingFactor, ctxHash ContextHash, amountCommitment Commitment, balanceParams PedersenProofParams) ([]byte, error)`
 
 **Compact AND-composed sigma proof + aggregated Bulletproof range proof** (the most complex one). Combines:
 1. **Equality proof** - same amount encrypted for sender, receiver, issuer (and optionally auditor)
@@ -198,19 +211,19 @@ Used in: **ConfidentialMPTSend**.
 
 These are the four main verifiers, one per transaction type. Each returns `nil` on success or an error on failure.
 
-#### `VerifyConvertProof(proof [64]byte, pubkey [33]byte, ctxHash [32]byte) error`
+#### `VerifyConvertProof(proof [64]byte, pubkey PublicKey, ctxHash ContextHash) error`
 
 Verifies the Schnorr proof from a ConfidentialMPTConvert.
 
-#### `VerifyConvertBackProof(proof [816]byte, pubkey [33]byte, ciphertext [66]byte, balanceCommit [33]byte, amount uint64, ctxHash [32]byte) error`
+#### `VerifyConvertBackProof(proof [816]byte, pubkey PublicKey, ciphertext Ciphertext, balanceCommit Commitment, amount uint64, ctxHash ContextHash) error`
 
 Verifies the compact sigma + range proof from a ConfidentialMPTConvertBack.
 
-#### `VerifySendProof(proof []byte, participants []Participant, senderCt [66]byte, amountCommit, balanceCommit [33]byte, ctxHash [32]byte) error`
+#### `VerifySendProof(proof []byte, participants []Participant, senderCt Ciphertext, amountCommit, balanceCommit Commitment, ctxHash ContextHash) error`
 
 Verifies the compact sigma + range proof from a ConfidentialMPTSend.
 
-#### `VerifyClawbackProof(proof [64]byte, amount uint64, pubkey [33]byte, ciphertext [66]byte, ctxHash [32]byte) error`
+#### `VerifyClawbackProof(proof [64]byte, amount uint64, pubkey PublicKey, ciphertext Ciphertext, ctxHash ContextHash) error`
 
 Verifies the compact sigma proof from a ConfidentialMPTClawback.
 
@@ -218,17 +231,17 @@ Verifies the compact sigma proof from a ConfidentialMPTClawback.
 
 These verify individual pieces of a send proof. Useful for debugging or testing each component in isolation.
 
-#### `VerifyRevealedAmount(amount uint64, bf [32]byte, holder, issuer Participant, auditor *Participant) error`
+#### `VerifyRevealedAmount(amount uint64, bf BlindingFactor, holder, issuer Participant, auditor *Participant) error`
 
 Verifies that a plaintext amount and blinding factor are consistent with the participants' ciphertexts. `auditor` can be `nil` if there's no auditor.
 
-#### `VerifySendRangeProof(proof [754]byte, amountCommit, balanceCommitment [33]byte, ctxHash [32]byte) error`
+#### `VerifySendRangeProof(proof [754]byte, amountCommit, balanceCommitment Commitment, ctxHash ContextHash) error`
 
 Verifies a double bulletproof: both the transfer amount and remaining balance are in [0, 2^64-1].
 
 ### 7. Utilities
 
-#### `ComputeConvertBackRemainder(commitmentIn [33]byte, amount uint64) ([33]byte, error)`
+#### `ComputeConvertBackRemainder(commitmentIn Commitment, amount uint64) (Commitment, error)`
 
 Subtracts a transparent (public) amount from a hidden Pedersen commitment, producing a new commitment for the remaining balance. Used in convert-back to compute the post-transaction balance commitment.
 
@@ -264,7 +277,7 @@ The C functions expect raw `uint8_t*` pointers. Go arrays live in Go-managed mem
 
 ```go
 // Go side
-var pubkey [33]byte
+var pubkey PublicKey
 
 // Pass to C: "give me a *C.uint8_t pointing to pubkey[0]"
 C.some_c_function((*C.uint8_t)(unsafe.Pointer(&pubkey[0])))
@@ -349,4 +362,4 @@ if ret != 0 {
 
 ### The no-CGo build
 
-`mptcrypto_nocgo.go` has the build tag `//go:build !cgo`. It provides identical function signatures but every function returns `ErrCgoRequired`. This lets the rest of the codebase compile and run tests for pure-Go packages even without the C library.
+`mptcrypto_nocgo.go` provides identical function signatures without linking the C library. `DecryptAmount` still validates its search range first; other calls return `ErrCgoRequired`. This lets the rest of the codebase compile and run tests for pure-Go packages without CGo.

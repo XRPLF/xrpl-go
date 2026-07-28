@@ -28,14 +28,10 @@ func GenerateClawbackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint
 		return "", fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
 
-	var priv [mptcrypto.PrivKeySize]byte
-	var pub [mptcrypto.PubKeySize]byte
-	var hash [mptcrypto.HashOutputSize]byte
-	var ct [mptcrypto.CiphertextSize]byte
-	copy(priv[:], privBytes)
-	copy(pub[:], pubBytes)
-	copy(hash[:], hashBytes)
-	copy(ct[:], ctBytes)
+	priv := mptcrypto.PrivateKey(privBytes)
+	pub := mptcrypto.PublicKey(pubBytes)
+	hash := mptcrypto.ContextHash(hashBytes)
+	ct := mptcrypto.Ciphertext(ctBytes)
 
 	proof, err := mptcrypto.GenerateClawbackProof(priv, pub, hash, amount, ct)
 	if err != nil {
@@ -64,13 +60,10 @@ func VerifyClawbackProof(proofHex string, amount uint64, pubkeyHex, ciphertextHe
 	}
 
 	var proof [mptcrypto.CompactClawbackProofSize]byte
-	var pub [mptcrypto.PubKeySize]byte
-	var ct [mptcrypto.CiphertextSize]byte
-	var hash [mptcrypto.HashOutputSize]byte
 	copy(proof[:], proofBytes)
-	copy(pub[:], pubBytes)
-	copy(ct[:], ctBytes)
-	copy(hash[:], hashBytes)
+	pub := mptcrypto.PublicKey(pubBytes)
+	ct := mptcrypto.Ciphertext(ctBytes)
+	hash := mptcrypto.ContextHash(hashBytes)
 
 	if err := mptcrypto.VerifyClawbackProof(proof, amount, pub, ct, hash); err != nil {
 		return fmt.Errorf("%w: %w", ErrProofVerificationFailed, err)

@@ -69,10 +69,8 @@ func Encrypt(amount uint64, pubkeyHex, bfHex string) (string, error) {
 		return "", fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
 	}
 
-	var pub [mptcrypto.PubKeySize]byte
-	var bf [mptcrypto.BlindingFactorSize]byte
-	copy(pub[:], pubBytes)
-	copy(bf[:], bfBytes)
+	pub := mptcrypto.PublicKey(pubBytes)
+	bf := mptcrypto.BlindingFactor(bfBytes)
 
 	ct, err := mptcrypto.EncryptAmount(amount, pub, bf)
 	if err != nil {
@@ -82,7 +80,7 @@ func Encrypt(amount uint64, pubkeyHex, bfHex string) (string, error) {
 }
 
 // Decrypt decrypts a ciphertext using a private key by searching amountRange.
-// ciphertextHex: 132 hex chars (66 bytes), privkeyHex: 64 hex chars (32 bytes).
+// ciphertextHex: 132 hex chars (66 bytes), privateKeyHex: 64 hex chars (32 bytes).
 // The amount range bounds are inclusive and the search cost is linear.
 func Decrypt(ciphertextHex, privateKeyHex string, amountRange AmountRange) (uint64, error) {
 	if err := amountRange.Validate(); err != nil {
@@ -98,12 +96,10 @@ func Decrypt(ciphertextHex, privateKeyHex string, amountRange AmountRange) (uint
 		return 0, fmt.Errorf("%w: %w", ErrInvalidKey, err)
 	}
 
-	var ct [mptcrypto.CiphertextSize]byte
-	var priv [mptcrypto.PrivKeySize]byte
-	copy(ct[:], ctBytes)
-	copy(priv[:], privBytes)
+	ct := mptcrypto.Ciphertext(ctBytes)
+	privateKey := mptcrypto.PrivateKey(privBytes)
 
-	result, err := mptcrypto.DecryptAmount(ct, priv, amountRange.Low, amountRange.High)
+	result, err := mptcrypto.DecryptAmount(ct, privateKey, amountRange.Low, amountRange.High)
 	if err != nil {
 		return 0, fmt.Errorf("%w: %w", ErrDecryptFailed, err)
 	}

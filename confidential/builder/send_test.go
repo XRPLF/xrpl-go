@@ -272,36 +272,15 @@ func TestPrepareSend_FailValidation(t *testing.T) {
 }
 
 func TestBuildSend_Pass(t *testing.T) {
-	senderKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-	receiverKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-	issuerKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-
 	const currentBalance uint64 = 1000
 	const sendAmount uint64 = 300
 
-	bf, err := elgamal.GenerateBlindingFactor()
-	require.NoError(t, err)
-	senderBalanceCt, err := elgamal.Encrypt(currentBalance, senderKP.PubKeyHex, bf)
-	require.NoError(t, err)
-
-	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
-	require.NoError(t, err)
-	senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	senderKP, q := newBalanceLedgerFixture(t, 8, 2, currentBalance)
+	receiverKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
 	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
 	require.NoError(t, err)
-
-	q := &mockQuerier{
-		accountSeq: 8,
-		entries: map[string]ledgerentries.FlatLedgerObject{
-			issuanceIndex:    buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-			senderMPTIndex:   buildMPTokenEntry(senderKP.PubKeyHex, senderBalanceCt, 2, ""),
-			receiverMPTIndex: buildMPTokenEntry(receiverKP.PubKeyHex, "", 0, ""),
-		},
-	}
+	q.entries[receiverMPTIndex] = buildMPTokenEntry(receiverKP.PubKeyHex, "", 0, "")
 
 	result, err := BuildSend(q, BuildSendParams{
 		Account:       testAccount,
@@ -319,32 +298,10 @@ func TestBuildSend_Pass(t *testing.T) {
 }
 
 func TestBuildSend_FailBalanceOutsideRange(t *testing.T) {
-	senderKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-	issuerKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-
 	const currentBalance uint64 = 1000
 
-	bf, err := elgamal.GenerateBlindingFactor()
-	require.NoError(t, err)
-	senderBalanceCt, err := elgamal.Encrypt(currentBalance, senderKP.PubKeyHex, bf)
-	require.NoError(t, err)
-
-	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
-	require.NoError(t, err)
-	senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
-	require.NoError(t, err)
-
-	q := &mockQuerier{
-		accountSeq: 8,
-		entries: map[string]ledgerentries.FlatLedgerObject{
-			issuanceIndex:  buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-			senderMPTIndex: buildMPTokenEntry(senderKP.PubKeyHex, senderBalanceCt, 2, ""),
-		},
-	}
-
-	_, err = BuildSend(q, BuildSendParams{
+	senderKP, q := newBalanceLedgerFixture(t, 8, 2, currentBalance)
+	_, err := BuildSend(q, BuildSendParams{
 		Account:       testAccount,
 		Destination:   testDestination,
 		IssuanceID:    testIssuanceID,
@@ -361,7 +318,8 @@ func TestBuildSend_InvalidRangeBeforeLedgerQueries(t *testing.T) {
 	senderKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
 
-	_, err = BuildSend(&mockQuerier{accountErr: ErrLedgerQuery}, BuildSendParams{
+	q := &mockQuerier{accountErr: ErrLedgerQuery}
+	_, err = BuildSend(q, BuildSendParams{
 		Account:       testAccount,
 		Destination:   testDestination,
 		IssuanceID:    testIssuanceID,
@@ -372,6 +330,7 @@ func TestBuildSend_InvalidRangeBeforeLedgerQueries(t *testing.T) {
 	})
 	require.ErrorIs(t, err, elgamal.ErrInvalidAmountRange)
 	require.NotErrorIs(t, err, ErrLedgerQuery)
+	require.Zero(t, q.queryCalls, "invalid ranges must fail before ledger queries")
 }
 
 func TestBuildSend_FailReceiverNotOptedIn(t *testing.T) {

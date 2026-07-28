@@ -1,9 +1,14 @@
 package builder
 
 import (
+	"testing"
+
+	"github.com/Peersyst/xrpl-go/confidential/elgamal"
+	xrplhash "github.com/Peersyst/xrpl-go/xrpl/hash"
 	ledgerentries "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -17,9 +22,11 @@ type mockQuerier struct {
 	accountSeq uint32
 	accountErr error // when set, GetAccountInfo returns this error
 	entries    map[string]ledgerentries.FlatLedgerObject
+	queryCalls int
 }
 
 func (m *mockQuerier) GetAccountInfo(_ *account.InfoRequest) (*account.InfoResponse, error) {
+	m.queryCalls++
 	if m.accountErr != nil {
 		return nil, m.accountErr
 	}
@@ -29,6 +36,7 @@ func (m *mockQuerier) GetAccountInfo(_ *account.InfoRequest) (*account.InfoRespo
 }
 
 func (m *mockQuerier) GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse, error) {
+	m.queryCalls++
 	node, ok := m.entries[req.Index]
 	if !ok {
 		return nil, ErrMPTokenNotFound
@@ -63,4 +71,30 @@ func buildMPTokenEntry(holderKey, balanceCt string, balanceVersion float64, issu
 		entry["IssuerEncryptedBalance"] = issuerCt
 	}
 	return entry
+}
+
+func newBalanceLedgerFixture(t *testing.T, sequence uint32, balanceVersion float64, balance uint64) (elgamal.Keypair, *mockQuerier) {
+	t.Helper()
+
+	ownerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	blindingFactor, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	balanceCt, err := elgamal.Encrypt(balance, ownerKP.PubKeyHex, blindingFactor)
+	require.NoError(t, err)
+
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	mptokenIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
+
+	return ownerKP, &mockQuerier{
+		accountSeq: sequence,
+		entries: map[string]ledgerentries.FlatLedgerObject{
+			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
+			mptokenIndex:  buildMPTokenEntry(ownerKP.PubKeyHex, balanceCt, balanceVersion, ""),
+		},
+	}
 }

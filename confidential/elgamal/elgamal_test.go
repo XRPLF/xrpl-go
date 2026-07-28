@@ -143,8 +143,12 @@ func TestDecryptWithWrongKey(t *testing.T) {
 }
 
 func TestInvalidHexInputs(t *testing.T) {
-	kp, _ := elgamal.GenerateKeypair()
-	bf, _ := elgamal.GenerateBlindingFactor()
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	bf, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	ciphertext, err := elgamal.Encrypt(1, kp.PubKeyHex, bf)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string
@@ -202,8 +206,7 @@ func TestInvalidHexInputs(t *testing.T) {
 		{
 			name: "fail - decrypt bad privkey",
 			fn: func() error {
-				ct, _ := elgamal.Encrypt(1, kp.PubKeyHex, bf)
-				_, err := elgamal.Decrypt(ct, "short", elgamal.AmountRange{Low: 0, High: 1})
+				_, err := elgamal.Decrypt(ciphertext, "short", elgamal.AmountRange{Low: 0, High: 1})
 				return err
 			},
 			wantErr: elgamal.ErrInvalidKey,
@@ -211,8 +214,7 @@ func TestInvalidHexInputs(t *testing.T) {
 		{
 			name: "fail - decrypt short privkey",
 			fn: func() error {
-				ct, _ := elgamal.Encrypt(1, kp.PubKeyHex, bf)
-				_, err := elgamal.Decrypt(ct, strings.Repeat("00", mptcrypto.PrivKeySize-1), elgamal.AmountRange{Low: 0, High: 1})
+				_, err := elgamal.Decrypt(ciphertext, strings.Repeat("00", mptcrypto.PrivKeySize-1), elgamal.AmountRange{Low: 0, High: 1})
 				return err
 			},
 			wantErr: elgamal.ErrInvalidKey,
@@ -220,8 +222,7 @@ func TestInvalidHexInputs(t *testing.T) {
 		{
 			name: "fail - decrypt long privkey",
 			fn: func() error {
-				ct, _ := elgamal.Encrypt(1, kp.PubKeyHex, bf)
-				_, err := elgamal.Decrypt(ct, strings.Repeat("00", mptcrypto.PrivKeySize+1), elgamal.AmountRange{Low: 0, High: 1})
+				_, err := elgamal.Decrypt(ciphertext, strings.Repeat("00", mptcrypto.PrivKeySize+1), elgamal.AmountRange{Low: 0, High: 1})
 				return err
 			},
 			wantErr: elgamal.ErrInvalidKey,
@@ -237,8 +238,7 @@ func TestInvalidHexInputs(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.fn()
-			require.ErrorIs(t, err, tc.wantErr)
+			require.ErrorIs(t, tc.fn(), tc.wantErr)
 		})
 	}
 }

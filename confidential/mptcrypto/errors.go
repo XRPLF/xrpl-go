@@ -6,12 +6,6 @@ import (
 	"math"
 )
 
-// Ciphertext is a fixed-size ElGamal ciphertext.
-type Ciphertext = [CiphertextSize]byte
-
-// PrivateKey is a fixed-size ElGamal private key.
-type PrivateKey = [PrivKeySize]byte
-
 // ErrInvalidAmountRange is returned when a decryption search range is invalid.
 var ErrInvalidAmountRange = errors.New("mptcrypto: invalid amount range")
 
