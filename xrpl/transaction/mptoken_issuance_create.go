@@ -20,31 +20,35 @@ const (
 	TfMPTCanTransfer uint32 = 0x00000020
 	// TfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
 	TfMPTCanClawback uint32 = 0x00000040
-	// TfMPTCanConfidentialAmount if set, indicates that confidential transfers are enabled for this token issuance.
-	TfMPTCanConfidentialAmount uint32 = 0x00000080
+	// TfMPTCanHoldConfidentialBalance if set, indicates that confidential transfers are enabled for this token issuance.
+	TfMPTCanHoldConfidentialBalance uint32 = 0x00000080
 )
 
-// MutableFlags constants for MPTokenIssuanceCreate.
-// These declare which properties can be mutated after creation.
+// MutableFlags constants for MPTokenIssuanceCreate declare future permissions and an opt-out.
+// CanEnable permissions allow only a later transition from disabled to enabled; they never
+// permit disabling. CanMutate permissions allow repeated metadata or transfer-fee updates.
+// CannotEnableCanHoldConfidentialBalance permanently declines the confidential capability.
 const (
-	// TmfMPTCanMutateCanLock allows the CanLock property to be changed after creation.
-	TmfMPTCanMutateCanLock uint32 = 0x00000002
-	// TmfMPTCanMutateRequireAuth allows the RequireAuth property to be changed after creation.
-	TmfMPTCanMutateRequireAuth uint32 = 0x00000004
-	// TmfMPTCanMutateCanEscrow allows the CanEscrow property to be changed after creation.
-	TmfMPTCanMutateCanEscrow uint32 = 0x00000008
-	// TmfMPTCanMutateCanTrade allows the CanTrade property to be changed after creation.
-	TmfMPTCanMutateCanTrade uint32 = 0x00000010
-	// TmfMPTCanMutateCanTransfer allows the CanTransfer property to be changed after creation.
-	TmfMPTCanMutateCanTransfer uint32 = 0x00000020
-	// TmfMPTCanMutateCanClawback allows the CanClawback property to be changed after creation.
-	TmfMPTCanMutateCanClawback uint32 = 0x00000040
-	// TmfMPTCanMutateMetadata allows the MPTokenMetadata to be changed after creation.
+	// TmfMPTCanEnableCanLock grants one-way permission to enable CanLock after creation.
+	TmfMPTCanEnableCanLock uint32 = 0x00000002
+	// TmfMPTCanEnableRequireAuth grants one-way permission to enable RequireAuth after creation.
+	TmfMPTCanEnableRequireAuth uint32 = 0x00000004
+	// TmfMPTCanEnableCanEscrow grants one-way permission to enable CanEscrow after creation.
+	TmfMPTCanEnableCanEscrow uint32 = 0x00000008
+	// TmfMPTCanEnableCanTrade grants one-way permission to enable CanTrade after creation.
+	TmfMPTCanEnableCanTrade uint32 = 0x00000010
+	// TmfMPTCanEnableCanTransfer grants one-way permission to enable CanTransfer after creation.
+	TmfMPTCanEnableCanTransfer uint32 = 0x00000020
+	// TmfMPTCanEnableCanClawback grants one-way permission to enable CanClawback after creation.
+	TmfMPTCanEnableCanClawback uint32 = 0x00000040
+	// TmfMPTCanMutateMetadata grants repeatable permission to replace MPTokenMetadata after creation.
 	TmfMPTCanMutateMetadata uint32 = 0x00010000
-	// TmfMPTCanMutateTransferFee allows the TransferFee to be changed after creation.
+	// TmfMPTCanMutateTransferFee grants repeatable permission to replace TransferFee after creation.
 	TmfMPTCanMutateTransferFee uint32 = 0x00020000
-	// TmfMPTCannotMutateCanConfidentialAmount prevents the CanConfidentialAmount property from being changed after creation.
-	TmfMPTCannotMutateCanConfidentialAmount uint32 = 0x00040000
+	// TmfMPTCannotEnableCanHoldConfidentialBalance permanently opts out of enabling confidential balances after creation.
+	TmfMPTCannotEnableCanHoldConfidentialBalance uint32 = 0x00000080
+	// MPTokenIssuanceCreateMutableFlagsMask contains every supported MutableFlags bit. Bit 0x01 is reserved.
+	MPTokenIssuanceCreateMutableFlagsMask uint32 = 0x000300FE
 )
 
 // MPTokenIssuanceCreateMetadata represents the resulting metadata of a succeeded MPTokenIssuanceCreate transaction.
@@ -101,7 +105,9 @@ type MPTokenIssuanceCreate struct {
 	// DomainID is the ledger entry ID of a permissioned domain that grants access to the MPT.
 	// Requires the TfMPTRequireAuth flag to be set.
 	DomainID *string `json:",omitempty"`
-	// MutableFlags declares which properties of this MPT can be mutated after creation.
+	// MutableFlags grants one-way future-enable permissions for ordinary capabilities,
+	// repeatable mutation permission for metadata and transfer fees, and a permanent
+	// opt-out from enabling confidential balances.
 	MutableFlags *uint32 `json:",omitempty"`
 }
 
@@ -173,9 +179,9 @@ func (m *MPTokenIssuanceCreate) SetMPTCanClawbackFlag() {
 	m.Flags |= TfMPTCanClawback
 }
 
-// SetMPTCanConfidentialAmountFlag sets the TfMPTCanConfidentialAmount flag to enable confidential transfers for this token issuance.
-func (m *MPTokenIssuanceCreate) SetMPTCanConfidentialAmountFlag() {
-	m.Flags |= TfMPTCanConfidentialAmount
+// SetMPTCanHoldConfidentialBalanceFlag sets the TfMPTCanHoldConfidentialBalance flag to enable confidential transfers for this token issuance.
+func (m *MPTokenIssuanceCreate) SetMPTCanHoldConfidentialBalanceFlag() {
+	m.Flags |= TfMPTCanHoldConfidentialBalance
 }
 
 // setMutableFlag is a helper that initialises MutableFlags if nil and applies the given flag.
@@ -187,49 +193,49 @@ func (m *MPTokenIssuanceCreate) setMutableFlag(f uint32) {
 	*m.MutableFlags |= f
 }
 
-// SetMPTCanMutateCanLockFlag allows the CanLock property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanLockFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanLock)
+// SetMPTCanEnableCanLockFlag grants one-way permission to enable CanLock after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanLockFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanLock)
 }
 
-// SetMPTCanMutateRequireAuthFlag allows the RequireAuth property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateRequireAuthFlag() {
-	m.setMutableFlag(TmfMPTCanMutateRequireAuth)
+// SetMPTCanEnableRequireAuthFlag grants one-way permission to enable RequireAuth after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableRequireAuthFlag() {
+	m.setMutableFlag(TmfMPTCanEnableRequireAuth)
 }
 
-// SetMPTCanMutateCanEscrowFlag allows the CanEscrow property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanEscrowFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanEscrow)
+// SetMPTCanEnableCanEscrowFlag grants one-way permission to enable CanEscrow after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanEscrowFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanEscrow)
 }
 
-// SetMPTCanMutateCanTradeFlag allows the CanTrade property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanTradeFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanTrade)
+// SetMPTCanEnableCanTradeFlag grants one-way permission to enable CanTrade after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanTradeFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanTrade)
 }
 
-// SetMPTCanMutateCanTransferFlag allows the CanTransfer property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanTransferFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanTransfer)
+// SetMPTCanEnableCanTransferFlag grants one-way permission to enable CanTransfer after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanTransferFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanTransfer)
 }
 
-// SetMPTCanMutateCanClawbackFlag allows the CanClawback property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanClawbackFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanClawback)
+// SetMPTCanEnableCanClawbackFlag grants one-way permission to enable CanClawback after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanClawbackFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanClawback)
 }
 
-// SetMPTCanMutateMetadataFlag allows the MPTokenMetadata to be changed after creation.
+// SetMPTCanMutateMetadataFlag grants repeatable permission to replace MPTokenMetadata after creation.
 func (m *MPTokenIssuanceCreate) SetMPTCanMutateMetadataFlag() {
 	m.setMutableFlag(TmfMPTCanMutateMetadata)
 }
 
-// SetMPTCanMutateTransferFeeFlag allows the TransferFee to be changed after creation.
+// SetMPTCanMutateTransferFeeFlag grants repeatable permission to replace TransferFee after creation.
 func (m *MPTokenIssuanceCreate) SetMPTCanMutateTransferFeeFlag() {
 	m.setMutableFlag(TmfMPTCanMutateTransferFee)
 }
 
-// SetMPTCannotMutateCanConfidentialAmountFlag prevents the CanConfidentialAmount property from being changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCannotMutateCanConfidentialAmountFlag() {
-	m.setMutableFlag(TmfMPTCannotMutateCanConfidentialAmount)
+// SetMPTCannotEnableCanHoldConfidentialBalanceFlag permanently opts out of enabling confidential balances after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCannotEnableCanHoldConfidentialBalanceFlag() {
+	m.setMutableFlag(TmfMPTCannotEnableCanHoldConfidentialBalance)
 }
 
 // Validate validates the MPTokenIssuanceCreate transaction ensuring all fields are correct.
@@ -239,6 +245,10 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 		return false, err
 	}
 
+	if m.MutableFlags != nil && (*m.MutableFlags == 0 || *m.MutableFlags&^MPTokenIssuanceCreateMutableFlagsMask != 0) {
+		return false, ErrMPTIssuanceCreateInvalidMutableFlags
+	}
+
 	// Validate TransferFee: must not exceed MAX_TRANSFER_FEE and requires TfMPTCanTransfer flag.
 	if m.TransferFee != nil && *m.TransferFee > 0 {
 		if *m.TransferFee > MaxTransferFee {
@@ -246,6 +256,9 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 		}
 		if !flag.Contains(m.Flags, TfMPTCanTransfer) {
 			return false, ErrTransferFeeRequiresCanTransfer
+		}
+		if flag.Contains(m.Flags, TfMPTCanHoldConfidentialBalance) {
+			return false, ErrMPTIssuanceCreateTransferFeeWithConfidentialBalance
 		}
 	}
 
@@ -269,11 +282,6 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 		if !flag.Contains(m.Flags, TfMPTRequireAuth) {
 			return false, ErrMPTIssuanceCreateDomainIDRequiresRequireAuth
 		}
-	}
-
-	// MutableFlags cannot be zero when present.
-	if m.MutableFlags != nil && *m.MutableFlags == 0 {
-		return false, ErrMPTIssuanceCreateMutableFlagsZero
 	}
 
 	return true, nil
