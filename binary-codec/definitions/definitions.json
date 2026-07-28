@@ -1073,6 +1073,7 @@
     [
       "MaximumAmount",
       {
+        "isBaseTen": true,
         "isSerialized": true,
         "isSigningField": true,
         "isVLEncoded": false,
@@ -1083,6 +1084,7 @@
     [
       "OutstandingAmount",
       {
+        "isBaseTen": true,
         "isSerialized": true,
         "isSigningField": true,
         "isVLEncoded": false,
@@ -1093,6 +1095,7 @@
     [
       "MPTAmount",
       {
+        "isBaseTen": true,
         "isSerialized": true,
         "isSigningField": true,
         "isVLEncoded": false,
@@ -1123,6 +1126,7 @@
     [
       "LockedAmount",
       {
+        "isBaseTen": true,
         "isSerialized": true,
         "isSigningField": true,
         "isVLEncoded": false,
@@ -1153,6 +1157,7 @@
     [
       "ConfidentialOutstandingAmount",
       {
+        "isBaseTen": true,
         "isSerialized": true,
         "isSigningField": true,
         "isVLEncoded": false,
@@ -2255,9 +2260,9 @@
       {
         "isSerialized": true,
         "isSigningField": true,
-        "isVLEncoded": true,
-        "nth": 45,
-        "type": "Blob"
+        "isVLEncoded": false,
+        "nth": 40,
+        "type": "Hash256"
       }
     ],
     [
@@ -2266,7 +2271,7 @@
         "isSerialized": true,
         "isSigningField": true,
         "isVLEncoded": true,
-        "nth": 46,
+        "nth": 45,
         "type": "Blob"
       }
     ],
@@ -2276,7 +2281,7 @@
         "isSerialized": true,
         "isSigningField": true,
         "isVLEncoded": true,
-        "nth": 47,
+        "nth": 46,
         "type": "Blob"
       }
     ],

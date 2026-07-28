@@ -16,6 +16,7 @@ type FieldInfo struct {
 	IsVLEncoded    bool
 	IsSerialized   bool
 	IsSigningField bool
+	IsBaseTen      bool
 	Type           string
 }
 

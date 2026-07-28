@@ -2,14 +2,16 @@
 package types
 
 import (
-	"encoding/hex"
+	"encoding/binary"
 	"errors"
-	"strings"
+	"strconv"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
+
+const uint64BaseTen = 10
 
 // UInt64 represents a 64-bit unsigned integer serialized from a hex JSON string.
 type UInt64 struct{}
@@ -26,31 +28,43 @@ var ErrInvalidUInt64String = errors.New("invalid UInt64 string, value should be 
 // Returns ErrInvalidUInt64String when the input is not a string, contains non-hex
 // characters, or exceeds 16 characters.
 func (u *UInt64) FromJSON(value any) ([]byte, error) {
+	return u.fromJSON(value, 16)
+}
+
+func (u *UInt64) fromJSON(value any, base int) ([]byte, error) {
 	strValue, ok := value.(string)
 	if !ok {
 		return nil, ErrInvalidUInt64String
 	}
 
-	if len(strValue) > 16 || !typecheck.IsHex(strValue) {
+	if base == 16 && (len(strValue) > 16 || !typecheck.IsHex(strValue)) {
 		return nil, ErrInvalidUInt64String
 	}
 
-	// Right justify the string to 16 hex characters (8 bytes)
-	strValue = strings.Repeat("0", 16-len(strValue)) + strValue
-	decoded, err := hex.DecodeString(strValue)
+	parsed, err := strconv.ParseUint(strValue, base, 64)
 	if err != nil {
+		var numErr *strconv.NumError
+		if errors.As(err, &numErr) && errors.Is(numErr.Err, strconv.ErrRange) {
+			return nil, ErrInvalidUInt64String
+		}
 		return nil, err
 	}
-	return decoded, nil
+
+	serialized := make([]byte, 8)
+	binary.BigEndian.PutUint64(serialized, parsed)
+	return serialized, nil
 }
 
 // ToJSON takes a BinaryParser and optional parameters, and converts the serialized byte data
 // back into a JSON string value. This method assumes the parser contains data representing
 // a 64-bit unsigned integer. If the parsing fails, an error is returned.
-func (u *UInt64) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
+func (u *UInt64) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 	b, err := p.ReadBytes(8)
 	if err != nil {
 		return nil, err
+	}
+	if len(opts) > 0 && opts[0] == uint64BaseTen {
+		return strconv.FormatUint(binary.BigEndian.Uint64(b), uint64BaseTen), nil
 	}
 	return hexutil.EncodeToUpperHex(b), nil
 }

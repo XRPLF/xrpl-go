@@ -85,6 +85,7 @@ func convertToFieldInstanceMap(m [][]any) map[string]*FieldInstance {
 
 func castFieldInfo(v any) (FieldInfo, error) {
 	if fi, ok := v.(map[string]any); ok {
+		isBaseTen, _ := fi["isBaseTen"].(bool)
 		return FieldInfo{
 			// TODO: Check if this is still needed
 			//nolint:gosec // G115: integer overflow conversion int64 -> int32, nth is a small field ordinal
@@ -92,6 +93,7 @@ func castFieldInfo(v any) (FieldInfo, error) {
 			IsVLEncoded:    fi["isVLEncoded"].(bool),
 			IsSerialized:   fi["isSerialized"].(bool),
 			IsSigningField: fi["isSigningField"].(bool),
+			IsBaseTen:      isBaseTen,
 			Type:           fi["type"].(string),
 		}, nil
 	}

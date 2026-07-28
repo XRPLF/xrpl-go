@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -70,6 +71,18 @@ func TestUint32_FromJson(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
+			name:        "Valid uint32 - from json number",
+			input:       json.Number("500"),
+			expected:    []byte{0, 0, 1, 244},
+			expectedErr: nil,
+		},
+		{
+			name:        "Valid uint32 max - from json number",
+			input:       json.Number("4294967295"),
+			expected:    []byte{0xFF, 0xFF, 0xFF, 0xFF},
+			expectedErr: nil,
+		},
+		{
 			name:        "Error - negative int",
 			input:       int(-1),
 			expected:    nil,
@@ -108,6 +121,24 @@ func TestUint32_FromJson(t *testing.T) {
 		{
 			name:        "Error - negative float64",
 			input:       float64(-50),
+			expected:    nil,
+			expectedErr: ErrUInt32OutOfRange,
+		},
+		{
+			name:        "Error - negative json number",
+			input:       json.Number("-1"),
+			expected:    nil,
+			expectedErr: ErrUInt32OutOfRange,
+		},
+		{
+			name:        "Error - json number overflow",
+			input:       json.Number("4294967296"),
+			expected:    nil,
+			expectedErr: ErrUInt32OutOfRange,
+		},
+		{
+			name:        "Error - fractional json number",
+			input:       json.Number("1.5"),
 			expected:    nil,
 			expectedErr: ErrUInt32OutOfRange,
 		},
