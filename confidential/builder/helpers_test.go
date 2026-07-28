@@ -22,6 +22,7 @@ type mockQuerier struct {
 	accountSeq uint32
 	accountErr error // when set, GetAccountInfo returns this error
 	entries    map[string]ledgerentries.FlatLedgerObject
+	// queryCalls counts ledger requests so tests can assert failures occur before unnecessary ledger access.
 	queryCalls int
 }
 
