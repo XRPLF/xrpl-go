@@ -7,8 +7,16 @@ on:
         description: "mpt-crypto version (leave empty for latest)"
         required: false
         default: ""
+      force:
+        description: "Rebuild even when the version or update branch already exists"
+        required: false
+        type: boolean
+        default: true
   schedule:
     - cron: "0 9 * * 1" # Every Monday at 9:00 UTC
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -17,42 +25,133 @@ jobs:
       version: ${{ steps.resolve.outputs.version }}
       current: ${{ steps.resolve.outputs.current }}
       needed: ${{ steps.resolve.outputs.needed }}
+      branch: ${{ steps.resolve.outputs.branch }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
 
       - name: Install Conan
         run: |
-          pip install conan
+          pip install "conan==2.26.2"
           conan profile detect
           conan remote add --index 0 xrplf https://conan.ripplex.io
 
       - name: Resolve version and check if update needed
         id: resolve
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          FORCE_UPDATE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
         run: |
+          set -euo pipefail
+
           CURRENT=$(cat confidential/deps/VERSION 2>/dev/null || echo "")
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
 
-          if [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
+          if [ -n "$REQUESTED_VERSION" ]; then
+            VERSION="$REQUESTED_VERSION"
           else
-            VERSION=$(conan list 'mpt-crypto/*' -r xrplf 2>/dev/null \
-              | grep 'mpt-crypto/' \
-              | sed 's/.*mpt-crypto\///' \
-              | sort -V \
-              | tail -1)
+            VERSION=$(conan list 'mpt-crypto/*' -r xrplf --format=json \
+              | python3 -c '
+          import json
+          import re
+          import sys
+
+          packages = json.load(sys.stdin)
+          versions = [
+              reference.split("/", 1)[1]
+              for remote in packages.values()
+              for reference in remote
+              if reference.startswith("mpt-crypto/")
+          ]
+          if not versions:
+              raise SystemExit("no mpt-crypto versions found")
+
+          def version_key(version):
+              match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?", version)
+              if not match:
+                  raise SystemExit(f"unsupported mpt-crypto version format: {version}")
+              prerelease = match.group(4)
+              prerelease_key = tuple(
+                  (0, int(part)) if part.isdigit() else (1, part)
+                  for part in re.split(r"[.-]", prerelease or "")
+              )
+              return (*(int(match.group(index)) for index in range(1, 4)), prerelease is None, prerelease_key)
+
+          print(max(versions, key=version_key))
+          ')
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9A-Za-z][0-9A-Za-z._+-]*$ ]]; then
+            echo "::error::Invalid mpt-crypto version '$VERSION'"
+            exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          if [ "$CURRENT" = "$VERSION" ]; then
-            echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "Already at mpt-crypto/$VERSION — skipping build."
-          elif git ls-remote --exit-code --heads origin "chore/update-mpt-crypto-${VERSION}" >/dev/null 2>&1; then
-            echo "needed=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Branch 'chore/update-mpt-crypto-${VERSION}' already exists. Delete it before re-running."
-          else
-            echo "needed=true" >> "$GITHUB_OUTPUT"
-            echo "Update needed: $CURRENT -> $VERSION"
+          BUNDLE_COMPLETE=true
+          for platform in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
+            for archive in libmpt-crypto.a libsecp256k1.a libcrypto.a; do
+              [ -s "confidential/deps/libs/$platform/$archive" ] || BUNDLE_COMPLETE=false
+            done
+          done
+          for header in mpt_protocol.h secp256k1_mpt.h secp256k1.h utility/mpt_utility.h; do
+            [ -s "confidential/deps/include/$header" ] || BUNDLE_COMPLETE=false
+          done
+          if [ "$BUNDLE_COMPLETE" = true ] && ! cc \
+            -Iconfidential/deps/include \
+            -Iconfidential/deps/include/utility \
+            -x c -fsyntax-only - >/dev/null 2>&1 <<'EOF'; then
+          #include "mpt_utility.h"
+          int main(void) { return 0; }
+          EOF
+            BUNDLE_COMPLETE=false
           fi
+
+          if [ "$FORCE_UPDATE" = "true" ]; then
+            BRANCH="chore/update-mpt-crypto-${VERSION}-run-${GITHUB_RUN_ID}"
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "Forced rebuild requested for mpt-crypto/$VERSION."
+          else
+            BRANCH="chore/update-mpt-crypto-${VERSION}"
+            if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+              echo "needed=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::Branch '$BRANCH' already exists. Enable force to create a new update branch."
+            elif [ "$CURRENT" = "$VERSION" ] && [ "$BUNDLE_COMPLETE" = true ]; then
+              echo "needed=false" >> "$GITHUB_OUTPUT"
+              echo "Already at a complete mpt-crypto/$VERSION bundle — skipping build."
+            else
+              echo "needed=true" >> "$GITHUB_OUTPUT"
+              echo "Building mpt-crypto/$VERSION for bundle validation ($CURRENT -> $VERSION)."
+            fi
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Lock resolved Conan graph
+        if: steps.resolve.outputs.needed == 'true'
+        env:
+          MPT_CRYPTO_VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p .mpt-crypto-lock
+          cat > .mpt-crypto-lock/conanfile.txt <<EOF
+          [requires]
+          mpt-crypto/$MPT_CRYPTO_VERSION
+          EOF
+          conan lock create .mpt-crypto-lock/conanfile.txt \
+            -o "*:shared=False" \
+            -o "*:fPIC=True" \
+            -s os=Linux \
+            -s arch=x86_64 \
+            --lockfile-out=.mpt-crypto-lock/conan.lock
+
+      - name: Upload Conan lockfile
+        if: steps.resolve.outputs.needed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: conan-lock
+          if-no-files-found: error
+          retention-days: 1
+          path: .mpt-crypto-lock/conan.lock
 
   build:
     needs: check
@@ -71,80 +170,225 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Download Conan lockfile
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: conan-lock
+          path: .mpt-crypto-lock/
 
       - name: Install Conan
         run: |
-          pip install conan
+          set -euo pipefail
+          pip install "conan==2.26.2"
           conan profile detect
+
+          # Hosted runners can ship compilers newer than Conan's bundled
+          # settings.yml. Extend, rather than replace, the supported versions
+          # with the compiler version detected in the ephemeral runner profile.
+          conan_home=$(conan config home)
+          profile="$conan_home/profiles/default"
+          compiler=$(sed -n 's/^compiler=//p' "$profile")
+          compiler_version=$(sed -n 's/^compiler.version=//p' "$profile")
+          if [ -z "$compiler" ] || [ -z "$compiler_version" ]; then
+            echo "::error::Could not read compiler settings from $profile"
+            exit 1
+          fi
+          cat > "$conan_home/settings_user.yml" <<EOF
+          compiler:
+            $compiler:
+              version: ["$compiler_version"]
+          EOF
+          conan profile show -pr:h default >/dev/null
+
           conan remote add --index 0 xrplf https://conan.ripplex.io
 
-      - name: Build libraries
+      - name: Build CGO dependency bundle
+        env:
+          MPT_CRYPTO_VERSION: ${{ needs.check.outputs.version }}
+          TARGET_PLATFORM: ${{ matrix.platform }}
         run: |
+          set -euo pipefail
           bash confidential/deps/update.sh \
-            --platform ${{ matrix.platform }} \
+            --platform "$TARGET_PLATFORM" \
             --force \
-            --version ${{ needs.check.outputs.version }}
+            --version "$MPT_CRYPTO_VERSION" \
+            --lockfile "$GITHUB_WORKSPACE/.mpt-crypto-lock/conan.lock"
+
+      - name: Verify CGO dependency bundle
+        env:
+          TARGET_PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          for archive in libmpt-crypto.a libsecp256k1.a libcrypto.a; do
+            path="confidential/deps/libs/$TARGET_PLATFORM/$archive"
+            test -s "$path"
+            ar -t "$path" >/dev/null
+          done
+
+          header_manifest="$GITHUB_WORKSPACE/confidential/deps/MANIFEST.sha256"
+          (
+            cd confidential/deps/include
+            find . -type f -name '*.h' -print |
+              LC_ALL=C sort |
+              while IFS= read -r header; do shasum -a 256 "$header"; done
+          ) > "$header_manifest"
+          (cd confidential/deps/include && shasum -a 256 -c "$header_manifest")
+
+          cc \
+            -Iconfidential/deps/include \
+            -Iconfidential/deps/include/utility \
+            -x c -fsyntax-only - <<'EOF'
+          #include "mpt_utility.h"
+          int main(void) { return 0; }
+          EOF
 
       - name: Upload platform artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: mpt-crypto-${{ matrix.platform }}
-          path: confidential/deps/
+          if-no-files-found: error
+          path: |
+            confidential/deps/VERSION
+            confidential/deps/MANIFEST.sha256
+            confidential/deps/include/
+            confidential/deps/libs/${{ matrix.platform }}/
 
   pr:
     needs: [check, build]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
 
       - name: Download all platform artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           path: artifacts/
 
-      - name: Merge artifacts into repo
+      - name: Validate and merge artifacts into repo
+        env:
+          EXPECTED_VERSION: ${{ needs.check.outputs.version }}
         run: |
+          set -euo pipefail
+
+          merge_dir=$(mktemp -d)
+          trap 'rm -rf "$merge_dir"' EXIT
+          mkdir -p "$merge_dir/libs"
+
+          header_source=""
+          manifest_source=""
+          artifact_count=0
           for dir in artifacts/mpt-crypto-*/; do
+            artifact_count=$((artifact_count + 1))
             platform=$(basename "$dir" | sed 's/mpt-crypto-//')
-            # Copy platform libs
-            if [ -d "$dir/libs/$platform" ]; then
-              mkdir -p "confidential/deps/libs/$platform"
-              cp "$dir/libs/$platform/"*.a "confidential/deps/libs/$platform/"
+            case "$platform" in
+              linux-amd64|linux-arm64|darwin-amd64|darwin-arm64) ;;
+              *) echo "::error::Unexpected platform artifact: $platform"; exit 1 ;;
+            esac
+
+            actual_version=$(cat "$dir/VERSION")
+            if [ "$actual_version" != "$EXPECTED_VERSION" ]; then
+              echo "::error::$platform artifact has version $actual_version, expected $EXPECTED_VERSION"
+              exit 1
+            fi
+
+            source_libs="$dir/libs/$platform"
+            archive_count=$(find "$source_libs" -maxdepth 1 -type f -name '*.a' | wc -l | tr -d ' ')
+            if [ "$archive_count" -ne 3 ]; then
+              echo "::error::$platform artifact contains $archive_count archives, expected 3"
+              exit 1
+            fi
+
+            mkdir -p "$merge_dir/libs/$platform"
+            for archive in libmpt-crypto.a libsecp256k1.a libcrypto.a; do
+              if [ ! -s "$source_libs/$archive" ]; then
+                echo "::error::$platform artifact is missing $archive"
+                exit 1
+              fi
+              cp "$source_libs/$archive" "$merge_dir/libs/$platform/"
+            done
+
+            artifact_manifest="$dir/MANIFEST.sha256"
+            if [ ! -s "$artifact_manifest" ]; then
+              echo "::error::$platform artifact is missing its header checksum manifest"
+              exit 1
+            fi
+            artifact_manifest=$(cd "$(dirname "$artifact_manifest")" && pwd)/$(basename "$artifact_manifest")
+            (cd "$dir/include" && shasum -a 256 -c "$artifact_manifest")
+
+            if [ -z "$header_source" ]; then
+              header_source="$dir/include"
+              manifest_source="$artifact_manifest"
+            elif ! cmp -s "$manifest_source" "$artifact_manifest"; then
+              echo "::error::Public header checksums differ between platform artifacts"
+              exit 1
+            elif ! diff -qr "$header_source" "$dir/include"; then
+              echo "::error::Public headers differ between platform artifacts"
+              exit 1
             fi
           done
-          # Headers and VERSION are the same across platforms — take from any
-          mkdir -p confidential/deps/include/utility
-          cp artifacts/mpt-crypto-linux-amd64/include/*.h confidential/deps/include/
-          cp artifacts/mpt-crypto-linux-amd64/include/utility/*.h confidential/deps/include/utility/
-          cp artifacts/mpt-crypto-linux-amd64/VERSION confidential/deps/VERSION
+
+          if [ "$artifact_count" -ne 4 ]; then
+            echo "::error::Found $artifact_count platform artifacts, expected 4"
+            exit 1
+          fi
+
+          mkdir -p "$merge_dir/include"
+          cp -R "$header_source/." "$merge_dir/include/"
+          for header in mpt_protocol.h secp256k1_mpt.h secp256k1.h utility/mpt_utility.h; do
+            if [ ! -s "$merge_dir/include/$header" ]; then
+              echo "::error::Merged artifact is missing public header $header"
+              exit 1
+            fi
+          done
+
+          rm -rf confidential/deps/libs confidential/deps/include
+          cp -R "$merge_dir/libs" confidential/deps/libs
+          cp -R "$merge_dir/include" confidential/deps/include
+          printf '%s\n' "$EXPECTED_VERSION" > confidential/deps/VERSION
 
       - name: Create PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.check.outputs.version }}
+          CURRENT_VERSION: ${{ needs.check.outputs.current }}
+          UPDATE_BRANCH: ${{ needs.check.outputs.branch }}
+          BASE_BRANCH: ${{ github.ref_name }}
         run: |
-          VERSION="${{ needs.check.outputs.version }}"
-          BRANCH="chore/update-mpt-crypto-${VERSION}"
+          set -euo pipefail
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
+          git checkout -b "$UPDATE_BRANCH"
           git add -f confidential/deps/
+          if git diff --cached --quiet; then
+            echo "The rebuilt dependency bundle is unchanged; no PR is required."
+            exit 0
+          fi
           git commit -m "chore(confidential): update vendored mpt-crypto to $VERSION"
-          git push -u origin "$BRANCH"
+          gh auth setup-git
+          git push -u origin "$UPDATE_BRANCH"
 
           gh pr create \
-            --base "${{ github.ref_name }}" \
+            --base "$BASE_BRANCH" \
             --title "Update vendored mpt-crypto to $VERSION" \
             --body "$(cat <<EOF
-          Automated update of vendored mpt-crypto static libraries.
+          Automated update of the vendored mpt-crypto CGO dependency bundle.
 
-          **${{ needs.check.outputs.current }} → $VERSION**
+          **$CURRENT_VERSION → $VERSION**
 
-          Platforms built:
+          The workflow built and tested the complete static-library and public-header bundle on:
           - linux-amd64
           - linux-arm64
           - darwin-arm64
           - darwin-amd64
           EOF
           )"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
