@@ -36,6 +36,8 @@ import (
 )
 
 const (
+	confidentialMPTFeeMultiplier = 10
+
 	// DefaultFeeCushion is the default cushion factor for fee calculations.
 	DefaultFeeCushion float32 = 1.2
 	// DefaultMaxFeeXRP is the default maximum fee in XRP.
@@ -711,6 +713,8 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 			return err
 		}
 		baseFee = reserveFee
+	case "ConfidentialMPTSend", "ConfidentialMPTConvert", "ConfidentialMPTConvertBack", "ConfidentialMPTMergeInbox", "ConfidentialMPTClawback":
+		baseFee = baseFeeUint * confidentialMPTFeeMultiplier
 	case "Batch":
 		rawTxFees, err := c.calculateBatchFees(tx)
 		if err != nil {

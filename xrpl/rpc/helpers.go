@@ -28,6 +28,8 @@ import (
 )
 
 const (
+	confidentialMPTFeeMultiplier = 10
+
 	// RestrictedNetworks is the threshold above which sidechains are expected to have network IDs.
 	// Sidechains are expected to have network IDs above this.
 	// Networks with ID above this restricted number are expected specify an accurate NetworkID field
@@ -411,6 +413,8 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 			return err
 		}
 		baseFee = reserveFee
+	case "ConfidentialMPTSend", "ConfidentialMPTConvert", "ConfidentialMPTConvertBack", "ConfidentialMPTMergeInbox", "ConfidentialMPTClawback":
+		baseFee = baseFeeUint * confidentialMPTFeeMultiplier
 	case "Batch":
 		rawTxFees, err := c.calculateBatchFees(tx)
 		if err != nil {
