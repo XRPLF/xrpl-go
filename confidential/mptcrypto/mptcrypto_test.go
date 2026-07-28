@@ -50,6 +50,7 @@ func TestGenerateBlindingFactor(t *testing.T) {
 }
 
 func TestDecryptAmountBounds(t *testing.T) {
+	// amount is an arbitrary non-boundary value used to exercise the range checks.
 	const amount uint64 = 42
 
 	privateKey, publicKey, err := mptcrypto.GenerateKeypair()
