@@ -75,18 +75,6 @@ func TestEncryptDecryptRoundtrip(t *testing.T) {
 	}
 }
 
-func TestDecryptOutsideRange(t *testing.T) {
-	kp, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-	bf, err := elgamal.GenerateBlindingFactor()
-	require.NoError(t, err)
-	ciphertext, err := elgamal.Encrypt(42, kp.PubKeyHex, bf)
-	require.NoError(t, err)
-
-	_, err = elgamal.Decrypt(ciphertext, kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 41})
-	require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
-}
-
 func TestAmountRangeValidate(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -126,20 +114,32 @@ func TestEncryptMultipleKeys(t *testing.T) {
 	require.NotEqual(t, ct1, ct2, "same amount with different keys produced identical ciphertexts")
 }
 
-func TestDecryptWithWrongKey(t *testing.T) {
-	kp1, err := elgamal.GenerateKeypair()
+func TestDecryptFailures(t *testing.T) {
+	kp, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
-	kp2, err := elgamal.GenerateKeypair()
+	wrongKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
 	bf, err := elgamal.GenerateBlindingFactor()
 	require.NoError(t, err)
 
-	ct, err := elgamal.Encrypt(42, kp1.PubKeyHex, bf)
+	ciphertext, err := elgamal.Encrypt(42, kp.PubKeyHex, bf)
 	require.NoError(t, err)
 
-	// Decrypting with a different private key should fail.
-	_, err = elgamal.Decrypt(ct, kp2.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 100})
-	require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
+	tests := []struct {
+		name        string
+		privateKey  string
+		amountRange elgamal.AmountRange
+	}{
+		{name: "fail - amount outside range", privateKey: kp.PrivKeyHex, amountRange: elgamal.AmountRange{Low: 0, High: 41}},
+		{name: "fail - wrong private key", privateKey: wrongKP.PrivKeyHex, amountRange: elgamal.AmountRange{Low: 0, High: 100}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := elgamal.Decrypt(ciphertext, tt.privateKey, tt.amountRange)
+			require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
+		})
+	}
 }
 
 func TestInvalidHexInputs(t *testing.T) {

@@ -172,38 +172,39 @@ func TestPrepareConvertBack_FailValidation(t *testing.T) {
 	}
 }
 
-func TestBuildConvertBack_Pass(t *testing.T) {
-	const currentBalance uint64 = 1000
-	const withdrawAmount uint64 = 100
-
-	holderKP, q := newBalanceLedgerFixture(t, 3, 1, currentBalance)
-	result, err := BuildConvertBack(q, BuildConvertBackParams{
-		Account:       testAccount,
-		IssuanceID:    testIssuanceID,
-		Amount:        withdrawAmount,
-		HolderPrivKey: holderKP.PrivKeyHex,
-		HolderPubKey:  holderKP.PubKeyHex,
-		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Equal(t, uint32(3), result.Sequence)
-}
-
-func TestBuildConvertBack_FailBalanceOutsideRange(t *testing.T) {
+func TestBuildConvertBack_BalanceRange(t *testing.T) {
 	const currentBalance uint64 = 1000
 
-	holderKP, q := newBalanceLedgerFixture(t, 3, 1, currentBalance)
-	_, err := BuildConvertBack(q, BuildConvertBackParams{
-		Account:       testAccount,
-		IssuanceID:    testIssuanceID,
-		Amount:        100,
-		HolderPrivKey: holderKP.PrivKeyHex,
-		HolderPubKey:  holderKP.PubKeyHex,
-		BalanceRange:  elgamal.AmountRange{Low: 0, High: currentBalance - 1},
-	})
-	require.ErrorIs(t, err, ErrCryptoFailed)
-	require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
+	tests := []struct {
+		name         string
+		balanceRange elgamal.AmountRange
+		wantErr      bool
+	}{
+		{name: "pass - balance in range", balanceRange: elgamal.AmountRange{Low: currentBalance, High: currentBalance}},
+		{name: "fail - balance outside range", balanceRange: elgamal.AmountRange{Low: 0, High: currentBalance - 1}, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			holderKP, q := newBalanceLedgerFixture(t, 3, 1, currentBalance)
+			result, err := BuildConvertBack(q, BuildConvertBackParams{
+				Account:       testAccount,
+				IssuanceID:    testIssuanceID,
+				Amount:        100,
+				HolderPrivKey: holderKP.PrivKeyHex,
+				HolderPubKey:  holderKP.PubKeyHex,
+				BalanceRange:  tt.balanceRange,
+			})
+			if tt.wantErr {
+				require.ErrorIs(t, err, ErrCryptoFailed)
+				require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			require.Equal(t, uint32(3), result.Sequence)
+		})
+	}
 }
 
 func TestBuildConvertBack_InvalidRangeBeforeLedgerQueries(t *testing.T) {
