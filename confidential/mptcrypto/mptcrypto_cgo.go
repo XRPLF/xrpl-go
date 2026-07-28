@@ -15,6 +15,7 @@ import "C"
 
 import (
 	"fmt"
+	"math"
 	"unsafe"
 )
 
@@ -127,6 +128,16 @@ func DecryptAmount(ciphertext Ciphertext, privateKey PrivateKey, rangeLow, range
 		return 0, fmt.Errorf("mpt_decrypt_amount failed with code %d", ret)
 	}
 	return uint64(amount), nil
+}
+
+func validateAmountRange(rangeLow, rangeHigh uint64) error {
+	if rangeLow > rangeHigh {
+		return fmt.Errorf("%w: low %d exceeds high %d", ErrInvalidAmountRange, rangeLow, rangeHigh)
+	}
+	if rangeHigh == math.MaxUint64 {
+		return fmt.Errorf("%w: high must be less than %d", ErrInvalidAmountRange, uint64(math.MaxUint64))
+	}
+	return nil
 }
 
 // endregion
