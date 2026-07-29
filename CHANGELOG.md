@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### binary-codec
+
+- Added canonical serialization support and round-trip fixtures for `ReferenceHolding`, `TakerPaysMPT`, and `TakerGetsMPT`.
+
+#### xrpl/ledger-entry-types
+
+- Added typed `ReferenceHolding`, `TakerPaysMPT`, and `TakerGetsMPT` ledger fields, plus the `LsfMPTAMM` flag and setter for AMM-owned MPT holdings.
+
 ### Changed
+
+#### binary-codec
+
+- Refreshed the embedded protocol definitions from authoritative xrpld 3.2.0 data, adding canonical hash type names and current MPT transaction result codes while retaining documented Go compatibility aliases and extensions.
 
 #### dependencies
 
