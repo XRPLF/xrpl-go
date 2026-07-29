@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed `Oracle.OwnerNode` and `Escrow.IssuerNode` from `uint64` to hexadecimal strings. Changed `PriceData.AssetPrice` from `uint64` to `*uint64`; use `ledger.AssetPrice` to set a value. `PriceData` now decodes `rippled` hexadecimal price strings, preserves absent and explicit zero prices, and omits `Scale` when `AssetPrice` is absent. Added the missing `Oracle.LedgerEntryType` and `Oracle.Flags` fields.
 - Renamed the six Dynamic MPT capability constants from `LsmfMPTCanMutate*` to `LsmfMPTCanEnable*`. The metadata and transfer-fee constants retain their `LsmfMPTCanMutate*` names.
 
+#### xrpl/queries/server
+
+- Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID.
+
+#### xrpl/rpc
+
+- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Client autofill and unsigned signing now fail closed when server identity cannot be established. Use `WithNetworkIdentity(networkID, buildVersion)` only for trusted discovery bypasses.
+
 #### xrpl/transaction
 
 - Renamed the six `MPTokenIssuanceCreate` capability constants and setters from `TmfMPTCanMutate*`/`SetMPTCanMutate*` to `TmfMPTCanEnable*`/`SetMPTCanEnable*`. Metadata and transfer-fee mutation names are unchanged.
@@ -26,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed the `MPTokenIssuanceSet` mutable-flag values to a contiguous mask: `TmfMPTSetCanLock` (`0x01`), `TmfMPTSetRequireAuth` (`0x02`), `TmfMPTSetCanEscrow` (`0x04`), `TmfMPTSetCanTrade` (`0x08`), `TmfMPTSetCanTransfer` (`0x10`), and `TmfMPTSetCanClawback` (`0x20`).
 - Removed `ErrMPTIssuanceSetMutableFlagsConflict` and `ErrMPTIssuanceSetTransferFeeWithClearCanTransfer` along with the set/clear validation model.
 - Added `types.MPTAmount` for quoted base-10 MPT values and changed `MPTokenIssuanceCreate.MaximumAmount` from `*types.XRPCurrencyAmount` to `*types.MPTAmount`. When present, `MaximumAmount` must be in the range `1..2^63-1`.
+
+#### xrpl/websocket
+
+- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Client autofill and unsigned signing now fail closed when server identity cannot be established. Use `WithNetworkIdentity(networkID, buildVersion)` only for trusted discovery bypasses.
 
 ### Added
 
@@ -52,10 +64,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `ledger_hash` and `ledger_index` fields to `InfoRequest`, and `ledger_current_index` to `InfoResponse` for open-ledger responses.
 
+#### xrpl/rpc
+
+- Added shared NetworkID/version policy for outer and Batch inner transactions, including restricted-network and rippled pre/post-1.11 rules.
+- Added shared X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields, with embedded source/destination tag application and explicit tag-conflict errors.
+
 #### xrpl/transaction
 
 - Added `ErrMPTIssuanceCreateInvalidMutableFlags` and `ErrMPTIssuanceSetInvalidMutableFlags` for unsupported Dynamic MPT flag bits.
 - Added MPT amount and `Holder` support to `Clawback`, including JSON, binary encoding, signing, and validation. Validation rejects invalid issuer and holder combinations, invalid or zero amounts, and XRP amounts.
+
+#### xrpl/websocket
+
+- Added shared NetworkID/version policy for outer and Batch inner transactions, including restricted-network and rippled pre/post-1.11 rules.
+- Added shared X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields, with embedded source/destination tag application and explicit tag-conflict errors.
 
 ### Changed
 
@@ -109,6 +131,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction/types
 
 - Rejected currency amount JSON that combines `mpt_issuance_id` with issued-currency `currency` or `issuer` fields.
+
+#### xrpl/websocket
+
+- Made connection-time network discovery atomic and leak-free, including reconnect identity checks, cancellation-safe reconnect dials, and protection against replacing an existing live connection.
 
 ## [v0.2.0]
 
