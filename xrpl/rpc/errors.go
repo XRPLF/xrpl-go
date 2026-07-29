@@ -143,6 +143,10 @@ var (
 	ErrEmptyURL = errors.New("empty port and IP provided")
 	// ErrResponseErrorFieldIsNotAString is returned when an RPC response contains a non-string error field.
 	ErrResponseErrorFieldIsNotAString = errors.New("rpc response error field must be a string")
+	// ErrInsecureAuthorization is returned when RPC authorization cannot be guaranteed to use HTTPS across redirects.
+	ErrInsecureAuthorization = errors.New("rpc authorization requires an HTTPS endpoint and redirect-safe HTTP client")
+	// ErrAuthorizationRequestFailed replaces an authorized request error whose diagnostic exposed credential material.
+	ErrAuthorizationRequestFailed = errors.New("authorized RPC request failed")
 	// ErrResponseTooLarge is returned when an RPC response body exceeds the configured limit.
 	ErrResponseTooLarge = errors.New("rpc response body exceeds maximum size")
 )
