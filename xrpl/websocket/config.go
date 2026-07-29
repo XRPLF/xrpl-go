@@ -22,7 +22,8 @@ func SetLogger(l *log.Logger) {
 // ClientConfig configures options for the XRPL WebSocket client.
 type ClientConfig struct {
 	// Connection config
-	host            string
+	host string
+	// Reliable-submission monitoring limit.
 	maxRetries      int
 	maxReconnects   int
 	retryDelay      time.Duration
@@ -83,7 +84,9 @@ func (wc ClientConfig) WithFaucetProvider(fp common.FaucetProvider) ClientConfig
 	return wc
 }
 
-// WithMaxRetries sets the maximum number of retries for a transaction.
+// WithMaxRetries sets the consecutive monitoring-failure limit and the
+// bounded polling limit for transactions without LastLedgerSequence. It does
+// not limit ledger-driven monitoring when LastLedgerSequence is present.
 // Default: 10
 func (wc ClientConfig) WithMaxRetries(maxRetries int) ClientConfig {
 	wc.maxRetries = maxRetries
@@ -97,7 +100,7 @@ func (wc ClientConfig) WithMaxReconnects(maxReconnects int) ClientConfig {
 	return wc
 }
 
-// WithRetryDelay sets the delay between retries for a transaction.
+// WithRetryDelay sets the delay between reliable-submission polling rounds.
 // Default: 1 second
 func (wc ClientConfig) WithRetryDelay(retryDelay time.Duration) ClientConfig {
 	wc.retryDelay = retryDelay

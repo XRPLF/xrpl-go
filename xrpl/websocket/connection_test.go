@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -190,6 +191,39 @@ func TestConnection_DisconnectUnblocksReadMessage(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("ReadMessage did not return after Disconnect, possible goroutine leak")
 	}
+}
+
+func TestConnection_WriteMessageHonorsCanceledContext(t *testing.T) {
+	t.Run("already canceled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		err := newConnection("ws://unused", defaultMaxResponseSize).writeMessage(ctx, []byte("test"), time.Second)
+		require.ErrorIs(t, err, context.Canceled)
+	})
+
+	t.Run("canceled while waiting for another writer", func(t *testing.T) {
+		connection := newConnection("ws://unused", defaultMaxResponseSize)
+		require.NoError(t, connection.acquireWrite(context.Background()))
+		defer connection.releaseWrite()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		result := make(chan error, 1)
+		started := make(chan struct{})
+		go func() {
+			close(started)
+			result <- connection.writeMessage(ctx, []byte("test"), time.Second)
+		}()
+		<-started
+		cancel()
+
+		select {
+		case err := <-result:
+			require.ErrorIs(t, err, context.Canceled)
+		case <-time.After(time.Second):
+			t.Fatal("write did not exit after context cancellation while waiting for the writer token")
+		}
+	})
 }
 
 func TestConnection_DisconnectStopsConcurrentWriteMessage(t *testing.T) {
