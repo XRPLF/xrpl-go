@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
 
+### Fixed
+
+#### address-codec
+
+- Base58Check checksum and family-seed-prefix comparisons now run in constant time (`crypto/subtle`) to avoid leaking timing information while decoding addresses and seeds.
+
+#### binary-codec
+
+- `BinaryParser.ReadBytes` now returns `ErrParserOutOfBound` for negative lengths instead of silently returning no data.
+- `DecodeQuality` now returns `ErrInvalidQuality` for malformed hex input or input that decodes to fewer than 8 bytes, instead of returning raw hex errors or panicking on short input.
+
 ## [v0.2.0]
 
 ### BREAKING CHANGES
