@@ -1,14 +1,22 @@
 package hash
 
-import "errors"
+import (
+	"errors"
+
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+)
 
 var (
 	// transaction signature
 
 	// ErrNonSignedTransaction indicates that a transaction lacks the required signature fields.
 	ErrNonSignedTransaction = errors.New("transaction must have at least one of TxnSignature, Signers, or SigningPubKey")
-	// ErrMissingSignature is returned when a transaction lacks the required signature fields.
-	// A transaction must have at least one of: TxnSignature, Signers, or SigningPubKey,
-	// unless it's an inner batch transaction (has TfInnerBatchTxn flag set).
+	// ErrMissingSignature is no longer returned.
+	//
+	// Deprecated: SignTx and SignTxBlob now return ErrNonSignedTransaction or
+	// ErrInvalidSignedTransaction.
 	ErrMissingSignature = errors.New("transaction must have at least one of TxnSignature, Signers, or SigningPubKey")
+	// ErrInvalidSignedTransaction is returned when signing fields are incomplete, empty,
+	// malformed, or mixed between single-sign and multisign forms.
+	ErrInvalidSignedTransaction = clientinternal.ErrInvalidSignedTransaction
 )

@@ -162,7 +162,9 @@ func (tx *BaseTx) Flatten() FlatTransaction {
 	if tx.SourceTag != 0 {
 		flattened["SourceTag"] = tx.SourceTag
 	}
-	if tx.SigningPubKey != "" {
+	// Inner Batch transactions are unsigned but must carry an explicit empty
+	// SigningPubKey on the wire.
+	if tx.SigningPubKey != "" || tx.Flags&types.TfInnerBatchTxn != 0 {
 		flattened["SigningPubKey"] = tx.SigningPubKey
 	}
 	if tx.TicketSequence != 0 {

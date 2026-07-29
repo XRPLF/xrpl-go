@@ -48,11 +48,10 @@ func validateRawTransaction(rawTx map[string]any) (bool, error) {
 		}
 	}
 
-	// SigningPubKey must be empty for inner transactions (or missing, which means empty)
-	if signingPubKeyField, exists := rawTx["SigningPubKey"]; exists {
-		if signingPubKey, ok := signingPubKeyField.(string); !ok || signingPubKey != "" {
-			return false, ErrBatchInnerTransactionInvalid
-		}
+	// SigningPubKey must be explicitly present and empty for inner transactions.
+	// An absent key yields nil, which fails the string assertion.
+	if signingPubKey, ok := rawTx["SigningPubKey"].(string); !ok || signingPubKey != "" {
+		return false, ErrBatchInnerTransactionInvalid
 	}
 
 	// Check for disallowed fields in inner transactions

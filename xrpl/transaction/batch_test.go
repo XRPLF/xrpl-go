@@ -121,6 +121,7 @@ func TestBatchFlatten(t *testing.T) {
 							"TransactionType": "Payment",
 							"Flags": 1073741824,
 							"Sequence": 5,
+							"SigningPubKey": "",
 							"Amount": "6000000",
 							"Destination": "rUser2fDds782Bd6eK15RDnGMtxf7m"
 						}
@@ -164,6 +165,7 @@ func TestBatchFlatten(t *testing.T) {
 							"TransactionType": "OfferCreate",
 							"Flags": 1073741824,
 							"Sequence": 10,
+							"SigningPubKey": "",
 							"TakerGets": "1000000",
 							"TakerPays": {
 								"currency": "USD",
@@ -178,6 +180,7 @@ func TestBatchFlatten(t *testing.T) {
 							"TransactionType": "Payment",
 							"Flags": 1073741824,
 							"Sequence": 5,
+							"SigningPubKey": "",
 							"Amount": "6000000",
 							"Destination": "rUser2fDds782Bd6eK15RDnGMtxf7m"
 						}
@@ -221,6 +224,7 @@ func TestBatchFlatten(t *testing.T) {
 							"TransactionType": "Payment",
 							"Flags": 1073741824,
 							"Sequence": 5,
+							"SigningPubKey": "",
 							"Amount": "6000000",
 							"Destination": "rUser2fDds782Bd6eK15RDnGMtxf7m"
 						}
