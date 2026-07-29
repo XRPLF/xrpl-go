@@ -32,6 +32,7 @@ import (
 	ws "github.com/gorilla/websocket"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
@@ -41,14 +42,10 @@ const (
 	// DefaultMaxFeeXRP is the default maximum fee in XRP.
 	DefaultMaxFeeXRP float32 = 2
 
-	// RestrictedNetworks is the minimum network ID above which networks are considered restricted.
-	// Sidechains are expected to have network IDs above this.
-	// Networks with ID above this restricted number are expected to specify an accurate NetworkID field
-	// in every transaction to that chain to prevent replay attacks.
-	// Mainnet and testnet are exceptions. More context: https://github.com/XRPLF/rippled/pull/4370
-	RestrictedNetworks = 1024
-	// RequiredNetworkIDVersion is the minimum XRPL server build version after which specifying NetworkID is required for restricted networks.
-	RequiredNetworkIDVersion = "1.11.0"
+	// RestrictedNetworks is the largest network ID for which transactions omit NetworkID.
+	RestrictedNetworks = clientinternal.RestrictedNetworks
+	// RequiredNetworkIDVersion is the first rippled version that enforces NetworkID.
+	RequiredNetworkIDVersion = clientinternal.RequiredNetworkIDVersion
 )
 
 var (
@@ -83,7 +80,17 @@ type Client struct {
 	pendingResponses     map[uint64]chan *ClientResponse
 
 	idCounter atomic.Uint64
-	NetworkID uint32
+
+	// NetworkID is the discovered network identity or a compare-mode override.
+	// Nil means unknown; a pointer to zero is mainnet. Configure overrides before
+	// Connect and do not mutate identity fields concurrently. Use
+	// WithNetworkIdentity for an explicit trusted discovery bypass.
+	NetworkID *uint32
+	// BuildVersion is the discovered rippled version used for NetworkID policy.
+	// Configure it before Connect and do not mutate it concurrently.
+	BuildVersion string
+
+	identity networkIdentityState
 }
 
 // NewClient creates a new WebSocket client using the provided ClientConfig.
@@ -96,12 +103,24 @@ func NewClient(cfg ClientConfig) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
+	networkID := clientinternal.CloneNetworkID(cfg.networkID)
+	trustedIdentity := networkID != nil && cfg.buildVersion != ""
 	return &Client{
 		cfg:              cfg,
 		pendingResponses: make(map[uint64]chan *ClientResponse),
 		conn:             newConnection(cfg.host, cfg.maxResponseSize),
 		ctx:              ctx,
 		cancel:           cancel,
+		NetworkID:        networkID,
+		BuildVersion:     cfg.buildVersion,
+		identity: networkIdentityState{
+			ready:   trustedIdentity,
+			trusted: trustedIdentity,
+			current: clientinternal.NetworkIdentity{
+				NetworkID:    clientinternal.CloneNetworkID(networkID),
+				BuildVersion: cfg.buildVersion,
+			},
+		},
 	}
 }
 
@@ -158,10 +177,16 @@ func (c *Client) cancelLifecycle() {
 // needs to reconnect, start Connect in a separate goroutine or coordinate it
 // outside the handler callback.
 func (c *Client) Connect() error {
-	err := c.conn.Connect()
-	if err != nil {
+	if err := c.conn.Connect(); err != nil {
 		return err
 	}
+	if err := c.prepareNetworkIdentity(); err != nil {
+		if disconnectErr := c.conn.Disconnect(); disconnectErr != nil && !errors.Is(disconnectErr, ErrNotConnected) {
+			return errors.Join(err, disconnectErr)
+		}
+		return err
+	}
+
 	ctx := c.resetLifecycle()
 	go c.readMessages(ctx)
 	return nil
@@ -196,6 +221,11 @@ func (c *Client) FaucetProvider() commonconstants.FaucetProvider {
 
 // Autofill fills in the missing fields in a transaction.
 func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
+	identity, err := c.networkIdentity()
+	if err != nil {
+		return err
+	}
+
 	if err := c.setValidTransactionAddresses(tx); err != nil {
 		return err
 	}
@@ -208,10 +238,8 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 		return err
 	}
 
-	if _, ok := (*tx)["NetworkID"]; !ok {
-		if c.NetworkID != 0 {
-			(*tx)["NetworkID"] = c.NetworkID
-		}
+	if err := clientinternal.ApplyNetworkIDPolicy(*tx, identity); err != nil {
+		return err
 	}
 	if _, ok := (*tx)["Sequence"]; !ok {
 		err := c.setTransactionNextValidSequenceNumber(tx)
@@ -560,54 +588,9 @@ func (c *Client) formatRequest(req interfaces.Request, id uint64, marker any) ([
 	return json.Marshal(m)
 }
 
-// TODO: Implement this when IsValidXAddress is implemented
-func (c *Client) getClassicAccountAndTag(address string) (string, uint32) {
-	return address, 0
-}
-
-func (c *Client) convertTransactionAddressToClassicAddress(tx *transaction.FlatTransaction, fieldName string) {
-	if address, ok := (*tx)[fieldName].(string); ok {
-		classicAddress, _ := c.getClassicAccountAndTag(address)
-		(*tx)[fieldName] = classicAddress
-	}
-}
-
-func (c *Client) validateTransactionAddress(tx *transaction.FlatTransaction, addressField, tagField string) error {
-	classicAddress, tag := c.getClassicAccountAndTag((*tx)[addressField].(string))
-	(*tx)[addressField] = classicAddress
-
-	if tag != uint32(0) {
-		if txTag, ok := (*tx)[tagField].(uint32); ok && txTag != tag {
-			return fmt.Errorf("the %s, if present, must be equal to the tag of the %s", addressField, tagField)
-		}
-		(*tx)[tagField] = tag
-	}
-
-	return nil
-}
-
-// Sets valid addresses for the transaction.
+// setValidTransactionAddresses applies the shared X-address and tag policy.
 func (c *Client) setValidTransactionAddresses(tx *transaction.FlatTransaction) error {
-	// Validate if "Account" address is an xAddress
-	if err := c.validateTransactionAddress(tx, "Account", "SourceTag"); err != nil {
-		return err
-	}
-
-	if _, ok := (*tx)["Destination"]; ok {
-		if err := c.validateTransactionAddress(tx, "Destination", "DestinationTag"); err != nil {
-			return err
-		}
-	}
-
-	// DepositPreuaht
-	c.convertTransactionAddressToClassicAddress(tx, "Authorize")
-	c.convertTransactionAddressToClassicAddress(tx, "Unauthorize")
-	// EscrowCancel, EscrowFinish
-	c.convertTransactionAddressToClassicAddress(tx, "Owner")
-	// SetRegularKey
-	c.convertTransactionAddressToClassicAddress(tx, "RegularKey")
-
-	return nil
+	return clientinternal.SetValidAddresses(*tx)
 }
 
 // Sets the next valid sequence number for a given transaction.
@@ -923,10 +906,12 @@ func (c *Client) readMessages(ctx context.Context) {
 
 		switch {
 		case ws.IsCloseError(err) || ws.IsUnexpectedCloseError(err):
+			c.disconnectAfterRead(ctx)
 			if !c.reconnectWithBackoff(ctx, &retryCount, maxRetries) {
 				return
 			}
 		case err != nil:
+			c.disconnectAfterRead(ctx)
 			c.reportError(ctx, err)
 			return
 		default:
@@ -935,6 +920,12 @@ func (c *Client) readMessages(ctx context.Context) {
 			// Reset retry count on successful message
 			retryCount = 0
 		}
+	}
+}
+
+func (c *Client) disconnectAfterRead(ctx context.Context) {
+	if err := c.conn.Disconnect(); err != nil && !errors.Is(err, ErrNotConnected) {
+		c.reportError(ctx, err)
 	}
 }
 
@@ -960,8 +951,19 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 		case <-timer.C:
 		}
 
-		if connErr := c.conn.Connect(); connErr != nil {
+		if connErr := c.conn.connect(ctx); connErr != nil {
+			if errors.Is(connErr, context.Canceled) {
+				return false
+			}
 			continue
+		}
+		if identityErr := c.prepareNetworkIdentity(); identityErr != nil {
+			c.disconnectAfterRead(ctx)
+			continue
+		}
+		if ctx.Err() != nil {
+			c.disconnectAfterRead(ctx)
+			return false
 		}
 		return true
 	}
@@ -1003,9 +1005,17 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		return "", ErrMissingWallet
 	}
 
-	// Optionally autofill the transaction.
+	// Autofill, or at minimum establish and apply network identity before signing.
 	if autofill {
 		if err := c.Autofill(&tx); err != nil {
+			return "", err
+		}
+	} else {
+		identity, err := c.networkIdentity()
+		if err != nil {
+			return "", err
+		}
+		if err := clientinternal.ApplyNetworkIDPolicy(tx, identity); err != nil {
 			return "", err
 		}
 	}
@@ -1149,21 +1159,17 @@ type validatedInnerTx struct {
 }
 
 func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
+	identity, err := c.networkIdentity()
+	if err != nil {
+		return err
+	}
+	if err := clientinternal.ApplyNetworkIDPolicy(*tx, identity); err != nil {
+		return err
+	}
+
 	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
 		return ErrRawTransactionsFieldIsNotAnArray
-	}
-
-	var outerNetworkID *uint32
-	if outer := (*tx)["NetworkID"]; outer != nil {
-		outerNetworkIDUint, ok := outer.(uint32)
-		if !ok {
-			return ErrNetworkIDFieldIsNotAUint32
-		}
-		if outerNetworkIDUint != c.NetworkID {
-			return ErrNetworkIDFieldMismatch
-		}
-		outerNetworkID = &outerNetworkIDUint
 	}
 
 	inners := make([]validatedInnerTx, 0, len(rawTxs))
@@ -1193,25 +1199,7 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 			return ErrSignersFieldMustBeEmpty
 		}
 
-		if networkID := innerRawTx["NetworkID"]; networkID != nil {
-			innerNetworkID, ok := networkID.(uint32)
-			if !ok {
-				return ErrNetworkIDFieldIsNotAUint32
-			}
-			if innerNetworkID != c.NetworkID {
-				return ErrNetworkIDFieldMismatch
-			}
-			if outerNetworkID != nil && innerNetworkID != *outerNetworkID {
-				return ErrNetworkIDFieldMismatch
-			}
-		}
-
 		inners = append(inners, validatedInnerTx{rawTx: innerRawTx, account: acc})
-	}
-
-	needsNetworkID, err := c.txNeedsNetworkID()
-	if err != nil {
-		return err
 	}
 
 	accountSeq := make(map[string]uint32, len(inners))
@@ -1224,10 +1212,6 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 
 		if innerRawTx["SigningPubKey"] == nil {
 			innerRawTx["SigningPubKey"] = ""
-		}
-
-		if innerRawTx["NetworkID"] == nil && needsNetworkID {
-			innerRawTx["NetworkID"] = c.NetworkID
 		}
 
 		if innerRawTx["Sequence"] == nil && innerRawTx["TicketSequence"] == nil {
@@ -1256,121 +1240,4 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 	}
 
 	return nil
-}
-
-// isNotLaterRippledVersion determines whether the source rippled version is not later than the target rippled version.
-// Example usage: isNotLaterRippledVersion("1.10.0", "1.11.0") returns true.
-//
-//	isNotLaterRippledVersion("1.10.0", "1.10.0-b1") returns false.
-func isNotLaterRippledVersion(source, target string) bool {
-	if source == target {
-		return true
-	}
-
-	sourceDecomp := strings.Split(source, ".")
-	targetDecomp := strings.Split(target, ".")
-
-	if len(sourceDecomp) < 3 || len(targetDecomp) < 3 {
-		return false
-	}
-
-	sourceMajor, err := strconv.Atoi(sourceDecomp[0])
-	if err != nil {
-		return false
-	}
-	sourceMinor, err := strconv.Atoi(sourceDecomp[1])
-	if err != nil {
-		return false
-	}
-	targetMajor, err := strconv.Atoi(targetDecomp[0])
-	if err != nil {
-		return false
-	}
-	targetMinor, err := strconv.Atoi(targetDecomp[1])
-	if err != nil {
-		return false
-	}
-
-	// Compare major version
-	if sourceMajor != targetMajor {
-		return sourceMajor < targetMajor
-	}
-
-	// Compare minor version
-	if sourceMinor != targetMinor {
-		return sourceMinor < targetMinor
-	}
-
-	sourcePatch := strings.Split(sourceDecomp[2], "-")
-	targetPatch := strings.Split(targetDecomp[2], "-")
-
-	sourcePatchVersion, err := strconv.Atoi(sourcePatch[0])
-	if err != nil {
-		return false
-	}
-	targetPatchVersion, err := strconv.Atoi(targetPatch[0])
-	if err != nil {
-		return false
-	}
-
-	// Compare patch version
-	if sourcePatchVersion != targetPatchVersion {
-		return sourcePatchVersion < targetPatchVersion
-	}
-
-	// Compare release version
-	if len(sourcePatch) != len(targetPatch) {
-		return len(sourcePatch) > len(targetPatch)
-	}
-
-	if len(sourcePatch) == 2 {
-		// Compare different release types
-		if !strings.HasPrefix(sourcePatch[1], string(targetPatch[1][0])) {
-			return sourcePatch[1] < targetPatch[1]
-		}
-
-		// Compare beta version
-		if strings.HasPrefix(sourcePatch[1], "b") {
-			sourceBeta, err := strconv.Atoi(sourcePatch[1][1:])
-			if err != nil {
-				return false
-			}
-			targetBeta, err := strconv.Atoi(targetPatch[1][1:])
-			if err != nil {
-				return false
-			}
-			return sourceBeta < targetBeta
-		}
-
-		// Compare rc version
-		if strings.HasPrefix(sourcePatch[1], "rc") {
-			sourceRC, err := strconv.Atoi(sourcePatch[1][2:])
-			if err != nil {
-				return false
-			}
-			targetRC, err := strconv.Atoi(targetPatch[1][2:])
-			if err != nil {
-				return false
-			}
-			return sourceRC < targetRC
-		}
-	}
-
-	return false
-}
-
-// txNeedsNetworkID determines if the transaction required a networkID to be valid.
-// Transaction needs networkID if later than restricted ID and build version is >= 1.11.0
-func (c *Client) txNeedsNetworkID() (bool, error) {
-	if c.NetworkID != 0 && c.NetworkID > RestrictedNetworks {
-		res, err := c.GetServerInfo(&server.InfoRequest{})
-		if err != nil {
-			return false, err
-		}
-
-		if res.Info.BuildVersion != "" {
-			return isNotLaterRippledVersion(RequiredNetworkIDVersion, res.Info.BuildVersion), nil
-		}
-	}
-	return false, nil
 }

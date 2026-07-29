@@ -3,6 +3,8 @@ package rpc
 import (
 	"errors"
 	"fmt"
+
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 )
 
 const (
@@ -29,14 +31,19 @@ var (
 	ErrTransactionNotFound = errors.New("transaction not found")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
 	ErrInvalidFulfillmentLength = errors.New("invalid fulfillment length")
-	// ErrMismatchedTag is returned when a transaction tag field does not match the expected value.
-
 	// fields
 
+	// ErrAddressFieldIsNotAString is returned when an address field has the wrong Go type.
+	ErrAddressFieldIsNotAString = clientinternal.ErrAddressFieldIsNotAString
+	// ErrTagFieldIsNotAUint32 is returned when an explicit transaction tag has the wrong Go type.
+	ErrTagFieldIsNotAUint32 = clientinternal.ErrTagFieldIsNotAUint32
+	// ErrInvalidAddress is returned when an autofilled address is neither classic nor an X-address.
+	ErrInvalidAddress = clientinternal.ErrInvalidAddress
+
 	// ErrRawTransactionsFieldIsNotAnArray is returned when the RawTransactions field is not an array type.
-	ErrRawTransactionsFieldIsNotAnArray = errors.New("field RawTransactions must be an array")
+	ErrRawTransactionsFieldIsNotAnArray = clientinternal.ErrRawTransactionsFieldIsNotAnArray
 	// ErrRawTransactionFieldIsNotAnObject is returned when the RawTransaction field is not an object type.
-	ErrRawTransactionFieldIsNotAnObject = errors.New("field RawTransaction must be an object")
+	ErrRawTransactionFieldIsNotAnObject = clientinternal.ErrRawTransactionFieldIsNotAnObject
 	// ErrSigningPubKeyFieldMustBeEmpty is returned when the signingPubKey field should be empty but isn't.
 	ErrSigningPubKeyFieldMustBeEmpty = errors.New("field SigningPubKey must be empty")
 	// ErrTxnSignatureFieldMustBeEmpty is returned when the txnSignature field should be empty but isn't.
@@ -46,9 +53,19 @@ var (
 	// ErrAccountFieldIsNotAString is returned when the account field is not a string type.
 	ErrAccountFieldIsNotAString = errors.New("field Account must be a string")
 	// ErrNetworkIDFieldIsNotAUint32 is returned when the NetworkID field is set but not a uint32.
-	ErrNetworkIDFieldIsNotAUint32 = errors.New("field NetworkID must be a uint32")
+	ErrNetworkIDFieldIsNotAUint32 = clientinternal.ErrNetworkIDFieldIsNotAUint32
 	// ErrNetworkIDFieldMismatch is returned when the NetworkID field does not match the expected NetworkID.
-	ErrNetworkIDFieldMismatch = errors.New("field NetworkID must match expected NetworkID")
+	ErrNetworkIDFieldMismatch = clientinternal.ErrNetworkIDFieldMismatch
+	// ErrNetworkIDFieldUnexpected is returned when NetworkID must be omitted for the target network.
+	ErrNetworkIDFieldUnexpected = clientinternal.ErrNetworkIDFieldUnexpected
+	// ErrNetworkIDUnavailable is returned when server identity discovery did not produce a network ID.
+	ErrNetworkIDUnavailable = clientinternal.ErrNetworkIDUnavailable
+	// ErrBuildVersionUnavailable is returned when restricted-network policy cannot be determined without a build version.
+	ErrBuildVersionUnavailable = clientinternal.ErrBuildVersionUnavailable
+	// ErrInvalidBuildVersion is returned when the discovered rippled version cannot be compared.
+	ErrInvalidBuildVersion = clientinternal.ErrInvalidBuildVersion
+	// ErrNetworkIDOverrideMismatch is returned when a trusted override differs from server_info.
+	ErrNetworkIDOverrideMismatch = clientinternal.ErrNetworkIDOverrideMismatch
 	// ErrRawTransactionsFieldMissing is returned when the RawTransactions field is missing from a Batch transaction.
 	ErrRawTransactionsFieldMissing = errors.New("RawTransactions field missing from Batch transaction")
 	// ErrRawTransactionFieldMissing is returned when the RawTransaction field is missing from a wrapper.
@@ -120,16 +137,8 @@ func (e ErrFailedToMarshalJSONRPCRequest) Error() string {
 	return fmt.Sprintf("failed to marshal JSON-RPC request for method %s with parameters %+v: %v", e.Method, e.Params, e.Err)
 }
 
-// ErrMismatchedTag is returned when a transaction tag field does not match the expected value.
-type ErrMismatchedTag struct {
-	Expected string
-	Actual   string
-}
-
-// Error implements the error interface for ErrMismatchedTag
-func (e ErrMismatchedTag) Error() string {
-	return fmt.Sprintf("transaction tag mismatch: %q must equal %q", e.Actual, e.Expected)
-}
+// ErrMismatchedTag is returned when an explicit transaction tag conflicts with an X-address tag.
+type ErrMismatchedTag = clientinternal.ErrMismatchedTag
 
 // ErrFailedToParseFee is returned when fee parsing fails.
 type ErrFailedToParseFee struct {
