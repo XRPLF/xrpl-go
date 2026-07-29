@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      LOCALNET_CONTAINER: rippled_standalone
-      RIPPLED_IMAGE: rippleci/xrpld@sha256:21537d84a134fdffc89604200da6c94d593da73ed59688e6a580569f5fef3f12 # rippleci/xrpld:3.2.0
+      LOCALNET_CONTAINER: xrpld_standalone
+      XRPLD_IMAGE: rippleci/xrpld@sha256:21537d84a134fdffc89604200da6c94d593da73ed59688e6a580569f5fef3f12 # rippleci/xrpld:3.2.0
       KEEP_LOCALNET: "1"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

@@ -16,9 +16,9 @@ GOTEST := $(shell command -v gotest 2>/dev/null || echo "go test")
 GOLANGCI_LINT_MAJOR_VERSION = 2
 GOLANGCI_LINT_VERSION = v2.11.3
 
-RIPPLED_IMAGE ?= rippleci/xrpld:develop
+XRPLD_IMAGE ?= rippleci/xrpld:develop
 XRPLD_CONFIG ?= /etc/xrpld/xrpld.cfg
-LOCALNET_CONTAINER ?= rippled_standalone
+LOCALNET_CONTAINER ?= xrpld_standalone
 
 ################################################################################
 ############################### LINTING ########################################
@@ -75,12 +75,12 @@ run-localnet: run-localnet-linux/amd64
 
 run-localnet-linux/amd64:
 	@echo "Running localnet..."
-	@docker run --rm -d --platform linux/amd64 -p 5005:5005 -p 6006:6006 --name $(LOCALNET_CONTAINER) --volume $(PWD)/.ci-config/xrpld.cfg:$(XRPLD_CONFIG):ro --entrypoint bash $(RIPPLED_IMAGE) -c 'mkdir -p /var/lib/xrpld/db/ && xrpld --conf $(XRPLD_CONFIG) -a --start & sleep 5 && while true; do xrpld --conf $(XRPLD_CONFIG) ledger_accept; sleep 1; done'
+	@docker run --rm -d --platform linux/amd64 -p 5005:5005 -p 6006:6006 --name $(LOCALNET_CONTAINER) --volume $(PWD)/.ci-config/xrpld.cfg:$(XRPLD_CONFIG):ro --entrypoint bash $(XRPLD_IMAGE) -c 'mkdir -p /var/lib/xrpld/db/ && xrpld --conf $(XRPLD_CONFIG) -a --start & sleep 5 && while true; do xrpld --conf $(XRPLD_CONFIG) ledger_accept; sleep 1; done'
 	@echo "Localnet running!"
 
 run-localnet-linux/arm64:
 	@echo "Running localnet..."
-	@docker run --rm -d --platform linux/arm64 -p 5005:5005 -p 6006:6006 --name $(LOCALNET_CONTAINER) --volume $(PWD)/.ci-config/xrpld.cfg:$(XRPLD_CONFIG):ro --entrypoint bash $(RIPPLED_IMAGE) -c 'mkdir -p /var/lib/xrpld/db/ && xrpld --conf $(XRPLD_CONFIG) -a --start & sleep 5 && while true; do xrpld --conf $(XRPLD_CONFIG) ledger_accept; sleep 1; done'
+	@docker run --rm -d --platform linux/arm64 -p 5005:5005 -p 6006:6006 --name $(LOCALNET_CONTAINER) --volume $(PWD)/.ci-config/xrpld.cfg:$(XRPLD_CONFIG):ro --entrypoint bash $(XRPLD_IMAGE) -c 'mkdir -p /var/lib/xrpld/db/ && xrpld --conf $(XRPLD_CONFIG) -a --start & sleep 5 && while true; do xrpld --conf $(XRPLD_CONFIG) ledger_accept; sleep 1; done'
 	@echo "Localnet running!"
 
 stop-localnet:
