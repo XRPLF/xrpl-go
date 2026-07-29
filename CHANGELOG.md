@@ -13,6 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
 
+#### keypairs
+
+- Key algorithm detection now validates caller purpose, complete hexadecimal encoding, prefix, and exact length before selecting Ed25519 or secp256k1. Signing supports raw and `00`-prefixed secp256k1 private keys; verification and classic-address derivation support compressed and uncompressed secp256k1 public keys.
+- `DeriveClassicAddress` now rejects unsupported public-key formats with a purpose-specific error instead of hashing any decodable 33-byte value.
+
+### Added
+
+#### keypairs
+
+- Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
+
 ## [v0.2.0]
 
 ### BREAKING CHANGES
