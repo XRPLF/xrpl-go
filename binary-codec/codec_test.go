@@ -940,3 +940,41 @@ func TestEncodeForSigningBatch(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthoritativeDefinitionFieldsRoundTrip(t *testing.T) {
+	tt := []struct {
+		description string
+		input       map[string]any
+		expected    string
+	}{
+		{
+			description: "MPTokenIssuance ReferenceHolding",
+			input: map[string]any{
+				"LedgerEntryType":  "MPTokenIssuance",
+				"ReferenceHolding": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+			},
+			expected: "11007E5027A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+		},
+		{
+			description: "DirectoryNode MPT book assets",
+			input: map[string]any{
+				"LedgerEntryType": "DirectoryNode",
+				"TakerPaysMPT":    "00000002430427B80BD2D09D36B70B969E12801065F22308",
+				"TakerGetsMPT":    "00000003430427B80BD2D09D36B70B969E12801065F22308",
+			},
+			expected: "110064031500000002430427B80BD2D09D36B70B969E12801065F22308041500000003430427B80BD2D09D36B70B969E12801065F22308",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.description, func(t *testing.T) {
+			encoded, err := Encode(tc.input)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, encoded)
+
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.Equal(t, tc.input, decoded)
+		})
+	}
+}

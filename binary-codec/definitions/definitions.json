@@ -1,16 +1,6 @@
 {
   "FIELDS": [
     [
-      "Generic",
-      {
-        "isSerialized": false,
-        "isSigningField": false,
-        "isVLEncoded": false,
-        "nth": 0,
-        "type": "Unknown"
-      }
-    ],
-    [
       "Invalid",
       {
         "isSerialized": false,
@@ -58,6 +48,16 @@
         "isVLEncoded": false,
         "nth": 259,
         "type": "Amount"
+      }
+    ],
+    [
+      "Generic",
+      {
+        "isSerialized": true,
+        "isSigningField": true,
+        "isVLEncoded": false,
+        "nth": 0,
+        "type": "Unknown"
       }
     ],
     [
@@ -1507,6 +1507,16 @@
         "isSigningField": true,
         "isVLEncoded": false,
         "nth": 38,
+        "type": "Hash256"
+      }
+    ],
+    [
+      "ReferenceHolding",
+      {
+        "isSerialized": true,
+        "isSigningField": true,
+        "isVLEncoded": false,
+        "nth": 39,
         "type": "Hash256"
       }
     ],
@@ -3321,6 +3331,26 @@
       }
     ],
     [
+      "TakerPaysMPT",
+      {
+        "isSerialized": true,
+        "isSigningField": true,
+        "isVLEncoded": false,
+        "nth": 3,
+        "type": "Hash192"
+      }
+    ],
+    [
+      "TakerGetsMPT",
+      {
+        "isSerialized": true,
+        "isSigningField": true,
+        "isVLEncoded": false,
+        "nth": 4,
+        "type": "Hash192"
+      }
+    ],
+    [
       "LockingChainIssue",
       {
         "isSerialized": true,
@@ -3597,6 +3627,7 @@
     "temBAD_FEE": -295,
     "temBAD_ISSUER": -294,
     "temBAD_LIMIT": -293,
+    "temBAD_MPT": -249,
     "temBAD_NFTOKEN_TRANSFER_FEE": -262,
     "temBAD_OFFER": -292,
     "temBAD_PATH": -291,
@@ -3642,6 +3673,7 @@
     "terFUNDS_SPENT": -98,
     "terINSUF_FEE_B": -97,
     "terLAST": -91,
+    "terLOCKED": -84,
     "terNO_ACCOUNT": -96,
     "terNO_AMM": -87,
     "terNO_AUTH": -95,
@@ -3743,6 +3775,8 @@
     "Hash160": 17,
     "Hash192": 21,
     "Hash256": 5,
+    "Hash384": 22,
+    "Hash512": 23,
     "Int32": 10,
     "Int64": 11,
     "Issue": 24,

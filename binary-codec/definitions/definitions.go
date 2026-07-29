@@ -1,4 +1,9 @@
 // Package definitions contains XRPL binary codec field and type definitions.
+//
+// The embedded core maps are derived from an authoritative xrpld 3.2.0
+// server_definitions response retained under testdata; see
+// testdata/snapshot-differences.json for the exact provenance (source commit,
+// retrieval time, response SHA-256) and the classified differences.
 package definitions
 
 import (
