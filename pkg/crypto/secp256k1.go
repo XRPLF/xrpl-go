@@ -112,12 +112,14 @@ func (c SECP256K1CryptoAlgorithm) Sign(msg, privKey string) (string, error) {
 	if len(privKey) != 64 && len(privKey) != 66 {
 		return "", ErrInvalidPrivateKey
 	}
+	if len(privKey) == 66 {
+		if privKey[:2] != "00" {
+			return "", ErrInvalidPrivateKey
+		}
+		privKey = privKey[2:]
+	}
 	if len(msg) == 0 {
 		return "", ErrInvalidMessage
-	}
-
-	if len(privKey) == 66 {
-		privKey = privKey[2:]
 	}
 	key, err := hex.DecodeString(privKey)
 	if err != nil {

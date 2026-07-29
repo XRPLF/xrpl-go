@@ -89,9 +89,16 @@ func TestSecp256k1_Sign(t *testing.T) {
 			wantErr:           false,
 		},
 		{
-			name:              "pass - valid signature",
+			name:              "pass - valid signature with 00-prefixed private key",
 			message:           "Hello World",
 			privKey:           "00B167A9F3B9E60A4F93695713682C102438620AA1785C3AE635F53E5B6261071A",
+			expectedSignature: "3045022100E1617F1A3C85B5BC8FA6224F893FE9068BEA8F8D075EE144F6F9D255C829761802206FD9B361CDE83A0C3D5654232F1D7CFB1A614E9A8F9B1A861564029065516E64",
+			wantErr:           false,
+		},
+		{
+			name:              "pass - valid signature with raw private key",
+			message:           "Hello World",
+			privKey:           "B167A9F3B9E60A4F93695713682C102438620AA1785C3AE635F53E5B6261071A",
 			expectedSignature: "3045022100E1617F1A3C85B5BC8FA6224F893FE9068BEA8F8D075EE144F6F9D255C829761802206FD9B361CDE83A0C3D5654232F1D7CFB1A614E9A8F9B1A861564029065516E64",
 			wantErr:           false,
 		},
@@ -165,6 +172,13 @@ func TestSecp256k1_Sign(t *testing.T) {
 			expectedSignature: "",
 			wantErr:           true,
 		},
+		{
+			name:              "fail - invalid 33-byte private key prefix",
+			message:           "Hello World",
+			privKey:           "02B167A9F3B9E60A4F93695713682C102438620AA1785C3AE635F53E5B6261071A",
+			expectedSignature: "",
+			wantErr:           true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -189,10 +203,17 @@ func TestSecp256k1_Validate(t *testing.T) {
 		wantValid bool
 	}{
 		{
-			name:      "pass - valid signature",
+			name:      "pass - valid signature with compressed public key",
 			message:   "Hello World",
 			signature: "3045022100E1617F1A3C85B5BC8FA6224F893FE9068BEA8F8D075EE144F6F9D255C829761802206FD9B361CDE83A0C3D5654232F1D7CFB1A614E9A8F9B1A861564029065516E64",
 			pubKey:    "02950F4710101A25073BF37086D73FBBD00C7A6B0F91097D8F0BC6D268C400D56E",
+			wantValid: true,
+		},
+		{
+			name:      "pass - valid signature with uncompressed public key",
+			message:   "Hello World",
+			signature: "3045022100E1617F1A3C85B5BC8FA6224F893FE9068BEA8F8D075EE144F6F9D255C829761802206FD9B361CDE83A0C3D5654232F1D7CFB1A614E9A8F9B1A861564029065516E64",
+			pubKey:    "04950F4710101A25073BF37086D73FBBD00C7A6B0F91097D8F0BC6D268C400D56EB97051C3A7F51A6ECC0EFF7F7622437593DB7E20165EEF8100570288AF3D5A3C",
 			wantValid: true,
 		},
 		{

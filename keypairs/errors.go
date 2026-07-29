@@ -1,6 +1,9 @@
 package keypairs
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
 	// keypairs
@@ -20,4 +23,12 @@ var (
 
 	// ErrInvalidCryptoImplementation is returned when the key does not match any crypto implementation.
 	ErrInvalidCryptoImplementation = errors.New("not a valid crypto implementation")
+
+	// ErrInvalidPrivateKeyFormat is returned when a private key does not match an accepted format.
+	// It wraps ErrInvalidCryptoImplementation for backward-compatible errors.Is checks.
+	ErrInvalidPrivateKeyFormat = fmt.Errorf("%w: invalid private key format", ErrInvalidCryptoImplementation)
+
+	// ErrInvalidPublicKeyFormat is returned when a public key does not match an accepted format.
+	// It wraps ErrInvalidCryptoImplementation for backward-compatible errors.Is checks.
+	ErrInvalidPublicKeyFormat = fmt.Errorf("%w: invalid public key format", ErrInvalidCryptoImplementation)
 )

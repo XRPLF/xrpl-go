@@ -195,7 +195,7 @@ func TestDeriveKeypair(t *testing.T) {
 	}{
 		{
 			name:           "fail - invalid seed",
-			inputSeed:      "invalid",
+			inputSeed:      "sSensitiveSeedMaterial",
 			inputValidator: false,
 			expectedErr:    addresscodec.ErrInvalidSeed,
 		},
@@ -221,8 +221,8 @@ func TestDeriveKeypair(t *testing.T) {
 			name:           "pass - derive an ED25519 keypair",
 			inputSeed:      "sEdTjrdnJaPE2NNjmavQqXQdrf71NiH",
 			inputValidator: false,
-			pubKey:         "ED4924A9045FE5ED8B22BAA7B6229A72A287CCF3EA287AADD3A032A24C0F008FA6",
-			privKey:        "EDBB3ECA8985E1484FA6A28C4B30FB0042A2CC5DF3EC8DC37B5F3D126DDFD3CA14",
+			pubKey:         testEdPublicKey,
+			privKey:        testEdPrivateKey,
 			expectedErr:    nil,
 		},
 		{
@@ -243,6 +243,7 @@ func TestDeriveKeypair(t *testing.T) {
 				require.Empty(t, pub)
 				require.Empty(t, priv)
 				require.ErrorIs(t, err, tc.expectedErr)
+				require.NotContains(t, err.Error(), tc.inputSeed)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.pubKey, pub)
@@ -260,10 +261,44 @@ func TestDeriveClassicAddress(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name:        "pass - derive correct address from public key",
-			input:       "ED731C39781B964904E1FEEFFC9F99442196BCB5F499105A79533E2D678CA7D3D2",
-			expected:    "rhTCnDC7v1Jp7NAupzisv6ynWHD161Q9nV",
-			expectedErr: nil,
+			name:     "pass - derive address from ED25519 public key",
+			input:    testEdPublicKey,
+			expected: "rhBtDFHj2EiBqXFDobmjxysCHa3ngd6dbX",
+		},
+		{
+			name:     "pass - derive address from compressed secp256k1 public key with even Y",
+			input:    testSecpCompressedEvenKey,
+			expected: "rnWL65ZQpCTYUZvEKCWprKk1bRugwkf261",
+		},
+		{
+			name:     "pass - derive address from compressed secp256k1 public key with odd Y",
+			input:    testSecpCompressedOddKey,
+			expected: "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+		},
+		{
+			name:     "pass - derive address from uncompressed secp256k1 public key",
+			input:    testSecpUncompressedKey,
+			expected: "rH6TMqaYe6A2A7eXeih1tW228o7P6dNjKz",
+		},
+		{
+			name:        "fail - malformed public key",
+			input:       testEdPublicKey[:len(testEdPublicKey)-1] + "Z",
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
+			name:        "fail - truncated public key",
+			input:       testSecpCompressedEvenKey[:len(testSecpCompressedEvenKey)-2],
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
+			name:        "fail - oversized public key",
+			input:       testSecpUncompressedKey + "00",
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
+			name:        "fail - private key purpose mismatch",
+			input:       testSecpPrefixedPrivateKey,
+			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 	}
 
@@ -281,6 +316,11 @@ func TestDeriveClassicAddress(t *testing.T) {
 	}
 }
 
+// secpHelloWorldSignature is the deterministic secp256k1 signature of "Hello World" by
+// testSecpRawPrivateKey (public key testSecpCompressedEvenKey). TestSign asserts it is
+// produced and TestValidate asserts it verifies.
+const secpHelloWorldSignature = "3045022100E1617F1A3C85B5BC8FA6224F893FE9068BEA8F8D075EE144F6F9D255C829761802206FD9B361CDE83A0C3D5654232F1D7CFB1A614E9A8F9B1A861564029065516E64"
+
 func TestSign(t *testing.T) {
 	tt := []struct {
 		name         string
@@ -290,35 +330,63 @@ func TestSign(t *testing.T) {
 		expectedErr  error
 	}{
 		{
-			name:         "fail - empty private key",
-			inputMsg:     "hello world",
-			inputPrivKey: "",
-			expectedErr:  ErrInvalidCryptoImplementation,
+			name:        "fail - empty private key",
+			inputMsg:    "hello world",
+			expectedErr: ErrInvalidPrivateKeyFormat,
 		},
 		{
 			name:         "fail - short private key",
 			inputMsg:     "hello world",
 			inputPrivKey: "E",
-			expectedErr:  ErrInvalidCryptoImplementation,
+			expectedErr:  ErrInvalidPrivateKeyFormat,
 		},
 		{
-			name:         "fail - invalid private key",
+			name:         "fail - malformed private key",
 			inputMsg:     "hello world",
-			inputPrivKey: "invalid",
-			expectedErr:  ErrInvalidCryptoImplementation,
+			inputPrivKey: testSecpRawPrivateKey[:len(testSecpRawPrivateKey)-1] + "Z",
+			expectedErr:  ErrInvalidPrivateKeyFormat,
 		},
 		{
-			name:         "fail - malformed ED25519 private key",
+			name:         "fail - truncated ED25519 private key",
 			inputMsg:     "hello world",
-			inputPrivKey: "ED",
-			expectedErr:  crypto.ErrInvalidPrivateKey,
+			inputPrivKey: testEdPrivateKey[:len(testEdPrivateKey)-4],
+			expectedErr:  ErrInvalidPrivateKeyFormat,
 		},
 		{
-			name:         "pass - sign a message with a ED25519 key",
+			name:         "fail - oversized ED25519 private key",
 			inputMsg:     "hello world",
-			inputPrivKey: "EDBB3ECA8985E1484FA6A28C4B30FB0042A2CC5DF3EC8DC37B5F3D126DDFD3CA14",
+			inputPrivKey: testEdPrivateKey + "00",
+			expectedErr:  ErrInvalidPrivateKeyFormat,
+		},
+		{
+			name:         "fail - compressed public key purpose mismatch",
+			inputMsg:     "hello world",
+			inputPrivKey: testSecpCompressedEvenKey,
+			expectedErr:  ErrInvalidPrivateKeyFormat,
+		},
+		{
+			name:         "fail - uncompressed public key purpose mismatch",
+			inputMsg:     "hello world",
+			inputPrivKey: testSecpUncompressedKey,
+			expectedErr:  ErrInvalidPrivateKeyFormat,
+		},
+		{
+			name:         "pass - sign with ED25519 private key",
+			inputMsg:     "hello world",
+			inputPrivKey: testEdPrivateKey,
 			expected:     "E83CAFEAF100793F0C6570D60C7447FF3A87E0DC0CAE9AD90EF0102860EC3BD1D20F432494021F3E19DAFF257A420CA64A49C283AB5AD00B6B0CEA1756151C01",
-			expectedErr:  nil,
+		},
+		{
+			name:         "pass - sign with raw secp256k1 private key",
+			inputMsg:     "Hello World",
+			inputPrivKey: testSecpRawPrivateKey,
+			expected:     secpHelloWorldSignature,
+		},
+		{
+			name:         "pass - sign with 00-prefixed secp256k1 private key",
+			inputMsg:     "Hello World",
+			inputPrivKey: testSecpPrefixedPrivateKey,
+			expected:     secpHelloWorldSignature,
 		},
 	}
 
@@ -328,6 +396,7 @@ func TestSign(t *testing.T) {
 			if tc.expectedErr != nil {
 				require.Empty(t, actual)
 				require.ErrorIs(t, err, tc.expectedErr)
+				require.ErrorIs(t, err, ErrInvalidCryptoImplementation)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
@@ -336,7 +405,51 @@ func TestSign(t *testing.T) {
 	}
 }
 
+func TestSignErrorsRedactPrivateKeyMaterial(t *testing.T) {
+	testcases := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "malformed raw key",
+			input: testSecpRawPrivateKey[:len(testSecpRawPrivateKey)-1] + "Z",
+		},
+		{
+			name:  "unsupported prefixed key",
+			input: "01" + testSecpRawPrivateKey,
+		},
+		{
+			name:  "oversized ED25519 key",
+			input: testEdPrivateKey + "00",
+		},
+		{
+			name:  "compressed public key",
+			input: testSecpCompressedEvenKey,
+		},
+		{
+			name:  "uncompressed public key",
+			input: testSecpUncompressedKey,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Sign("redaction test", tc.input)
+
+			require.ErrorIs(t, err, ErrInvalidPrivateKeyFormat)
+			require.NotContains(t, err.Error(), tc.input)
+			require.NotContains(t, err.Error(), tc.input[:2])
+			require.NotContains(t, err.Error(), tc.input[2:18])
+		})
+	}
+}
+
 func TestValidate(t *testing.T) {
+	const (
+		edSignature      = "C001CB8A9883497518917DD16391930F4FEE39CEA76C846CFF4330BA44ED19DC4730056C2C6D7452873DE8120A5023C6807135C6329A89A13BA1D476FE8E7100"
+		secpOddSignature = "30440220583A91C95E54E6A651C47BEC22744E0B101E2C4060E7B08F6341657DAD9BC3EE02207D1489C7395DB0188D3A56A977ECBA54B36FA9371B40319655B1B4429E33EF2D"
+	)
+
 	tt := []struct {
 		name        string
 		inputMsg    string
@@ -348,31 +461,85 @@ func TestValidate(t *testing.T) {
 		{
 			name:        "fail - empty public key",
 			inputMsg:    "test message",
-			inputPubKey: "",
 			inputSig:    "invalid",
-			expectedErr: ErrInvalidCryptoImplementation,
+			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "fail - short public key",
 			inputMsg:    "test message",
 			inputPubKey: "E",
 			inputSig:    "invalid",
-			expectedErr: ErrInvalidCryptoImplementation,
+			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
-			name:        "fail - invalid public key",
+			name:        "fail - malformed full-length public key",
 			inputMsg:    "test message",
-			inputPubKey: "invalid",
+			inputPubKey: testEdPublicKey[:len(testEdPublicKey)-1] + "Z",
 			inputSig:    "invalid",
-			expectedErr: ErrInvalidCryptoImplementation,
+			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
-			name:        "pass - valid message with ED25519 key",
+			name:        "fail - truncated public key",
 			inputMsg:    "test message",
-			inputPubKey: "ED4924A9045FE5ED8B22BAA7B6229A72A287CCF3EA287AADD3A032A24C0F008FA6",
-			inputSig:    "C001CB8A9883497518917DD16391930F4FEE39CEA76C846CFF4330BA44ED19DC4730056C2C6D7452873DE8120A5023C6807135C6329A89A13BA1D476FE8E7100",
+			inputPubKey: testSecpCompressedOddKey[:len(testSecpCompressedOddKey)-2],
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
+			name:        "fail - oversized public key",
+			inputMsg:    "test message",
+			inputPubKey: testSecpUncompressedKey + "00",
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
+			name:        "fail - raw private key purpose mismatch",
+			inputMsg:    "test message",
+			inputPubKey: testSecpRawPrivateKey,
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
+			name:        "fail - prefixed private key purpose mismatch",
+			inputMsg:    "test message",
+			inputPubKey: testSecpPrefixedPrivateKey,
+			inputSig:    "invalid",
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
+			name:        "fail - invalid signature with valid public key",
+			inputMsg:    "test message",
+			inputPubKey: testEdPublicKey,
+			inputSig:    "invalid",
+			expected:    false,
+		},
+		{
+			name:        "pass - verify with ED25519 public key",
+			inputMsg:    "test message",
+			inputPubKey: testEdPublicKey,
+			inputSig:    edSignature,
 			expected:    true,
-			expectedErr: nil,
+		},
+		{
+			name:        "pass - verify with compressed secp256k1 public key with even Y",
+			inputMsg:    "Hello World",
+			inputPubKey: testSecpCompressedEvenKey,
+			inputSig:    secpHelloWorldSignature,
+			expected:    true,
+		},
+		{
+			name:        "pass - verify with compressed secp256k1 public key with odd Y",
+			inputMsg:    "test message",
+			inputPubKey: testSecpCompressedOddKey,
+			inputSig:    secpOddSignature,
+			expected:    true,
+		},
+		{
+			name:        "pass - verify with uncompressed secp256k1 public key",
+			inputMsg:    "Hello World",
+			inputPubKey: testSecpUncompressedKey,
+			inputSig:    secpHelloWorldSignature,
+			expected:    true,
 		},
 	}
 
@@ -380,8 +547,9 @@ func TestValidate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := Validate(tc.inputMsg, tc.inputPubKey, tc.inputSig)
 			if tc.expectedErr != nil {
-				require.Zero(t, actual)
+				require.False(t, actual)
 				require.ErrorIs(t, err, tc.expectedErr)
+				require.ErrorIs(t, err, ErrInvalidCryptoImplementation)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)
