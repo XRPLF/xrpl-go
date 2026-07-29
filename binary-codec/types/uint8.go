@@ -54,7 +54,11 @@ func (u *UInt8) FromJSON(value any) ([]byte, error) {
 		return nil, ErrUInt8OutOfRange
 	}
 
-	// Check range before casting
+	// Transaction result definitions also contain negative tel/tem/tef/ter
+	// engine codes. Those transactions are not applied to a ledger, so the
+	// codes are returned through RPC JSON and never serialized in the UInt8
+	// TransactionResult metadata field. Do not wrap them modulo 256 here;
+	// only ledger metadata results such as tes and tec are valid UInt8 values.
 	if err := u.checkRange(int64Value); err != nil {
 		return nil, err
 	}

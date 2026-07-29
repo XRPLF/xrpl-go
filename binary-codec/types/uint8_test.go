@@ -37,10 +37,22 @@ func TestUint8_FromJson(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:        "Valid uint8 from string",
+			name:        "Valid uint8 from successful transaction result",
 			input:       "tesSUCCESS",
 			expected:    []byte{0},
 			expectedErr: nil,
+		},
+		{
+			name:        "Valid uint8 from claim-cost transaction result",
+			input:       "tecBAD_PROOF",
+			expected:    []byte{199},
+			expectedErr: nil,
+		},
+		{
+			name:        "Reject engine-only negative transaction result",
+			input:       "temBAD_CIPHERTEXT",
+			expected:    nil,
+			expectedErr: ErrUInt8OutOfRange,
 		},
 		{
 			name:     "Invalid uint8 from string",

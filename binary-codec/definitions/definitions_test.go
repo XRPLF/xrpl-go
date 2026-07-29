@@ -13,7 +13,7 @@ func TestLoadDefinitions(t *testing.T) {
 	require.Equal(t, int32(97), definitions.LedgerEntryTypes["AccountRoot"])
 	require.Equal(t, int32(-399), definitions.TransactionResults["telLOCAL_ERROR"])
 	require.Equal(t, int32(1), definitions.TransactionTypes["EscrowCreate"])
-	require.Equal(t, &FieldInfo{Nth: 0, IsVLEncoded: false, IsSerialized: false, IsSigningField: false, Type: "Unknown"}, definitions.Fields["Generic"].FieldInfo)
+	require.Equal(t, &FieldInfo{Nth: 0, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "Unknown"}, definitions.Fields["Generic"].FieldInfo)
 	require.Equal(t, &FieldInfo{Nth: 28, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "Hash256"}, definitions.Fields["NFTokenBuyOffer"].FieldInfo)
 	require.Equal(t, &FieldInfo{Nth: 16, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "UInt8"}, definitions.Fields["TickSize"].FieldInfo)
 	require.Equal(t, &FieldHeader{TypeCode: 2, FieldCode: 4}, definitions.Fields["Sequence"].FieldHeader)

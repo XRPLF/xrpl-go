@@ -62,27 +62,22 @@ func TestConfidentialMPTWireFieldDefinitions(t *testing.T) {
 	}
 }
 
-func TestMPTUInt64BaseTenDefinitions(t *testing.T) {
-	baseTenFields := []string{
-		"MaximumAmount",
-		"OutstandingAmount",
-		"MPTAmount",
-		"LockedAmount",
-		"ConfidentialOutstandingAmount",
+func TestConfidentialMPTTransactionResultCodes(t *testing.T) {
+	tests := []struct {
+		name string
+		code int32
+	}{
+		{name: "tecBAD_PROOF", code: 199},
+		{name: "temBAD_CIPHERTEXT", code: -248},
 	}
 
-	for _, name := range baseTenFields {
-		t.Run(name, func(t *testing.T) {
-			field, err := Get().GetFieldInstanceByFieldName(name)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			code, err := Get().GetTransactionResultTypeCodeByTransactionResultName(tc.name)
 			require.NoError(t, err)
-			require.Equal(t, "UInt64", field.Type)
-			require.True(t, field.IsBaseTen)
+			require.Equal(t, tc.code, code)
 		})
 	}
-
-	field, err := Get().GetFieldInstanceByFieldName("IssuerNode")
-	require.NoError(t, err)
-	require.False(t, field.IsBaseTen)
 }
 
 func TestConfidentialMPTTransactionTypeCodes(t *testing.T) {

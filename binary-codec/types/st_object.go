@@ -44,8 +44,8 @@ func (t *STObject) FromJSON(json any) ([]byte, error) {
 
 		st := GetSerializedType(v.Type)
 		var b []byte
-		if v.Type == "UInt64" && v.IsBaseTen {
-			b, err = (&UInt64{}).fromJSON(fimap[v], uint64BaseTen)
+		if v.Type == "UInt64" {
+			b, err = (&UInt64{}).fromJSON(fimap[v], uint64JSONBaseForField(v.FieldName))
 		} else {
 			b, err = st.FromJSON(fimap[v])
 		}
@@ -94,8 +94,8 @@ func (t *STObject) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 			}
 
 		} else {
-			if fi.Type == "UInt64" && fi.IsBaseTen {
-				res, err = st.ToJSON(p, uint64BaseTen)
+			if fi.Type == "UInt64" {
+				res, err = st.ToJSON(p, uint64JSONBaseForField(fi.FieldName))
 			} else {
 				res, err = st.ToJSON(p)
 			}

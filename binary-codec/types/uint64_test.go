@@ -144,7 +144,7 @@ func TestUInt64FromBaseTenJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := (&UInt64{}).fromJSON(tt.input, uint64BaseTen)
+			actual, err := (&UInt64{}).fromJSON(tt.input, uint64JSONBaseDecimal)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
@@ -218,7 +218,7 @@ func TestUint64_ToJson(t *testing.T) {
 			input:       []byte{0, 0, 0, 0, 0, 0, 3, 232},
 			expected:    "1000",
 			expectedErr: nil,
-			opts:        []int{uint64BaseTen},
+			opts:        []int{uint64JSONBaseDecimal},
 			malleate: func(t *testing.T) interfaces.BinaryParser {
 				return serdes.NewBinaryParser([]byte{0, 0, 0, 0, 0, 0, 3, 232}, defs)
 			},

@@ -11,7 +11,21 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
 
-const uint64BaseTen = 10
+const (
+	uint64JSONBaseDecimal int = 10
+	uint64JSONBaseHex     int = 16
+)
+
+// uint64JSONBaseForField mirrors rippled's kSmdBaseTen metadata, which is not
+// included in the server definitions copied from xrpl.js.
+func uint64JSONBaseForField(fieldName string) int {
+	switch fieldName {
+	case "MaximumAmount", "OutstandingAmount", "MPTAmount", "LockedAmount", "ConfidentialOutstandingAmount":
+		return uint64JSONBaseDecimal
+	default:
+		return uint64JSONBaseHex
+	}
+}
 
 // UInt64 represents a 64-bit unsigned integer serialized from a hex JSON string.
 type UInt64 struct{}
@@ -28,7 +42,7 @@ var ErrInvalidUInt64String = errors.New("invalid UInt64 string, value should be 
 // Returns ErrInvalidUInt64String when the input is not a string, contains non-hex
 // characters, or exceeds 16 characters.
 func (u *UInt64) FromJSON(value any) ([]byte, error) {
-	return u.fromJSON(value, 16)
+	return u.fromJSON(value, uint64JSONBaseHex)
 }
 
 func (u *UInt64) fromJSON(value any, base int) ([]byte, error) {
@@ -37,7 +51,7 @@ func (u *UInt64) fromJSON(value any, base int) ([]byte, error) {
 		return nil, ErrInvalidUInt64String
 	}
 
-	if base == 16 && (len(strValue) > 16 || !typecheck.IsHex(strValue)) {
+	if base == uint64JSONBaseHex && (len(strValue) > 16 || !typecheck.IsHex(strValue)) {
 		return nil, ErrInvalidUInt64String
 	}
 
@@ -63,8 +77,8 @@ func (u *UInt64) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(opts) > 0 && opts[0] == uint64BaseTen {
-		return strconv.FormatUint(binary.BigEndian.Uint64(b), uint64BaseTen), nil
+	if len(opts) > 0 && opts[0] == uint64JSONBaseDecimal {
+		return strconv.FormatUint(binary.BigEndian.Uint64(b), uint64JSONBaseDecimal), nil
 	}
 	return hexutil.EncodeToUpperHex(b), nil
 }
