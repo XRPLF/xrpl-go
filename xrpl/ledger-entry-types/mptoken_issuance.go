@@ -85,6 +85,8 @@ type MPTokenIssuance struct {
 	DomainID string `json:",omitempty"`
 	// MutableFlags indicates which properties of this MPT can be mutated after creation.
 	MutableFlags uint32 `json:",omitempty"`
+	// ReferenceHolding identifies the ledger entry that holds this issuance's reference balance.
+	ReferenceHolding types.Hash256 `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.

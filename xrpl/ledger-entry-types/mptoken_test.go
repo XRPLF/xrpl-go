@@ -25,6 +25,12 @@ func TestMPToken_SetLsfMPTAuthorized(t *testing.T) {
 	require.Equal(t, LsfMPTAuthorized, mpToken.Flags)
 }
 
+func TestMPToken_SetLsfMPTAMM(t *testing.T) {
+	mpToken := &MPToken{}
+	mpToken.SetLsfMPTAMM()
+	require.Equal(t, LsfMPTAMM, mpToken.Flags)
+}
+
 func TestMPTokenSerialization(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -107,6 +113,31 @@ func TestMPTokenSerialization(t *testing.T) {
 	"MPTokenIssuanceID": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 	"MPTAmount": 1000000,
 	"LockedAmount": 1,
+	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
+	"PreviousTxnLgrSeq": 234644,
+	"OwnerNode": 1
+}`,
+		},
+		{
+			name: "pass - valid MPToken with LsfMPTAMM",
+			mpToken: &MPToken{
+				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
+				LedgerEntryType:   MPTokenEntry,
+				Flags:             LsfMPTAMM,
+				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
+				MPTokenIssuanceID: types.Hash192("00000002430427B80BD2D09D36B70B969E12801065F22308"),
+				MPTAmount:         1000000,
+				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
+				PreviousTxnLgrSeq: 234644,
+				OwnerNode:         1,
+			},
+			expected: `{
+	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+	"LedgerEntryType": "MPToken",
+	"Flags": 4,
+	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+	"MPTokenIssuanceID": "00000002430427B80BD2D09D36B70B969E12801065F22308",
+	"MPTAmount": 1000000,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
 	"OwnerNode": 1
