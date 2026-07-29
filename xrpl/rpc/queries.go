@@ -11,6 +11,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/oracle"
 	path "github.com/Peersyst/xrpl-go/xrpl/queries/path"
 	server "github.com/Peersyst/xrpl-go/xrpl/queries/server"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	utility "github.com/Peersyst/xrpl-go/xrpl/queries/utility"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/vault"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -219,6 +220,26 @@ func (c *Client) GetChannelVerify(req *channel.VerifyRequest) (*channel.VerifyRe
 		return nil, err
 	}
 	return &acr, nil
+}
+
+// Transaction queries
+
+// Simulate executes an unsigned transaction as a dry run without submitting it
+// to the network. Results reflect current ledger state and do not guarantee the
+// outcome of a later submission.
+func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error) {
+	if err := req.ValidateNetworkID(c.NetworkID); err != nil {
+		return nil, err
+	}
+	res, err := c.Request(req)
+	if err != nil {
+		return nil, err
+	}
+	var response transactions.SimulateResponse
+	if err := res.GetResult(&response); err != nil {
+		return nil, err
+	}
+	return &response, nil
 }
 
 // Ledger queries
@@ -467,6 +488,20 @@ func (c *Client) GetServerInfo(req *server.InfoRequest) (*server.InfoResponse, e
 		return nil, err
 	}
 	return &sir, err
+}
+
+// GetServerDefinitions retrieves the serialization definitions supported by the server.
+// A request hash that matches the server's definitions produces a hash-only response.
+func (c *Client) GetServerDefinitions(req *server.DefinitionsRequest) (*server.DefinitionsResponse, error) {
+	res, err := c.Request(req)
+	if err != nil {
+		return nil, err
+	}
+	var response server.DefinitionsResponse
+	if err := res.GetResult(&response); err != nil {
+		return nil, err
+	}
+	return &response, nil
 }
 
 // GetAllFeatures retrieves information about all features supported by the server.
