@@ -46,6 +46,8 @@ func (*NFTsRequest) Validate() error {
 type NFTsResponse struct {
 	Account            types.Address      `json:"account"`
 	AccountNFTs        []accounttypes.NFT `json:"account_nfts"`
+	LedgerIndex        common.LedgerIndex `json:"ledger_index,omitempty"`
+	LedgerHash         common.LedgerHash  `json:"ledger_hash,omitempty"`
 	LedgerCurrentIndex common.LedgerIndex `json:"ledger_current_index,omitempty"`
 	Validated          bool               `json:"validated"`
 	Marker             any                `json:"marker,omitempty"`
