@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### xrpl/hash
+
+- `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`.
+
 #### xrpl/queries/server
 
 - Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID.
@@ -17,11 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
+- Submit preflight now requires a complete single-sign or multisign structure and `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
 
 #### xrpl/websocket
 
 - Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
 - Changed `Client.Connect` to request `server_info` before it starts the background reader. A request failure is reported through `OnError` but does not fail the connection. A missing `network_id` leaves `NetworkID` nil.
+- Submit preflight now requires a complete single-sign or multisign structure and `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
 
 ### Added
 
@@ -65,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The client now discovers and caches network identity with `server_info` before an identity-dependent operation. A discovery failure leaves the identity unknown, does not block the operation, and is retried by a later operation.
 - Client-side signing now skips network identity discovery and policy validation when autofill is disabled.
 
+#### xrpl/transaction
+
+- Inner Batch transaction flattening now preserves the wire-required empty `SigningPubKey`, and raw inner-transaction validation requires that explicit empty field.
+
 #### xrpl/websocket
 
 - Autofill now omits and rejects an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. It adds and requires the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
@@ -73,9 +83,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### xrpl/rpc
+
+- Made submit options nil-safe without enabling autofill by default; forced `fail_hard` for `AccountDelete`; added the `VaultCreate` owner-reserve fee; normalized `DeliverMax` to wire `Amount`; and prevented autofill/submission failures from corrupting caller-owned maps.
+
 #### xrpl/websocket
 
 - Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation.
+- Made submit options nil-safe without enabling autofill by default; forced `fail_hard` for `AccountDelete`; added the `VaultCreate` owner-reserve fee; normalized `DeliverMax` to wire `Amount`; and prevented autofill/submission failures from corrupting caller-owned maps.
 
 ## [v0.2.0]
 
