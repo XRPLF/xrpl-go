@@ -60,7 +60,7 @@ type MPTokenIssuance struct {
 	// This indicates to how many decimal places the MPT can be subdivided. The default is 0, meaning that the MPT cannot be divided into smaller than 1 unit.
 	AssetScale uint8
 	// The maximum number of MPTs that can exist at one time. If omitted, the maximum is currently limited to 263-1.
-	MaximumAmount uint64
+	MaximumAmount uint64 `json:",omitempty"`
 	// The total amount of MPTs of this issuance currently in circulation. This value increases when the issuer sends MPTs to a non-issuer, and decreases whenever the issuer receives MPTs.
 	OutstandingAmount uint64
 	// This value specifies the fee, in tenths of a basis point, charged by the issuer for secondary sales of the token, if such sales are allowed at all.
