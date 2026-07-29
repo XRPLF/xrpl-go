@@ -163,6 +163,10 @@ func NewClientConfig(url string, opts ...ConfigOpt) (*Config, error) {
 		opt(cfg)
 	}
 
+	if _, err := validateAuthorizationTransport(cfg.URL, cfg.Headers, cfg.HTTPClient); err != nil {
+		return nil, err
+	}
+
 	clientconfig.WarnIfInsecureScheme("rpc", cfg.URL)
 
 	// Keep the default HTTP client aligned with the config timeout.

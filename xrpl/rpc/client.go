@@ -71,6 +71,14 @@ func (c *Client) request(ctx context.Context, reqParams XRPLRequest) (XRPLRespon
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+
+	requestURL := c.cfg.URL
+	headers := http.Header(c.cfg.Headers).Clone()
+	requestHTTPClient, err := validateAuthorizationTransport(requestURL, headers, c.cfg.HTTPClient)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := reqParams.Validate(); err != nil {
 		return nil, err
 	}
@@ -95,17 +103,17 @@ func (c *Client) request(ctx context.Context, reqParams XRPLRequest) (XRPLRespon
 		req, err := http.NewRequestWithContext(
 			requestCtx,
 			http.MethodPost,
-			c.cfg.URL,
+			requestURL,
 			bytes.NewReader(body),
 		)
 		if err != nil {
 			cancel()
-			return nil, err
+			return nil, redactAuthorizationError(err, requestURL, headers)
 		}
 
-		req.Header = c.cfg.Headers
+		req.Header = headers.Clone()
 
-		response, err = c.cfg.HTTPClient.Do(req)
+		response, err = requestHTTPClient.Do(req)
 		if err != nil {
 			// net/http documents response as nil when Do returns an error, but
 			// custom HTTPClient impls may not follow that contract.
@@ -116,7 +124,7 @@ func (c *Client) request(ctx context.Context, reqParams XRPLRequest) (XRPLRespon
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
-			return nil, err
+			return nil, redactAuthorizationError(err, requestURL, headers)
 		}
 
 		// HTTPClient is an interface, custom impls may return (nil, nil),
@@ -155,7 +163,7 @@ func (c *Client) request(ctx context.Context, reqParams XRPLRequest) (XRPLRespon
 	var jr Response
 	jr, err = checkForError(response, c.cfg.maxResponseSize)
 	if err != nil {
-		return nil, err
+		return nil, redactAuthorizationError(err, requestURL, headers)
 	}
 
 	return &jr, nil
