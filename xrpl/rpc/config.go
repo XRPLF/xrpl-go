@@ -32,7 +32,7 @@ type Config struct {
 	URL        string
 	Headers    map[string][]string
 
-	// Retry config
+	// Reliable-submission monitoring config.
 	maxRetries int
 	retryDelay time.Duration
 
@@ -63,14 +63,16 @@ func WithHTTPClient(cl HTTPClient) ConfigOpt {
 	}
 }
 
-// WithMaxRetries returns a ConfigOpt that sets the maximum number of retries.
+// WithMaxRetries sets the consecutive monitoring-failure limit and the
+// bounded polling limit for transactions without LastLedgerSequence. It does
+// not limit ledger-driven monitoring when LastLedgerSequence is present.
 func WithMaxRetries(maxRetries int) ConfigOpt {
 	return func(c *Config) {
 		c.maxRetries = maxRetries
 	}
 }
 
-// WithRetryDelay returns a ConfigOpt that sets the delay between retry attempts.
+// WithRetryDelay sets the delay between reliable-submission polling rounds.
 func WithRetryDelay(retryDelay time.Duration) ConfigOpt {
 	return func(c *Config) {
 		c.retryDelay = retryDelay

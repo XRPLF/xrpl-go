@@ -23,12 +23,24 @@ var (
 	ErrInvalidSignedTransaction = clientinternal.ErrInvalidSignedTransaction
 	// ErrNilTransaction is returned when a nil transaction is submitted or autofilled.
 	ErrNilTransaction = errors.New("transaction must not be nil")
-	// ErrMissingLastLedgerSequenceInTransaction is returned when LastLedgerSequence is missing from a transaction.
+	// ErrMissingLastLedgerSequenceInTransaction is retained for compatibility.
+	//
+	// Deprecated: reliable submission now uses bounded fallback monitoring when LastLedgerSequence is absent.
 	ErrMissingLastLedgerSequenceInTransaction = errors.New("missing LastLedgerSequence in transaction")
 	// ErrMissingWallet is returned when a wallet is required but not provided for an unsigned transaction.
 	ErrMissingWallet = errors.New("wallet must be provided when submitting an unsigned transaction")
 	// ErrTransactionNotFound is returned when a transaction cannot be found.
 	ErrTransactionNotFound = errors.New("transaction not found")
+	// ErrPreliminaryResult indicates a fail-fast provisional submit result.
+	ErrPreliminaryResult = clientinternal.ErrPreliminaryResult
+	// ErrValidatedTransaction indicates an authoritative validated failure.
+	ErrValidatedTransaction = clientinternal.ErrValidatedTransaction
+	// ErrTransactionExpired indicates ledger-driven expiry after LastLedgerSequence.
+	ErrTransactionExpired = clientinternal.ErrTransactionExpired
+	// ErrFinalityNotDetermined indicates bounded fallback exhaustion without LastLedgerSequence.
+	ErrFinalityNotDetermined = clientinternal.ErrFinalityNotDetermined
+	// ErrFinalityTransport indicates repeated transport failures during monitoring.
+	ErrFinalityTransport = clientinternal.ErrFinalityTransport
 	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
@@ -132,6 +144,21 @@ var (
 )
 
 // Dynamic errors
+
+// PreliminaryResultError reports a non-monitorable provisional engine result.
+type PreliminaryResultError = clientinternal.PreliminaryResultError
+
+// ValidatedTransactionError reports an authoritative validated failure.
+type ValidatedTransactionError = clientinternal.ValidatedTransactionError
+
+// TransactionExpiredError reports the validated ledger that passed LastLedgerSequence.
+type TransactionExpiredError = clientinternal.TransactionExpiredError
+
+// FinalityNotDeterminedError reports bounded fallback exhaustion without LastLedgerSequence.
+type FinalityNotDeterminedError = clientinternal.FinalityNotDeterminedError
+
+// FinalityTransportError reports repeated monitoring query failures and unwraps their cause.
+type FinalityTransportError = clientinternal.FinalityTransportError
 
 // ClientError represents a dynamic error with a custom error message string.
 type ClientError struct {

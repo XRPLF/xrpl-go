@@ -9,11 +9,11 @@ const (
 
 	// DefaultHost is the default host for the XRPL server.
 	DefaultHost = "localhost"
-	// DefaultMaxRetries is the default maximum number of retries for RPC calls.
+	// DefaultMaxRetries is the default bounded retry/polling limit for client operations.
 	DefaultMaxRetries = 10
 	// DefaultMaxReconnects is the default maximum number of reconnect attempts for websocket.
 	DefaultMaxReconnects = 3
-	// DefaultRetryDelay is the default delay between retry attempts.
+	// DefaultRetryDelay is the default delay between retry or polling attempts.
 	DefaultRetryDelay = 1 * time.Second
 	// DefaultFeeCushion is the default fee cushion multiplier.
 	DefaultFeeCushion float32 = 1.2

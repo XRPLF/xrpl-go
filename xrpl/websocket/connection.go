@@ -16,9 +16,10 @@ type Connection struct {
 	url             string
 	maxResponseSize int64
 
-	mu      sync.Mutex
-	readMu  sync.Mutex
-	writeMu sync.Mutex
+	mu         sync.Mutex
+	readMu     sync.Mutex
+	writeOnce  sync.Once
+	writeToken chan struct{}
 }
 
 // NewConnection creates a new Connection.
@@ -136,15 +137,83 @@ func (c *Connection) readMessage(deadline time.Time) ([]byte, error) {
 // WriteMessage writes a message to the connection.
 // It returns an error if the message is not written.
 func (c *Connection) WriteMessage(message []byte) error {
-	c.writeMu.Lock()
-	defer c.writeMu.Unlock()
+	return c.writeMessage(context.Background(), message, 0)
+}
+
+func (c *Connection) writeMessage(ctx context.Context, message []byte, timeout time.Duration) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	if err := c.acquireWrite(ctx); err != nil {
+		return err
+	}
+	defer c.releaseWrite()
 
 	c.mu.Lock()
 	conn := c.conn
 	c.mu.Unlock()
-
 	if conn == nil {
 		return ErrNotConnected
 	}
-	return conn.WriteMessage(websocket.TextMessage, message)
+
+	deadline := time.Time{}
+	if timeout > 0 {
+		deadline = time.Now().Add(timeout)
+	}
+	if contextDeadline, ok := ctx.Deadline(); ok && (deadline.IsZero() || contextDeadline.Before(deadline)) {
+		deadline = contextDeadline
+	}
+	if err := conn.SetWriteDeadline(deadline); err != nil {
+		return err
+	}
+
+	var (
+		writeDone chan struct{}
+		watchDone chan struct{}
+	)
+	if ctx.Done() != nil {
+		writeDone = make(chan struct{})
+		watchDone = make(chan struct{})
+		go func() {
+			defer close(watchDone)
+			select {
+			case <-ctx.Done():
+				_ = conn.SetWriteDeadline(time.Now())
+			case <-writeDone:
+			}
+		}()
+	}
+
+	writeErr := conn.WriteMessage(websocket.TextMessage, message)
+	if writeDone != nil {
+		close(writeDone)
+		<-watchDone
+	}
+	clearErr := conn.SetWriteDeadline(time.Time{})
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if writeErr != nil {
+		return writeErr
+	}
+	return clearErr
+}
+
+func (c *Connection) acquireWrite(ctx context.Context) error {
+	c.writeOnce.Do(func() {
+		c.writeToken = make(chan struct{}, 1)
+		c.writeToken <- struct{}{}
+	})
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-c.writeToken:
+		return nil
+	}
+}
+
+func (c *Connection) releaseWrite() {
+	c.writeToken <- struct{}{}
 }

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -371,8 +370,14 @@ func isFundWalletActNotFound(err error) bool {
 // This function is used to send requests to the server.
 // It returns the response from the server.
 func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
-	err := req.Validate()
-	if err != nil {
+	return c.request(context.Background(), req)
+}
+
+func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := req.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -392,11 +397,12 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 	defer c.unregisterPendingResponse(id)
 
 	c.connectionHandshakeMu.RLock()
-	if time.Until(deadline) <= 0 {
+	remaining := time.Until(deadline)
+	if remaining <= 0 {
 		c.connectionHandshakeMu.RUnlock()
 		return nil, ErrRequestTimedOut
 	}
-	err = c.conn.WriteMessage(msg)
+	err = c.conn.writeMessage(ctx, msg, remaining)
 	c.connectionHandshakeMu.RUnlock()
 	if err != nil {
 		if errors.Is(err, ErrNotConnected) {
@@ -405,7 +411,7 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 		return nil, err
 	}
 
-	res, err := c.awaitResponse(responseChan, deadline)
+	res, err := c.awaitResponse(ctx, responseChan, deadline)
 	if err != nil {
 		return nil, err
 	}
@@ -422,6 +428,10 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 // authoritative for cryptographic signature validity. AccountDelete always uses
 // fail_hard as required by reliable-submission safety guidance.
 func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitResponse, error) {
+	return c.submitTxBlob(context.Background(), txBlob, failHard)
+}
+
+func (c *Client) submitTxBlob(ctx context.Context, txBlob string, failHard bool) (*requests.SubmitResponse, error) {
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return nil, err
@@ -438,7 +448,7 @@ func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitRes
 		return nil, ErrMissingTxSignatureOrSigningPubKey
 	}
 
-	return c.submitRequest(&requests.SubmitRequest{
+	return c.submitRequest(ctx, &requests.SubmitRequest{
 		TxBlob:   txBlob,
 		FailHard: clientinternal.SubmissionFailHard(tx, failHard),
 	})
@@ -483,27 +493,38 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 	})
 }
 
-// SubmitTxBlobAndWait sends a pre-signed transaction blob to the server,
-// decodes it to retrieve the required LastLedgerSequence, submits the blob,
-// and then waits until the transaction is confirmed in a ledger. It returns
-// the transaction response if the submission is successful.
+// SubmitTxBlobAndWait submits a pre-signed transaction and waits for an
+// authoritative validated-ledger result. Transactions with LastLedgerSequence
+// are monitored through that ledger and expire only after it passes. Without
+// LastLedgerSequence, monitoring uses the configured bounded fallback.
 func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.TxResponse, error) {
+	return c.SubmitTxBlobAndWaitContext(context.Background(), txBlob, failHard)
+}
+
+// SubmitTxBlobAndWaitContext is SubmitTxBlobAndWait with caller cancellation.
+// Context cancellation is returned as ctx.Err and is never reported as a
+// transaction failure or expiry.
+func (c *Client) SubmitTxBlobAndWaitContext(
+	ctx context.Context,
+	txBlob string,
+	failHard bool,
+) (*requests.TxResponse, error) {
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return nil, err
 	}
 
-	lastLedgerSequence, ok := tx["LastLedgerSequence"].(uint32)
-	if !ok {
-		return nil, ErrMissingLastLedgerSequenceInTransaction
+	var lastLedgerSequence *uint32
+	if sequence, ok := tx["LastLedgerSequence"].(uint32); ok {
+		lastLedgerSequence = &sequence
 	}
-	txResponse, err := c.SubmitTxBlob(txBlob, failHard)
+
+	submitResponse, err := c.submitTxBlob(ctx, txBlob, failHard)
 	if err != nil {
 		return nil, err
 	}
-
-	if txResponse.EngineResult != "tesSUCCESS" {
-		return nil, &ClientError{ErrorString: "transaction failed to submit with engine result: " + txResponse.EngineResult}
+	if err := clientinternal.ValidatePreliminaryResult(submitResponse.EngineResult); err != nil {
+		return nil, err
 	}
 
 	txHash, err := hash.SignTxBlob(txBlob)
@@ -511,14 +532,26 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 		return nil, err
 	}
 
-	return c.waitForTransaction(txHash, lastLedgerSequence)
+	return c.waitForTransaction(ctx, txHash, lastLedgerSequence)
 }
 
-// SubmitTxAndWait prepares a transaction by ensuring it is fully signed,
-// submits it to the server, and waits for ledger confirmation.
-// Nil options are equivalent to zero-value options: autofill and fail_hard are disabled,
-// except that AccountDelete always forces fail_hard.
+// SubmitTxAndWait prepares, submits, and monitors a transaction until its
+// validated-ledger outcome is authoritative. Nil options retain their existing
+// zero-value behavior, and AccountDelete still forces fail_hard.
 func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *wstypes.SubmitOptions) (*requests.TxResponse, error) {
+	return c.SubmitTxAndWaitContext(context.Background(), tx, opts)
+}
+
+// SubmitTxAndWaitContext is SubmitTxAndWait with caller cancellation for
+// submission and finality monitoring.
+func (c *Client) SubmitTxAndWaitContext(
+	ctx context.Context,
+	tx transaction.FlatTransaction,
+	opts *wstypes.SubmitOptions,
+) (*requests.TxResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if opts == nil {
 		opts = &wstypes.SubmitOptions{}
 	}
@@ -526,58 +559,39 @@ func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *wstypes.S
 	if err != nil {
 		return nil, err
 	}
-	return c.SubmitTxBlobAndWait(txBlob, opts.FailHard)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return c.SubmitTxBlobAndWaitContext(ctx, txBlob, opts.FailHard)
 }
 
-func (c *Client) waitForTransaction(txHash string, lastLedgerSequence uint32) (*requests.TxResponse, error) {
-	var txResponse *requests.TxResponse
+func (c *Client) waitForTransaction(
+	ctx context.Context,
+	txHash string,
+	lastLedgerSequence *uint32,
+) (*requests.TxResponse, error) {
+	return clientinternal.WaitForFinality(
+		ctx,
+		clientinternal.FinalityConfig{
+			LastLedgerSequence: lastLedgerSequence,
+			PollInterval:       c.cfg.retryDelay,
+			MaxAttempts:        c.cfg.maxRetries,
+		},
+		clientinternal.TxFinalityHooks(
+			func(ctx context.Context) (clientinternal.ResponseDecoder, error) {
+				return c.request(ctx, &requests.TxRequest{Transaction: txHash})
+			},
+			func(ctx context.Context) (clientinternal.ResponseDecoder, error) {
+				return c.request(ctx, &ledger.Request{LedgerIndex: common.Validated})
+			},
+			isTransactionNotFoundError,
+		),
+	)
+}
 
-	for range c.cfg.maxRetries {
-		// Get the current ledger index
-		currentLedger, err := c.GetLedgerIndex()
-		if err != nil {
-			return nil, err
-		}
-
-		// Check if the transaction has been included in the current ledger
-		if currentLedger.Int() >= int(lastLedgerSequence) {
-			break
-		}
-
-		// Request the transaction from the server
-		res, err := c.Request(&requests.TxRequest{
-			Transaction: txHash,
-		})
-		if err != nil && !strings.Contains(err.Error(), txnNotFound) {
-			return nil, err
-		}
-
-		if res != nil {
-			err = res.GetResult(&txResponse)
-			if err != nil {
-				return nil, err
-			}
-
-			// Check if the transaction has been validated
-			if txResponse.Validated {
-				return txResponse, nil
-			}
-
-			// Check if the transaction has been included in the current ledger
-			if txResponse.LedgerIndex.Int() >= int(lastLedgerSequence) {
-				break
-			}
-		}
-
-		// Wait for the retry delay before retrying
-		time.Sleep(c.cfg.retryDelay)
-	}
-
-	if txResponse == nil {
-		return nil, ErrTransactionNotFound
-	}
-
-	return txResponse, nil
+func isTransactionNotFoundError(err error) bool {
+	var responseErr *ErrorWebsocketClientXrplResponse
+	return errors.As(err, &responseErr) && responseErr.Type == txnNotFound
 }
 
 func (c *Client) submitMultisignedRequest(req *requests.SubmitMultisignedRequest) (*requests.SubmitMultisignedResponse, error) {
@@ -593,14 +607,16 @@ func (c *Client) submitMultisignedRequest(req *requests.SubmitMultisignedRequest
 	return &subRes, nil
 }
 
-func (c *Client) submitRequest(req *requests.SubmitRequest) (*requests.SubmitResponse, error) {
-	res, err := c.Request(req)
+func (c *Client) submitRequest(
+	ctx context.Context,
+	req *requests.SubmitRequest,
+) (*requests.SubmitResponse, error) {
+	res, err := c.request(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 	var subRes requests.SubmitResponse
-	err = res.GetResult(&subRes)
-	if err != nil {
+	if err := res.GetResult(&subRes); err != nil {
 		return nil, err
 	}
 	return &subRes, nil
@@ -836,7 +852,11 @@ func (c *Client) lookupPendingResponse(id uint64) (chan *ClientResponse, bool) {
 	return responseChan, ok
 }
 
-func (c *Client) awaitResponse(responseChan <-chan *ClientResponse, deadline time.Time) (*ClientResponse, error) {
+func (c *Client) awaitResponse(
+	ctx context.Context,
+	responseChan <-chan *ClientResponse,
+	deadline time.Time,
+) (*ClientResponse, error) {
 	remaining := time.Until(deadline)
 	if remaining <= 0 {
 		return nil, ErrRequestTimedOut
@@ -847,6 +867,8 @@ func (c *Client) awaitResponse(responseChan <-chan *ClientResponse, deadline tim
 	select {
 	case res := <-responseChan:
 		return res, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case <-timer.C:
 		return nil, ErrRequestTimedOut
 	}

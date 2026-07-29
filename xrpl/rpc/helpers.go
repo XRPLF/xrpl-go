@@ -2,14 +2,15 @@ package rpc
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
@@ -337,68 +338,48 @@ func (c *Client) submitMultisignedRequest(req *requests.SubmitMultisignedRequest
 	return &subRes, nil
 }
 
-func (c *Client) submitRequest(req *requests.SubmitRequest) (*requests.SubmitResponse, error) {
-	res, err := c.Request(req)
+func (c *Client) submitRequest(
+	ctx context.Context,
+	req *requests.SubmitRequest,
+) (*requests.SubmitResponse, error) {
+	res, err := c.request(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 	var subRes requests.SubmitResponse
-	err = res.GetResult(&subRes)
-	if err != nil {
+	if err := res.GetResult(&subRes); err != nil {
 		return nil, err
 	}
 	return &subRes, nil
 }
 
-func (c *Client) waitForTransaction(txHash string, lastLedgerSequence uint32) (*requests.TxResponse, error) {
-	var txResponse *requests.TxResponse
+func (c *Client) waitForTransaction(
+	ctx context.Context,
+	txHash string,
+	lastLedgerSequence *uint32,
+) (*requests.TxResponse, error) {
+	return clientinternal.WaitForFinality(
+		ctx,
+		clientinternal.FinalityConfig{
+			LastLedgerSequence: lastLedgerSequence,
+			PollInterval:       c.cfg.retryDelay,
+			MaxAttempts:        c.cfg.maxRetries,
+		},
+		clientinternal.TxFinalityHooks(
+			func(ctx context.Context) (clientinternal.ResponseDecoder, error) {
+				return c.request(ctx, &requests.TxRequest{Transaction: txHash})
+			},
+			func(ctx context.Context) (clientinternal.ResponseDecoder, error) {
+				return c.request(ctx, &ledger.Request{LedgerIndex: common.Validated})
+			},
+			isTransactionNotFoundError,
+		),
+	)
+}
 
-	for range c.cfg.maxRetries {
-		// Get the current ledger index
-		currentLedger, err := c.GetLedgerIndex()
-		if err != nil {
-			return nil, err
-		}
-
-		// Check if the transaction has been included in the current ledger
-		if currentLedger.Int() >= int(lastLedgerSequence) {
-			break
-		}
-
-		// Request the transaction from the server
-		res, err := c.Request(&requests.TxRequest{
-			Transaction: txHash,
-		})
-		if err != nil && !strings.Contains(err.Error(), txnNotFound) {
-			return nil, err
-		}
-
-		if res != nil {
-			err = res.GetResult(&txResponse)
-			if err != nil {
-				return nil, err
-			}
-
-			// Check if the transaction has been validated
-			if txResponse.Validated {
-				return txResponse, nil
-			}
-
-			// Check if the transaction has been included in the current ledger
-			if txResponse.LedgerIndex.Int() >= int(lastLedgerSequence) {
-				break
-			}
-		}
-
-		// Wait for the retry delay before retrying
-		time.Sleep(c.cfg.retryDelay)
-	}
-
-	if txResponse == nil {
-		return nil, ErrTransactionNotFound
-	}
-
-	return txResponse, nil
+func isTransactionNotFoundError(err error) bool {
+	var clientErr *ClientError
+	return errors.As(err, &clientErr) && clientErr.ErrorString == txnNotFound
 }
 
 // getSignedTx ensures the transaction is fully signed and returns the transaction blob.
