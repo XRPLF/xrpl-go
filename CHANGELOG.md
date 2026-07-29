@@ -106,6 +106,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `ledger_hash` and `ledger_index` fields to `InfoRequest`, and `ledger_current_index` to `InfoResponse` for open-ledger responses.
 
+#### xrpl/queries/subscription/types
+
+- Added `BookChangesStreamType` for the `bookChanges` subscription notification discriminator.
+
 #### xrpl/transaction
 
 - Added centralized transaction type constants and `IsPseudoTransactionType` classification for `EnableAmendment`, `SetFee`, and `UNLModify`.
@@ -124,6 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ErrInvalidMaxRetries` and `ErrInvalidLastLedgerSequence` for non-positive retry limits and zero ledger boundaries.
 - Added `ErrInvalidFeeValue` and `ErrFeeHasTooManyDecimals` for fee validation.
 - Added `ErrResponseErrorFieldIsNotAString` for malformed RPC error responses.
+- Added `ErrInsecureAuthorization` and `ErrAuthorizationRequestFailed` for secure, redaction-safe authorized transport failures.
 
 #### xrpl/transaction/integration
 
@@ -165,6 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The client now discovers and caches network identity with `server_info` before an identity-dependent operation. A discovery failure fails the operation without mutation and is retried by a later operation.
 - Client-side submission helpers now discover and validate network identity before they sign an unsigned transaction, including when autofill is disabled. Use `wallet.Sign` for fully offline signing, or `WithNetworkIdentity` when trusted deployment configuration supplies the identity.
 - Network identity discovery now uses Clio `rippled_version` only when `build_version` is absent.
+- Authorized RPC requests now require a parsed HTTPS endpoint and a redirect-safe `*http.Client`, reject authenticated plaintext redirects, recognize header names case-insensitively and URL userinfo, and redact credential material from returned diagnostics.
 
 #### xrpl/transaction
 
@@ -178,6 +184,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Missing network identity or required build-version data now makes `Connect`, autofill, and unsigned signing fail closed instead of omitting `NetworkID`.
 - Client-side signing now applies network identity policy when autofill is disabled.
 - Network identity discovery now uses Clio `rippled_version` only when `build_version` is absent.
+- Documented the stream-handler concurrency, per-stream ordering, and unbuffered backpressure contract.
 
 ### Fixed
 
@@ -275,6 +282,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Closed and invalidated WebSocket connections after write or write-deadline failures. The active read loop now attempts reconnection after any read error, not only close errors, within the existing `WithMaxReconnects` budget.
 - Made manual disconnect claim an in-progress reconnect socket before lifecycle cancellation so cancellation-driven invalidation cannot cause a false not-connected error.
 - Made reconnect backoff configuration immutable per client to prevent concurrent clients and reconnect tests from racing over shared delay state.
+- Dispatched `transaction` notifications to the exported order-book handler and `bookChanges` notifications to the exported book-changes handler, with typed decoding and single delivery across reconnects.
 
 ## [v0.2.0]
 
