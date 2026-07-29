@@ -1,6 +1,7 @@
 package binarycodec
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -340,6 +341,56 @@ func TestEncode(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tc.output, got)
 			}
+		})
+	}
+}
+
+func TestLiveRPCNumberTypesRoundTrip(t *testing.T) {
+	input := map[string]any{
+		"TransactionType":    "MPTokenIssuanceCreate",
+		"Flags":              json.Number("160"),
+		"Sequence":           json.Number("1"),
+		"LastLedgerSequence": json.Number("10"),
+		"MaximumAmount":      "1000",
+	}
+
+	encoded, err := Encode(input)
+	require.NoError(t, err)
+
+	decoded, err := Decode(encoded)
+	require.NoError(t, err)
+	require.Equal(t, "MPTokenIssuanceCreate", decoded["TransactionType"])
+	require.Equal(t, uint32(160), decoded["Flags"])
+	require.Equal(t, uint32(1), decoded["Sequence"])
+	require.Equal(t, uint32(10), decoded["LastLedgerSequence"])
+	require.Equal(t, "1000", decoded["MaximumAmount"])
+
+	reencoded, err := Encode(decoded)
+	require.NoError(t, err)
+	require.Equal(t, encoded, reencoded)
+}
+
+func TestMPTBaseTenUInt64RoundTrip(t *testing.T) {
+	fields := []string{
+		"MaximumAmount",
+		"OutstandingAmount",
+		"MPTAmount",
+		"LockedAmount",
+		"ConfidentialOutstandingAmount",
+	}
+
+	for _, field := range fields {
+		t.Run(field, func(t *testing.T) {
+			encoded, err := Encode(map[string]any{field: "1000"})
+			require.NoError(t, err)
+
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.Equal(t, map[string]any{field: "1000"}, decoded)
+
+			reencoded, err := Encode(decoded)
+			require.NoError(t, err)
+			require.Equal(t, encoded, reencoded)
 		})
 	}
 }
