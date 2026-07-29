@@ -77,8 +77,8 @@ func DecodeQuality(quality string) (string, error) {
 	}
 
 	decoded, err := hex.DecodeString(quality)
-	if err != nil {
-		return "", err
+	if err != nil || len(decoded) < 8 {
+		return "", ErrInvalidQuality
 	}
 
 	bytes := decoded[len(decoded)-8:]
