@@ -18,6 +18,8 @@ type NFTokenSellOffersRequest struct {
 	NFTokenID   types.NFTokenID        `json:"nft_id"`
 	LedgerHash  common.LedgerHash      `json:"ledger_hash,omitempty"`
 	LedgerIndex common.LedgerSpecifier `json:"ledger_index,omitempty"`
+	Limit       int                    `json:"limit,omitempty"`
+	Marker      any                    `json:"marker,omitempty"`
 }
 
 // Method returns the XRPL JSON-RPC method name for NFTokenSellOffersRequest.
@@ -43,4 +45,6 @@ func (*NFTokenSellOffersRequest) Validate() error {
 type NFTokenSellOffersResponse struct {
 	NFTokenID types.NFTokenID         `json:"nft_id"`
 	Offers    []nfttypes.NFTokenOffer `json:"offers"`
+	Limit     int                     `json:"limit,omitempty"`
+	Marker    any                     `json:"marker,omitempty"`
 }

@@ -24,6 +24,67 @@ func TestNFTokenSellOffersRequest(t *testing.T) {
 	}
 }
 
+func TestNFTokenSellOffers_Pagination(t *testing.T) {
+	const nftID = "00090000D0B007439B080E9B05BF62403911301A7B1F0CFAA048C0A200000007"
+	const marker = "9E28E366573187F8E5B85CE301F229E061A619EE5A589EF740088F8843BF10A1"
+
+	tests := []struct {
+		name     string
+		value    any
+		expected string
+	}{
+		{
+			name: "first page response",
+			value: NFTokenSellOffersResponse{
+				NFTokenID: nftID,
+				Offers:    []nfttypes.NFTokenOffer{},
+				Limit:     50,
+				Marker:    marker,
+			},
+			expected: `{
+	"nft_id": "00090000D0B007439B080E9B05BF62403911301A7B1F0CFAA048C0A200000007",
+	"offers": [],
+	"limit": 50,
+	"marker": "9E28E366573187F8E5B85CE301F229E061A619EE5A589EF740088F8843BF10A1"
+}`,
+		},
+		{
+			name: "continuation request",
+			value: NFTokenSellOffersRequest{
+				NFTokenID: nftID,
+				Limit:     50,
+				Marker:    marker,
+			},
+			expected: `{
+	"nft_id": "00090000D0B007439B080E9B05BF62403911301A7B1F0CFAA048C0A200000007",
+	"limit": 50,
+	"marker": "9E28E366573187F8E5B85CE301F229E061A619EE5A589EF740088F8843BF10A1"
+}`,
+		},
+		{
+			name: "last page response without marker",
+			value: NFTokenSellOffersResponse{
+				NFTokenID: nftID,
+				Offers:    []nfttypes.NFTokenOffer{},
+				Limit:     50,
+			},
+			expected: `{
+	"nft_id": "00090000D0B007439B080E9B05BF62403911301A7B1F0CFAA048C0A200000007",
+	"offers": [],
+	"limit": 50
+}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := testutil.SerializeAndDeserialize(t, tt.value, tt.expected); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
 func TestNFTokenSellOffersResponse(t *testing.T) {
 	s := NFTokenSellOffersResponse{
 		NFTokenID: "00090000D0B007439B080E9B05BF62403911301A7B1F0CFAA048C0A200000007",

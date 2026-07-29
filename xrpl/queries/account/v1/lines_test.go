@@ -34,26 +34,67 @@ func TestAccountLinesRequest(t *testing.T) {
 	}
 }
 
-func TestAccountLinesResponse(t *testing.T) {
-	s := LinesResponse{
-		Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
-		Lines: []accounttypes.TrustLine{
-			{
-				Account:    "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
-				Balance:    "123",
-				Currency:   "USD",
-				Limit:      "456",
-				LimitPeer:  "10",
-				QualityIn:  1,
-				QualityOut: 2,
-			},
+func TestAccountLinesRequest_IgnoreDefault(t *testing.T) {
+	const account = "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu"
+
+	tests := []struct {
+		name     string
+		request  LinesRequest
+		expected string
+	}{
+		{
+			name:    "present",
+			request: LinesRequest{Account: account, IgnoreDefault: true},
+			expected: `{
+	"account": "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+	"ignore_default": true
+}`,
 		},
-		LedgerCurrentIndex: 123,
-		LedgerIndex:        345,
-		LedgerHash:         "abc",
+		{
+			name:    "omitted",
+			request: LinesRequest{Account: account},
+			expected: `{
+	"account": "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu"
+}`,
+		},
 	}
 
-	j := `{
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := testutil.SerializeAndDeserialize(t, tt.request, tt.expected); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
+func TestAccountLinesResponse(t *testing.T) {
+	tests := []struct {
+		name     string
+		response LinesResponse
+		expected string
+	}{
+		{
+			name: "present",
+			response: LinesResponse{
+				Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+				Lines: []accounttypes.TrustLine{
+					{
+						Account:    "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+						Balance:    "123",
+						Currency:   "USD",
+						Limit:      "456",
+						LimitPeer:  "10",
+						QualityIn:  1,
+						QualityOut: 2,
+					},
+				},
+				LedgerCurrentIndex: 123,
+				LedgerIndex:        345,
+				LedgerHash:         "abc",
+				Limit:              10,
+			},
+			expected: `{
 	"account": "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 	"lines": [
 		{
@@ -68,10 +109,28 @@ func TestAccountLinesResponse(t *testing.T) {
 	],
 	"ledger_current_index": 123,
 	"ledger_index": 345,
-	"ledger_hash": "abc"
-}`
+	"ledger_hash": "abc",
+	"limit": 10
+}`,
+		},
+		{
+			name: "omitted",
+			response: LinesResponse{
+				Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+				Lines:   []accounttypes.TrustLine{},
+			},
+			expected: `{
+	"account": "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+	"lines": []
+}`,
+		},
+	}
 
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
-		t.Error(err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := testutil.SerializeAndDeserialize(t, tt.response, tt.expected); err != nil {
+				t.Error(err)
+			}
+		})
 	}
 }

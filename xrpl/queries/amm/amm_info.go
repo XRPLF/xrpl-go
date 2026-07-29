@@ -18,11 +18,13 @@ import (
 type InfoRequest struct {
 	common.BaseRequest
 	// The definition for one of the two assets this AMM holds.
-	Asset ledger.Asset `json:"asset"`
+	Asset ledger.Asset `json:"asset,omitzero"`
 	// The definition for the other asset this AMM holds.
-	Asset2 ledger.Asset `json:"asset2"`
+	Asset2 ledger.Asset `json:"asset2,omitzero"`
 	// (Optional) The AMM Account to look up.
 	AMMAccount types.Address `json:"amm_account,omitempty"`
+	// (Optional) A liquidity provider whose LP Token holdings should be returned.
+	Account types.Address `json:"account,omitempty"`
 }
 
 // Method returns the JSON-RPC method name for InfoRequest.
@@ -36,11 +38,12 @@ func (*InfoRequest) APIVersion() int {
 }
 
 // Validate performs validation on InfoRequest.
-// Either amm_account or both asset and asset2 must be specified.
+// Exactly one lookup must be specified: amm_account, or both asset and asset2.
 func (i *InfoRequest) Validate() error {
 	hasAMMAccount := i.AMMAccount != ""
-	hasAssets := i.Asset != (ledger.Asset{}) && i.Asset2 != (ledger.Asset{})
-	if !hasAMMAccount && !hasAssets {
+	hasAsset := i.Asset != (ledger.Asset{})
+	hasAsset2 := i.Asset2 != (ledger.Asset{})
+	if hasAsset != hasAsset2 || hasAsset == hasAMMAccount {
 		return ErrInvalidInfoRequest
 	}
 	return nil
@@ -62,6 +65,8 @@ type AuctionSlotInfo struct {
 	Price types.IssuedCurrencyAmount `json:"price"`
 	// The time when this slot expires. Returned as a formatted date string by the server.
 	Expiration string `json:"expiration,omitempty"`
+	// The current 72-minute auction interval, from 0 to 19.
+	TimeInterval uint8 `json:"time_interval"`
 }
 
 // AuthAccountInfo represents an account authorized to trade at the discounted fee.
@@ -88,6 +93,10 @@ type Info struct {
 	Amount types.CurrencyAmount `json:"amount"`
 	// The second asset this AMM holds. Either XRPCurrencyAmount (drops string) or IssuedCurrencyAmount.
 	Amount2 types.CurrencyAmount `json:"amount2"`
+	// Whether the first asset is frozen. Omitted when the first asset is XRP.
+	AssetFrozen *bool `json:"asset_frozen,omitempty"`
+	// Whether the second asset is frozen. Omitted when the second asset is XRP.
+	Asset2Frozen *bool `json:"asset2_frozen,omitempty"`
 	// Details of the current auction slot owner.
 	AuctionSlot *AuctionSlotInfo `json:"auction_slot,omitempty"`
 	// The total outstanding balance of LP tokens from this AMM instance.
