@@ -11,8 +11,10 @@ import (
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
 	clientconfigtestutil "github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig/testutil"
+	ledgerentry "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
+	ledgerquery "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
@@ -421,6 +423,45 @@ func TestClient_formatRequest(t *testing.T) {
 				"destination_account":"r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 				"limit":70,
 				"marker":"hdsohdaoidhadasd"
+			}`,
+			expectedErr: nil,
+		},
+		{
+			description: "json.Marshaler request with object selector overrides embedded API version",
+			req: &ledgerquery.EntryRequest{
+				BaseRequest: common.BaseRequest{Version: 1},
+				AMM: ledgerquery.AMMSelector{
+					Object: &ledgerquery.AMMSelectorFields{
+						Asset:  ledgerentry.Asset{Currency: "XRP"},
+						Asset2: ledgerentry.Asset{Currency: "USD", Issuer: "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd"},
+					},
+				},
+			},
+			id:     1,
+			marker: nil,
+			expected: `{
+				"id":1,
+				"command":"ledger_entry",
+				"api_version":2,
+				"amm":{
+					"asset":{"currency":"XRP"},
+					"asset2":{"currency":"USD","issuer":"rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd"}
+				}
+			}`,
+			expectedErr: nil,
+		},
+		{
+			description: "json.Marshaler request with string selector",
+			req: &ledgerquery.EntryRequest{AMM: ledgerquery.AMMSelector{
+				Index: "7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4",
+			}},
+			id:     1,
+			marker: nil,
+			expected: `{
+				"id":1,
+				"command":"ledger_entry",
+				"api_version":2,
+				"amm":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"
 			}`,
 			expectedErr: nil,
 		},
