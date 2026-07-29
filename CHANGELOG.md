@@ -7,11 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### xrpl/transaction
+
+- Extended `Clawback` to support MPT amounts with protocol-correct `Holder` flattening, JSON round trips, validation, binary encoding, and offline signing; XRP and invalid IOU/MPT Holder combinations are rejected.
+
 ### Changed
 
 #### dependencies
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
+
+### Fixed
+
+#### xrpl/ledger-entry-types
+
+- MPT ledger amount fields now marshal as exact quoted UInt64 decimal strings and reject malformed, unquoted, or overflowing JSON input. Required zero values remain present, while optional `MaximumAmount` and `LockedAmount` zero values are omitted.
+- Migration: the exported amount fields remain `uint64`, so Go construction is unchanged. Consumers of raw JSON must read and write these values as quoted decimal strings instead of JSON numbers.
 
 ## [v0.2.0]
 
