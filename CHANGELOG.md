@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### BREAKING CHANGES
+
+#### xrpl/queries/server
+
+- Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID.
+
+#### xrpl/rpc
+
+- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Client autofill and unsigned signing now fail closed when server identity cannot be established. Use `WithNetworkIdentity(networkID, buildVersion)` only for trusted discovery bypasses.
+
+#### xrpl/websocket
+
+- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Client autofill and unsigned signing now fail closed when server identity cannot be established. Use `WithNetworkIdentity(networkID, buildVersion)` only for trusted discovery bypasses.
+
+### Added
+
+#### keypairs
+
+- Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
+
+#### xrpl/rpc
+
+- Added shared NetworkID/version policy for outer and Batch inner transactions, including restricted-network and rippled pre/post-1.11 rules.
+- Added shared X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields, with embedded source/destination tag application and explicit tag-conflict errors.
+
+#### xrpl/websocket
+
+- Added shared NetworkID/version policy for outer and Batch inner transactions, including restricted-network and rippled pre/post-1.11 rules.
+- Added shared X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields, with embedded source/destination tag application and explicit tag-conflict errors.
+
 ### Changed
 
 #### dependencies
@@ -21,11 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - secp256k1 verification now rejects malleable high-S signatures that do not meet XRPL's fully canonical signature requirement.
 - `DeriveClassicAddress` now verifies that secp256k1 public keys encode valid curve points while preserving the caller's valid compressed or uncompressed encoding for address hashing.
 
-### Added
+### Fixed
 
-#### keypairs
+#### xrpl/websocket
 
-- Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
+- Made connection-time network discovery atomic and leak-free, including reconnect identity checks, cancellation-safe reconnect dials, and protection against replacing an existing live connection.
 
 ## [v0.2.0]
 
@@ -700,7 +730,7 @@ Support for the XLS-77d (deep freeze)
 
 ## [v0.1.3]
 
-### Added
+###  Added
 
 - Added `APIVersion` field to the `Client` struct.
 - Added `RippledAPIV1` and `RippledAPIV2` constants.
