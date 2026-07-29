@@ -30,6 +30,12 @@ func NewRunner(t *testing.T, client Client, config *RunnerConfig) *Runner {
 	if config == nil {
 		config = NewRunnerConfig()
 	}
+	if config.WalletCount == 0 {
+		config.WalletCount = DefaultWalletCount
+	}
+	if config.MaxRetries == 0 {
+		config.MaxRetries = DefaultMaxRetries
+	}
 	return &Runner{
 		t:      t,
 		config: config,
