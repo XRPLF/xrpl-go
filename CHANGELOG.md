@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed the `UInt384` and `UInt512` protocol type definitions to `Hash384` and `Hash512`, and removed the `tecHOOK_REJECTED` and `tecNO_DELEGATE_PERMISSION` transaction result mappings.
 
+#### xrpl/hash
+
+- `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`.
+
 #### xrpl/ledger-entry-types
 
 - Changed MPT ledger amount fields from `uint64` to quoted base-10 strings. Changed `MPToken.OwnerNode` and `MPTokenIssuance.OwnerNode` from `uint64` to hexadecimal strings.
@@ -27,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID remains distinct from mainnet ID `0`. Use `WithNetworkIdentity(networkID, buildVersion)` to bypass discovery with trusted deployment values.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
+- Submit preflight now requires a complete single-sign or multisign structure and `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
 
 #### xrpl/transaction
 
@@ -41,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID remains distinct from mainnet ID `0`. Use `ClientConfig.WithNetworkIdentity(networkID, buildVersion)` to bypass discovery with trusted deployment values.
 - Changed `Client.Connect` to request `server_info` before it starts the background reader, adding one network round trip to each explicit connection unless `ClientConfig.WithNetworkIdentity` supplies a trusted identity. A request failure is reported through `OnError` but does not fail the connection. A missing `network_id` makes `NetworkIdentity()` return a nil network ID.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, websocket.ErrMismatchedTag)`.
+- Submit preflight now requires a complete single-sign or multisign structure and `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
 
 ### Added
 
@@ -113,6 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `MutableFlags` bits in addition to an explicitly zero mask.
+- Inner Batch transaction flattening now preserves the wire-required empty `SigningPubKey`, and raw inner-transaction validation requires that explicit empty field.
 
 #### xrpl/websocket
 
@@ -158,12 +165,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AccountDelete autofill now runs blocker checks for plain and named string Account values, including values converted from X-addresses.
 - Concurrent callers now share one in-flight network identity discovery result, including failures, while later independent operations can retry.
 - Rippled prerelease versions with numeric suffixes now compare the suffix numerically.
+- Made submit options nil-safe without enabling autofill by default; forced `fail_hard` for `AccountDelete`; added the `VaultCreate` owner-reserve fee; normalized `DeliverMax` to wire `Amount`; and prevented autofill/submission failures from corrupting caller-owned maps.
 
 #### xrpl/websocket
 
 - Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation.
 - AccountDelete autofill now runs blocker checks for plain and named string Account values, including values converted from X-addresses.
 - Identity discovery now accepts out-of-order frames, replays buffered stream messages, clears temporary read deadlines after failed reads, and bounds replacement dials by the client timeout.
+- Made submit options nil-safe without enabling autofill by default; forced `fail_hard` for `AccountDelete`; added the `VaultCreate` owner-reserve fee; normalized `DeliverMax` to wire `Amount`; and prevented autofill/submission failures from corrupting caller-owned maps.
 
 ## [v0.2.0]
 
