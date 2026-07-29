@@ -35,6 +35,15 @@ The `WithFaucetProvider` option allows you to set the faucet provider of the Web
 func (wc ClientConfig) WithFaucetProvider(fp common.FaucetProvider) ClientConfig
 ```
 
+### Reliable-submission polling
+
+`WithMaxRetries` limits consecutive monitoring transport failures. For a legal transaction without `LastLedgerSequence`, it also bounds inconclusive polling attempts. It never limits ledger-driven monitoring when `LastLedgerSequence` is present. `WithRetryDelay` sets the interval between polling rounds.
+
+```go
+func WithMaxRetries(maxRetries int) ConfigOpt
+func WithRetryDelay(retryDelay time.Duration) ConfigOpt
+```
+
 ### MaxFeeXRP
 
 The `WithMaxFeeXRP` option allows you to set the maximum fee in XRP that the client will use.
@@ -115,12 +124,20 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 
 ### SubmitTxAndWait/SubmitTxBlobAndWait
 
-The `SubmitTxAndWait` and `SubmitTxBlobAndWait` methods are used to submit a transaction to the XRPL network and wait for it to be included in a ledger. They return a `TxResponse` struct containing the finalized ledger transaction result for the flattened transaction or blob submitted.
+The reliable-submission methods monitor preliminary `tes`, `ter`, and `tec` results until the transaction has an authoritative validated-ledger outcome. Preliminary `tef` and `tem` results return `PreliminaryResultError` immediately; this is an SDK monitoring policy, not a claim that the provisional result was validated.
+
+A transaction with `LastLedgerSequence` expires only after the current validated ledger is strictly greater than that value and the transaction is still not validated. Validation exactly at `LastLedgerSequence` is accepted. A transaction without `LastLedgerSequence` is legal; the client uses the `WithMaxRetries` bounded fallback and returns `FinalityNotDeterminedError` rather than claiming ledger expiry.
 
 ```go
 func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *rpctypes.SubmitOptions) (*requests.TxResponse, error)
+func (c *Client) SubmitTxAndWaitContext(ctx context.Context, tx transaction.FlatTransaction, opts *rpctypes.SubmitOptions) (*requests.TxResponse, error)
 func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.TxResponse, error)
+func (c *Client) SubmitTxBlobAndWaitContext(ctx context.Context, txBlob string, failHard bool) (*requests.TxResponse, error)
 ```
+
+A validated `tec` result returns both the non-nil `TxResponse` and a `ValidatedTransactionError`, so callers can inspect authoritative metadata. `TransactionExpiredError`, `FinalityNotDeterminedError`, and `FinalityTransportError` distinguish ledger expiry, bounded uncertainty, and repeated query/transport failure. Context-aware methods return `ctx.Err()` directly on cancellation or deadline.
+
+Migration note: `ErrMissingLastLedgerSequenceInTransaction` is retained but deprecated and is no longer returned by these methods. Code that depended on that error should handle `ErrFinalityNotDetermined` after bounded fallback monitoring instead. `ErrTransactionNotFound` is also no longer a terminal reliable-submission outcome; not-found responses remain an internal polling state until validation, expiry, or bounded uncertainty.
 
 ## Queries
 
