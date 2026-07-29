@@ -17,8 +17,12 @@ const (
 var (
 	// transaction
 
-	// ErrMissingTxSignatureOrSigningPubKey is returned when a transaction lacks both TxSignature and SigningPubKey.
-	ErrMissingTxSignatureOrSigningPubKey = errors.New("transaction must include either TxSignature or SigningPubKey")
+	// ErrMissingTxSignatureOrSigningPubKey is returned when a transaction has no complete signing form.
+	ErrMissingTxSignatureOrSigningPubKey = errors.New("transaction must include a complete TxnSignature/SigningPubKey or Signers form")
+	// ErrInvalidSignedTransaction is returned when signing fields are malformed, incomplete, empty, or mixed.
+	ErrInvalidSignedTransaction = clientinternal.ErrInvalidSignedTransaction
+	// ErrNilTransaction is returned when a nil transaction is submitted or autofilled.
+	ErrNilTransaction = errors.New("transaction must not be nil")
 	// ErrSignerDataIsEmpty is returned when signer data is empty or missing.
 	ErrSignerDataIsEmpty = errors.New("signer data must not be empty")
 	// ErrMissingLastLedgerSequenceInTransaction is returned when LastLedgerSequence is missing from a transaction.

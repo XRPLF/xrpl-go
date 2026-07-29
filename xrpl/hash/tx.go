@@ -5,19 +5,19 @@ import (
 	"encoding/hex"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
-	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 )
 
 // SignTxBlob hashes a signed transaction blob
 // It takes a transaction blob and returns the hash of the signed transaction.
 // It returns an error if the transaction blob is invalid.
 func SignTxBlob(txBlob string) (string, error) {
-	tx, err := binarycodec.Decode(txBlob)
+	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return "", err
 	}
 
-	if valid, err := isTxValid(tx); !valid {
+	if err := isTxValid(tx); err != nil {
 		return "", err
 	}
 
@@ -28,7 +28,7 @@ func SignTxBlob(txBlob string) (string, error) {
 // It takes a signed transaction and returns the hash of the signed transaction.
 // It returns an error if the transaction is invalid.
 func SignTx(tx map[string]any) (string, error) {
-	if valid, err := isTxValid(tx); !valid {
+	if err := isTxValid(tx); err != nil {
 		return "", err
 	}
 
@@ -56,19 +56,13 @@ func encodeSignedTxBlob(txBlob string) (string, error) {
 	return EncodeToHashString(payload), nil
 }
 
-func isTxValid(tx map[string]any) (bool, error) {
-	isInnerBatchTxn := false
-	if flags, ok := tx["Flags"].(uint32); ok {
-		isInnerBatchTxn = (flags & types.TfInnerBatchTxn) != 0
+func isTxValid(tx map[string]any) error {
+	form, err := clientinternal.InspectSignedTransaction(tx, true)
+	if err != nil {
+		return err
 	}
-
-	hasTxnSignature := tx["TxnSignature"] != nil
-	hasSigners := tx["Signers"] != nil
-	hasSigningPubKey := tx["SigningPubKey"] != nil
-
-	if !hasTxnSignature && !hasSigners && !hasSigningPubKey && !isInnerBatchTxn {
-		return false, ErrNonSignedTransaction
+	if form == clientinternal.UnsignedTransaction {
+		return ErrNonSignedTransaction
 	}
-
-	return true, nil
+	return nil
 }

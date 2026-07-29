@@ -128,15 +128,15 @@ func TestRawTransaction_Validate(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name: "pass - valid transaction with minimal fields",
+			name: "fail - missing explicit empty SigningPubKey",
 			rawTx: &RawTransaction{
 				RawTransaction: map[string]any{
 					"TransactionType": "Payment",
 					"Flags":           TfInnerBatchTxn,
 				},
 			},
-			expectedValid: true,
-			expectedError: nil,
+			expectedValid: false,
+			expectedError: ErrBatchInnerTransactionInvalid,
 		},
 		{
 			name: "fail - nested batch transaction",
