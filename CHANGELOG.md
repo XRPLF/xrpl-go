@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Exported the untyped `MaxDrops` constant for the maximum native XRP amount in drops.
 
+#### xrpl/queries/subscription/types
+
+- Added `BookChangesStreamType` for the `bookChanges` subscription notification discriminator.
+
 #### xrpl/transaction
 
 - Added centralized transaction type constants and `IsPseudoTransactionType` classification for `EnableAmendment`, `SetFee`, and `UNLModify`.
@@ -62,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
 - Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for malformed preliminary results, ledger expiry, repeated monitoring transport failure, and invalid polling intervals.
 - Added `ErrInvalidFeeValue` and `ErrFeeHasTooManyDecimals` for fee validation.
+- Added `ErrInsecureAuthorization` and `ErrAuthorizationRequestFailed` for secure, redaction-safe authorized transport failures.
 
 #### xrpl/transaction/integration
 
@@ -94,6 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Autofill now omits and rejects an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. It adds and requires the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
 - The client now discovers and caches network identity with `server_info` before an identity-dependent operation. A discovery failure leaves the identity unknown, does not block the operation, and is retried by a later operation.
 - Client-side signing now skips network identity discovery and policy validation when autofill is disabled.
+- Authorized RPC requests now require a parsed HTTPS endpoint and a redirect-safe `*http.Client`, reject authenticated plaintext redirects, recognize header names case-insensitively and URL userinfo, and redact credential material from returned diagnostics.
 
 #### xrpl/transaction
 
@@ -104,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Autofill now omits and rejects an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. It adds and requires the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
 - Missing network identity or build-version data now causes autofill to omit `NetworkID`.
 - Client-side signing now skips network identity policy validation when autofill is disabled.
+- Documented the stream-handler concurrency, per-stream ordering, and unbuffered backpressure contract.
 
 ### Fixed
 
@@ -140,6 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Closed and invalidated WebSocket connections after write or write-deadline failures. The active read loop now attempts reconnection after any read error, not only close errors, within the existing `WithMaxReconnects` budget.
 - Made manual disconnect claim an in-progress reconnect socket before lifecycle cancellation so cancellation-driven invalidation cannot cause a false not-connected error.
 - Made reconnect backoff configuration immutable per client to prevent concurrent clients and reconnect tests from racing over shared delay state.
+- Dispatched `transaction` notifications to the exported order-book handler and `bookChanges` notifications to the exported book-changes handler, with typed decoding and single delivery across reconnects.
 
 ## [v0.2.0]
 
