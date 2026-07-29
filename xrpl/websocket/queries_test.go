@@ -38,6 +38,7 @@ func setupTestClient(t *testing.T, messages []map[string]any) (*Client, func()) 
 	cl := NewClient(NewClientConfig().
 		WithHost(url).
 		WithTimeout(1 * time.Second))
+	setTrustedTestNetworkIdentity(cl, 0)
 
 	if err := cl.Connect(); err != nil {
 		t.Fatalf("Error connecting to server: %v", err)

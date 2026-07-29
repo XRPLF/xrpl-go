@@ -46,6 +46,10 @@ type Config struct {
 	// Faucet config
 	faucetProvider common.FaucetProvider
 
+	// Trusted network identity override.
+	networkID    *uint32
+	buildVersion string
+
 	timeout time.Duration
 }
 
@@ -104,6 +108,16 @@ func WithFeeCushion(feeCushion float32) ConfigOpt {
 func WithFaucetProvider(fp common.FaucetProvider) ConfigOpt {
 	return func(c *Config) {
 		c.faucetProvider = fp
+	}
+}
+
+// WithNetworkIdentity configures a trusted network identity and bypasses
+// server_info discovery. Use this only when both values come from a trusted
+// deployment configuration.
+func WithNetworkIdentity(networkID uint32, buildVersion string) ConfigOpt {
+	return func(c *Config) {
+		c.networkID = &networkID
+		c.buildVersion = buildVersion
 	}
 }
 

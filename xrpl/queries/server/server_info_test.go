@@ -1,11 +1,39 @@
 package server
 
 import (
+	"encoding/json"
 	"testing"
 
 	servertypes "github.com/Peersyst/xrpl-go/xrpl/queries/server/types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
+	"github.com/stretchr/testify/require"
 )
+
+func TestServerInfoNetworkIDPresence(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		expected uint32
+		present  bool
+	}{
+		{name: "missing", response: `{"info":{"build_version":"1.10.0"}}`},
+		{name: "mainnet zero", response: `{"info":{"network_id":0,"build_version":"1.12.0"}}`, present: true},
+		{name: "restricted", response: `{"info":{"network_id":21337,"build_version":"1.12.0"}}`, expected: 21337, present: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var response InfoResponse
+			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
+			if !tt.present {
+				require.Nil(t, response.Info.NetworkID)
+				return
+			}
+			require.NotNil(t, response.Info.NetworkID)
+			require.Equal(t, tt.expected, *response.Info.NetworkID)
+		})
+	}
+}
 
 func TestServerInfoResponse(t *testing.T) {
 	s := InfoResponse{

@@ -20,7 +20,7 @@ type Info struct {
 	LastClose                ServerClose          `json:"last_close"`
 	Load                     ServerLoad           `json:"load,omitzero"`
 	LoadFactor               uint                 `json:"load_factor"`
-	NetworkID                uint                 `json:"network_id,omitempty"`
+	NetworkID                *uint32              `json:"network_id,omitempty"`
 	LoadFactorLocal          uint                 `json:"load_factor_local,omitempty"`
 	LoadFactorNet            uint                 `json:"load_factor_net,omitempty"`
 	LoadFactorCluster        uint                 `json:"load_factor_cluster,omitempty"`
