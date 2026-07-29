@@ -2,6 +2,7 @@ package addresscodec
 
 import (
 	"crypto/sha256"
+	"crypto/subtle"
 )
 
 // checksum: first four bytes of sha256^2
@@ -31,12 +32,11 @@ func Base58CheckDecode(input string) (result []byte, err error) {
 		return nil, ErrInvalidFormat
 	}
 
-	var cksum [4]byte
-	copy(cksum[:], decoded[len(decoded)-4:])
-	if checksum(decoded[:len(decoded)-4]) != cksum {
+	result = decoded[:len(decoded)-4]
+	actualChecksum := decoded[len(decoded)-4:]
+	expectedChecksum := checksum(result)
+	if len(actualChecksum) != len(expectedChecksum) || subtle.ConstantTimeCompare(actualChecksum, expectedChecksum[:]) != 1 {
 		return nil, ErrChecksum
 	}
-
-	result = decoded[:len(decoded)-4]
 	return
 }

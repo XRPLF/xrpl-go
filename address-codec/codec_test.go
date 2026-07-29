@@ -2,6 +2,7 @@ package addresscodec
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/address-codec/interfaces"
@@ -95,6 +96,51 @@ func TestDecode(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedOutput, res)
+			}
+		})
+	}
+}
+
+func TestDecodersRejectChecksumCorruptionAtEveryPosition(t *testing.T) {
+	testcases := []struct {
+		name        string
+		input       string
+		decode      func(string) error
+		expectedErr error
+	}{
+		{
+			name:  "classic address",
+			input: "rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
+			decode: func(input string) error {
+				_, err := Decode(input, []byte{AccountAddressPrefix})
+				return err
+			},
+			expectedErr: ErrChecksum,
+		},
+		{
+			name:  "seed",
+			input: "sEdTzRkEgPoxDG1mJ6WkSucHWnMkm1H",
+			decode: func(input string) error {
+				_, _, err := DecodeSeed(input)
+				return err
+			},
+			expectedErr: ErrInvalidSeed,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			decoded := DecodeBase58(tc.input)
+			require.GreaterOrEqual(t, len(decoded), 4)
+
+			for i := range 4 {
+				t.Run(fmt.Sprintf("checksum byte %d", i), func(t *testing.T) {
+					corrupted := append([]byte(nil), decoded...)
+					corrupted[len(corrupted)-4+i] ^= 0xff
+
+					err := tc.decode(EncodeBase58(corrupted))
+					require.ErrorIs(t, err, tc.expectedErr)
+				})
 			}
 		})
 	}
@@ -291,8 +337,29 @@ func TestDecodeSeed(t *testing.T) {
 			expectedErr:       ErrInvalidSeedLength,
 		},
 		{
+			name:              "fail - checksum valid ED25519 seed with no entropy",
+			input:             Base58CheckEncode(nil, crypto.ED25519().FamilySeedPrefix()...),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedLength,
+		},
+		{
 			name:              "fail - checksum valid ED25519 seed with short entropy",
 			input:             Base58CheckEncode([]byte{0x00}, crypto.ED25519().FamilySeedPrefix()...),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedLength,
+		},
+		{
+			name:              "fail - checksum valid secp256k1 seed with long entropy",
+			input:             Base58CheckEncode(make([]byte, FamilySeedLength+1), FamilySeedPrefix),
+			expectedOutput:    nil,
+			expectedAlgorithm: nil,
+			expectedErr:       ErrInvalidSeedLength,
+		},
+		{
+			name:              "fail - checksum valid ED25519 seed with long entropy",
+			input:             Base58CheckEncode(make([]byte, FamilySeedLength+1), crypto.ED25519().FamilySeedPrefix()...),
 			expectedOutput:    nil,
 			expectedAlgorithm: nil,
 			expectedErr:       ErrInvalidSeedLength,
@@ -312,7 +379,8 @@ func TestDecodeSeed(t *testing.T) {
 
 			if tc.expectedErr != nil {
 				require.EqualError(t, err, tc.expectedErr.Error())
-				require.Nil(t, tc.expectedOutput)
+				require.Nil(t, got)
+				require.Nil(t, algorithm)
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedOutput, got)
