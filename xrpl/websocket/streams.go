@@ -26,7 +26,7 @@ type lifecycleEvent[T any] struct {
 // activate it for a fresh client lifecycle. On atomically replaces any
 // previously registered handler on this stream rather than spawning an
 // additional runner. Handler replacement is best-effort: an event already
-// queued for delivery may still be dispatched to the previously registered
+// accepted for delivery may still be dispatched to the previously registered
 // handler.
 func (s *lifecycleStream[T]) On(ctx context.Context, handler func(T)) {
 	s.stateMu.Lock()
@@ -61,13 +61,11 @@ func (s *lifecycleStream[T]) Start(ctx context.Context) {
 	}
 }
 
-// Report delivers value to the runner. The send is synchronous on an
-// unbuffered channel so handlers apply backpressure rather than buffering
-// unbounded events. Because the caller is the single readMessages goroutine
-// (which also dispatches Request responses via handleRequest), a slow user
-// stream handler stalls request dispatch and can time out unrelated requests.
-// Callers that need request throughput in the presence of slow handlers
-// should offload work inside their handler.
+// Report hands value to the per-stream runner over an unbuffered channel. The
+// handoff returns when the runner accepts the event, not when the handler
+// finishes. A running handler therefore applies backpressure when the next
+// event for this stream is reported; if Report is called by readMessages, that
+// backpressure stalls all subsequent stream and request dispatch.
 func (s *lifecycleStream[T]) Report(ctx context.Context, value T) {
 	if ctx == nil || ctx.Err() != nil {
 		return
@@ -148,11 +146,8 @@ func (s *lifecycleStream[T]) run(ctx context.Context, ch <-chan lifecycleEvent[T
 }
 
 // registerLifecycleHandler atomically replaces the registered handler on
-// stream under streamHandlerStateMu. Handlers run on the single readMessages
-// goroutine that also dispatches Request responses, slow OnXxx handlers
-// therefore stall response dispatch and can time out unrelated Request calls.
-// Callers that need request throughput in the presence of slow stream work
-// should offload that work inside their handler.
+// stream under streamHandlerStateMu. See Client's godoc for the handler
+// concurrency, ordering, and backpressure contract.
 func registerLifecycleHandler[T any](c *Client, stream *lifecycleStream[T], handler func(T)) {
 	c.streamHandlerStateMu.Lock()
 	defer c.streamHandlerStateMu.Unlock()
@@ -168,7 +163,8 @@ func (c *Client) reportError(ctx context.Context, err error) {
 	c.errorStream.Report(ctx, err)
 }
 
-// OnError handles asynchronous client errors.
+// OnError handles asynchronous client errors. It follows the handler contract
+// documented on [Client].
 func (c *Client) OnError(errHandler func(err error)) {
 	registerLifecycleHandler(c, &c.errorStream, errHandler)
 }
@@ -177,7 +173,8 @@ func (c *Client) reportLedgerClosed(ctx context.Context, ledger *streamtypes.Led
 	c.ledgerClosedStream.Report(ctx, ledger)
 }
 
-// OnLedgerClosed handles "ledgerClosed" events.
+// OnLedgerClosed handles "ledgerClosed" events. It follows the handler
+// contract documented on [Client].
 func (c *Client) OnLedgerClosed(handler func(ledger *streamtypes.LedgerStream)) {
 	registerLifecycleHandler(c, &c.ledgerClosedStream, handler)
 }
@@ -186,7 +183,8 @@ func (c *Client) reportValidationReceived(ctx context.Context, validation *strea
 	c.validationStream.Report(ctx, validation)
 }
 
-// OnValidationReceived handles "validationReceived" events.
+// OnValidationReceived handles "validationReceived" events. It follows the
+// handler contract documented on [Client].
 func (c *Client) OnValidationReceived(handler func(validation *streamtypes.ValidationStream)) {
 	registerLifecycleHandler(c, &c.validationStream, handler)
 }
@@ -195,7 +193,9 @@ func (c *Client) reportTransaction(ctx context.Context, transaction *streamtypes
 	c.transactionStream.Report(ctx, transaction)
 }
 
-// OnTransactions handles "transactions" events.
+// OnTransactions handles "transaction" messages, including messages produced
+// by transaction, account, and order-book subscriptions. It follows the
+// handler contract documented on [Client].
 func (c *Client) OnTransactions(handler func(transactions *streamtypes.TransactionStream)) {
 	registerLifecycleHandler(c, &c.transactionStream, handler)
 }
@@ -204,7 +204,8 @@ func (c *Client) reportPeerStatusChange(ctx context.Context, peerStatus *streamt
 	c.peerStatusStream.Report(ctx, peerStatus)
 }
 
-// OnPeerStatusChange handles "peerStatus" events.
+// OnPeerStatusChange handles "peerStatusChange" events. It follows the handler
+// contract documented on [Client].
 func (c *Client) OnPeerStatusChange(handler func(peerStatus *streamtypes.PeerStatusStream)) {
 	registerLifecycleHandler(c, &c.peerStatusStream, handler)
 }
@@ -213,7 +214,10 @@ func (c *Client) reportOrderBook(ctx context.Context, orderbook *streamtypes.Ord
 	c.orderBookStream.Report(ctx, orderbook)
 }
 
-// OnOrderBook handles "orderbook" events.
+// OnOrderBook handles order-book notifications. The XRPL protocol sends these
+// as "transaction" messages without identifying which subscription matched,
+// so this handler receives every transaction message, as does OnTransactions.
+// It follows the handler contract documented on [Client].
 func (c *Client) OnOrderBook(handler func(orderbook *streamtypes.OrderBookStream)) {
 	registerLifecycleHandler(c, &c.orderBookStream, handler)
 }
@@ -222,7 +226,8 @@ func (c *Client) reportBookChanges(ctx context.Context, bookChanges *streamtypes
 	c.bookChangesStream.Report(ctx, bookChanges)
 }
 
-// OnBookChanges handles "bookChanges" events.
+// OnBookChanges handles "bookChanges" events. It follows the handler contract
+// documented on [Client].
 func (c *Client) OnBookChanges(handler func(bookChanges *streamtypes.BookChangesStream)) {
 	registerLifecycleHandler(c, &c.bookChangesStream, handler)
 }
@@ -231,7 +236,8 @@ func (c *Client) reportConsensusPhase(ctx context.Context, consensusPhase *strea
 	c.consensusStream.Report(ctx, consensusPhase)
 }
 
-// OnConsensusPhase handles "consensusPhase" events.
+// OnConsensusPhase handles "consensusPhase" events. It follows the handler
+// contract documented on [Client].
 func (c *Client) OnConsensusPhase(handler func(consensusPhase *streamtypes.ConsensusStream)) {
 	registerLifecycleHandler(c, &c.consensusStream, handler)
 }
