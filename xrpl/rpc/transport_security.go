@@ -75,17 +75,22 @@ func authorizationHTTPClient(client HTTPClient, hasAuthorization bool) (HTTPClie
 
 func authorizationRedirectPolicy(previousCheckRedirect func(*http.Request, []*http.Request) error) func(*http.Request, []*http.Request) error {
 	return func(req *http.Request, via []*http.Request) error {
+		if !isHTTPSURL(req.URL) && redirectChainHasAuthorization(req, via) {
+			return ErrInsecureAuthorization
+		}
+
 		if previousCheckRedirect != nil {
 			if err := previousCheckRedirect(req, via); err != nil {
 				return err
+			}
+			// Check again because a caller callback may mutate the redirect target.
+			if !isHTTPSURL(req.URL) && redirectChainHasAuthorization(req, via) {
+				return ErrInsecureAuthorization
 			}
 		} else if len(via) >= 10 {
 			return errTooManyRedirects
 		}
 
-		if !isHTTPSURL(req.URL) && redirectChainHasAuthorization(req, via) {
-			return ErrInsecureAuthorization
-		}
 		return nil
 	}
 }

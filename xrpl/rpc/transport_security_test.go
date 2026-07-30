@@ -332,6 +332,39 @@ func TestClient_AuthorizationRedirectDowngrade(t *testing.T) {
 	}
 }
 
+func TestAuthorizationRedirectPolicyChecksDowngradeBeforeCaller(t *testing.T) {
+	sourceRequest := httptest.NewRequest(http.MethodGet, "https://example.com/source", nil)
+	sourceRequest.Header.Set("Authorization", testHeaderValue)
+
+	t.Run("rejects downgrade without calling caller policy", func(t *testing.T) {
+		redirectRequest := httptest.NewRequest(http.MethodGet, "http://example.com/target", nil)
+		var callerInvoked atomic.Bool
+		policy := authorizationRedirectPolicy(func(*http.Request, []*http.Request) error {
+			callerInvoked.Store(true)
+			return nil
+		})
+
+		err := policy(redirectRequest, []*http.Request{sourceRequest})
+
+		require.ErrorIs(t, err, ErrInsecureAuthorization)
+		require.False(t, callerInvoked.Load())
+	})
+
+	t.Run("calls caller policy for HTTPS redirect", func(t *testing.T) {
+		redirectRequest := httptest.NewRequest(http.MethodGet, "https://example.com/target", nil)
+		var callerInvoked atomic.Bool
+		policy := authorizationRedirectPolicy(func(*http.Request, []*http.Request) error {
+			callerInvoked.Store(true)
+			return nil
+		})
+
+		err := policy(redirectRequest, []*http.Request{sourceRequest})
+
+		require.NoError(t, err)
+		require.True(t, callerInvoked.Load())
+	})
+}
+
 func withTestAuthorizationHeader(name string) ConfigOpt {
 	return func(cfg *Config) {
 		cfg.Headers[name] = []string{testHeaderValue}
