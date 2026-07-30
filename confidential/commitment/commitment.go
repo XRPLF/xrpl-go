@@ -18,8 +18,7 @@ func Create(amount uint64, bfHex string) (string, error) {
 		return "", fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
 	}
 
-	var bf [mptcrypto.BlindingFactorSize]byte
-	copy(bf[:], bfBytes)
+	bf := mptcrypto.BlindingFactor(bfBytes)
 
 	c, err := mptcrypto.PedersenCommitment(amount, bf)
 	if err != nil {

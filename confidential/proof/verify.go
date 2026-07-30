@@ -23,8 +23,7 @@ func VerifyRevealedAmount(amount uint64, bfHex string, holder, issuer Participan
 		return err
 	}
 
-	var bf [mptcrypto.BlindingFactorSize]byte
-	copy(bf[:], bfBytes)
+	bf := mptcrypto.BlindingFactor(bfBytes)
 
 	var auditorP *mptcrypto.Participant
 	if auditor != nil {
@@ -62,13 +61,10 @@ func VerifySendRangeProof(proofHex, amountCommitHex, balanceCommitHex, ctxHashHe
 	}
 
 	var proof [mptcrypto.DoubleBulletproofSize]byte
-	var amountCommit [mptcrypto.CommitmentSize]byte
-	var balanceCommit [mptcrypto.CommitmentSize]byte
-	var hash [mptcrypto.HashOutputSize]byte
 	copy(proof[:], proofBytes)
-	copy(amountCommit[:], amountCommitBytes)
-	copy(balanceCommit[:], balanceCommitBytes)
-	copy(hash[:], hashBytes)
+	amountCommit := mptcrypto.Commitment(amountCommitBytes)
+	balanceCommit := mptcrypto.Commitment(balanceCommitBytes)
+	hash := mptcrypto.ContextHash(hashBytes)
 
 	if err := mptcrypto.VerifySendRangeProof(proof, amountCommit, balanceCommit, hash); err != nil {
 		return fmt.Errorf("%w: %w", ErrProofVerificationFailed, err)

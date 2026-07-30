@@ -67,9 +67,15 @@ func TestDecodeFixedHex(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "fail - wrong byte length",
+			name:    "fail - too short",
 			hex:     "0102",
 			size:    32,
+			wantErr: true,
+		},
+		{
+			name:    "fail - too long",
+			hex:     "010203",
+			size:    2,
 			wantErr: true,
 		},
 		{

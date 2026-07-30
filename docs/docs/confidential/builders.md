@@ -52,7 +52,7 @@ Use these for `ConfidentialMPTSend`.
 
 - Resolves issuer, auditor, sender, and destination encryption keys.
 - Reads the sender `MPToken` state, including `ConfidentialBalanceSpending` and `ConfidentialBalanceVersion`.
-- Decrypts the sender's current confidential balance with the supplied private key.
+- Decrypts the sender's current confidential balance with the supplied private key and inclusive `BalanceRange`.
 - Encrypts the transfer amount for sender, destination, issuer, and optional auditor.
 - Builds both Pedersen commitments and the composite send proof.
 
@@ -66,6 +66,10 @@ tx, err := builder.BuildSend(client, builder.BuildSendParams{
     Amount:        25,
     SenderPrivKey: senderPrivKeyHex,
     SenderPubKey:  senderPubKeyHex,
+    BalanceRange: elgamal.AmountRange{
+        Low:  0,
+        High: 1_000_000,
+    },
 })
 ```
 
@@ -74,7 +78,7 @@ tx, err := builder.BuildSend(client, builder.BuildSendParams{
 Use these for `ConfidentialMPTConvertBack`.
 
 - Resolves issuer and optional auditor keys.
-- Reads and decrypts the holder's current confidential spending balance.
+- Reads and decrypts the holder's current confidential spending balance within the supplied inclusive `BalanceRange`.
 - Uses `ConfidentialBalanceVersion` from ledger state.
 - Builds the encrypted withdrawal amount, balance commitment, and convert-back proof.
 
@@ -85,8 +89,20 @@ tx, err := builder.BuildConvertBack(client, builder.BuildConvertBackParams{
     Amount:        10,
     HolderPrivKey: holderPrivKeyHex,
     HolderPubKey:  holderPubKeyHex,
+    BalanceRange: elgamal.AmountRange{
+        Low:  0,
+        High: 1_000_000,
+    },
 })
 ```
+
+### Bounded balance decryption
+
+`BuildSend` and `BuildConvertBack` decrypt the current on-ledger spending balance before constructing a transaction. Their `BalanceRange` is the expected range of that **current balance**, not the amount being sent or converted back.
+
+The `Low` and `High` bounds are inclusive and must contain the plaintext balance. They must satisfy `Low <= High < math.MaxUint64`. Decryption searches the interval linearly, so use the narrowest practical range; unnecessarily large ranges can make transaction construction slow. Omitting `BalanceRange` produces `[0, 0]`, which only succeeds for a zero balance.
+
+`PrepareSend` and `PrepareConvertBack` do not decrypt ledger state because their `CurrentBalance` is supplied explicitly.
 
 ### `BuildClawback` and `PrepareClawback`
 
@@ -167,4 +183,5 @@ Most builder errors are explicit and map to missing ledger state or invalid inpu
 - `ErrReceiverNotOptedIn`: the destination holder has no registered `HolderEncryptionKey`.
 - `ErrMPTokenNotFound`: the account does not yet have the expected `MPToken` ledger entry.
 - `ErrInsufficientBalance`: the requested confidential send or convert-back amount exceeds the decrypted balance.
-- `ErrCryptoFailed`: a cryptographic primitive failed or the provided private key does not match ledger state.
+- `elgamal.ErrInvalidAmountRange`: `BalanceRange` is inverted or its upper bound is `math.MaxUint64`.
+- `ErrCryptoFailed`: a cryptographic primitive failed, the provided private key does not match ledger state, or the current balance falls outside `BalanceRange`.

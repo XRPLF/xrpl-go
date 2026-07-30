@@ -25,12 +25,9 @@ func GenerateConvertProof(pubkeyHex, privkeyHex, ctxHashHex string) (string, err
 		return "", fmt.Errorf("%w: %w", ErrInvalidContextHash, err)
 	}
 
-	var pub [mptcrypto.PubKeySize]byte
-	var priv [mptcrypto.PrivKeySize]byte
-	var hash [mptcrypto.HashOutputSize]byte
-	copy(pub[:], pubBytes)
-	copy(priv[:], privBytes)
-	copy(hash[:], hashBytes)
+	pub := mptcrypto.PublicKey(pubBytes)
+	priv := mptcrypto.PrivateKey(privBytes)
+	hash := mptcrypto.ContextHash(hashBytes)
 
 	proof, err := mptcrypto.GenerateConvertProof(pub, priv, hash)
 	if err != nil {
@@ -56,11 +53,9 @@ func VerifyConvertProof(proofHex, pubkeyHex, ctxHashHex string) error {
 	}
 
 	var proof [mptcrypto.SchnorrProofSize]byte
-	var pub [mptcrypto.PubKeySize]byte
-	var hash [mptcrypto.HashOutputSize]byte
 	copy(proof[:], proofBytes)
-	copy(pub[:], pubBytes)
-	copy(hash[:], hashBytes)
+	pub := mptcrypto.PublicKey(pubBytes)
+	hash := mptcrypto.ContextHash(hashBytes)
 
 	if err := mptcrypto.VerifyConvertProof(proof, pub, hash); err != nil {
 		return fmt.Errorf("%w: %w", ErrProofVerificationFailed, err)

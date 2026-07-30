@@ -15,6 +15,7 @@ import "C"
 
 import (
 	"fmt"
+	"math"
 	"unsafe"
 )
 
@@ -71,7 +72,7 @@ func toProofParams(p PedersenProofParams) C.mpt_pedersen_proof_params {
 
 // GenerateKeypair creates a new secp256k1 ElGamal keypair.
 // Returns a 32-byte private key and a 33-byte compressed public key.
-func GenerateKeypair() (privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, err error) {
+func GenerateKeypair() (privkey PrivateKey, pubkey PublicKey, err error) {
 	ret := C.mpt_generate_keypair(
 		uint8Ptr(&privkey[0]),
 		uint8Ptr(&pubkey[0]),
@@ -83,7 +84,7 @@ func GenerateKeypair() (privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, err 
 }
 
 // GenerateBlindingFactor returns a random 32-byte scalar suitable for ElGamal encryption.
-func GenerateBlindingFactor() (bf [BlindingFactorSize]byte, err error) {
+func GenerateBlindingFactor() (bf BlindingFactor, err error) {
 	ret := C.mpt_generate_blinding_factor(
 		uint8Ptr(&bf[0]),
 	)
@@ -95,7 +96,7 @@ func GenerateBlindingFactor() (bf [BlindingFactorSize]byte, err error) {
 
 // EncryptAmount encrypts a uint64 amount under a compressed public key using a blinding factor.
 // Returns a 66-byte ciphertext (two compressed EC points: C1 || C2).
-func EncryptAmount(amount uint64, pubkey [PubKeySize]byte, bf [BlindingFactorSize]byte) (ct [CiphertextSize]byte, err error) {
+func EncryptAmount(amount uint64, pubkey PublicKey, bf BlindingFactor) (ct Ciphertext, err error) {
 	ret := C.mpt_encrypt_amount(
 		C.uint64_t(amount),
 		uint8Ptr(&pubkey[0]),
@@ -109,13 +110,19 @@ func EncryptAmount(amount uint64, pubkey [PubKeySize]byte, bf [BlindingFactorSiz
 }
 
 // DecryptAmount decrypts a 66-byte ElGamal ciphertext using a private key.
-// Returns the plaintext uint64 amount.
-func DecryptAmount(ciphertext [CiphertextSize]byte, privkey [PrivKeySize]byte) (uint64, error) {
+// It searches the inclusive [rangeLow, rangeHigh] interval with linear cost.
+func DecryptAmount(ciphertext Ciphertext, privateKey PrivateKey, rangeLow, rangeHigh uint64) (uint64, error) {
+	if err := validateAmountRange(rangeLow, rangeHigh); err != nil {
+		return 0, err
+	}
+
 	var amount C.uint64_t
 	ret := C.mpt_decrypt_amount(
 		uint8Ptr(&ciphertext[0]),
-		uint8Ptr(&privkey[0]),
+		uint8Ptr(&privateKey[0]),
 		&amount,
+		C.uint64_t(rangeLow),
+		C.uint64_t(rangeHigh),
 	)
 	if ret != 0 {
 		return 0, fmt.Errorf("mpt_decrypt_amount failed with code %d", ret)
@@ -123,12 +130,22 @@ func DecryptAmount(ciphertext [CiphertextSize]byte, privkey [PrivKeySize]byte) (
 	return uint64(amount), nil
 }
 
+func validateAmountRange(rangeLow, rangeHigh uint64) error {
+	if rangeLow > rangeHigh {
+		return fmt.Errorf("%w: low %d exceeds high %d", ErrInvalidAmountRange, rangeLow, rangeHigh)
+	}
+	if rangeHigh == math.MaxUint64 {
+		return fmt.Errorf("%w: high must be less than %d", ErrInvalidAmountRange, uint64(math.MaxUint64))
+	}
+	return nil
+}
+
 // endregion
 
 // region Context hashes
 
 // ConvertContextHash computes the context hash for a ConfidentialMPTConvert transaction.
-func ConvertContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq uint32) (hash [HashOutputSize]byte, err error) {
+func ConvertContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq uint32) (hash ContextHash, err error) {
 	ret := C.mpt_get_convert_context_hash(
 		toAccountID(account),
 		toIssuanceID(iss),
@@ -142,7 +159,7 @@ func ConvertContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, s
 }
 
 // ConvertBackContextHash computes the context hash for a ConfidentialMPTConvertBack transaction.
-func ConvertBackContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq, ver uint32) (hash [HashOutputSize]byte, err error) {
+func ConvertBackContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq, ver uint32) (hash ContextHash, err error) {
 	ret := C.mpt_get_convert_back_context_hash(
 		toAccountID(account),
 		toIssuanceID(iss),
@@ -157,7 +174,7 @@ func ConvertBackContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byt
 }
 
 // SendContextHash computes the context hash for a ConfidentialMPTSend transaction.
-func SendContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq uint32, dest [AccountIDSize]byte, ver uint32) (hash [HashOutputSize]byte, err error) {
+func SendContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq uint32, dest [AccountIDSize]byte, ver uint32) (hash ContextHash, err error) {
 	ret := C.mpt_get_send_context_hash(
 		toAccountID(account),
 		toIssuanceID(iss),
@@ -173,7 +190,7 @@ func SendContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq 
 }
 
 // ClawbackContextHash computes the context hash for a ConfidentialMPTClawback transaction.
-func ClawbackContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq uint32, holder [AccountIDSize]byte) (hash [HashOutputSize]byte, err error) {
+func ClawbackContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq uint32, holder [AccountIDSize]byte) (hash ContextHash, err error) {
 	ret := C.mpt_get_clawback_context_hash(
 		toAccountID(account),
 		toIssuanceID(iss),
@@ -192,7 +209,7 @@ func ClawbackContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, 
 // region Pedersen commitment
 
 // PedersenCommitment computes a Pedersen commitment for the given amount and blinding factor.
-func PedersenCommitment(amount uint64, bf [BlindingFactorSize]byte) (commitment [CommitmentSize]byte, err error) {
+func PedersenCommitment(amount uint64, bf BlindingFactor) (commitment Commitment, err error) {
 	ret := C.mpt_get_pedersen_commitment(
 		C.uint64_t(amount),
 		uint8Ptr(&bf[0]),
@@ -209,7 +226,7 @@ func PedersenCommitment(amount uint64, bf [BlindingFactorSize]byte) (commitment 
 // region Proof generation
 
 // GenerateConvertProof generates a Schnorr proof of knowledge for a ConfidentialMPTConvert transaction.
-func GenerateConvertProof(pubkey [PubKeySize]byte, privkey [PrivKeySize]byte, ctxHash [HashOutputSize]byte) (proof [SchnorrProofSize]byte, err error) {
+func GenerateConvertProof(pubkey PublicKey, privkey PrivateKey, ctxHash ContextHash) (proof [SchnorrProofSize]byte, err error) {
 	ret := C.mpt_get_convert_proof(
 		uint8Ptr(&pubkey[0]),
 		uint8Ptr(&privkey[0]),
@@ -225,7 +242,7 @@ func GenerateConvertProof(pubkey [PubKeySize]byte, privkey [PrivKeySize]byte, ct
 // GenerateConvertBackProof generates a compact AND-composed sigma proof over the balance
 // witness, followed by a single Bulletproof range proof over the remainder commitment,
 // for a ConfidentialMPTConvertBack transaction.
-func GenerateConvertBackProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, ctxHash [HashOutputSize]byte, amount uint64, params PedersenProofParams) (proof [ConvertBackProofSize]byte, err error) {
+func GenerateConvertBackProof(privkey PrivateKey, pubkey PublicKey, ctxHash ContextHash, amount uint64, params PedersenProofParams) (proof [ConvertBackProofSize]byte, err error) {
 	cParams := toProofParams(params)
 	ret := C.mpt_get_convert_back_proof(
 		uint8Ptr(&privkey[0]),
@@ -242,7 +259,7 @@ func GenerateConvertBackProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte
 }
 
 // GenerateClawbackProof generates an equality proof for a ConfidentialMPTClawback transaction.
-func GenerateClawbackProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, ctxHash [HashOutputSize]byte, amount uint64, ciphertext [CiphertextSize]byte) (proof [CompactClawbackProofSize]byte, err error) {
+func GenerateClawbackProof(privkey PrivateKey, pubkey PublicKey, ctxHash ContextHash, amount uint64, ciphertext Ciphertext) (proof [CompactClawbackProofSize]byte, err error) {
 	ret := C.mpt_get_clawback_proof(
 		uint8Ptr(&privkey[0]),
 		uint8Ptr(&pubkey[0]),
@@ -259,7 +276,7 @@ func GenerateClawbackProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, c
 
 // GenerateSendProof generates a compact AND-composed sigma proof + aggregated Bulletproof range proof
 // for a ConfidentialMPTSend transaction.
-func GenerateSendProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, amount uint64, participants []Participant, txBF [BlindingFactorSize]byte, ctxHash [HashOutputSize]byte, amountCommitment [CommitmentSize]byte, balanceParams PedersenProofParams) ([]byte, error) {
+func GenerateSendProof(privkey PrivateKey, pubkey PublicKey, amount uint64, participants []Participant, txBF BlindingFactor, ctxHash ContextHash, amountCommitment Commitment, balanceParams PedersenProofParams) ([]byte, error) {
 	n := len(participants)
 	if n == 0 {
 		return nil, fmt.Errorf("mptcrypto: at least one participant is required")
@@ -301,7 +318,7 @@ func GenerateSendProof(privkey [PrivKeySize]byte, pubkey [PubKeySize]byte, amoun
 // region Proof verification (top-level)
 
 // VerifyConvertProof verifies a Schnorr proof for a ConfidentialMPTConvert transaction.
-func VerifyConvertProof(proof [SchnorrProofSize]byte, pubkey [PubKeySize]byte, ctxHash [HashOutputSize]byte) error {
+func VerifyConvertProof(proof [SchnorrProofSize]byte, pubkey PublicKey, ctxHash ContextHash) error {
 	ret := C.mpt_verify_convert_proof(
 		uint8Ptr(&proof[0]),
 		uint8Ptr(&pubkey[0]),
@@ -316,7 +333,7 @@ func VerifyConvertProof(proof [SchnorrProofSize]byte, pubkey [PubKeySize]byte, c
 // VerifyConvertBackProof verifies a linkage + range proof for a ConfidentialMPTConvertBack transaction.
 // balanceCommit must be the original balance commitment, not the remainder after subtraction,
 // the C library internally subtracts the transparent amount before checking the range proof.
-func VerifyConvertBackProof(proof [ConvertBackProofSize]byte, pubkey [PubKeySize]byte, ciphertext [CiphertextSize]byte, balanceCommit [CommitmentSize]byte, amount uint64, ctxHash [HashOutputSize]byte) error {
+func VerifyConvertBackProof(proof [ConvertBackProofSize]byte, pubkey PublicKey, ciphertext Ciphertext, balanceCommit Commitment, amount uint64, ctxHash ContextHash) error {
 	ret := C.mpt_verify_convert_back_proof(
 		uint8Ptr(&proof[0]),
 		uint8Ptr(&pubkey[0]),
@@ -332,7 +349,7 @@ func VerifyConvertBackProof(proof [ConvertBackProofSize]byte, pubkey [PubKeySize
 }
 
 // VerifySendProof verifies the full proof for a ConfidentialMPTSend transaction.
-func VerifySendProof(proof []byte, participants []Participant, senderCt [CiphertextSize]byte, amountCommit, balanceCommit [CommitmentSize]byte, ctxHash [HashOutputSize]byte) error {
+func VerifySendProof(proof []byte, participants []Participant, senderCt Ciphertext, amountCommit, balanceCommit Commitment, ctxHash ContextHash) error {
 	if len(proof) != SendProofSize {
 		return fmt.Errorf("mptcrypto: proof must be %d bytes, got %d", SendProofSize, len(proof))
 	}
@@ -362,7 +379,7 @@ func VerifySendProof(proof []byte, participants []Participant, senderCt [Ciphert
 }
 
 // VerifyClawbackProof verifies an equality proof for a ConfidentialMPTClawback transaction.
-func VerifyClawbackProof(proof [CompactClawbackProofSize]byte, amount uint64, pubkey [PubKeySize]byte, ciphertext [CiphertextSize]byte, ctxHash [HashOutputSize]byte) error {
+func VerifyClawbackProof(proof [CompactClawbackProofSize]byte, amount uint64, pubkey PublicKey, ciphertext Ciphertext, ctxHash ContextHash) error {
 	ret := C.mpt_verify_clawback_proof(
 		uint8Ptr(&proof[0]),
 		C.uint64_t(amount),
@@ -382,7 +399,7 @@ func VerifyClawbackProof(proof [CompactClawbackProofSize]byte, amount uint64, pu
 
 // VerifyRevealedAmount verifies that a revealed amount and blinding factor are consistent
 // with the participants' ciphertexts. auditor may be nil if no auditor is present.
-func VerifyRevealedAmount(amount uint64, bf [BlindingFactorSize]byte, holder, issuer Participant, auditor *Participant) error {
+func VerifyRevealedAmount(amount uint64, bf BlindingFactor, holder, issuer Participant, auditor *Participant) error {
 	cHolder := toParticipant(holder)
 	cIssuer := toParticipant(issuer)
 	var cAuditor *C.mpt_confidential_participant
@@ -404,7 +421,7 @@ func VerifyRevealedAmount(amount uint64, bf [BlindingFactorSize]byte, holder, is
 }
 
 // VerifySendRangeProof verifies that the transfer amount and remaining balance are within [0, 2^64-1].
-func VerifySendRangeProof(proof [DoubleBulletproofSize]byte, amountCommit, balanceCommitment [CommitmentSize]byte, ctxHash [HashOutputSize]byte) error {
+func VerifySendRangeProof(proof [DoubleBulletproofSize]byte, amountCommit, balanceCommitment Commitment, ctxHash ContextHash) error {
 	ret := C.mpt_verify_send_range_proof(
 		uint8Ptr(&proof[0]),
 		uint8Ptr(&amountCommit[0]),
@@ -422,7 +439,7 @@ func VerifySendRangeProof(proof [DoubleBulletproofSize]byte, amountCommit, balan
 // region Utilities
 
 // ComputeConvertBackRemainder subtracts a transparent amount from a hidden Pedersen commitment.
-func ComputeConvertBackRemainder(commitmentIn [CommitmentSize]byte, amount uint64) (commitmentOut [CommitmentSize]byte, err error) {
+func ComputeConvertBackRemainder(commitmentIn Commitment, amount uint64) (commitmentOut Commitment, err error) {
 	ret := C.mpt_compute_convert_back_remainder(
 		uint8Ptr(&commitmentIn[0]),
 		C.uint64_t(amount),

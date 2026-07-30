@@ -13,13 +13,15 @@ import (
 
 // BuildConvertBackParams holds minimal inputs for BuildConvertBack.
 // Sequence, IssuerPubKey, AuditorPubKey, BalanceVersion, CurrentBalanceCt,
-// and CurrentBalance are auto-resolved from the ledger. Balance is decrypted using HolderPrivKey.
+// and CurrentBalance are auto-resolved from the ledger. Balance is decrypted using HolderPrivKey
+// within BalanceRange's inclusive bounds.
 type BuildConvertBackParams struct {
 	Account       string
 	IssuanceID    string
 	Amount        uint64
-	HolderPrivKey string // 64 hex chars, also used to decrypt balance from ledger
-	HolderPubKey  string // 66 hex chars (compressed)
+	HolderPrivKey string              // 64 hex chars, also used to decrypt balance from ledger
+	HolderPubKey  string              // 66 hex chars (compressed)
+	BalanceRange  elgamal.AmountRange // Inclusive balance decryption bounds
 }
 
 // ConvertBackParams holds inputs for PrepareConvertBack.
@@ -70,6 +72,9 @@ func BuildConvertBack(q LedgerQuerier, p BuildConvertBackParams) (*transaction.C
 	if err := validateConvertBackBase(p); err != nil {
 		return nil, err
 	}
+	if err := p.BalanceRange.Validate(); err != nil {
+		return nil, err
+	}
 
 	seq, err := getSequence(q, p.Account)
 	if err != nil {
@@ -90,7 +95,7 @@ func BuildConvertBack(q LedgerQuerier, p BuildConvertBackParams) (*transaction.C
 		return nil, fmt.Errorf("%w: holder pubkey does not match ledger", ErrCryptoFailed)
 	}
 
-	currentBalance, err := elgamal.Decrypt(balanceCt, p.HolderPrivKey)
+	currentBalance, err := elgamal.Decrypt(balanceCt, p.HolderPrivKey, p.BalanceRange)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decrypt balance: %w", ErrCryptoFailed, err)
 	}

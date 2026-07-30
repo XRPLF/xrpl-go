@@ -1,3 +1,5 @@
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
+
 package builder
 
 import (
@@ -6,8 +8,6 @@ import (
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
-	xrplhash "github.com/Peersyst/xrpl-go/xrpl/hash"
-	ledgerentries "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/stretchr/testify/require"
 )
@@ -172,41 +172,55 @@ func TestPrepareConvertBack_FailValidation(t *testing.T) {
 	}
 }
 
-func TestBuildConvertBack_Pass(t *testing.T) {
-	holderKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-	issuerKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-
+func TestBuildConvertBack_BalanceRange(t *testing.T) {
 	const currentBalance uint64 = 1000
-	const withdrawAmount uint64 = 100
 
-	bf, err := elgamal.GenerateBlindingFactor()
-	require.NoError(t, err)
-	balanceCt, err := elgamal.Encrypt(currentBalance, holderKP.PubKeyHex, bf)
-	require.NoError(t, err)
-
-	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
-	require.NoError(t, err)
-	mptokenIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
-	require.NoError(t, err)
-
-	q := &mockQuerier{
-		accountSeq: 3,
-		entries: map[string]ledgerentries.FlatLedgerObject{
-			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-			mptokenIndex:  buildMPTokenEntry(holderKP.PubKeyHex, balanceCt, 1, ""),
-		},
+	tests := []struct {
+		name         string
+		balanceRange elgamal.AmountRange
+		wantErr      bool
+	}{
+		{name: "pass - balance in range", balanceRange: elgamal.AmountRange{Low: currentBalance, High: currentBalance}},
+		{name: "fail - balance outside range", balanceRange: elgamal.AmountRange{Low: 0, High: currentBalance - 1}, wantErr: true},
 	}
 
-	result, err := BuildConvertBack(q, BuildConvertBackParams{
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			holderKP, q := newBalanceLedgerFixture(t, 3, 1, currentBalance)
+			result, err := BuildConvertBack(q, BuildConvertBackParams{
+				Account:       testAccount,
+				IssuanceID:    testIssuanceID,
+				Amount:        100,
+				HolderPrivKey: holderKP.PrivKeyHex,
+				HolderPubKey:  holderKP.PubKeyHex,
+				BalanceRange:  tt.balanceRange,
+			})
+			if tt.wantErr {
+				require.ErrorIs(t, err, ErrCryptoFailed)
+				require.ErrorIs(t, err, elgamal.ErrDecryptFailed)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			require.Equal(t, uint32(3), result.Sequence)
+		})
+	}
+}
+
+func TestBuildConvertBack_InvalidRangeBeforeLedgerQueries(t *testing.T) {
+	holderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	q := &mockQuerier{accountErr: ErrLedgerQuery}
+	_, err = BuildConvertBack(q, BuildConvertBackParams{
 		Account:       testAccount,
 		IssuanceID:    testIssuanceID,
-		Amount:        withdrawAmount,
+		Amount:        1,
 		HolderPrivKey: holderKP.PrivKeyHex,
 		HolderPubKey:  holderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: 2, High: 1},
 	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Equal(t, uint32(3), result.Sequence)
+	require.ErrorIs(t, err, elgamal.ErrInvalidAmountRange)
+	require.NotErrorIs(t, err, ErrLedgerQuery)
+	require.Zero(t, q.queryCalls, "invalid ranges must fail before ledger queries")
 }

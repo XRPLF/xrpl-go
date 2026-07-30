@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
 
 package proof_test
 
@@ -11,30 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVerifyRevealedAmountWithoutAuditor(t *testing.T) {
-	const amount uint64 = 42
-
-	holderKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-	issuerKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-
-	bf, err := elgamal.GenerateBlindingFactor()
-	require.NoError(t, err)
-
-	holderCt, err := elgamal.Encrypt(amount, holderKP.PubKeyHex, bf)
-	require.NoError(t, err)
-	issuerCt, err := elgamal.Encrypt(amount, issuerKP.PubKeyHex, bf)
-	require.NoError(t, err)
-
-	holder := proof.Participant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
-	issuer := proof.Participant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
-
-	err = proof.VerifyRevealedAmount(amount, bf, holder, issuer, nil)
-	require.NoError(t, err)
-}
-
-func TestVerifyRevealedAmountWithAuditor(t *testing.T) {
+func TestVerifyRevealedAmount(t *testing.T) {
 	const amount uint64 = 42
 
 	holderKP, err := elgamal.GenerateKeypair()
@@ -56,33 +33,25 @@ func TestVerifyRevealedAmountWithAuditor(t *testing.T) {
 
 	holder := proof.Participant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
 	issuer := proof.Participant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
-	auditor := proof.Participant{PubKeyHex: auditorKP.PubKeyHex, CiphertextHex: auditorCt}
+	auditor := &proof.Participant{PubKeyHex: auditorKP.PubKeyHex, CiphertextHex: auditorCt}
 
-	err = proof.VerifyRevealedAmount(amount, bf, holder, issuer, &auditor)
-	require.NoError(t, err)
-}
+	tests := []struct {
+		name         string
+		verifyAmount uint64
+		auditor      *proof.Participant
+		wantErr      error
+	}{
+		{name: "pass - without auditor", verifyAmount: amount},
+		{name: "pass - with auditor", verifyAmount: amount, auditor: auditor},
+		{name: "fail - wrong amount", verifyAmount: 999, wantErr: proof.ErrProofVerificationFailed},
+	}
 
-func TestVerifyRevealedAmountWrongAmount(t *testing.T) {
-	const amount uint64 = 42
-
-	holderKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-	issuerKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-
-	bf, err := elgamal.GenerateBlindingFactor()
-	require.NoError(t, err)
-
-	holderCt, err := elgamal.Encrypt(amount, holderKP.PubKeyHex, bf)
-	require.NoError(t, err)
-	issuerCt, err := elgamal.Encrypt(amount, issuerKP.PubKeyHex, bf)
-	require.NoError(t, err)
-
-	holder := proof.Participant{PubKeyHex: holderKP.PubKeyHex, CiphertextHex: holderCt}
-	issuer := proof.Participant{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: issuerCt}
-
-	err = proof.VerifyRevealedAmount(999, bf, holder, issuer, nil)
-	require.ErrorIs(t, err, proof.ErrProofVerificationFailed)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := proof.VerifyRevealedAmount(tt.verifyAmount, bf, holder, issuer, tt.auditor)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
 }
 
 func TestVerifyRevealedAmountInvalidInputs(t *testing.T) {

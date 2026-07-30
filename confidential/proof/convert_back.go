@@ -28,12 +28,9 @@ func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount u
 		return "", err
 	}
 
-	var priv [mptcrypto.PrivKeySize]byte
-	var pub [mptcrypto.PubKeySize]byte
-	var hash [mptcrypto.HashOutputSize]byte
-	copy(priv[:], privBytes)
-	copy(pub[:], pubBytes)
-	copy(hash[:], hashBytes)
+	priv := mptcrypto.PrivateKey(privBytes)
+	pub := mptcrypto.PublicKey(pubBytes)
+	hash := mptcrypto.ContextHash(hashBytes)
 
 	proof, err := mptcrypto.GenerateConvertBackProof(priv, pub, hash, amount, pp)
 	if err != nil {
@@ -66,15 +63,11 @@ func VerifyConvertBackProof(proofHex, pubkeyHex, ciphertextHex, balanceCommitHex
 	}
 
 	var proof [mptcrypto.ConvertBackProofSize]byte
-	var pub [mptcrypto.PubKeySize]byte
-	var ct [mptcrypto.CiphertextSize]byte
-	var commit [mptcrypto.CommitmentSize]byte
-	var hash [mptcrypto.HashOutputSize]byte
 	copy(proof[:], proofBytes)
-	copy(pub[:], pubBytes)
-	copy(ct[:], ctBytes)
-	copy(commit[:], commitBytes)
-	copy(hash[:], hashBytes)
+	pub := mptcrypto.PublicKey(pubBytes)
+	ct := mptcrypto.Ciphertext(ctBytes)
+	commit := mptcrypto.Commitment(commitBytes)
+	hash := mptcrypto.ContextHash(hashBytes)
 
 	if err := mptcrypto.VerifyConvertBackProof(proof, pub, ct, commit, amount, hash); err != nil {
 		return fmt.Errorf("%w: %w", ErrProofVerificationFailed, err)

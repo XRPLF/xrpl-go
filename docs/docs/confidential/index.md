@@ -34,7 +34,16 @@ Use this package when you need raw confidential amount encryption helpers.
 - `GenerateKeypair()` creates a confidential holder, issuer, or auditor keypair.
 - `GenerateBlindingFactor()` creates the shared randomness used across ciphertexts and commitments.
 - `Encrypt()` encrypts a `uint64` amount to a compressed secp256k1 public key.
-- `Decrypt()` decrypts a confidential balance ciphertext with the matching private key.
+- `Decrypt(ciphertextHex, privateKeyHex, amountRange)` decrypts a confidential balance ciphertext with the matching private key by searching an inclusive `AmountRange`.
+
+Decryption requires bounds that contain the plaintext amount and satisfy `Low <= High < math.MaxUint64`. Search cost grows linearly with the interval size, so use the narrowest practical range:
+
+```go
+amount, err := elgamal.Decrypt(ciphertextHex, privateKeyHex, elgamal.AmountRange{
+    Low:  0,
+    High: 1_000_000,
+})
+```
 
 ### `confidential/commitment`
 
@@ -72,7 +81,7 @@ Related XRPL types were extended as well:
 Use [`builders`](/docs/confidential/builders) when you want the SDK to:
 
 - fetch ledger state such as `Sequence`, registered encryption keys, and confidential balance fields;
-- decrypt the holder's current confidential balance when required;
+- decrypt the holder's current confidential balance within a caller-supplied inclusive `BalanceRange` when required;
 - generate ciphertexts, commitments, and ZK proofs with the correct context hash;
 - return a ready-to-sign `xrpl/transaction` struct.
 

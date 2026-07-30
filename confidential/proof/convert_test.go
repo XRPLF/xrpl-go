@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
 
 package proof_test
 
@@ -14,6 +14,8 @@ import (
 func TestGenerateAndVerifyConvertProof(t *testing.T) {
 	kp, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
+	wrongKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
 
 	ctxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, 1)
 	require.NoError(t, err)
@@ -22,24 +24,21 @@ func TestGenerateAndVerifyConvertProof(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, proofHex, mptcrypto.SchnorrProofSize*2)
 
-	err = proof.VerifyConvertProof(proofHex, kp.PubKeyHex, ctxHash)
-	require.NoError(t, err)
-}
+	tests := []struct {
+		name    string
+		pubKey  string
+		wantErr error
+	}{
+		{name: "pass - correct key", pubKey: kp.PubKeyHex},
+		{name: "fail - wrong key", pubKey: wrongKP.PubKeyHex, wantErr: proof.ErrProofVerificationFailed},
+	}
 
-func TestVerifyConvertProofWrongKey(t *testing.T) {
-	kp1, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-	kp2, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-
-	ctxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, 1)
-	require.NoError(t, err)
-
-	proofHex, err := proof.GenerateConvertProof(kp1.PubKeyHex, kp1.PrivKeyHex, ctxHash)
-	require.NoError(t, err)
-
-	err = proof.VerifyConvertProof(proofHex, kp2.PubKeyHex, ctxHash)
-	require.ErrorIs(t, err, proof.ErrProofVerificationFailed)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := proof.VerifyConvertProof(proofHex, tt.pubKey, ctxHash)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
 }
 
 func TestConvertProofInvalidInputs(t *testing.T) {

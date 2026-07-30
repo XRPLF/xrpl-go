@@ -1,4 +1,4 @@
-//go:build cgo
+//go:build cgo && !js && !wasip1 && !tinygo && !gofuzz && (linux || darwin) && (amd64 || arm64)
 
 package mptcrypto_test
 
@@ -33,7 +33,7 @@ func testIssuanceID() [mptcrypto.IssuanceIDSize]byte {
 func TestGenerateKeypair(t *testing.T) {
 	priv, pub, err := mptcrypto.GenerateKeypair()
 	require.NoError(t, err)
-	require.NotEqual(t, [mptcrypto.PrivKeySize]byte{}, priv, "privkey is all zeros")
+	require.NotEqual(t, mptcrypto.PrivateKey{}, priv, "privkey is all zeros")
 	// compressed secp256k1 pubkey starts with 0x02 or 0x03
 	require.Contains(t, []byte{0x02, 0x03}, pub[0], "unexpected pubkey prefix: 0x%02x", pub[0])
 }
@@ -41,7 +41,7 @@ func TestGenerateKeypair(t *testing.T) {
 func TestGenerateBlindingFactor(t *testing.T) {
 	bf1, err := mptcrypto.GenerateBlindingFactor()
 	require.NoError(t, err)
-	require.NotEqual(t, [mptcrypto.BlindingFactorSize]byte{}, bf1, "blinding factor is all zeros")
+	require.NotEqual(t, mptcrypto.BlindingFactor{}, bf1, "blinding factor is all zeros")
 
 	// two calls should produce different values (non-deterministic RNG)
 	bf2, err := mptcrypto.GenerateBlindingFactor()
@@ -49,38 +49,58 @@ func TestGenerateBlindingFactor(t *testing.T) {
 	require.NotEqual(t, bf1, bf2, "two consecutive blinding factors are identical")
 }
 
-func TestEncryptDecryptRoundtrip(t *testing.T) {
-	tests := []struct {
-		name   string
-		amount uint64
-		// skipOnDecryptErr skips the subtest instead of failing when the C
-		// library cannot recover the plaintext (BSGS table limitation).
-		skipOnDecryptErr bool
-	}{
-		{"pass - zero", 0, false},
-		{"pass - small value", 42, false},
-		{"pass - one million", 1_000_000, false},
-		{"pass - max uint64", math.MaxUint64, true},
-	}
+func TestDecryptAmountBounds(t *testing.T) {
+	// amount is an arbitrary non-boundary value used to exercise the range checks.
+	const amount uint64 = 42
 
-	priv, pub, err := mptcrypto.GenerateKeypair()
+	privateKey, publicKey, err := mptcrypto.GenerateKeypair()
 	require.NoError(t, err)
+	blindingFactor, err := mptcrypto.GenerateBlindingFactor()
+	require.NoError(t, err)
+	ciphertext, err := mptcrypto.EncryptAmount(amount, publicKey, blindingFactor)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		rangeLow  uint64
+		rangeHigh uint64
+		wantErr   bool
+	}{
+		{name: "pass - found at lower bound", rangeLow: amount, rangeHigh: 50},
+		{name: "pass - found at upper bound", rangeLow: 40, rangeHigh: amount},
+		{name: "pass - found inside range", rangeLow: 40, rangeHigh: 50},
+		{name: "pass - single-value interval", rangeLow: amount, rangeHigh: amount},
+		{name: "fail - amount below range", rangeLow: 43, rangeHigh: 50, wantErr: true},
+		{name: "fail - amount above range", rangeLow: 0, rangeHigh: 41, wantErr: true},
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bf, err := mptcrypto.GenerateBlindingFactor()
-			require.NoError(t, err)
-
-			ct, err := mptcrypto.EncryptAmount(tt.amount, pub, bf)
-			require.NoError(t, err)
-			require.NotEqual(t, [mptcrypto.CiphertextSize]byte{}, ct, "ciphertext is all zeros")
-
-			got, err := mptcrypto.DecryptAmount(ct, priv)
-			if err != nil && tt.skipOnDecryptErr {
-				t.Skipf("DecryptAmount not supported for this value: %v", err)
+			got, err := mptcrypto.DecryptAmount(ciphertext, privateKey, tt.rangeLow, tt.rangeHigh)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.amount, got)
+			require.Equal(t, amount, got)
+		})
+	}
+}
+
+func TestDecryptAmountInvalidRange(t *testing.T) {
+	tests := []struct {
+		name      string
+		rangeLow  uint64
+		rangeHigh uint64
+	}{
+		{name: "fail - low exceeds high", rangeLow: 2, rangeHigh: 1},
+		{name: "fail - high is max uint64", rangeLow: 0, rangeHigh: math.MaxUint64},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := mptcrypto.DecryptAmount(mptcrypto.Ciphertext{}, mptcrypto.PrivateKey{}, tt.rangeLow, tt.rangeHigh)
+			require.ErrorIs(t, err, mptcrypto.ErrInvalidAmountRange)
 		})
 	}
 }
@@ -88,7 +108,7 @@ func TestEncryptDecryptRoundtrip(t *testing.T) {
 // endregion
 
 // region Context hashes
-type contextHashFn func() ([mptcrypto.HashOutputSize]byte, error)
+type contextHashFn func() (mptcrypto.ContextHash, error)
 
 func TestContextHashes(t *testing.T) {
 	account := testAccountID(0x01)
@@ -102,33 +122,33 @@ func TestContextHashes(t *testing.T) {
 	}{
 		{
 			"pass - Convert",
-			func() ([mptcrypto.HashOutputSize]byte, error) { return mptcrypto.ConvertContextHash(account, iss, 1) },
-			func() ([mptcrypto.HashOutputSize]byte, error) { return mptcrypto.ConvertContextHash(account, iss, 2) },
+			func() (mptcrypto.ContextHash, error) { return mptcrypto.ConvertContextHash(account, iss, 1) },
+			func() (mptcrypto.ContextHash, error) { return mptcrypto.ConvertContextHash(account, iss, 2) },
 		},
 		{
 			"pass - ConvertBack",
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.ConvertBackContextHash(account, iss, 1, 1)
 			},
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.ConvertBackContextHash(account, iss, 1, 2)
 			},
 		},
 		{
 			"pass - Send",
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.SendContextHash(account, iss, 1, account2, 1)
 			},
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.SendContextHash(account, iss, 1, testAccountID(0x30), 1)
 			},
 		},
 		{
 			"pass - Clawback",
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.ClawbackContextHash(account, iss, 1, account2)
 			},
-			func() ([mptcrypto.HashOutputSize]byte, error) {
+			func() (mptcrypto.ContextHash, error) {
 				return mptcrypto.ClawbackContextHash(account, iss, 1, testAccountID(0x30))
 			},
 		},
@@ -138,7 +158,7 @@ func TestContextHashes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hash, err := tt.hash()
 			require.NoError(t, err)
-			require.NotEqual(t, [mptcrypto.HashOutputSize]byte{}, hash)
+			require.NotEqual(t, mptcrypto.ContextHash{}, hash)
 
 			// deterministic
 			hash2, err := tt.hash()
@@ -160,23 +180,31 @@ func TestPedersenCommitment(t *testing.T) {
 	bf, err := mptcrypto.GenerateBlindingFactor()
 	require.NoError(t, err)
 
-	t.Run("pass - valid prefix and deterministic", func(t *testing.T) {
-		commit, err := mptcrypto.PedersenCommitment(42, bf)
-		require.NoError(t, err)
-		require.Contains(t, []byte{0x02, 0x03}, commit[0], "unexpected commitment prefix: 0x%02x", commit[0])
+	tests := []struct {
+		name      string
+		first     uint64
+		second    uint64
+		wantEqual bool
+	}{
+		{name: "pass - same inputs are deterministic", first: 42, second: 42, wantEqual: true},
+		{name: "pass - different amounts", first: 42, second: 99},
+	}
 
-		commit2, err := mptcrypto.PedersenCommitment(42, bf)
-		require.NoError(t, err)
-		require.Equal(t, commit, commit2)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			first, err := mptcrypto.PedersenCommitment(tt.first, bf)
+			require.NoError(t, err)
+			require.Contains(t, []byte{0x02, 0x03}, first[0], "unexpected commitment prefix: 0x%02x", first[0])
 
-	t.Run("pass - different amounts produce different commitments", func(t *testing.T) {
-		commit, err := mptcrypto.PedersenCommitment(42, bf)
-		require.NoError(t, err)
-		commit2, err := mptcrypto.PedersenCommitment(99, bf)
-		require.NoError(t, err)
-		require.NotEqual(t, commit, commit2)
-	})
+			second, err := mptcrypto.PedersenCommitment(tt.second, bf)
+			require.NoError(t, err)
+			if tt.wantEqual {
+				require.Equal(t, first, second)
+				return
+			}
+			require.NotEqual(t, first, second)
+		})
+	}
 }
 
 // endregion
@@ -185,25 +213,35 @@ func TestPedersenCommitment(t *testing.T) {
 func TestConvertProofRoundtrip(t *testing.T) {
 	priv, pub, err := mptcrypto.GenerateKeypair()
 	require.NoError(t, err)
+	_, wrongPub, err := mptcrypto.GenerateKeypair()
+	require.NoError(t, err)
 
 	ctxHash, err := mptcrypto.ConvertContextHash(testAccountID(0x01), testIssuanceID(), 1)
 	require.NoError(t, err)
 
 	proof, err := mptcrypto.GenerateConvertProof(pub, priv, ctxHash)
 	require.NoError(t, err)
+	require.NotEqual(t, [mptcrypto.SchnorrProofSize]byte{}, proof)
 
-	t.Run("pass - valid proof verifies", func(t *testing.T) {
-		require.NotEqual(t, [mptcrypto.SchnorrProofSize]byte{}, proof)
-		err := mptcrypto.VerifyConvertProof(proof, pub, ctxHash)
-		require.NoError(t, err)
-	})
+	tests := []struct {
+		name    string
+		pubKey  mptcrypto.PublicKey
+		wantErr bool
+	}{
+		{name: "pass - valid proof verifies", pubKey: pub},
+		{name: "fail - wrong key rejected", pubKey: wrongPub, wantErr: true},
+	}
 
-	t.Run("fail - wrong key rejected", func(t *testing.T) {
-		_, wrongPub, err := mptcrypto.GenerateKeypair()
-		require.NoError(t, err)
-		err = mptcrypto.VerifyConvertProof(proof, wrongPub, ctxHash)
-		require.Error(t, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := mptcrypto.VerifyConvertProof(proof, tt.pubKey, ctxHash)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }
 
 func TestConvertBackProofRoundtrip(t *testing.T) {
@@ -347,9 +385,9 @@ func TestSendProofRoundtrip(t *testing.T) {
 func TestVerifySendProofRejectsShortProof(t *testing.T) {
 	shortProof := make([]byte, mptcrypto.SendProofSize-1)
 
-	var senderCT [mptcrypto.CiphertextSize]byte
-	var amountCommit, balanceCommit [mptcrypto.CommitmentSize]byte
-	var ctxHash [mptcrypto.HashOutputSize]byte
+	var senderCT mptcrypto.Ciphertext
+	var amountCommit, balanceCommit mptcrypto.Commitment
+	var ctxHash mptcrypto.ContextHash
 
 	err := mptcrypto.VerifySendProof(shortProof, nil, senderCT, amountCommit, balanceCommit, ctxHash)
 	require.EqualError(t, err, fmt.Sprintf("mptcrypto: proof must be %d bytes, got %d", mptcrypto.SendProofSize, len(shortProof)))
@@ -359,7 +397,8 @@ func TestVerifySendProofRejectsShortProof(t *testing.T) {
 
 // region Internal component verifiers
 func TestVerifyRevealedAmount(t *testing.T) {
-	amount := uint64(42)
+	const amount uint64 = 42
+
 	bf, err := mptcrypto.GenerateBlindingFactor()
 	require.NoError(t, err)
 
@@ -367,35 +406,41 @@ func TestVerifyRevealedAmount(t *testing.T) {
 	require.NoError(t, err)
 	_, issuerPub, err := mptcrypto.GenerateKeypair()
 	require.NoError(t, err)
+	_, auditorPub, err := mptcrypto.GenerateKeypair()
+	require.NoError(t, err)
 
 	holderCT, err := mptcrypto.EncryptAmount(amount, holderPub, bf)
 	require.NoError(t, err)
 	issuerCT, err := mptcrypto.EncryptAmount(amount, issuerPub, bf)
 	require.NoError(t, err)
+	auditorCT, err := mptcrypto.EncryptAmount(amount, auditorPub, bf)
+	require.NoError(t, err)
 
 	holder := mptcrypto.Participant{PubKey: holderPub, Ciphertext: holderCT}
 	issuer := mptcrypto.Participant{PubKey: issuerPub, Ciphertext: issuerCT}
+	auditor := &mptcrypto.Participant{PubKey: auditorPub, Ciphertext: auditorCT}
 
-	t.Run("pass - without auditor", func(t *testing.T) {
-		err := mptcrypto.VerifyRevealedAmount(amount, bf, holder, issuer, nil)
-		require.NoError(t, err)
-	})
+	tests := []struct {
+		name         string
+		verifyAmount uint64
+		auditor      *mptcrypto.Participant
+		wantErr      bool
+	}{
+		{name: "pass - without auditor", verifyAmount: amount},
+		{name: "pass - with auditor", verifyAmount: amount, auditor: auditor},
+		{name: "fail - wrong amount", verifyAmount: 99, wantErr: true},
+	}
 
-	t.Run("pass - with auditor", func(t *testing.T) {
-		_, auditorPub, err := mptcrypto.GenerateKeypair()
-		require.NoError(t, err)
-		auditorCT, err := mptcrypto.EncryptAmount(amount, auditorPub, bf)
-		require.NoError(t, err)
-		auditor := &mptcrypto.Participant{PubKey: auditorPub, Ciphertext: auditorCT}
-
-		err = mptcrypto.VerifyRevealedAmount(amount, bf, holder, issuer, auditor)
-		require.NoError(t, err)
-	})
-
-	t.Run("fail - wrong amount", func(t *testing.T) {
-		err := mptcrypto.VerifyRevealedAmount(99, bf, holder, issuer, nil)
-		require.Error(t, err)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := mptcrypto.VerifyRevealedAmount(tt.verifyAmount, bf, holder, issuer, tt.auditor)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }
 
 // endregion
