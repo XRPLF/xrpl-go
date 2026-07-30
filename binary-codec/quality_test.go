@@ -112,6 +112,31 @@ func TestQualityCodec_Decode(t *testing.T) {
 			expectedErr: ErrInvalidQuality,
 		},
 		{
+			name:        "fail - invalid quality - two decoded bytes",
+			input:       "0000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - three decoded bytes",
+			input:       "000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - four decoded bytes",
+			input:       "00000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - five decoded bytes",
+			input:       "0000000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - six decoded bytes",
+			input:       "000000000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
 			name:        "fail - invalid quality - seven decoded bytes",
 			input:       "00000000000000",
 			expectedErr: ErrInvalidQuality,
