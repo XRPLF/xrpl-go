@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	clawbackIOUIssuer  = types.Address("rnLYcEcYw2r3w6BDsFDSScoFmvZXbwa6EQ")
-	clawbackMPTIssuer  = types.Address("rKGpqjZhYan5FLqGyAfAzHpJeUN8fs3SYi")
-	clawbackHolder     = types.Address("rhsTg7mm7v3oEGrF85n1KdB3JjCk5KPT4M")
-	clawbackMPTIssueID = "00002403C84A0A28E0190E208E982C352BBD5006600555CF"
+	clawbackIOUIssuer    = types.Address("rnLYcEcYw2r3w6BDsFDSScoFmvZXbwa6EQ")
+	clawbackMPTIssuer    = types.Address("rKGpqjZhYan5FLqGyAfAzHpJeUN8fs3SYi")
+	clawbackHolder       = types.Address("rhsTg7mm7v3oEGrF85n1KdB3JjCk5KPT4M")
+	clawbackTaggedHolder = types.Address("X7dTFb8yBn6ZY5gCdyNNuvFkTNx7oBTvbpwXNLCBUUVXjLV")
+	clawbackMPTIssueID   = "00002403C84A0A28E0190E208E982C352BBD5006600555CF"
 )
 
 func newClawbackBaseTx(account types.Address) BaseTx {
@@ -203,6 +204,15 @@ func TestClawback_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "MPT issuance issuer differs from Account",
+			clawback: Clawback{
+				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
+				Amount: validMPT,
+				Holder: clawbackHolder,
+			},
+			wantErr: ErrClawbackMPTIssuerMismatch,
+		},
+		{
 			name: "missing Amount",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
@@ -302,6 +312,15 @@ func TestClawback_Validate(t *testing.T) {
 				Holder: "invalid",
 			},
 			wantErr: ErrClawbackInvalidHolder,
+		},
+		{
+			name: "tagged X-address MPT Holder",
+			clawback: Clawback{
+				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
+				Amount: validMPT,
+				Holder: clawbackTaggedHolder,
+			},
+			wantErr: ErrClawbackHolderTagNotAllowed,
 		},
 		{
 			name: "MPT self-targeting",

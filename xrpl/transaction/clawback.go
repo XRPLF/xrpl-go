@@ -1,6 +1,8 @@
 package transaction
 
 import (
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -105,11 +107,33 @@ func (c *Clawback) Validate() (bool, error) {
 		if ok, _ := IsMPTCurrency(amount); !ok || amount.IsZero() {
 			return false, ErrClawbackInvalidAmount
 		}
+
+		issuanceIDBytes, err := hex.DecodeString(amount.MPTIssuanceID)
+		if err != nil {
+			return false, ErrClawbackInvalidAmount
+		}
+		// The issuer AccountID occupies the trailing AccountAddressLength bytes of the issuance ID.
+		issuanceIssuerID := issuanceIDBytes[len(issuanceIDBytes)-addresscodec.AccountAddressLength:]
+		_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(c.Account.String())
+		if err != nil {
+			var hasTag bool
+			accountID, _, hasTag, _, err = addresscodec.DecodeXAddress(c.Account.String())
+			if err != nil || hasTag {
+				return false, ErrInvalidAccount
+			}
+		}
+		if !bytes.Equal(issuanceIssuerID, accountID) {
+			return false, ErrClawbackMPTIssuerMismatch
+		}
+
 		if c.Holder == "" {
 			return false, ErrClawbackMissingHolder
 		}
 		if !addresscodec.IsValidAddress(c.Holder.String()) {
 			return false, ErrClawbackInvalidHolder
+		}
+		if _, _, hasTag, _, err := addresscodec.DecodeXAddress(c.Holder.String()); err == nil && hasTag {
+			return false, ErrClawbackHolderTagNotAllowed
 		}
 		if c.Account == c.Holder {
 			return false, ErrClawbackSameHolder

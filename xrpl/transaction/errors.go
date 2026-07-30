@@ -314,12 +314,16 @@ var (
 	ErrClawbackMissingAmount = errors.New("clawback: missing field Amount")
 	// ErrClawbackInvalidAmount is returned when Amount is not a valid, non-zero issued-currency or MPT amount.
 	ErrClawbackInvalidAmount = errors.New("clawback: invalid Amount")
+	// ErrClawbackMPTIssuerMismatch is returned when Account is not the issuer encoded in an MPT issuance ID.
+	ErrClawbackMPTIssuerMismatch = errors.New("clawback: Account must match the issuer encoded in Amount.mpt_issuance_id")
 	// ErrClawbackHolderNotAllowed is returned when Holder is set for an issued-currency clawback.
 	ErrClawbackHolderNotAllowed = errors.New("clawback: Holder must be omitted for an issued-currency Amount")
 	// ErrClawbackMissingHolder is returned when Holder is not set for an MPT clawback.
 	ErrClawbackMissingHolder = errors.New("clawback: Holder is required for an MPT Amount")
 	// ErrClawbackInvalidHolder is returned when Holder is not a valid XRPL address.
 	ErrClawbackInvalidHolder = errors.New("clawback: invalid Holder")
+	// ErrClawbackHolderTagNotAllowed is returned when Holder is an X-address with an embedded tag.
+	ErrClawbackHolderTagNotAllowed = errors.New("clawback: Holder X-address cannot contain a tag")
 	// ErrClawbackSameAccount is returned when an IOU clawback issuer targets itself as the holder.
 	ErrClawbackSameAccount = errors.New("clawback: Account and Amount.issuer cannot be the same")
 	// ErrClawbackSameHolder is returned when an MPT clawback issuer targets itself as the holder.

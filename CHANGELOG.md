@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MPT ledger amount fields now marshal as exact quoted UInt64 decimal strings and reject malformed, unquoted, or overflowing JSON input. Required zero values remain present, while optional `MaximumAmount` and `LockedAmount` zero values are omitted.
 - Migration: the exported amount fields remain `uint64`, so Go construction is unchanged. Consumers of raw JSON must read and write these values as quoted decimal strings instead of JSON numbers.
 
+#### xrpl/transaction
+
+- `Clawback.Validate` now rejects MPT amounts whose issuance ID embeds an issuer other than `Account`, and rejects a tagged X-address in the AccountID-only `Holder` field, while continuing to accept classic and tagless X-address holders.
+
 ## [v0.2.0]
 
 ### BREAKING CHANGES

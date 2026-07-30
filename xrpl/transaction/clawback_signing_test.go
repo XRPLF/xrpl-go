@@ -3,6 +3,7 @@ package transaction_test
 import (
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
@@ -20,11 +21,18 @@ func TestClawbackSigning(t *testing.T) {
 
 	mptIssuanceID, err := hash.MPTID(1, issuer.ClassicAddress.String())
 	require.NoError(t, err)
+	taglessHolder, err := addresscodec.ClassicAddressToXAddress(holder.ClassicAddress.String(), 0, false, false)
+	require.NoError(t, err)
+	mptAmount := types.MPTCurrencyAmount{
+		MPTIssuanceID: mptIssuanceID,
+		Value:         "10",
+	}
 
 	tests := []struct {
-		name   string
-		amount types.CurrencyAmount
-		holder types.Address
+		name           string
+		amount         types.CurrencyAmount
+		holder         types.Address
+		expectedHolder types.Address
 	}{
 		{
 			name: "issued currency",
@@ -35,12 +43,16 @@ func TestClawbackSigning(t *testing.T) {
 			},
 		},
 		{
-			name: "MPT",
-			amount: types.MPTCurrencyAmount{
-				MPTIssuanceID: mptIssuanceID,
-				Value:         "10",
-			},
-			holder: holder.ClassicAddress,
+			name:           "MPT with classic Holder",
+			amount:         mptAmount,
+			holder:         holder.ClassicAddress,
+			expectedHolder: holder.ClassicAddress,
+		},
+		{
+			name:           "MPT with tagless X-address Holder",
+			amount:         mptAmount,
+			holder:         types.Address(taglessHolder),
+			expectedHolder: holder.ClassicAddress,
 		},
 	}
 
@@ -72,10 +84,10 @@ func TestClawbackSigning(t *testing.T) {
 			require.Equal(t, issuer.ClassicAddress.String(), decoded["Account"])
 			require.NotEmpty(t, decoded["TxnSignature"])
 			require.NotNil(t, decoded["Amount"])
-			if test.holder == "" {
+			if test.expectedHolder == "" {
 				require.NotContains(t, decoded, "Holder")
 			} else {
-				require.Equal(t, holder.ClassicAddress.String(), decoded["Holder"])
+				require.Equal(t, test.expectedHolder.String(), decoded["Holder"])
 			}
 		})
 	}
