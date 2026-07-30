@@ -166,12 +166,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Concurrent callers now share one in-flight network identity discovery result, including failures, while later independent operations can retry.
 - Rippled prerelease versions with numeric suffixes now compare the suffix numerically.
 - Made submit options nil-safe without enabling autofill by default; forced `fail_hard` for `AccountDelete`; added the `VaultCreate` owner-reserve fee; normalized `DeliverMax` to wire `Amount`; and prevented autofill/submission failures from corrupting caller-owned maps.
+- Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 
 #### xrpl/websocket
 
 - Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation.
 - AccountDelete autofill now runs blocker checks for plain and named string Account values, including values converted from X-addresses.
 - Identity discovery now accepts out-of-order frames, replays buffered stream messages, clears temporary read deadlines after failed reads, and bounds replacement dials by the client timeout.
+- Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 - Made submit options nil-safe without enabling autofill by default; forced `fail_hard` for `AccountDelete`; added the `VaultCreate` owner-reserve fee; normalized `DeliverMax` to wire `Amount`; and prevented autofill/submission failures from corrupting caller-owned maps.
 
 ## [v0.2.0]

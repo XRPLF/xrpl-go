@@ -63,6 +63,39 @@ func TestInspectSignedTransaction(t *testing.T) {
 	}
 }
 
+func TestInspectSignedBatchInners(t *testing.T) {
+	const (
+		publicKey = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
+		signature = "AABBCC"
+	)
+	validInner := map[string]any{"RawTransaction": map[string]any{"Flags": uint32(types.TfInnerBatchTxn), "SigningPubKey": ""}}
+
+	tests := []struct {
+		name    string
+		tx      map[string]any
+		wantErr bool
+	}{
+		{name: "non-Batch is ignored", tx: map[string]any{"TransactionType": "Payment", "SigningPubKey": publicKey}},
+		{name: "valid inner form", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{validInner}}},
+		{name: "flattened inner slice", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []map[string]any{validInner}}},
+		{name: "inner carries a signature", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{map[string]any{"RawTransaction": map[string]any{"Flags": uint32(types.TfInnerBatchTxn), "SigningPubKey": "", "TxnSignature": signature}}}}, wantErr: true},
+		{name: "inner missing inner-batch flag", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{map[string]any{"RawTransaction": map[string]any{"SigningPubKey": ""}}}}, wantErr: true},
+		{name: "malformed RawTransactions", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": "invalid"}, wantErr: true},
+		{name: "malformed inner wrapper", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{42}}, wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := InspectSignedBatchInners(tt.tx)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestTransactionHelpers(t *testing.T) {
 	t.Run("clone is deep for JSON-like values", func(t *testing.T) {
 		original := map[string]any{
