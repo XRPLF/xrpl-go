@@ -1,8 +1,10 @@
 package websocket
 
 import (
+	"maps"
 	"testing"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -10,6 +12,22 @@ import (
 )
 
 const websocketSimulateTxBlob = "120000240000ACA461400000000000000168400000000000000A730074008114B5F762798A53D543A014CAF8B297CFF8F2F937E88314550FC62003E785DC231A1058A05E56E3F09CF4E6"
+
+func encodeWebsocketSimulateTxBlob(t *testing.T, fields transaction.FlatTransaction) string {
+	t.Helper()
+	tx := transaction.FlatTransaction{
+		"TransactionType": "Payment",
+		"Account":         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+		"Destination":     "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV",
+		"Amount":          "1",
+		"Fee":             "10",
+		"Sequence":        uint32(44196),
+	}
+	maps.Copy(tx, fields)
+	blob, err := binarycodec.Encode(tx)
+	require.NoError(t, err)
+	return blob
+}
 
 func TestClient_FormatSimulateRequest(t *testing.T) {
 	tests := []struct {
@@ -236,7 +254,12 @@ func TestClient_Simulate(t *testing.T) {
 	}
 }
 
-func TestClient_SimulateRejectsNetworkIDLocally(t *testing.T) {
+func TestClient_SimulateRejectsLocally(t *testing.T) {
+	signedBlob := encodeWebsocketSimulateTxBlob(t, transaction.FlatTransaction{
+		"NetworkID": uint32(2048), "TxnSignature": "3045022100AB",
+	})
+	mismatchedNetworkBlob := encodeWebsocketSimulateTxBlob(t, transaction.FlatTransaction{"NetworkID": uint32(2049)})
+
 	tests := []struct {
 		name    string
 		request *transactions.SimulateRequest
@@ -256,6 +279,10 @@ func TestClient_SimulateRejectsNetworkIDLocally(t *testing.T) {
 			}},
 			wantErr: transactions.ErrMismatchedSimulateNetworkID,
 		},
+		{name: "signed blob", request: &transactions.SimulateRequest{TxBlob: signedBlob}, wantErr: transactions.ErrSignedSimulateTransaction},
+		{name: "malformed blob", request: &transactions.SimulateRequest{TxBlob: "DEADBEEF"}, wantErr: transactions.ErrInvalidSimulateTxBlob},
+		{name: "restricted network blob missing ID", request: &transactions.SimulateRequest{TxBlob: websocketSimulateTxBlob}, wantErr: transactions.ErrMissingSimulateNetworkID},
+		{name: "restricted network blob mismatch", request: &transactions.SimulateRequest{TxBlob: mismatchedNetworkBlob}, wantErr: transactions.ErrMismatchedSimulateNetworkID},
 	}
 
 	for _, tt := range tests {
