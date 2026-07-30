@@ -4,7 +4,6 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
 	"math"
 
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
@@ -123,10 +122,15 @@ func (c SECP256K1CryptoAlgorithm) Sign(msg, privKey string) (string, error) {
 	}
 	key, err := hex.DecodeString(privKey)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidPrivateKey, err)
+		return "", ErrInvalidPrivateKey
 	}
 
-	secpPrivKey := secp256k1.PrivKeyFromBytes(key)
+	var scalar secp256k1.ModNScalar
+	if overflow := scalar.SetByteSlice(key); overflow || scalar.IsZero() {
+		return "", ErrInvalidPrivateKey
+	}
+
+	secpPrivKey := secp256k1.NewPrivateKey(&scalar)
 	sig := ecdsa.Sign(secpPrivKey, Sha512Half([]byte(msg)))
 
 	return hexutil.EncodeToUpperHex(sig.Serialize()), nil

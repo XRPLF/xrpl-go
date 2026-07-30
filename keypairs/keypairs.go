@@ -6,6 +6,8 @@ import (
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/keypairs/interfaces"
+	xrplcrypto "github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 const (
@@ -67,9 +69,14 @@ func DeriveKeypair(seed string, validator bool) (private, public string, err err
 
 // DeriveClassicAddress derives a classic address from a supported public key format.
 func DeriveClassicAddress(pubKey string) (string, error) {
-	_, decoded, err := getCryptoImplementationFromKey(pubKey, publicKeyPurpose)
+	alg, decoded, err := getCryptoImplementationFromKey(pubKey, publicKeyPurpose)
 	if err != nil {
 		return "", err
+	}
+	if _, ok := alg.(xrplcrypto.SECP256K1CryptoAlgorithm); ok {
+		if _, err := secp256k1.ParsePubKey(decoded); err != nil {
+			return "", ErrInvalidPublicKeyFormat
+		}
 	}
 	accountID := addresscodec.Sha256RipeMD160(decoded)
 	return addresscodec.EncodeAccountIDToClassicAddress(accountID)

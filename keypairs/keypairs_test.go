@@ -2,6 +2,7 @@ package keypairs
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -281,6 +282,16 @@ func TestDeriveClassicAddress(t *testing.T) {
 			expected: "rH6TMqaYe6A2A7eXeih1tW228o7P6dNjKz",
 		},
 		{
+			name:        "fail - invalid compressed secp256k1 curve point",
+			input:       "02" + strings.Repeat("FF", 32),
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
+			name:        "fail - invalid uncompressed secp256k1 curve point",
+			input:       "04" + strings.Repeat("FF", 64),
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
 			name:        "fail - malformed public key",
 			input:       testEdPublicKey[:len(testEdPublicKey)-1] + "Z",
 			expectedErr: ErrInvalidPublicKeyFormat,
@@ -308,6 +319,10 @@ func TestDeriveClassicAddress(t *testing.T) {
 			if tc.expectedErr != nil {
 				require.Empty(t, actual)
 				require.ErrorIs(t, err, tc.expectedErr)
+				require.NotContains(t, err.Error(), tc.input)
+				if len(tc.input) >= 18 {
+					require.NotContains(t, err.Error(), tc.input[2:18])
+				}
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expected, actual)

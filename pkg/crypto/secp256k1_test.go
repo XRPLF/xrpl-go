@@ -79,6 +79,7 @@ func TestSecp256k1_Sign(t *testing.T) {
 		message           string
 		privKey           string
 		expectedSignature string
+		expectedErr       error
 		wantErr           bool
 	}{
 		{
@@ -145,6 +146,48 @@ func TestSecp256k1_Sign(t *testing.T) {
 			wantErr:           false,
 		},
 		{
+			name:        "fail - zero scalar raw private key",
+			message:     "Hello World",
+			privKey:     "0000000000000000000000000000000000000000000000000000000000000000",
+			expectedErr: ErrInvalidPrivateKey,
+			wantErr:     true,
+		},
+		{
+			name:        "fail - zero scalar prefixed private key",
+			message:     "Hello World",
+			privKey:     "000000000000000000000000000000000000000000000000000000000000000000",
+			expectedErr: ErrInvalidPrivateKey,
+			wantErr:     true,
+		},
+		{
+			name:        "fail - group order scalar raw private key",
+			message:     "Hello World",
+			privKey:     "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
+			expectedErr: ErrInvalidPrivateKey,
+			wantErr:     true,
+		},
+		{
+			name:        "fail - group order scalar prefixed private key",
+			message:     "Hello World",
+			privKey:     "00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
+			expectedErr: ErrInvalidPrivateKey,
+			wantErr:     true,
+		},
+		{
+			name:        "fail - scalar above group order raw private key",
+			message:     "Hello World",
+			privKey:     "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364142",
+			expectedErr: ErrInvalidPrivateKey,
+			wantErr:     true,
+		},
+		{
+			name:        "fail - scalar above group order prefixed private key",
+			message:     "Hello World",
+			privKey:     "00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364142",
+			expectedErr: ErrInvalidPrivateKey,
+			wantErr:     true,
+		},
+		{
 			name:              "fail - empty private key",
 			message:           "Hello World",
 			privKey:           "",
@@ -186,6 +229,14 @@ func TestSecp256k1_Sign(t *testing.T) {
 			signature, err := SECP256K1().Sign(tc.message, tc.privKey)
 			if tc.wantErr {
 				require.Error(t, err)
+				if tc.expectedErr != nil {
+					require.ErrorIs(t, err, tc.expectedErr)
+				}
+				if len(tc.privKey) >= 16 {
+					require.NotContains(t, err.Error(), tc.privKey)
+					require.NotContains(t, err.Error(), tc.privKey[:16])
+					require.NotContains(t, err.Error(), tc.privKey[len(tc.privKey)-1:])
+				}
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tc.expectedSignature, signature)
