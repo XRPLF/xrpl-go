@@ -13,22 +13,24 @@ func TestMPToken_EntryType(t *testing.T) {
 	require.Equal(t, MPTokenEntry, mpToken.EntryType())
 }
 
-func TestMPToken_SetLsfMPTLocked(t *testing.T) {
-	mpToken := &MPToken{}
-	mpToken.SetLsfMPTLocked()
-	require.Equal(t, LsfMPTLocked, mpToken.Flags)
-}
+func TestMPToken_SetLsfFlags(t *testing.T) {
+	tests := []struct {
+		name     string
+		setFlag  func(*MPToken)
+		expected uint32
+	}{
+		{name: "locked", setFlag: (*MPToken).SetLsfMPTLocked, expected: LsfMPTLocked},
+		{name: "authorized", setFlag: (*MPToken).SetLsfMPTAuthorized, expected: LsfMPTAuthorized},
+		{name: "AMM", setFlag: (*MPToken).SetLsfMPTAMM, expected: LsfMPTAMM},
+	}
 
-func TestMPToken_SetLsfMPTAuthorized(t *testing.T) {
-	mpToken := &MPToken{}
-	mpToken.SetLsfMPTAuthorized()
-	require.Equal(t, LsfMPTAuthorized, mpToken.Flags)
-}
-
-func TestMPToken_SetLsfMPTAMM(t *testing.T) {
-	mpToken := &MPToken{}
-	mpToken.SetLsfMPTAMM()
-	require.Equal(t, LsfMPTAMM, mpToken.Flags)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mpToken := &MPToken{}
+			test.setFlag(mpToken)
+			require.Equal(t, test.expected, mpToken.Flags)
+		})
+	}
 }
 
 func TestMPTokenSerialization(t *testing.T) {
