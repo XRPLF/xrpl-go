@@ -90,6 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - secp256k1 verification now rejects malleable high-S signatures that do not meet XRPL's fully canonical signature requirement.
 - `DeriveClassicAddress` now verifies that secp256k1 public keys encode valid curve points while preserving the caller's valid compressed or uncompressed encoding for address hashing.
 
+#### xrpl/queries
+
+- `simulate` now decodes `tx_blob` and rejects malformed or signed serialized transactions, and enforces the explicit-NetworkID policy for blob input, before RPC or WebSocket transport I/O.
+
 ## [v0.2.0]
 
 ### BREAKING CHANGES

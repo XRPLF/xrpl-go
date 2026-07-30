@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/version"
@@ -17,10 +18,10 @@ import (
 const restrictedNetworkID = 1024
 
 // SimulateRequest is the request type for the XLS-69 simulate command.
-// Exactly one transaction must be supplied as TxJSON or TxBlob. Non-empty
-// signature fields in TxJSON are rejected locally; the server validates the
-// decoded contents of a serialized TxBlob. Binary selects whether the server
-// returns transaction and metadata objects or hexadecimal binary blobs.
+// Exactly one transaction must be supplied as TxJSON or TxBlob. Blob inputs are
+// decoded locally, and non-empty signature fields in either representation are
+// rejected. Binary selects whether the server returns transaction and metadata
+// objects or hexadecimal binary blobs.
 type SimulateRequest struct {
 	common.BaseRequest
 	TxJSON transaction.FlatTransaction `json:"tx_json,omitempty"`
@@ -47,47 +48,24 @@ func (r SimulateRequest) MarshalJSON() ([]byte, error) {
 	return json.Marshal(simulateRequestAlias(r))
 }
 
-// Validate verifies the exclusive input variants, blob encoding, unsigned JSON
-// transaction shape, and any explicit NetworkID value.
+// Validate verifies the exclusive input variants, decoded blob contents,
+// unsigned transaction shape, and any explicit NetworkID value.
 func (r *SimulateRequest) Validate() error {
-	hasTxJSON := r.TxJSON != nil
-	hasTxBlob := r.TxBlob != ""
-	if hasTxJSON == hasTxBlob {
-		return ErrInvalidSimulateRequest
-	}
-
-	if hasTxBlob {
-		if !typecheck.IsHexBlob(r.TxBlob) {
-			return ErrInvalidSimulateTxBlob
-		}
-		return nil
-	}
-
-	if err := validateUnsignedSimulateTx(r.TxJSON); err != nil {
-		return err
-	}
-	if !hasNonEmptyStringField(r.TxJSON, "TransactionType") || !hasNonEmptyStringField(r.TxJSON, "Account") {
-		return fmt.Errorf("%w: TransactionType and Account must be non-empty strings", ErrInvalidSimulateTxJSON)
-	}
-	if _, _, err := simulateNetworkID(r.TxJSON); err != nil {
-		return err
-	}
-	return nil
+	_, err := r.validatedTransaction()
+	return err
 }
 
-// ValidateNetworkID validates tx_json against the client's current target
-// network identity. Networks with IDs above 1024 require an explicit matching
-// NetworkID. On other identified networks, a supplied NetworkID must still match.
-// Blob inputs are already serialized and are left for the server to validate.
+// ValidateNetworkID validates either input representation against the client's
+// current target network identity. Networks with IDs above 1024 require an
+// explicit matching NetworkID. On other identified networks, a supplied
+// NetworkID must still match. A zero expected ID performs type validation only.
 func (r *SimulateRequest) ValidateNetworkID(expected uint32) error {
-	if err := r.Validate(); err != nil {
+	tx, err := r.validatedTransaction()
+	if err != nil {
 		return err
 	}
-	if r.TxJSON == nil {
-		return nil
-	}
 
-	actual, present, err := simulateNetworkID(r.TxJSON)
+	actual, present, err := simulateNetworkID(tx)
 	if err != nil {
 		return err
 	}
@@ -98,6 +76,37 @@ func (r *SimulateRequest) ValidateNetworkID(expected uint32) error {
 		return ErrMismatchedSimulateNetworkID
 	}
 	return nil
+}
+
+func (r *SimulateRequest) validatedTransaction() (transaction.FlatTransaction, error) {
+	hasTxJSON := r.TxJSON != nil
+	hasTxBlob := r.TxBlob != ""
+	if hasTxJSON == hasTxBlob {
+		return nil, ErrInvalidSimulateRequest
+	}
+
+	tx := r.TxJSON
+	if hasTxBlob {
+		if !typecheck.IsHexBlob(r.TxBlob) {
+			return nil, ErrInvalidSimulateTxBlob
+		}
+		decoded, err := binarycodec.Decode(r.TxBlob)
+		if err != nil {
+			return nil, ErrInvalidSimulateTxBlob
+		}
+		tx = transaction.FlatTransaction(decoded)
+	}
+
+	if err := validateUnsignedSimulateTx(tx); err != nil {
+		return nil, err
+	}
+	if hasTxJSON && (!hasNonEmptyStringField(tx, "TransactionType") || !hasNonEmptyStringField(tx, "Account")) {
+		return nil, fmt.Errorf("%w: TransactionType and Account must be non-empty strings", ErrInvalidSimulateTxJSON)
+	}
+	if _, _, err := simulateNetworkID(tx); err != nil {
+		return nil, err
+	}
+	return tx, nil
 }
 
 // SimulateResponse is the response returned by simulate. Results reflect the
