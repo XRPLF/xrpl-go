@@ -43,6 +43,9 @@ func (t *STObject) FromJSON(json any) ([]byte, error) {
 		}
 
 		st := GetSerializedType(v.Type)
+		if st == nil {
+			return nil, fmt.Errorf("unknown type %q for field %q", v.Type, v.FieldName)
+		}
 		b, err := st.FromJSON(fimap[v])
 		if err != nil {
 			return nil, err

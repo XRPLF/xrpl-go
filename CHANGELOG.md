@@ -11,28 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
-- Replaced the reduced definitions document with the complete xrpl.js `main` snapshot at commit `14064ddc091a395efcd7099662bd85171a717ea1`. The `UInt384`/`UInt512` compatibility aliases and Go-only `tecHOOK_REJECTED`/`tecNO_DELEGATE_PERMISSION` result mappings were removed; use the canonical `Hash384`/`Hash512` names and authoritative transaction result mappings.
+- Renamed the `UInt384` and `UInt512` protocol type definitions to `Hash384` and `Hash512`, and removed the `tecHOOK_REJECTED` and `tecNO_DELEGATE_PERMISSION` transaction result mappings.
 
 #### xrpl/ledger-entry-types
 
-- Renamed the six Dynamic MPT capability constants from `LsmfMPTCanMutate*` to `LsmfMPTCanEnable*`, reflecting that issuance capabilities can be enabled once but cannot later be disabled. The metadata and transfer-fee constants retain their `LsmfMPTCanMutate*` names.
+- Renamed the six Dynamic MPT capability constants from `LsmfMPTCanMutate*` to `LsmfMPTCanEnable*`. The metadata and transfer-fee constants retain their `LsmfMPTCanMutate*` names.
 
 #### xrpl/transaction
 
 - Renamed the six `MPTokenIssuanceCreate` capability constants and setters from `TmfMPTCanMutate*`/`SetMPTCanMutate*` to `TmfMPTCanEnable*`/`SetMPTCanEnable*`. Metadata and transfer-fee mutation names are unchanged.
-- Removed the six `TmfMPTClear*` constants and corresponding `MPTokenIssuanceSet` clear methods. Dynamic MPT issuance capabilities are now one-way enable operations.
-- Updated `MPTokenIssuanceSet` mutable-flag values to the canonical contiguous mask: `TmfMPTSetCanLock` (`0x01`), `TmfMPTSetRequireAuth` (`0x02`), `TmfMPTSetCanEscrow` (`0x04`), `TmfMPTSetCanTrade` (`0x08`), `TmfMPTSetCanTransfer` (`0x10`), and `TmfMPTSetCanClawback` (`0x20`).
-- Removed `ErrMPTIssuanceSetMutableFlagsConflict` and `ErrMPTIssuanceSetTransferFeeWithClearCanTransfer`, which represented the superseded set/clear model.
+- Removed the six `TmfMPTClear*` constants and corresponding `MPTokenIssuanceSet` clear methods; Dynamic MPT capability flags can now only be enabled.
+- Changed the `MPTokenIssuanceSet` mutable-flag values to a contiguous mask: `TmfMPTSetCanLock` (`0x01`), `TmfMPTSetRequireAuth` (`0x02`), `TmfMPTSetCanEscrow` (`0x04`), `TmfMPTSetCanTrade` (`0x08`), `TmfMPTSetCanTransfer` (`0x10`), and `TmfMPTSetCanClawback` (`0x20`).
+- Removed `ErrMPTIssuanceSetMutableFlagsConflict` and `ErrMPTIssuanceSetTransferFeeWithClearCanTransfer` along with the set/clear validation model.
 
 ### Added
 
 #### binary-codec
 
-- Added canonical serialization support and round-trip fixtures for `ReferenceHolding`, `TakerPaysMPT`, and `TakerGetsMPT`.
+- Added serialization definitions for `ReferenceHolding`, `TakerPaysMPT`, and `TakerGetsMPT`.
 
 #### xrpl/ledger-entry-types
 
-- Added typed `ReferenceHolding`, `TakerPaysMPT`, and `TakerGetsMPT` ledger fields, plus the `LsfMPTAMM` flag and setter for AMM-owned MPT holdings.
+- Added `MPTokenIssuance.ReferenceHolding`, `DirectoryNode.TakerPaysMPT`, and `DirectoryNode.TakerGetsMPT`, plus the `LsfMPTAMM` flag and `SetLsfMPTAMM` setter for AMM-owned MPT holdings.
 
 #### xrpl/transaction
 
@@ -42,15 +42,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
-- Refreshed the embedded protocol definitions to the full xrpl.js `main` document, including account, ledger-entry, and transaction flag maps; ledger-entry and transaction format maps; and the definitions hash. The codec continues to consume the five serialization maps it requires.
+- Expanded the embedded protocol definitions with account-set, ledger-entry, and transaction flag maps; ledger-entry and transaction format maps; and updated protocol type and transaction result mappings.
 
 #### xrpl/transaction
 
-- Aligned Dynamic MPT validation with the current one-way enable model. `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` now reject unsupported `MutableFlags` bits in addition to rejecting an explicitly zero mask.
+- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `MutableFlags` bits in addition to an explicitly zero mask.
 
 #### dependencies
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
+
+### Fixed
+
+#### binary-codec
+
+- Encoding a field with an unsupported serialized type now returns a descriptive error instead of panicking.
 
 ## [v0.2.0]
 
@@ -725,7 +731,7 @@ Support for the XLS-77d (deep freeze)
 
 ## [v0.1.3]
 
-###  Added
+### Added
 
 - Added `APIVersion` field to the `Client` struct.
 - Added `RippledAPIV1` and `RippledAPIV2` constants.
