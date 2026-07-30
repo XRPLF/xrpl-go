@@ -36,6 +36,11 @@ const (
 	LsfRequireAuth uint32 = 0x00040000
 	// LsfRequireDestTag requires incoming payments to specify a Destination Tag.
 	LsfRequireDestTag uint32 = 0x00020000
+
+	// Note: an AccountRoot lsfAMM flag is intentionally not defined. It is absent
+	// from authoritative rippled 3.2.0 (LedgerFormats.h), where AMM state lives in
+	// the AMM ledger object rather than on AccountRoot. Adding it would diverge
+	// from the authoritative protocol snapshot.
 )
 
 // AccountRoot ledger entry type describes a single account, its settings, and XRP balance.
