@@ -165,6 +165,9 @@ func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitRes
 	if err != nil {
 		return nil, err
 	}
+	if err := clientinternal.InspectSignedBatchInners(tx); err != nil {
+		return nil, err
+	}
 	if form == clientinternal.UnsignedTransaction {
 		return nil, ErrMissingTxSignatureOrSigningPubKey
 	}
@@ -250,6 +253,9 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 	}
 	form, err := clientinternal.InspectSignedTransaction(tx, false)
 	if err != nil {
+		return nil, err
+	}
+	if err := clientinternal.InspectSignedBatchInners(tx); err != nil {
 		return nil, err
 	}
 	if form != clientinternal.MultiSignedTransaction {

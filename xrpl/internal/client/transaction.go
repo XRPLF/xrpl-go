@@ -84,6 +84,66 @@ func InspectSignedTransaction(tx map[string]any, allowInnerBatch bool) (SignedTr
 	return SingleSignedTransaction, nil
 }
 
+// InspectSignedBatchInners requires every inner transaction of a signed outer
+// Batch to use the canonical inner Batch form. A valid outer signature must not
+// let a malformed inner transaction (a non-empty TxnSignature/Signers, or a
+// missing tfInnerBatchTxn/SigningPubKey) reach the network. Callers apply this
+// to a decoded signed blob, after the inner transactions carry their final
+// wire fields.
+func InspectSignedBatchInners(tx map[string]any) error {
+	if txType, _ := tx["TransactionType"].(string); txType != "Batch" {
+		return nil
+	}
+	inners, err := rawTransactionObjects(tx["RawTransactions"])
+	if err != nil {
+		return err
+	}
+	for _, inner := range inners {
+		form, err := InspectSignedTransaction(inner, true)
+		if err != nil {
+			return err
+		}
+		if form != InnerBatchTransaction {
+			return invalidSignedForm("Batch inner transactions must use the inner Batch form")
+		}
+	}
+	return nil
+}
+
+// rawTransactionObjects extracts the inner transaction maps from a Batch
+// RawTransactions array, accepting both the flattened ([]map[string]any) and
+// binary-decoded ([]any) representations.
+func rawTransactionObjects(value any) ([]map[string]any, error) {
+	var wrappers []any
+	switch typed := value.(type) {
+	case nil:
+		return nil, nil
+	case []map[string]any:
+		wrappers = make([]any, len(typed))
+		for i := range typed {
+			wrappers[i] = typed[i]
+		}
+	case []any:
+		wrappers = typed
+	default:
+		return nil, ErrRawTransactionsFieldIsNotAnArray
+	}
+
+	inners := make([]map[string]any, 0, len(wrappers))
+	for _, wrapper := range wrappers {
+		wrapperMap, ok := wrapper.(map[string]any)
+		if !ok {
+			return nil, ErrRawTransactionFieldIsNotAnObject
+		}
+		inner, ok := wrapperMap["RawTransaction"].(map[string]any)
+		if !ok {
+			return nil, ErrRawTransactionFieldIsNotAnObject
+		}
+		inners = append(inners, inner)
+	}
+	return inners, nil
+}
+
 func isInnerBatchTransaction(tx map[string]any) bool {
 	flags, ok := typecheck.ToUint32(tx["Flags"])
 	return ok && flag.Contains(flags, types.TfInnerBatchTxn)
