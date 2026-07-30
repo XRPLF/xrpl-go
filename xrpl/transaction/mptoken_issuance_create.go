@@ -23,24 +23,33 @@ const (
 )
 
 // MutableFlags constants for MPTokenIssuanceCreate.
-// These declare which properties can be mutated after creation.
+// These declare which issuance flags can be enabled, or which fields can be mutated, after creation.
 const (
-	// TmfMPTCanMutateCanLock allows the CanLock property to be changed after creation.
-	TmfMPTCanMutateCanLock uint32 = 0x00000002
-	// TmfMPTCanMutateRequireAuth allows the RequireAuth property to be changed after creation.
-	TmfMPTCanMutateRequireAuth uint32 = 0x00000004
-	// TmfMPTCanMutateCanEscrow allows the CanEscrow property to be changed after creation.
-	TmfMPTCanMutateCanEscrow uint32 = 0x00000008
-	// TmfMPTCanMutateCanTrade allows the CanTrade property to be changed after creation.
-	TmfMPTCanMutateCanTrade uint32 = 0x00000010
-	// TmfMPTCanMutateCanTransfer allows the CanTransfer property to be changed after creation.
-	TmfMPTCanMutateCanTransfer uint32 = 0x00000020
-	// TmfMPTCanMutateCanClawback allows the CanClawback property to be changed after creation.
-	TmfMPTCanMutateCanClawback uint32 = 0x00000040
+	// TmfMPTCanEnableCanLock allows the CanLock property to be enabled after creation.
+	TmfMPTCanEnableCanLock uint32 = 0x00000002
+	// TmfMPTCanEnableRequireAuth allows the RequireAuth property to be enabled after creation.
+	TmfMPTCanEnableRequireAuth uint32 = 0x00000004
+	// TmfMPTCanEnableCanEscrow allows the CanEscrow property to be enabled after creation.
+	TmfMPTCanEnableCanEscrow uint32 = 0x00000008
+	// TmfMPTCanEnableCanTrade allows the CanTrade property to be enabled after creation.
+	TmfMPTCanEnableCanTrade uint32 = 0x00000010
+	// TmfMPTCanEnableCanTransfer allows the CanTransfer property to be enabled after creation.
+	TmfMPTCanEnableCanTransfer uint32 = 0x00000020
+	// TmfMPTCanEnableCanClawback allows the CanClawback property to be enabled after creation.
+	TmfMPTCanEnableCanClawback uint32 = 0x00000040
 	// TmfMPTCanMutateMetadata allows the MPTokenMetadata to be changed after creation.
 	TmfMPTCanMutateMetadata uint32 = 0x00010000
 	// TmfMPTCanMutateTransferFee allows the TransferFee to be changed after creation.
 	TmfMPTCanMutateTransferFee uint32 = 0x00020000
+
+	validMPTokenIssuanceCreateMutableFlags = TmfMPTCanEnableCanLock |
+		TmfMPTCanEnableRequireAuth |
+		TmfMPTCanEnableCanEscrow |
+		TmfMPTCanEnableCanTrade |
+		TmfMPTCanEnableCanTransfer |
+		TmfMPTCanEnableCanClawback |
+		TmfMPTCanMutateMetadata |
+		TmfMPTCanMutateTransferFee
 )
 
 // MPTokenIssuanceCreateMetadata represents the resulting metadata of a succeeded MPTokenIssuanceCreate transaction.
@@ -97,7 +106,7 @@ type MPTokenIssuanceCreate struct {
 	// DomainID is the ledger entry ID of a permissioned domain that grants access to the MPT.
 	// Requires the TfMPTRequireAuth flag to be set.
 	DomainID *string `json:",omitempty"`
-	// MutableFlags declares which properties of this MPT can be mutated after creation.
+	// MutableFlags declares which issuance flags can be enabled, or which fields can be mutated, after creation.
 	MutableFlags *uint32 `json:",omitempty"`
 }
 
@@ -178,34 +187,34 @@ func (m *MPTokenIssuanceCreate) setMutableFlag(f uint32) {
 	*m.MutableFlags |= f
 }
 
-// SetMPTCanMutateCanLockFlag allows the CanLock property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanLockFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanLock)
+// SetMPTCanEnableCanLockFlag allows the CanLock property to be enabled after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanLockFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanLock)
 }
 
-// SetMPTCanMutateRequireAuthFlag allows the RequireAuth property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateRequireAuthFlag() {
-	m.setMutableFlag(TmfMPTCanMutateRequireAuth)
+// SetMPTCanEnableRequireAuthFlag allows the RequireAuth property to be enabled after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableRequireAuthFlag() {
+	m.setMutableFlag(TmfMPTCanEnableRequireAuth)
 }
 
-// SetMPTCanMutateCanEscrowFlag allows the CanEscrow property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanEscrowFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanEscrow)
+// SetMPTCanEnableCanEscrowFlag allows the CanEscrow property to be enabled after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanEscrowFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanEscrow)
 }
 
-// SetMPTCanMutateCanTradeFlag allows the CanTrade property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanTradeFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanTrade)
+// SetMPTCanEnableCanTradeFlag allows the CanTrade property to be enabled after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanTradeFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanTrade)
 }
 
-// SetMPTCanMutateCanTransferFlag allows the CanTransfer property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanTransferFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanTransfer)
+// SetMPTCanEnableCanTransferFlag allows the CanTransfer property to be enabled after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanTransferFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanTransfer)
 }
 
-// SetMPTCanMutateCanClawbackFlag allows the CanClawback property to be changed after creation.
-func (m *MPTokenIssuanceCreate) SetMPTCanMutateCanClawbackFlag() {
-	m.setMutableFlag(TmfMPTCanMutateCanClawback)
+// SetMPTCanEnableCanClawbackFlag allows the CanClawback property to be enabled after creation.
+func (m *MPTokenIssuanceCreate) SetMPTCanEnableCanClawbackFlag() {
+	m.setMutableFlag(TmfMPTCanEnableCanClawback)
 }
 
 // SetMPTCanMutateMetadataFlag allows the MPTokenMetadata to be changed after creation.
@@ -257,9 +266,13 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 		}
 	}
 
-	// MutableFlags cannot be zero when present.
-	if m.MutableFlags != nil && *m.MutableFlags == 0 {
-		return false, ErrMPTIssuanceCreateMutableFlagsZero
+	if m.MutableFlags != nil {
+		if *m.MutableFlags == 0 {
+			return false, ErrMPTIssuanceCreateMutableFlagsZero
+		}
+		if *m.MutableFlags&^uint32(validMPTokenIssuanceCreateMutableFlags) != 0 {
+			return false, ErrMPTIssuanceCreateInvalidMutableFlags
+		}
 	}
 
 	return true, nil

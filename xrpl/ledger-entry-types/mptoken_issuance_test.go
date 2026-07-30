@@ -55,6 +55,17 @@ func TestMPTokenIssuance_SetLsfMPTCanClawback(t *testing.T) {
 	require.Equal(t, LsfMPTCanClawback, mpTokenIssuance.Flags)
 }
 
+func TestMPTokenIssuanceMutableFlagValues(t *testing.T) {
+	require.Equal(t, uint32(0x00000002), LsmfMPTCanEnableCanLock)
+	require.Equal(t, uint32(0x00000004), LsmfMPTCanEnableRequireAuth)
+	require.Equal(t, uint32(0x00000008), LsmfMPTCanEnableCanEscrow)
+	require.Equal(t, uint32(0x00000010), LsmfMPTCanEnableCanTrade)
+	require.Equal(t, uint32(0x00000020), LsmfMPTCanEnableCanTransfer)
+	require.Equal(t, uint32(0x00000040), LsmfMPTCanEnableCanClawback)
+	require.Equal(t, uint32(0x00010000), LsmfMPTCanMutateMetadata)
+	require.Equal(t, uint32(0x00020000), LsmfMPTCanMutateTransferFee)
+}
+
 func TestMPTokenIssuanceSerialization(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -379,7 +390,7 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
 				PreviousTxnLgrSeq: 234644,
 				Sequence:          1,
-				MutableFlags:      LsmfMPTCanMutateCanLock | LsmfMPTCanMutateMetadata,
+				MutableFlags:      LsmfMPTCanEnableCanLock | LsmfMPTCanMutateMetadata,
 			},
 			expected: `{
 	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
