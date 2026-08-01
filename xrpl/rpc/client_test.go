@@ -1455,3 +1455,122 @@ func (c *countingReadCloser) Close() error {
 	c.closeFunc()
 	return nil
 }
+
+func TestClient_calculateConfidentialMPTFees(t *testing.T) {
+	confidentialTypes := []string{
+		transaction.ConfidentialMPTSendTx.String(),
+		transaction.ConfidentialMPTConvertTx.String(),
+		transaction.ConfidentialMPTConvertBackTx.String(),
+		transaction.ConfidentialMPTMergeInboxTx.String(),
+		transaction.ConfidentialMPTClawbackTx.String(),
+	}
+
+	for _, txType := range confidentialTypes {
+		t.Run(txType, func(t *testing.T) {
+			client := setupConfidentialFeeTestClient(t, 2)
+			tx := transaction.FlatTransaction{"TransactionType": txType}
+
+			require.NoError(t, client.calculateFeePerTransactionType(&tx, 0))
+			require.Equal(t, "100", tx["Fee"])
+		})
+	}
+
+	t.Run("ordinary transaction", func(t *testing.T) {
+		client := setupConfidentialFeeTestClient(t, 2)
+		tx := transaction.FlatTransaction{"TransactionType": transaction.PaymentTx.String()}
+
+		require.NoError(t, client.calculateFeePerTransactionType(&tx, 0))
+		require.Equal(t, "10", tx["Fee"])
+	})
+
+	t.Run("multisigned confidential transaction", func(t *testing.T) {
+		client := setupConfidentialFeeTestClient(t, 2)
+		tx := transaction.FlatTransaction{"TransactionType": transaction.ConfidentialMPTSendTx.String()}
+
+		require.NoError(t, client.calculateFeePerTransactionType(&tx, 2))
+		require.Equal(t, "120", tx["Fee"])
+	})
+
+	t.Run("confidential transaction max fee", func(t *testing.T) {
+		client := setupConfidentialFeeTestClient(t, 0.00005)
+		tx := transaction.FlatTransaction{"TransactionType": transaction.ConfidentialMPTSendTx.String()}
+
+		require.NoError(t, client.calculateFeePerTransactionType(&tx, 0))
+		require.Equal(t, "50", tx["Fee"])
+	})
+
+	batchTests := []struct {
+		name       string
+		innerTypes []string
+		expected   string
+	}{
+		{
+			name:       "batch with confidential inner transaction",
+			innerTypes: []string{transaction.ConfidentialMPTSendTx.String()},
+			expected:   "120",
+		},
+		{
+			name: "batch with confidential and ordinary inner transactions",
+			innerTypes: []string{
+				transaction.ConfidentialMPTSendTx.String(),
+				transaction.PaymentTx.String(),
+			},
+			expected: "130",
+		},
+	}
+
+	for _, test := range batchTests {
+		t.Run(test.name, func(t *testing.T) {
+			rawTransactions := make([]map[string]any, 0, len(test.innerTypes))
+			for _, txType := range test.innerTypes {
+				rawTransactions = append(rawTransactions, map[string]any{
+					"RawTransaction": map[string]any{"TransactionType": txType},
+				})
+			}
+			tx := transaction.FlatTransaction{
+				"TransactionType": transaction.BatchTx.String(),
+				"RawTransactions": rawTransactions,
+			}
+			client := setupConfidentialFeeTestClient(t, 2)
+
+			require.NoError(t, client.calculateFeePerTransactionType(&tx, 0))
+			require.Equal(t, test.expected, tx["Fee"])
+		})
+	}
+}
+
+func TestClient_AutofillPreservesExplicitConfidentialMPTFee(t *testing.T) {
+	client := setupConfidentialFeeTestClient(t, 2)
+	tx := transaction.FlatTransaction{
+		"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+		"TransactionType":    transaction.ConfidentialMPTSendTx.String(),
+		"Sequence":           uint32(1),
+		"Fee":                "777",
+		"LastLedgerSequence": uint32(100),
+	}
+
+	require.NoError(t, client.Autofill(&tx))
+	require.Equal(t, "777", tx["Fee"])
+}
+
+func setupConfidentialFeeTestClient(t *testing.T, maxFeeXRP float32) *Client {
+	mc := &testutil.JSONRPCMockClient{}
+	mc.DoFunc = testutil.MockResponse(`{
+		"result": {
+			"info": {
+				"validated_ledger": {"base_fee_xrp": 0.00001},
+				"load_factor": 1
+			}
+		}
+	}`, http.StatusOK, mc)
+
+	cfg, err := NewClientConfig(
+		"http://testnode/",
+		WithHTTPClient(mc),
+		WithFeeCushion(1),
+		WithMaxFeeXRP(maxFeeXRP),
+	)
+	require.NoError(t, err)
+
+	return NewClient(cfg)
+}

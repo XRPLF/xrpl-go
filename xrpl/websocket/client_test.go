@@ -1053,6 +1053,133 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 	}
 }
 
+func TestClient_calculateConfidentialMPTFees(t *testing.T) {
+	confidentialTypes := []string{
+		transaction.ConfidentialMPTSendTx.String(),
+		transaction.ConfidentialMPTConvertTx.String(),
+		transaction.ConfidentialMPTConvertBackTx.String(),
+		transaction.ConfidentialMPTMergeInboxTx.String(),
+		transaction.ConfidentialMPTClawbackTx.String(),
+	}
+
+	for _, txType := range confidentialTypes {
+		t.Run(txType, func(t *testing.T) {
+			client, cleanup := setupConfidentialFeeTestClient(t, 1, DefaultMaxFeeXRP)
+			defer cleanup()
+			tx := transaction.FlatTransaction{"TransactionType": txType}
+
+			require.NoError(t, client.calculateFeePerTransactionType(&tx, 0))
+			require.Equal(t, "100", tx["Fee"])
+		})
+	}
+
+	t.Run("ordinary transaction", func(t *testing.T) {
+		client, cleanup := setupConfidentialFeeTestClient(t, 1, DefaultMaxFeeXRP)
+		defer cleanup()
+		tx := transaction.FlatTransaction{"TransactionType": transaction.PaymentTx.String()}
+
+		require.NoError(t, client.calculateFeePerTransactionType(&tx, 0))
+		require.Equal(t, "10", tx["Fee"])
+	})
+
+	t.Run("multisigned confidential transaction", func(t *testing.T) {
+		client, cleanup := setupConfidentialFeeTestClient(t, 1, DefaultMaxFeeXRP)
+		defer cleanup()
+		tx := transaction.FlatTransaction{"TransactionType": transaction.ConfidentialMPTSendTx.String()}
+
+		require.NoError(t, client.calculateFeePerTransactionType(&tx, 2))
+		require.Equal(t, "120", tx["Fee"])
+	})
+
+	t.Run("confidential transaction max fee", func(t *testing.T) {
+		client, cleanup := setupConfidentialFeeTestClient(t, 1, 0.00005)
+		defer cleanup()
+		tx := transaction.FlatTransaction{"TransactionType": transaction.ConfidentialMPTSendTx.String()}
+
+		require.NoError(t, client.calculateFeePerTransactionType(&tx, 0))
+		require.Equal(t, "50", tx["Fee"])
+	})
+
+	batchTests := []struct {
+		name       string
+		innerTypes []string
+		expected   string
+	}{
+		{
+			name:       "batch with confidential inner transaction",
+			innerTypes: []string{transaction.ConfidentialMPTSendTx.String()},
+			expected:   "120",
+		},
+		{
+			name: "batch with confidential and ordinary inner transactions",
+			innerTypes: []string{
+				transaction.ConfidentialMPTSendTx.String(),
+				transaction.PaymentTx.String(),
+			},
+			expected: "130",
+		},
+	}
+
+	for _, test := range batchTests {
+		t.Run(test.name, func(t *testing.T) {
+			rawTransactions := make([]map[string]any, 0, len(test.innerTypes))
+			for _, txType := range test.innerTypes {
+				rawTransactions = append(rawTransactions, map[string]any{
+					"RawTransaction": map[string]any{"TransactionType": txType},
+				})
+			}
+			tx := transaction.FlatTransaction{
+				"TransactionType": transaction.BatchTx.String(),
+				"RawTransactions": rawTransactions,
+			}
+			client, cleanup := setupConfidentialFeeTestClient(t, len(test.innerTypes)+1, DefaultMaxFeeXRP)
+			defer cleanup()
+
+			require.NoError(t, client.calculateFeePerTransactionType(&tx, 0))
+			require.Equal(t, test.expected, tx["Fee"])
+		})
+	}
+}
+
+func TestClient_AutofillPreservesExplicitConfidentialMPTFee(t *testing.T) {
+	client := NewClient(*NewClientConfig())
+	tx := transaction.FlatTransaction{
+		"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+		"TransactionType":    transaction.ConfidentialMPTSendTx.String(),
+		"Sequence":           uint32(1),
+		"Fee":                "777",
+		"LastLedgerSequence": uint32(100),
+	}
+
+	require.NoError(t, client.Autofill(&tx))
+	require.Equal(t, "777", tx["Fee"])
+}
+
+func setupConfidentialFeeTestClient(t *testing.T, requestCount int, maxFeeXRP float32) (*Client, func()) {
+	client, cleanup := setupTestClient(t, confidentialFeeServerMessages(requestCount))
+	client.cfg.feeCushion = 1
+	client.cfg.maxFeeXRP = maxFeeXRP
+	return client, cleanup
+}
+
+func confidentialFeeServerMessages(count int) []map[string]any {
+	messages := make([]map[string]any, 0, count)
+	for i := range count {
+		messages = append(messages, map[string]any{
+			"id": i + 1,
+			"result": map[string]any{
+				"info": map[string]any{
+					"validated_ledger": map[string]any{
+						"base_fee_xrp": float32(0.00001),
+					},
+					"load_factor": float32(1),
+				},
+			},
+		})
+	}
+	return messages
+}
+
 func TestClient_setLastLedgerSequence(t *testing.T) {
 	tests := []struct {
 		name           string
