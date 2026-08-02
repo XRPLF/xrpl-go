@@ -118,6 +118,43 @@ func TestUint64_FromJson(t *testing.T) {
 	}
 }
 
+func TestUInt64FromBaseTenJSON(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       any
+		expected    []byte
+		expectedErr error
+	}{
+		{
+			name:     "decimal one thousand",
+			input:    "1000",
+			expected: []byte{0, 0, 0, 0, 0, 0, 3, 232},
+		},
+		{
+			name:     "maximum uint64",
+			input:    "18446744073709551615",
+			expected: []byte{255, 255, 255, 255, 255, 255, 255, 255},
+		},
+		{
+			name:        "decimal overflow",
+			input:       "18446744073709551616",
+			expectedErr: ErrInvalidUInt64String,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := (&UInt64{}).fromJSON(tt.input, uint64JSONBaseDecimal)
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func TestUint64_ToJson(t *testing.T) {
 	defs := definitions.Get()
 
@@ -127,6 +164,7 @@ func TestUint64_ToJson(t *testing.T) {
 		malleate    func(t *testing.T) interfaces.BinaryParser
 		expected    string
 		expectedErr error
+		opts        []int
 	}{
 		{
 			name:  "fail - binary parser has no data",
@@ -175,13 +213,23 @@ func TestUint64_ToJson(t *testing.T) {
 				return serdes.NewBinaryParser([]byte{255, 255, 255, 255, 255, 255, 255, 255}, defs)
 			},
 		},
+		{
+			name:        "pass - base ten field",
+			input:       []byte{0, 0, 0, 0, 0, 0, 3, 232},
+			expected:    "1000",
+			expectedErr: nil,
+			opts:        []int{uint64JSONBaseDecimal},
+			malleate: func(t *testing.T) interfaces.BinaryParser {
+				return serdes.NewBinaryParser([]byte{0, 0, 0, 0, 0, 0, 3, 232}, defs)
+			},
+		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			class := &UInt64{}
 			parser := tc.malleate(t)
-			actual, err := class.ToJSON(parser)
+			actual, err := class.ToJSON(parser, tc.opts...)
 			if tc.expectedErr != nil {
 				require.EqualError(t, err, tc.expectedErr.Error())
 			} else {
