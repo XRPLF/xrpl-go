@@ -25,7 +25,7 @@ func TestEscrow(t *testing.T) {
 		PreviousTxnLgrSeq: 28991004,
 		SourceTag:         11747,
 		TransferRate:      1000,
-		IssuerNode:        1234567890,
+		IssuerNode:        "499602d2",
 	}
 
 	j := `{
@@ -44,7 +44,7 @@ func TestEscrow(t *testing.T) {
 	"PreviousTxnLgrSeq": 28991004,
 	"SourceTag": 11747,
 	"TransferRate": 1000,
-	"IssuerNode": 1234567890
+	"IssuerNode": "499602d2"
 }`
 
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
@@ -77,7 +77,7 @@ func TestEscrowMPTAmountSerialization(t *testing.T) {
 		PreviousTxnLgrSeq: 28991004,
 		SourceTag:         11747,
 		TransferRate:      1000,
-		IssuerNode:        1234567890,
+		IssuerNode:        "499602d2",
 	}
 
 	j := `{
@@ -99,7 +99,7 @@ func TestEscrowMPTAmountSerialization(t *testing.T) {
 	"PreviousTxnLgrSeq": 28991004,
 	"SourceTag": 11747,
 	"TransferRate": 1000,
-	"IssuerNode": 1234567890
+	"IssuerNode": "499602d2"
 }`
 
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
@@ -128,7 +128,7 @@ func TestEscrowIssuedAmountSerialization(t *testing.T) {
 		PreviousTxnLgrSeq: 28991004,
 		SourceTag:         11747,
 		TransferRate:      1000,
-		IssuerNode:        1234567890,
+		IssuerNode:        "499602d2",
 	}
 
 	j := `{
@@ -151,7 +151,7 @@ func TestEscrowIssuedAmountSerialization(t *testing.T) {
 	"PreviousTxnLgrSeq": 28991004,
 	"SourceTag": 11747,
 	"TransferRate": 1000,
-	"IssuerNode": 1234567890
+	"IssuerNode": "499602d2"
 }`
 
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {

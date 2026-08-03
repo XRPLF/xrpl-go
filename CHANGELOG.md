@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/ledger-entry-types
 
 - **Breaking:** Changed MPT ledger amount fields from `uint64` to their XRPL JSON string representation, and changed MPT `OwnerNode` fields to hexadecimal strings.
+- **Breaking:** Changed `Oracle.OwnerNode` and `Escrow.IssuerNode` to hexadecimal strings, and `PriceData.AssetPrice` (still `uint64` in Go) now round-trips its hexadecimal JSON wire form; these fields previously failed to decode real server responses. Added the missing `Oracle.LedgerEntryType` and `Oracle.Flags` fields.
 
 ## [v0.2.0]
 

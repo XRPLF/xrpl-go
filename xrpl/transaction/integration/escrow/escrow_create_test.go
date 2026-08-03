@@ -3,6 +3,7 @@ package escrow
 import (
 	"testing"
 
+	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
@@ -39,6 +40,14 @@ func testIntegrationEscrowCreate(t *testing.T, client integration.Client) {
 		})
 		require.NoError(t, err)
 		require.Len(t, objects.AccountObjects, 1)
+
+		escrowEntry := integration.DecodeLedgerObject[ledger.Escrow](t, objects.AccountObjects[0])
+		require.Equal(t, ledger.EscrowEntry, escrowEntry.LedgerEntryType)
+		require.Equal(t, sender.GetAddress(), escrowEntry.Account)
+		require.Equal(t, receiver.GetAddress(), escrowEntry.Destination)
+		require.Equal(t, types.XRPCurrencyAmount(10000), escrowEntry.Amount)
+		require.NotEmpty(t, escrowEntry.OwnerNode)
+		require.Empty(t, escrowEntry.IssuerNode, "XRP escrows carry no IssuerNode")
 	})
 }
 

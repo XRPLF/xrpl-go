@@ -70,24 +70,25 @@ func testIntegrationOracleSet(t *testing.T, client integration.Client) {
 		require.NoError(t, err)
 		require.Len(t, objects.AccountObjects, 1, "there should be exactly one oracle on the ledger")
 
-		oracle := objects.AccountObjects[0]
-		require.Equal(t, oracleSetTx.LastUpdateTime, integration.TxFieldUint32(t, oracle, "LastUpdateTime"))
-		require.Equal(t, string(owner.GetAddress()), oracle["Owner"].(string))
-		require.Equal(t, strings.ToLower(oracleSetTx.AssetClass), strings.ToLower(oracle["AssetClass"].(string)))
-		require.Equal(t, strings.ToLower(oracleSetTx.Provider), strings.ToLower(oracle["Provider"].(string)))
+		oracle := integration.DecodeLedgerObject[ledger.Oracle](t, objects.AccountObjects[0])
+		require.Equal(t, ledger.OracleEntry, oracle.LedgerEntryType)
+		require.Zero(t, oracle.Flags)
+		require.Equal(t, owner.GetAddress(), oracle.Owner)
+		require.Equal(t, oracleSetTx.LastUpdateTime, oracle.LastUpdateTime)
+		require.Equal(t, strings.ToLower(oracleSetTx.AssetClass), strings.ToLower(oracle.AssetClass))
+		require.Equal(t, strings.ToLower(oracleSetTx.Provider), strings.ToLower(oracle.Provider))
+		require.NotEmpty(t, oracle.OwnerNode)
 
-		priceDataSeries := oracle["PriceDataSeries"].([]any)
-		require.Len(t, priceDataSeries, 2)
+		require.Len(t, oracle.PriceDataSeries, 2)
 
-		firstPriceData := priceDataSeries[0].(map[string]any)["PriceData"].(map[string]any)
-		require.Equal(t, "XRP", firstPriceData["BaseAsset"].(string))
-		require.Equal(t, "USD", firstPriceData["QuoteAsset"].(string))
-		require.Equal(t, "2e4", firstPriceData["AssetPrice"].(string))
-		require.InEpsilon(t, float64(3), integration.TxFieldFloat64(t, firstPriceData, "Scale"), 0.0)
-		require.InDelta(t, float64(0), integration.TxFieldFloat64(t, oracle, "Flags"), 0)
+		firstPriceData := oracle.PriceDataSeries[0].PriceData
+		require.Equal(t, "XRP", firstPriceData.BaseAsset)
+		require.Equal(t, "USD", firstPriceData.QuoteAsset)
+		require.Equal(t, uint64(740), firstPriceData.AssetPrice)
+		require.Equal(t, uint8(3), firstPriceData.Scale)
 
-		secondPriceData := priceDataSeries[1].(map[string]any)["PriceData"].(map[string]any)
-		require.Equal(t, "ffffffffffffffff", secondPriceData["AssetPrice"].(string))
+		secondPriceData := oracle.PriceDataSeries[1].PriceData
+		require.Equal(t, uint64(0xffffffffffffffff), secondPriceData.AssetPrice)
 	})
 }
 

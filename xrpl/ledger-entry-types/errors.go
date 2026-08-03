@@ -15,6 +15,8 @@ var (
 
 	// ErrPriceDataAssetPriceAndScale is returned when the asset price and scale are not set together.
 	ErrPriceDataAssetPriceAndScale = errors.New("asset price and scale must be set together")
+	// ErrPriceDataAssetPrice is returned when an AssetPrice JSON value cannot be parsed.
+	ErrPriceDataAssetPrice = errors.New("invalid asset price")
 	// ErrPriceDataBaseAsset is returned when the base asset is required but not set.
 	ErrPriceDataBaseAsset = errors.New("base asset is required")
 	// ErrPriceDataQuoteAsset is returned when the quote asset is required but not set.

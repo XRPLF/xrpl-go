@@ -27,7 +27,7 @@ import (
 //	    "SourceTag": 11747,
 //	    "index": "DC5F3851D8A1AB622F957761E5963BC5BD439D5C24AC6AD7AC4523F0640244AC",
 //	    "TransferRate": 1000,
-//	    "IssuerNode": 1234567890
+//	    "IssuerNode": "499602d2"
 //	}
 //
 // ```
@@ -74,8 +74,9 @@ type Escrow struct {
 	SourceTag uint32 `json:",omitempty"`
 	// The fee to charge when users finish an escrow, initially set on the creation of an escrow contract and updated on subsequent finish transactions.
 	TransferRate uint32 `json:",omitempty"`
-	// (Optional) The ledger index of the issuer's directory node associated with the Escrow. Used when the issuer is neither the source nor destination account.
-	IssuerNode uint64 `json:",omitempty"`
+	// (Optional) A hexadecimal hint indicating which page of the issuer's owner directory links to this entry.
+	// Used when the issuer is neither the source nor destination account. (Requires the TokenEscrow amendment.)
+	IssuerNode string `json:",omitempty"`
 }
 
 // EntryType returns the ledger entry type for Escrow.
@@ -102,7 +103,7 @@ func (e *Escrow) UnmarshalJSON(data []byte) error {
 		PreviousTxnLgrSeq uint32
 		SourceTag         uint32 `json:",omitempty"`
 		TransferRate      uint32 `json:",omitempty"`
-		IssuerNode        uint64 `json:",omitempty"`
+		IssuerNode        string `json:",omitempty"`
 	}
 	var h escrowHelper
 	if err := json.Unmarshal(data, &h); err != nil {

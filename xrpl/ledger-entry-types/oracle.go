@@ -1,7 +1,9 @@
 package ledger
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -26,7 +28,9 @@ type PriceData struct {
 	QuoteAsset string
 	// The asset price after applying the Scale precision level. It's not included if
 	// the last update transaction didn't include the BaseAsset/QuoteAsset pair.
-	AssetPrice uint64 `json:",omitempty"`
+	// On the wire this is a base-16 string (sfAssetPrice carries no base-ten flag in
+	// rippled); the custom JSON (un)marshallers below convert to and from uint64.
+	AssetPrice uint64
 	// The scaling factor to apply to an asset price. For example, if Scale is 6 and original price is 0.155,
 	// then the scaled price is 155000. Valid scale ranges are 0-10.
 	// It's not included if the last update transaction didn't include the BaseAsset/QuoteAsset pair.
@@ -95,6 +99,65 @@ func (priceData *PriceData) Flatten() map[string]any {
 	return flattened
 }
 
+// MarshalJSON serializes the price data with AssetPrice in its hexadecimal wire form.
+func (priceData PriceData) MarshalJSON() ([]byte, error) {
+	type priceDataWire struct {
+		BaseAsset  string
+		QuoteAsset string
+		AssetPrice string `json:",omitempty"`
+		Scale      uint8  `json:",omitempty"`
+	}
+	wire := priceDataWire{
+		BaseAsset:  priceData.BaseAsset,
+		QuoteAsset: priceData.QuoteAsset,
+		Scale:      priceData.Scale,
+	}
+	if priceData.AssetPrice != 0 {
+		wire.AssetPrice = strconv.FormatUint(priceData.AssetPrice, 16)
+	}
+	return json.Marshal(wire)
+}
+
+// UnmarshalJSON decodes the price data, accepting AssetPrice as the hexadecimal
+// string rippled emits or as a plain base-10 JSON number.
+func (priceData *PriceData) UnmarshalJSON(data []byte) error {
+	type priceDataRaw struct {
+		BaseAsset  string
+		QuoteAsset string
+		AssetPrice json.RawMessage
+		Scale      uint8
+	}
+	var raw priceDataRaw
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	*priceData = PriceData{
+		BaseAsset:  raw.BaseAsset,
+		QuoteAsset: raw.QuoteAsset,
+		Scale:      raw.Scale,
+	}
+
+	if len(raw.AssetPrice) == 0 || string(raw.AssetPrice) == "null" {
+		return nil
+	}
+
+	token := string(raw.AssetPrice)
+	base := 10
+	if raw.AssetPrice[0] == '"' {
+		if err := json.Unmarshal(raw.AssetPrice, &token); err != nil {
+			return err
+		}
+		base = 16
+	}
+	value, err := strconv.ParseUint(token, base, 64)
+	if err != nil {
+		return fmt.Errorf("%w: %q", ErrPriceDataAssetPrice, token)
+	}
+	priceData.AssetPrice = value
+	return nil
+}
+
 // Oracle ledger entry holds data associated with a single price oracle object.
 // Requires PriceOracle amendment.
 // Example:
@@ -110,12 +173,13 @@ func (priceData *PriceData) Flatten() map[string]any {
 //	      "PriceData": {
 //	        "BaseAsset": "XRP",
 //	        "QuoteAsset": "USD",
-//	        "AssetPrice": 740,
+//	        "AssetPrice": "2e4",
 //	        "Scale": 3,
 //	      }
 //	    },
 //	  ],
 //	  "LastUpdateTime": 1724871860,
+//	  "OwnerNode": "0",
 //	  "PreviousTxnID": "C53ECF838647FA5A4C780377025FEC7999AB4182590510CA461444B207AB74A9",
 //	  "PreviousTxnLgrSeq": 3675418
 //	}
@@ -126,6 +190,10 @@ type Oracle struct {
 	// context and API method. (Note, even though this is specified as "optional" in the code, every ledger entry
 	// should have one unless it's legacy data from very early in the XRP Ledger's history.)
 	Index types.Hash256 `json:"index,omitempty"`
+	// The type of ledger entry.
+	LedgerEntryType EntryType
+	// Set of bit-flags for this ledger entry.
+	Flags uint32
 	// The XRPL account with update and delete privileges for the oracle.
 	// It's recommended to set up multi-signing on this account.
 	Owner types.Address
@@ -143,9 +211,9 @@ type Oracle struct {
 	// Describes the type of asset, such as "currency", "commodity", or "index". This field is a string,
 	// up to 16 ASCII hex encoded characters (0x20-0x7E).
 	AssetClass string
-	// A hint indicating which page of the oracle owner's owner directory links to this entry,
+	// A hexadecimal hint indicating which page of the oracle owner's owner directory links to this entry,
 	// in case the directory consists of multiple pages.
-	OwnerNode uint64
+	OwnerNode string
 	// The hash of the previous transaction that modified this entry.
 	PreviousTxnID string
 	// The ledger index that this object was most recently modified or created in.
