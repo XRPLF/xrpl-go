@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Key algorithm detection now validates caller purpose, complete hexadecimal encoding, prefix, and exact length before selecting Ed25519 or secp256k1. Signing supports raw and `00`-prefixed secp256k1 private keys, verification and classic-address derivation support compressed and uncompressed secp256k1 public keys.
 - `DeriveClassicAddress` now rejects unsupported public-key formats with a purpose-specific error instead of hashing any decodable 33-byte value.
 - secp256k1 signing now rejects zero and out-of-range private scalars instead of reducing them modulo the curve order.
+- secp256k1 verification now rejects malleable high-S signatures that do not meet XRPL's fully canonical signature requirement.
 - `DeriveClassicAddress` now verifies that secp256k1 public keys encode valid curve points while preserving the caller's valid compressed or uncompressed encoding for address hashing.
 
 ### Added
@@ -294,7 +295,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added integration test for `DepositPreauth` transaction
 - Added integration test for escrow transactions.
 - Added integration test for payment and payment channels transactions.
-- Added integration test for vault transactions 
+- Added integration test for vault transactions
 - Added integration test for oracle transactions `OracleSet` and `OracleDelete`
 - Added integration test for NFT transaction `NFTModify`
 - Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`

@@ -336,6 +336,10 @@ func TestDeriveClassicAddress(t *testing.T) {
 // produced and TestValidate asserts it verifies.
 const secpHelloWorldSignature = "3045022100E1617F1A3C85B5BC8FA6224F893FE9068BEA8F8D075EE144F6F9D255C829761802206FD9B361CDE83A0C3D5654232F1D7CFB1A614E9A8F9B1A861564029065516E64"
 
+// secpHelloWorldHighSSignature is the malleable high-S alternative to
+// secpHelloWorldSignature. XRPL requires the low-S form.
+const secpHelloWorldHighSSignature = "3046022100E1617F1A3C85B5BC8FA6224F893FE9068BEA8F8D075EE144F6F9D255C829761802210090264C9E3217C5F3C2A9ABDCD0E28303A04D8E4C1FAD85B5AA6E5BFC6AE4D2DD"
+
 func TestSign(t *testing.T) {
 	tt := []struct {
 		name         string
@@ -541,6 +545,13 @@ func TestValidate(t *testing.T) {
 			inputPubKey: testSecpCompressedEvenKey,
 			inputSig:    secpHelloWorldSignature,
 			expected:    true,
+		},
+		{
+			name:        "fail - reject high-S secp256k1 signature",
+			inputMsg:    "Hello World",
+			inputPubKey: testSecpCompressedEvenKey,
+			inputSig:    secpHelloWorldHighSSignature,
+			expected:    false,
 		},
 		{
 			name:        "pass - verify with compressed secp256k1 public key with odd Y",

@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
@@ -145,6 +146,11 @@ func (c SECP256K1CryptoAlgorithm) Validate(msg, pubkey, sig string) bool {
 
 	parsedSig, err := ecdsa.ParseDERSignature(sigBytes)
 	if err != nil {
+		return false
+	}
+	// Serialize normalizes S to the lower half of the curve order. If the
+	// canonical encoding differs, the input used a malleable high-S signature.
+	if !bytes.Equal(parsedSig.Serialize(), sigBytes) {
 		return false
 	}
 
