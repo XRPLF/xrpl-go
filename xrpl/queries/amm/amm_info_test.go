@@ -175,6 +175,33 @@ func TestAMMInfoResponse(t *testing.T) {
 	}
 }
 
+func TestAuctionSlotInfo_TimeIntervalExpiredSentinel(t *testing.T) {
+	s := AuctionSlotInfo{
+		Account:       "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+		DiscountedFee: 0,
+		Price: types.IssuedCurrencyAmount{
+			Currency: "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
+			Issuer:   "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+			Value:    "100",
+		},
+		TimeInterval: 20,
+	}
+
+	j := `{
+	"account": "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+	"discounted_fee": 0,
+	"price": {
+		"issuer": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		"currency": "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
+		"value": "100"
+	},
+	"time_interval": 20
+}`
+	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestAMMInfoResponse_XRPAssets(t *testing.T) {
 	asset2Frozen := false
 
