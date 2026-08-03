@@ -87,8 +87,8 @@ var (
 	ErrInvalidMPTType = errors.New("an MPT currency amount must be of type MPT")
 	// ErrMissingMPTIssuanceID is returned when the MPTIssuanceID field is missing for an MPT currency amount.
 	ErrMissingMPTIssuanceID = errors.New("mpt_issuance_id field is missing for the MPT currency amount")
-	// ErrInvalidMPTIssuanceID is returned when the MPTIssuanceID field is not a 192-bit hexadecimal value.
-	ErrInvalidMPTIssuanceID = errors.New("mpt_issuance_id field must be a 48-character hex string")
+	// ErrInvalidMPTIssuanceID is returned when the MPTIssuanceID field is not a valid hex string.
+	ErrInvalidMPTIssuanceID = errors.New("mpt_issuance_id field must be a valid hex string")
 	// ErrInvalidMPTValue is returned when the value field is not a valid positive integer in the range 0 to 0x7FFFFFFFFFFFFFFF.
 	ErrInvalidMPTValue = errors.New("value field should be a valid positive integer in the range 0 to 0x7FFFFFFFFFFFFFFF for MPT currency amount")
 	// ErrInvalidAssetFields is returned when the asset object does not have the required fields (currency, or currency and issuer).
@@ -97,8 +97,8 @@ var (
 	ErrMissingAssetCurrency = errors.New("currency field is required for an asset")
 	// ErrInvalidAssetIssuer is returned when the issuer field is invalid for an asset.
 	ErrInvalidAssetIssuer = errors.New("issuer field must be a valid XRPL classic address")
-	// ErrInvalidMPTIssuanceIDAsset is returned when an MPT asset has invalid fields (invalid 192-bit ID, or currency/issuer set).
-	ErrInvalidMPTIssuanceIDAsset = errors.New("MPT asset must have only a valid 48-character hex mpt_issuance_id, with no currency or issuer")
+	// ErrInvalidMPTIssuanceIDAsset is returned when an MPT asset has invalid fields (non-hex ID, or currency/issuer set).
+	ErrInvalidMPTIssuanceIDAsset = errors.New("MPT asset must have only a valid hex mpt_issuance_id, with no currency or issuer")
 
 	// validations_xrpl_objects
 

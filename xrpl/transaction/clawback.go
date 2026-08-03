@@ -116,7 +116,7 @@ func (c *Clawback) Validate() (bool, error) {
 		}
 
 		issuanceIDBytes, err := hex.DecodeString(amount.MPTIssuanceID)
-		if err != nil {
+		if err != nil || len(issuanceIDBytes) != bctypes.MPTIssuanceIDByteLength {
 			return false, ErrClawbackInvalidAmount
 		}
 		// The issuer AccountID occupies the trailing AccountAddressLength bytes of the issuance ID.

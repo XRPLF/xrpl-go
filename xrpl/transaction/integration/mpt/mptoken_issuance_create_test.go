@@ -3,6 +3,7 @@ package mpt
 import (
 	"testing"
 
+	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
@@ -57,14 +58,13 @@ func testIntegrationMptTokenCreate(t *testing.T, client integration.Client) {
 			})
 			require.NoError(t, err)
 			require.Len(t, accountObjects.AccountObjects, 1)
-			createdToken := accountObjects.AccountObjects[0]
-
-			createdAssetScale := integration.TxFieldUint32(t, createdToken, "AssetScale")
-			require.Equal(t, uint8(createdAssetScale), assetScale)
-
-			createdMaximumAmount := createdToken["MaximumAmount"]
-			require.Equal(t, createdMaximumAmount, maxAmount.String())
-			require.Equal(t, createdToken["MPTokenMetadata"], encodedMetadata)
+			createdToken := integration.DecodeLedgerObject[ledger.MPTokenIssuance](t, accountObjects.AccountObjects[0])
+			require.Equal(t, ledger.MPTokenIssuanceEntry, createdToken.LedgerEntryType)
+			require.Equal(t, sender.GetAddress(), createdToken.Issuer)
+			require.Equal(t, assetScale, createdToken.AssetScale)
+			require.Equal(t, maxAmount.String(), createdToken.MaximumAmount)
+			require.Equal(t, encodedMetadata, createdToken.MPTokenMetadata)
+			require.NotEmpty(t, createdToken.OwnerNode)
 		})
 	}
 }

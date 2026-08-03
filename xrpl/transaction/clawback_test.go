@@ -291,6 +291,18 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackInvalidAmount,
 		},
 		{
+			name: "fail - negative issued currency Amount",
+			clawback: Clawback{
+				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   clawbackHolder,
+					Currency: "USD",
+					Value:    "-1",
+				},
+			},
+			wantErr: ErrClawbackInvalidAmount,
+		},
+		{
 			name: "fail - Holder with issued currency",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),

@@ -103,13 +103,13 @@ func TestVaultCreate_Flatten(t *testing.T) {
 					Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				},
 				Asset: ledger.Asset{
-					MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
 				},
 			},
 			expected: FlatTransaction{
 				"TransactionType": VaultCreateTx.String(),
 				"Account":         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
-				"Asset":           map[string]any{"mpt_issuance_id": "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A"},
+				"Asset":           map[string]any{"mpt_issuance_id": "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF"},
 			},
 		},
 	}
@@ -154,7 +154,7 @@ func TestVaultCreate_Validate(t *testing.T) {
 					TransactionType: VaultCreateTx,
 				},
 				Asset: ledger.Asset{
-					MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
 				},
 			},
 			expected: nil,
@@ -265,7 +265,7 @@ func TestVaultCreate_Validate(t *testing.T) {
 					TransactionType: VaultCreateTx,
 				},
 				Asset: ledger.Asset{
-					MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
+					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
 				},
 				Scale: func() *uint8 { v := uint8(5); return &v }(),
 			},

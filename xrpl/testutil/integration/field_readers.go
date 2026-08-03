@@ -4,8 +4,21 @@ import (
 	"encoding/json"
 	"testing"
 
+	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/stretchr/testify/require"
 )
+
+// DecodeLedgerObject converts a raw ledger response into its typed ledger-entry model.
+func DecodeLedgerObject[T any](t *testing.T, object ledger.FlatLedgerObject) T {
+	t.Helper()
+
+	encoded, err := json.Marshal(object)
+	require.NoError(t, err)
+
+	var decoded T
+	require.NoError(t, json.Unmarshal(encoded, &decoded))
+	return decoded
+}
 
 // TxFieldUint32 reads the field from a transaction where the expected uint32 is not certain
 func TxFieldUint32(t *testing.T, tx map[string]any, field string) uint32 {

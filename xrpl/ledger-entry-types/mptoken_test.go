@@ -39,11 +39,11 @@ func TestMPTokenSerialization(t *testing.T) {
 				Flags:             LsfMPTLocked,
 				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				MPTokenIssuanceID: types.Hash192("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
-				MPTAmount:         1000000,
-				LockedAmount:      1,
+				MPTAmount:         "1000000",
+				LockedAmount:      "1",
 				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
 				PreviousTxnLgrSeq: 234644,
-				OwnerNode:         1,
+				OwnerNode:         "1",
 			},
 			expected: `{
 	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
@@ -51,11 +51,11 @@ func TestMPTokenSerialization(t *testing.T) {
 	"Flags": 1,
 	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"MPTokenIssuanceID": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
-	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
-	"PreviousTxnLgrSeq": 234644,
 	"MPTAmount": "1000000",
 	"LockedAmount": "1",
-	"OwnerNode": "0000000000000001"
+	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
+	"PreviousTxnLgrSeq": 234644,
+	"OwnerNode": "1"
 }`,
 		},
 		{
@@ -66,11 +66,11 @@ func TestMPTokenSerialization(t *testing.T) {
 				Flags:             LsfMPTAuthorized,
 				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				MPTokenIssuanceID: types.Hash192("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
-				MPTAmount:         1000000,
-				LockedAmount:      1,
+				MPTAmount:         "1000000",
+				LockedAmount:      "1",
 				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
 				PreviousTxnLgrSeq: 234644,
-				OwnerNode:         1,
+				OwnerNode:         "1",
 			},
 			expected: `{
 	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
@@ -78,11 +78,11 @@ func TestMPTokenSerialization(t *testing.T) {
 	"Flags": 2,
 	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"MPTokenIssuanceID": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
-	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
-	"PreviousTxnLgrSeq": 234644,
 	"MPTAmount": "1000000",
 	"LockedAmount": "1",
-	"OwnerNode": "0000000000000001"
+	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
+	"PreviousTxnLgrSeq": 234644,
+	"OwnerNode": "1"
 }`,
 		},
 		{
@@ -93,11 +93,11 @@ func TestMPTokenSerialization(t *testing.T) {
 				Flags:             LsfMPTLocked | LsfMPTAuthorized,
 				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				MPTokenIssuanceID: types.Hash192("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
-				MPTAmount:         1000000,
-				LockedAmount:      1,
+				MPTAmount:         "1000000",
+				LockedAmount:      "1",
 				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
 				PreviousTxnLgrSeq: 234644,
-				OwnerNode:         1,
+				OwnerNode:         "1",
 			},
 			expected: `{
 	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
@@ -105,11 +105,11 @@ func TestMPTokenSerialization(t *testing.T) {
 	"Flags": 3,
 	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"MPTokenIssuanceID": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
-	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
-	"PreviousTxnLgrSeq": 234644,
 	"MPTAmount": "1000000",
 	"LockedAmount": "1",
-	"OwnerNode": "0000000000000001"
+	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
+	"PreviousTxnLgrSeq": 234644,
+	"OwnerNode": "1"
 }`,
 		},
 		{
@@ -120,11 +120,11 @@ func TestMPTokenSerialization(t *testing.T) {
 				Flags:             LsfMPTLocked,
 				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				MPTokenIssuanceID: types.Hash192("rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1"),
-				MPTAmount:         1000000,
-				LockedAmount:      0,
+				MPTAmount:         "1000000",
+				LockedAmount:      "",
 				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
 				PreviousTxnLgrSeq: 234644,
-				OwnerNode:         1,
+				OwnerNode:         "1",
 			},
 			expected: `{
 	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
@@ -132,10 +132,10 @@ func TestMPTokenSerialization(t *testing.T) {
 	"Flags": 1,
 	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"MPTokenIssuanceID": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+	"MPTAmount": "1000000",
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"MPTAmount": "1000000",
-	"OwnerNode": "0000000000000001"
+	"OwnerNode": "1"
 }`,
 		},
 	}
