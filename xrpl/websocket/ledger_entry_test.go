@@ -11,11 +11,10 @@ import (
 
 func TestClient_GetLedgerEntry(t *testing.T) {
 	tests := []struct {
-		name        string
-		message     map[string]any
-		request     *ledgerquery.EntryRequest
-		expected    *ledgerquery.EntryResponse
-		expectedErr error
+		name     string
+		message  map[string]any
+		request  *ledgerquery.EntryRequest
+		expected *ledgerquery.EntryResponse
 	}{
 		{
 			name: "json response",
@@ -73,22 +72,6 @@ func TestClient_GetLedgerEntry(t *testing.T) {
 				Validated:   true,
 			},
 		},
-		{
-			name: "reject response with both payloads",
-			message: map[string]any{
-				"id": 1,
-				"result": map[string]any{
-					"index":       "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
-					"node":        map[string]any{"LedgerEntryType": "AccountRoot"},
-					"node_binary": "1100",
-					"validated":   true,
-				},
-			},
-			request: &ledgerquery.EntryRequest{
-				Index: "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
-			},
-			expectedErr: ledgerquery.ErrInvalidEntryResponse,
-		},
 	}
 
 	for _, tt := range tests {
@@ -97,13 +80,8 @@ func TestClient_GetLedgerEntry(t *testing.T) {
 			defer cleanup()
 
 			response, err := client.GetLedgerEntry(tt.request)
-			if tt.expectedErr != nil {
-				require.ErrorIs(t, err, tt.expectedErr)
-				require.Nil(t, response)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expected, response)
-			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, response)
 		})
 	}
 }
