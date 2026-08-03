@@ -30,7 +30,7 @@ func testIntegrationMptTokenIssuanceDestroy(t *testing.T, client integration.Cli
 	encodedMetadata, err := testIntegrationMptTokenCreationMetadata()
 	require.NoError(t, err)
 	assetScale := uint8(2)
-	maxAmount := types.XRPCurrencyAmount(1)
+	maxAmount := types.MPTAmount(10000)
 
 	tt := []MPTokenIssuanceDestroyTest{
 		{

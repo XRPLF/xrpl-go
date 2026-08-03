@@ -82,15 +82,10 @@ type MPTokenIssuanceCreate struct {
 	// allowing transfer rates of between 0.000% and 50.000% in increments of 0.001.
 	// The field must NOT be present if the `TfMPTCanTransfer` flag is not set.
 	TransferFee *uint16 `json:",omitempty"`
-	// Specifies the maximum asset amount of this token that should ever be issued.
-	// It is a non-negative integer string that can store a range of up to 63 bits. If not set, the max
-	// amount will default to the largest unsigned 63-bit integer (0x7FFFFFFFFFFFFFFF or 9223372036854775807)
-	//
-	// Example:
-	// ```
-	// MaximumAmount: '9223372036854775807'
-	// ```
-	MaximumAmount *types.XRPCurrencyAmount `json:",omitempty"`
+	// Specifies the maximum number of MPT units that may be issued.
+	// When present, the value must be between 1 and 2^63-1. If omitted, the
+	// protocol currently defaults to 2^63-1.
+	MaximumAmount *types.MPTAmount `json:",omitempty"`
 	// MPTokenMetadata is arbitrary metadata about this issuance in hex format.
 	// The limit for this field is 1024 bytes.
 	MPTokenMetadata *string `json:",omitempty"`
@@ -235,10 +230,8 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 		}
 	}
 
-	if m.MaximumAmount != nil {
-		if ok, err := IsAmount(*m.MaximumAmount, "MaximumAmount", true); !ok {
-			return false, err
-		}
+	if m.MaximumAmount != nil && (m.MaximumAmount.IsZero() || !m.MaximumAmount.IsValid()) {
+		return false, ErrMPTIssuanceCreateMaximumAmountInvalid
 	}
 
 	// Validate MPTokenMetadata: ensure it's in hex format and at most 1024 bytes (2048 chars).

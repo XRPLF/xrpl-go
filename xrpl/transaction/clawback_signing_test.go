@@ -23,6 +23,8 @@ func TestClawbackSigning(t *testing.T) {
 	require.NoError(t, err)
 	taglessHolder, err := addresscodec.ClassicAddressToXAddress(holder.ClassicAddress.String(), 0, false, false)
 	require.NoError(t, err)
+	testnetTaglessHolder, err := addresscodec.ClassicAddressToXAddress(holder.ClassicAddress.String(), 0, false, true)
+	require.NoError(t, err)
 	mptAmount := types.MPTCurrencyAmount{
 		MPTIssuanceID: mptIssuanceID,
 		Value:         "10",
@@ -38,6 +40,22 @@ func TestClawbackSigning(t *testing.T) {
 			name: "pass - issued currency",
 			amount: types.IssuedCurrencyAmount{
 				Issuer:   holder.ClassicAddress,
+				Currency: "USD",
+				Value:    "1",
+			},
+		},
+		{
+			name: "pass - issued currency with tagless X-address holder",
+			amount: types.IssuedCurrencyAmount{
+				Issuer:   types.Address(taglessHolder),
+				Currency: "USD",
+				Value:    "1",
+			},
+		},
+		{
+			name: "pass - issued currency with tagless testnet X-address holder",
+			amount: types.IssuedCurrencyAmount{
+				Issuer:   types.Address(testnetTaglessHolder),
 				Currency: "USD",
 				Value:    "1",
 			},
@@ -84,6 +102,11 @@ func TestClawbackSigning(t *testing.T) {
 			require.Equal(t, issuer.ClassicAddress.String(), decoded["Account"])
 			require.NotEmpty(t, decoded["TxnSignature"])
 			require.NotNil(t, decoded["Amount"])
+			if test.amount.Kind() == types.ISSUED {
+				decodedAmount, ok := decoded["Amount"].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, holder.ClassicAddress.String(), decodedAmount["issuer"])
+			}
 			if test.expectedHolder == "" {
 				require.NotContains(t, decoded, "Holder")
 			} else {

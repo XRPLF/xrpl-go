@@ -174,6 +174,21 @@ func TestClawback_JSONRoundTrip(t *testing.T) {
 	}
 }
 
+func TestClawback_UnmarshalJSONRejectsMixedAmountFields(t *testing.T) {
+	const input = `{
+		"Amount": {
+			"mpt_issuance_id": "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
+			"currency": "USD",
+			"issuer": "rhsTg7mm7v3oEGrF85n1KdB3JjCk5KPT4M",
+			"value": "10"
+		}
+	}`
+
+	var clawback Clawback
+	err := json.Unmarshal([]byte(input), &clawback)
+	require.ErrorIs(t, err, types.ErrMixedCurrencyAmountFields)
+}
+
 func TestClawback_Validate(t *testing.T) {
 	taggedMPTIssuer, err := addresscodec.ClassicAddressToXAddress(clawbackMPTIssuer.String(), 123, true, false)
 	require.NoError(t, err)

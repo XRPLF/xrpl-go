@@ -60,7 +60,15 @@ var (
 	// ErrDuplicateCredentials is returned when duplicate credentials are present in the list.
 	ErrDuplicateCredentials = errors.New("credentials list cannot contain duplicate elements")
 
-	// mptoken metadata
+	// currency amounts
+
+	// ErrMixedCurrencyAmountFields is returned when an amount combines MPT and issued-currency fields.
+	ErrMixedCurrencyAmountFields = errors.New("currency amount cannot combine mpt_issuance_id with currency or issuer")
+
+	// mptoken amounts and metadata
+
+	// ErrInvalidMPTAmount is returned when an MPT amount is not a base-10 integer in the range 0..2^63-1.
+	ErrInvalidMPTAmount = errors.New("mpt amount must be a base-10 integer between 0 and 9223372036854775807")
 
 	// ErrInvalidMPTokenMetadataHex is returned when the MPTokenMetadata field is not a hex string.
 	ErrInvalidMPTokenMetadataHex = errors.New("mptoken metadata should be a hex string")

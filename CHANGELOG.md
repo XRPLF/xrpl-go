@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### binary-codec
+
+- Corrected `UInt64` JSON handling for MPT amount fields: `MaximumAmount`, `OutstandingAmount`, `MPTAmount`, and `LockedAmount` now encode and decode as base-10 strings, while fields such as `OwnerNode` remain hexadecimal.
+- Issued-currency amounts now encode tagless mainnet and testnet X-address issuers as their classic AccountID while rejecting issuers with embedded tags.
+
+#### xrpl/transaction
+
+- **Breaking:** Changed `MPTokenIssuanceCreate.MaximumAmount` from `*types.XRPCurrencyAmount` to `*types.MPTAmount`; validation now enforces the protocol range `1..2^63-1` when the field is present.
+
 #### dependencies
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
@@ -23,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking:** Changed MPT ledger amount fields from `uint64` to their XRPL JSON string representation, and changed MPT `OwnerNode` fields to hexadecimal strings.
 - **Breaking:** Changed `Oracle.OwnerNode` and `Escrow.IssuerNode` to hexadecimal strings, and `PriceData.AssetPrice` (still `uint64` in Go) now round-trips its hexadecimal JSON wire form; these fields previously failed to decode real server responses. Added the missing `Oracle.LedgerEntryType` and `Oracle.Flags` fields.
+
+### Fixed
+
+#### xrpl/transaction/types
+
+- Rejected currency amount JSON that combines `mpt_issuance_id` with issued-currency `currency` or `issuer` fields.
 
 ## [v0.2.0]
 

@@ -220,6 +220,8 @@ var (
 	// ErrHolderAccountConflict is returned when the holder account is the same as the issuing account.
 	ErrHolderAccountConflict = errors.New("holder must be different from the account")
 
+	// ErrMPTIssuanceCreateMaximumAmountInvalid is returned when MaximumAmount is outside 1..2^63-1.
+	ErrMPTIssuanceCreateMaximumAmountInvalid = errors.New("mptoken issuance create: MaximumAmount must be between 1 and 9223372036854775807")
 	// ErrMPTIssuanceCreateMutableFlagsZero is returned when MutableFlags is set to zero in MPTokenIssuanceCreate.
 	ErrMPTIssuanceCreateMutableFlagsZero = errors.New("mptoken issuance create: MutableFlags cannot be zero")
 	// ErrMPTIssuanceCreateDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
