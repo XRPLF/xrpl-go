@@ -47,7 +47,7 @@ func getCryptoImplementationFromKey(key string, purpose keyPurpose) (interfaces.
 		return nil, nil, invalidKeyFormatError(purpose)
 	}
 
-	// An exact first-byte prefix match wins; noKeyPrefix rows accept any first byte.
+	// An exact first-byte prefix match wins, noKeyPrefix rows accept any first byte.
 	prefixes := []int{noKeyPrefix}
 	if len(decoded) > 0 {
 		prefixes = []int{int(decoded[0]), noKeyPrefix}
