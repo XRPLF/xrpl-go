@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- Extended `Clawback` to support MPT amounts with protocol-correct `Holder` flattening, JSON round trips, validation, binary encoding, and offline signing; XRP and invalid IOU/MPT Holder combinations are rejected.
+- Extended `Clawback` to support MPT amounts with protocol-correct `Holder` flattening, JSON round trips, validation, binary encoding, and offline signing, XRP and invalid IOU/MPT Holder combinations are rejected.
 
 ### Changed
 
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- `Clawback.Validate` now compares decoded AccountIDs so equivalent classic and X-address encodings cannot bypass self-clawback checks. Tagged X-addresses remain forbidden for AccountID-only holder fields, while a tagged top-level `Account` is accepted and encoded through `SourceTag`; combining an embedded tag with an explicit `SourceTag` is rejected before encoding.
+- `Clawback.Validate` now compares decoded AccountIDs so equivalent classic and X-address encodings cannot bypass self-clawback checks. Tagged X-addresses remain forbidden for AccountID-only holder fields, while a tagged top-level `Account` is accepted and encoded through `SourceTag`, combining an embedded tag with an explicit `SourceTag` is rejected before encoding.
 - `Clawback.Validate` now rejects MPT amounts whose issuance ID embeds an issuer other than `Account`.
 
 ## [v0.2.0]
