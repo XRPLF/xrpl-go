@@ -23,12 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/ledger-entry-types
 
-- MPT ledger amount fields now marshal as exact quoted UInt64 decimal strings and reject malformed, unquoted, or overflowing JSON input. Required zero values remain present, while optional `MaximumAmount` and `LockedAmount` zero values are omitted.
-- Migration: the exported amount fields remain `uint64`, so Go construction is unchanged. Consumers of raw JSON must read and write these values as quoted decimal strings instead of JSON numbers.
+- MPT ledger amount fields now marshal as exact quoted UInt64 decimal strings, accept quoted or unsigned-integer JSON input, and reject malformed, overlong, or overflowing values. Required `OutstandingAmount` zero remains present, while default `MPTAmount` and optional `MaximumAmount`/`LockedAmount` zero values are omitted.
+- MPT ledger `OwnerNode` fields now marshal as xrpl.js-compatible zero-padded UInt64 hexadecimal strings and accept rippled's shorter hexadecimal form when unmarshalling.
+- Migration: the exported UInt64 fields remain `uint64`, so Go construction is unchanged. Canonical raw JSON output represents MPT amounts as quoted decimal strings and `OwnerNode` as a quoted hexadecimal string.
 
 #### xrpl/transaction
 
-- `Clawback.Validate` now rejects MPT amounts whose issuance ID embeds an issuer other than `Account`, and rejects a tagged X-address in the AccountID-only `Holder` field, while continuing to accept classic and tagless X-address holders.
+- `Clawback.Validate` now compares decoded AccountIDs so equivalent classic and X-address encodings cannot bypass self-clawback checks. Tagged X-addresses remain forbidden for AccountID-only holder fields, while a tagged top-level `Account` is accepted and encoded through `SourceTag`; combining an embedded tag with an explicit `SourceTag` is rejected before encoding.
+- `Clawback.Validate` now rejects MPT amounts whose issuance ID embeds an issuer other than `Account`.
 
 ## [v0.2.0]
 

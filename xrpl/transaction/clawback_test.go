@@ -5,7 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
@@ -173,6 +175,18 @@ func TestClawback_JSONRoundTrip(t *testing.T) {
 }
 
 func TestClawback_Validate(t *testing.T) {
+	taggedMPTIssuer, err := addresscodec.ClassicAddressToXAddress(clawbackMPTIssuer.String(), 123, true, false)
+	require.NoError(t, err)
+	taglessIOUIssuer, err := addresscodec.ClassicAddressToXAddress(clawbackIOUIssuer.String(), 0, false, false)
+	require.NoError(t, err)
+	taglessMPTIssuer, err := addresscodec.ClassicAddressToXAddress(clawbackMPTIssuer.String(), 0, false, false)
+	require.NoError(t, err)
+
+	taggedAccountWithSourceTag := newClawbackBaseTx(types.Address(taggedMPTIssuer))
+	taggedAccountWithSourceTag.SourceTag = 123
+	taglessAccountWithSourceTag := newClawbackBaseTx(types.Address(taglessMPTIssuer))
+	taglessAccountWithSourceTag.SourceTag = 123
+
 	validIOU := types.IssuedCurrencyAmount{
 		Issuer:   clawbackHolder,
 		Currency: "USD",
@@ -202,6 +216,31 @@ func TestClawback_Validate(t *testing.T) {
 				Amount: validMPT,
 				Holder: clawbackHolder,
 			},
+		},
+		{
+			name: "valid MPT with tagged X-address Account",
+			clawback: Clawback{
+				BaseTx: newClawbackBaseTx(types.Address(taggedMPTIssuer)),
+				Amount: validMPT,
+				Holder: clawbackHolder,
+			},
+		},
+		{
+			name: "valid MPT with tagless X-address Account and SourceTag",
+			clawback: Clawback{
+				BaseTx: taglessAccountWithSourceTag,
+				Amount: validMPT,
+				Holder: clawbackHolder,
+			},
+		},
+		{
+			name: "tagged X-address Account with explicit SourceTag",
+			clawback: Clawback{
+				BaseTx: taggedAccountWithSourceTag,
+				Amount: validMPT,
+				Holder: clawbackHolder,
+			},
+			wantErr: bctypes.ErrDuplicateXAddressTag,
 		},
 		{
 			name: "MPT issuance issuer differs from Account",
@@ -273,6 +312,18 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackSameAccount,
 		},
 		{
+			name: "issued currency self-targeting with equivalent tagless X-address",
+			clawback: Clawback{
+				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   types.Address(taglessIOUIssuer),
+					Currency: "USD",
+					Value:    "1",
+				},
+			},
+			wantErr: ErrClawbackSameAccount,
+		},
+		{
 			name: "missing Holder with MPT",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
@@ -331,6 +382,15 @@ func TestClawback_Validate(t *testing.T) {
 			},
 			wantErr: ErrClawbackSameHolder,
 		},
+		{
+			name: "MPT self-targeting with equivalent tagless X-address",
+			clawback: Clawback{
+				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
+				Amount: validMPT,
+				Holder: types.Address(taglessMPTIssuer),
+			},
+			wantErr: ErrClawbackSameHolder,
+		},
 	}
 
 	for _, test := range tests {
@@ -385,4 +445,23 @@ func TestClawback_BinaryCodecRoundTrip(t *testing.T) {
 			require.Equal(t, flattened["Holder"], decoded["Holder"])
 		})
 	}
+
+	t.Run("tagged X-address Account becomes classic Account and SourceTag", func(t *testing.T) {
+		const sourceTag uint32 = 123
+		taggedAccount, err := addresscodec.ClassicAddressToXAddress(clawbackMPTIssuer.String(), sourceTag, true, false)
+		require.NoError(t, err)
+
+		clawback := newUnsignedClawbackMPT()
+		clawback.Account = types.Address(taggedAccount)
+		valid, err := clawback.Validate()
+		require.NoError(t, err)
+		require.True(t, valid)
+
+		encoded, err := binarycodec.Encode(clawback.Flatten())
+		require.NoError(t, err)
+		decoded, err := binarycodec.Decode(encoded)
+		require.NoError(t, err)
+		require.Equal(t, clawbackMPTIssuer.String(), decoded["Account"])
+		require.Equal(t, sourceTag, decoded["SourceTag"])
+	})
 }

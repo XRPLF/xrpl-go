@@ -84,14 +84,14 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"Flags": 1,
 	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AssetScale": 2,
-	"MaximumAmount": "1000",
-	"OutstandingAmount": "100",
 	"TransferFee": 100,
 	"MPTokenMetadata": "7B227469636B6572",
-	"OwnerNode": 1,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"Sequence": 1
+	"Sequence": 1,
+	"MaximumAmount": "1000",
+	"OutstandingAmount": "100",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -117,14 +117,14 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"Flags": 2,
 	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AssetScale": 2,
-	"MaximumAmount": "1000",
-	"OutstandingAmount": "100",
 	"TransferFee": 100,
 	"MPTokenMetadata": "7B227469636B6572",
-	"OwnerNode": 1,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"Sequence": 1
+	"Sequence": 1,
+	"MaximumAmount": "1000",
+	"OutstandingAmount": "100",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -150,14 +150,14 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"Flags": 4,
 	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AssetScale": 2,
-	"MaximumAmount": "1000",
-	"OutstandingAmount": "100",
 	"TransferFee": 100,
 	"MPTokenMetadata": "7B227469636B6572",
-	"OwnerNode": 1,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"Sequence": 1
+	"Sequence": 1,
+	"MaximumAmount": "1000",
+	"OutstandingAmount": "100",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -183,14 +183,14 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"Flags": 8,
 	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AssetScale": 2,
-	"MaximumAmount": "1000",
-	"OutstandingAmount": "100",
 	"TransferFee": 100,
 	"MPTokenMetadata": "7B227469636B6572",
-	"OwnerNode": 1,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"Sequence": 1
+	"Sequence": 1,
+	"MaximumAmount": "1000",
+	"OutstandingAmount": "100",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -216,14 +216,14 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"Flags": 16,
 	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AssetScale": 2,
-	"MaximumAmount": "1000",
-	"OutstandingAmount": "100",
 	"TransferFee": 100,
 	"MPTokenMetadata": "7B227469636B6572",
-	"OwnerNode": 1,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"Sequence": 1
+	"Sequence": 1,
+	"MaximumAmount": "1000",
+	"OutstandingAmount": "100",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -249,14 +249,14 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"Flags": 32,
 	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AssetScale": 2,
-	"MaximumAmount": "1000",
-	"OutstandingAmount": "100",
 	"TransferFee": 100,
 	"MPTokenMetadata": "7B227469636B6572",
-	"OwnerNode": 1,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"Sequence": 1
+	"Sequence": 1,
+	"MaximumAmount": "1000",
+	"OutstandingAmount": "100",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -283,14 +283,14 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"Flags": 64,
 	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AssetScale": 2,
-	"MaximumAmount": "1000",
-	"OutstandingAmount": "100",
 	"TransferFee": 100,
 	"MPTokenMetadata": "7B227469636B6572",
-	"OwnerNode": 1,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"Sequence": 1
+	"Sequence": 1,
+	"MaximumAmount": "1000",
+	"OutstandingAmount": "100",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -317,15 +317,15 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"Flags": 4,
 	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AssetScale": 2,
-	"MaximumAmount": "1000",
-	"OutstandingAmount": "100",
 	"TransferFee": 100,
 	"MPTokenMetadata": "7B227469636B6572",
-	"OwnerNode": 1,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
 	"Sequence": 1,
-	"DomainID": "B738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"
+	"DomainID": "B738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+	"MaximumAmount": "1000",
+	"OutstandingAmount": "100",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -352,15 +352,15 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"Flags": 34,
 	"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"AssetScale": 2,
-	"MaximumAmount": "1000",
-	"OutstandingAmount": "100",
 	"TransferFee": 100,
 	"MPTokenMetadata": "7B227469636B6572",
-	"OwnerNode": 1,
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
 	"Sequence": 1,
-	"MutableFlags": 65538
+	"MutableFlags": 65538,
+	"MaximumAmount": "1000",
+	"OutstandingAmount": "100",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 	}

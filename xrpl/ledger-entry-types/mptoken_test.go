@@ -51,11 +51,11 @@ func TestMPTokenSerialization(t *testing.T) {
 	"Flags": 1,
 	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"MPTokenIssuanceID": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
-	"MPTAmount": "1000000",
-	"LockedAmount": "1",
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"OwnerNode": 1
+	"MPTAmount": "1000000",
+	"LockedAmount": "1",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -78,11 +78,11 @@ func TestMPTokenSerialization(t *testing.T) {
 	"Flags": 2,
 	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"MPTokenIssuanceID": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
-	"MPTAmount": "1000000",
-	"LockedAmount": "1",
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"OwnerNode": 1
+	"MPTAmount": "1000000",
+	"LockedAmount": "1",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -105,11 +105,11 @@ func TestMPTokenSerialization(t *testing.T) {
 	"Flags": 3,
 	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"MPTokenIssuanceID": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
-	"MPTAmount": "1000000",
-	"LockedAmount": "1",
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"OwnerNode": 1
+	"MPTAmount": "1000000",
+	"LockedAmount": "1",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 		{
@@ -132,10 +132,10 @@ func TestMPTokenSerialization(t *testing.T) {
 	"Flags": 1,
 	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"MPTokenIssuanceID": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
-	"MPTAmount": "1000000",
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"OwnerNode": 1
+	"MPTAmount": "1000000",
+	"OwnerNode": "0000000000000001"
 }`,
 		},
 	}

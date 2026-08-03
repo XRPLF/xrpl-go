@@ -89,6 +89,14 @@ func (c *Clawback) Validate() (bool, error) {
 		return false, ErrClawbackMissingAmount
 	}
 
+	accountID, accountHasTag, err := decodeAddressAccountID(c.Account)
+	if err != nil {
+		return false, ErrInvalidAccount
+	}
+	if accountHasTag && c.SourceTag != 0 {
+		return false, bctypes.ErrDuplicateXAddressTag
+	}
+
 	switch amount := c.Amount.(type) {
 	case types.IssuedCurrencyAmount:
 		if ok, _ := IsIssuedCurrency(amount); !ok || amount.IsZero() {
@@ -97,7 +105,12 @@ func (c *Clawback) Validate() (bool, error) {
 		if c.Holder != "" {
 			return false, ErrClawbackHolderNotAllowed
 		}
-		if c.Account == amount.Issuer {
+
+		issuerID, hasTag, err := decodeAddressAccountID(amount.Issuer)
+		if err != nil || hasTag {
+			return false, ErrClawbackInvalidAmount
+		}
+		if bytes.Equal(accountID, issuerID) {
 			return false, ErrClawbackSameAccount
 		}
 	case types.MPTCurrencyAmount:
@@ -114,14 +127,6 @@ func (c *Clawback) Validate() (bool, error) {
 		}
 		// The issuer AccountID occupies the trailing AccountAddressLength bytes of the issuance ID.
 		issuanceIssuerID := issuanceIDBytes[len(issuanceIDBytes)-addresscodec.AccountAddressLength:]
-		_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(c.Account.String())
-		if err != nil {
-			var hasTag bool
-			accountID, _, hasTag, _, err = addresscodec.DecodeXAddress(c.Account.String())
-			if err != nil || hasTag {
-				return false, ErrInvalidAccount
-			}
-		}
 		if !bytes.Equal(issuanceIssuerID, accountID) {
 			return false, ErrClawbackMPTIssuerMismatch
 		}
@@ -129,13 +134,14 @@ func (c *Clawback) Validate() (bool, error) {
 		if c.Holder == "" {
 			return false, ErrClawbackMissingHolder
 		}
-		if !addresscodec.IsValidAddress(c.Holder.String()) {
+		holderID, hasTag, err := decodeAddressAccountID(c.Holder)
+		if err != nil {
 			return false, ErrClawbackInvalidHolder
 		}
-		if _, _, hasTag, _, err := addresscodec.DecodeXAddress(c.Holder.String()); err == nil && hasTag {
+		if hasTag {
 			return false, ErrClawbackHolderTagNotAllowed
 		}
-		if c.Account == c.Holder {
+		if bytes.Equal(accountID, holderID) {
 			return false, ErrClawbackSameHolder
 		}
 	default:
