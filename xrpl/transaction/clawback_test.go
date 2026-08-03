@@ -74,7 +74,7 @@ func TestClawback_Flatten(t *testing.T) {
 		expected FlatTransaction
 	}{
 		{
-			name: "issued currency",
+			name: "pass - issued currency",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 				Amount: types.IssuedCurrencyAmount{
@@ -98,7 +98,7 @@ func TestClawback_Flatten(t *testing.T) {
 			},
 		},
 		{
-			name: "MPT",
+			name: "pass - MPT",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
 				Amount: types.MPTCurrencyAmount{
@@ -137,7 +137,7 @@ func TestClawback_JSONRoundTrip(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "issued currency omits Holder",
+			name:     "pass - issued currency omits Holder",
 			clawback: newUnsignedClawbackIOU(),
 			expected: `{
 				"Account":"rnLYcEcYw2r3w6BDsFDSScoFmvZXbwa6EQ",
@@ -148,7 +148,7 @@ func TestClawback_JSONRoundTrip(t *testing.T) {
 			}`,
 		},
 		{
-			name:     "MPT includes Holder",
+			name:     "pass - MPT includes Holder",
 			clawback: newUnsignedClawbackMPT(),
 			expected: `{
 				"Account":"rKGpqjZhYan5FLqGyAfAzHpJeUN8fs3SYi",
@@ -203,14 +203,14 @@ func TestClawback_Validate(t *testing.T) {
 		wantErr  error
 	}{
 		{
-			name: "valid issued currency",
+			name: "pass - valid issued currency",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 				Amount: validIOU,
 			},
 		},
 		{
-			name: "valid MPT",
+			name: "pass - valid MPT",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
 				Amount: validMPT,
@@ -218,7 +218,7 @@ func TestClawback_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "valid MPT with tagged X-address Account",
+			name: "pass - valid MPT with tagged X-address Account",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(types.Address(taggedMPTIssuer)),
 				Amount: validMPT,
@@ -226,7 +226,7 @@ func TestClawback_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "valid MPT with tagless X-address Account and SourceTag",
+			name: "pass - valid MPT with tagless X-address Account and SourceTag",
 			clawback: Clawback{
 				BaseTx: taglessAccountWithSourceTag,
 				Amount: validMPT,
@@ -234,7 +234,7 @@ func TestClawback_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "tagged X-address Account with explicit SourceTag",
+			name: "fail - tagged X-address Account with explicit SourceTag",
 			clawback: Clawback{
 				BaseTx: taggedAccountWithSourceTag,
 				Amount: validMPT,
@@ -243,7 +243,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: bctypes.ErrDuplicateXAddressTag,
 		},
 		{
-			name: "MPT issuance issuer differs from Account",
+			name: "fail - MPT issuance issuer differs from Account",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 				Amount: validMPT,
@@ -252,14 +252,14 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackMPTIssuerMismatch,
 		},
 		{
-			name: "missing Amount",
+			name: "fail - missing Amount",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 			},
 			wantErr: ErrClawbackMissingAmount,
 		},
 		{
-			name: "XRP Amount",
+			name: "fail - XRP Amount",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 				Amount: types.XRPCurrencyAmount(1),
@@ -267,7 +267,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackInvalidAmount,
 		},
 		{
-			name: "invalid issued currency Amount",
+			name: "fail - invalid issued currency Amount",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 				Amount: types.IssuedCurrencyAmount{
@@ -279,7 +279,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackInvalidAmount,
 		},
 		{
-			name: "zero issued currency Amount",
+			name: "fail - zero issued currency Amount",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 				Amount: types.IssuedCurrencyAmount{
@@ -291,7 +291,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackInvalidAmount,
 		},
 		{
-			name: "Holder with issued currency",
+			name: "fail - Holder with issued currency",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 				Amount: validIOU,
@@ -300,7 +300,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackHolderNotAllowed,
 		},
 		{
-			name: "issued currency self-targeting",
+			name: "fail - issued currency self-targeting",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 				Amount: types.IssuedCurrencyAmount{
@@ -312,7 +312,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackSameAccount,
 		},
 		{
-			name: "issued currency self-targeting with equivalent tagless X-address",
+			name: "fail - issued currency self-targeting with equivalent tagless X-address",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
 				Amount: types.IssuedCurrencyAmount{
@@ -324,7 +324,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackSameAccount,
 		},
 		{
-			name: "missing Holder with MPT",
+			name: "fail - missing Holder with MPT",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
 				Amount: validMPT,
@@ -332,7 +332,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackMissingHolder,
 		},
 		{
-			name: "invalid MPT Amount",
+			name: "fail - invalid MPT Amount",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
 				Amount: types.MPTCurrencyAmount{
@@ -344,7 +344,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackInvalidAmount,
 		},
 		{
-			name: "zero MPT Amount",
+			name: "fail - zero MPT Amount",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
 				Amount: types.MPTCurrencyAmount{
@@ -356,7 +356,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackInvalidAmount,
 		},
 		{
-			name: "invalid MPT Holder",
+			name: "fail - invalid MPT Holder",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
 				Amount: validMPT,
@@ -365,7 +365,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackInvalidHolder,
 		},
 		{
-			name: "tagged X-address MPT Holder",
+			name: "fail - tagged X-address MPT Holder",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
 				Amount: validMPT,
@@ -374,7 +374,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackHolderTagNotAllowed,
 		},
 		{
-			name: "MPT self-targeting",
+			name: "fail - MPT self-targeting",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
 				Amount: validMPT,
@@ -383,7 +383,7 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: ErrClawbackSameHolder,
 		},
 		{
-			name: "MPT self-targeting with equivalent tagless X-address",
+			name: "fail - MPT self-targeting with equivalent tagless X-address",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackMPTIssuer),
 				Amount: validMPT,
@@ -414,11 +414,11 @@ func TestClawback_BinaryCodecRoundTrip(t *testing.T) {
 		clawback Clawback
 	}{
 		{
-			name:     "issued currency",
+			name:     "pass - issued currency",
 			clawback: newUnsignedClawbackIOU(),
 		},
 		{
-			name:     "MPT",
+			name:     "pass - MPT",
 			clawback: newUnsignedClawbackMPT(),
 		},
 	}
@@ -446,7 +446,7 @@ func TestClawback_BinaryCodecRoundTrip(t *testing.T) {
 		})
 	}
 
-	t.Run("tagged X-address Account becomes classic Account and SourceTag", func(t *testing.T) {
+	t.Run("pass - tagged X-address Account becomes classic Account and SourceTag", func(t *testing.T) {
 		const sourceTag uint32 = 123
 		taggedAccount, err := addresscodec.ClassicAddressToXAddress(clawbackMPTIssuer.String(), sourceTag, true, false)
 		require.NoError(t, err)

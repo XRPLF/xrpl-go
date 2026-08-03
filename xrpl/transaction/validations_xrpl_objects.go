@@ -25,6 +25,8 @@ const (
 	StandardCurrencyCodeLen = 3
 	// Hex256Length is the number of characters in a 256-bit hexadecimal value.
 	Hex256Length = 64
+	// mptIssuanceIDHexLength is the number of characters in a 192-bit MPT issuance ID.
+	mptIssuanceIDHexLength = 2 * bctypes.MPTIssuanceIDByteLength
 )
 
 // *************************
@@ -152,6 +154,11 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 	return true, nil
 }
 
+// isValidMPTIssuanceID reports whether id is a 192-bit MPT issuance ID encoded as hexadecimal.
+func isValidMPTIssuanceID(id string) bool {
+	return len(id) == mptIssuanceIDHexLength && typecheck.IsHex(id)
+}
+
 // IsMPTCurrency checks if the given object is a valid MPTCurrencyAmount object.
 func IsMPTCurrency(input types.CurrencyAmount) (bool, error) {
 	if input.Kind() != types.MPT {
@@ -164,7 +171,7 @@ func IsMPTCurrency(input types.CurrencyAmount) (bool, error) {
 		return false, ErrMissingMPTIssuanceID
 	}
 
-	if !typecheck.IsHex(mptAmount.MPTIssuanceID) {
+	if !isValidMPTIssuanceID(mptAmount.MPTIssuanceID) {
 		return false, ErrInvalidMPTIssuanceID
 	}
 
@@ -240,7 +247,7 @@ func IsAsset(asset ledger.Asset) (bool, error) {
 		if asset.Currency != "" || asset.Issuer != "" {
 			return false, ErrInvalidMPTIssuanceIDAsset
 		}
-		if !typecheck.IsHex(asset.MPTIssuanceID) {
+		if !isValidMPTIssuanceID(asset.MPTIssuanceID) {
 			return false, ErrInvalidMPTIssuanceIDAsset
 		}
 		return true, nil

@@ -2,7 +2,6 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -52,7 +51,7 @@ const (
 //	{
 //	      "TransactionType": "MPTokenIssuanceSet",
 //	      "Fee": "10",
-//	      "MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+//	      "MPTokenIssuanceID": "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A",
 //	      "Flags": 1
 //	}
 //
@@ -198,8 +197,8 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, err
 	}
 
-	// MPTokenIssuanceID is required and must be valid hex.
-	if m.MPTokenIssuanceID == "" || !typecheck.IsHex(m.MPTokenIssuanceID) {
+	// MPTokenIssuanceID is required and must be a 192-bit hexadecimal value.
+	if !isValidMPTIssuanceID(m.MPTokenIssuanceID) {
 		return false, ErrInvalidMPTokenIssuanceIDSet
 	}
 

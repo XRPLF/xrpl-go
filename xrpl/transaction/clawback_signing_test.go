@@ -35,7 +35,7 @@ func TestClawbackSigning(t *testing.T) {
 		expectedHolder types.Address
 	}{
 		{
-			name: "issued currency",
+			name: "pass - issued currency",
 			amount: types.IssuedCurrencyAmount{
 				Issuer:   holder.ClassicAddress,
 				Currency: "USD",
@@ -43,13 +43,13 @@ func TestClawbackSigning(t *testing.T) {
 			},
 		},
 		{
-			name:           "MPT with classic Holder",
+			name:           "pass - MPT with classic Holder",
 			amount:         mptAmount,
 			holder:         holder.ClassicAddress,
 			expectedHolder: holder.ClassicAddress,
 		},
 		{
-			name:           "MPT with tagless X-address Holder",
+			name:           "pass - MPT with tagless X-address Holder",
 			amount:         mptAmount,
 			holder:         types.Address(taglessHolder),
 			expectedHolder: holder.ClassicAddress,

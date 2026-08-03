@@ -37,7 +37,7 @@ func (m MPToken) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.wire())
 }
 
-// UnmarshalJSON parses canonical strings and xrpl.js-compatible UInt64 integers.
+// UnmarshalJSON parses canonical strings and unsigned JSON integers.
 func (m *MPToken) UnmarshalJSON(data []byte) error {
 	// Seed from the receiver so absent fields keep their current values, matching
 	// encoding/json merge semantics.
@@ -83,7 +83,7 @@ func (m MPTokenIssuance) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.wire())
 }
 
-// UnmarshalJSON parses canonical strings and xrpl.js-compatible UInt64 integers.
+// UnmarshalJSON parses canonical strings and unsigned JSON integers.
 func (m *MPTokenIssuance) UnmarshalJSON(data []byte) error {
 	// Seed from the receiver so absent fields keep their current values, matching
 	// encoding/json merge semantics.

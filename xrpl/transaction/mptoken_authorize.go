@@ -2,7 +2,6 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -62,8 +61,8 @@ func (m *MPTokenAuthorize) Validate() (bool, error) {
 		return false, err
 	}
 
-	// MPTokenIssuanceID is required and must be valid hex.
-	if m.MPTokenIssuanceID == "" || !typecheck.IsHex(m.MPTokenIssuanceID) {
+	// MPTokenIssuanceID is required and must be a 192-bit hexadecimal value.
+	if !isValidMPTIssuanceID(m.MPTokenIssuanceID) {
 		return false, ErrInvalidMPTokenIssuanceIDAuthorize
 	}
 

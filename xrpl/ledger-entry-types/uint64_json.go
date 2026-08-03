@@ -7,8 +7,8 @@ import (
 )
 
 // parseUInt64JSON accepts the string representation used by canonical XRPL JSON
-// and unsigned JSON integers.js UInt64 codec. maxDigits rejects overlong
-// leading-zero strings that would otherwise fit in 64 bits.
+// and unsigned JSON integers. maxDigits rejects overlong leading-zero strings
+// that would otherwise fit in 64 bits.
 func parseUInt64JSON(data []byte, base, maxDigits int, description string) (uint64, error) {
 	var text string
 	if err := json.Unmarshal(data, &text); err == nil {
@@ -62,4 +62,3 @@ func (u *hexUInt64) UnmarshalJSON(data []byte) error {
 	*u = hexUInt64(value)
 	return nil
 }
-

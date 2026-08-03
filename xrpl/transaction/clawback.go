@@ -10,9 +10,6 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
-// mptIssuanceIDHexLength is the length of an MPT issuance ID in hex characters (48).
-const mptIssuanceIDHexLength = 2 * bctypes.MPTIssuanceIDByteLength
-
 // Clawback reclaims tokens issued by the account. Requires the Clawback amendment.
 // Before using, enable Allow Trust Line Clawback via AccountSet with an empty owner directory. Once enabled, clawback cannot be disabled.
 type Clawback struct {
@@ -114,9 +111,6 @@ func (c *Clawback) Validate() (bool, error) {
 			return false, ErrClawbackSameAccount
 		}
 	case types.MPTCurrencyAmount:
-		if len(amount.MPTIssuanceID) != mptIssuanceIDHexLength {
-			return false, ErrClawbackInvalidAmount
-		}
 		if ok, _ := IsMPTCurrency(amount); !ok || amount.IsZero() {
 			return false, ErrClawbackInvalidAmount
 		}

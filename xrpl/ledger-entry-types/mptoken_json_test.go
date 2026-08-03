@@ -10,7 +10,7 @@ import (
 
 const largeUInt64 = uint64(9223372036854775807)
 
-func TestMPTUInt64JSONMarshal(t *testing.T) {
+func TestMPTJSONMarshal(t *testing.T) {
 	tests := []struct {
 		name   string
 		entry  any
@@ -18,7 +18,7 @@ func TestMPTUInt64JSONMarshal(t *testing.T) {
 		absent []string          // default or optional amount fields omitted at zero
 	}{
 		{
-			name:  "MPToken omitted default amounts and hexadecimal OwnerNode",
+			name:  "pass - MPToken omitted default amounts and hexadecimal OwnerNode",
 			entry: MPToken{},
 			want: map[string]string{
 				"OwnerNode": "0000000000000000",
@@ -26,7 +26,7 @@ func TestMPTUInt64JSONMarshal(t *testing.T) {
 			absent: []string{"MPTAmount", "LockedAmount"},
 		},
 		{
-			name: "MPToken large exact values",
+			name: "pass - MPToken large exact values",
 			entry: MPToken{
 				MPTAmount:    largeUInt64,
 				LockedAmount: largeUInt64,
@@ -39,7 +39,7 @@ func TestMPTUInt64JSONMarshal(t *testing.T) {
 			},
 		},
 		{
-			name:  "MPTokenIssuance required zero and omitted optional zeros",
+			name:  "pass - MPTokenIssuance required zero and omitted optional zeros",
 			entry: MPTokenIssuance{},
 			want: map[string]string{
 				"OutstandingAmount": "0",
@@ -48,7 +48,7 @@ func TestMPTUInt64JSONMarshal(t *testing.T) {
 			absent: []string{"MaximumAmount", "LockedAmount"},
 		},
 		{
-			name: "MPTokenIssuance large exact values",
+			name: "pass - MPTokenIssuance large exact values",
 			entry: MPTokenIssuance{
 				MaximumAmount:     largeUInt64,
 				OutstandingAmount: largeUInt64,
@@ -81,8 +81,8 @@ func TestMPTUInt64JSONMarshal(t *testing.T) {
 	}
 }
 
-func TestMPTUInt64JSONUnmarshal(t *testing.T) {
-	t.Run("canonical strings and optional omission", func(t *testing.T) {
+func TestMPTJSONUnmarshal(t *testing.T) {
+	t.Run("pass - canonical strings and optional omission", func(t *testing.T) {
 		var zeroMPToken MPToken
 		require.NoError(t, json.Unmarshal([]byte(`{"OwnerNode":"0000000000000000"}`), &zeroMPToken))
 		require.Zero(t, zeroMPToken.MPTAmount)
@@ -125,86 +125,31 @@ func TestMPTUInt64JSONUnmarshal(t *testing.T) {
 		require.Equal(t, largeUInt64, issuance.OwnerNode)
 	})
 
-	t.Run("xrpl.js-compatible unsigned integer inputs", func(t *testing.T) {
-		var mpToken MPToken
-		require.NoError(t, json.Unmarshal([]byte(`{"MPTAmount":1,"LockedAmount":2,"OwnerNode":3}`), &mpToken))
-		require.Equal(t, uint64(1), mpToken.MPTAmount)
+	t.Run("pass - absent fields preserve existing values", func(t *testing.T) {
+		mpToken := MPToken{
+			Flags:        1,
+			MPTAmount:    1,
+			LockedAmount: 2,
+			OwnerNode:    3,
+		}
+		require.NoError(t, json.Unmarshal([]byte(`{"MPTAmount":"4"}`), &mpToken))
+		require.Equal(t, uint32(1), mpToken.Flags)
+		require.Equal(t, uint64(4), mpToken.MPTAmount)
 		require.Equal(t, uint64(2), mpToken.LockedAmount)
 		require.Equal(t, uint64(3), mpToken.OwnerNode)
 
-		var issuance MPTokenIssuance
-		require.NoError(t, json.Unmarshal([]byte(`{
-			"MaximumAmount":4,
-			"OutstandingAmount":5,
-			"LockedAmount":6,
-			"OwnerNode":7
-		}`), &issuance))
-		require.Equal(t, uint64(4), issuance.MaximumAmount)
-		require.Equal(t, uint64(5), issuance.OutstandingAmount)
-		require.Equal(t, uint64(6), issuance.LockedAmount)
-		require.Equal(t, uint64(7), issuance.OwnerNode)
-	})
-
-	type uint64Field struct {
-		name   string
-		field  string
-		target func() any
-	}
-	type invalidValue struct {
-		name  string
-		value string
-	}
-
-	// A 16-digit hex string tops out at exactly MaxUint64, so hex has no
-	// reachable overflow case beyond the digit cap; decimal does.
-	invalidGroups := []struct {
-		fields  []uint64Field
-		invalid []invalidValue
-	}{
-		{
-			fields: []uint64Field{
-				{name: "MPToken MPTAmount", field: "MPTAmount", target: func() any { return new(MPToken) }},
-				{name: "MPToken LockedAmount", field: "LockedAmount", target: func() any { return new(MPToken) }},
-				{name: "MPTokenIssuance MaximumAmount", field: "MaximumAmount", target: func() any { return new(MPTokenIssuance) }},
-				{name: "MPTokenIssuance OutstandingAmount", field: "OutstandingAmount", target: func() any { return new(MPTokenIssuance) }},
-				{name: "MPTokenIssuance LockedAmount", field: "LockedAmount", target: func() any { return new(MPTokenIssuance) }},
-			},
-			invalid: []invalidValue{
-				{name: "empty string", value: `""`},
-				{name: "non-decimal string", value: `"invalid"`},
-				{name: "negative string", value: `"-1"`},
-				{name: "fractional string", value: `"1.5"`},
-				{name: "too many decimal digits", value: `"000000000000000000001"`},
-				{name: "quoted overflow", value: `"18446744073709551616"`},
-				{name: "negative number", value: `-1`},
-				{name: "fractional number", value: `1.5`},
-				{name: "numeric overflow", value: `18446744073709551616`},
-			},
-		},
-		{
-			fields: []uint64Field{
-				{name: "MPToken OwnerNode", field: "OwnerNode", target: func() any { return new(MPToken) }},
-				{name: "MPTokenIssuance OwnerNode", field: "OwnerNode", target: func() any { return new(MPTokenIssuance) }},
-			},
-			invalid: []invalidValue{
-				{name: "empty string", value: `""`},
-				{name: "non-hex string", value: `"invalid"`},
-				{name: "too many hexadecimal digits", value: `"00000000000000001"`},
-				{name: "negative number", value: `-1`},
-				{name: "fractional number", value: `1.5`},
-				{name: "numeric overflow", value: `18446744073709551616`},
-			},
-		},
-	}
-
-	for _, group := range invalidGroups {
-		for _, field := range group.fields {
-			for _, invalid := range group.invalid {
-				t.Run(field.name+"/"+invalid.name, func(t *testing.T) {
-					data := fmt.Appendf(nil, `{%q:%s}`, field.field, invalid.value)
-					require.Error(t, json.Unmarshal(data, field.target()))
-				})
-			}
+		issuance := MPTokenIssuance{
+			Flags:             1,
+			MaximumAmount:     2,
+			OutstandingAmount: 3,
+			LockedAmount:      4,
+			OwnerNode:         5,
 		}
-	}
+		require.NoError(t, json.Unmarshal([]byte(`{"OutstandingAmount":"6"}`), &issuance))
+		require.Equal(t, uint32(1), issuance.Flags)
+		require.Equal(t, uint64(2), issuance.MaximumAmount)
+		require.Equal(t, uint64(6), issuance.OutstandingAmount)
+		require.Equal(t, uint64(4), issuance.LockedAmount)
+		require.Equal(t, uint64(5), issuance.OwnerNode)
+	})
 }

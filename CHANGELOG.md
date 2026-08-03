@@ -23,14 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/ledger-entry-types
 
-- MPT ledger amount fields now marshal as exact quoted UInt64 decimal strings, accept quoted or unsigned-integer JSON input, and reject malformed, overlong, or overflowing values. Required `OutstandingAmount` zero remains present, while default `MPTAmount` and optional `MaximumAmount`/`LockedAmount` zero values are omitted.
-- MPT ledger `OwnerNode` fields now marshal as xrpl.js-compatible zero-padded UInt64 hexadecimal strings and accept rippled's shorter hexadecimal form when unmarshalling.
+- MPT ledger amount fields now marshal as exact quoted UInt64 decimal strings, accept quoted or unsigned-integer JSON input, and reject malformed, overlong, or overflowing values. Required `OutstandingAmount` zero remains present, while default `MPTAmount` and optional `MaximumAmount`/`LockedAmount` zero values are omitted. Dedicated UInt64 codec tests cover decimal and hexadecimal boundaries independently from MPT field wiring.
+- MPT ledger `OwnerNode` fields now marshal as zero-padded UInt64 hexadecimal strings and accept rippled's shorter hexadecimal form when unmarshalling.
 - Migration: the exported UInt64 fields remain `uint64`, so Go construction is unchanged. Canonical raw JSON output represents MPT amounts as quoted decimal strings and `OwnerNode` as a quoted hexadecimal string.
 
 #### xrpl/transaction
 
 - `Clawback.Validate` now compares decoded AccountIDs so equivalent classic and X-address encodings cannot bypass self-clawback checks. Tagged X-addresses remain forbidden for AccountID-only holder fields, while a tagged top-level `Account` is accepted and encoded through `SourceTag`, combining an embedded tag with an explicit `SourceTag` is rejected before encoding.
 - `Clawback.Validate` now rejects MPT amounts whose issuance ID embeds an issuer other than `Account`.
+- MPT issuance IDs are now consistently validated as 192-bit (48-character) hexadecimal values across MPT amounts, assets, authorization, destruction, issuance updates, and clawbacks.
 
 ## [v0.2.0]
 
@@ -300,7 +301,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added integration test for `DepositPreauth` transaction
 - Added integration test for escrow transactions.
 - Added integration test for payment and payment channels transactions.
-- Added integration test for vault transactions 
+- Added integration test for vault transactions
 - Added integration test for oracle transactions `OracleSet` and `OracleDelete`
 - Added integration test for NFT transaction `NFTModify`
 - Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`
@@ -705,7 +706,7 @@ Support for the XLS-77d (deep freeze)
 
 ## [v0.1.3]
 
-### Added
+###  Added
 
 - Added `APIVersion` field to the `Client` struct.
 - Added `RippledAPIV1` and `RippledAPIV2` constants.
