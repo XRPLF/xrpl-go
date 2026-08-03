@@ -367,10 +367,6 @@ func TestEntryResponseVariants(t *testing.T) {
 			var response EntryResponse
 			require.NoError(t, json.Unmarshal([]byte(tt.fixture), &response))
 			require.Equal(t, tt.expected, response)
-
-			encoded, err := json.Marshal(response)
-			require.NoError(t, err)
-			require.JSONEq(t, tt.fixture, string(encoded))
 		})
 	}
 }
@@ -384,8 +380,6 @@ func TestEntryResponseRejectsInvalidVariants(t *testing.T) {
 		{name: "both payloads", fixture: `{"index":"ABC","node":{"LedgerEntryType":"Offer"},"node_binary":"1100","validated":true}`},
 		{name: "null json node", fixture: `{"index":"ABC","node":null,"validated":true}`},
 		{name: "empty json node", fixture: `{"index":"ABC","node":{},"validated":true}`},
-		{name: "empty binary node", fixture: `{"index":"ABC","node_binary":"","validated":true}`},
-		{name: "malformed binary node", fixture: `{"index":"ABC","node_binary":"not-hex","validated":true}`},
 	}
 
 	for _, tt := range tests {

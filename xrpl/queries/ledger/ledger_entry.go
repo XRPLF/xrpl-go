@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -150,56 +149,18 @@ type EntryResponse struct {
 	Validated          bool                    `json:"validated"`
 }
 
-// Validate requires exactly one non-empty response payload and verifies that a
-// binary payload is valid hexadecimal.
-func (r EntryResponse) Validate() error {
-	hasNode := r.Node != nil
-	hasNodeBinary := r.NodeBinary != ""
-	if hasNode == hasNodeBinary {
-		return ErrInvalidEntryResponse
-	}
-	if hasNode && len(r.Node) == 0 {
-		return fmt.Errorf("%w: node must be a non-empty object", ErrInvalidEntryResponse)
-	}
-	if hasNodeBinary {
-		if _, err := hex.DecodeString(r.NodeBinary); err != nil {
-			return fmt.Errorf("%w: node_binary must be valid hexadecimal: %w", ErrInvalidEntryResponse, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON validates and encodes the selected response variant.
-func (r EntryResponse) MarshalJSON() ([]byte, error) {
-	if err := r.Validate(); err != nil {
-		return nil, err
-	}
-	type entryResponseAlias EntryResponse
-	return json.Marshal(entryResponseAlias(r))
-}
-
-// UnmarshalJSON validates and decodes the mutually exclusive JSON and binary
-// ledger entry response variants.
+// UnmarshalJSON decodes a response containing either a JSON or binary node.
 func (r *EntryResponse) UnmarshalJSON(data []byte) error {
-	type entryResponseAlias EntryResponse
+	type entryResponse EntryResponse
 
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
+	var decoded entryResponse
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
-
-	_, hasNode := fields["node"]
-	_, hasNodeBinary := fields["node_binary"]
+	hasNode := len(decoded.Node) > 0
+	hasNodeBinary := decoded.NodeBinary != ""
 	if hasNode == hasNodeBinary {
 		return ErrInvalidEntryResponse
-	}
-
-	var decoded entryResponseAlias
-	if err := json.Unmarshal(data, &decoded); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidEntryResponse, err)
-	}
-	if err := EntryResponse(decoded).Validate(); err != nil {
-		return err
 	}
 
 	*r = EntryResponse(decoded)

@@ -1,10 +1,8 @@
 package ledger
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	ledgerentry "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -30,7 +28,9 @@ func (s EntrySelector[T]) IsZero() bool {
 }
 
 func (s EntrySelector[T]) validate() error {
-	if (s.Index == "") == (s.Object == nil) {
+	hasIndex := s.Index != ""
+	hasObject := s.Object != nil
+	if hasIndex == hasObject {
 		return ErrInvalidEntrySelector
 	}
 	return nil
@@ -45,35 +45,6 @@ func (s EntrySelector[T]) MarshalJSON() ([]byte, error) {
 		return json.Marshal(s.Index)
 	}
 	return json.Marshal(s.Object)
-}
-
-// UnmarshalJSON decodes either the string or object wire representation.
-func (s *EntrySelector[T]) UnmarshalJSON(data []byte) error {
-	data = bytes.TrimSpace(data)
-	if len(data) == 0 {
-		return fmt.Errorf("%w: empty JSON value", ErrInvalidEntrySelector)
-	}
-
-	*s = EntrySelector[T]{}
-	switch data[0] {
-	case '"':
-		if err := json.Unmarshal(data, &s.Index); err != nil {
-			return fmt.Errorf("%w: %w", ErrInvalidEntrySelector, err)
-		}
-		if s.Index == "" {
-			return fmt.Errorf("%w: index must not be empty", ErrInvalidEntrySelector)
-		}
-		return nil
-	case '{':
-		var object T
-		if err := json.Unmarshal(data, &object); err != nil {
-			return fmt.Errorf("%w: %w", ErrInvalidEntrySelector, err)
-		}
-		s.Object = &object
-		return nil
-	default:
-		return fmt.Errorf("%w: expected string or object", ErrInvalidEntrySelector)
-	}
 }
 
 // AMMSelectorFields identifies an AMM by its two pooled assets.

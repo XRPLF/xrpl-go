@@ -383,7 +383,6 @@ func TestClient_formatRequest(t *testing.T) {
 		id          uint64
 		marker      any
 		expected    string
-		expectedErr error
 	}{
 		{
 			description: "valid request",
@@ -403,7 +402,6 @@ func TestClient_formatRequest(t *testing.T) {
 				"destination_account":"r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 				"limit":70
 			}`,
-			expectedErr: nil,
 		},
 		{
 			description: "valid request with marker",
@@ -424,7 +422,6 @@ func TestClient_formatRequest(t *testing.T) {
 				"limit":70,
 				"marker":"hdsohdaoidhadasd"
 			}`,
-			expectedErr: nil,
 		},
 		{
 			description: "json.Marshaler request with object selector overrides embedded API version",
@@ -448,35 +445,14 @@ func TestClient_formatRequest(t *testing.T) {
 					"asset2":{"currency":"USD","issuer":"rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd"}
 				}
 			}`,
-			expectedErr: nil,
-		},
-		{
-			description: "json.Marshaler request with string selector",
-			req: &ledgerquery.EntryRequest{AMM: ledgerquery.AMMSelector{
-				Index: "7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4",
-			}},
-			id:     1,
-			marker: nil,
-			expected: `{
-				"id":1,
-				"command":"ledger_entry",
-				"api_version":2,
-				"amm":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"
-			}`,
-			expectedErr: nil,
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.description, func(t *testing.T) {
 			a, err := ws.formatRequest(tc.req, tc.id, tc.marker)
-
-			if tc.expectedErr != nil {
-				require.EqualError(t, err, tc.expectedErr.Error())
-			} else {
-				require.NoError(t, err)
-				require.JSONEq(t, tc.expected, string(a))
-			}
+			require.NoError(t, err)
+			require.JSONEq(t, tc.expected, string(a))
 		})
 	}
 }

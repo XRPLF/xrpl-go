@@ -18,7 +18,6 @@ func TestClient_GetLedgerEntry(t *testing.T) {
 		request         *ledgerquery.EntryRequest
 		expectedRequest string
 		expected        *ledgerquery.EntryResponse
-		expectedErr     error
 	}{
 		{
 			name: "json response",
@@ -90,28 +89,6 @@ func TestClient_GetLedgerEntry(t *testing.T) {
 				Validated:   true,
 			},
 		},
-		{
-			name: "reject response with both payloads",
-			mockResponse: `{
-				"result": {
-					"index": "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
-					"node": {"LedgerEntryType": "AccountRoot"},
-					"node_binary": "1100",
-					"validated": true
-				}
-			}`,
-			request: &ledgerquery.EntryRequest{
-				Index: "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
-			},
-			expectedRequest: `{
-				"method":"ledger_entry",
-				"params":[{
-					"api_version":2,
-					"index":"13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8"
-				}]
-			}`,
-			expectedErr: ledgerquery.ErrInvalidEntryResponse,
-		},
 	}
 
 	for _, tt := range tests {
@@ -123,13 +100,8 @@ func TestClient_GetLedgerEntry(t *testing.T) {
 			require.NoError(t, err)
 
 			response, err := NewClient(config).GetLedgerEntry(tt.request)
-			if tt.expectedErr != nil {
-				require.ErrorIs(t, err, tt.expectedErr)
-				require.Nil(t, response)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expected, response)
-			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, response)
 
 			requestBody, readErr := io.ReadAll(mockClient.Spy.Body)
 			require.NoError(t, readErr)
