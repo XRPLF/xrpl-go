@@ -65,7 +65,7 @@ type AuctionSlotInfo struct {
 	Price types.IssuedCurrencyAmount `json:"price"`
 	// The time when this slot expires. Returned as a formatted date string by the server.
 	Expiration string `json:"expiration,omitempty"`
-	// The current 72-minute auction interval, from 0 to 19.
+	// The current 72-minute auction interval, from 0 to 19, or 20 when no active interval applies.
 	TimeInterval uint8 `json:"time_interval"`
 }
 

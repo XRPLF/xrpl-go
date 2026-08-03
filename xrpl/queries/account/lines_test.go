@@ -92,6 +92,7 @@ func TestAccountLinesResponse(t *testing.T) {
 				LedgerCurrentIndex: 123,
 				LedgerIndex:        345,
 				LedgerHash:         "abc",
+				Marker:             "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh,5",
 				Limit:              10,
 			},
 			expected: `{
@@ -110,6 +111,7 @@ func TestAccountLinesResponse(t *testing.T) {
 	"ledger_current_index": 123,
 	"ledger_index": 345,
 	"ledger_hash": "abc",
+	"marker": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh,5",
 	"limit": 10
 }`,
 		},
