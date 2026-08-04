@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added query field coverage for account lines (`ignore_default`, `limit`), AMM info (`account`, frozen flags, auction `time_interval`), NFT offer pagination (`limit`/`marker`), vault current-ledger metadata, and v1 account NFT ledger metadata, with protocol-accurate default and v1 JSON fixtures including the AMM expired-slot interval sentinel.
 - Expanded typed `ledger_entry` selector support with exactly-one top-level request validation, Clio deleted-entry metadata, and distinct validated JSON (`node`) and binary (`node_binary`) responses across RPC and WebSocket transports.
-- Added typed `server_definitions` support for full and hash-only protocol definitions, plus XLS-69 `simulate` dry runs with validated JSON/blob request variants, JSON/binary responses, explicit NetworkID checks, and aligned RPC/WebSocket clients.
+- Added typed `server_definitions` support for full and hash-only protocol definitions, plus XLS-69 `simulate` dry runs with validated JSON and opaque hexadecimal blob request variants, JSON/binary responses, server-autofilled omitted NetworkID support, validation for supplied JSON NetworkID values, and aligned RPC/WebSocket clients.
 
 #### xrpl/queries/amm
 
@@ -92,7 +92,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/queries
 
-- `simulate` now decodes `tx_blob` and rejects malformed or signed serialized transactions, and enforces the explicit-NetworkID policy for blob input, before RPC or WebSocket transport I/O.
+- `simulate` now keeps `tx_blob` opaque after hexadecimal syntax checks and delegates transaction, signature, and NetworkID validation to the server, preserving compatibility with server-specific definitions.
+- `simulate` validation now permits non-empty `SigningPubKey` values and unsigned `Signers` entries while continuing to reject non-empty transaction signatures, matching `rippled` dry-run rules.
+- `server_definitions` now rejects null or incomplete definition sections and accepts a hash-only response only when it matches the request hash.
 
 ## [v0.2.0]
 
