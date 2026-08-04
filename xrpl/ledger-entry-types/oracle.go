@@ -33,10 +33,9 @@ type PriceData struct {
 	QuoteAsset string
 	// The asset price after applying the Scale precision level. It's not included if
 	// the last update transaction didn't include the BaseAsset/QuoteAsset pair.
-	// On the wire this is a base-16 string (sfAssetPrice carries no base-ten flag in
-	// rippled). The custom JSON (un)marshallers below convert to and from *uint64.
-	// A nil value means the field is absent. A non-nil zero value is an explicit zero price.
-	// Use AssetPrice to create a non-nil value.
+	// On the wire this is a base-16 string . The custom JSON (un)marshallers
+	// below convert to and from *uint64. A nil value means the field is absent.
+	// A non-nil zero value is an explicit zero price. Use AssetPrice to create a non-nil value.
 	AssetPrice *uint64
 	// The scaling factor to apply to an asset price. For example, if Scale is 6 and original price is 0.155,
 	// then the scaled price is 155000. Valid scale ranges are 0-10.
