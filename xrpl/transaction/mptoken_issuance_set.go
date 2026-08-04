@@ -2,7 +2,6 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -15,36 +14,24 @@ const (
 	TfMPTUnlock uint32 = 0x00000002
 )
 
-// MutableFlags constants for MPTokenIssuanceSet (Set/Clear pairs).
+// MutableFlags constants for MPTokenIssuanceSet. Each operation enables a capability and is one-way.
 const (
-	// TmfMPTSetCanLock sets the CanLock flag.
+	// TmfMPTSetCanLock enables CanLock.
 	TmfMPTSetCanLock uint32 = 0x00000001
-	// TmfMPTClearCanLock clears the CanLock flag.
-	TmfMPTClearCanLock uint32 = 0x00000002
-	// TmfMPTSetRequireAuth sets the RequireAuth flag.
-	TmfMPTSetRequireAuth uint32 = 0x00000004
-	// TmfMPTClearRequireAuth clears the RequireAuth flag.
-	TmfMPTClearRequireAuth uint32 = 0x00000008
-	// TmfMPTSetCanEscrow sets the CanEscrow flag.
-	TmfMPTSetCanEscrow uint32 = 0x00000010
-	// TmfMPTClearCanEscrow clears the CanEscrow flag.
-	TmfMPTClearCanEscrow uint32 = 0x00000020
-	// TmfMPTSetCanTrade sets the CanTrade flag.
-	TmfMPTSetCanTrade uint32 = 0x00000040
-	// TmfMPTClearCanTrade clears the CanTrade flag.
-	TmfMPTClearCanTrade uint32 = 0x00000080
-	// TmfMPTSetCanTransfer sets the CanTransfer flag.
-	TmfMPTSetCanTransfer uint32 = 0x00000100
-	// TmfMPTClearCanTransfer clears the CanTransfer flag.
-	TmfMPTClearCanTransfer uint32 = 0x00000200
-	// TmfMPTSetCanClawback sets the CanClawback flag.
-	TmfMPTSetCanClawback uint32 = 0x00000400
-	// TmfMPTClearCanClawback clears the CanClawback flag.
-	TmfMPTClearCanClawback uint32 = 0x00000800
-	// TmfMPTSetCanConfidentialAmount sets the CanConfidentialAmount flag.
-	TmfMPTSetCanConfidentialAmount uint32 = 0x00001000
-	// TmfMPTClearCanConfidentialAmount clears the CanConfidentialAmount flag.
-	TmfMPTClearCanConfidentialAmount uint32 = 0x00002000
+	// TmfMPTSetRequireAuth enables RequireAuth.
+	TmfMPTSetRequireAuth uint32 = 0x00000002
+	// TmfMPTSetCanEscrow enables CanEscrow.
+	TmfMPTSetCanEscrow uint32 = 0x00000004
+	// TmfMPTSetCanTrade enables CanTrade.
+	TmfMPTSetCanTrade uint32 = 0x00000008
+	// TmfMPTSetCanTransfer enables CanTransfer.
+	TmfMPTSetCanTransfer uint32 = 0x00000010
+	// TmfMPTSetCanClawback enables CanClawback.
+	TmfMPTSetCanClawback uint32 = 0x00000020
+	// TmfMPTSetCanHoldConfidentialBalance enables confidential balances.
+	TmfMPTSetCanHoldConfidentialBalance uint32 = 0x00000040
+	// MPTokenIssuanceSetMutableFlagsMask contains every supported MutableFlags bit.
+	MPTokenIssuanceSetMutableFlagsMask uint32 = 0x0000007F
 )
 
 // MPTokenIssuanceSet transaction is used to globally lock/unlock a MPTokenIssuance,
@@ -56,14 +43,14 @@ const (
 //	{
 //	      "TransactionType": "MPTokenIssuanceSet",
 //	      "Fee": "10",
-//	      "MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+//	      "MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE2",
 //	      "Flags": 1
 //	}
 //
 // ```
 type MPTokenIssuanceSet struct {
 	BaseTx
-	// The MPTokenIssuance identifier.
+	// The MPTokenIssuance identifier as exactly 48 hexadecimal characters.
 	MPTokenIssuanceID string
 	// (Optional) XRPL Address of an individual token holder balance to lock/unlock. If omitted, this transaction applies to all any accounts holding MPTs.
 	Holder *types.Address
@@ -74,7 +61,8 @@ type MPTokenIssuanceSet struct {
 	MPTokenMetadata *string `json:",omitempty"`
 	// (Optional) New transfer fee value between 0 and 50,000.
 	TransferFee *uint16 `json:",omitempty"`
-	// (Optional) Set or clear the flags which were marked as mutable.
+	// (Optional) One-way enable operations for capabilities permitted by the issuance's MutableFlags.
+	// Capabilities enabled here cannot be disabled.
 	MutableFlags *uint32 `json:",omitempty"`
 	// (Optional) A 33-byte compressed ElGamal public key for the issuer.
 	// Required to use the confidential transfer feature. Must be 66 hex characters.
@@ -154,19 +142,9 @@ func (m *MPTokenIssuanceSet) SetMPTSetCanLockMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanLock)
 }
 
-// SetMPTClearCanLockMutableFlag clears the CanLock mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanLockMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanLock)
-}
-
 // SetMPTSetRequireAuthMutableFlag sets the RequireAuth mutable flag.
 func (m *MPTokenIssuanceSet) SetMPTSetRequireAuthMutableFlag() {
 	m.setMutableFlag(TmfMPTSetRequireAuth)
-}
-
-// SetMPTClearRequireAuthMutableFlag clears the RequireAuth mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearRequireAuthMutableFlag() {
-	m.setMutableFlag(TmfMPTClearRequireAuth)
 }
 
 // SetMPTSetCanEscrowMutableFlag sets the CanEscrow mutable flag.
@@ -174,19 +152,9 @@ func (m *MPTokenIssuanceSet) SetMPTSetCanEscrowMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanEscrow)
 }
 
-// SetMPTClearCanEscrowMutableFlag clears the CanEscrow mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanEscrowMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanEscrow)
-}
-
 // SetMPTSetCanTradeMutableFlag sets the CanTrade mutable flag.
 func (m *MPTokenIssuanceSet) SetMPTSetCanTradeMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanTrade)
-}
-
-// SetMPTClearCanTradeMutableFlag clears the CanTrade mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanTradeMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanTrade)
 }
 
 // SetMPTSetCanTransferMutableFlag sets the CanTransfer mutable flag.
@@ -194,29 +162,14 @@ func (m *MPTokenIssuanceSet) SetMPTSetCanTransferMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanTransfer)
 }
 
-// SetMPTClearCanTransferMutableFlag clears the CanTransfer mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanTransferMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanTransfer)
-}
-
 // SetMPTSetCanClawbackMutableFlag sets the CanClawback mutable flag.
 func (m *MPTokenIssuanceSet) SetMPTSetCanClawbackMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanClawback)
 }
 
-// SetMPTClearCanClawbackMutableFlag clears the CanClawback mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanClawbackMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanClawback)
-}
-
-// SetMPTSetCanConfidentialAmountMutableFlag sets the CanConfidentialAmount mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTSetCanConfidentialAmountMutableFlag() {
-	m.setMutableFlag(TmfMPTSetCanConfidentialAmount)
-}
-
-// SetMPTClearCanConfidentialAmountMutableFlag clears the CanConfidentialAmount mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanConfidentialAmountMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanConfidentialAmount)
+// SetMPTSetCanHoldConfidentialBalanceMutableFlag sets the CanHoldConfidentialBalance mutable flag.
+func (m *MPTokenIssuanceSet) SetMPTSetCanHoldConfidentialBalanceMutableFlag() {
+	m.setMutableFlag(TmfMPTSetCanHoldConfidentialBalance)
 }
 
 // Validate validates the MPTokenIssuanceSet transaction ensuring all fields are correct.
@@ -226,8 +179,8 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, err
 	}
 
-	// MPTokenIssuanceID is required and must be valid hex.
-	if m.MPTokenIssuanceID == "" || !typecheck.IsHex(m.MPTokenIssuanceID) {
+	// MPTokenIssuanceID is required and must be exactly 24 bytes of hexadecimal.
+	if !IsMPTIssuanceID(m.MPTokenIssuanceID) {
 		return false, ErrInvalidMPTokenIssuanceIDSet
 	}
 
@@ -272,16 +225,9 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTIssuanceSetFlagsMutuallyExclusive
 	}
 
-	// MutableFlags cannot be zero when set.
-	if m.MutableFlags != nil && *m.MutableFlags == 0 {
-		return false, ErrMPTIssuanceSetMutableFlagsZero
-	}
-
-	// Validate MutableFlags: cannot set and clear the same flag simultaneously.
-	if m.MutableFlags != nil {
-		if ok, err := validateMutableFlagsNoConflict(*m.MutableFlags); !ok {
-			return false, err
-		}
+	// MutableFlags must contain at least one supported enable operation.
+	if m.MutableFlags != nil && (*m.MutableFlags == 0 || *m.MutableFlags&^MPTokenIssuanceSetMutableFlagsMask != 0) {
+		return false, ErrMPTIssuanceSetInvalidMutableFlags
 	}
 
 	// TransferFee must not exceed MaxTransferFee.
@@ -300,19 +246,14 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTIssuanceSetDomainIDInvalid
 	}
 
-	// Non-zero TransferFee cannot be set together with tmfMPTClearCanTransfer (XLS-94).
-	if m.TransferFee != nil && *m.TransferFee != 0 && m.MutableFlags != nil && flag.Contains(*m.MutableFlags, TmfMPTClearCanTransfer) {
-		return false, ErrMPTIssuanceSetTransferFeeWithClearCanTransfer
+	// Confidential balances are encrypted, so a transfer fee cannot be enabled with them.
+	if m.TransferFee != nil && *m.TransferFee != 0 && m.MutableFlags != nil && flag.Contains(*m.MutableFlags, TmfMPTSetCanHoldConfidentialBalance) {
+		return false, ErrMPTIssuanceSetTransferFeeWithConfidentialBalance
 	}
 
 	// AuditorEncryptionKey requires IssuerEncryptionKey.
 	if m.AuditorEncryptionKey != nil && m.IssuerEncryptionKey == nil {
 		return false, ErrMPTIssuanceSetAuditorRequiresIssuerKey
-	}
-
-	// Encryption keys cannot be uploaded while clearing the confidential amount flag.
-	if hasEncryptionKeys && m.MutableFlags != nil && flag.Contains(*m.MutableFlags, TmfMPTClearCanConfidentialAmount) {
-		return false, ErrMPTIssuanceSetKeysWithClearCanConfidentialAmount
 	}
 
 	// Validate encryption key lengths (issuer and auditor keys must be 33-byte compressed).
@@ -323,24 +264,5 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTIssuanceSetInvalidKeyLength
 	}
 
-	return true, nil
-}
-
-// validateMutableFlagsNoConflict checks that no set/clear pair is active simultaneously.
-func validateMutableFlagsNoConflict(mf uint32) (bool, error) {
-	pairs := [7][2]uint32{
-		{TmfMPTSetCanLock, TmfMPTClearCanLock},
-		{TmfMPTSetRequireAuth, TmfMPTClearRequireAuth},
-		{TmfMPTSetCanEscrow, TmfMPTClearCanEscrow},
-		{TmfMPTSetCanTrade, TmfMPTClearCanTrade},
-		{TmfMPTSetCanTransfer, TmfMPTClearCanTransfer},
-		{TmfMPTSetCanClawback, TmfMPTClearCanClawback},
-		{TmfMPTSetCanConfidentialAmount, TmfMPTClearCanConfidentialAmount},
-	}
-	for _, p := range pairs {
-		if flag.Contains(mf, p[0]) && flag.Contains(mf, p[1]) {
-			return false, ErrMPTIssuanceSetMutableFlagsConflict
-		}
-	}
 	return true, nil
 }

@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -8,902 +9,376 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const validMPTIssuanceID = "00070C4495F14B0E44F78A264E41713C64B5F89242540EE2"
+
+// validCompressedKey is the compressed secp256k1 generator point.
+const validCompressedKey = "0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798"
+
+func validMPTokenIssuanceSet() *MPTokenIssuanceSet {
+	return &MPTokenIssuanceSet{
+		BaseTx: BaseTx{
+			Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+			TransactionType: MPTokenIssuanceSetTx,
+		},
+		MPTokenIssuanceID: validMPTIssuanceID,
+		MutableFlags:      types.MutableFlags(TmfMPTSetCanLock),
+	}
+}
+
 func TestMPTokenIssuanceSet_TxType(t *testing.T) {
-	tx := &MPTokenIssuanceSet{}
-	require.Equal(t, MPTokenIssuanceSetTx, tx.TxType())
+	require.Equal(t, MPTokenIssuanceSetTx, (&MPTokenIssuanceSet{}).TxType())
 }
 
-// validCompressedKey is a 66-char hex string representing a valid compressed EC public key for testing.
-var validCompressedKey = strings.Repeat("AB", 33)
+func TestMPTokenIssuanceSet_FlattenAndJSON(t *testing.T) {
+	tx := validMPTokenIssuanceSet()
+	tx.MutableFlags = types.MutableFlags(TmfMPTSetCanLock | TmfMPTSetCanHoldConfidentialBalance)
+	tx.MPTokenMetadata = types.MPTokenMetadata("464f4f")
+	tx.TransferFee = types.TransferFee(0)
+	tx.DomainID = types.DomainID("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9")
+	tx.IssuerEncryptionKey = types.EncryptionKey(validCompressedKey)
+	tx.AuditorEncryptionKey = types.EncryptionKey(validCompressedKey)
 
-// validUncompressedKey is a 128-char hex string representing a valid uncompressed EC public key for testing.
-var validUncompressedKey = strings.Repeat("CD", 64)
+	require.Equal(t, FlatTransaction{
+		"Account":              "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+		"TransactionType":      "MPTokenIssuanceSet",
+		"MPTokenIssuanceID":    validMPTIssuanceID,
+		"DomainID":             "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+		"MPTokenMetadata":      "464f4f",
+		"TransferFee":          uint16(0),
+		"MutableFlags":         uint32(0x41),
+		"IssuerEncryptionKey":  validCompressedKey,
+		"AuditorEncryptionKey": validCompressedKey,
+	}, tx.Flatten())
 
-func TestMPTokenIssuanceSet_Flatten(t *testing.T) {
-	tests := []struct {
-		name     string
-		tx       *MPTokenIssuanceSet
-		expected FlatTransaction
-	}{
-		{
-			name: "pass - with holder",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					Flags:   1,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:            types.Holder("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
-			},
-			expected: FlatTransaction{
-				"TransactionType":   "MPTokenIssuanceSet",
-				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"Flags":             uint32(1),
-				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"Holder":            "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-			},
+	holderTx := &MPTokenIssuanceSet{
+		BaseTx: BaseTx{
+			Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+			TransactionType: MPTokenIssuanceSetTx,
+			Flags:           TfMPTLock,
 		},
-		{
-			name: "pass - without holder",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					Flags:   1,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-			},
-			expected: FlatTransaction{
-				"TransactionType":   "MPTokenIssuanceSet",
-				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"Flags":             uint32(1),
-				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-			},
-		},
-		{
-			name: "pass - with MPTokenMetadata",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MPTokenMetadata:   types.MPTokenMetadata("464f4f"),
-			},
-			expected: FlatTransaction{
-				"TransactionType":   "MPTokenIssuanceSet",
-				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"MPTokenMetadata":   "464f4f",
-			},
-		},
-		{
-			name: "pass - with TransferFee",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				TransferFee:       types.TransferFee(314),
-			},
-			expected: FlatTransaction{
-				"TransactionType":   "MPTokenIssuanceSet",
-				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"TransferFee":       uint16(314),
-			},
-		},
-		{
-			name: "pass - with MutableFlags",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanLock),
-			},
-			expected: FlatTransaction{
-				"TransactionType":   "MPTokenIssuanceSet",
-				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"MutableFlags":      uint32(1),
-			},
-		},
-		{
-			name: "pass - with all DynamicMPT fields",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MPTokenMetadata:   types.MPTokenMetadata("464f4f"),
-				TransferFee:       types.TransferFee(314),
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanLock),
-			},
-			expected: FlatTransaction{
-				"TransactionType":   "MPTokenIssuanceSet",
-				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"MPTokenMetadata":   "464f4f",
-				"TransferFee":       uint16(314),
-				"MutableFlags":      uint32(1),
-			},
-		},
-		{
-			name: "pass - with DomainID",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				DomainID:          types.DomainID("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
-			},
-			expected: FlatTransaction{
-				"TransactionType":   "MPTokenIssuanceSet",
-				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"DomainID":          "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
-			},
-		},
-		{
-			name: "pass - with IssuerEncryptionKey",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				},
-				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				IssuerEncryptionKey: types.EncryptionKey(validCompressedKey),
-			},
-			expected: FlatTransaction{
-				"TransactionType":     "MPTokenIssuanceSet",
-				"Account":             "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"MPTokenIssuanceID":   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"IssuerEncryptionKey": validCompressedKey,
-			},
-		},
-		{
-			name: "pass - with both encryption keys",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				},
-				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				IssuerEncryptionKey:  types.EncryptionKey(validCompressedKey),
-				AuditorEncryptionKey: types.EncryptionKey(validCompressedKey),
-			},
-			expected: FlatTransaction{
-				"TransactionType":      "MPTokenIssuanceSet",
-				"Account":              "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"MPTokenIssuanceID":    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				"IssuerEncryptionKey":  validCompressedKey,
-				"AuditorEncryptionKey": validCompressedKey,
-			},
-		},
+		MPTokenIssuanceID: validMPTIssuanceID,
+		Holder:            types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2"),
 	}
+	require.Equal(t, FlatTransaction{
+		"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+		"TransactionType":   "MPTokenIssuanceSet",
+		"Flags":             uint32(0x01),
+		"MPTokenIssuanceID": validMPTIssuanceID,
+		"Holder":            "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+	}, holderTx.Flatten())
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			flattened := tt.tx.Flatten()
-			require.Equal(t, tt.expected, flattened)
-		})
-	}
+	encoded, err := json.Marshal(tx)
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"Account":"rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+		"TransactionType":"MPTokenIssuanceSet",
+		"MPTokenIssuanceID":"00070C4495F14B0E44F78A264E41713C64B5F89242540EE2",
+		"Holder":null,
+		"DomainID":"A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+		"MPTokenMetadata":"464f4f",
+		"TransferFee":0,
+		"MutableFlags":65,
+		"IssuerEncryptionKey":"`+validCompressedKey+`",
+		"AuditorEncryptionKey":"`+validCompressedKey+`"
+	}`, string(encoded))
 }
 
-func TestMPTokenIssuanceSet_Validate(t *testing.T) {
+func TestMPTokenIssuanceSetMutableFlagValues(t *testing.T) {
+	require.Equal(t, uint32(0x01), TmfMPTSetCanLock)
+	require.Equal(t, uint32(0x02), TmfMPTSetRequireAuth)
+	require.Equal(t, uint32(0x04), TmfMPTSetCanEscrow)
+	require.Equal(t, uint32(0x08), TmfMPTSetCanTrade)
+	require.Equal(t, uint32(0x10), TmfMPTSetCanTransfer)
+	require.Equal(t, uint32(0x20), TmfMPTSetCanClawback)
+	require.Equal(t, uint32(0x40), TmfMPTSetCanHoldConfidentialBalance)
+	require.Equal(t, uint32(0x7F), MPTokenIssuanceSetMutableFlagsMask)
+}
+
+func TestMPTokenIssuanceSet_MutableFlagSettersPreserveBits(t *testing.T) {
 	tests := []struct {
 		name    string
-		tx      *MPTokenIssuanceSet
-		wantOk  bool
-		wantErr error
+		set     func(*MPTokenIssuanceSet)
+		literal uint32
 	}{
-		{
-			name: "pass - valid transaction with holder",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:            types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2"),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "fail - empty MPTokenIssuanceID",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-					Flags:           TfMPTLock,
-				},
-				MPTokenIssuanceID: "",
-			},
-			wantOk:  false,
-			wantErr: ErrInvalidMPTokenIssuanceIDSet,
-		},
-		{
-			name: "fail - non-hex MPTokenIssuanceID",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-					Flags:           TfMPTLock,
-				},
-				MPTokenIssuanceID: "not-a-hex-value!",
-			},
-			wantOk:  false,
-			wantErr: ErrInvalidMPTokenIssuanceIDSet,
-		},
-		{
-			name: "fail - no operation specified (no-op)",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetEmpty,
-		},
-		{
-			name: "fail - invalid holder address",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:            types.Holder("invalid"),
-			},
-			wantOk:  false,
-			wantErr: ErrInvalidAccount,
-		},
-		{
-			name: "fail - holder same as account",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-					Flags:           TfMPTLock,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:            types.Holder("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
-			},
-			wantOk:  false,
-			wantErr: ErrHolderAccountConflict,
-		},
-		{
-			name: "fail - conflicting lock/unlock flags",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-					Flags:           TfMPTLock | TfMPTUnlock,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-			},
-			wantOk:  false,
-			wantErr: ErrMPTokenIssuanceSetFlags,
-		},
-		{
-			name: "fail - holder mutually exclusive with MutableFlags",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:            types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2"),
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanLock),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetHolderMutuallyExclusive,
-		},
-		{
-			name: "fail - holder mutually exclusive with MPTokenMetadata",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:            types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2"),
-				MPTokenMetadata:   types.MPTokenMetadata("464f4f"),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetHolderMutuallyExclusive,
-		},
-		{
-			name: "fail - flags mutually exclusive with DynamicMPT fields",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-					Flags:           TfMPTLock,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanLock),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetFlagsMutuallyExclusive,
-		},
-		{
-			name: "fail - MutableFlags cannot be zero",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(0),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsZero,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanLock | TmfMPTClearCanLock),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - TransferFee exceeds maximum",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				TransferFee:       types.TransferFee(50001),
-			},
-			wantOk:  false,
-			wantErr: ErrInvalidTransferFee,
-		},
-		{
-			name: "fail - invalid hex MPTokenMetadata",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MPTokenMetadata:   types.MPTokenMetadata("not-hex!"),
-			},
-			wantOk:  false,
-			wantErr: ErrInvalidMPTokenMetadata,
-		},
-		{
-			name: "fail - MPTokenMetadata exceeds 1024 bytes",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MPTokenMetadata:   types.MPTokenMetadata(strings.Repeat("AB", 1025)),
-			},
-			wantOk:  false,
-			wantErr: ErrInvalidMPTokenMetadata,
-		},
-		{
-			name: "pass - MPTokenMetadata exactly 1024 bytes",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MPTokenMetadata:   types.MPTokenMetadata(strings.Repeat("AB", 1024)),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "pass - empty MPTokenMetadata removes field",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MPTokenMetadata:   types.MPTokenMetadata(""),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "pass - valid DynamicMPT usage with all fields",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanLock | TmfMPTClearCanEscrow),
-				TransferFee:       types.TransferFee(500),
-				MPTokenMetadata:   types.MPTokenMetadata("464f4f"),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "pass - valid DomainID",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				DomainID:          types.DomainID("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "pass - empty DomainID removes domain",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				DomainID:          types.DomainID(""),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "fail - DomainID invalid hex",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				DomainID:          types.DomainID("not-valid"),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetDomainIDInvalid,
-		},
-		{
-			name: "fail - DomainID mutually exclusive with Holder",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:            types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2"),
-				DomainID:          types.DomainID("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetHolderMutuallyExclusive,
-		},
-		{
-			name: "pass - valid with IssuerEncryptionKey compressed",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				IssuerEncryptionKey: types.EncryptionKey(validCompressedKey),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "fail - IssuerEncryptionKey uncompressed not allowed",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				IssuerEncryptionKey: types.EncryptionKey(validUncompressedKey),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetInvalidKeyLength,
-		},
-		{
-			name: "pass - valid with both encryption keys",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				IssuerEncryptionKey:  types.EncryptionKey(validCompressedKey),
-				AuditorEncryptionKey: types.EncryptionKey(validCompressedKey),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "pass - enable confidential with both encryption keys",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:         types.MutableFlags(TmfMPTSetCanConfidentialAmount),
-				IssuerEncryptionKey:  types.EncryptionKey(validCompressedKey),
-				AuditorEncryptionKey: types.EncryptionKey(validCompressedKey),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "fail - AuditorEncryptionKey without IssuerEncryptionKey",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				AuditorEncryptionKey: types.EncryptionKey(validCompressedKey),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetAuditorRequiresIssuerKey,
-		},
-		{
-			name: "fail - encryption keys with clear confidential amount",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:        types.MutableFlags(TmfMPTClearCanConfidentialAmount),
-				IssuerEncryptionKey: types.EncryptionKey(validCompressedKey),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetKeysWithClearCanConfidentialAmount,
-		},
-		{
-			name: "fail - IssuerEncryptionKey invalid length",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				IssuerEncryptionKey: types.EncryptionKey("AABB"),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetInvalidKeyLength,
-		},
-		{
-			name: "fail - IssuerEncryptionKey invalid hex",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				IssuerEncryptionKey: types.EncryptionKey(strings.Repeat("GG", 33)),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetInvalidKeyLength,
-		},
-		{
-			name: "fail - AuditorEncryptionKey invalid length",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:    "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				IssuerEncryptionKey:  types.EncryptionKey(validCompressedKey),
-				AuditorEncryptionKey: types.EncryptionKey("AABB"),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetInvalidKeyLength,
-		},
-		{
-			name: "fail - encryption keys with Holder",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID:   "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				Holder:              types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2"),
-				IssuerEncryptionKey: types.EncryptionKey(validCompressedKey),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetKeyConflict,
-		},
-		{
-			name: "fail - non-zero TransferFee with tmfMPTClearCanTransfer",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				TransferFee:       types.TransferFee(200),
-				MutableFlags:      types.MutableFlags(TmfMPTClearCanTransfer),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetTransferFeeWithClearCanTransfer,
-		},
-		{
-			name: "pass - zero TransferFee with tmfMPTClearCanTransfer",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				TransferFee:       types.TransferFee(0),
-				MutableFlags:      types.MutableFlags(TmfMPTClearCanTransfer),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "pass - zero TransferFee alone is valid DynamicMPT operation",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				TransferFee:       types.TransferFee(0),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
-			name: "fail - MutableFlags with Flags returns mutual exclusivity error",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-					Flags:           TfMPTLock,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(0),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetFlagsMutuallyExclusive,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict RequireAuth",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetRequireAuth | TmfMPTClearRequireAuth),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict CanEscrow",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanEscrow | TmfMPTClearCanEscrow),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict CanTrade",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanTrade | TmfMPTClearCanTrade),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict CanTransfer",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanTransfer | TmfMPTClearCanTransfer),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict CanClawback",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanClawback | TmfMPTClearCanClawback),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict CanConfidentialAmount",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanConfidentialAmount | TmfMPTClearCanConfidentialAmount),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
+		{"SetCanLock", (*MPTokenIssuanceSet).SetMPTSetCanLockMutableFlag, 0x01},
+		{"SetRequireAuth", (*MPTokenIssuanceSet).SetMPTSetRequireAuthMutableFlag, 0x02},
+		{"SetCanEscrow", (*MPTokenIssuanceSet).SetMPTSetCanEscrowMutableFlag, 0x04},
+		{"SetCanTrade", (*MPTokenIssuanceSet).SetMPTSetCanTradeMutableFlag, 0x08},
+		{"SetCanTransfer", (*MPTokenIssuanceSet).SetMPTSetCanTransferMutableFlag, 0x10},
+		{"SetCanClawback", (*MPTokenIssuanceSet).SetMPTSetCanClawbackMutableFlag, 0x20},
+		{"SetCanHoldConfidentialBalance", (*MPTokenIssuanceSet).SetMPTSetCanHoldConfidentialBalanceMutableFlag, 0x40},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ok, err := tt.tx.Validate()
-			require.Equal(t, tt.wantOk, ok)
-			require.Equal(t, tt.wantErr, err)
-		})
-	}
-}
-
-func TestMPTokenIssuanceSet_MutableFlags(t *testing.T) {
-	tests := []struct {
-		name     string
-		setFlag  func(*MPTokenIssuanceSet)
-		flagMask uint32
-	}{
-		{
-			name:     "MPTSetCanLock",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanLockMutableFlag,
-			flagMask: TmfMPTSetCanLock,
-		},
-		{
-			name:     "MPTClearCanLock",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanLockMutableFlag,
-			flagMask: TmfMPTClearCanLock,
-		},
-		{
-			name:     "MPTSetRequireAuth",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetRequireAuthMutableFlag,
-			flagMask: TmfMPTSetRequireAuth,
-		},
-		{
-			name:     "MPTClearRequireAuth",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearRequireAuthMutableFlag,
-			flagMask: TmfMPTClearRequireAuth,
-		},
-		{
-			name:     "MPTSetCanEscrow",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanEscrowMutableFlag,
-			flagMask: TmfMPTSetCanEscrow,
-		},
-		{
-			name:     "MPTClearCanEscrow",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanEscrowMutableFlag,
-			flagMask: TmfMPTClearCanEscrow,
-		},
-		{
-			name:     "MPTSetCanTrade",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanTradeMutableFlag,
-			flagMask: TmfMPTSetCanTrade,
-		},
-		{
-			name:     "MPTClearCanTrade",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanTradeMutableFlag,
-			flagMask: TmfMPTClearCanTrade,
-		},
-		{
-			name:     "MPTSetCanTransfer",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanTransferMutableFlag,
-			flagMask: TmfMPTSetCanTransfer,
-		},
-		{
-			name:     "MPTClearCanTransfer",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanTransferMutableFlag,
-			flagMask: TmfMPTClearCanTransfer,
-		},
-		{
-			name:     "MPTSetCanClawback",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanClawbackMutableFlag,
-			flagMask: TmfMPTSetCanClawback,
-		},
-		{
-			name:     "MPTClearCanClawback",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanClawbackMutableFlag,
-			flagMask: TmfMPTClearCanClawback,
-		},
-		{
-			name:     "MPTSetCanConfidentialAmount",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanConfidentialAmountMutableFlag,
-			flagMask: TmfMPTSetCanConfidentialAmount,
-		},
-		{
-			name:     "MPTClearCanConfidentialAmount",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanConfidentialAmountMutableFlag,
-			flagMask: TmfMPTClearCanConfidentialAmount,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tx := &MPTokenIssuanceSet{}
-			tt.setFlag(tx)
-			require.NotNil(t, tx.MutableFlags)
-			require.Equal(t, tt.flagMask, *tx.MutableFlags)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx := &MPTokenIssuanceSet{MutableFlags: types.MutableFlags(0x80000000)}
+			test.set(tx)
+			require.Equal(t, uint32(0x80000000)|test.literal, *tx.MutableFlags)
 		})
 	}
 
-	// Test all mutable flags together
 	tx := &MPTokenIssuanceSet{}
-	for _, tt := range tests {
-		tt.setFlag(tx)
+	for _, test := range tests {
+		test.set(tx)
 	}
-
-	expectedMutableFlags := TmfMPTSetCanLock | TmfMPTClearCanLock |
-		TmfMPTSetRequireAuth | TmfMPTClearRequireAuth |
-		TmfMPTSetCanEscrow | TmfMPTClearCanEscrow |
-		TmfMPTSetCanTrade | TmfMPTClearCanTrade |
-		TmfMPTSetCanTransfer | TmfMPTClearCanTransfer |
-		TmfMPTSetCanClawback | TmfMPTClearCanClawback |
-		TmfMPTSetCanConfidentialAmount | TmfMPTClearCanConfidentialAmount
-	require.Equal(t, expectedMutableFlags, *tx.MutableFlags)
+	require.Equal(t, uint32(0x7F), *tx.MutableFlags)
 }
 
-func TestMPTokenIssuanceSet_Flags(t *testing.T) {
+func TestMPTokenIssuanceSet_ValidateMutableFlags(t *testing.T) {
 	tests := []struct {
-		name     string
-		setFlags func(*MPTokenIssuanceSet)
-		want     uint32
+		name  string
+		flags uint32
+		ok    bool
 	}{
-		{
-			name: "pass - set MPTLock flag",
-			setFlags: func(tx *MPTokenIssuanceSet) {
-				tx.SetMPTLockFlag()
-			},
-			want: TfMPTLock,
-		},
-		{
-			name: "pass - set MPTUnlock flag",
-			setFlags: func(tx *MPTokenIssuanceSet) {
-				tx.SetMPTUnlockFlag()
-			},
-			want: TfMPTUnlock,
-		},
-		{
-			name: "pass - set both flags",
-			setFlags: func(tx *MPTokenIssuanceSet) {
-				tx.SetMPTLockFlag()
-				tx.SetMPTUnlockFlag()
-			},
-			want: TfMPTLock | TfMPTUnlock,
-		},
+		{"one valid bit", TmfMPTSetCanTrade, true},
+		{"all valid bits", MPTokenIssuanceSetMutableFlagsMask, true},
+		{"present zero", 0, false},
+		{"removed bit 0x80", 0x80, false},
+		{"removed legacy clear bit", 0x2000, false},
+		{"unknown high bit", 0x80000000, false},
+		{"valid and unknown", TmfMPTSetCanLock | 0x100, false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx := validMPTokenIssuanceSet()
+			tx.MutableFlags = types.MutableFlags(test.flags)
+			ok, err := tx.Validate()
+			require.Equal(t, test.ok, ok)
+			if test.ok {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, ErrMPTIssuanceSetInvalidMutableFlags)
+			}
+		})
+	}
+}
+
+func TestMPTokenIssuanceSet_TransferFeeConfidentialBalance(t *testing.T) {
+	tests := []struct {
+		name  string
+		fee   *uint16
+		flags uint32
+		ok    bool
+	}{
+		{"non-zero fee with confidential", types.TransferFee(1), TmfMPTSetCanHoldConfidentialBalance, false},
+		{"non-zero fee with confidential and another bit", types.TransferFee(1), TmfMPTSetCanLock | TmfMPTSetCanHoldConfidentialBalance, false},
+		{"zero fee with confidential", types.TransferFee(0), TmfMPTSetCanHoldConfidentialBalance, true},
+		{"absent fee with confidential", nil, TmfMPTSetCanHoldConfidentialBalance, true},
+		{"non-zero fee without confidential", types.TransferFee(1), TmfMPTSetCanTransfer, true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx := validMPTokenIssuanceSet()
+			tx.TransferFee = test.fee
+			tx.MutableFlags = types.MutableFlags(test.flags)
+			ok, err := tx.Validate()
+			require.Equal(t, test.ok, ok)
+			if test.ok {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, ErrMPTIssuanceSetTransferFeeWithConfidentialBalance)
+			}
+		})
+	}
+}
+
+func TestMPTokenIssuanceSet_ValidateIssuanceIDAndHolder(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*MPTokenIssuanceSet)
+		err    error
+	}{
+		{"empty issuance ID", func(tx *MPTokenIssuanceSet) { tx.MPTokenIssuanceID = "" }, ErrInvalidMPTokenIssuanceIDSet},
+		{"non-hex 48-character issuance ID", func(tx *MPTokenIssuanceSet) {
+			tx.MPTokenIssuanceID = "00070C4495F14B0E44F78A264E41713C64B5F89242540EG2"
+		}, ErrInvalidMPTokenIssuanceIDSet},
+		{"46-character issuance ID", func(tx *MPTokenIssuanceSet) { tx.MPTokenIssuanceID = "00070C4495F14B0E44F78A264E41713C64B5F89242540E" }, ErrInvalidMPTokenIssuanceIDSet},
+		{"50-character issuance ID", func(tx *MPTokenIssuanceSet) {
+			tx.MPTokenIssuanceID = "00070C4495F14B0E44F78A264E41713C64B5F89242540EE200"
+		}, ErrInvalidMPTokenIssuanceIDSet},
+		{"oversized issuance ID", func(tx *MPTokenIssuanceSet) {
+			tx.MPTokenIssuanceID = "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000"
+		}, ErrInvalidMPTokenIssuanceIDSet},
+		{"invalid holder", func(tx *MPTokenIssuanceSet) {
+			tx.MutableFlags = nil
+			tx.Holder = types.Holder("invalid")
+		}, ErrInvalidAccount},
+		{"holder equals account", func(tx *MPTokenIssuanceSet) {
+			tx.MutableFlags = nil
+			tx.Holder = types.Holder("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD")
+		}, ErrHolderAccountConflict},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx := validMPTokenIssuanceSet()
+			test.mutate(tx)
+			ok, err := tx.Validate()
+			require.False(t, ok)
+			require.ErrorIs(t, err, test.err)
+		})
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tx := &MPTokenIssuanceSet{}
-			tt.setFlags(tx)
-			require.Equal(t, tt.want, tx.Flags)
+	t.Run("valid standalone holder", func(t *testing.T) {
+		tx := validMPTokenIssuanceSet()
+		tx.MutableFlags = nil
+		tx.Holder = types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2")
+		ok, err := tx.Validate()
+		require.True(t, ok)
+		require.NoError(t, err)
+	})
+}
+
+func TestMPTokenIssuanceSet_ValidateMetadata(t *testing.T) {
+	tests := []struct {
+		name     string
+		metadata string
+		ok       bool
+	}{
+		{"exactly 1024 bytes", strings.Repeat("AB", 1024), true},
+		{"over 1024 bytes", strings.Repeat("AB", 1025), false},
+		{"invalid hex", "not-hex", false},
+		{"empty removes metadata", "", true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx := validMPTokenIssuanceSet()
+			tx.MutableFlags = nil
+			tx.MPTokenMetadata = types.MPTokenMetadata(test.metadata)
+			ok, err := tx.Validate()
+			require.Equal(t, test.ok, ok)
+			if test.ok {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, ErrInvalidMPTokenMetadata)
+			}
+		})
+	}
+}
+
+func TestMPTokenIssuanceSet_ValidateEncryptionKeys(t *testing.T) {
+	invalidSyntax := "02" + strings.Repeat("GG", 32)
+	tests := []struct {
+		name   string
+		mutate func(*MPTokenIssuanceSet)
+		err    error
+	}{
+		{"issuer invalid syntax", func(tx *MPTokenIssuanceSet) {
+			tx.IssuerEncryptionKey = types.EncryptionKey(invalidSyntax)
+		}, ErrMPTIssuanceSetInvalidKeyLength},
+		{"issuer invalid length", func(tx *MPTokenIssuanceSet) {
+			tx.IssuerEncryptionKey = types.EncryptionKey("02AABB")
+		}, ErrMPTIssuanceSetInvalidKeyLength},
+		{"auditor invalid syntax", func(tx *MPTokenIssuanceSet) {
+			tx.IssuerEncryptionKey = types.EncryptionKey(validCompressedKey)
+			tx.AuditorEncryptionKey = types.EncryptionKey(invalidSyntax)
+		}, ErrMPTIssuanceSetInvalidKeyLength},
+		{"auditor invalid length", func(tx *MPTokenIssuanceSet) {
+			tx.IssuerEncryptionKey = types.EncryptionKey(validCompressedKey)
+			tx.AuditorEncryptionKey = types.EncryptionKey("03AABB")
+		}, ErrMPTIssuanceSetInvalidKeyLength},
+		{"auditor without issuer", func(tx *MPTokenIssuanceSet) {
+			tx.AuditorEncryptionKey = types.EncryptionKey(validCompressedKey)
+		}, ErrMPTIssuanceSetAuditorRequiresIssuerKey},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx := validMPTokenIssuanceSet()
+			tx.MutableFlags = nil
+			test.mutate(tx)
+			ok, err := tx.Validate()
+			require.False(t, ok)
+			require.ErrorIs(t, err, test.err)
+		})
+	}
+
+	for _, test := range []struct {
+		name   string
+		mutate func(*MPTokenIssuanceSet)
+	}{
+		{"issuer key", func(tx *MPTokenIssuanceSet) {
+			tx.IssuerEncryptionKey = types.EncryptionKey(validCompressedKey)
+		}},
+		{"paired issuer and auditor keys", func(tx *MPTokenIssuanceSet) {
+			tx.IssuerEncryptionKey = types.EncryptionKey(validCompressedKey)
+			tx.AuditorEncryptionKey = types.EncryptionKey(validCompressedKey)
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			tx := validMPTokenIssuanceSet()
+			tx.MutableFlags = nil
+			test.mutate(tx)
+			ok, err := tx.Validate()
+			require.True(t, ok)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestMPTokenIssuanceSet_ValidateOperationConflictsAndBounds(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*MPTokenIssuanceSet)
+		err    error
+	}{
+		{"no operation", func(tx *MPTokenIssuanceSet) { tx.MutableFlags = nil }, ErrMPTIssuanceSetEmpty},
+		{"conflicting lock flags", func(tx *MPTokenIssuanceSet) { tx.MutableFlags = nil; tx.Flags = TfMPTLock | TfMPTUnlock }, ErrMPTokenIssuanceSetFlags},
+		{"flags with mutation", func(tx *MPTokenIssuanceSet) { tx.Flags = TfMPTLock }, ErrMPTIssuanceSetFlagsMutuallyExclusive},
+		{"holder with mutation", func(tx *MPTokenIssuanceSet) { tx.Holder = types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2") }, ErrMPTIssuanceSetHolderMutuallyExclusive},
+		{"holder with key", func(tx *MPTokenIssuanceSet) {
+			tx.MutableFlags = nil
+			tx.Holder = types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2")
+			tx.IssuerEncryptionKey = types.EncryptionKey(validCompressedKey)
+		}, ErrMPTIssuanceSetKeyConflict},
+		{"fee too high", func(tx *MPTokenIssuanceSet) { tx.TransferFee = types.TransferFee(50001) }, ErrInvalidTransferFee},
+		{"invalid domain", func(tx *MPTokenIssuanceSet) { tx.DomainID = types.DomainID("not-hex") }, ErrMPTIssuanceSetDomainIDInvalid},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx := validMPTokenIssuanceSet()
+			test.mutate(tx)
+			ok, err := tx.Validate()
+			require.False(t, ok)
+			require.ErrorIs(t, err, test.err)
+		})
+	}
+}
+
+func TestMPTokenIssuanceSet_ZeroValuesAllowed(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*MPTokenIssuanceSet)
+	}{
+		{"empty domain removes", func(tx *MPTokenIssuanceSet) { tx.DomainID = types.DomainID("") }},
+		{"zero transfer fee", func(tx *MPTokenIssuanceSet) { tx.TransferFee = types.TransferFee(0) }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx := validMPTokenIssuanceSet()
+			tx.MutableFlags = nil
+			test.mutate(tx)
+			ok, err := tx.Validate()
+			require.True(t, ok)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestMPTokenIssuanceSet_FlagValuesAndSettersPreserveBits(t *testing.T) {
+	require.Equal(t, uint32(0x01), TfMPTLock)
+	require.Equal(t, uint32(0x02), TfMPTUnlock)
+
+	tests := []struct {
+		name    string
+		set     func(*MPTokenIssuanceSet)
+		literal uint32
+	}{
+		{"lock", (*MPTokenIssuanceSet).SetMPTLockFlag, 0x01},
+		{"unlock", (*MPTokenIssuanceSet).SetMPTUnlockFlag, 0x02},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tx := &MPTokenIssuanceSet{BaseTx: BaseTx{Flags: 0x100}}
+			test.set(tx)
+			require.Equal(t, uint32(0x100)|test.literal, tx.Flags)
 		})
 	}
 }

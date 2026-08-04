@@ -220,8 +220,10 @@ var (
 	// ErrHolderAccountConflict is returned when the holder account is the same as the issuing account.
 	ErrHolderAccountConflict = errors.New("holder must be different from the account")
 
-	// ErrMPTIssuanceCreateMutableFlagsZero is returned when MutableFlags is set to zero in MPTokenIssuanceCreate.
-	ErrMPTIssuanceCreateMutableFlagsZero = errors.New("mptoken issuance create: MutableFlags cannot be zero")
+	// ErrMPTIssuanceCreateInvalidMutableFlags is returned when MutableFlags is zero or contains an unsupported bit.
+	ErrMPTIssuanceCreateInvalidMutableFlags = errors.New("mptoken issuance create: MutableFlags must contain only supported non-zero flags")
+	// ErrMPTIssuanceCreateTransferFeeWithConfidentialBalance is returned when a non-zero TransferFee is used with confidential balances.
+	ErrMPTIssuanceCreateTransferFeeWithConfidentialBalance = errors.New("mptoken issuance create: non-zero TransferFee cannot be set with TfMPTCanHoldConfidentialBalance")
 	// ErrMPTIssuanceCreateDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
 	ErrMPTIssuanceCreateDomainIDInvalid = errors.New("mptoken issuance create: DomainID must be a valid 64-character hexadecimal string")
 	// ErrMPTIssuanceCreateDomainIDRequiresRequireAuth is returned when DomainID is set without enabling TfMPTRequireAuth flag.
@@ -232,20 +234,16 @@ var (
 	ErrMPTIssuanceSetHolderMutuallyExclusive = errors.New("mptoken issuance set: Holder is mutually exclusive with MutableFlags/MPTokenMetadata/TransferFee/DomainID")
 	// ErrMPTIssuanceSetFlagsMutuallyExclusive is returned when non-zero Flags are set together with DynamicMPT fields.
 	ErrMPTIssuanceSetFlagsMutuallyExclusive = errors.New("mptoken issuance set: Flags is mutually exclusive with MutableFlags/MPTokenMetadata/TransferFee")
-	// ErrMPTIssuanceSetMutableFlagsZero is returned when MutableFlags is set to zero.
-	ErrMPTIssuanceSetMutableFlagsZero = errors.New("mptoken issuance set: MutableFlags cannot be zero")
-	// ErrMPTIssuanceSetMutableFlagsConflict is returned when MutableFlags has both set and clear for the same flag.
-	ErrMPTIssuanceSetMutableFlagsConflict = errors.New("mptoken issuance set: cannot set and clear the same flag simultaneously")
-	// ErrMPTIssuanceSetTransferFeeWithClearCanTransfer is returned when a non-zero TransferFee is set together with tmfMPTClearCanTransfer.
-	ErrMPTIssuanceSetTransferFeeWithClearCanTransfer = errors.New("mptoken issuance set: non-zero TransferFee cannot be set together with tmfMPTClearCanTransfer")
+	// ErrMPTIssuanceSetInvalidMutableFlags is returned when MutableFlags is zero or contains an unsupported bit.
+	ErrMPTIssuanceSetInvalidMutableFlags = errors.New("mptoken issuance set: MutableFlags must contain only supported non-zero flags")
+	// ErrMPTIssuanceSetTransferFeeWithConfidentialBalance is returned when a non-zero TransferFee enables confidential balances.
+	ErrMPTIssuanceSetTransferFeeWithConfidentialBalance = errors.New("mptoken issuance set: non-zero TransferFee cannot be set with TmfMPTSetCanHoldConfidentialBalance")
 	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string (and not empty).
 	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string or empty")
 	// ErrMPTIssuanceSetKeyConflict is returned when encryption keys are set together with Holder.
 	ErrMPTIssuanceSetKeyConflict = errors.New("mptoken issuance set: encryption keys cannot be set together with Holder")
 	// ErrMPTIssuanceSetAuditorRequiresIssuerKey is returned when AuditorEncryptionKey is set without IssuerEncryptionKey.
 	ErrMPTIssuanceSetAuditorRequiresIssuerKey = errors.New("mptoken issuance set: AuditorEncryptionKey requires IssuerEncryptionKey to be set")
-	// ErrMPTIssuanceSetKeysWithClearCanConfidentialAmount is returned when encryption keys are set together with tmfMPTClearCanConfidentialAmount.
-	ErrMPTIssuanceSetKeysWithClearCanConfidentialAmount = errors.New("mptoken issuance set: encryption keys cannot be set together with tmfMPTClearCanConfidentialAmount")
 	// ErrMPTIssuanceSetInvalidKeyLength is returned when an encryption key has an invalid length.
 	ErrMPTIssuanceSetInvalidKeyLength = errors.New("mptoken issuance set: encryption key must be 66 hex characters (33-byte compressed EC point)")
 

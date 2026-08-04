@@ -344,7 +344,7 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
 				PreviousTxnLgrSeq: 234644,
 				Sequence:          1,
-				MutableFlags:      LsmfMPTCanMutateCanLock | LsmfMPTCanMutateMetadata,
+				MutableFlags:      LsmfMPTCanEnableCanLock | LsmfMPTCanMutateMetadata,
 			},
 			expected: `{
 	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
@@ -364,11 +364,11 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPTokenIssuance with LsfMPTCanConfidentialAmount",
+			name: "pass - valid MPTokenIssuance with LsfMPTCanHoldConfidentialBalance",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
-				Flags:             LsfMPTCanConfidentialAmount,
+				Flags:             LsfMPTCanHoldConfidentialBalance,
 				Issuer:            types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:        2,
 				MaximumAmount:     1000,
@@ -401,7 +401,7 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:                         types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:               MPTokenIssuanceEntry,
-				Flags:                         LsfMPTCanConfidentialAmount | LsfMPTCanTransfer,
+				Flags:                         LsfMPTCanHoldConfidentialBalance | LsfMPTCanTransfer,
 				Issuer:                        types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				AssetScale:                    2,
 				MaximumAmount:                 1000,
@@ -442,6 +442,73 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 			if err := testutil.SerializeAndDeserialize(t, test.mpTokenIssuance, test.expected); err != nil {
 				t.Error(err)
 			}
+		})
+	}
+}
+
+func TestMPTokenIssuanceFlagValuesAndSettersPreserveBits(t *testing.T) {
+	require.Equal(t, uint32(0x02), LsfMPTCanLock)
+	require.Equal(t, uint32(0x04), LsfMPTRequireAuth)
+	require.Equal(t, uint32(0x08), LsfMPTCanEscrow)
+	require.Equal(t, uint32(0x10), LsfMPTCanTrade)
+	require.Equal(t, uint32(0x20), LsfMPTCanTransfer)
+	require.Equal(t, uint32(0x40), LsfMPTCanClawback)
+	require.Equal(t, uint32(0x80), LsfMPTCanHoldConfidentialBalance)
+
+	tests := []struct {
+		name    string
+		set     func(*MPTokenIssuance)
+		literal uint32
+	}{
+		{"CanLock", (*MPTokenIssuance).SetLsfMPTCanLock, 0x02},
+		{"RequireAuth", (*MPTokenIssuance).SetLsfMPTRequireAuth, 0x04},
+		{"CanEscrow", (*MPTokenIssuance).SetLsfMPTCanEscrow, 0x08},
+		{"CanTrade", (*MPTokenIssuance).SetLsfMPTCanTrade, 0x10},
+		{"CanTransfer", (*MPTokenIssuance).SetLsfMPTCanTransfer, 0x20},
+		{"CanClawback", (*MPTokenIssuance).SetLsfMPTCanClawback, 0x40},
+		{"CanHoldConfidentialBalance", (*MPTokenIssuance).SetLsfMPTCanHoldConfidentialBalance, 0x80},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			issuance := &MPTokenIssuance{Flags: 0x100}
+			test.set(issuance)
+			require.Equal(t, uint32(0x100)|test.literal, issuance.Flags)
+		})
+	}
+}
+
+func TestMPTokenIssuanceMutableFlagValuesAndSettersPreserveBits(t *testing.T) {
+	require.Equal(t, uint32(0x02), LsmfMPTCanEnableCanLock)
+	require.Equal(t, uint32(0x04), LsmfMPTCanEnableRequireAuth)
+	require.Equal(t, uint32(0x08), LsmfMPTCanEnableCanEscrow)
+	require.Equal(t, uint32(0x10), LsmfMPTCanEnableCanTrade)
+	require.Equal(t, uint32(0x20), LsmfMPTCanEnableCanTransfer)
+	require.Equal(t, uint32(0x40), LsmfMPTCanEnableCanClawback)
+	require.Equal(t, uint32(0x80), LsmfMPTCannotEnableCanHoldConfidentialBalance)
+	require.Equal(t, uint32(0x10000), LsmfMPTCanMutateMetadata)
+	require.Equal(t, uint32(0x20000), LsmfMPTCanMutateTransferFee)
+	require.Equal(t, uint32(0x000300FE), MPTokenIssuanceMutableFlagsMask)
+
+	tests := []struct {
+		name    string
+		set     func(*MPTokenIssuance)
+		literal uint32
+	}{
+		{"CanEnableCanLock", (*MPTokenIssuance).SetLsmfMPTCanEnableCanLock, 0x02},
+		{"CanEnableRequireAuth", (*MPTokenIssuance).SetLsmfMPTCanEnableRequireAuth, 0x04},
+		{"CanEnableCanEscrow", (*MPTokenIssuance).SetLsmfMPTCanEnableCanEscrow, 0x08},
+		{"CanEnableCanTrade", (*MPTokenIssuance).SetLsmfMPTCanEnableCanTrade, 0x10},
+		{"CanEnableCanTransfer", (*MPTokenIssuance).SetLsmfMPTCanEnableCanTransfer, 0x20},
+		{"CanEnableCanClawback", (*MPTokenIssuance).SetLsmfMPTCanEnableCanClawback, 0x40},
+		{"CannotEnableCanHoldConfidentialBalance", (*MPTokenIssuance).SetLsmfMPTCannotEnableCanHoldConfidentialBalance, 0x80},
+		{"CanMutateMetadata", (*MPTokenIssuance).SetLsmfMPTCanMutateMetadata, 0x10000},
+		{"CanMutateTransferFee", (*MPTokenIssuance).SetLsmfMPTCanMutateTransferFee, 0x20000},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			issuance := &MPTokenIssuance{MutableFlags: 0x80000000}
+			test.set(issuance)
+			require.Equal(t, uint32(0x80000000)|test.literal, issuance.MutableFlags)
 		})
 	}
 }

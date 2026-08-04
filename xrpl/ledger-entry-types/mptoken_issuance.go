@@ -19,30 +19,37 @@ const (
 	LsfMPTCanTransfer uint32 = 0x00000020
 	// LsfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
 	LsfMPTCanClawback uint32 = 0x00000040
-	// LsfMPTCanConfidentialAmount if set, indicates that confidential transfers are enabled for this token issuance.
-	LsfMPTCanConfidentialAmount uint32 = 0x00000080
+	// LsfMPTCanHoldConfidentialBalance if set, indicates that holders may hold confidential balances for this token issuance.
+	LsfMPTCanHoldConfidentialBalance uint32 = 0x00000080
 )
 
-// Ledger-state mutable flags for MPTokenIssuance (Lsmf prefix).
+// Ledger-state mutable flags for MPTokenIssuance (Lsmf prefix) record future permissions and an opt-out.
+// CanEnable permissions allow only a later transition from disabled to enabled; they never
+// permit disabling. CanMutate permissions allow repeated metadata or transfer-fee updates.
+// CannotEnableCanHoldConfidentialBalance permanently records the confidential opt-out.
 const (
-	// LsmfMPTCanMutateCanLock indicates the CanLock property can be mutated.
-	LsmfMPTCanMutateCanLock uint32 = 0x00000002
-	// LsmfMPTCanMutateRequireAuth indicates the RequireAuth property can be mutated.
-	LsmfMPTCanMutateRequireAuth uint32 = 0x00000004
-	// LsmfMPTCanMutateCanEscrow indicates the CanEscrow property can be mutated.
-	LsmfMPTCanMutateCanEscrow uint32 = 0x00000008
-	// LsmfMPTCanMutateCanTrade indicates the CanTrade property can be mutated.
-	LsmfMPTCanMutateCanTrade uint32 = 0x00000010
-	// LsmfMPTCanMutateCanTransfer indicates the CanTransfer property can be mutated.
-	LsmfMPTCanMutateCanTransfer uint32 = 0x00000020
-	// LsmfMPTCanMutateCanClawback indicates the CanClawback property can be mutated.
-	LsmfMPTCanMutateCanClawback uint32 = 0x00000040
-	// LsmfMPTCanMutateMetadata indicates the MPTokenMetadata can be mutated.
+	// LsmfMPTCanEnableCanLock records one-way permission to enable CanLock after issuance.
+	LsmfMPTCanEnableCanLock uint32 = 0x00000002
+	// LsmfMPTCanEnableRequireAuth records one-way permission to enable RequireAuth after issuance.
+	LsmfMPTCanEnableRequireAuth uint32 = 0x00000004
+	// LsmfMPTCanEnableCanEscrow records one-way permission to enable CanEscrow after issuance.
+	LsmfMPTCanEnableCanEscrow uint32 = 0x00000008
+	// LsmfMPTCanEnableCanTrade records one-way permission to enable CanTrade after issuance.
+	LsmfMPTCanEnableCanTrade uint32 = 0x00000010
+	// LsmfMPTCanEnableCanTransfer records one-way permission to enable CanTransfer after issuance.
+	LsmfMPTCanEnableCanTransfer uint32 = 0x00000020
+	// LsmfMPTCanEnableCanClawback records one-way permission to enable CanClawback after issuance.
+	LsmfMPTCanEnableCanClawback uint32 = 0x00000040
+	// LsmfMPTCannotEnableCanHoldConfidentialBalance records a permanent opt-out from enabling confidential balances.
+	LsmfMPTCannotEnableCanHoldConfidentialBalance uint32 = 0x00000080
+	// LsmfMPTCanMutateMetadata records repeatable permission to replace MPTokenMetadata.
 	LsmfMPTCanMutateMetadata uint32 = 0x00010000
-	// LsmfMPTCanMutateTransferFee indicates the TransferFee can be mutated.
+	// LsmfMPTCanMutateTransferFee records repeatable permission to replace TransferFee.
 	LsmfMPTCanMutateTransferFee uint32 = 0x00020000
-	// LsmfMPTCannotMutateCanConfidentialAmount if set, the lsfMPTCanConfidentialAmount flag can never be changed after the token is issued.
-	LsmfMPTCannotMutateCanConfidentialAmount uint32 = 0x00040000
+
+	// MPTokenIssuanceMutableFlagsMask contains every valid ledger MutableFlags bit.
+	// Bit 0x01 is reserved.
+	MPTokenIssuanceMutableFlagsMask uint32 = 0x000300FE
 )
 
 // An MPTokenIssuance entry represents a single MPT issuance and holds data associated with the issuance itself.
@@ -87,7 +94,9 @@ type MPTokenIssuance struct {
 	LockedAmount uint64 `json:",omitempty"`
 	// DomainID is the ledger entry ID of a permissioned domain that grants access to the MPT.
 	DomainID string `json:",omitempty"`
-	// MutableFlags indicates which properties of this MPT can be mutated after creation.
+	// MutableFlags records one-way future-enable permissions for ordinary capabilities,
+	// repeatable mutation permission for metadata and transfer fees, and a permanent
+	// opt-out from enabling confidential balances.
 	MutableFlags uint32 `json:",omitempty"`
 	// The issuer's encryption key for confidential transfers.
 	// Required if confidential transfers are enabled.
@@ -138,4 +147,58 @@ func (c *MPTokenIssuance) SetLsfMPTCanTransfer() {
 // SetLsfMPTCanClawback sets the LsfMPTCanClawback flag.
 func (c *MPTokenIssuance) SetLsfMPTCanClawback() {
 	c.Flags |= LsfMPTCanClawback
+}
+
+// SetLsfMPTCanHoldConfidentialBalance sets the confidential balance capability.
+func (c *MPTokenIssuance) SetLsfMPTCanHoldConfidentialBalance() {
+	c.Flags |= LsfMPTCanHoldConfidentialBalance
+}
+
+func (c *MPTokenIssuance) setMutableFlag(flag uint32) {
+	c.MutableFlags |= flag
+}
+
+// SetLsmfMPTCanEnableCanLock records one-way permission to enable CanLock after issuance.
+func (c *MPTokenIssuance) SetLsmfMPTCanEnableCanLock() {
+	c.setMutableFlag(LsmfMPTCanEnableCanLock)
+}
+
+// SetLsmfMPTCanEnableRequireAuth records one-way permission to enable RequireAuth after issuance.
+func (c *MPTokenIssuance) SetLsmfMPTCanEnableRequireAuth() {
+	c.setMutableFlag(LsmfMPTCanEnableRequireAuth)
+}
+
+// SetLsmfMPTCanEnableCanEscrow records one-way permission to enable CanEscrow after issuance.
+func (c *MPTokenIssuance) SetLsmfMPTCanEnableCanEscrow() {
+	c.setMutableFlag(LsmfMPTCanEnableCanEscrow)
+}
+
+// SetLsmfMPTCanEnableCanTrade records one-way permission to enable CanTrade after issuance.
+func (c *MPTokenIssuance) SetLsmfMPTCanEnableCanTrade() {
+	c.setMutableFlag(LsmfMPTCanEnableCanTrade)
+}
+
+// SetLsmfMPTCanEnableCanTransfer records one-way permission to enable CanTransfer after issuance.
+func (c *MPTokenIssuance) SetLsmfMPTCanEnableCanTransfer() {
+	c.setMutableFlag(LsmfMPTCanEnableCanTransfer)
+}
+
+// SetLsmfMPTCanEnableCanClawback records one-way permission to enable CanClawback after issuance.
+func (c *MPTokenIssuance) SetLsmfMPTCanEnableCanClawback() {
+	c.setMutableFlag(LsmfMPTCanEnableCanClawback)
+}
+
+// SetLsmfMPTCannotEnableCanHoldConfidentialBalance records a permanent opt-out from enabling confidential balances.
+func (c *MPTokenIssuance) SetLsmfMPTCannotEnableCanHoldConfidentialBalance() {
+	c.setMutableFlag(LsmfMPTCannotEnableCanHoldConfidentialBalance)
+}
+
+// SetLsmfMPTCanMutateMetadata records repeatable permission to replace MPTokenMetadata.
+func (c *MPTokenIssuance) SetLsmfMPTCanMutateMetadata() {
+	c.setMutableFlag(LsmfMPTCanMutateMetadata)
+}
+
+// SetLsmfMPTCanMutateTransferFee records repeatable permission to replace TransferFee.
+func (c *MPTokenIssuance) SetLsmfMPTCanMutateTransferFee() {
+	c.setMutableFlag(LsmfMPTCanMutateTransferFee)
 }
