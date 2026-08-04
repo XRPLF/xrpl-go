@@ -5,6 +5,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/amm"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/server"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -35,6 +36,8 @@ type Client interface {
 	GetAMMInfo(req *amm.InfoRequest) (*amm.InfoResponse, error)
 	GetLedger(req *ledger.Request) (*ledger.Response, error)
 	GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse, error)
+	GetServerDefinitions(req *server.DefinitionsRequest) (*server.DefinitionsResponse, error)
+	Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error)
 }
 
 // Connectable defines methods to connect and disconnect the integration client.

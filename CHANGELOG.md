@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added query field coverage for account lines (`ignore_default`, `limit`), AMM info (`account`, frozen flags, auction `time_interval`), NFT offer pagination (`limit`/`marker`), vault current-ledger metadata, and v1 account NFT ledger metadata, with protocol-accurate default and v1 JSON fixtures including the AMM expired-slot interval sentinel.
 - Expanded typed `ledger_entry` selector support with exactly-one top-level request validation, Clio deleted-entry metadata, and distinct validated JSON (`node`) and binary (`node_binary`) responses across RPC and WebSocket transports.
-- Added typed `server_definitions` support for full and hash-only protocol definitions, plus XLS-69 `simulate` dry runs with validated JSON and opaque hexadecimal blob request variants, JSON/binary responses, server-autofilled omitted NetworkID support, validation for supplied JSON NetworkID values, and aligned RPC/WebSocket clients.
+- Added typed `server_definitions` support for full and hash-only protocol definitions, plus XLS-69 `simulate` dry runs with validated JSON and opaque hexadecimal blob request variants, JSON/binary responses, server-autofilled omitted NetworkID support, validation for supplied JSON NetworkID values, and aligned RPC/WebSocket clients. Live RPC and WebSocket integration tests cover full and hash-only definitions plus JSON and binary simulations.
 
 #### xrpl/queries/amm
 
