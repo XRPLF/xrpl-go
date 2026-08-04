@@ -1,10 +1,10 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
 	"math"
 
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
@@ -112,19 +112,26 @@ func (c SECP256K1CryptoAlgorithm) Sign(msg, privKey string) (string, error) {
 	if len(privKey) != 64 && len(privKey) != 66 {
 		return "", ErrInvalidPrivateKey
 	}
+	if len(privKey) == 66 {
+		if privKey[:2] != "00" {
+			return "", ErrInvalidPrivateKey
+		}
+		privKey = privKey[2:]
+	}
 	if len(msg) == 0 {
 		return "", ErrInvalidMessage
 	}
-
-	if len(privKey) == 66 {
-		privKey = privKey[2:]
-	}
 	key, err := hex.DecodeString(privKey)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrInvalidPrivateKey, err)
+		return "", ErrInvalidPrivateKey
 	}
 
-	secpPrivKey := secp256k1.PrivKeyFromBytes(key)
+	var scalar secp256k1.ModNScalar
+	if overflow := scalar.SetByteSlice(key); overflow || scalar.IsZero() {
+		return "", ErrInvalidPrivateKey
+	}
+
+	secpPrivKey := secp256k1.NewPrivateKey(&scalar)
 	sig := ecdsa.Sign(secpPrivKey, Sha512Half([]byte(msg)))
 
 	return hexutil.EncodeToUpperHex(sig.Serialize()), nil
@@ -139,6 +146,11 @@ func (c SECP256K1CryptoAlgorithm) Validate(msg, pubkey, sig string) bool {
 
 	parsedSig, err := ecdsa.ParseDERSignature(sigBytes)
 	if err != nil {
+		return false
+	}
+	// Serialize normalizes S to the lower half of the curve order. If the
+	// canonical encoding differs, the input used a malleable high-S signature.
+	if !bytes.Equal(parsedSig.Serialize(), sigBytes) {
 		return false
 	}
 
