@@ -13,8 +13,8 @@ var (
 
 	// oracle
 
-	// ErrPriceDataAssetPriceAndScale is returned when the asset price and scale are not set together.
-	ErrPriceDataAssetPriceAndScale = errors.New("asset price and scale must be set together")
+	// ErrPriceDataAssetPriceAndScale is returned when a non-zero scale is set without an asset price.
+	ErrPriceDataAssetPriceAndScale = errors.New("scale cannot be set without asset price")
 	// ErrPriceDataAssetPrice is returned when an AssetPrice JSON value cannot be parsed.
 	ErrPriceDataAssetPrice = errors.New("invalid asset price")
 	// ErrPriceDataBaseAsset is returned when the base asset is required but not set.

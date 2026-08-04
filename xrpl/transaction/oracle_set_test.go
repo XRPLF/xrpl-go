@@ -47,7 +47,7 @@ func TestOracleSet_Flatten(t *testing.T) {
 						PriceData: ledger.PriceData{
 							BaseAsset:  "XRP",
 							QuoteAsset: "USD",
-							AssetPrice: 740,
+							AssetPrice: ledger.AssetPrice(740),
 							Scale:      3,
 						},
 					},
@@ -203,7 +203,7 @@ func TestOracleSet_Validate(t *testing.T) {
 						PriceData: ledger.PriceData{
 							BaseAsset:  "XRP",
 							QuoteAsset: "USD",
-							AssetPrice: 740,
+							AssetPrice: ledger.AssetPrice(740),
 							Scale:      3,
 						},
 					},

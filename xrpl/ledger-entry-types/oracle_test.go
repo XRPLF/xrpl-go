@@ -27,11 +27,25 @@ func TestPriceData_Flatten(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - explicit zero price",
+			priceData: &PriceData{
+				BaseAsset:  "XRP",
+				QuoteAsset: "USD",
+				AssetPrice: AssetPrice(0),
+			},
+			expected: map[string]any{
+				"BaseAsset":  "XRP",
+				"QuoteAsset": "USD",
+				"AssetPrice": "0000000000000000",
+				"Scale":      uint8(0),
+			},
+		},
+		{
 			name: "pass - complete",
 			priceData: &PriceData{
 				BaseAsset:  "XRP",
 				QuoteAsset: "USD",
-				AssetPrice: 740,
+				AssetPrice: AssetPrice(740),
 				Scale:      3,
 			},
 			expected: map[string]any{
@@ -46,7 +60,7 @@ func TestPriceData_Flatten(t *testing.T) {
 			priceData: &PriceData{
 				BaseAsset:  "XRP",
 				QuoteAsset: "ACGBD",
-				AssetPrice: 740,
+				AssetPrice: AssetPrice(740),
 				Scale:      3,
 			},
 			expected: map[string]any{
@@ -82,7 +96,7 @@ func TestPriceDataWrapper_Flatten(t *testing.T) {
 				PriceData: PriceData{
 					BaseAsset:  "XRP",
 					QuoteAsset: "USD",
-					AssetPrice: 740,
+					AssetPrice: AssetPrice(740),
 					Scale:      3,
 				},
 			},
@@ -101,7 +115,7 @@ func TestPriceDataWrapper_Flatten(t *testing.T) {
 				PriceData: PriceData{
 					BaseAsset:  "XRP",
 					QuoteAsset: "ACGBD",
-					AssetPrice: 740,
+					AssetPrice: AssetPrice(740),
 					Scale:      3,
 				},
 			},
@@ -135,6 +149,7 @@ func TestOracle_JSONRoundTrip(t *testing.T) {
 	"PriceDataSeries": [
 		{"PriceData": {"BaseAsset": "XRP", "QuoteAsset": "USD", "AssetPrice": "2e4", "Scale": 3}},
 		{"PriceData": {"BaseAsset": "XRP", "QuoteAsset": "EUR", "AssetPrice": "00000000000002E4", "Scale": 3}},
+		{"PriceData": {"BaseAsset": "XRP", "QuoteAsset": "JPY", "AssetPrice": "0"}},
 		{"PriceData": {"BaseAsset": "XRP", "QuoteAsset": "INR"}}
 	],
 	"LastUpdateTime": 1724871860,
@@ -148,14 +163,16 @@ func TestOracle_JSONRoundTrip(t *testing.T) {
 	require.Equal(t, OracleEntry, oracle.EntryType())
 	require.Equal(t, EntryType("Oracle"), oracle.LedgerEntryType)
 	require.Equal(t, "1f", oracle.OwnerNode)
-	require.Len(t, oracle.PriceDataSeries, 3)
-	require.Equal(t, uint64(740), oracle.PriceDataSeries[0].PriceData.AssetPrice)
-	require.Equal(t, uint64(740), oracle.PriceDataSeries[1].PriceData.AssetPrice)
-	require.Zero(t, oracle.PriceDataSeries[2].PriceData.AssetPrice)
+	require.Len(t, oracle.PriceDataSeries, 4)
+	require.Equal(t, AssetPrice(740), oracle.PriceDataSeries[0].PriceData.AssetPrice)
+	require.Equal(t, AssetPrice(740), oracle.PriceDataSeries[1].PriceData.AssetPrice)
+	require.Equal(t, AssetPrice(0), oracle.PriceDataSeries[2].PriceData.AssetPrice)
+	require.Nil(t, oracle.PriceDataSeries[3].PriceData.AssetPrice)
 
 	encoded, err := json.Marshal(&oracle)
 	require.NoError(t, err)
 	require.Contains(t, string(encoded), `"AssetPrice":"2e4"`)
+	require.Contains(t, string(encoded), `"AssetPrice":"0"`)
 
 	var decoded Oracle
 	require.NoError(t, json.Unmarshal(encoded, &decoded))
@@ -166,28 +183,33 @@ func TestPriceData_AssetPriceJSON(t *testing.T) {
 	tests := []struct {
 		name     string
 		json     string
-		expected uint64
+		expected *uint64
 		wantErr  error
 	}{
 		{
 			name:     "pass - minimal lowercase hex string",
 			json:     `{"BaseAsset": "XRP", "QuoteAsset": "USD", "AssetPrice": "2e4", "Scale": 3}`,
-			expected: 740,
+			expected: AssetPrice(740),
 		},
 		{
 			name:     "pass - padded uppercase hex string",
 			json:     `{"BaseAsset": "XRP", "QuoteAsset": "USD", "AssetPrice": "00000000000002E4", "Scale": 3}`,
-			expected: 740,
+			expected: AssetPrice(740),
 		},
 		{
 			name:     "pass - maximum value",
 			json:     `{"BaseAsset": "XRP", "QuoteAsset": "USD", "AssetPrice": "ffffffffffffffff", "Scale": 3}`,
-			expected: 0xffffffffffffffff,
+			expected: AssetPrice(0xffffffffffffffff),
 		},
 		{
 			name:     "pass - base-10 JSON number",
 			json:     `{"BaseAsset": "XRP", "QuoteAsset": "USD", "AssetPrice": 740, "Scale": 3}`,
-			expected: 740,
+			expected: AssetPrice(740),
+		},
+		{
+			name:     "pass - explicit zero",
+			json:     `{"BaseAsset": "XRP", "QuoteAsset": "USD", "AssetPrice": "0"}`,
+			expected: AssetPrice(0),
 		},
 		{
 			name: "pass - omitted",
@@ -260,20 +282,38 @@ func TestPriceData_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "fail - asset price and scale not set together",
+			name: "fail - scale without asset price",
 			priceData: &PriceData{
 				BaseAsset:  "XRP",
 				QuoteAsset: "USD",
-				AssetPrice: 740,
+				Scale:      3,
 			},
 			expected: ErrPriceDataAssetPriceAndScale,
+		},
+		{
+			name: "pass - asset price with default scale",
+			priceData: &PriceData{
+				BaseAsset:  "XRP",
+				QuoteAsset: "USD",
+				AssetPrice: AssetPrice(740),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - explicit zero price",
+			priceData: &PriceData{
+				BaseAsset:  "XRP",
+				QuoteAsset: "USD",
+				AssetPrice: AssetPrice(0),
+			},
+			expected: nil,
 		},
 		{
 			name: "pass - complete",
 			priceData: &PriceData{
 				BaseAsset:  "XRP",
 				QuoteAsset: "USD",
-				AssetPrice: 740,
+				AssetPrice: AssetPrice(740),
 				Scale:      3,
 			},
 			expected: nil,

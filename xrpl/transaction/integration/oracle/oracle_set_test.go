@@ -41,7 +41,7 @@ func testIntegrationOracleSet(t *testing.T, client integration.Client) {
 					PriceData: ledger.PriceData{
 						BaseAsset:  "XRP",
 						QuoteAsset: "USD",
-						AssetPrice: 740,
+						AssetPrice: ledger.AssetPrice(740),
 						Scale:      3,
 					},
 				},
@@ -49,7 +49,7 @@ func testIntegrationOracleSet(t *testing.T, client integration.Client) {
 					PriceData: ledger.PriceData{
 						BaseAsset:  "XRP",
 						QuoteAsset: "INR",
-						AssetPrice: 0xffffffffffffffff,
+						AssetPrice: ledger.AssetPrice(0xffffffffffffffff),
 						Scale:      3,
 					},
 				},

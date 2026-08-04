@@ -13,6 +13,11 @@ const (
 	PriceDataScaleMax uint8 = 10
 )
 
+// AssetPrice returns a pointer to an asset price value.
+func AssetPrice(value uint64) *uint64 {
+	return &value
+}
+
 // PriceDataWrapper represents a wrapper for the PriceData struct.
 type PriceDataWrapper struct {
 	PriceData PriceData
@@ -29,8 +34,10 @@ type PriceData struct {
 	// The asset price after applying the Scale precision level. It's not included if
 	// the last update transaction didn't include the BaseAsset/QuoteAsset pair.
 	// On the wire this is a base-16 string (sfAssetPrice carries no base-ten flag in
-	// rippled); the custom JSON (un)marshallers below convert to and from uint64.
-	AssetPrice uint64
+	// rippled). The custom JSON (un)marshallers below convert to and from *uint64.
+	// A nil value means the field is absent. A non-nil zero value is an explicit zero price.
+	// Use AssetPrice to create a non-nil value.
+	AssetPrice *uint64
 	// The scaling factor to apply to an asset price. For example, if Scale is 6 and original price is 0.155,
 	// then the scaled price is 155000. Valid scale ranges are 0-10.
 	// It's not included if the last update transaction didn't include the BaseAsset/QuoteAsset pair.
@@ -56,7 +63,7 @@ func (priceData *PriceData) Validate() error {
 		}
 	}
 
-	if (priceData.AssetPrice == 0) != (priceData.Scale == 0) {
+	if priceData.AssetPrice == nil && priceData.Scale != 0 {
 		return ErrPriceDataAssetPriceAndScale
 	}
 
@@ -75,17 +82,11 @@ func (mw *PriceDataWrapper) Flatten() map[string]any {
 
 // Flatten flattens the price data.
 func (priceData *PriceData) Flatten() map[string]any {
-	mapKeys := 2
+	flattened := make(map[string]any, 4)
 
-	if priceData.Scale != 0 && priceData.AssetPrice != 0 {
-		mapKeys = 4
-	}
-
-	flattened := make(map[string]any, mapKeys)
-
-	if priceData.AssetPrice != 0 {
+	if priceData.AssetPrice != nil {
 		// AssetPrice must be a hex string for the binary codec UInt64 type
-		flattened["AssetPrice"] = fmt.Sprintf("%016X", priceData.AssetPrice)
+		flattened["AssetPrice"] = fmt.Sprintf("%016X", *priceData.AssetPrice)
 	}
 	if priceData.BaseAsset != "" {
 		flattened["BaseAsset"] = priceData.BaseAsset
@@ -112,8 +113,8 @@ func (priceData PriceData) MarshalJSON() ([]byte, error) {
 		QuoteAsset: priceData.QuoteAsset,
 		Scale:      priceData.Scale,
 	}
-	if priceData.AssetPrice != 0 {
-		wire.AssetPrice = strconv.FormatUint(priceData.AssetPrice, 16)
+	if priceData.AssetPrice != nil {
+		wire.AssetPrice = strconv.FormatUint(*priceData.AssetPrice, 16)
 	}
 	return json.Marshal(wire)
 }
@@ -154,7 +155,7 @@ func (priceData *PriceData) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("%w: %q", ErrPriceDataAssetPrice, token)
 	}
-	priceData.AssetPrice = value
+	priceData.AssetPrice = AssetPrice(value)
 	return nil
 }
 
