@@ -3,12 +3,14 @@
 ## Essential Commands
 
 ### Linting
+
 ```bash
 make lint           # Run golangci-lint (auto-installs if missing)
 make lint-fix       # Run gofmt to fix formatting issues
 ```
 
 ### Testing
+
 ```bash
 # Unit tests
 make test-ci        # Run all unit tests (CI mode, clean cache, parallel)
@@ -33,6 +35,7 @@ make benchmark       # Run benchmarks
 ```
 
 ### Running Single Tests
+
 ```bash
 # Run specific test file
 go test ./xrpl/transaction/payment_test.go
@@ -85,17 +88,23 @@ The repository follows a modular architecture with four primary layers:
 ### Key Design Patterns
 
 #### Interfaces and Abstractions
+
 - Each major package has an `interfaces/` subdirectory defining contracts
 - Enables dependency injection and testing with mocks
 - See `xrpl/interfaces/`, `keypairs/interfaces/`, etc.
 
 #### Test Organization
+
 - `testutil/` directories provide test helpers and fixtures for each package
 - Unit tests exclude: `faucet/`, `examples/`, `testutil/`, `interfaces/`
 - Integration tests in `xrpl/transaction/integration/` require live network
 - Use `golang/mock` for generating mocks
+- Use table-driven tests when all cases use the same setup, action, and assertions, and only inputs or expected results change
+- When a new case naturally fits an existing table test, add it to that table
+- Do not force different behavior into a table with per-case assertion callbacks, many conditional checks, or one-off setup hooks; use separate focused tests when setup or assertions differ
 
 #### Type Safety
+
 - Transaction types use specific Go types from `xrpl/transaction/types/`
 - Currency amounts distinguish between XRP (drops) and issued currencies
 - Address validation through `addresscodec` package
@@ -129,14 +138,18 @@ See `examples/send-xrp/` or `examples/send-payment/` for complete workflows.
 ## Important Development Notes
 
 ### Test Exclusions
+
 The Makefile excludes certain packages from standard test runs:
+
 - `faucet/` - Interacts with external testnet faucets
 - `examples/` - Standalone example code, not library tests
 - `testutil/` - Test helpers, not tests themselves
 - `interfaces/` - Interface definitions only
 
 ### Integration Tests
+
 Integration tests require `INTEGRATION` environment variable:
+
 - `localnet`: Requires local rippled node (Docker)
 - `devnet`: Uses XRPL devnet
 - `testnet`: Uses XRPL testnet
@@ -144,24 +157,33 @@ Integration tests require `INTEGRATION` environment variable:
 Start localnet with `make run-localnet-linux/amd64` before running integration tests.
 
 ### Lint Configuration
+
 - Uses `golangci-lint v2.11.3` (configured in Makefile)
 - Config in `.golangci.yml` enables: govet, errcheck, staticcheck, gosec, etc.
 - Excludes package-comments linter for examples/
 
 ### Binary Codec
+
 The binary codec is critical for transaction signing and submission:
+
 - Canonical field ordering defined in `binary-codec/definitions/`
 - Type serializers in `binary-codec/types/`
 - Always use `binarycodec.Encode()` for creating transaction blobs
 - Use `binarycodec.EncodeForSigning()` when preparing transactions for signature
 
 ### Changelog
-Before finishing any task that changes code, update the changelog:
-1. `CHANGELOG.md` (root) — under the `[Unreleased]` section
+
+Before editing `CHANGELOG.md`, compare the final branch with its base branch. Entries under `[Unreleased]` must describe the net effect of that final diff, not intermediate changes made during development.
+
+- Add or update an entry only when the final branch has a changelog-worthy difference from the base branch
+- If a feature changes and then returns to its base-branch behavior, remove its entry or add no entry
+- If later work changes the effect of an existing entry, edit that entry to describe the final result; do not add another entry for the intermediate state
+- It is valid to make no changelog change when the branch has no changelog-worthy net difference
 
 Follow the existing format: group entries under `### Added`, `### Changed`, or `### Fixed`, with a `#### <package>` subheading. Keep entries concise but descriptive enough that users understand the impact.
 
 ### Common Gotchas
+
 - XRP amounts are always in "drops" (1 XRP = 1,000,000 drops)
 - Transaction `Fee` must be set before signing
 - `Sequence` numbers must be consecutive (or use Tickets)
