@@ -2,11 +2,9 @@ package rpc
 
 import (
 	"io"
-	"maps"
 	"net/http"
 	"testing"
 
-	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/testutil"
@@ -15,22 +13,6 @@ import (
 )
 
 const rpcSimulateTxBlob = "120000240000ACA461400000000000000168400000000000000A730074008114B5F762798A53D543A014CAF8B297CFF8F2F937E88314550FC62003E785DC231A1058A05E56E3F09CF4E6"
-
-func encodeRPCSimulateTxBlob(t *testing.T, fields transaction.FlatTransaction) string {
-	t.Helper()
-	tx := transaction.FlatTransaction{
-		"TransactionType": "Payment",
-		"Account":         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-		"Destination":     "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV",
-		"Amount":          "1",
-		"Fee":             "10",
-		"Sequence":        uint32(44196),
-	}
-	maps.Copy(tx, fields)
-	blob, err := binarycodec.Encode(tx)
-	require.NoError(t, err)
-	return blob
-}
 
 func TestClient_Simulate(t *testing.T) {
 	tests := []struct {
@@ -83,7 +65,7 @@ func TestClient_Simulate(t *testing.T) {
 			},
 		},
 		{
-			name: "blob request and binary response",
+			name: "blob request allows server NetworkID autofill",
 			mockResponse: `{"result":{
 				"applied":false,
 				"engine_result":"tesSUCCESS",
@@ -95,6 +77,7 @@ func TestClient_Simulate(t *testing.T) {
 				"status":"success"
 			}}`,
 			request:         &transactions.SimulateRequest{TxBlob: rpcSimulateTxBlob, Binary: true},
+			networkID:       2048,
 			expectedRequest: `{"method":"simulate","params":[{"api_version":2,"tx_blob":"` + rpcSimulateTxBlob + `","binary":true}]}`,
 			expected: &transactions.SimulateResponse{
 				Applied:             false,
@@ -107,7 +90,7 @@ func TestClient_Simulate(t *testing.T) {
 			},
 		},
 		{
-			name: "JSON request with binary response",
+			name: "JSON request allows server NetworkID autofill",
 			mockResponse: `{"result":{
 				"applied":false,
 				"engine_result":"temREDUNDANT",
@@ -120,6 +103,7 @@ func TestClient_Simulate(t *testing.T) {
 			request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
 				"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
 			}, Binary: true},
+			networkID:       2048,
 			expectedRequest: `{"method":"simulate","params":[{"api_version":2,"tx_json":{"TransactionType":"Payment","Account":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},"binary":true}]}`,
 			expected: &transactions.SimulateResponse{
 				Applied:             false,
@@ -153,6 +137,14 @@ func TestClient_Simulate(t *testing.T) {
 					"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TransactionType": "Payment",
 				},
 			},
+		},
+		{
+			name:            "opaque blob validation is delegated to server",
+			mockResponse:    `{"result":{"error":"invalidParams","error_message":"Invalid field.","status":"error"}}`,
+			request:         &transactions.SimulateRequest{TxBlob: "E1"},
+			networkID:       2048,
+			expectedRequest: `{"method":"simulate","params":[{"api_version":2,"tx_blob":"E1"}]}`,
+			expectedErrText: "invalidParams",
 		},
 		{
 			name:            "unsupported server error",
@@ -189,17 +181,13 @@ func TestClient_Simulate(t *testing.T) {
 }
 
 func TestClient_SimulateRejectsLocally(t *testing.T) {
-	signedBlob := encodeRPCSimulateTxBlob(t, transaction.FlatTransaction{
-		"NetworkID": uint32(2048), "TxnSignature": "3045022100AB",
-	})
-	mismatchedNetworkBlob := encodeRPCSimulateTxBlob(t, transaction.FlatTransaction{"NetworkID": uint32(2049)})
-
 	tests := []struct {
 		name      string
 		request   *transactions.SimulateRequest
 		networkID uint32
 		wantErr   error
 	}{
+		{name: "nil request", wantErr: transactions.ErrInvalidSimulateRequest},
 		{name: "both inputs", request: &transactions.SimulateRequest{
 			TxJSON: transaction.FlatTransaction{"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
 			TxBlob: rpcSimulateTxBlob,
@@ -208,16 +196,11 @@ func TestClient_SimulateRejectsLocally(t *testing.T) {
 		{name: "signed JSON", request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TxnSignature": "DEADBEEF",
 		}}, wantErr: transactions.ErrSignedSimulateTransaction},
-		{name: "restricted network missing ID", request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-		}}, networkID: 2048, wantErr: transactions.ErrMissingSimulateNetworkID},
 		{name: "network ID mismatch", request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "NetworkID": uint32(2049),
 		}}, networkID: 2048, wantErr: transactions.ErrMismatchedSimulateNetworkID},
-		{name: "signed blob", request: &transactions.SimulateRequest{TxBlob: signedBlob}, networkID: 2048, wantErr: transactions.ErrSignedSimulateTransaction},
-		{name: "malformed blob", request: &transactions.SimulateRequest{TxBlob: "DEADBEEF"}, networkID: 2048, wantErr: transactions.ErrInvalidSimulateTxBlob},
-		{name: "restricted network blob missing ID", request: &transactions.SimulateRequest{TxBlob: rpcSimulateTxBlob}, networkID: 2048, wantErr: transactions.ErrMissingSimulateNetworkID},
-		{name: "restricted network blob mismatch", request: &transactions.SimulateRequest{TxBlob: mismatchedNetworkBlob}, networkID: 2048, wantErr: transactions.ErrMismatchedSimulateNetworkID},
+		{name: "non-hex blob", request: &transactions.SimulateRequest{TxBlob: "not-hex"}, networkID: 2048, wantErr: transactions.ErrInvalidSimulateTxBlob},
+		{name: "odd-length blob", request: &transactions.SimulateRequest{TxBlob: "ABC"}, networkID: 2048, wantErr: transactions.ErrInvalidSimulateTxBlob},
 	}
 
 	for _, tt := range tests {
