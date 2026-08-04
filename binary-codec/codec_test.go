@@ -347,9 +347,9 @@ func TestEncode(t *testing.T) {
 
 func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 	const (
-		classicIssuer       = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
-		xrplJSXAddress      = "X7WZKEeNVS2p9Tire9DtNFkzWBZbFtJHWxDjN9fCrBGqVA4"
-		xrplJSTaggedAddress = "X7WZKEeNVS2p9Tire9DtNFkzWBZbFtSiS2eDBib7svZXuc2"
+		classicIssuer         = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+		mainnetXAddress       = "X7WZKEeNVS2p9Tire9DtNFkzWBZbFtJHWxDjN9fCrBGqVA4"
+		mainnetTaggedXAddress = "X7WZKEeNVS2p9Tire9DtNFkzWBZbFtSiS2eDBib7svZXuc2"
 	)
 
 	amount := func(issuer string) map[string]any {
@@ -373,7 +373,7 @@ func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 		name    string
 		address string
 	}{
-		{name: "xrpl.js mainnet fixture", address: xrplJSXAddress},
+		{name: "mainnet tagless address", address: mainnetXAddress},
 		{name: "testnet tagless address", address: testnetXAddress},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -396,7 +396,7 @@ func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 		name    string
 		address string
 	}{
-		{name: "xrpl.js tagged fixture", address: xrplJSTaggedAddress},
+		{name: "mainnet tagged address", address: mainnetTaggedXAddress},
 		{name: "explicit zero tag", address: zeroTaggedAddress},
 		{name: "testnet tagged address", address: testnetTaggedAddress},
 	} {
@@ -406,7 +406,7 @@ func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 		})
 	}
 
-	invalidXAddress := xrplJSXAddress[:len(xrplJSXAddress)-1] + "x"
+	invalidXAddress := mainnetXAddress[:len(mainnetXAddress)-1] + "x"
 	_, err = Encode(transaction(invalidXAddress))
 	require.Error(t, err)
 }
