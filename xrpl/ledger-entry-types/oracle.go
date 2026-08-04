@@ -85,8 +85,10 @@ func (priceData *PriceData) Flatten() map[string]any {
 	flattened := make(map[string]any, 4)
 
 	if priceData.AssetPrice != nil {
-		// AssetPrice must be a hex string for the binary codec UInt64 type
+		// AssetPrice must be a hex string for the binary codec UInt64 type.
 		flattened["AssetPrice"] = fmt.Sprintf("%016X", *priceData.AssetPrice)
+		// Scale must be present with AssetPrice, including when Scale is zero.
+		flattened["Scale"] = priceData.Scale
 	}
 	if priceData.BaseAsset != "" {
 		flattened["BaseAsset"] = priceData.BaseAsset
@@ -94,8 +96,6 @@ func (priceData *PriceData) Flatten() map[string]any {
 	if priceData.QuoteAsset != "" {
 		flattened["QuoteAsset"] = priceData.QuoteAsset
 	}
-
-	flattened["Scale"] = priceData.Scale
 
 	return flattened
 }

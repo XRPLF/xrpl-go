@@ -7,49 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-#### xrpl/transaction
-
-- Added MPT support to `Clawback`, including typed `Holder` handling, validation, JSON and binary-codec round trips, signing coverage, and a live integration scenario.
-
 ### Changed
 
 #### binary-codec
 
-- Consolidated X-address issuer parity and rejection coverage into one table-driven codec test.
-- Corrected `UInt64` JSON handling for MPT amount fields: `MaximumAmount`, `OutstandingAmount`, `MPTAmount`, and `LockedAmount` now encode and decode as base-10 strings, while fields such as `OwnerNode` remain hexadecimal.
-- Issued-currency amounts now encode tagless mainnet and testnet X-address issuers as their classic AccountID while rejecting issuers with embedded tags.
-
-#### xrpl/transaction
-
-- **Breaking:** Changed `MPTokenIssuanceCreate.MaximumAmount` from `*types.XRPCurrencyAmount` to `*types.MPTAmount`. Validation now enforces the protocol range `1..2^63-1` when the field is present.
-- Added an XRPL.js parity regression test for OracleSet `AssetPrice` hexadecimal `UInt64` encoding.
-
-#### xrpl/transaction/types
-
-- Split MPT amount JSON marshal and unmarshal coverage into separate table-driven tests.
+- `UInt64` serialization is now field-aware. MPT amount fields (`MaximumAmount`, `OutstandingAmount`, `MPTAmount`, and `LockedAmount`) use quoted base-10 strings, while other `UInt64` fields use hexadecimal strings.
+- Issued-currency amounts now accept tagless mainnet and testnet X-address issuers and encode the underlying AccountID. Issuers with embedded tags are rejected.
 
 #### dependencies
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
 
+#### keypairs
+
+- Key algorithm detection now validates the requested key type, complete hexadecimal encoding, prefix, and exact length before selecting Ed25519 or secp256k1. Signing supports raw and `00`-prefixed secp256k1 private keys, verification and classic-address derivation support compressed and uncompressed secp256k1 public keys.
+- `DeriveClassicAddress` now rejects unsupported public-key formats with `ErrInvalidPublicKeyFormat` instead of hashing any decodable 33-byte value.
+- secp256k1 signing now rejects zero and out-of-range private scalars instead of reducing them modulo the curve order.
+- secp256k1 verification now rejects malleable high-S signatures that do not meet XRPL's fully canonical signature requirement.
+- `DeriveClassicAddress` now verifies that secp256k1 public keys encode valid curve points while preserving the caller's valid compressed or uncompressed encoding for address hashing.
+
 #### xrpl/ledger-entry-types
 
-- **Breaking:** Changed MPT ledger amount fields from `uint64` to their XRPL JSON string representation, and changed MPT `OwnerNode` fields to hexadecimal strings.
-- **Breaking:** Changed `Oracle.OwnerNode` and `Escrow.IssuerNode` to hexadecimal strings. Changed `PriceData.AssetPrice` from `uint64` to `*uint64` so its hexadecimal JSON form preserves the difference between an absent price and an explicit zero price; use `ledger.AssetPrice` to create values. These fields previously failed to decode real server responses. Added the missing `Oracle.LedgerEntryType` and `Oracle.Flags` fields.
-- Added live token-escrow coverage that confirms `rippled` returns `Escrow.IssuerNode` as a nonzero quoted hexadecimal string and that the previous `uint64` model rejects the response.
-- Updated Escrow fixtures to use official ledger-entry data and realistic directory-page hints, with omitted, root, nonzero, hexadecimal, and maximum `UInt64` coverage.
+- **Breaking:** Changed MPT ledger amount fields from `uint64` to quoted base-10 strings. Changed `MPToken.OwnerNode` and `MPTokenIssuance.OwnerNode` from `uint64` to hexadecimal strings.
+- **Breaking:** Changed `Oracle.OwnerNode` and `Escrow.IssuerNode` from `uint64` to hexadecimal strings. Changed `PriceData.AssetPrice` from `uint64` to `*uint64`; use `ledger.AssetPrice` to set a value. `PriceData` now decodes `rippled` hexadecimal price strings, preserves absent and explicit zero prices, and omits `Scale` when `AssetPrice` is absent. Added the missing `Oracle.LedgerEntryType` and `Oracle.Flags` fields.
+
+#### xrpl/transaction
+
+- **Breaking:** Added `types.MPTAmount` for quoted base-10 MPT values and changed `MPTokenIssuanceCreate.MaximumAmount` from `*types.XRPCurrencyAmount` to `*types.MPTAmount`. When present, `MaximumAmount` must be in the range `1..2^63-1`.
+
+### Added
+
+#### keypairs
+
+- Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
+
+#### xrpl/transaction
+
+- Added MPT amount and `Holder` support to `Clawback`, including JSON, binary encoding, signing, and validation. Validation rejects invalid issuer and holder combinations, invalid or zero amounts, and XRP amounts.
 
 ### Fixed
-
-#### xrpl/ledger-entry-types
-
-- Corrected the documented maximum value for `MPToken.MPTAmount` to `2^63-1`.
-
-#### xrpl/transaction/integration/oracle
-
-- Made the Oracle integration assertions independent of `PriceDataSeries` order because `rippled` canonicalizes that order when `fixPriceOracleOrder` is enabled.
 
 #### xrpl/transaction/types
 
@@ -728,7 +724,7 @@ Support for the XLS-77d (deep freeze)
 
 ## [v0.1.3]
 
-### Added
+### Added
 
 - Added `APIVersion` field to the `Client` struct.
 - Added `RippledAPIV1` and `RippledAPIV2` constants.

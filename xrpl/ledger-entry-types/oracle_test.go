@@ -22,8 +22,17 @@ func TestPriceData_Flatten(t *testing.T) {
 		{
 			name:      "pass - empty",
 			priceData: &PriceData{},
+			expected:  map[string]any{},
+		},
+		{
+			name: "pass - absent price omits scale",
+			priceData: &PriceData{
+				BaseAsset:  "XRP",
+				QuoteAsset: "USD",
+			},
 			expected: map[string]any{
-				"Scale": uint8(0),
+				"BaseAsset":  "XRP",
+				"QuoteAsset": "USD",
 			},
 		},
 		{
