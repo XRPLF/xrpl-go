@@ -501,6 +501,9 @@ func (c *Client) GetServerDefinitions(req *server.DefinitionsRequest) (*server.D
 	if err := res.GetResult(&response); err != nil {
 		return nil, err
 	}
+	if err := response.ValidateForRequest(req); err != nil {
+		return nil, err
+	}
 	return &response, nil
 }
 
