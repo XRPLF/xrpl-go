@@ -8,24 +8,61 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 )
 
-// GetCryptoImplementationFromKey returns the CryptoImplementation based on the key.
-// It returns nil if the key does not match any crypto implementation.
-// Currently, only ED25519 and SECP256K1 are supported.
-func getCryptoImplementationFromKey(k string) interfaces.KeypairCryptoAlg {
-	if len(k) < 2 {
-		return nil
-	}
+type keyType uint8
 
-	prefix, err := hex.DecodeString(k[:2])
+const (
+	publicKeyType keyType = iota
+	privateKeyType
+
+	noKeyPrefix = -1
+)
+
+type keyFormat struct {
+	keyType keyType
+	prefix  int
+	length  int
+}
+
+// acceptedKeyFormats is the complete key-type-aware format table used for algorithm selection.
+// A noKeyPrefix entry matches keys of that length regardless of their first byte (used for
+// raw 32-byte secp256k1 private keys). The secp256k1 implementation accepts the 65-byte
+// uncompressed public form through secp256k1.ParsePubKey.
+var acceptedKeyFormats = map[keyFormat]interfaces.KeypairCryptoAlg{
+	{keyType: publicKeyType, prefix: 0xED, length: 33}: crypto.ED25519(),
+	{keyType: publicKeyType, prefix: 0x02, length: 33}: crypto.SECP256K1(),
+	{keyType: publicKeyType, prefix: 0x03, length: 33}: crypto.SECP256K1(),
+	{keyType: publicKeyType, prefix: 0x04, length: 65}: crypto.SECP256K1(),
+
+	{keyType: privateKeyType, prefix: 0xED, length: 33}:        crypto.ED25519(),
+	{keyType: privateKeyType, prefix: noKeyPrefix, length: 32}: crypto.SECP256K1(),
+	{keyType: privateKeyType, prefix: 0x00, length: 33}:        crypto.SECP256K1(),
+}
+
+// getCryptoImplementationFromKey returns the crypto implementation for a key's type,
+// prefix, and exact decoded length, along with the decoded key bytes. Invalid hex and
+// unsupported formats return the matching public- or private-key error without exposing key material.
+func getCryptoImplementationFromKey(key string, keyType keyType) (interfaces.KeypairCryptoAlg, []byte, error) {
+	decoded, err := hex.DecodeString(key)
 	if err != nil {
-		return nil
+		return nil, nil, invalidKeyFormatError(keyType)
 	}
 
-	if ed25519 := crypto.ED25519(); prefix[0] == ed25519.Prefix() {
-		return ed25519
+	// An exact first-byte prefix match wins, noKeyPrefix rows accept any first byte.
+	prefixes := []int{noKeyPrefix}
+	if len(decoded) > 0 {
+		prefixes = []int{int(decoded[0]), noKeyPrefix}
 	}
-	if secp256k1 := crypto.SECP256K1(); prefix[0] == secp256k1.Prefix() {
-		return secp256k1
+	for _, prefix := range prefixes {
+		if algorithm, ok := acceptedKeyFormats[keyFormat{keyType: keyType, prefix: prefix, length: len(decoded)}]; ok {
+			return algorithm, decoded, nil
+		}
 	}
-	return nil
+	return nil, nil, invalidKeyFormatError(keyType)
+}
+
+func invalidKeyFormatError(keyType keyType) error {
+	if keyType == privateKeyType {
+		return ErrInvalidPrivateKeyFormat
+	}
+	return ErrInvalidPublicKeyFormat
 }
