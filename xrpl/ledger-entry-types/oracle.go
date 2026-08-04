@@ -81,7 +81,12 @@ func (mw *PriceDataWrapper) Flatten() map[string]any {
 
 // Flatten flattens the price data.
 func (priceData *PriceData) Flatten() map[string]any {
-	flattened := make(map[string]any, 4)
+	mapKeys := 2
+	if priceData.AssetPrice != nil {
+		mapKeys = 4
+	}
+
+	flattened := make(map[string]any, mapKeys)
 
 	if priceData.AssetPrice != nil {
 		// AssetPrice must be a hex string for the binary codec UInt64 type.
