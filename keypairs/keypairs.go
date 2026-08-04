@@ -69,7 +69,7 @@ func DeriveKeypair(seed string, validator bool) (private, public string, err err
 
 // DeriveClassicAddress derives a classic address from a supported public key format.
 func DeriveClassicAddress(pubKey string) (string, error) {
-	alg, decoded, err := getCryptoImplementationFromKey(pubKey, publicKeyPurpose)
+	alg, decoded, err := getCryptoImplementationFromKey(pubKey, publicKeyType)
 	if err != nil {
 		return "", err
 	}
@@ -104,7 +104,7 @@ func DeriveNodeAddress(pubKey string, alg interfaces.NodeDerivationCryptoAlg) (s
 // Currently, only ED25519 and SECP256K1 are supported.
 // If the message is empty, it returns an error.
 func Sign(msg, privKey string) (string, error) {
-	alg, _, err := getCryptoImplementationFromKey(privKey, privateKeyPurpose)
+	alg, _, err := getCryptoImplementationFromKey(privKey, privateKeyType)
 	if err != nil {
 		return "", err
 	}
@@ -116,7 +116,7 @@ func Sign(msg, privKey string) (string, error) {
 // Currently, only ED25519 and SECP256K1 are supported.
 // If the message is empty, it returns an error.
 func Validate(msg, pubKey, sig string) (bool, error) {
-	alg, _, err := getCryptoImplementationFromKey(pubKey, publicKeyPurpose)
+	alg, _, err := getCryptoImplementationFromKey(pubKey, publicKeyType)
 	if err != nil {
 		return false, err
 	}

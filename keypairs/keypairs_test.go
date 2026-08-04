@@ -307,7 +307,7 @@ func TestDeriveClassicAddress(t *testing.T) {
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
-			name:        "fail - private key purpose mismatch",
+			name:        "fail - private key type mismatch",
 			input:       testSecpPrefixedPrivateKey,
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
@@ -378,13 +378,13 @@ func TestSign(t *testing.T) {
 			expectedErr:  ErrInvalidPrivateKeyFormat,
 		},
 		{
-			name:         "fail - compressed public key purpose mismatch",
+			name:         "fail - compressed public key type mismatch",
 			inputMsg:     "hello world",
 			inputPrivKey: testSecpCompressedEvenKey,
 			expectedErr:  ErrInvalidPrivateKeyFormat,
 		},
 		{
-			name:         "fail - uncompressed public key purpose mismatch",
+			name:         "fail - uncompressed public key type mismatch",
 			inputMsg:     "hello world",
 			inputPrivKey: testSecpUncompressedKey,
 			expectedErr:  ErrInvalidPrivateKeyFormat,
@@ -512,14 +512,14 @@ func TestValidate(t *testing.T) {
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
-			name:        "fail - raw private key purpose mismatch",
+			name:        "fail - raw private key type mismatch",
 			inputMsg:    "test message",
 			inputPubKey: testSecpRawPrivateKey,
 			inputSig:    "invalid",
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
-			name:        "fail - prefixed private key purpose mismatch",
+			name:        "fail - prefixed private key type mismatch",
 			inputMsg:    "test message",
 			inputPubKey: testSecpPrefixedPrivateKey,
 			inputSig:    "invalid",

@@ -22,55 +22,55 @@ const (
 func TestGetCryptoImplementationFromKey(t *testing.T) {
 	testcases := []struct {
 		name     string
-		purpose  keyPurpose
+		keyType  keyType
 		input    string
 		expected interfaces.KeypairCryptoAlg
 	}{
 		{
 			name:     "public - ED25519",
-			purpose:  publicKeyPurpose,
+			keyType:  publicKeyType,
 			input:    testEdPublicKey,
 			expected: crypto.ED25519(),
 		},
 		{
 			name:     "public - compressed secp256k1 even Y",
-			purpose:  publicKeyPurpose,
+			keyType:  publicKeyType,
 			input:    testSecpCompressedEvenKey,
 			expected: crypto.SECP256K1(),
 		},
 		{
 			name:     "public - compressed secp256k1 odd Y",
-			purpose:  publicKeyPurpose,
+			keyType:  publicKeyType,
 			input:    testSecpCompressedOddKey,
 			expected: crypto.SECP256K1(),
 		},
 		{
 			name:     "public - uncompressed secp256k1",
-			purpose:  publicKeyPurpose,
+			keyType:  publicKeyType,
 			input:    testSecpUncompressedKey,
 			expected: crypto.SECP256K1(),
 		},
 		{
 			name:     "private - ED25519",
-			purpose:  privateKeyPurpose,
+			keyType:  privateKeyType,
 			input:    testEdPrivateKey,
 			expected: crypto.ED25519(),
 		},
 		{
 			name:     "private - raw secp256k1",
-			purpose:  privateKeyPurpose,
+			keyType:  privateKeyType,
 			input:    testSecpRawPrivateKey,
 			expected: crypto.SECP256K1(),
 		},
 		{
 			name:     "private - raw secp256k1 beginning with ED byte",
-			purpose:  privateKeyPurpose,
+			keyType:  privateKeyType,
 			input:    "ED" + testSecpRawPrivateKey[2:],
 			expected: crypto.SECP256K1(),
 		},
 		{
 			name:     "private - 00-prefixed secp256k1",
-			purpose:  privateKeyPurpose,
+			keyType:  privateKeyType,
 			input:    testSecpPrefixedPrivateKey,
 			expected: crypto.SECP256K1(),
 		},
@@ -78,7 +78,7 @@ func TestGetCryptoImplementationFromKey(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			actual, _, err := getCryptoImplementationFromKey(tc.input, tc.purpose)
+			actual, _, err := getCryptoImplementationFromKey(tc.input, tc.keyType)
 
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, actual)
@@ -89,113 +89,113 @@ func TestGetCryptoImplementationFromKey(t *testing.T) {
 func TestGetCryptoImplementationFromKeyRejectsInvalidFormats(t *testing.T) {
 	testcases := []struct {
 		name        string
-		purpose     keyPurpose
+		keyType     keyType
 		input       string
 		expectedErr error
 	}{
 		{
 			name:        "public - empty",
-			purpose:     publicKeyPurpose,
+			keyType:     publicKeyType,
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "public - odd hex length",
-			purpose:     publicKeyPurpose,
+			keyType:     publicKeyType,
 			input:       testEdPublicKey[:len(testEdPublicKey)-1],
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "public - malformed full-length hex",
-			purpose:     publicKeyPurpose,
+			keyType:     publicKeyType,
 			input:       testEdPublicKey[:len(testEdPublicKey)-1] + "Z",
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "public - truncated ED25519",
-			purpose:     publicKeyPurpose,
+			keyType:     publicKeyType,
 			input:       testEdPublicKey[:len(testEdPublicKey)-2],
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "public - oversized ED25519",
-			purpose:     publicKeyPurpose,
+			keyType:     publicKeyType,
 			input:       testEdPublicKey + "00",
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "public - unsupported prefix",
-			purpose:     publicKeyPurpose,
+			keyType:     publicKeyType,
 			input:       "05" + testSecpCompressedEvenKey[2:],
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "public - uncompressed key truncated to compressed length",
-			purpose:     publicKeyPurpose,
+			keyType:     publicKeyType,
 			input:       testSecpUncompressedKey[:len(testSecpCompressedEvenKey)],
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "public - uncompressed key oversized",
-			purpose:     publicKeyPurpose,
+			keyType:     publicKeyType,
 			input:       testSecpUncompressedKey + "00",
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
-			name:        "public - raw private key purpose mismatch",
-			purpose:     publicKeyPurpose,
+			name:        "public - raw private key type mismatch",
+			keyType:     publicKeyType,
 			input:       testSecpRawPrivateKey,
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
-			name:        "public - prefixed private key purpose mismatch",
-			purpose:     publicKeyPurpose,
+			name:        "public - prefixed private key type mismatch",
+			keyType:     publicKeyType,
 			input:       testSecpPrefixedPrivateKey,
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "private - empty",
-			purpose:     privateKeyPurpose,
+			keyType:     privateKeyType,
 			expectedErr: ErrInvalidPrivateKeyFormat,
 		},
 		{
 			name:        "private - odd hex length",
-			purpose:     privateKeyPurpose,
+			keyType:     privateKeyType,
 			input:       testSecpRawPrivateKey + "0",
 			expectedErr: ErrInvalidPrivateKeyFormat,
 		},
 		{
 			name:        "private - malformed full-length hex",
-			purpose:     privateKeyPurpose,
+			keyType:     privateKeyType,
 			input:       testSecpRawPrivateKey[:len(testSecpRawPrivateKey)-1] + "Z",
 			expectedErr: ErrInvalidPrivateKeyFormat,
 		},
 		{
 			name:        "private - truncated ED25519",
-			purpose:     privateKeyPurpose,
+			keyType:     privateKeyType,
 			input:       testEdPrivateKey[:len(testEdPrivateKey)-4],
 			expectedErr: ErrInvalidPrivateKeyFormat,
 		},
 		{
 			name:        "private - oversized ED25519",
-			purpose:     privateKeyPurpose,
+			keyType:     privateKeyType,
 			input:       testEdPrivateKey + "00",
 			expectedErr: ErrInvalidPrivateKeyFormat,
 		},
 		{
 			name:        "private - unsupported 33-byte prefix",
-			purpose:     privateKeyPurpose,
+			keyType:     privateKeyType,
 			input:       "01" + testSecpRawPrivateKey,
 			expectedErr: ErrInvalidPrivateKeyFormat,
 		},
 		{
-			name:        "private - compressed public key purpose mismatch",
-			purpose:     privateKeyPurpose,
+			name:        "private - compressed public key type mismatch",
+			keyType:     privateKeyType,
 			input:       testSecpCompressedEvenKey,
 			expectedErr: ErrInvalidPrivateKeyFormat,
 		},
 		{
-			name:        "private - uncompressed public key purpose mismatch",
-			purpose:     privateKeyPurpose,
+			name:        "private - uncompressed public key type mismatch",
+			keyType:     privateKeyType,
 			input:       testSecpUncompressedKey,
 			expectedErr: ErrInvalidPrivateKeyFormat,
 		},
@@ -203,7 +203,7 @@ func TestGetCryptoImplementationFromKeyRejectsInvalidFormats(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			actual, decoded, err := getCryptoImplementationFromKey(tc.input, tc.purpose)
+			actual, decoded, err := getCryptoImplementationFromKey(tc.input, tc.keyType)
 
 			require.Nil(t, actual)
 			require.Nil(t, decoded)
