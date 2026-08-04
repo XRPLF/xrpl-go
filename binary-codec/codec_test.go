@@ -368,16 +368,37 @@ func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 
 	testnetXAddress, err := addresscodec.ClassicAddressToXAddress(classicIssuer, 0, false, true)
 	require.NoError(t, err)
+	zeroTaggedAddress, err := addresscodec.ClassicAddressToXAddress(classicIssuer, 0, true, false)
+	require.NoError(t, err)
+	testnetTaggedAddress, err := addresscodec.ClassicAddressToXAddress(classicIssuer, 123, true, true)
+	require.NoError(t, err)
+	invalidXAddress := mainnetXAddress[:len(mainnetXAddress)-1] + "x"
 
-	for _, test := range []struct {
-		name    string
-		address string
+	tests := []struct {
+		name        string
+		address     string
+		wantErr     bool
+		expectedErr error
 	}{
 		{name: "mainnet tagless address", address: mainnetXAddress},
 		{name: "testnet tagless address", address: testnetXAddress},
-	} {
+		{name: "mainnet tagged address", address: mainnetTaggedXAddress, wantErr: true, expectedErr: types.ErrAccountIDTagNotAllowed},
+		{name: "explicit zero tag", address: zeroTaggedAddress, wantErr: true, expectedErr: types.ErrAccountIDTagNotAllowed},
+		{name: "testnet tagged address", address: testnetTaggedAddress, wantErr: true, expectedErr: types.ErrAccountIDTagNotAllowed},
+		{name: "invalid X-address", address: invalidXAddress, wantErr: true},
+	}
+
+	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			xAddressEncoded, err := Encode(transaction(test.address))
+			if test.wantErr {
+				require.Error(t, err)
+				if test.expectedErr != nil {
+					require.ErrorIs(t, err, test.expectedErr)
+				}
+				return
+			}
+
 			require.NoError(t, err)
 			require.Equal(t, classicEncoded, xAddressEncoded)
 
@@ -386,29 +407,6 @@ func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 			require.Equal(t, amount(classicIssuer), decoded["TakerPays"])
 		})
 	}
-
-	zeroTaggedAddress, err := addresscodec.ClassicAddressToXAddress(classicIssuer, 0, true, false)
-	require.NoError(t, err)
-	testnetTaggedAddress, err := addresscodec.ClassicAddressToXAddress(classicIssuer, 123, true, true)
-	require.NoError(t, err)
-
-	for _, test := range []struct {
-		name    string
-		address string
-	}{
-		{name: "mainnet tagged address", address: mainnetTaggedXAddress},
-		{name: "explicit zero tag", address: zeroTaggedAddress},
-		{name: "testnet tagged address", address: testnetTaggedAddress},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			_, err := Encode(transaction(test.address))
-			require.ErrorIs(t, err, types.ErrAccountIDTagNotAllowed)
-		})
-	}
-
-	invalidXAddress := mainnetXAddress[:len(mainnetXAddress)-1] + "x"
-	_, err = Encode(transaction(invalidXAddress))
-	require.Error(t, err)
 }
 
 func TestMPTUInt64FieldsUseDecimalJSON(t *testing.T) {

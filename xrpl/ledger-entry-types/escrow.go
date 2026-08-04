@@ -11,11 +11,11 @@ import (
 // ```json
 //
 //	{
-//	    "Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+//	    "Account": "rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn",
 //	    "Amount": "10000",
 //	    "CancelAfter": 545440232,
 //	    "Condition": "A0258020A82A88B2DF843A54F58772E4A3861866ECDB4157645DD9AE528C1D3AEEDABAB6810120",
-//	    "Destination": "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+//	    "Destination": "ra5nK24KXen9AHvsdFTKHSANinZseWnPcX",
 //	    "DestinationTag": 23480,
 //	    "FinishAfter": 545354132,
 //	    "Flags": 0,
@@ -25,10 +25,17 @@ import (
 //	    "PreviousTxnID": "C44F2EB84196B9AD820313DBEBA6316A15C9A2D35787579ED172B87A30131DA7",
 //	    "PreviousTxnLgrSeq": 28991004,
 //	    "SourceTag": 11747,
-//	    "index": "DC5F3851D8A1AB622F957761E5963BC5BD439D5C24AC6AD7AC4523F0640244AC",
-//	    "TransferRate": 1000,
-//	    "IssuerNode": "499602d2"
+//	    "index": "DC5F3851D8A1AB622F957761E5963BC5BD439D5C24AC6AD7AC4523F0640244AC"
 //	}
+//
+// ```
+//
+// A token escrow can also include an issuer-directory page hint. For example,
+// rippled returns the second page as a quoted hexadecimal UInt64:
+//
+// ```json
+//
+//	{"IssuerNode": "1"}
 //
 // ```
 type Escrow struct {

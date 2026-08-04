@@ -26,7 +26,7 @@ type MPToken struct {
 	Account types.Address
 	// 	The MPTokenIssuance identifier.
 	MPTokenIssuanceID types.Hash192
-	// The amount of tokens currently held by the owner, represented as an unsigned integer string.
+	// The amount of tokens currently held by the owner, represented as an unsigned integer string. The minimum is 0 and the maximum is 2^63-1.
 	MPTAmount string `json:",omitempty"`
 	// The amount of tokens currently locked up (for example, in escrow or payment channels), represented as an unsigned integer string. (Requires the TokenEscrow amendment.)
 	LockedAmount string `json:",omitempty"`

@@ -73,8 +73,8 @@ func (u *UInt64) fromJSON(value any, base int) ([]byte, error) {
 }
 
 // ToJSON reads an 8-byte UInt64 and returns its JSON string representation.
-// The optional base is used internally for field-aware decimal MPT amounts;
-// direct calls retain the canonical hexadecimal representation.
+// The optional base is used internally for field-aware decimal MPT amounts.
+// Direct calls retain the canonical hexadecimal representation.
 func (u *UInt64) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 	b, err := p.ReadBytes(8)
 	if err != nil {
