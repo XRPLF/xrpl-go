@@ -60,8 +60,20 @@ func TestDefinitionsRequest(t *testing.T) {
 	}
 }
 
-func TestDefinitionsResponseJSONVariants(t *testing.T) {
-	legacyFullFixture := `{
+func TestDefinitionsResponseFullJSON(t *testing.T) {
+	got := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
+
+	require.Len(t, got.Fields, 2)
+	require.Equal(t, "TransactionType", got.Fields[1].Name)
+	require.Equal(t, "UInt16", got.Fields[1].Info.Type)
+	require.Equal(t, uint32(2147483648), got.LedgerEntryFlags["AccountRoot"]["lsfAllowTrustLineClawback"])
+	require.Equal(t, 0, got.TransactionTypes["Payment"])
+	require.Equal(t, definitionsHash, got.Hash)
+	requireDefinitionsResponseJSONRoundTrip(t, got)
+}
+
+func TestDefinitionsResponseLegacyJSON(t *testing.T) {
+	fixture := `{
 		"FIELDS": [["TransactionType", {"isSerialized": true, "isSigningField": true, "isVLEncoded": false, "nth": 2, "type": "UInt16"}]],
 		"TYPES": {"UInt16": 1},
 		"LEDGER_ENTRY_TYPES": {"AccountRoot": 97},
@@ -70,73 +82,60 @@ func TestDefinitionsResponseJSONVariants(t *testing.T) {
 		"hash": "` + definitionsHash + `"
 	}`
 
+	got := mustDecodeDefinitionsResponse(t, fixture)
+
+	require.Nil(t, got.LedgerEntryFormats)
+	require.Nil(t, got.TransactionFlags)
+	requireDefinitionsResponseJSONRoundTrip(t, got)
+}
+
+func TestDefinitionsResponseHashOnlyJSON(t *testing.T) {
+	got := mustDecodeDefinitionsResponse(t, `{"hash":"`+definitionsHash+`"}`)
+
+	require.Equal(t, definitionsHash, got.Hash)
+	require.Nil(t, got.Fields)
+	require.Nil(t, got.Types)
+	requireDefinitionsResponseJSONRoundTrip(t, got)
+}
+
+func TestDefinitionsResponseRejectsInvalidJSON(t *testing.T) {
 	tests := []struct {
-		name       string
-		fixture    string
-		wantErr    error
-		checkValue func(*testing.T, DefinitionsResponse)
+		name    string
+		fixture string
+		wantErr error
 	}{
 		{
-			name:    "full XLS-97 response",
-			fixture: fullDefinitionsFixture,
-			checkValue: func(t *testing.T, got DefinitionsResponse) {
-				require.Len(t, got.Fields, 2)
-				require.Equal(t, "TransactionType", got.Fields[1].Name)
-				require.Equal(t, "UInt16", got.Fields[1].Info.Type)
-				require.Equal(t, uint32(2147483648), got.LedgerEntryFlags["AccountRoot"]["lsfAllowTrustLineClawback"])
-				require.Equal(t, 0, got.TransactionTypes["Payment"])
-				require.Equal(t, definitionsHash, got.Hash)
-			},
-		},
-		{
-			name:    "legacy full response without XLS-97 maps",
-			fixture: legacyFullFixture,
-			checkValue: func(t *testing.T, got DefinitionsResponse) {
-				require.Nil(t, got.LedgerEntryFormats)
-				require.Nil(t, got.TransactionFlags)
-			},
-		},
-		{
-			name:    "hash-only unchanged response",
-			fixture: `{"hash":"` + definitionsHash + `"}`,
-			checkValue: func(t *testing.T, got DefinitionsResponse) {
-				require.Equal(t, definitionsHash, got.Hash)
-				require.Nil(t, got.Fields)
-				require.Nil(t, got.Types)
-			},
-		},
-		{
-			name:    "reject partial full response",
+			name:    "partial full response",
 			fixture: `{"TYPES":{"UInt16":1},"hash":"` + definitionsHash + `"}`,
 			wantErr: ErrInvalidDefinitionsResponse,
 		},
 		{
-			name:    "reject null definition section",
+			name:    "null definition section",
 			fixture: `{"FIELDS":null,"hash":"` + definitionsHash + `"}`,
 			wantErr: ErrInvalidDefinitionsResponse,
 		},
 		{
-			name:    "reject missing field property",
+			name:    "missing field property",
 			fixture: strings.Replace(fullDefinitionsFixture, `"nth": -1, `, "", 1),
 			wantErr: ErrInvalidDefinitionField,
 		},
 		{
-			name:    "reject missing format optionality",
+			name:    "missing format optionality",
 			fixture: strings.Replace(fullDefinitionsFixture, `, "optionality": 0`, "", 1),
 			wantErr: ErrInvalidDefinitionsResponse,
 		},
 		{
-			name:    "reject missing hash",
+			name:    "missing hash",
 			fixture: `{"FIELDS":[]}`,
 			wantErr: ErrInvalidDefinitionsHash,
 		},
 		{
-			name:    "reject wrong section type with response sentinel",
+			name:    "wrong section type with response sentinel",
 			fixture: `{"TYPES":[],"hash":"` + definitionsHash + `"}`,
 			wantErr: ErrInvalidDefinitionsResponse,
 		},
 		{
-			name: "reject malformed field tuple",
+			name: "malformed field tuple",
 			fixture: `{
 				"FIELDS": [["TransactionType"]],
 				"TYPES": {"UInt16": 1},
@@ -148,7 +147,7 @@ func TestDefinitionsResponseJSONVariants(t *testing.T) {
 			wantErr: ErrInvalidDefinitionField,
 		},
 		{
-			name: "reject invalid optionality",
+			name: "invalid optionality",
 			fixture: `{
 				"FIELDS": [["TransactionType", {"isSerialized": true, "isSigningField": true, "isVLEncoded": false, "nth": 2, "type": "UInt16"}]],
 				"TYPES": {"UInt16": 1},
@@ -164,21 +163,8 @@ func TestDefinitionsResponseJSONVariants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var got DefinitionsResponse
-			err := json.Unmarshal([]byte(tt.fixture), &got)
-			if tt.wantErr != nil {
-				require.ErrorIs(t, err, tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-			require.NoError(t, got.Validate())
-			tt.checkValue(t, got)
-
-			encoded, err := json.Marshal(got)
-			require.NoError(t, err)
-			var roundTrip DefinitionsResponse
-			require.NoError(t, json.Unmarshal(encoded, &roundTrip))
-			require.Equal(t, got, roundTrip)
+			var response DefinitionsResponse
+			require.ErrorIs(t, json.Unmarshal([]byte(tt.fixture), &response), tt.wantErr)
 		})
 	}
 }
@@ -234,4 +220,16 @@ func mustDecodeDefinitionsResponse(t *testing.T, fixture string) DefinitionsResp
 	var response DefinitionsResponse
 	require.NoError(t, json.Unmarshal([]byte(fixture), &response))
 	return response
+}
+
+func requireDefinitionsResponseJSONRoundTrip(t *testing.T, response DefinitionsResponse) {
+	t.Helper()
+	require.NoError(t, response.Validate())
+
+	encoded, err := json.Marshal(response)
+	require.NoError(t, err)
+
+	var roundTrip DefinitionsResponse
+	require.NoError(t, json.Unmarshal(encoded, &roundTrip))
+	require.Equal(t, response, roundTrip)
 }
