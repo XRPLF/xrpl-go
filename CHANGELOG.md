@@ -32,8 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking:** Changed MPT ledger amount fields from `uint64` to their XRPL JSON string representation, and changed MPT `OwnerNode` fields to hexadecimal strings.
 - **Breaking:** Changed `Oracle.OwnerNode` and `Escrow.IssuerNode` to hexadecimal strings, and `PriceData.AssetPrice` (still `uint64` in Go) now round-trips its hexadecimal JSON wire form; these fields previously failed to decode real server responses. Added the missing `Oracle.LedgerEntryType` and `Oracle.Flags` fields.
+- Added live token-escrow coverage that confirms `rippled` returns `Escrow.IssuerNode` as a nonzero quoted hexadecimal string and that the previous `uint64` model rejects the response.
 
 ### Fixed
+
+#### xrpl/transaction/integration/oracle
+
+- Made the Oracle integration assertions independent of `PriceDataSeries` order because `rippled` canonicalizes that order when `fixPriceOracleOrder` is enabled.
 
 #### xrpl/transaction/types
 
@@ -307,7 +312,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added integration test for `DepositPreauth` transaction
 - Added integration test for escrow transactions.
 - Added integration test for payment and payment channels transactions.
-- Added integration test for vault transactions 
+- Added integration test for vault transactions
 - Added integration test for oracle transactions `OracleSet` and `OracleDelete`
 - Added integration test for NFT transaction `NFTModify`
 - Added integration tests for MPT transactions `MPTokenAuthorize`, `MPTokenIssuanceCreate`, `MPTokenIssuanceDestroy` and `MPTokenIssuanceSet`

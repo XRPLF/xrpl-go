@@ -79,16 +79,7 @@ func testIntegrationOracleSet(t *testing.T, client integration.Client) {
 		require.Equal(t, strings.ToLower(oracleSetTx.Provider), strings.ToLower(oracle.Provider))
 		require.NotEmpty(t, oracle.OwnerNode)
 
-		require.Len(t, oracle.PriceDataSeries, 2)
-
-		firstPriceData := oracle.PriceDataSeries[0].PriceData
-		require.Equal(t, "XRP", firstPriceData.BaseAsset)
-		require.Equal(t, "USD", firstPriceData.QuoteAsset)
-		require.Equal(t, uint64(740), firstPriceData.AssetPrice)
-		require.Equal(t, uint8(3), firstPriceData.Scale)
-
-		secondPriceData := oracle.PriceDataSeries[1].PriceData
-		require.Equal(t, uint64(0xffffffffffffffff), secondPriceData.AssetPrice)
+		require.ElementsMatch(t, oracleSetTx.PriceDataSeries, oracle.PriceDataSeries)
 	})
 }
 
