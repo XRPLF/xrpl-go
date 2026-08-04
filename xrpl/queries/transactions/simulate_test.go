@@ -2,10 +2,8 @@ package transactions
 
 import (
 	"encoding/json"
-	"maps"
 	"testing"
 
-	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/version"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -23,34 +21,7 @@ func validSimulateTxJSON() transaction.FlatTransaction {
 	}
 }
 
-func encodeSimulateTxBlob(t *testing.T, fields transaction.FlatTransaction) string {
-	t.Helper()
-	tx := validSimulateTxJSON()
-	tx["Account"] = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
-	tx["Destination"] = "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV"
-	tx["Fee"] = "10"
-	tx["Sequence"] = uint32(44196)
-	maps.Copy(tx, fields)
-	blob, err := binarycodec.Encode(tx)
-	require.NoError(t, err)
-	return blob
-}
-
 func TestSimulateRequestValidate(t *testing.T) {
-	emptySignatureBlob := encodeSimulateTxBlob(t, transaction.FlatTransaction{
-		"TxnSignature": "", "SigningPubKey": "", "Signers": []any{},
-	})
-	signedTxnSignatureBlob := encodeSimulateTxBlob(t, transaction.FlatTransaction{"TxnSignature": "3045022100AB"})
-	signedPubKeyBlob := encodeSimulateTxBlob(t, transaction.FlatTransaction{"SigningPubKey": "ED0123"})
-	signedSignersBlob := encodeSimulateTxBlob(t, transaction.FlatTransaction{
-		"SigningPubKey": "",
-		"Signers": []any{map[string]any{"Signer": map[string]any{
-			"Account":       "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"SigningPubKey": "ED0123",
-			"TxnSignature":  "3045022100AB",
-		}}},
-	})
-
 	tests := []struct {
 		name    string
 		request SimulateRequest
@@ -62,7 +33,6 @@ func TestSimulateRequestValidate(t *testing.T) {
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
 			"TxnSignature": "", "SigningPubKey": "", "Signers": []any{},
 		}}},
-		{name: "empty blob signature fields remain unsigned", request: SimulateRequest{TxBlob: emptySignatureBlob}},
 		{name: "neither input", wantErr: ErrInvalidSimulateRequest},
 		{name: "both inputs", request: SimulateRequest{TxJSON: validSimulateTxJSON(), TxBlob: simulateTxBlob}, wantErr: ErrInvalidSimulateRequest},
 		{name: "empty JSON object", request: SimulateRequest{TxJSON: transaction.FlatTransaction{}}, wantErr: ErrInvalidSimulateTxJSON},
@@ -70,22 +40,36 @@ func TestSimulateRequestValidate(t *testing.T) {
 		{name: "missing Account", request: SimulateRequest{TxJSON: transaction.FlatTransaction{"TransactionType": "Payment"}}, wantErr: ErrInvalidSimulateTxJSON},
 		{name: "non-hex blob", request: SimulateRequest{TxBlob: "not-hex"}, wantErr: ErrInvalidSimulateTxBlob},
 		{name: "odd-length blob", request: SimulateRequest{TxBlob: "ABC"}, wantErr: ErrInvalidSimulateTxBlob},
-		{name: "malformed short blob", request: SimulateRequest{TxBlob: "00"}, wantErr: ErrInvalidSimulateTxBlob},
-		{name: "malformed serialized blob", request: SimulateRequest{TxBlob: "DEADBEEF"}, wantErr: ErrInvalidSimulateTxBlob},
+		{name: "opaque end-marker blob is server-validated", request: SimulateRequest{TxBlob: "E1"}},
+		{name: "opaque serialized blob is server-validated", request: SimulateRequest{TxBlob: "DEADBEEF"}},
 		{name: "signed JSON TxnSignature", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TxnSignature": "DEADBEEF",
 		}}, wantErr: ErrSignedSimulateTransaction},
-		{name: "signed JSON SigningPubKey", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
+		{name: "JSON SigningPubKey remains unsigned", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "SigningPubKey": "ED0123",
-		}}, wantErr: ErrSignedSimulateTransaction},
+		}}},
+		{name: "unsigned JSON Signers remain unsigned", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			"SigningPubKey": "", "Signers": []any{map[string]any{"Signer": map[string]any{
+				"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "SigningPubKey": "ED0123", "TxnSignature": "",
+			}}},
+		}}},
 		{name: "signed JSON Signers", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "Signers": []any{map[string]any{"Signer": map[string]any{}}},
+			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			"SigningPubKey": "", "Signers": []any{map[string]any{"Signer": map[string]any{
+				"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "SigningPubKey": "ED0123", "TxnSignature": "3045022100AB",
+			}}},
 		}}, wantErr: ErrSignedSimulateTransaction},
-		{name: "signed blob TxnSignature", request: SimulateRequest{TxBlob: signedTxnSignatureBlob}, wantErr: ErrSignedSimulateTransaction},
-		{name: "signed blob SigningPubKey", request: SimulateRequest{TxBlob: signedPubKeyBlob}, wantErr: ErrSignedSimulateTransaction},
-		{name: "signed blob Signers", request: SimulateRequest{TxBlob: signedSignersBlob}, wantErr: ErrSignedSimulateTransaction},
 		{name: "malformed signature type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TxnSignature": 1,
+		}}, wantErr: ErrInvalidSimulateTxJSON},
+		{name: "malformed signer signature type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			"Signers": []any{map[string]any{"Signer": map[string]any{"TxnSignature": 1}}},
+		}}, wantErr: ErrInvalidSimulateTxJSON},
+		{name: "malformed signer public key type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			"Signers": []any{map[string]any{"Signer": map[string]any{"SigningPubKey": 1}}},
 		}}, wantErr: ErrInvalidSimulateTxJSON},
 		{name: "malformed Signers type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "Signers": "",
@@ -111,11 +95,12 @@ func TestSimulateRequestValidate(t *testing.T) {
 	}
 }
 
-func TestSimulateRequestValidateNetworkID(t *testing.T) {
-	blobNetwork2048 := encodeSimulateTxBlob(t, transaction.FlatTransaction{"NetworkID": uint32(2048)})
-	blobNetwork2049 := encodeSimulateTxBlob(t, transaction.FlatTransaction{"NetworkID": uint32(2049)})
-	blobNetwork2 := encodeSimulateTxBlob(t, transaction.FlatTransaction{"NetworkID": uint32(2)})
+func TestSimulateRequestValidateNil(t *testing.T) {
+	var request *SimulateRequest
+	require.ErrorIs(t, request.Validate(), ErrInvalidSimulateRequest)
+}
 
+func TestSimulateRequestValidateNetworkID(t *testing.T) {
 	tests := []struct {
 		name     string
 		expected uint32
@@ -126,15 +111,11 @@ func TestSimulateRequestValidateNetworkID(t *testing.T) {
 	}{
 		{name: "restricted JSON matching", expected: 2048, network: uint32(2048)},
 		{name: "restricted JSON matching alternate numeric representation", expected: 2048, network: json.Number("2048")},
-		{name: "restricted JSON missing", expected: 2048, omit: true, wantErr: ErrMissingSimulateNetworkID},
+		{name: "restricted JSON missing is server-autofilled", expected: 2048, omit: true},
 		{name: "restricted JSON mismatch", expected: 2048, network: uint32(2049), wantErr: ErrMismatchedSimulateNetworkID},
 		{name: "identified standard JSON mismatch", expected: 1, network: uint32(2), wantErr: ErrMismatchedSimulateNetworkID},
 		{name: "unknown identity accepts valid explicit JSON value", network: uint32(2048)},
-		{name: "restricted blob matching", expected: 2048, blob: blobNetwork2048},
-		{name: "restricted blob missing", expected: 2048, blob: simulateTxBlob, wantErr: ErrMissingSimulateNetworkID},
-		{name: "restricted blob mismatch", expected: 2048, blob: blobNetwork2049, wantErr: ErrMismatchedSimulateNetworkID},
-		{name: "identified standard blob mismatch", expected: 1, blob: blobNetwork2, wantErr: ErrMismatchedSimulateNetworkID},
-		{name: "unknown identity accepts valid explicit blob value", blob: blobNetwork2048},
+		{name: "opaque blob skips local NetworkID validation", expected: 2048, blob: "E1"},
 	}
 
 	for _, tt := range tests {
