@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/queries/version"
@@ -110,6 +111,21 @@ func TestDefinitionsResponseJSONVariants(t *testing.T) {
 			wantErr: ErrInvalidDefinitionsResponse,
 		},
 		{
+			name:    "reject null definition section",
+			fixture: `{"FIELDS":null,"hash":"` + definitionsHash + `"}`,
+			wantErr: ErrInvalidDefinitionsResponse,
+		},
+		{
+			name:    "reject missing field property",
+			fixture: strings.Replace(fullDefinitionsFixture, `"nth": -1, `, "", 1),
+			wantErr: ErrInvalidDefinitionField,
+		},
+		{
+			name:    "reject missing format optionality",
+			fixture: strings.Replace(fullDefinitionsFixture, `, "optionality": 0`, "", 1),
+			wantErr: ErrInvalidDefinitionsResponse,
+		},
+		{
 			name:    "reject missing hash",
 			fixture: `{"FIELDS":[]}`,
 			wantErr: ErrInvalidDefinitionsHash,
@@ -165,4 +181,57 @@ func TestDefinitionsResponseJSONVariants(t *testing.T) {
 			require.Equal(t, got, roundTrip)
 		})
 	}
+}
+
+func TestDefinitionsResponseValidateForRequest(t *testing.T) {
+	matchingLowercaseHash := strings.ToLower(definitionsHash)
+	differentHash := "A685734F5FEB756693B4BB978BBB3A158A65652E71EEB2977068B0D680689213"
+
+	tests := []struct {
+		name     string
+		response DefinitionsResponse
+		request  *DefinitionsRequest
+		wantErr  error
+	}{
+		{
+			name:     "full response does not require request hash",
+			response: mustDecodeDefinitionsResponse(t, fullDefinitionsFixture),
+			request:  &DefinitionsRequest{},
+		},
+		{
+			name:     "matching hash ignores case",
+			response: DefinitionsResponse{Hash: definitionsHash},
+			request:  &DefinitionsRequest{Hash: matchingLowercaseHash},
+		},
+		{
+			name:     "reject hash-only response without request hash",
+			response: DefinitionsResponse{Hash: definitionsHash},
+			request:  &DefinitionsRequest{},
+			wantErr:  ErrInvalidDefinitionsResponse,
+		},
+		{
+			name:     "reject hash-only response with different hash",
+			response: DefinitionsResponse{Hash: definitionsHash},
+			request:  &DefinitionsRequest{Hash: differentHash},
+			wantErr:  ErrInvalidDefinitionsResponse,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.response.ValidateForRequest(tt.request)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func mustDecodeDefinitionsResponse(t *testing.T, fixture string) DefinitionsResponse {
+	t.Helper()
+	var response DefinitionsResponse
+	require.NoError(t, json.Unmarshal([]byte(fixture), &response))
+	return response
 }

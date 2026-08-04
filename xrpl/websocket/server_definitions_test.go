@@ -119,6 +119,15 @@ func TestClient_GetServerDefinitions(t *testing.T) {
 			expected: &serverquery.DefinitionsResponse{Hash: hash},
 		},
 		{
+			name: "reject hash-only response without request hash",
+			message: map[string]any{
+				"id":     1,
+				"result": map[string]any{"hash": hash},
+			},
+			request:     &serverquery.DefinitionsRequest{},
+			expectedErr: serverquery.ErrInvalidDefinitionsResponse,
+		},
+		{
 			name: "unsupported server error",
 			message: map[string]any{
 				"id":            1,

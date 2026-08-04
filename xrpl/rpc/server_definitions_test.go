@@ -78,6 +78,13 @@ func TestClient_GetServerDefinitions(t *testing.T) {
 			expected:        &serverquery.DefinitionsResponse{Hash: serverDefinitionsTestHash},
 		},
 		{
+			name:            "reject hash-only response without request hash",
+			mockResponse:    `{"result":{"hash":"` + serverDefinitionsTestHash + `","status":"success"}}`,
+			request:         &serverquery.DefinitionsRequest{},
+			expectedRequest: `{"method":"server_definitions","params":[{"api_version":2}]}`,
+			expectedErr:     serverquery.ErrInvalidDefinitionsResponse,
+		},
+		{
 			name:            "unsupported server error",
 			mockResponse:    `{"result":{"error":"unknownCmd","error_message":"Unknown method.","status":"error"}}`,
 			request:         &serverquery.DefinitionsRequest{},

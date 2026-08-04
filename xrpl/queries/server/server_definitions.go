@@ -1,9 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
@@ -20,7 +22,7 @@ var (
 )
 
 // DefinitionsRequest is the request type for the server_definitions command.
-// Hash is optional; when it matches the server's definitions hash, the server
+// Hash is optional. When it matches the server's definitions hash, the server
 // returns a hash-only response.
 type DefinitionsRequest struct {
 	common.BaseRequest
@@ -61,6 +63,33 @@ type DefinitionFieldInfo struct {
 	IsSerialized   bool   `json:"isSerialized"`
 	IsSigningField bool   `json:"isSigningField"`
 	Type           string `json:"type"`
+}
+
+// UnmarshalJSON requires every FIELDS properties entry to include all wire fields.
+func (i *DefinitionFieldInfo) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Nth            *int    `json:"nth"`
+		IsVLEncoded    *bool   `json:"isVLEncoded"`
+		IsSerialized   *bool   `json:"isSerialized"`
+		IsSigningField *bool   `json:"isSigningField"`
+		Type           *string `json:"type"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("%w: properties: %w", ErrInvalidDefinitionField, err)
+	}
+	if raw.Nth == nil || raw.IsVLEncoded == nil || raw.IsSerialized == nil ||
+		raw.IsSigningField == nil || raw.Type == nil {
+		return fmt.Errorf("%w: properties must contain nth, isVLEncoded, isSerialized, isSigningField, and type", ErrInvalidDefinitionField)
+	}
+
+	*i = DefinitionFieldInfo{
+		Nth:            *raw.Nth,
+		IsVLEncoded:    *raw.IsVLEncoded,
+		IsSerialized:   *raw.IsSerialized,
+		IsSigningField: *raw.IsSigningField,
+		Type:           *raw.Type,
+	}
+	return nil
 }
 
 // DefinitionField represents one FIELDS tuple. On the wire it is encoded as
@@ -122,6 +151,23 @@ type DefinitionFormatField struct {
 	Optionality int    `json:"optionality"`
 }
 
+// UnmarshalJSON requires both wire fields, including an explicit zero optionality.
+func (f *DefinitionFormatField) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Name        *string `json:"name"`
+		Optionality *int    `json:"optionality"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("%w: format field: %w", ErrInvalidDefinitionsResponse, err)
+	}
+	if raw.Name == nil || raw.Optionality == nil {
+		return fmt.Errorf("%w: format field must contain name and optionality", ErrInvalidDefinitionsResponse)
+	}
+
+	*f = DefinitionFormatField{Name: *raw.Name, Optionality: *raw.Optionality}
+	return f.Validate()
+}
+
 // Validate verifies a format field name and SOEStyle optionality value.
 func (f DefinitionFormatField) Validate() error {
 	if f.Name == "" {
@@ -153,6 +199,27 @@ type DefinitionsResponse struct {
 	TransactionFlags   map[string]map[string]uint32       `json:"TRANSACTION_FLAGS,omitempty"`
 	AccountSetFlags    map[string]uint32                  `json:"ACCOUNT_SET_FLAGS,omitempty"`
 	Hash               string                             `json:"hash"`
+}
+
+func (r DefinitionsResponse) isHashOnly() bool {
+	return r.Fields == nil && r.Types == nil && r.LedgerEntryTypes == nil &&
+		r.TransactionTypes == nil && r.TransactionResults == nil &&
+		r.LedgerEntryFormats == nil && r.TransactionFormats == nil &&
+		r.LedgerEntryFlags == nil && r.TransactionFlags == nil && r.AccountSetFlags == nil
+}
+
+// ValidateForRequest verifies that a hash-only response matches the request hash.
+func (r DefinitionsResponse) ValidateForRequest(req *DefinitionsRequest) error {
+	if err := r.Validate(); err != nil {
+		return err
+	}
+	if !r.isHashOnly() {
+		return nil
+	}
+	if req == nil || req.Hash == "" || !strings.EqualFold(req.Hash, r.Hash) {
+		return fmt.Errorf("%w: hash-only response does not match request hash", ErrInvalidDefinitionsResponse)
+	}
+	return nil
 }
 
 // Validate verifies the full and hash-only server_definitions response variants.
@@ -210,6 +277,30 @@ func (r DefinitionsResponse) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON decodes and validates a full or hash-only definitions response.
 func (r *DefinitionsResponse) UnmarshalJSON(data []byte) error {
+	fields := make(map[string]json.RawMessage)
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidDefinitionsResponse, err)
+	}
+
+	sections := []string{
+		"FIELDS",
+		"TYPES",
+		"LEDGER_ENTRY_TYPES",
+		"TRANSACTION_TYPES",
+		"TRANSACTION_RESULTS",
+		"LEDGER_ENTRY_FORMATS",
+		"TRANSACTION_FORMATS",
+		"LEDGER_ENTRY_FLAGS",
+		"TRANSACTION_FLAGS",
+		"ACCOUNT_SET_FLAGS",
+	}
+	for _, section := range sections {
+		value, present := fields[section]
+		if present && bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+			return fmt.Errorf("%w: %s must not be null", ErrInvalidDefinitionsResponse, section)
+		}
+	}
+
 	type definitionsResponseAlias DefinitionsResponse
 	var decoded definitionsResponseAlias
 	if err := json.Unmarshal(data, &decoded); err != nil {
