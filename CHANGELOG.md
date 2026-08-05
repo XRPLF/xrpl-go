@@ -72,6 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `ToString` to convert plain and named string values through one shared helper.
 
+#### xrpl/currency
+
+- Exported the untyped `MaxDrops` constant for the maximum native XRP amount in drops.
+
 #### xrpl/ledger-entry-types
 
 - Added `MPTokenIssuance.ReferenceHolding`, `DirectoryNode.TakerPaysMPT`, and `DirectoryNode.TakerGetsMPT`, plus the `LsfMPTAMM` flag and `SetLsfMPTAMM` setter for AMM-owned MPT holdings.
