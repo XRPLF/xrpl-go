@@ -160,7 +160,7 @@ func (c *Client) SubmitTxBlobAndWaitContext(ctx context.Context, txBlob string, 
 
 Every validated transaction response returns with a nil error, including validated `tec` results. Inspect `TxResponse.Meta.TransactionResult` to determine the validated engine result. `TransactionExpiredError` retains the preliminary engine result and ledger expiry details. `FinalityTransportError` reports repeated query or transport failure. Context-aware methods return `ctx.Err()` directly on cancellation or deadline.
 
-Expiry is relative to the transaction history that is available from the queried server or endpoint. The final lookup reduces a race between the transaction lookup and ledger lookup. Without `searched_all` history proof, it does not prove that the transaction is absent from history that the server does not hold.
+Expiry is relative to the transaction history that is available from the queried server or endpoint. The final lookup reduces a race between the transaction lookup and ledger lookup.
 
 A WebSocket write or write-deadline failure invalidates and closes the failed socket. The active client read loop can then reconnect before a later request.
 
