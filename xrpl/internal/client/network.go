@@ -95,30 +95,6 @@ func ApplyNetworkIDPolicy(tx map[string]any, identity NetworkIdentity) error {
 	return nil
 }
 
-// ValidateNetworkIDPolicy validates NetworkID without changing the transaction.
-// A required NetworkID must already be present when autofill is disabled. The
-// same rule applies to the outer transaction and every Batch inner transaction.
-func ValidateNetworkIDPolicy(tx map[string]any, identity NetworkIdentity) error {
-	targets, required, err := networkIDPolicyTargets(tx, identity)
-	if err != nil {
-		return err
-	}
-
-	for _, target := range targets {
-		value, present := target["NetworkID"]
-		if !present || value == nil {
-			if required {
-				return ErrNetworkIDFieldMissing
-			}
-			continue
-		}
-		if err := validatePresentNetworkID(target, identity, required); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func networkIDPolicyTargets(tx map[string]any, identity NetworkIdentity) ([]map[string]any, bool, error) {
 	required, err := NetworkIDRequired(identity)
 	if err != nil {

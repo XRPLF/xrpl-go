@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/testutil"
@@ -521,14 +522,26 @@ func TestClientDisconnectCancelsInFlightReconnectDial(t *testing.T) {
 	require.Eventually(t, func() bool { return !cl.IsConnected() }, time.Second, time.Millisecond)
 }
 
-func TestClientGetSignedTxDoesNotAutofillNetworkIDWhenAutofillDisabled(t *testing.T) {
+func TestClientGetSignedTxSkipsNetworkPolicyWhenAutofillDisabled(t *testing.T) {
 	cl := NewClient(NewClientConfig().WithNetworkIdentity(21337, "1.12.0"))
-	tx := transaction.FlatTransaction{"TransactionType": "AccountSet"}
+	signer, err := wallet.FromSeed("sEd7io6yt5dFJrcePgRiFVHvmkJhJD1", "")
+	require.NoError(t, err)
+	tx := transaction.FlatTransaction{
+		"Account":         signer.ClassicAddress.String(),
+		"TransactionType": "AccountSet",
+		"Fee":             "10",
+		"Sequence":        uint32(1),
+		"NetworkID":       uint32(1),
+	}
 
-	_, err := cl.getSignedTx(tx, false, &wallet.Wallet{})
+	blob, err := cl.getSignedTx(tx, false, &signer)
 
-	require.ErrorIs(t, err, ErrNetworkIDFieldMissing)
-	require.NotContains(t, tx, "NetworkID")
+	require.NoError(t, err)
+	require.NotEmpty(t, blob)
+	signedTx, err := binarycodec.Decode(blob)
+	require.NoError(t, err)
+	require.EqualValues(t, uint32(1), signedTx["NetworkID"])
+	require.Equal(t, uint32(1), tx["NetworkID"])
 }
 
 func uint32Pointer(value uint32) *uint32 {
