@@ -57,6 +57,9 @@ type Config struct {
 type ConfigOpt func(c *Config)
 
 // WithHTTPClient returns a ConfigOpt that sets a custom HTTPClient.
+// Configured authorization requires an HTTPS endpoint. XRPL Go adds redirect
+// protection to *http.Client values. Other implementations control their own
+// redirects and any credentials that they add.
 func WithHTTPClient(cl HTTPClient) ConfigOpt {
 	return func(c *Config) {
 		c.HTTPClient = cl

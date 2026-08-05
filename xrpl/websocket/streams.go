@@ -64,7 +64,7 @@ func (s *lifecycleStream[T]) Start(ctx context.Context) {
 // Report hands value to the per-stream runner over an unbuffered channel. The
 // handoff returns when the runner accepts the event, not when the handler
 // finishes. A running handler therefore applies backpressure when the next
-// event for this stream is reported; if Report is called by readMessages, that
+// event for this stream is reported. If Report is called by readMessages, that
 // backpressure stalls all subsequent stream and request dispatch.
 func (s *lifecycleStream[T]) Report(ctx context.Context, value T) {
 	if ctx == nil || ctx.Err() != nil {
