@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
 
+#### xrpl/currency
+
+- Exported the untyped `MaxDrops` constant for the maximum native XRP amount in drops.
+
 #### xrpl/transaction
 
 - Added centralized transaction type constants and `IsPseudoTransactionType` classification for `EnableAmendment`, `SetFee`, and `UNLModify`.
