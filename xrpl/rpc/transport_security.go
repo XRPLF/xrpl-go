@@ -26,7 +26,8 @@ func validateAuthorizationEndpoint(rawURL string, headers map[string][]string) (
 	hasHeader := hasAuthorizationHeader(headers)
 	endpoint, err := url.Parse(rawURL)
 	if err != nil {
-		if hasHeader {
+		hasAuthorization := hasHeader || malformedURLHasUserinfo(rawURL)
+		if hasAuthorization {
 			return true, ErrInsecureAuthorization
 		}
 		return false, nil
@@ -114,7 +115,12 @@ func redactAuthorizationError(err error, rawURL string, headers map[string][]str
 			secrets = append(secrets, values...)
 		}
 	}
-	if endpoint, parseErr := url.Parse(rawURL); parseErr == nil && endpoint.User != nil {
+	endpoint, parseErr := url.Parse(rawURL)
+	if parseErr != nil {
+		if malformedURLHasUserinfo(rawURL) {
+			return ErrAuthorizationRequestFailed
+		}
+	} else if endpoint.User != nil {
 		username := endpoint.User.Username()
 		password, _ := endpoint.User.Password()
 		secrets = append(secrets,
@@ -132,4 +138,21 @@ func redactAuthorizationError(err error, rawURL string, headers map[string][]str
 		}
 	}
 	return err
+}
+
+func malformedURLHasUserinfo(rawURL string) bool {
+	authority := rawURL
+	if strings.HasPrefix(authority, "//") {
+		authority = authority[2:]
+	} else {
+		var found bool
+		_, authority, found = strings.Cut(authority, "://")
+		if !found {
+			return false
+		}
+	}
+	if end := strings.IndexAny(authority, "/?#"); end >= 0 {
+		authority = authority[:end]
+	}
+	return strings.Contains(authority, "@")
 }
