@@ -122,9 +122,11 @@ func redactAuthorizationError(err error, rawURL string, headers map[string][]str
 		}
 	} else if endpoint.User != nil {
 		username := endpoint.User.Username()
+		encodedUsername := url.User(username).String()
 		password, _ := endpoint.User.Password()
 		secrets = append(secrets,
 			username,
+			encodedUsername,
 			password,
 			endpoint.User.String(),
 			"Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)),
