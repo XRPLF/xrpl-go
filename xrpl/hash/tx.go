@@ -17,7 +17,7 @@ func SignTxBlob(txBlob string) (string, error) {
 		return "", err
 	}
 
-	if err := isTxValid(tx); err != nil {
+	if err := validateSignedTransactionForm(tx); err != nil {
 		return "", err
 	}
 
@@ -28,7 +28,7 @@ func SignTxBlob(txBlob string) (string, error) {
 // It takes a signed transaction and returns the hash of the signed transaction.
 // It returns an error if the transaction is invalid.
 func SignTx(tx map[string]any) (string, error) {
-	if err := isTxValid(tx); err != nil {
+	if err := validateSignedTransactionForm(tx); err != nil {
 		return "", err
 	}
 
@@ -56,7 +56,8 @@ func encodeSignedTxBlob(txBlob string) (string, error) {
 	return EncodeToHashString(payload), nil
 }
 
-func isTxValid(tx map[string]any) error {
+func validateSignedTransactionForm(tx map[string]any) error {
+	// Allow the canonical unsigned form used by inner Batch transactions.
 	form, err := clientinternal.InspectSignedTransaction(tx, true)
 	if err != nil {
 		return err
