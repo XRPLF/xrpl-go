@@ -9,6 +9,7 @@ import (
 
 const (
 	// DropsPerXRP is the number of drops equivalent to one XRP.
+	// Use XrpToDrops and DropsToXrp for conversions. This constant is for reference only.
 	DropsPerXRP = 1_000_000
 	// MaxFractionLength is the maximum allowed decimal places in an XRP value.
 	MaxFractionLength int = 6
