@@ -35,16 +35,6 @@ func CloneNetworkID(networkID *uint32) *uint32 {
 	return &value
 }
 
-// ValidateNetworkIdentity returns identity unchanged when it is complete
-// enough to apply NetworkID policy, and the zero identity with the policy
-// error otherwise.
-func ValidateNetworkIdentity(identity NetworkIdentity) (NetworkIdentity, error) {
-	if _, err := NetworkIDRequired(identity); err != nil {
-		return NetworkIdentity{}, err
-	}
-	return identity, nil
-}
-
 // ResolveNetworkIdentity validates a server_info identity against an optional
 // trusted override. A matching override pointer is preserved instead of being
 // replaced by the discovered pointer.
@@ -68,25 +58,14 @@ func ResolveNetworkIdentity(override *uint32, discovered NetworkIdentity) (Netwo
 	return ValidateNetworkIdentity(resolved)
 }
 
-// NetworkIDRequired reports whether transactions for identity must include a
-// NetworkID. Networks 0 through 1024 always omit it. Restricted networks add it
-// only when the server is rippled 1.11.0 or newer.
-func NetworkIDRequired(identity NetworkIdentity) (bool, error) {
-	if identity.NetworkID == nil {
-		return false, ErrNetworkIDUnavailable
+// ValidateNetworkIdentity returns identity unchanged when it is complete
+// enough to apply NetworkID policy, and the zero identity with the policy
+// error otherwise.
+func ValidateNetworkIdentity(identity NetworkIdentity) (NetworkIdentity, error) {
+	if _, err := NetworkIDRequired(identity); err != nil {
+		return NetworkIdentity{}, err
 	}
-	if *identity.NetworkID <= RestrictedNetworks {
-		return false, nil
-	}
-	if identity.BuildVersion == "" {
-		return false, ErrBuildVersionUnavailable
-	}
-
-	comparison, err := compareRippledVersions(identity.BuildVersion, RequiredNetworkIDVersion)
-	if err != nil {
-		return false, fmt.Errorf("%w %q: %w", ErrInvalidBuildVersion, identity.BuildVersion, err)
-	}
-	return comparison >= 0, nil
+	return identity, nil
 }
 
 // ApplyNetworkIDPolicy validates and applies NetworkID to an outer transaction
@@ -119,6 +98,27 @@ func ApplyNetworkIDPolicy(tx map[string]any, identity NetworkIdentity) error {
 		}
 	}
 	return nil
+}
+
+// NetworkIDRequired reports whether transactions for identity must include a
+// NetworkID. Networks 0 through 1024 always omit it. Restricted networks add it
+// only when the server is rippled 1.11.0 or newer.
+func NetworkIDRequired(identity NetworkIdentity) (bool, error) {
+	if identity.NetworkID == nil {
+		return false, ErrNetworkIDUnavailable
+	}
+	if *identity.NetworkID <= RestrictedNetworks {
+		return false, nil
+	}
+	if identity.BuildVersion == "" {
+		return false, ErrBuildVersionUnavailable
+	}
+
+	comparison, err := compareRippledVersions(identity.BuildVersion, RequiredNetworkIDVersion)
+	if err != nil {
+		return false, fmt.Errorf("%w %q: %w", ErrInvalidBuildVersion, identity.BuildVersion, err)
+	}
+	return comparison >= 0, nil
 }
 
 // batchInnerTransactions returns the inner transaction objects of a Batch

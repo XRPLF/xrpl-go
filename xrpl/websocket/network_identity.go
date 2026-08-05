@@ -34,6 +34,11 @@ func (c *Client) prepareNetworkIdentity() error {
 	return nil
 }
 
+func (c *Client) networkIdentity() (clientinternal.NetworkIdentity, error) {
+	identity, _, _ := c.networkIdentitySnapshot()
+	return clientinternal.ValidateNetworkIdentity(identity)
+}
+
 func (c *Client) networkIdentitySnapshot() (clientinternal.NetworkIdentity, bool, bool) {
 	c.identity.mu.Lock()
 	defer c.identity.mu.Unlock()
@@ -44,22 +49,6 @@ func (c *Client) networkIdentitySnapshot() (clientinternal.NetworkIdentity, bool
 		NetworkID:    c.NetworkID,
 		BuildVersion: c.BuildVersion,
 	}, false, false
-}
-
-func (c *Client) storeDiscoveredNetworkIdentity(identity clientinternal.NetworkIdentity) {
-	c.identity.mu.Lock()
-	defer c.identity.mu.Unlock()
-	firstDiscovery := !c.identity.ready
-	c.identity.current = clientinternal.NetworkIdentity{
-		NetworkID:    clientinternal.CloneNetworkID(identity.NetworkID),
-		BuildVersion: identity.BuildVersion,
-	}
-	if firstDiscovery {
-		c.NetworkID = identity.NetworkID
-		c.BuildVersion = identity.BuildVersion
-	}
-	c.identity.ready = true
-	c.identity.trusted = false
 }
 
 func (c *Client) discoverNetworkIdentity(override *uint32) (clientinternal.NetworkIdentity, error) {
@@ -102,7 +91,18 @@ func (c *Client) discoverNetworkIdentity(override *uint32) (clientinternal.Netwo
 	})
 }
 
-func (c *Client) networkIdentity() (clientinternal.NetworkIdentity, error) {
-	identity, _, _ := c.networkIdentitySnapshot()
-	return clientinternal.ValidateNetworkIdentity(identity)
+func (c *Client) storeDiscoveredNetworkIdentity(identity clientinternal.NetworkIdentity) {
+	c.identity.mu.Lock()
+	defer c.identity.mu.Unlock()
+	firstDiscovery := !c.identity.ready
+	c.identity.current = clientinternal.NetworkIdentity{
+		NetworkID:    clientinternal.CloneNetworkID(identity.NetworkID),
+		BuildVersion: identity.BuildVersion,
+	}
+	if firstDiscovery {
+		c.NetworkID = identity.NetworkID
+		c.BuildVersion = identity.BuildVersion
+	}
+	c.identity.ready = true
+	c.identity.trusted = false
 }

@@ -14,19 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func uint32Pointer(value uint32) *uint32 {
-	return &value
-}
-
-func setTrustedTestNetworkIdentity(cl *Client, networkID uint32) {
-	cl.NetworkID = uint32Pointer(networkID)
-	cl.BuildVersion = "1.12.0"
-	cl.identity.ready = true
-	cl.identity.trusted = true
-	cl.identity.current.NetworkID = uint32Pointer(networkID)
-	cl.identity.current.BuildVersion = "1.12.0"
-}
-
 func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -354,4 +341,17 @@ func TestClientGetSignedTxFailsClosedWithoutAutofill(t *testing.T) {
 		&wallet.Wallet{},
 	)
 	require.ErrorIs(t, err, ErrNetworkIDUnavailable)
+}
+
+func uint32Pointer(value uint32) *uint32 {
+	return &value
+}
+
+func setTrustedTestNetworkIdentity(cl *Client, networkID uint32) {
+	cl.NetworkID = uint32Pointer(networkID)
+	cl.BuildVersion = "1.12.0"
+	cl.identity.ready = true
+	cl.identity.trusted = true
+	cl.identity.current.NetworkID = uint32Pointer(networkID)
+	cl.identity.current.BuildVersion = "1.12.0"
 }

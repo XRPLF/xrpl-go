@@ -44,6 +44,16 @@ func (c *Client) ensureNetworkIdentity() (clientinternal.NetworkIdentity, error)
 	}
 }
 
+func (c *Client) networkIdentity() (clientinternal.NetworkIdentity, error) {
+	c.identity.mu.Lock()
+	defer c.identity.mu.Unlock()
+
+	return clientinternal.ValidateNetworkIdentity(clientinternal.NetworkIdentity{
+		NetworkID:    c.NetworkID,
+		BuildVersion: c.BuildVersion,
+	})
+}
+
 func (c *Client) beginNetworkIdentityDiscovery() (clientinternal.NetworkIdentity, bool, <-chan struct{}, bool) {
 	c.identity.mu.Lock()
 	defer c.identity.mu.Unlock()
@@ -75,14 +85,4 @@ func (c *Client) finishNetworkIdentityDiscovery(identity clientinternal.NetworkI
 	discoveryDone := c.identity.discovering
 	c.identity.discovering = nil
 	close(discoveryDone)
-}
-
-func (c *Client) networkIdentity() (clientinternal.NetworkIdentity, error) {
-	c.identity.mu.Lock()
-	defer c.identity.mu.Unlock()
-
-	return clientinternal.ValidateNetworkIdentity(clientinternal.NetworkIdentity{
-		NetworkID:    c.NetworkID,
-		BuildVersion: c.BuildVersion,
-	})
 }
