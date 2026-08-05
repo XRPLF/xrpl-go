@@ -6,10 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func uint32Pointer(value uint32) *uint32 {
-	return &value
-}
-
 func TestResolveNetworkIdentity(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -156,4 +152,8 @@ func TestApplyNetworkIDPolicy(t *testing.T) {
 			require.ErrorIs(t, err, ErrNetworkIDFieldUnexpected)
 		})
 	}
+}
+
+func uint32Pointer(value uint32) *uint32 {
+	return &value
 }

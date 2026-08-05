@@ -11,10 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func uint32Pointer(value uint32) *uint32 {
-	return &value
-}
-
 func TestClientEnsureNetworkIdentity(t *testing.T) {
 	requestFailure := errors.New("server_info unavailable")
 	tests := []struct {
@@ -180,4 +176,8 @@ func TestClientGetSignedTxFailsClosedWithoutAutofill(t *testing.T) {
 		&wallet.Wallet{},
 	)
 	require.ErrorIs(t, err, ErrNetworkIDUnavailable)
+}
+
+func uint32Pointer(value uint32) *uint32 {
+	return &value
 }
