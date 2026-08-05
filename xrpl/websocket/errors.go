@@ -38,6 +38,8 @@ var (
 	ErrTagFieldIsNotAUint32 = clientinternal.ErrTagFieldIsNotAUint32
 	// ErrInvalidAddress is returned when an autofilled address is neither classic nor an X-address.
 	ErrInvalidAddress = clientinternal.ErrInvalidAddress
+	// ErrMismatchedTag is returned when an explicit transaction tag conflicts with an X-address tag.
+	ErrMismatchedTag = clientinternal.ErrMismatchedTag
 	// ErrRawTransactionsFieldIsNotAnArray is returned when the RawTransactions field is not an array type.
 	ErrRawTransactionsFieldIsNotAnArray = clientinternal.ErrRawTransactionsFieldIsNotAnArray
 	// ErrRawTransactionFieldIsNotAnObject is returned when the RawTransaction field is not an object type.
@@ -123,9 +125,6 @@ var (
 )
 
 // Dynamic errors
-
-// ErrMismatchedTag is returned when an explicit transaction tag conflicts with an X-address tag.
-type ErrMismatchedTag = clientinternal.ErrMismatchedTag
 
 // ClientError represents a dynamic error with a custom error message string.
 type ClientError struct {
