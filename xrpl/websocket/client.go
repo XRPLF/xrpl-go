@@ -87,7 +87,7 @@ func (p *pendingResponse) cancel() {
 // to the shared reader and can delay all stream and request dispatch. Handlers
 // should offload long-running work when that backpressure is undesirable.
 // Automatic reconnect preserves On* handler registrations but does not replay
-// server-side subscriptions; callers must resubscribe after reconnect.
+// server-side subscriptions. Callers must resubscribe after reconnect.
 type Client struct {
 	cfg  ClientConfig
 	conn *Connection

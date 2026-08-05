@@ -99,7 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Autofill now omits and rejects an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. It adds and requires the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
 - The client now discovers and caches network identity with `server_info` before an identity-dependent operation. A discovery failure leaves the identity unknown, does not block the operation, and is retried by a later operation.
 - Client-side signing now skips network identity discovery and policy validation when autofill is disabled.
-- Authorized RPC requests now require a parsed HTTPS endpoint and a redirect-safe `*http.Client`, reject authenticated plaintext redirects, recognize header names case-insensitively and URL userinfo, and redact credential material from returned diagnostics.
+- Authorized RPC requests now require a parsed HTTPS endpoint for every HTTP client, recognize header names case-insensitively and URL userinfo, and redact credential material from returned diagnostics. Standard `*http.Client` requests also reject authenticated plaintext redirects, while custom `HTTPClient` implementations remain supported on HTTPS and control their own redirects.
 
 #### xrpl/transaction
 

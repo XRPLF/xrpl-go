@@ -31,12 +31,16 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 type opaqueHTTPClient struct {
-	called *atomic.Bool
+	called            *atomic.Bool
+	authorizationSeen *atomic.Bool
 }
 
-func (c opaqueHTTPClient) Do(*http.Request) (*http.Response, error) {
+func (c opaqueHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	c.called.Store(true)
-	return nil, nil
+	if c.authorizationSeen != nil {
+		c.authorizationSeen.Store(hasAuthorizationHeader(req.Header))
+	}
+	return successfulHTTPResponse(req), nil
 }
 
 type credentialEchoError string
@@ -108,9 +112,26 @@ func TestNewClientConfigAuthorizationTransport(t *testing.T) {
 			url:  testUserinfoURL("https", "node.example"),
 		},
 		{
-			name:       "rejects opaque HTTP client",
+			name:       "accepts opaque HTTP client over HTTPS",
 			url:        "https://node.example",
 			headerName: "Authorization",
+			httpClient: opaqueHTTPClient{called: &atomic.Bool{}},
+		},
+		{
+			name:       "rejects opaque HTTP client over plaintext",
+			url:        "http://node.example",
+			headerName: "Authorization",
+			httpClient: opaqueHTTPClient{called: &atomic.Bool{}},
+			wantErr:    true,
+		},
+		{
+			name:       "accepts opaque HTTP client with HTTPS URL userinfo",
+			url:        testUserinfoURL("https", "node.example"),
+			httpClient: opaqueHTTPClient{called: &atomic.Bool{}},
+		},
+		{
+			name:       "rejects opaque HTTP client with plaintext URL userinfo",
+			url:        testUserinfoURL("http", "node.example"),
 			httpClient: opaqueHTTPClient{called: &atomic.Bool{}},
 			wantErr:    true,
 		},
@@ -185,11 +206,17 @@ func TestClient_RequestAuthorizationTransport(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "rejects opaque HTTP client",
-			url:        "https://node.example/",
+			name:       "rejects mutated plaintext endpoint for opaque HTTP client",
+			url:        "http://node.example/",
 			headerName: "authorization",
 			opaque:     true,
 			wantErr:    true,
+		},
+		{
+			name:       "executes HTTPS request with opaque HTTP client",
+			url:        "https://node.example/",
+			headerName: "authorization",
+			opaque:     true,
 		},
 		{
 			name:       "executes HTTPS header request",
@@ -214,7 +241,10 @@ func TestClient_RequestAuthorizationTransport(t *testing.T) {
 
 			var httpClient HTTPClient = standardClient
 			if tt.opaque {
-				httpClient = opaqueHTTPClient{called: &called}
+				httpClient = opaqueHTTPClient{
+					called:            &called,
+					authorizationSeen: &authorizationSeen,
+				}
 			}
 			cfg, err := NewClientConfig("https://initial.example/", WithHTTPClient(httpClient))
 			require.NoError(t, err)

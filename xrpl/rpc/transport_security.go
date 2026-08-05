@@ -10,10 +10,10 @@ import (
 
 const authorizationHeader = "Authorization"
 
-// validateAuthorizationTransport enforces the authorization transport policy
-// for rawURL and headers, and returns the HTTP client that requests carrying
-// authorization must use. It is the single entry point shared by config-time
-// and request-time validation.
+// validateAuthorizationTransport rejects configured authorization on insecure
+// endpoints. It adds redirect protection to a standard *http.Client and leaves
+// other HTTPClient implementations responsible for their own redirects. It is
+// the single entry point shared by config-time and request-time validation.
 func validateAuthorizationTransport(rawURL string, headers map[string][]string, client HTTPClient) (HTTPClient, error) {
 	hasAuthorization, err := validateAuthorizationEndpoint(rawURL, headers)
 	if err != nil {
@@ -59,7 +59,10 @@ func authorizationHTTPClient(client HTTPClient, hasAuthorization bool) (HTTPClie
 	}
 
 	baseClient, ok := client.(*http.Client)
-	if !ok || baseClient == nil {
+	if !ok {
+		return client, nil
+	}
+	if baseClient == nil {
 		return nil, ErrInsecureAuthorization
 	}
 
