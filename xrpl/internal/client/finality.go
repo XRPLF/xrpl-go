@@ -7,18 +7,6 @@ import (
 	"time"
 )
 
-var (
-	// ErrPreliminaryResult indicates that reliable submission stopped on a
-	// malformed preliminary engine result.
-	ErrPreliminaryResult = errors.New("malformed preliminary transaction result")
-	// ErrTransactionExpired indicates that the validated ledger passed the
-	// transaction's LastLedgerSequence without a validated transaction result.
-	ErrTransactionExpired = errors.New("transaction expired before validation")
-	// ErrFinalityTransport indicates that repeated transport or response failures
-	// prevented reliable-submission monitoring from making progress.
-	ErrFinalityTransport = errors.New("transaction finality monitoring transport failure")
-)
-
 // EngineResultFamily identifies an XRPL transaction engine-result token family.
 type EngineResultFamily string
 
