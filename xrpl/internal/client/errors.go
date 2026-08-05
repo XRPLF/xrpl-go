@@ -20,12 +20,6 @@ var (
 
 	// network
 
-	// ErrNetworkIDUnavailable indicates that a client cannot safely determine
-	// the server's network identity.
-	ErrNetworkIDUnavailable = errors.New("server network ID is unavailable")
-	// ErrBuildVersionUnavailable indicates that a restricted network's rippled
-	// version is unavailable, so NetworkID requiredness cannot be determined.
-	ErrBuildVersionUnavailable = errors.New("server build version is unavailable")
 	// ErrInvalidBuildVersion indicates that a restricted network returned a
 	// build version that cannot be compared with rippled 1.11.0.
 	ErrInvalidBuildVersion = errors.New("invalid server build version")
@@ -41,6 +35,9 @@ var (
 	// ErrNetworkIDFieldMismatch indicates that a transaction NetworkID value
 	// does not match the client identity.
 	ErrNetworkIDFieldMismatch = errors.New("field NetworkID must match expected NetworkID")
+	// ErrNetworkIDFieldMissing indicates that a transaction must supply NetworkID
+	// because autofill is disabled for a network that requires the field.
+	ErrNetworkIDFieldMissing = errors.New("field NetworkID is required for this network")
 	// ErrNetworkIDFieldUnexpected indicates that NetworkID was supplied on a
 	// network or rippled version where the field must be omitted.
 	ErrNetworkIDFieldUnexpected = errors.New("field NetworkID must be omitted for this network")

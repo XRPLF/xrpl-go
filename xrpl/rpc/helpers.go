@@ -422,7 +422,7 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		return "", ErrMissingWallet
 	}
 
-	// Autofill, or at minimum establish and apply network identity before signing.
+	// Autofill, or validate the caller-supplied NetworkID without changing it.
 	if autofill {
 		if err := c.Autofill(&tx); err != nil {
 			return "", err
@@ -432,7 +432,7 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		if err != nil {
 			return "", err
 		}
-		if err := clientinternal.ApplyNetworkIDPolicy(tx, identity); err != nil {
+		if err := clientinternal.ValidateNetworkIDPolicy(tx, identity); err != nil {
 			return "", err
 		}
 	}

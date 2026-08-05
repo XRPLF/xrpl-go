@@ -38,16 +38,16 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			expectedRequests: 1,
 		},
 		{
-			name:             "missing network ID fails closed",
+			name:             "missing network ID remains unknown",
 			response:         `{"result":{"info":{"build_version":"1.12.0"}}}`,
-			expectedErr:      ErrNetworkIDUnavailable,
+			expectedBuild:    "1.12.0",
 			expectedRequests: 1,
 		},
 		{
-			name:             "request error propagates",
+			name:             "request error leaves identity unknown and retries",
 			requestErr:       requestFailure,
-			expectedErr:      requestFailure,
-			expectedRequests: 1,
+			ensureCalls:      2,
+			expectedRequests: 2,
 		},
 		{
 			name:             "matching override is preserved",
@@ -117,8 +117,12 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 				require.ErrorIs(t, err, tt.expectedErr)
 			} else {
 				require.NoError(t, err)
-				require.NotNil(t, identity.NetworkID)
-				require.Equal(t, *tt.expectedID, *identity.NetworkID)
+				if tt.expectedID == nil {
+					require.Nil(t, identity.NetworkID)
+				} else {
+					require.NotNil(t, identity.NetworkID)
+					require.Equal(t, *tt.expectedID, *identity.NetworkID)
+				}
 				require.Equal(t, tt.expectedBuild, identity.BuildVersion)
 			}
 			require.Equal(t, tt.expectedRequests, requestCount)
@@ -199,7 +203,7 @@ func TestClientEnsureNetworkIdentityCoalescesConcurrentDiscovery(t *testing.T) {
 	require.Equal(t, int32(1), requestCount.Load())
 }
 
-func TestClientAutofillFailsBeforeMutationWhenNetworkIdentityIsMissing(t *testing.T) {
+func TestClientAutofillOmitsNetworkIDWhenIdentityIsMissing(t *testing.T) {
 	mockClient := &testutil.JSONRPCMockClient{}
 	mockClient.DoFunc = testutil.MockResponse(
 		`{"result":{"info":{"build_version":"1.12.0"}}}`,
@@ -216,36 +220,24 @@ func TestClientAutofillFailsBeforeMutationWhenNetworkIdentityIsMissing(t *testin
 		"Fee":                "10",
 		"LastLedgerSequence": uint32(100),
 	}
-	expected := transaction.FlatTransaction{
-		"Account":            "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
-		"TransactionType":    "AccountSet",
-		"Sequence":           uint32(1),
-		"Fee":                "10",
-		"LastLedgerSequence": uint32(100),
-	}
 
 	err = cl.Autofill(&tx)
-	require.ErrorIs(t, err, ErrNetworkIDUnavailable)
-	require.Equal(t, expected, tx)
+
+	require.NoError(t, err)
+	require.Equal(t, "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", tx["Account"])
+	require.NotContains(t, tx, "NetworkID")
 }
 
-func TestClientGetSignedTxFailsClosedWithoutAutofill(t *testing.T) {
-	mockClient := &testutil.JSONRPCMockClient{}
-	mockClient.DoFunc = testutil.MockResponse(
-		`{"result":{"info":{"build_version":"1.12.0"}}}`,
-		http.StatusOK,
-		mockClient,
-	)
-	cfg, err := NewClientConfig("http://localhost/", WithHTTPClient(mockClient))
+func TestClientGetSignedTxDoesNotAutofillNetworkIDWhenAutofillDisabled(t *testing.T) {
+	cfg, err := NewClientConfig("http://localhost/", WithNetworkIdentity(21337, "1.12.0"))
 	require.NoError(t, err)
 	cl := NewClient(cfg)
+	tx := transaction.FlatTransaction{"TransactionType": "AccountSet"}
 
-	_, err = cl.getSignedTx(
-		transaction.FlatTransaction{"TransactionType": "AccountSet"},
-		false,
-		&wallet.Wallet{},
-	)
-	require.ErrorIs(t, err, ErrNetworkIDUnavailable)
+	_, err = cl.getSignedTx(tx, false, &wallet.Wallet{})
+
+	require.ErrorIs(t, err, ErrNetworkIDFieldMissing)
+	require.NotContains(t, tx, "NetworkID")
 }
 
 func uint32Pointer(value uint32) *uint32 {
