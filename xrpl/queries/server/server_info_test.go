@@ -35,6 +35,50 @@ func TestServerInfoNetworkIDPresence(t *testing.T) {
 	}
 }
 
+func TestServerInfoLoadFactor(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		expected float64
+	}{
+		{name: "missing defaults to one", response: `{"info":{}}`, expected: 1},
+		{name: "fractional", response: `{"info":{"load_factor":1.5}}`, expected: 1.5},
+		{name: "explicit zero", response: `{"info":{"load_factor":0}}`, expected: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var response InfoResponse
+			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
+			require.InDelta(t, tt.expected, response.Info.LoadFactor, 0)
+		})
+	}
+}
+
+func TestServerInfoBaseFeeXRPPresence(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		expected float64
+		present  bool
+	}{
+		{name: "missing", response: `{"info":{"validated_ledger":{}}}`},
+		{name: "null", response: `{"info":{"validated_ledger":{"base_fee_xrp":null}}}`},
+		{name: "explicit zero", response: `{"info":{"validated_ledger":{"base_fee_xrp":0}}}`, present: true},
+		{name: "positive", response: `{"info":{"validated_ledger":{"base_fee_xrp":0.00001}}}`, expected: 0.00001, present: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var response InfoResponse
+			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
+			actual, present := response.Info.ValidatedLedger.BaseFeeXRPValue()
+			require.Equal(t, tt.present, present)
+			require.InDelta(t, tt.expected, actual, 0)
+		})
+	}
+}
+
 func TestServerInfoResponse(t *testing.T) {
 	s := InfoResponse{
 		Info: servertypes.Info{

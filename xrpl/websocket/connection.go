@@ -153,8 +153,16 @@ func (c *Connection) disconnect(lifecycleCancel func()) error {
 // being prepared. It closes the exact failed socket unless Disconnect already
 // claimed it, so a late failure cannot affect a replacement.
 func (c *Connection) invalidateSocket(failed websocketConnection) error {
+	_, err := c.invalidateSocketState(failed)
+	return err
+}
+
+// invalidateSocketState removes and closes the exact failed socket. The
+// returned boolean reports whether that socket was still the active socket.
+func (c *Connection) invalidateSocketState(failed websocketConnection) (bool, error) {
 	c.mu.Lock()
-	if c.conn == failed {
+	wasCurrent := c.conn == failed
+	if wasCurrent {
 		c.conn = nil
 	}
 	if c.preparing == failed {
@@ -163,34 +171,39 @@ func (c *Connection) invalidateSocket(failed websocketConnection) error {
 	claimedByDisconnect := c.disconnecting == failed
 	c.mu.Unlock()
 	if claimedByDisconnect {
-		return nil
+		return wasCurrent, nil
 	}
-	return failed.Close()
+	return wasCurrent, failed.Close()
+}
+
+func (c *Connection) currentSocket() websocketConnection {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.conn
 }
 
 // IsConnected returns true if the connection is connected.
 func (c *Connection) IsConnected() bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	return c.conn != nil
+	return c.currentSocket() != nil
 }
 
 // ReadMessage reads a message from the connection.
 // It returns the message and an error if the message is not read.
 // This method is blocking, it will block until a message is read.
 func (c *Connection) ReadMessage() ([]byte, error) {
-	return c.readMessage(time.Time{})
+	message, _, err := c.readMessageWithSocket(time.Time{})
+	return message, err
 }
 
-func (c *Connection) readMessage(deadline time.Time) ([]byte, error) {
+func (c *Connection) readMessageWithSocket(deadline time.Time) ([]byte, websocketConnection, error) {
 	c.mu.Lock()
 	conn := c.conn
 	c.mu.Unlock()
 	if conn == nil {
-		return nil, ErrNotConnected
+		return nil, nil, ErrNotConnected
 	}
-	return c.readMessageFrom(conn, deadline)
+	message, err := c.readMessageFrom(conn, deadline)
+	return message, conn, err
 }
 
 // readMessageFrom reads one message from an exact socket. A non-zero deadline

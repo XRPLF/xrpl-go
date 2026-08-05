@@ -99,6 +99,10 @@ var (
 
 	// fees
 
+	// ErrInvalidFeeValue is returned when fee configuration is not a finite, non-negative decimal value.
+	ErrInvalidFeeValue = clientinternal.ErrInvalidFeeValue
+	// ErrFeeHasTooManyDecimals is returned when an XRP fee cannot be represented as whole drops.
+	ErrFeeHasTooManyDecimals = clientinternal.ErrFeeHasTooManyDecimals
 	// ErrCouldNotGetBaseFeeXrp is returned when BaseFeeXrp cannot be retrieved from ServerInfo.
 	ErrCouldNotGetBaseFeeXrp = errors.New("get fee xrp: could not get BaseFeeXrp from ServerInfo")
 	// ErrCouldNotFetchOwnerReserve is returned when the owner reserve fee cannot be fetched.

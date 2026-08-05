@@ -5,15 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"math"
 	"net/http"
-	"strconv"
 	"strings"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
-	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
@@ -161,127 +158,86 @@ func (c *Client) setTransactionNextValidSequenceNumber(tx *transaction.FlatTrans
 }
 
 // Calculates the current transaction fee for the ledger.
-// Note: This is a public API that can be called directly.
-func (c *Client) getFeeXrp(cushion float32) (string, error) {
+func (c *Client) getFeeXrp(cushion float64) (string, error) {
 	res, err := c.GetServerInfo(&server.InfoRequest{})
 	if err != nil {
 		return "", err
 	}
 
-	if res.Info.ValidatedLedger.BaseFeeXRP == 0 {
+	baseFeeXRP, ok := res.Info.ValidatedLedger.BaseFeeXRPValue()
+	if !ok {
 		return "", ErrCouldNotGetBaseFeeXrp
 	}
 
-	loadFactor := res.Info.LoadFactor
-	if res.Info.LoadFactor == 0 {
-		loadFactor = 1
-	}
-
-	fee := res.Info.ValidatedLedger.BaseFeeXRP * float32(loadFactor) * cushion
-
-	if fee > c.cfg.maxFeeXRP {
-		fee = c.cfg.maxFeeXRP
-	}
-
-	// Round fee to NUM_DECIMAL_PLACES
-	roundedFee := float32(math.Round(float64(fee)*math.Pow10(currency.MaxFractionLength))) / float32(math.Pow10(currency.MaxFractionLength))
-
-	// Convert the rounded fee back to a string with NUM_DECIMAL_PLACES
-	return fmt.Sprintf("%.*f", currency.MaxFractionLength, roundedFee), nil
+	return clientinternal.NetworkFeeXRP(
+		baseFeeXRP,
+		res.Info.LoadFactor,
+		cushion,
+		c.cfg.maxFeeXRP,
+	)
 }
 
-// Calculates the fee per transaction type.
-//
-// Enhanced implementation that replicates xrpl.js calculateFeePerTransactionType logic,
-// including special cases for EscrowFinish, AccountDelete, AMMCreate, Batch, and multi-signing.
+// calculateFeePerTransactionType calculates the fee for a transaction,
+// including special costs for EscrowFinish, owner-reserve transactions, Batch,
+// LoanSet, and multisigning.
 func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction, nSigners uint64) error {
-	// Get base network fee
 	netFeeXRP, err := c.getFeeXrp(c.cfg.feeCushion)
 	if err != nil {
 		return err
 	}
 
-	netFeeDrops, err := currency.XrpToDrops(netFeeXRP)
+	netFee, err := clientinternal.NewFeeFromXRP(netFeeXRP)
 	if err != nil {
 		return err
 	}
+	baseFee := netFee
 
-	// Convert to uint64 for calculations
-	baseFeeUint, err := strconv.ParseUint(netFeeDrops, 10, 64)
-	if err != nil {
-		return err
-	}
-
-	baseFee := baseFeeUint
-
-	// Get transaction type
-	transactionType := ""
-	if txType, ok := (*tx)["TransactionType"]; ok {
-		if str, ok := txType.(string); ok {
-			transactionType = str
-		}
-	}
-
-	// These transaction types destroy one incremental owner reserve.
+	transactionType, _ := (*tx)["TransactionType"].(string)
 	isSpecialTxCost := transactionType == "AccountDelete" || transactionType == "AMMCreate" || transactionType == "VaultCreate"
 
 	switch transactionType {
 	case "EscrowFinish":
-		if fulfillment, ok := (*tx)["Fulfillment"]; ok && fulfillment != nil {
-			if fulfillmentStr, ok := fulfillment.(string); ok && fulfillmentStr != "" {
-				fulfillmentBytesSize := (len(fulfillmentStr) + 1) / 2 // Math.ceil(length / 2)
-				if fulfillmentBytesSize < 0 {
-					return ErrInvalidFulfillmentLength
-				}
-				// BaseFee × (33 + ceil(Fulfillment size in bytes / 16))
-				chunks := (uint64(fulfillmentBytesSize) + 15) / 16 // ceil division
-				baseFee = baseFeeUint * (33 + chunks)
+		if fulfillment, ok := (*tx)["Fulfillment"].(string); ok {
+			fulfillmentBytesSize := (len(fulfillment) + 1) / 2
+			baseFee, err = netFee.MultiplyFraction(33*16+uint64(fulfillmentBytesSize), 16)
+			if err != nil {
+				return err
 			}
 		}
 	case "AccountDelete", "AMMCreate", "VaultCreate":
-		reserveFee, err := c.fetchOwnerReserveFee()
-		if err != nil {
-			return err
+		reserveFee, reserveErr := c.fetchOwnerReserveFee()
+		if reserveErr != nil {
+			return reserveErr
 		}
-		baseFee = reserveFee
+		baseFee = clientinternal.NewFeeFromUint64(reserveFee)
 	case "Batch":
-		rawTxFees, err := c.calculateBatchFees(tx)
-		if err != nil {
-			return err
+		rawTxFees, batchErr := c.calculateBatchFees(tx)
+		if batchErr != nil {
+			return batchErr
 		}
-		baseFee = baseFeeUint*2 + rawTxFees
+		baseFee = netFee.Multiply(2).Add(rawTxFees)
 	case "LoanSet":
-		// For LoanSet, account for counterparty signers
-		counterPartySignersCount, err := c.fetchCounterPartySignersCount(*tx)
-		if err != nil {
-			return err
+		counterPartySignersCount, signerErr := c.fetchCounterPartySignersCount(*tx)
+		if signerErr != nil {
+			return signerErr
 		}
-		baseFee = baseFeeUint + (baseFeeUint * counterPartySignersCount)
+		baseFee = netFee.Multiply(1 + counterPartySignersCount)
 	}
 
-	// Multi-signed Transaction: BaseFee × (1 + Number of Signatures Provided)
 	if nSigners > 0 {
-		signersFee := baseFeeUint * nSigners
-		baseFee += signersFee
+		baseFee = baseFee.Add(netFee.Multiply(nSigners))
 	}
 
-	// Apply max fee limit (but not for special transaction cost types)
-	var totalFee uint64
-	if isSpecialTxCost {
-		totalFee = baseFee
-	} else {
-		maxFeeDrops, err := currency.XrpToDrops(fmt.Sprintf("%.6f", c.cfg.maxFeeXRP))
-		if err != nil {
-			return err
-		}
-		maxFeeUint, err := strconv.ParseUint(maxFeeDrops, 10, 64)
-		if err != nil {
-			return err
-		}
-		totalFee = min(baseFee, maxFeeUint)
+	maxFee, err := clientinternal.NewFeeFromXRP(c.cfg.maxFeeXRP)
+	if err != nil {
+		return err
+	}
+	totalFee := baseFee
+	if !isSpecialTxCost {
+		totalFee = baseFee.Min(maxFee)
 	}
 
-	(*tx)["Fee"] = strconv.FormatUint(totalFee, 10)
+	(*tx)["Fee"] = totalFee.CeilDrops()
 	return nil
 }
 
@@ -436,15 +392,14 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 }
 
 // fetchOwnerReserveFee fetches the owner reserve fee from the server state.
-// Replicates the JavaScript fetchOwnerReserveFee function.
 func (c *Client) fetchOwnerReserveFee() (uint64, error) {
 	response, err := c.GetServerState(&server.StateRequest{})
 	if err != nil {
 		return 0, err
 	}
 
-	reserveInc := response.State.ValidatedLedger.ReserveInc
-	if reserveInc == 0 {
+	reserveInc, ok := response.State.ValidatedLedger.ReserveIncValue()
+	if !ok {
 		return 0, ErrCouldNotFetchOwnerReserve
 	}
 
@@ -474,7 +429,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 		// Make ledger_entry request
 		res, err := c.GetLedgerEntry(&ledger.EntryRequest{
 			Index:       loanBrokerID,
-			LedgerIndex: common.LedgerTitle("current"),
+			LedgerIndex: common.LedgerTitle("validated"),
 		})
 		if err != nil {
 			return 0, err
@@ -495,7 +450,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 	// Fetch account info with signer lists
 	accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
 		Account:     counterparty,
-		LedgerIndex: common.LedgerTitle("current"),
+		LedgerIndex: common.LedgerTitle("validated"),
 		SignerLists: true,
 	})
 	if err != nil {
@@ -512,14 +467,13 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 }
 
 // calculateBatchFees calculates the total fees for all inner transactions in a Batch.
-// Replicates the JavaScript logic for Batch transaction fee calculation.
-func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (uint64, error) {
-	var totalFees uint64
+func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (*clientinternal.Fee, error) {
+	totalFees := clientinternal.NewFeeFromUint64(0)
 
 	// Get RawTransactions from the batch transaction
 	rawTransactions, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
-		return 0, ErrRawTransactionsFieldMissing
+		return nil, ErrRawTransactionsFieldMissing
 	}
 
 	// Iterate through each raw transaction
@@ -527,34 +481,33 @@ func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (uint64, er
 		// Extract the actual transaction from the wrapper
 		innerTx, ok := rawTx["RawTransaction"].(map[string]any)
 		if !ok {
-			return 0, ErrRawTransactionFieldMissing
+			return nil, ErrRawTransactionFieldMissing
 		}
 
 		// Calculate fee for this inner transaction (no multi-signing for inner transactions)
 		innerTxFlat := transaction.FlatTransaction(innerTx)
 		err := c.calculateFeePerTransactionType(&innerTxFlat, 0)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 
 		// Extract the calculated fee
 		feeStr, ok := innerTx["Fee"].(string)
 		if !ok {
-			return 0, ErrFeeFieldMissing
+			return nil, ErrFeeFieldMissing
 		}
 
 		innerTx["Fee"] = "0"
 
-		// Convert fee string to uint64 and add to total
-		feeUint, err := strconv.ParseUint(feeStr, 10, 64)
+		innerFee, err := clientinternal.NewFeeFromDrops(feeStr)
 		if err != nil {
-			return 0, ErrFailedToParseFee{
+			return nil, ErrFailedToParseFee{
 				Fee: feeStr,
 				Err: err,
 			}
 		}
 
-		totalFees += feeUint
+		totalFees = totalFees.Add(innerFee)
 	}
 
 	return totalFees, nil

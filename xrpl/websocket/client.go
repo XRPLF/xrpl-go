@@ -5,15 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"math"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
-	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	transaction "github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -37,9 +33,9 @@ import (
 
 const (
 	// DefaultFeeCushion is the default cushion factor for fee calculations.
-	DefaultFeeCushion float32 = 1.2
+	DefaultFeeCushion float64 = 1.2
 	// DefaultMaxFeeXRP is the default maximum fee in XRP.
-	DefaultMaxFeeXRP float32 = 2
+	DefaultMaxFeeXRP = "2"
 
 	// RestrictedNetworks is the largest network ID for which transactions omit NetworkID.
 	RestrictedNetworks = clientinternal.RestrictedNetworks
@@ -51,6 +47,34 @@ var (
 	fundWalletMaxAttempts  = 20
 	fundWalletPollInterval = 1 * time.Second
 )
+
+type pendingResponseResult struct {
+	response *ClientResponse
+	err      error
+}
+
+type pendingResponse struct {
+	result chan pendingResponseResult
+	socket websocketConnection
+	once   sync.Once
+}
+
+func newPendingResponse(socket websocketConnection) *pendingResponse {
+	return &pendingResponse{
+		result: make(chan pendingResponseResult, 1),
+		socket: socket,
+	}
+}
+
+func (p *pendingResponse) complete(result pendingResponseResult) {
+	p.once.Do(func() {
+		p.result <- result
+	})
+}
+
+func (p *pendingResponse) cancel() {
+	p.once.Do(func() {})
+}
 
 // Client is a WebSocket client for interacting with an XRPL server.
 type Client struct {
@@ -76,7 +100,7 @@ type Client struct {
 	ctx                  context.Context
 	cancel               context.CancelFunc
 	pendingResponsesMu   sync.Mutex
-	pendingResponses     map[uint64]chan *ClientResponse
+	pendingResponses     map[uint64]*pendingResponse
 
 	idCounter atomic.Uint64
 
@@ -112,7 +136,7 @@ func NewClient(cfg ClientConfig) *Client {
 	trustedIdentity := networkID != nil && cfg.buildVersion != ""
 	return &Client{
 		cfg:              cfg,
-		pendingResponses: make(map[uint64]chan *ClientResponse),
+		pendingResponses: make(map[uint64]*pendingResponse),
 		conn:             newConnection(cfg.host, cfg.maxResponseSize),
 		ctx:              ctx,
 		cancel:           cancel,
@@ -220,7 +244,15 @@ func (c *Client) connect(ctx context.Context) error {
 // runners before starting fresh ones). Callers must serialize concurrent
 // calls to Connect and Disconnect externally.
 func (c *Client) Disconnect() error {
-	return c.conn.disconnect(c.cancelLifecycle)
+	c.failPendingResponses(ErrDisconnected)
+	err := c.conn.disconnect(c.cancelLifecycle)
+	// Reject requests that raced with the socket claim above. Their writes either
+	// used the closing socket or failed because the connection was unavailable.
+	c.failPendingResponses(ErrDisconnected)
+	if errors.Is(err, ErrNotConnected) {
+		return nil
+	}
+	return err
 }
 
 // IsConnected returns true if the client is connected to the server.
@@ -379,6 +411,13 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
+	socket := c.conn.currentSocket()
+	if socket == nil {
+		return nil, ErrNotConnectedToServer
+	}
+
+	requestCtx, cancel := context.WithTimeoutCause(ctx, c.cfg.timeout, ErrRequestTimedOut)
+	defer cancel()
 
 	id := c.idCounter.Add(1)
 
@@ -387,27 +426,22 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 		return nil, err
 	}
 
-	if !c.conn.IsConnected() {
-		return nil, ErrNotConnectedToServer
-	}
+	pendingResponse := c.registerPendingResponse(id, socket)
+	defer func() {
+		pendingResponse.cancel()
+		c.unregisterPendingResponse(id)
+	}()
 
-	deadline := time.Now().Add(c.cfg.timeout)
-	responseChan := c.registerPendingResponse(id)
-	defer c.unregisterPendingResponse(id)
-
-	remaining := time.Until(deadline)
-	if remaining <= 0 {
-		return nil, ErrRequestTimedOut
-	}
-	err = c.conn.writeMessage(ctx, msg, remaining)
+	err = c.conn.writeMessageTo(requestCtx, socket, msg, 0)
 	if err != nil {
-		if errors.Is(err, ErrNotConnected) {
-			return nil, ErrNotConnectedToServer
+		if requestCtx.Err() != nil {
+			return nil, context.Cause(requestCtx)
 		}
-		return nil, err
+		c.failPendingResponsesForSocket(socket, ErrDisconnected)
+		return nil, errors.Join(ErrDisconnected, err)
 	}
 
-	res, err := c.awaitResponse(ctx, responseChan, deadline)
+	res, err := c.awaitResponse(requestCtx, pendingResponse)
 	if err != nil {
 		return nil, err
 	}
@@ -665,127 +699,86 @@ func (c *Client) setTransactionNextValidSequenceNumber(tx *transaction.FlatTrans
 }
 
 // Calculates the current transaction fee for the ledger.
-// Note: This is a public API that can be called directly.
-func (c *Client) getFeeXrp(cushion float32) (string, error) {
+func (c *Client) getFeeXrp(cushion float64) (string, error) {
 	res, err := c.GetServerInfo(&server.InfoRequest{})
 	if err != nil {
 		return "", err
 	}
 
-	if res.Info.ValidatedLedger.BaseFeeXRP == 0 {
+	baseFeeXRP, ok := res.Info.ValidatedLedger.BaseFeeXRPValue()
+	if !ok {
 		return "", ErrCouldNotGetBaseFeeXrp
 	}
 
-	loadFactor := res.Info.LoadFactor
-	if res.Info.LoadFactor == 0 {
-		loadFactor = 1
-	}
-
-	fee := res.Info.ValidatedLedger.BaseFeeXRP * float32(loadFactor) * cushion
-
-	if fee > c.cfg.maxFeeXRP {
-		fee = c.cfg.maxFeeXRP
-	}
-
-	// Round fee to NUM_DECIMAL_PLACES
-	roundedFee := float32(math.Round(float64(fee)*math.Pow10(currency.MaxFractionLength))) / float32(math.Pow10(currency.MaxFractionLength))
-
-	// Convert the rounded fee back to a string with NUM_DECIMAL_PLACES
-	return fmt.Sprintf("%.*f", currency.MaxFractionLength, roundedFee), nil
+	return clientinternal.NetworkFeeXRP(
+		baseFeeXRP,
+		res.Info.LoadFactor,
+		cushion,
+		c.cfg.maxFeeXRP,
+	)
 }
 
-// Calculates the fee per transaction type.
-//
-// Enhanced implementation that replicates calculateFeePerTransactionType logic,
-// including special cases for EscrowFinish, AccountDelete, AMMCreate, Batch, and multi-signing.
+// calculateFeePerTransactionType calculates the fee for a transaction,
+// including special costs for EscrowFinish, owner-reserve transactions, Batch,
+// LoanSet, and multisigning.
 func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction, nSigners uint64) error {
-	// Get base network fee
 	netFeeXRP, err := c.getFeeXrp(c.cfg.feeCushion)
 	if err != nil {
 		return err
 	}
 
-	netFeeDrops, err := currency.XrpToDrops(netFeeXRP)
+	netFee, err := clientinternal.NewFeeFromXRP(netFeeXRP)
 	if err != nil {
 		return err
 	}
+	baseFee := netFee
 
-	// Convert to uint64 for calculations
-	baseFeeUint, err := strconv.ParseUint(netFeeDrops, 10, 64)
-	if err != nil {
-		return err
-	}
-
-	baseFee := baseFeeUint
-
-	// Get transaction type
-	transactionType := ""
-	if txType, ok := (*tx)["TransactionType"]; ok {
-		if str, ok := txType.(string); ok {
-			transactionType = str
-		}
-	}
-
-	// These transaction types destroy one incremental owner reserve.
+	transactionType, _ := (*tx)["TransactionType"].(string)
 	isSpecialTxCost := transactionType == "AccountDelete" || transactionType == "AMMCreate" || transactionType == "VaultCreate"
 
 	switch transactionType {
 	case "EscrowFinish":
-		if fulfillment, ok := (*tx)["Fulfillment"]; ok && fulfillment != nil {
-			if fulfillmentStr, ok := fulfillment.(string); ok && fulfillmentStr != "" {
-				fulfillmentBytesSize := (len(fulfillmentStr) + 1) / 2 // Math.ceil(length / 2)
-				if fulfillmentBytesSize < 0 {
-					return ErrInvalidFulfillmentLength
-				}
-				// BaseFee × (33 + ceil(Fulfillment size in bytes / 16))
-				chunks := (uint64(fulfillmentBytesSize) + 15) / 16 // ceil division
-				baseFee = baseFeeUint * (33 + chunks)
+		if fulfillment, ok := (*tx)["Fulfillment"].(string); ok {
+			fulfillmentBytesSize := (len(fulfillment) + 1) / 2
+			baseFee, err = netFee.MultiplyFraction(33*16+uint64(fulfillmentBytesSize), 16)
+			if err != nil {
+				return err
 			}
 		}
 	case "AccountDelete", "AMMCreate", "VaultCreate":
-		reserveFee, err := c.fetchOwnerReserveFee()
-		if err != nil {
-			return err
+		reserveFee, reserveErr := c.fetchOwnerReserveFee()
+		if reserveErr != nil {
+			return reserveErr
 		}
-		baseFee = reserveFee
+		baseFee = clientinternal.NewFeeFromUint64(reserveFee)
 	case "Batch":
-		rawTxFees, err := c.calculateBatchFees(tx)
-		if err != nil {
-			return err
+		rawTxFees, batchErr := c.calculateBatchFees(tx)
+		if batchErr != nil {
+			return batchErr
 		}
-		baseFee = baseFeeUint*2 + rawTxFees
+		baseFee = netFee.Multiply(2).Add(rawTxFees)
 	case "LoanSet":
-		// For LoanSet, account for counterparty signers
-		counterPartySignersCount, err := c.fetchCounterPartySignersCount(*tx)
-		if err != nil {
-			return err
+		counterPartySignersCount, signerErr := c.fetchCounterPartySignersCount(*tx)
+		if signerErr != nil {
+			return signerErr
 		}
-		baseFee = baseFeeUint + (baseFeeUint * counterPartySignersCount)
+		baseFee = netFee.Multiply(1 + counterPartySignersCount)
 	}
 
-	// Multi-signed Transaction: BaseFee × (1 + Number of Signatures Provided)
 	if nSigners > 0 {
-		signersFee := baseFeeUint * nSigners
-		baseFee += signersFee
+		baseFee = baseFee.Add(netFee.Multiply(nSigners))
 	}
 
-	// Apply max fee limit (but not for special transaction cost types)
-	var totalFee uint64
-	if isSpecialTxCost {
-		totalFee = baseFee
-	} else {
-		maxFeeDrops, err := currency.XrpToDrops(fmt.Sprintf("%.6f", c.cfg.maxFeeXRP))
-		if err != nil {
-			return err
-		}
-		maxFeeUint, err := strconv.ParseUint(maxFeeDrops, 10, 64)
-		if err != nil {
-			return err
-		}
-		totalFee = min(baseFee, maxFeeUint)
+	maxFee, err := clientinternal.NewFeeFromXRP(c.cfg.maxFeeXRP)
+	if err != nil {
+		return err
+	}
+	totalFee := baseFee
+	if !isSpecialTxCost {
+		totalFee = baseFee.Min(maxFee)
 	}
 
-	(*tx)["Fee"] = strconv.FormatUint(totalFee, 10)
+	(*tx)["Fee"] = totalFee.CeilDrops()
 	return nil
 }
 
@@ -829,15 +822,19 @@ func (c *Client) checkPaymentAmounts(tx *transaction.FlatTransaction) error {
 	return nil
 }
 
-func (c *Client) registerPendingResponse(id uint64) chan *ClientResponse {
-	responseChan := make(chan *ClientResponse, 1)
+func (c *Client) registerPendingResponse(id uint64, sockets ...websocketConnection) *pendingResponse {
+	var socket websocketConnection
+	if len(sockets) > 0 {
+		socket = sockets[0]
+	}
+	response := newPendingResponse(socket)
 
 	c.pendingResponsesMu.Lock()
 	defer c.pendingResponsesMu.Unlock()
 
-	c.pendingResponses[id] = responseChan
+	c.pendingResponses[id] = response
 
-	return responseChan
+	return response
 }
 
 func (c *Client) unregisterPendingResponse(id uint64) {
@@ -847,7 +844,7 @@ func (c *Client) unregisterPendingResponse(id uint64) {
 	delete(c.pendingResponses, id)
 }
 
-func (c *Client) lookupPendingResponse(id uint64) (chan *ClientResponse, bool) {
+func (c *Client) lookupPendingResponse(id uint64) (*pendingResponse, bool) {
 	c.pendingResponsesMu.Lock()
 	defer c.pendingResponsesMu.Unlock()
 
@@ -855,25 +852,43 @@ func (c *Client) lookupPendingResponse(id uint64) (chan *ClientResponse, bool) {
 	return responseChan, ok
 }
 
-func (c *Client) awaitResponse(
-	ctx context.Context,
-	responseChan <-chan *ClientResponse,
-	deadline time.Time,
-) (*ClientResponse, error) {
-	remaining := time.Until(deadline)
-	if remaining <= 0 {
-		return nil, ErrRequestTimedOut
-	}
-	timer := time.NewTimer(remaining)
-	defer timer.Stop()
+func (c *Client) failPendingResponses(err error) {
+	c.pendingResponsesMu.Lock()
+	pendingResponses := c.pendingResponses
+	c.pendingResponses = make(map[uint64]*pendingResponse)
+	c.pendingResponsesMu.Unlock()
 
+	completePendingResponses(pendingResponses, err)
+}
+
+func (c *Client) failPendingResponsesForSocket(socket websocketConnection, err error) {
+	c.pendingResponsesMu.Lock()
+	pendingResponses := make(map[uint64]*pendingResponse)
+	for id, response := range c.pendingResponses {
+		if response.socket == socket {
+			pendingResponses[id] = response
+			delete(c.pendingResponses, id)
+		}
+	}
+	c.pendingResponsesMu.Unlock()
+
+	completePendingResponses(pendingResponses, err)
+}
+
+func completePendingResponses(pendingResponses map[uint64]*pendingResponse, err error) {
+	result := pendingResponseResult{err: err}
+	for _, response := range pendingResponses {
+		response.complete(result)
+	}
+}
+
+func (c *Client) awaitResponse(ctx context.Context, response *pendingResponse) (*ClientResponse, error) {
 	select {
-	case res := <-responseChan:
-		return res, nil
+	case result := <-response.result:
+		return result.response, result.err
 	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-timer.C:
-		return nil, ErrRequestTimedOut
+		response.cancel()
+		return nil, context.Cause(ctx)
 	}
 }
 
@@ -890,17 +905,12 @@ func (c *Client) handleMessage(ctx context.Context, message []byte) {
 func (c *Client) handleRequest(ctx context.Context, message []byte) {
 	var res ClientResponse
 	c.unmarshalMessage(ctx, message, &res)
-	responseChan, ok := c.lookupPendingResponse(res.ID)
+	response, ok := c.lookupPendingResponse(res.ID)
 	if !ok {
 		return
 	}
 
-	// Non-blocking send: drops duplicate or late responses for the same id
-	// rather than blocking the read loop.
-	select {
-	case responseChan <- &res:
-	default:
-	}
+	response.complete(pendingResponseResult{response: &res})
 }
 
 func (c *Client) unmarshalMessage(ctx context.Context, message []byte, v any) {
@@ -952,7 +962,7 @@ func (c *Client) readMessages(ctx context.Context) {
 		if c.conn == nil {
 			return
 		}
-		message, err := c.conn.ReadMessage()
+		message, failedSocket, err := c.conn.readMessageWithSocket(time.Time{})
 		select {
 		case <-ctx.Done():
 			return
@@ -960,7 +970,18 @@ func (c *Client) readMessages(ctx context.Context) {
 		}
 
 		if err != nil {
-			c.disconnectAfterRead(ctx)
+			if failedSocket != nil {
+				wasCurrent, closeErr := c.conn.invalidateSocketState(failedSocket)
+				if closeErr != nil {
+					c.reportError(ctx, closeErr)
+				}
+				c.failPendingResponsesForSocket(failedSocket, ErrDisconnected)
+				if !wasCurrent {
+					return
+				}
+			} else {
+				c.failPendingResponses(ErrDisconnected)
+			}
 			if !ws.IsCloseError(err) && !ws.IsUnexpectedCloseError(err) {
 				c.reportError(ctx, err)
 			}
@@ -977,18 +998,15 @@ func (c *Client) readMessages(ctx context.Context) {
 	}
 }
 
-func (c *Client) disconnectAfterRead(ctx context.Context) {
-	if err := c.conn.Disconnect(); err != nil && !errors.Is(err, ErrNotConnected) {
-		c.reportError(ctx, err)
-	}
-}
-
 // reconnectWithBackoff retries c.conn.Connect() with capped exponential
 // backoff until it succeeds or the budget is exhausted. Returns true on
 // success and false when the budget is exhausted or ctx is cancelled.
 // retryCount is updated in place so it persists across disconnect events.
 func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxRetries int) bool {
 	for {
+		if c.IsConnected() {
+			return true
+		}
 		if *retryCount >= maxRetries {
 			c.reportError(ctx, ErrMaxReconnectionAttemptsReached{
 				Attempts: maxRetries,
@@ -1012,6 +1030,9 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 		if connErr := c.connect(ctx); connErr != nil {
 			if ctx.Err() != nil || errors.Is(connErr, context.Canceled) {
 				return false
+			}
+			if errors.Is(connErr, ErrAlreadyConnected) && c.IsConnected() {
+				return true
 			}
 			continue
 		}
@@ -1087,15 +1108,14 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 }
 
 // fetchOwnerReserveFee fetches the owner reserve fee from the server state.
-// Replicates the JavaScript fetchOwnerReserveFee function.
 func (c *Client) fetchOwnerReserveFee() (uint64, error) {
 	response, err := c.GetServerState(&server.StateRequest{})
 	if err != nil {
 		return 0, err
 	}
 
-	reserveInc := response.State.ValidatedLedger.ReserveInc
-	if reserveInc == 0 {
+	reserveInc, ok := response.State.ValidatedLedger.ReserveIncValue()
+	if !ok {
 		return 0, ErrCouldNotFetchOwnerReserve
 	}
 
@@ -1125,7 +1145,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 		// Make ledger_entry request
 		res, err := c.GetLedgerEntry(&ledger.EntryRequest{
 			Index:       loanBrokerID,
-			LedgerIndex: common.LedgerTitle("current"),
+			LedgerIndex: common.LedgerTitle("validated"),
 		})
 		if err != nil {
 			return 0, err
@@ -1146,7 +1166,7 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 	// Fetch account info with signer lists
 	accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
 		Account:     counterparty,
-		LedgerIndex: common.LedgerTitle("current"),
+		LedgerIndex: common.LedgerTitle("validated"),
 		SignerLists: true,
 	})
 	if err != nil {
@@ -1163,14 +1183,13 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 }
 
 // calculateBatchFees calculates the total fees for all inner transactions in a Batch.
-// Replicates the JavaScript logic for Batch transaction fee calculation.
-func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (uint64, error) {
-	var totalFees uint64
+func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (*clientinternal.Fee, error) {
+	totalFees := clientinternal.NewFeeFromUint64(0)
 
 	// Get RawTransactions from the batch transaction
 	rawTransactions, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
-		return 0, ErrRawTransactionsFieldMissing
+		return nil, ErrRawTransactionsFieldMissing
 	}
 
 	// Iterate through each raw transaction
@@ -1178,34 +1197,33 @@ func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (uint64, er
 		// Extract the actual transaction from the wrapper
 		innerTx, ok := rawTx["RawTransaction"].(map[string]any)
 		if !ok {
-			return 0, ErrRawTransactionFieldMissing
+			return nil, ErrRawTransactionFieldMissing
 		}
 
 		// Calculate fee for this inner transaction (no multi-signing for inner transactions)
 		innerTxFlat := transaction.FlatTransaction(innerTx)
 		err := c.calculateFeePerTransactionType(&innerTxFlat, 0)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 
 		// Extract the calculated fee
 		feeStr, ok := innerTx["Fee"].(string)
 		if !ok {
-			return 0, ErrFeeFieldMissing
+			return nil, ErrFeeFieldMissing
 		}
 
 		innerTx["Fee"] = "0"
 
-		// Convert fee string to uint64 and add to total
-		feeUint, err := strconv.ParseUint(feeStr, 10, 64)
+		innerFee, err := clientinternal.NewFeeFromDrops(feeStr)
 		if err != nil {
-			return 0, ErrFailedToParseFee{
+			return nil, ErrFailedToParseFee{
 				Fee: feeStr,
 				Err: err,
 			}
 		}
 
-		totalFees += feeUint
+		totalFees = totalFees.Add(innerFee)
 	}
 
 	return totalFees, nil

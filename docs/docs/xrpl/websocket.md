@@ -52,15 +52,15 @@ func (wc ClientConfig) WithRetryDelay(retryDelay time.Duration) ClientConfig
 The `WithFeeCushion` option allows you to set the fee cushion for a transaction.
 
 ```go
-func (wc ClientConfig) WithFeeCushion(feeCushion float32) ClientConfig
+func (wc ClientConfig) WithFeeCushion(feeCushion float64) ClientConfig
 ```
 
 ### MaxFeeXRP
 
-The `WithMaxFeeXRP` option allows you to set the maximum fee in XRP that the WebSocket client will use.
+The `WithMaxFeeXRP` option allows you to set the maximum fee in XRP that the WebSocket client will use. Use a decimal string to preserve the exact limit.
 
 ```go
-func (wc ClientConfig) WithMaxFeeXRP(maxFeeXrp float32) ClientConfig
+func (wc ClientConfig) WithMaxFeeXRP(maxFeeXRP string) ClientConfig
 ```
 
 ### MaxResponseSize
@@ -81,7 +81,7 @@ func SetLogger(l *log.Logger)
 
 ## Connection
 
-As the `websocket` package is a WebSocket client, it needs to be connected to a WebSocket server. The `Client` type exposes the following methods to connect to a WebSocket server:
+As the `websocket` package is a WebSocket client, it needs to be connected to a WebSocket server. Pending requests return `ErrDisconnected` as soon as a manual or unexpected disconnect occurs; they are not replayed after reconnection. Calling `Disconnect` when no connection is active succeeds without an error. The `Client` type exposes the following methods to connect to a WebSocket server:
 
 ```go
 // Connection methods
@@ -149,7 +149,7 @@ The reliable-submission methods require `LastLedgerSequence` before they send th
 
 Only a preliminary `tem` result returns `PreliminaryResultError` immediately. The error includes the engine result and its message. The client monitors `tes`, `ter`, `tec`, `tef`, `tel`, and unknown preliminary results. An exact `txnNotFound` response is inconclusive and the client retries it.
 
-The transaction expires only after the current validated ledger is strictly greater than `LastLedgerSequence` and a final transaction lookup still does not find a validated result. Validation exactly at `LastLedgerSequence` is accepted. Unlike xrpl.js, the Go SDK performs this final lookup as a deliberate safety check before it reports expiry.
+The transaction expires only after the current validated ledger is strictly greater than `LastLedgerSequence` and a final transaction lookup still does not find a validated result. Validation exactly at `LastLedgerSequence` is accepted. The final lookup is a deliberate safety check before the client reports expiry.
 
 ```go
 func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *wstypes.SubmitOptions) (*requests.TxResponse, error)

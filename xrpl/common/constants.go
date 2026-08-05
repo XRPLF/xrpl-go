@@ -16,9 +16,9 @@ const (
 	// DefaultRetryDelay is the default delay between retry or polling attempts.
 	DefaultRetryDelay = 1 * time.Second
 	// DefaultFeeCushion is the default fee cushion multiplier.
-	DefaultFeeCushion float32 = 1.2
+	DefaultFeeCushion float64 = 1.2
 	// DefaultMaxFeeXRP is the default maximum fee in XRP.
-	DefaultMaxFeeXRP float32 = 2
+	DefaultMaxFeeXRP = "2"
 
 	// DefaultTimeout is the default timeout for RPC calls (5 seconds).
 	DefaultTimeout = 5 * time.Second

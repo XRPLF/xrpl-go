@@ -46,10 +46,10 @@ func WithRetryDelay(retryDelay time.Duration) ConfigOpt
 
 ### MaxFeeXRP
 
-The `WithMaxFeeXRP` option allows you to set the maximum fee in XRP that the client will use.
+The `WithMaxFeeXRP` option allows you to set the maximum fee in XRP that the client will use. Use a decimal string to preserve the exact limit.
 
 ```go
-func (wc ClientConfig) WithMaxFeeXRP(maxFeeXRP float32) ClientConfig
+func WithMaxFeeXRP(maxFeeXRP string) ConfigOpt
 ```
 
 ### FeeCushion
@@ -57,7 +57,7 @@ func (wc ClientConfig) WithMaxFeeXRP(maxFeeXRP float32) ClientConfig
 The `WithFeeCushion` option allows you to set the fee cushion for a transaction.
 
 ```go
-func (wc ClientConfig) WithFeeCushion(feeCushion float32) ClientConfig
+func WithFeeCushion(feeCushion float64) ConfigOpt
 ```
 
 ### MaxResponseSize
@@ -128,7 +128,7 @@ The reliable-submission methods require `LastLedgerSequence` before they send th
 
 Only a preliminary `tem` result returns `PreliminaryResultError` immediately. The error includes the engine result and its message. The client monitors `tes`, `ter`, `tec`, `tef`, `tel`, and unknown preliminary results. An exact `txnNotFound` response is inconclusive and the client retries it.
 
-The transaction expires only after the current validated ledger is strictly greater than `LastLedgerSequence` and a final transaction lookup still does not find a validated result. Validation exactly at `LastLedgerSequence` is accepted. Unlike xrpl.js, the Go SDK performs this final lookup as a deliberate safety check before it reports expiry.
+The transaction expires only after the current validated ledger is strictly greater than `LastLedgerSequence` and a final transaction lookup still does not find a validated result. Validation exactly at `LastLedgerSequence` is accepted. The final lookup is a deliberate safety check before the client reports expiry.
 
 ```go
 func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *rpctypes.SubmitOptions) (*requests.TxResponse, error)

@@ -64,4 +64,13 @@ var (
 	// ErrInvalidSignedTransaction indicates that transaction signing fields do not
 	// form a complete single-sign, multisign, or permitted inner-Batch structure.
 	ErrInvalidSignedTransaction = errors.New("transaction has an invalid signed form")
+
+	// fee
+
+	// ErrInvalidFeeValue is returned when a fee input is not a finite,
+	// non-negative decimal value.
+	ErrInvalidFeeValue = errors.New("invalid fee value")
+	// ErrFeeHasTooManyDecimals is returned when an XRP fee cannot be represented
+	// as a whole number of drops.
+	ErrFeeHasTooManyDecimals = errors.New("fee has more than six decimal places")
 )
