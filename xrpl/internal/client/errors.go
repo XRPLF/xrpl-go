@@ -45,4 +45,10 @@ var (
 	ErrRawTransactionsFieldIsNotAnArray = errors.New("field RawTransactions must be an array")
 	// ErrRawTransactionFieldIsNotAnObject indicates a malformed inner Batch wrapper.
 	ErrRawTransactionFieldIsNotAnObject = errors.New("field RawTransaction must be an object")
+
+	// transaction
+
+	// ErrInvalidSignedTransaction indicates that transaction signing fields do not
+	// form a complete single-sign, multisign, or permitted inner-Batch structure.
+	ErrInvalidSignedTransaction = errors.New("transaction has an invalid signed form")
 )

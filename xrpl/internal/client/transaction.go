@@ -1,7 +1,6 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"maps"
 	"reflect"
@@ -11,10 +10,6 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
-
-// ErrInvalidSignedTransaction indicates that transaction signing fields do not
-// form a complete single-sign, multisign, or permitted inner-Batch structure.
-var ErrInvalidSignedTransaction = errors.New("transaction has an invalid signed form")
 
 // SignedTransactionForm identifies the structurally valid signing form of a
 // transaction. These forms do not establish cryptographic validity; rippled is
