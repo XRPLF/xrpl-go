@@ -2,7 +2,6 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,34 +15,6 @@ const (
 	// RequiredNetworkIDVersion is the first rippled version that enforces the
 	// NetworkID transaction field.
 	RequiredNetworkIDVersion = "1.11.0"
-)
-
-var (
-	// ErrNetworkIDUnavailable indicates that a client cannot safely determine
-	// the server's network identity.
-	ErrNetworkIDUnavailable = errors.New("server network ID is unavailable")
-	// ErrBuildVersionUnavailable indicates that a restricted network's rippled
-	// version is unavailable, so NetworkID requiredness cannot be determined.
-	ErrBuildVersionUnavailable = errors.New("server build version is unavailable")
-	// ErrInvalidBuildVersion indicates that a restricted network returned a
-	// build version that cannot be compared with rippled 1.11.0.
-	ErrInvalidBuildVersion = errors.New("invalid server build version")
-	// ErrNetworkIDOverrideMismatch indicates that a trusted client override does
-	// not match the identity discovered from server_info.
-	ErrNetworkIDOverrideMismatch = errors.New("configured network ID does not match server network ID")
-	// ErrNetworkIDFieldIsNotAUint32 indicates that a transaction NetworkID value
-	// has the wrong Go type.
-	ErrNetworkIDFieldIsNotAUint32 = errors.New("field NetworkID must be a uint32")
-	// ErrNetworkIDFieldMismatch indicates that a transaction NetworkID value
-	// does not match the client identity.
-	ErrNetworkIDFieldMismatch = errors.New("field NetworkID must match expected NetworkID")
-	// ErrNetworkIDFieldUnexpected indicates that NetworkID was supplied on a
-	// network or rippled version where the field must be omitted.
-	ErrNetworkIDFieldUnexpected = errors.New("field NetworkID must be omitted for this network")
-	// ErrRawTransactionsFieldIsNotAnArray indicates a malformed Batch wrapper.
-	ErrRawTransactionsFieldIsNotAnArray = errors.New("field RawTransactions must be an array")
-	// ErrRawTransactionFieldIsNotAnObject indicates a malformed inner Batch wrapper.
-	ErrRawTransactionFieldIsNotAnObject = errors.New("field RawTransaction must be an object")
 )
 
 // NetworkIdentity is the server identity needed to apply transaction NetworkID
@@ -235,7 +206,7 @@ func parseRippledVersion(version string) (rippledVersion, error) {
 	core, prerelease, _ := strings.Cut(version, "-")
 	parts := strings.Split(core, ".")
 	if len(parts) != 3 {
-		return rippledVersion{}, errors.New("version must have major, minor, and patch components")
+		return rippledVersion{}, errInvalidRippledVersionFormat
 	}
 
 	parsed := rippledVersion{prerelease: prerelease}

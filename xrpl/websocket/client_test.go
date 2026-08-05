@@ -454,7 +454,6 @@ func TestClient_setValidTransactionAddresses(t *testing.T) {
 		tx          transaction.FlatTransaction
 		expected    transaction.FlatTransaction
 		expectedErr error
-		tagMismatch bool
 	}{
 		{
 			name: "classic addresses are unchanged",
@@ -485,7 +484,7 @@ func TestClient_setValidTransactionAddresses(t *testing.T) {
 				"Destination":    testnetTag14,
 				"DestinationTag": uint32(13),
 			},
-			tagMismatch: true,
+			expectedErr: ErrMismatchedTag,
 		},
 		{
 			name:        "invalid X-address",
@@ -499,13 +498,9 @@ func TestClient_setValidTransactionAddresses(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ws.setValidTransactionAddresses(&tt.tx)
-			switch {
-			case tt.tagMismatch:
-				var mismatch ErrMismatchedTag
-				require.ErrorAs(t, err, &mismatch)
-			case tt.expectedErr != nil:
+			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
-			default:
+			} else {
 				require.NoError(t, err)
 			}
 			require.Equal(t, tt.expected, tt.tx)

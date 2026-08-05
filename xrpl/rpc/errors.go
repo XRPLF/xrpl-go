@@ -39,6 +39,8 @@ var (
 	ErrTagFieldIsNotAUint32 = clientinternal.ErrTagFieldIsNotAUint32
 	// ErrInvalidAddress is returned when an autofilled address is neither classic nor an X-address.
 	ErrInvalidAddress = clientinternal.ErrInvalidAddress
+	// ErrMismatchedTag is returned when an explicit transaction tag conflicts with an X-address tag.
+	ErrMismatchedTag = clientinternal.ErrMismatchedTag
 
 	// ErrRawTransactionsFieldIsNotAnArray is returned when the RawTransactions field is not an array type.
 	ErrRawTransactionsFieldIsNotAnArray = clientinternal.ErrRawTransactionsFieldIsNotAnArray
@@ -136,9 +138,6 @@ type ErrFailedToMarshalJSONRPCRequest struct {
 func (e ErrFailedToMarshalJSONRPCRequest) Error() string {
 	return fmt.Sprintf("failed to marshal JSON-RPC request for method %s with parameters %+v: %v", e.Method, e.Params, e.Err)
 }
-
-// ErrMismatchedTag is returned when an explicit transaction tag conflicts with an X-address tag.
-type ErrMismatchedTag = clientinternal.ErrMismatchedTag
 
 // ErrFailedToParseFee is returned when fee parsing fails.
 type ErrFailedToParseFee struct {

@@ -1,36 +1,11 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 )
-
-var (
-	// ErrAddressFieldIsNotAString indicates that an address-bearing transaction
-	// field has the wrong Go type.
-	ErrAddressFieldIsNotAString = errors.New("transaction address field must be a string")
-	// ErrTagFieldIsNotAUint32 indicates that an explicit source or destination
-	// tag has the wrong Go type.
-	ErrTagFieldIsNotAUint32 = errors.New("transaction tag field must be a uint32")
-	// ErrInvalidAddress indicates that an in-scope transaction address is neither
-	// a valid classic address nor a valid X-address.
-	ErrInvalidAddress = errors.New("invalid transaction address")
-)
-
-// ErrMismatchedTag indicates that an explicit transaction tag conflicts with
-// the tag embedded in an X-address.
-type ErrMismatchedTag struct {
-	Expected string
-	Actual   string
-}
-
-// Error implements error.
-func (e ErrMismatchedTag) Error() string {
-	return fmt.Sprintf("transaction tag mismatch: %q must equal the tag embedded in %q", e.Actual, e.Expected)
-}
 
 type addressChange struct {
 	tx           map[string]any
@@ -121,7 +96,7 @@ func collectAddressChange(tx map[string]any, addressField, tagField string, chan
 				return fmt.Errorf("%w: %s", ErrTagFieldIsNotAUint32, tagField)
 			}
 			if explicitTag != tag {
-				return ErrMismatchedTag{Expected: addressField, Actual: tagField}
+				return fmt.Errorf("%w: %q must equal the tag embedded in %q", ErrMismatchedTag, tagField, addressField)
 			}
 		}
 	}
