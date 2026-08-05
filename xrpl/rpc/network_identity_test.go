@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
@@ -228,16 +229,37 @@ func TestClientAutofillOmitsNetworkIDWhenIdentityIsMissing(t *testing.T) {
 	require.NotContains(t, tx, "NetworkID")
 }
 
-func TestClientGetSignedTxDoesNotAutofillNetworkIDWhenAutofillDisabled(t *testing.T) {
-	cfg, err := NewClientConfig("http://localhost/", WithNetworkIdentity(21337, "1.12.0"))
+func TestClientGetSignedTxSkipsNetworkPolicyWhenAutofillDisabled(t *testing.T) {
+	mockClient := &testutil.JSONRPCMockClient{}
+	var requestCount atomic.Int32
+	mockClient.DoFunc = func(*http.Request) (*http.Response, error) {
+		requestCount.Add(1)
+		return nil, errors.New("unexpected request")
+	}
+	cfg, err := NewClientConfig("http://localhost/", WithHTTPClient(mockClient))
 	require.NoError(t, err)
 	cl := NewClient(cfg)
-	tx := transaction.FlatTransaction{"TransactionType": "AccountSet"}
+	cl.NetworkID = uint32Pointer(21337)
+	cl.BuildVersion = "1.12.0"
+	signer, err := wallet.FromSeed("sEd7io6yt5dFJrcePgRiFVHvmkJhJD1", "")
+	require.NoError(t, err)
+	tx := transaction.FlatTransaction{
+		"Account":         signer.ClassicAddress.String(),
+		"TransactionType": "AccountSet",
+		"Fee":             "10",
+		"Sequence":        uint32(1),
+		"NetworkID":       uint32(1),
+	}
 
-	_, err = cl.getSignedTx(tx, false, &wallet.Wallet{})
+	blob, err := cl.getSignedTx(tx, false, &signer)
 
-	require.ErrorIs(t, err, ErrNetworkIDFieldMissing)
-	require.NotContains(t, tx, "NetworkID")
+	require.NoError(t, err)
+	require.NotEmpty(t, blob)
+	signedTx, err := binarycodec.Decode(blob)
+	require.NoError(t, err)
+	require.EqualValues(t, uint32(1), signedTx["NetworkID"])
+	require.Equal(t, uint32(1), tx["NetworkID"])
+	require.Equal(t, int32(0), requestCount.Load())
 }
 
 func uint32Pointer(value uint32) *uint32 {

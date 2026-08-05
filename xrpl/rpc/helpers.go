@@ -422,17 +422,9 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		return "", ErrMissingWallet
 	}
 
-	// Autofill, or validate the caller-supplied NetworkID without changing it.
+	// Autofill when enabled. Otherwise, sign the caller-supplied transaction unchanged.
 	if autofill {
 		if err := c.Autofill(&tx); err != nil {
-			return "", err
-		}
-	} else {
-		identity, err := c.ensureNetworkIdentity()
-		if err != nil {
-			return "", err
-		}
-		if err := clientinternal.ValidateNetworkIDPolicy(tx, identity); err != nil {
 			return "", err
 		}
 	}

@@ -35,9 +35,6 @@ var (
 	// ErrNetworkIDFieldMismatch indicates that a transaction NetworkID value
 	// does not match the client identity.
 	ErrNetworkIDFieldMismatch = errors.New("field NetworkID must match expected NetworkID")
-	// ErrNetworkIDFieldMissing indicates that a transaction must supply NetworkID
-	// because autofill is disabled for a network that requires the field.
-	ErrNetworkIDFieldMissing = errors.New("field NetworkID is required for this network")
 	// ErrNetworkIDFieldUnexpected indicates that NetworkID was supplied on a
 	// network or rippled version where the field must be omitted.
 	ErrNetworkIDFieldUnexpected = errors.New("field NetworkID must be omitted for this network")

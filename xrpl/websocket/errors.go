@@ -56,8 +56,6 @@ var (
 	ErrNetworkIDFieldIsNotAUint32 = clientinternal.ErrNetworkIDFieldIsNotAUint32
 	// ErrNetworkIDFieldMismatch is returned when the NetworkID field does not match the expected NetworkID.
 	ErrNetworkIDFieldMismatch = clientinternal.ErrNetworkIDFieldMismatch
-	// ErrNetworkIDFieldMissing is returned when NetworkID is required but autofill is disabled.
-	ErrNetworkIDFieldMissing = clientinternal.ErrNetworkIDFieldMissing
 	// ErrNetworkIDFieldUnexpected is returned when NetworkID must be omitted for the target network.
 	ErrNetworkIDFieldUnexpected = clientinternal.ErrNetworkIDFieldUnexpected
 	// ErrInvalidBuildVersion is returned when the discovered rippled version cannot be compared.
