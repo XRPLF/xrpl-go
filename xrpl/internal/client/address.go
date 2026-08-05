@@ -20,6 +20,7 @@ type addressChange struct {
 // and its Batch inner transactions to a classic address. Embedded Account and
 // Destination tags are applied only after all conflicts have been validated.
 func SetValidAddresses(tx map[string]any) error {
+	// Reserve space for four common-case changes while allowing the slice to grow for larger transactions.
 	changes := make([]addressChange, 0, 4)
 	if err := collectTransactionAddressChanges(tx, &changes); err != nil {
 		return err
@@ -108,6 +109,7 @@ func transactionString(value any) (string, bool) {
 	if address, ok := value.(string); ok {
 		return address, true
 	}
+	// Use reflection to accept named string types for compatibility with typed transaction values.
 	reflected := reflect.ValueOf(value)
 	if reflected.IsValid() && reflected.Kind() == reflect.String {
 		return reflected.String(), true
