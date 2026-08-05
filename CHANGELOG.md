@@ -52,13 +52,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Expanded the embedded protocol definitions with account-set, ledger-entry, and transaction flag maps; ledger-entry and transaction format maps; and updated protocol type and transaction result mappings.
 
-#### xrpl/transaction
-
-- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `MutableFlags` bits in addition to an explicitly zero mask.
-
 #### dependencies
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
+
+#### xrpl/queries/amm
+
+- `InfoRequest.Validate` now rejects `amm_info` requests that combine `amm_account` with the `asset` and `asset2` lookup form.
+
+#### xrpl/transaction
+
+- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `MutableFlags` bits in addition to an explicitly zero mask.
 
 ### Fixed
 
