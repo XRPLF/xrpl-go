@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"encoding/base64"
-	"errors"
 	"net/http"
 	"net/url"
 	"slices"
@@ -10,8 +9,6 @@ import (
 )
 
 const authorizationHeader = "Authorization"
-
-var errTooManyRedirects = errors.New("stopped after 10 redirects")
 
 // validateAuthorizationTransport enforces the authorization transport policy
 // for rawURL and headers, and returns the HTTP client that requests carrying
