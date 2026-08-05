@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/queries
 
 - Added query field coverage for account lines (`ignore_default`, `limit`), AMM info (`account`, frozen flags, auction `time_interval`), NFT offer pagination (`limit`/`marker`), vault current-ledger metadata, and v1 account NFT ledger metadata, with protocol-accurate default and v1 JSON fixtures including the AMM expired-slot interval sentinel.
-- Added complete typed `ledger_entry` selector coverage, exactly-one request validation, Clio deleted-entry metadata, and distinct validated JSON (`node`) and binary (`node_binary`) responses across RPC and WebSocket transports, with live ticket-selector tests for both clients.
+- Expanded typed `ledger_entry` selector support with exactly-one top-level request validation, Clio deleted-entry metadata, and distinct validated JSON (`node`) and binary (`node_binary`) responses across RPC and WebSocket transports.
 
 #### xrpl/queries/amm
 
