@@ -705,13 +705,13 @@ func (c *Client) getFeeXrp(cushion float64) (string, error) {
 		return "", err
 	}
 
-	baseFeeXRP, ok := res.Info.ValidatedLedger.BaseFeeXRPValue()
-	if !ok {
+	baseFeeXRP := res.Info.ValidatedLedger.BaseFeeXRP
+	if baseFeeXRP == nil {
 		return "", ErrCouldNotGetBaseFeeXrp
 	}
 
 	return clientinternal.NetworkFeeXRP(
-		baseFeeXRP,
+		*baseFeeXRP,
 		res.Info.LoadFactor,
 		cushion,
 		c.cfg.maxFeeXRP,

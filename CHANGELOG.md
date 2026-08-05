@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/queries/server
 
 - Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID.
-- Changed `ClosedLedger.BaseFeeXRP` from `float32` to `float64` so fee calculation starts with binary64 precision.
+- Changed `ClosedLedger.BaseFeeXRP` from `float32` to `*float64` so fee calculation starts with binary64 precision and callers can distinguish a missing or null value from an explicit zero.
 - Changed `types.Info.LoadFactor` from `uint` to `float64` so fractional server load factors are accepted.
 
 #### xrpl/queries/clio

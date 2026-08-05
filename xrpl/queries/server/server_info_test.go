@@ -72,14 +72,19 @@ func TestServerInfoBaseFeeXRPPresence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var response InfoResponse
 			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
-			actual, present := response.Info.ValidatedLedger.BaseFeeXRPValue()
-			require.Equal(t, tt.present, present)
-			require.InDelta(t, tt.expected, actual, 0)
+			actual := response.Info.ValidatedLedger.BaseFeeXRP
+			if !tt.present {
+				require.Nil(t, actual)
+				return
+			}
+			require.NotNil(t, actual)
+			require.InDelta(t, tt.expected, *actual, 0)
 		})
 	}
 }
 
 func TestServerInfoResponse(t *testing.T) {
+	baseFeeXRP := 0.00001
 	s := InfoResponse{
 		Info: servertypes.Info{
 			BuildVersion:    "1.9.4",
@@ -122,7 +127,7 @@ func TestServerInfoResponse(t *testing.T) {
 			Uptime: 4360976,
 			ValidatedLedger: servertypes.ClosedLedger{
 				Age:            1,
-				BaseFeeXRP:     0.00001,
+				BaseFeeXRP:     &baseFeeXRP,
 				Hash:           "3147A41F5F013209581FCDCBBB7A87A4F01EF6842963E13B2B14C8565E00A22B",
 				ReserveBaseXRP: 10,
 				ReserveIncXRP:  2,
