@@ -3,17 +3,11 @@ package websocket
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/server"
-)
-
-var (
-	errNetworkIdentityDiscovery  = errors.New("network identity discovery failed")
-	errNetworkIdentityConnection = errors.New("network identity connection failed")
 )
 
 type networkIdentityState struct {
@@ -26,17 +20,18 @@ type networkIdentityState struct {
 // prepareNetworkIdentity returns a configured identity or performs the
 // synchronous server_info handshake used by Connect. WithNetworkIdentity marks
 // the initial state trusted and intentionally bypasses discovery. After a
-// successful discovery, an explicit reconnect compares the new server identity
-// with the previous one and rejects a network ID change.
+// successful discovery, a reconnect compares the new server identity with the
+// previous one and rejects a network ID change.
 func (c *Client) prepareNetworkIdentity() ([][]byte, error) {
 	identity, ready, trusted := c.networkIdentitySnapshot()
 	if ready && trusted {
 		_, err := clientinternal.ValidateNetworkIdentity(identity)
 		return nil, err
 	}
+
 	discovered, bufferedMessages, err := c.discoverNetworkIdentity()
 	if err != nil {
-		return bufferedMessages, fmt.Errorf("%w: %w", errNetworkIdentityDiscovery, err)
+		return bufferedMessages, err
 	}
 	resolved, err := clientinternal.ResolveNetworkIdentity(identity.NetworkID, discovered)
 	if err != nil {
@@ -55,15 +50,21 @@ func (c *Client) NetworkIdentity() (*uint32, string) {
 	return clientinternal.CloneNetworkID(c.identity.current.NetworkID), c.identity.current.BuildVersion
 }
 
-func (c *Client) networkIdentity() (clientinternal.NetworkIdentity, error) {
-	identity, _, _ := c.networkIdentitySnapshot()
-	return clientinternal.ValidateNetworkIdentity(identity)
-}
-
 func (c *Client) networkIdentitySnapshot() (clientinternal.NetworkIdentity, bool, bool) {
 	c.identity.mu.Lock()
 	defer c.identity.mu.Unlock()
 	return c.identity.current, c.identity.ready, c.identity.trusted
+}
+
+func (c *Client) storeDiscoveredNetworkIdentity(identity clientinternal.NetworkIdentity) {
+	c.identity.mu.Lock()
+	defer c.identity.mu.Unlock()
+	c.identity.current = clientinternal.NetworkIdentity{
+		NetworkID:    clientinternal.CloneNetworkID(identity.NetworkID),
+		BuildVersion: identity.BuildVersion,
+	}
+	c.identity.ready = true
+	c.identity.trusted = false
 }
 
 func (c *Client) discoverNetworkIdentity() (clientinternal.NetworkIdentity, [][]byte, error) {
@@ -73,7 +74,7 @@ func (c *Client) discoverNetworkIdentity() (clientinternal.NetworkIdentity, [][]
 		return clientinternal.NetworkIdentity{}, nil, err
 	}
 	if err := c.conn.WriteMessage(message); err != nil {
-		return clientinternal.NetworkIdentity{}, nil, fmt.Errorf("%w: %w", errNetworkIdentityConnection, err)
+		return clientinternal.NetworkIdentity{}, nil, err
 	}
 
 	deadline := time.Now().Add(c.cfg.timeout)
@@ -85,7 +86,7 @@ func (c *Client) discoverNetworkIdentity() (clientinternal.NetworkIdentity, [][]
 			if errors.As(err, &timeoutErr) && timeoutErr.Timeout() {
 				err = errors.Join(ErrRequestTimedOut, err)
 			}
-			return clientinternal.NetworkIdentity{}, bufferedMessages, fmt.Errorf("%w: %w", errNetworkIdentityConnection, err)
+			return clientinternal.NetworkIdentity{}, bufferedMessages, err
 		}
 
 		var response ClientResponse
@@ -111,13 +112,10 @@ func (c *Client) discoverNetworkIdentity() (clientinternal.NetworkIdentity, [][]
 	}
 }
 
-func (c *Client) storeDiscoveredNetworkIdentity(identity clientinternal.NetworkIdentity) {
-	c.identity.mu.Lock()
-	defer c.identity.mu.Unlock()
-	c.identity.current = clientinternal.NetworkIdentity{
-		NetworkID:    clientinternal.CloneNetworkID(identity.NetworkID),
-		BuildVersion: identity.BuildVersion,
+func (c *Client) networkIdentity() (clientinternal.NetworkIdentity, error) {
+	identity, ready, _ := c.networkIdentitySnapshot()
+	if !ready {
+		return clientinternal.NetworkIdentity{}, ErrNetworkIDUnavailable
 	}
-	c.identity.ready = true
-	c.identity.trusted = false
+	return clientinternal.ValidateNetworkIdentity(identity)
 }

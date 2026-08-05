@@ -318,12 +318,14 @@ func (c *Client) autofill(tx *transaction.FlatTransaction) error {
 			return err
 		}
 	}
-	if txType, ok := (*tx)["TransactionType"].(string); ok {
-		if acc, ok := clientinternal.TransactionString((*tx)["Account"]); txType == transaction.AccountDeleteTx.String() && ok {
-			err := c.checkAccountDeleteBlockers(types.Address(acc))
-			if err != nil {
-				return err
-			}
+	txType := tx.TxType()
+	if txType == transaction.AccountDeleteTx {
+		account, ok := clientinternal.TransactionString((*tx)["Account"])
+		if !ok {
+			return ErrMissingAccountInTransaction
+		}
+		if err := c.checkAccountDeleteBlockers(types.Address(account)); err != nil {
+			return err
 		}
 	}
 	if txType == transaction.BatchTx {

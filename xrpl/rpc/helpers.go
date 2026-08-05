@@ -429,11 +429,18 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		return "", ErrMissingWallet
 	}
 
-	// Autofill when enabled. Otherwise, sign the caller-supplied transaction unchanged.
 	if autofill {
 		// working is already a private deep copy, so the unexported worker is
 		// enough. The public Autofill wrapper would clone it a second time.
 		if err := c.autofill(&working); err != nil {
+			return "", err
+		}
+	} else {
+		identity, err := c.ensureNetworkIdentity()
+		if err != nil {
+			return "", err
+		}
+		if err := clientinternal.ApplyNetworkIDPolicy(working, identity); err != nil {
 			return "", err
 		}
 	}

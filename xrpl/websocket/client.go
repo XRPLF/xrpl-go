@@ -80,10 +80,14 @@ type Client struct {
 	// streamHandlerResetMu serializes full lifecycle resets while old stream
 	// handler runners are waited on outside streamHandlerStateMu.
 	streamHandlerResetMu sync.Mutex
-	ctx                  context.Context
-	cancel               context.CancelFunc
-	pendingResponsesMu   sync.Mutex
-	pendingResponses     map[uint64]chan *ClientResponse
+	// connectionHandshakeMu prevents normal requests from using a new socket
+	// until network identity discovery completes. Connect and reconnect take the
+	// write lock. Request takes the read lock only while writing.
+	connectionHandshakeMu sync.RWMutex
+	ctx                   context.Context
+	cancel                context.CancelFunc
+	pendingResponsesMu    sync.Mutex
+	pendingResponses      map[uint64]chan *ClientResponse
 
 	idCounter atomic.Uint64
 
@@ -167,42 +171,15 @@ func (c *Client) cancelLifecycle() {
 	c.resetHandlerRunners()
 }
 
-// Connect opens a websocket connection to the server. It starts reading messages in a goroutine.
-// A server_info discovery failure is reported through OnError, keeps the
-// connection active, and does not replace the stored network identity. Do not
+// Connect opens a websocket connection to the server. It completes network
+// identity discovery before it starts reading messages in a goroutine. Do not
 // call Connect synchronously from a stream or error handler. If a handler needs
 // to reconnect, start Connect in a separate goroutine or coordinate it outside
 // the handler callback.
 func (c *Client) Connect() error {
-	if err := c.conn.Connect(); err != nil {
+	bufferedMessages, err := c.connectAndPrepareNetworkIdentity(context.Background())
+	if err != nil {
 		return err
-	}
-
-	bufferedMessages, identityErr := c.prepareNetworkIdentity()
-	if identityErr != nil && !errors.Is(identityErr, errNetworkIdentityDiscovery) {
-		if disconnectErr := c.conn.Disconnect(); disconnectErr != nil && !errors.Is(disconnectErr, ErrNotConnected) {
-			return errors.Join(identityErr, disconnectErr)
-		}
-		return identityErr
-	}
-	if errors.Is(identityErr, errNetworkIdentityConnection) {
-		// A failed synchronous write or read can make the Gorilla WebSocket
-		// connection unusable. Replace it without another identity request, then
-		// continue with unknown identity.
-		disconnectErr := c.conn.Disconnect()
-		if errors.Is(disconnectErr, ErrNotConnected) {
-			disconnectErr = nil
-		}
-		reconnectCtx, cancelReconnect := context.WithTimeout(context.Background(), c.cfg.timeout)
-		reconnectErr := c.conn.connect(reconnectCtx)
-		if reconnectErr != nil {
-			reconnectErr = errors.Join(reconnectErr, reconnectCtx.Err())
-		}
-		cancelReconnect()
-		if reconnectErr != nil {
-			return errors.Join(identityErr, disconnectErr, reconnectErr)
-		}
-		identityErr = errors.Join(identityErr, disconnectErr)
 	}
 
 	ctx := c.resetLifecycle()
@@ -210,8 +187,27 @@ func (c *Client) Connect() error {
 		c.handleMessage(ctx, message)
 	}
 	go c.readMessages(ctx)
-	c.reportError(ctx, identityErr)
 	return nil
+}
+
+// connectAndPrepareNetworkIdentity keeps ordinary requests off a new socket
+// until the server_info identity handshake succeeds. It returns stream messages
+// read during discovery so the caller can replay them.
+func (c *Client) connectAndPrepareNetworkIdentity(ctx context.Context) ([][]byte, error) {
+	c.connectionHandshakeMu.Lock()
+	defer c.connectionHandshakeMu.Unlock()
+
+	if err := c.conn.connect(ctx); err != nil {
+		return nil, err
+	}
+	bufferedMessages, err := c.prepareNetworkIdentity()
+	if err != nil {
+		if disconnectErr := c.conn.Disconnect(); disconnectErr != nil && !errors.Is(disconnectErr, ErrNotConnected) {
+			return nil, errors.Join(err, disconnectErr)
+		}
+		return nil, err
+	}
+	return bufferedMessages, nil
 }
 
 // Disconnect closes the websocket connection and cancels the current client
@@ -293,12 +289,14 @@ func (c *Client) autofill(tx *transaction.FlatTransaction) error {
 		}
 	}
 
-	if txType, ok := (*tx)["TransactionType"].(string); ok {
-		if acc, ok := clientinternal.TransactionString((*tx)["Account"]); txType == transaction.AccountDeleteTx.String() && ok {
-			err := c.checkAccountDeleteBlockers(types.Address(acc))
-			if err != nil {
-				return err
-			}
+	txType := tx.TxType()
+	if txType == transaction.AccountDeleteTx {
+		account, ok := clientinternal.TransactionString((*tx)["Account"])
+		if !ok {
+			return ErrMissingAccountInTransaction
+		}
+		if err := c.checkAccountDeleteBlockers(types.Address(account)); err != nil {
+			return err
 		}
 	}
 	if txType == transaction.BatchTx {
@@ -387,10 +385,21 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 		return nil, err
 	}
 
+	if !c.conn.IsConnected() {
+		return nil, ErrNotConnectedToServer
+	}
+
+	deadline := time.Now().Add(c.cfg.timeout)
 	responseChan := c.registerPendingResponse(id)
 	defer c.unregisterPendingResponse(id)
 
+	c.connectionHandshakeMu.RLock()
+	if time.Until(deadline) <= 0 {
+		c.connectionHandshakeMu.RUnlock()
+		return nil, ErrRequestTimedOut
+	}
 	err = c.conn.WriteMessage(msg)
+	c.connectionHandshakeMu.RUnlock()
 	if err != nil {
 		if errors.Is(err, ErrNotConnected) {
 			return nil, ErrNotConnectedToServer
@@ -398,7 +407,7 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 		return nil, err
 	}
 
-	res, err := c.awaitResponse(responseChan)
+	res, err := c.awaitResponse(responseChan, deadline)
 	if err != nil {
 		return nil, err
 	}
@@ -843,8 +852,12 @@ func (c *Client) lookupPendingResponse(id uint64) (chan *ClientResponse, bool) {
 	return responseChan, ok
 }
 
-func (c *Client) awaitResponse(responseChan <-chan *ClientResponse) (*ClientResponse, error) {
-	timer := time.NewTimer(c.cfg.timeout)
+func (c *Client) awaitResponse(responseChan <-chan *ClientResponse, deadline time.Time) (*ClientResponse, error) {
+	remaining := time.Until(deadline)
+	if remaining <= 0 {
+		return nil, ErrRequestTimedOut
+	}
+	timer := time.NewTimer(remaining)
 	defer timer.Stop()
 
 	select {
@@ -992,11 +1005,15 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 		case <-timer.C:
 		}
 
-		if connErr := c.conn.connect(ctx); connErr != nil {
-			if errors.Is(connErr, context.Canceled) {
+		bufferedMessages, err := c.connectAndPrepareNetworkIdentity(ctx)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
 				return false
 			}
 			continue
+		}
+		for _, message := range bufferedMessages {
+			c.handleMessage(ctx, message)
 		}
 		if ctx.Err() != nil {
 			c.disconnectConnection(ctx)
@@ -1050,11 +1067,18 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		return "", ErrMissingWallet
 	}
 
-	// Autofill when enabled. Otherwise, sign the caller-supplied transaction unchanged.
 	if autofill {
 		// working is already a private deep copy, so the unexported worker is
 		// enough. The public Autofill wrapper would clone it a second time.
 		if err := c.autofill(&working); err != nil {
+			return "", err
+		}
+	} else {
+		identity, err := c.networkIdentity()
+		if err != nil {
+			return "", err
+		}
+		if err := clientinternal.ApplyNetworkIDPolicy(working, identity); err != nil {
 			return "", err
 		}
 	}

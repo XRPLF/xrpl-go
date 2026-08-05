@@ -8,12 +8,15 @@ import (
 	"testing"
 	"time"
 
-	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/stretchr/testify/require"
 )
+
+func uint32Pointer(value uint32) *uint32 {
+	return &value
+}
 
 func TestClientEnsureNetworkIdentity(t *testing.T) {
 	requestFailure := errors.New("server_info unavailable")
@@ -39,9 +42,9 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			expectedRequests: 1,
 		},
 		{
-			name:             "missing network ID remains unknown",
+			name:             "missing network ID fails closed",
 			response:         `{"result":{"info":{"build_version":"1.12.0"}}}`,
-			expectedBuild:    "1.12.0",
+			expectedErr:      ErrNetworkIDUnavailable,
 			expectedRequests: 1,
 		},
 		{
@@ -127,12 +130,8 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 				require.ErrorIs(t, err, tt.expectedErr)
 			} else {
 				require.NoError(t, err)
-				if tt.expectedID == nil {
-					require.Nil(t, identity.NetworkID)
-				} else {
-					require.NotNil(t, identity.NetworkID)
-					require.Equal(t, *tt.expectedID, *identity.NetworkID)
-				}
+				require.NotNil(t, identity.NetworkID)
+				require.Equal(t, *tt.expectedID, *identity.NetworkID)
 				require.Equal(t, tt.expectedBuild, identity.BuildVersion)
 			}
 			require.Equal(t, tt.expectedRequests, requestCount)
@@ -287,7 +286,7 @@ func TestClientEnsureNetworkIdentityCoalescesConcurrentFailure(t *testing.T) {
 	require.Equal(t, int32(2), requestCount.Load())
 }
 
-func TestClientAutofillOmitsNetworkIDWhenIdentityIsMissing(t *testing.T) {
+func TestClientAutofillFailsBeforeMutationWhenNetworkIdentityIsMissing(t *testing.T) {
 	mockClient := &testutil.JSONRPCMockClient{}
 	mockClient.DoFunc = testutil.MockResponse(
 		`{"result":{"info":{"build_version":"1.12.0"}}}`,
@@ -304,51 +303,36 @@ func TestClientAutofillOmitsNetworkIDWhenIdentityIsMissing(t *testing.T) {
 		"Fee":                "10",
 		"LastLedgerSequence": uint32(100),
 	}
+	expected := transaction.FlatTransaction{
+		"Account":            "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+		"TransactionType":    "AccountSet",
+		"Sequence":           uint32(1),
+		"Fee":                "10",
+		"LastLedgerSequence": uint32(100),
+	}
 
 	err = cl.Autofill(&tx)
-
-	require.NoError(t, err)
-	require.Equal(t, "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", tx["Account"])
-	require.NotContains(t, tx, "NetworkID")
+	require.ErrorIs(t, err, ErrNetworkIDUnavailable)
+	require.Equal(t, expected, tx)
 }
 
-func TestClientGetSignedTxSkipsNetworkPolicyWhenAutofillDisabled(t *testing.T) {
+func TestClientGetSignedTxFailsClosedWithoutAutofill(t *testing.T) {
 	mockClient := &testutil.JSONRPCMockClient{}
-	var requestCount atomic.Int32
-	mockClient.DoFunc = func(*http.Request) (*http.Response, error) {
-		requestCount.Add(1)
-		return nil, errors.New("unexpected request")
-	}
-	cfg, err := NewClientConfig(
-		"http://localhost/",
-		WithHTTPClient(mockClient),
-		WithNetworkIdentity(21337, "1.12.0"),
+	mockClient.DoFunc = testutil.MockResponse(
+		`{"result":{"info":{"build_version":"1.12.0"}}}`,
+		http.StatusOK,
+		mockClient,
 	)
+	cfg, err := NewClientConfig("http://localhost/", WithHTTPClient(mockClient))
 	require.NoError(t, err)
 	cl := NewClient(cfg)
-	signer, err := wallet.FromSeed("sEd7io6yt5dFJrcePgRiFVHvmkJhJD1", "")
-	require.NoError(t, err)
-	tx := transaction.FlatTransaction{
-		"Account":         signer.ClassicAddress.String(),
-		"TransactionType": "AccountSet",
-		"Fee":             "10",
-		"Sequence":        uint32(1),
-		"NetworkID":       uint32(1),
-	}
 
-	blob, err := cl.getSignedTx(tx, false, &signer)
-
-	require.NoError(t, err)
-	require.NotEmpty(t, blob)
-	signedTx, err := binarycodec.Decode(blob)
-	require.NoError(t, err)
-	require.EqualValues(t, uint32(1), signedTx["NetworkID"])
-	require.Equal(t, uint32(1), tx["NetworkID"])
-	require.Equal(t, int32(0), requestCount.Load())
-}
-
-func uint32Pointer(value uint32) *uint32 {
-	return &value
+	_, err = cl.getSignedTx(
+		transaction.FlatTransaction{"TransactionType": "AccountSet"},
+		false,
+		&wallet.Wallet{},
+	)
+	require.ErrorIs(t, err, ErrNetworkIDUnavailable)
 }
 
 func setTestNetworkIdentity(cl *Client, networkID *uint32, buildVersion string) {

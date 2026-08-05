@@ -6,10 +6,10 @@ import (
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 )
 
-// SignTxBlob hashes a signed transaction blob
-// It takes a transaction blob and returns the hash of the signed transaction.
+// SignTxBlob hashes a signed or pseudo-transaction blob.
 // It returns an error if the transaction blob is invalid.
 func SignTxBlob(txBlob string) (string, error) {
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
@@ -17,18 +17,17 @@ func SignTxBlob(txBlob string) (string, error) {
 		return "", err
 	}
 
-	if err := validateSignedTransactionForm(tx); err != nil {
+	if err := validateHashableTransactionForm(tx); err != nil {
 		return "", err
 	}
 
 	return encodeSignedTxBlob(txBlob)
 }
 
-// SignTx hashes a signed transaction
-// It takes a signed transaction and returns the hash of the signed transaction.
+// SignTx hashes a signed or pseudo-transaction.
 // It returns an error if the transaction is invalid.
 func SignTx(tx map[string]any) (string, error) {
-	if err := validateSignedTransactionForm(tx); err != nil {
+	if err := validateHashableTransactionForm(tx); err != nil {
 		return "", err
 	}
 
@@ -56,7 +55,12 @@ func encodeSignedTxBlob(txBlob string) (string, error) {
 	return EncodeToHashString(payload), nil
 }
 
-func validateSignedTransactionForm(tx map[string]any) error {
+func validateHashableTransactionForm(tx map[string]any) error {
+	txType, _ := tx["TransactionType"].(string)
+	if transaction.IsPseudoTransactionType(transaction.TxType(txType)) {
+		return nil
+	}
+
 	// Allow the canonical unsigned form used by inner Batch transactions.
 	form, err := clientinternal.InspectSignedTransaction(tx, true)
 	if err != nil {

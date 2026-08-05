@@ -38,7 +38,7 @@ func CloneNetworkID(networkID *uint32) *uint32 {
 // ResolveNetworkIdentity validates a server_info identity against an optional
 // caller-provided override. A matching override pointer is preserved instead of
 // being replaced by the discovered pointer. A missing discovered NetworkID
-// remains unknown when there is no override and cannot verify an override.
+// cannot verify an override.
 func ResolveNetworkIdentity(override *uint32, discovered NetworkIdentity) (NetworkIdentity, error) {
 	if discovered.NetworkID == nil {
 		if override != nil {
@@ -115,17 +115,16 @@ func networkIDPolicyTargets(tx transactionMap, identity NetworkIdentity) ([]tran
 
 // NetworkIDRequired reports whether transactions for identity must include a
 // NetworkID. Networks 0 through 1024 always omit it. Restricted networks add it
-// only when the server is rippled 1.11.0 or newer. Unknown identity data omits
-// NetworkID.
+// only when the server is rippled 1.11.0 or newer.
 func NetworkIDRequired(identity NetworkIdentity) (bool, error) {
 	if identity.NetworkID == nil {
-		return false, nil
+		return false, ErrNetworkIDUnavailable
 	}
 	if *identity.NetworkID <= RestrictedNetworks {
 		return false, nil
 	}
 	if identity.BuildVersion == "" {
-		return false, nil
+		return false, ErrBuildVersionUnavailable
 	}
 
 	comparison, err := compareRippledVersions(identity.BuildVersion, RequiredNetworkIDVersion)

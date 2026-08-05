@@ -27,6 +27,12 @@ var (
 
 	// network
 
+	// ErrNetworkIDUnavailable indicates that a client cannot safely determine
+	// the server's network identity.
+	ErrNetworkIDUnavailable = errors.New("server network ID is unavailable")
+	// ErrBuildVersionUnavailable indicates that a restricted network's rippled
+	// version is unavailable, so NetworkID requiredness cannot be determined.
+	ErrBuildVersionUnavailable = errors.New("server build version is unavailable")
 	// ErrInvalidBuildVersion indicates that a restricted network returned a
 	// build version that cannot be compared with rippled 1.11.0.
 	ErrInvalidBuildVersion = errors.New("invalid server build version")

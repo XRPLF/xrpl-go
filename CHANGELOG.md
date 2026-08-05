@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/hash
 
-- `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Multisigned transactions require an explicit empty top-level `SigningPubKey`. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`.
+- `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Multisigned transactions require an explicit empty top-level `SigningPubKey`. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`. Consensus-generated `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions remain hashable without account signatures.
 
 #### xrpl/ledger-entry-types
 
@@ -72,6 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/queries/amm
 
 - Added `ledger_hash` and `ledger_index` fields to `InfoRequest`, and `ledger_current_index` to `InfoResponse` for open-ledger responses.
+
+#### xrpl/transaction
+
+- Added centralized transaction type constants and `IsPseudoTransactionType` classification for `EnableAmendment`, `SetFee`, and `UNLModify`.
 
 #### xrpl/rpc
 
@@ -141,6 +145,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DecodeQuality` now positions the decimal point correctly for quality values below 1.
 - `EncodeQuality` now normalizes nonzero values to the canonical 16-digit XRPL quality mantissa, validates the normalized exponent range from -96 through 80, and wraps invalid input errors with `ErrInvalidQuality`.
 - `EncodeQuality` now validates the complete numeric syntax before zero detection. Malformed inputs such as `.` or `0..0` no longer encode as zero and return `ErrInvalidQuality`, while valid zero forms such as `-0` and `0e5` now encode as the canonical zero quality.
+- Added rippled-compatible empty `Account` serialization for `UNLModify` pseudo-transactions.
+
+#### xrpl/hash
+
+- Restored transaction ID calculation for `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions while preserving strict validation for user transactions.
 
 #### keypairs
 
@@ -170,9 +179,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
-- Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation.
+- Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation. Added a request gate that keeps application traffic off new sockets until identity discovery completes.
 - AccountDelete autofill now runs blocker checks for plain and named string Account values, including values converted from X-addresses.
 - Identity discovery now accepts out-of-order frames, replays buffered stream messages, clears temporary read deadlines after failed reads, and bounds replacement dials by the client timeout.
+- Made autofill and unsigned signing reject public network identity values until successful discovery, unless `WithNetworkIdentity` supplies an explicit trusted override.
+- Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 

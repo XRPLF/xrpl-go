@@ -1181,7 +1181,7 @@ func TestClient_AutofillChecksAccountDeleteBlockersForStringAddress(t *testing.T
 			err := cl.Autofill(&tx)
 
 			require.ErrorIs(t, err, ErrAccountCannotBeDeleted)
-			require.Equal(t, classicAddress, tx["Account"])
+			require.Equal(t, tt.account, tx["Account"])
 		})
 	}
 }
