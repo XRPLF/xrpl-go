@@ -15,11 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
-- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Client autofill and unsigned signing now fail closed when server identity cannot be established. Use `WithNetworkIdentity(networkID, buildVersion)` only for trusted discovery bypasses.
+- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Autofill and client-side signing now fail closed when server identity is missing or invalid. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
+- Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
 
 #### xrpl/websocket
 
-- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Client autofill and unsigned signing now fail closed when server identity cannot be established. Use `WithNetworkIdentity(networkID, buildVersion)` only for trusted discovery bypasses.
+- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Autofill and client-side signing now fail closed when server identity is missing or invalid. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
+- Changed `Client.Connect` to complete a synchronous `server_info` identity handshake before it starts the background reader. It returns an error and closes the socket if discovery fails or the server omits `network_id`. Use `WithNetworkIdentity` for trusted deployments whose servers cannot provide this field.
 
 ### Added
 
@@ -29,13 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
-- Added shared NetworkID/version policy for outer and Batch inner transactions, including restricted-network and rippled pre/post-1.11 rules.
-- Added shared X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields, with embedded source/destination tag application and explicit tag-conflict errors.
+- Added `WithNetworkIdentity` for trusted network identity configuration.
+- Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, and `ErrInvalidAddress` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrNetworkIDUnavailable`, `ErrBuildVersionUnavailable`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
+- Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
+
+#### xrpl/transaction/integration
+
+- Added RPC and WebSocket live-ledger coverage for X-address autofill and discovered NetworkID policy.
 
 #### xrpl/websocket
 
-- Added shared NetworkID/version policy for outer and Batch inner transactions, including restricted-network and rippled pre/post-1.11 rules.
-- Added shared X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields, with embedded source/destination tag application and explicit tag-conflict errors.
+- Added `ClientConfig.WithNetworkIdentity` for trusted network identity configuration and `ErrAlreadyConnected` for attempts to replace a live connection.
+- Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, and `ErrMismatchedTag` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrNetworkIDUnavailable`, `ErrBuildVersionUnavailable`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
+- Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
 
 ### Changed
 
@@ -51,11 +59,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - secp256k1 verification now rejects malleable high-S signatures that do not meet XRPL's fully canonical signature requirement.
 - `DeriveClassicAddress` now verifies that secp256k1 public keys encode valid curve points while preserving the caller's valid compressed or uncompressed encoding for address hashing.
 
+#### xrpl/rpc
+
+- Autofill and client-side signing now omit and reject an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. They add and require the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
+- The client now discovers and caches network identity with `server_info` before an identity-dependent operation.
+
+#### xrpl/websocket
+
+- Autofill and client-side signing now omit and reject an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. They add and require the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
+- Reconnects now rediscover server identity and reject a different network ID before normal message processing resumes.
+
 ### Fixed
 
 #### xrpl/websocket
 
-- Made connection-time network discovery atomic and leak-free, including reconnect identity checks, cancellation-safe reconnect dials, and protection against replacing an existing live connection.
+- Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation.
 
 ## [v0.2.0]
 
