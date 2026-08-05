@@ -166,40 +166,13 @@ type ClosedLedgerState struct {
 
 // LedgerState represents the state of a validated ledger in the server state response.
 type LedgerState struct {
-	Age                   uint   `json:"age,omitempty"`
-	BaseFee               uint   `json:"base_fee"`
-	CloseTime             uint   `json:"close_time"`
-	Hash                  string `json:"hash"`
-	ReserveBase           uint   `json:"reserve_base"`
-	ReserveInc            uint   `json:"reserve_inc"`
-	Seq                   uint   `json:"seq"`
-	reserveIncZeroPresent bool
-}
-
-// UnmarshalJSON records whether reserve_inc was present and non-null while
-// preserving the public numeric field.
-func (l *LedgerState) UnmarshalJSON(data []byte) error {
-	type Alias LedgerState
-	aux := struct {
-		ReserveInc *uint `json:"reserve_inc"`
-		Alias
-	}{}
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	*l = LedgerState(aux.Alias)
-	if aux.ReserveInc != nil {
-		l.ReserveInc = *aux.ReserveInc
-		l.reserveIncZeroPresent = l.ReserveInc == 0
-	}
-	return nil
-}
-
-// ReserveIncValue returns the incremental owner reserve and whether the JSON
-// field was present and non-null.
-func (l LedgerState) ReserveIncValue() (uint, bool) {
-	return l.ReserveInc, l.ReserveInc != 0 || l.reserveIncZeroPresent
+	Age         uint   `json:"age,omitempty"`
+	BaseFee     uint   `json:"base_fee"`
+	CloseTime   uint   `json:"close_time"`
+	Hash        string `json:"hash"`
+	ReserveBase uint   `json:"reserve_base"`
+	ReserveInc  *uint  `json:"reserve_inc"`
+	Seq         uint   `json:"seq"`
 }
 
 // CloseState describes metrics of a ledger close, including converge time and proposer count.
