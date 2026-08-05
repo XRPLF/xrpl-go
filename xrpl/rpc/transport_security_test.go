@@ -94,6 +94,11 @@ func TestNewClientConfigAuthorizationTransport(t *testing.T) {
 			wantErr:    true,
 		},
 		{
+			name:    "rejects malformed URL userinfo",
+			url:     malformedTestUserinfoURL(),
+			wantErr: true,
+		},
+		{
 			name:    "rejects plaintext URL userinfo",
 			url:     testUserinfoURL("http", "node.example"),
 			wantErr: true,
@@ -168,6 +173,11 @@ func TestClient_RequestAuthorizationTransport(t *testing.T) {
 			url:        "https://[::1/",
 			headerName: "Authorization",
 			wantErr:    true,
+		},
+		{
+			name:    "rejects mutated malformed URL userinfo",
+			url:     malformedTestUserinfoURL(),
+			wantErr: true,
 		},
 		{
 			name:    "rejects mutated plaintext URL userinfo",
@@ -264,6 +274,14 @@ func TestClient_RequestRedactsTransportError(t *testing.T) {
 	if !errors.Is(err, ErrAuthorizationRequestFailed) {
 		t.Fatal("expected redacted authorization request error")
 	}
+}
+
+func TestRedactAuthorizationErrorMalformedURLUserinfo(t *testing.T) {
+	rawURL := malformedTestUserinfoURL()
+	err := redactAuthorizationError(credentialEchoError("request failure: "+rawURL), rawURL, nil)
+
+	assertAuthorizationErrorRedacted(t, err)
+	require.ErrorIs(t, err, ErrAuthorizationRequestFailed)
 }
 
 func TestClient_AuthorizationRedirectDowngrade(t *testing.T) {
@@ -392,6 +410,10 @@ func testUserinfoURL(scheme, host string) string {
 		Host:   host,
 		User:   url.UserPassword(testURLUsername, testURLPassword),
 	}).String()
+}
+
+func malformedTestUserinfoURL() string {
+	return "https://" + url.UserPassword(testURLUsername, testURLPassword).String() + "@[::1"
 }
 
 func addTestUserinfo(t *testing.T, rawURL string) string {
