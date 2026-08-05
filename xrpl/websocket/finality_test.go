@@ -48,23 +48,25 @@ func TestIsTransactionNotFoundError(t *testing.T) {
 }
 
 func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
-	lastLedger := uint32(20)
+	const (
+		lastLedger        = uint32(20)
+		preliminaryResult = "tesSUCCESS"
+	)
 
 	tests := []struct {
-		name               string
-		lastLedgerSequence *uint32
-		maxAttempts        int
-		requestTimeout     time.Duration
-		contextTimeout     time.Duration
-		steps              []wsFinalityStep
-		wantResult         string
-		wantError          error
-		wantCause          error
+		name           string
+		maxAttempts    int
+		requestTimeout time.Duration
+		contextTimeout time.Duration
+		steps          []wsFinalityStep
+		wantResult     string
+		wantError      error
+		wantCause      error
+		wantExpiryAt   uint32
 	}{
 		{
-			name:               "validation exactly at LastLedgerSequence",
-			lastLedgerSequence: &lastLedger,
-			maxAttempts:        1,
+			name:        "validation exactly at LastLedgerSequence",
+			maxAttempts: 1,
 			steps: []wsFinalityStep{
 				{method: "tx", errorCode: txnNotFound},
 				{method: "ledger", result: wsLedgerResult(20)},
@@ -73,9 +75,8 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			wantResult: "tesSUCCESS",
 		},
 		{
-			name:               "validation racing expiry is rechecked",
-			lastLedgerSequence: &lastLedger,
-			maxAttempts:        1,
+			name:        "validation racing expiry is rechecked",
+			maxAttempts: 1,
 			steps: []wsFinalityStep{
 				{method: "tx", errorCode: txnNotFound},
 				{method: "ledger", result: wsLedgerResult(21)},
@@ -84,9 +85,8 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			wantResult: "tesSUCCESS",
 		},
 		{
-			name:               "expiry only after LastLedgerSequence",
-			lastLedgerSequence: &lastLedger,
-			maxAttempts:        1,
+			name:        "expiry only after LastLedgerSequence",
+			maxAttempts: 1,
 			steps: []wsFinalityStep{
 				{method: "tx", errorCode: txnNotFound},
 				{method: "ledger", result: wsLedgerResult(20)},
@@ -94,32 +94,21 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 				{method: "ledger", result: wsLedgerResult(21)},
 				{method: "tx", errorCode: txnNotFound},
 			},
-			wantError: ErrTransactionExpired,
+			wantError:    ErrTransactionExpired,
+			wantExpiryAt: 21,
 		},
 		{
-			name:               "validated tec returns response and failure",
-			lastLedgerSequence: &lastLedger,
-			maxAttempts:        1,
+			name:        "validated tec returns response without error",
+			maxAttempts: 1,
 			steps: []wsFinalityStep{
 				{method: "tx", result: wsValidatedTxResult(19, "tecPATH_DRY")},
 			},
 			wantResult: "tecPATH_DRY",
-			wantError:  ErrValidatedTransaction,
 		},
 		{
-			name:        "missing LastLedgerSequence has bounded unknown outcome",
-			maxAttempts: 2,
-			steps: []wsFinalityStep{
-				{method: "tx", errorCode: txnNotFound},
-				{method: "tx", result: wsUnvalidatedTxResult(19)},
-			},
-			wantError: ErrFinalityNotDetermined,
-		},
-		{
-			name:               "transient transport timeout does not become transaction failure",
-			lastLedgerSequence: &lastLedger,
-			maxAttempts:        2,
-			requestTimeout:     10 * time.Millisecond,
+			name:           "transient transport timeout does not become transaction failure",
+			maxAttempts:    2,
+			requestTimeout: 10 * time.Millisecond,
 			steps: []wsFinalityStep{
 				{method: "tx", noResponse: true},
 				{method: "tx", result: wsValidatedTxResult(20, "tesSUCCESS")},
@@ -127,10 +116,9 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			wantResult: "tesSUCCESS",
 		},
 		{
-			name:               "repeated transport timeout remains observable",
-			lastLedgerSequence: &lastLedger,
-			maxAttempts:        2,
-			requestTimeout:     10 * time.Millisecond,
+			name:           "repeated transport timeout remains observable",
+			maxAttempts:    2,
+			requestTimeout: 10 * time.Millisecond,
 			steps: []wsFinalityStep{
 				{method: "tx", noResponse: true},
 				{method: "tx", noResponse: true},
@@ -139,11 +127,10 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			wantCause: ErrRequestTimedOut,
 		},
 		{
-			name:               "caller deadline during request is not expiry",
-			lastLedgerSequence: &lastLedger,
-			maxAttempts:        2,
-			requestTimeout:     time.Second,
-			contextTimeout:     10 * time.Millisecond,
+			name:           "caller deadline during request is not expiry",
+			maxAttempts:    2,
+			requestTimeout: time.Second,
+			contextTimeout: 10 * time.Millisecond,
 			steps: []wsFinalityStep{
 				{method: "tx", noResponse: true},
 			},
@@ -172,7 +159,7 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			}
 			defer cancel()
 
-			response, err := client.waitForTransaction(ctx, "ABC", tt.lastLedgerSequence)
+			response, err := client.waitForTransaction(ctx, "ABC", lastLedger, preliminaryResult)
 			if tt.wantResult == "" {
 				require.Nil(t, response)
 			} else {
@@ -187,36 +174,64 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			if tt.wantCause != nil {
 				require.ErrorIs(t, err, tt.wantCause)
 			}
+			if tt.wantExpiryAt != 0 {
+				var expiryErr *TransactionExpiredError
+				require.ErrorAs(t, err, &expiryErr)
+				require.Equal(t, lastLedger, expiryErr.LastLedgerSequence)
+				require.Equal(t, tt.wantExpiryAt, expiryErr.ValidatedLedger)
+				require.Equal(t, preliminaryResult, expiryErr.PreliminaryResult)
+			}
 			require.Equal(t, int32(len(tt.steps)), requestCount.Load())
 			requireNoWSFinalityServerError(t, serverErrors)
 		})
 	}
 }
 
-func TestClientSubmitTxBlobAndWaitWithoutLastLedgerSequence(t *testing.T) {
+func TestClientSubmitTxBlobAndWaitRequiresLastLedgerSequence(t *testing.T) {
 	blob := signedWSFinalityBlob(t, nil)
-	steps := []wsFinalityStep{
-		{method: "submit", result: map[string]any{"engine_result": "tesSUCCESS"}},
-		{method: "tx", errorCode: txnNotFound},
-		{method: "tx", errorCode: txnNotFound},
-	}
-	client, requestCount, serverErrors, cleanup := setupWSFinalityClient(
-		t,
-		steps,
-		2,
-		time.Second,
-	)
+	client, requestCount, serverErrors, cleanup := setupWSFinalityClient(t, nil, 2, time.Second)
 	defer cleanup()
 
 	response, err := client.SubmitTxBlobAndWait(blob, false)
 	require.Nil(t, response)
-	require.ErrorIs(t, err, ErrFinalityNotDetermined)
-	require.NotErrorIs(t, err, ErrMissingLastLedgerSequenceInTransaction)
+	require.ErrorIs(t, err, ErrMissingLastLedgerSequenceInTransaction)
+	require.Zero(t, requestCount.Load())
+	requireNoWSFinalityServerError(t, serverErrors)
+}
+
+func TestClientSubmitTxBlobAndWaitExpiryRetainsPreliminaryResult(t *testing.T) {
+	const preliminaryResult = "terQUEUED"
+	lastLedger := uint32(20)
+	blob := signedWSFinalityBlob(t, &lastLedger)
+	steps := []wsFinalityStep{
+		{
+			method: "submit",
+			result: map[string]any{
+				"engine_result":         preliminaryResult,
+				"engine_result_message": "queued",
+			},
+		},
+		{method: "tx", errorCode: txnNotFound},
+		{method: "ledger", result: wsLedgerResult(21)},
+		{method: "tx", errorCode: txnNotFound},
+	}
+	client, requestCount, serverErrors, cleanup := setupWSFinalityClient(t, steps, 1, time.Second)
+	defer cleanup()
+
+	response, err := client.SubmitTxBlobAndWait(blob, false)
+	require.Nil(t, response)
+	require.ErrorIs(t, err, ErrTransactionExpired)
+	var expiryErr *TransactionExpiredError
+	require.ErrorAs(t, err, &expiryErr)
+	require.Equal(t, lastLedger, expiryErr.LastLedgerSequence)
+	require.Equal(t, uint32(21), expiryErr.ValidatedLedger)
+	require.Equal(t, preliminaryResult, expiryErr.PreliminaryResult)
 	require.Equal(t, int32(len(steps)), requestCount.Load())
 	requireNoWSFinalityServerError(t, serverErrors)
 }
 
 func TestClientSubmitTxBlobAndWaitPreliminaryResultFamilies(t *testing.T) {
+	const resultMessage = "preliminary result message"
 	lastLedger := uint32(20)
 	blob := signedWSFinalityBlob(t, &lastLedger)
 
@@ -228,7 +243,9 @@ func TestClientSubmitTxBlobAndWaitPreliminaryResultFamilies(t *testing.T) {
 		{name: "tes is monitored", preliminaryResult: "tesSUCCESS", wantMonitored: true},
 		{name: "ter is monitored", preliminaryResult: "terQUEUED", wantMonitored: true},
 		{name: "tec is monitored", preliminaryResult: "tecPATH_DRY", wantMonitored: true},
-		{name: "tef fails fast", preliminaryResult: "tefPAST_SEQ"},
+		{name: "tef is monitored", preliminaryResult: "tefPAST_SEQ", wantMonitored: true},
+		{name: "tel is monitored", preliminaryResult: "telINSUF_FEE_P", wantMonitored: true},
+		{name: "unknown is monitored", preliminaryResult: "customResult", wantMonitored: true},
 		{name: "tem fails fast", preliminaryResult: "temBAD_AMOUNT"},
 	}
 
@@ -236,7 +253,10 @@ func TestClientSubmitTxBlobAndWaitPreliminaryResultFamilies(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			steps := []wsFinalityStep{{
 				method: "submit",
-				result: map[string]any{"engine_result": tt.preliminaryResult},
+				result: map[string]any{
+					"engine_result":         tt.preliminaryResult,
+					"engine_result_message": resultMessage,
+				},
 			}}
 			if tt.wantMonitored {
 				steps = append(steps, wsFinalityStep{
@@ -263,6 +283,8 @@ func TestClientSubmitTxBlobAndWaitPreliminaryResultFamilies(t *testing.T) {
 				var preliminaryErr *PreliminaryResultError
 				require.ErrorAs(t, err, &preliminaryErr)
 				require.Equal(t, tt.preliminaryResult, preliminaryErr.EngineResult)
+				require.Equal(t, resultMessage, preliminaryErr.EngineResultMessage)
+				require.ErrorContains(t, err, resultMessage)
 			}
 			require.Equal(t, int32(len(steps)), requestCount.Load())
 			requireNoWSFinalityServerError(t, serverErrors)
@@ -373,14 +395,6 @@ func wsValidatedTxResult(index uint32, result string) map[string]any {
 		"ledger_index": index,
 		"meta":         map[string]any{"TransactionResult": result},
 		"validated":    true,
-	}
-}
-
-func wsUnvalidatedTxResult(index uint32) map[string]any {
-	return map[string]any{
-		"ledger_index": index,
-		"meta":         map[string]any{"TransactionResult": "terQUEUED"},
-		"validated":    false,
 	}
 }
 

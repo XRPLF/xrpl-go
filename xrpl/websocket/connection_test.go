@@ -2,10 +2,12 @@ package websocket
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -204,6 +206,8 @@ func TestConnection_WriteMessageHonorsCanceledContext(t *testing.T) {
 
 	t.Run("canceled while waiting for another writer", func(t *testing.T) {
 		connection := newConnection("ws://unused", defaultMaxResponseSize)
+		socket := newFakeWebsocketConnection()
+		connection.conn = socket
 		require.NoError(t, connection.acquireWrite(context.Background()))
 		defer connection.releaseWrite()
 
@@ -223,7 +227,196 @@ func TestConnection_WriteMessageHonorsCanceledContext(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Fatal("write did not exit after context cancellation while waiting for the writer token")
 		}
+		require.Zero(t, socket.closeCount.Load())
+		require.True(t, connection.IsConnected())
 	})
+}
+
+func TestConnection_WriteFailureInvalidatesSocket(t *testing.T) {
+	testErr := errors.New("socket write failure")
+	tests := []struct {
+		name      string
+		configure func(*fakeWebsocketConnection)
+	}{
+		{
+			name: "initial write deadline failure",
+			configure: func(socket *fakeWebsocketConnection) {
+				socket.initialDeadlineErr = testErr
+			},
+		},
+		{
+			name: "write failure",
+			configure: func(socket *fakeWebsocketConnection) {
+				socket.writeErr = testErr
+			},
+		},
+		{
+			name: "deadline clear failure",
+			configure: func(socket *fakeWebsocketConnection) {
+				socket.clearDeadlineErr = testErr
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			connection := newConnection("ws://unused", defaultMaxResponseSize)
+			failedSocket := newFakeWebsocketConnection()
+			tt.configure(failedSocket)
+			connection.conn = failedSocket
+
+			err := connection.writeMessage(context.Background(), []byte("test"), time.Second)
+			require.ErrorIs(t, err, testErr)
+			require.False(t, connection.IsConnected())
+			require.GreaterOrEqual(t, failedSocket.closeCount.Load(), int32(1))
+
+			replacement := newFakeWebsocketConnection()
+			connection.mu.Lock()
+			connection.conn = replacement
+			connection.mu.Unlock()
+			require.NoError(t, connection.WriteMessage([]byte("replacement")))
+			require.True(t, connection.IsConnected())
+			require.Equal(t, int32(1), replacement.writeCount.Load())
+		})
+	}
+}
+
+func TestConnection_StaleWriteFailureDoesNotInvalidateReplacement(t *testing.T) {
+	connection := newConnection("ws://unused", defaultMaxResponseSize)
+	oldSocket := newFakeWebsocketConnection()
+	oldSocket.writeErr = errors.New("old socket failed")
+	oldSocket.writeRelease = make(chan struct{})
+	connection.conn = oldSocket
+
+	result := make(chan error, 1)
+	go func() {
+		result <- connection.WriteMessage([]byte("old"))
+	}()
+	<-oldSocket.writeStarted
+
+	replacement := newFakeWebsocketConnection()
+	connection.mu.Lock()
+	connection.conn = replacement
+	connection.mu.Unlock()
+	close(oldSocket.writeRelease)
+
+	require.ErrorIs(t, <-result, oldSocket.writeErr)
+	require.True(t, connection.IsConnected())
+	require.GreaterOrEqual(t, oldSocket.closeCount.Load(), int32(1))
+	require.Zero(t, replacement.closeCount.Load())
+	require.NoError(t, connection.WriteMessage([]byte("replacement")))
+}
+
+func TestConnection_SimultaneousCancellationAndWriteFailureInvalidatesExactSocket(t *testing.T) {
+	connection := newConnection("ws://unused", defaultMaxResponseSize)
+	failedSocket := newFakeWebsocketConnection()
+	failedSocket.writeRelease = make(chan struct{})
+	replacement := newFakeWebsocketConnection()
+	failedSocket.closeHook = func() {
+		connection.mu.Lock()
+		connection.conn = replacement
+		connection.mu.Unlock()
+	}
+	connection.conn = failedSocket
+
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		result <- connection.writeMessage(ctx, []byte("test"), time.Second)
+	}()
+	<-failedSocket.writeStarted
+	cancel()
+
+	require.ErrorIs(t, <-result, context.Canceled)
+	require.GreaterOrEqual(t, failedSocket.closeCount.Load(), int32(2))
+	require.Zero(t, replacement.closeCount.Load())
+	require.True(t, connection.IsConnected())
+}
+
+func TestConnection_CanceledActiveWriteInvalidatesSocket(t *testing.T) {
+	connection := newConnection("ws://unused", defaultMaxResponseSize)
+	socket := newFakeWebsocketConnection()
+	socket.writeRelease = make(chan struct{})
+	connection.conn = socket
+
+	ctx, cancel := context.WithCancel(context.Background())
+	result := make(chan error, 1)
+	go func() {
+		result <- connection.writeMessage(ctx, []byte("test"), time.Second)
+	}()
+	<-socket.writeStarted
+	cancel()
+
+	select {
+	case err := <-result:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("active write did not exit after context cancellation")
+	}
+	require.False(t, connection.IsConnected())
+	require.GreaterOrEqual(t, socket.closeCount.Load(), int32(1))
+}
+
+type fakeWebsocketConnection struct {
+	initialDeadlineErr error
+	clearDeadlineErr   error
+	writeErr           error
+	writeStarted       chan struct{}
+	writeRelease       chan struct{}
+	closed             chan struct{}
+	closeHook          func()
+	closeOnce          sync.Once
+	startOnce          sync.Once
+	closeCount         atomic.Int32
+	writeCount         atomic.Int32
+}
+
+func newFakeWebsocketConnection() *fakeWebsocketConnection {
+	return &fakeWebsocketConnection{
+		writeStarted: make(chan struct{}),
+		closed:       make(chan struct{}),
+	}
+}
+
+func (f *fakeWebsocketConnection) Close() error {
+	f.closeCount.Add(1)
+	f.closeOnce.Do(func() {
+		if f.closeHook != nil {
+			f.closeHook()
+		}
+		close(f.closed)
+	})
+	return nil
+}
+
+func (f *fakeWebsocketConnection) SetReadLimit(int64) {}
+
+func (f *fakeWebsocketConnection) SetReadDeadline(time.Time) error { return nil }
+
+func (f *fakeWebsocketConnection) ReadMessage() (int, []byte, error) {
+	return 0, nil, errors.New("not implemented")
+}
+
+func (f *fakeWebsocketConnection) SetWriteDeadline(deadline time.Time) error {
+	if deadline.IsZero() {
+		return f.clearDeadlineErr
+	}
+	return f.initialDeadlineErr
+}
+
+func (f *fakeWebsocketConnection) WriteMessage(int, []byte) error {
+	f.writeCount.Add(1)
+	f.startOnce.Do(func() {
+		close(f.writeStarted)
+	})
+	if f.writeRelease != nil {
+		select {
+		case <-f.writeRelease:
+		case <-f.closed:
+			return errors.New("socket closed")
+		}
+	}
+	return f.writeErr
 }
 
 func TestConnection_DisconnectStopsConcurrentWriteMessage(t *testing.T) {

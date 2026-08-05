@@ -8,7 +8,11 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
-const defaultMaxResponseSize int64 = 16 * 1024 * 1024
+const (
+	defaultMaxResponseSize    int64 = 16 * 1024 * 1024
+	defaultReconnectBaseDelay       = 1 * time.Second
+	defaultReconnectMaxDelay        = 30 * time.Second
+)
 
 // SetLogger overrides the *log.Logger used for SDK-emitted warnings (currently
 // just the insecure-scheme warning). Pass nil to silence the warnings entirely.
@@ -24,11 +28,13 @@ type ClientConfig struct {
 	// Connection config
 	host string
 	// Reliable-submission monitoring limit.
-	maxRetries      int
-	maxReconnects   int
-	retryDelay      time.Duration
-	timeout         time.Duration
-	maxResponseSize int64
+	maxRetries         int
+	maxReconnects      int
+	retryDelay         time.Duration
+	reconnectBaseDelay time.Duration
+	reconnectMaxDelay  time.Duration
+	timeout            time.Duration
+	maxResponseSize    int64
 
 	// Fee config
 	feeCushion float32
@@ -45,14 +51,16 @@ type ClientConfig struct {
 // NewClientConfig returns a ClientConfig initialized with default settings.
 func NewClientConfig() *ClientConfig {
 	return &ClientConfig{
-		host:            common.DefaultHost,
-		feeCushion:      common.DefaultFeeCushion,
-		maxFeeXRP:       common.DefaultMaxFeeXRP,
-		maxRetries:      common.DefaultMaxRetries,
-		maxReconnects:   common.DefaultMaxReconnects,
-		retryDelay:      common.DefaultRetryDelay,
-		timeout:         common.DefaultTimeout,
-		maxResponseSize: defaultMaxResponseSize,
+		host:               common.DefaultHost,
+		feeCushion:         common.DefaultFeeCushion,
+		maxFeeXRP:          common.DefaultMaxFeeXRP,
+		maxRetries:         common.DefaultMaxRetries,
+		maxReconnects:      common.DefaultMaxReconnects,
+		retryDelay:         common.DefaultRetryDelay,
+		reconnectBaseDelay: defaultReconnectBaseDelay,
+		reconnectMaxDelay:  defaultReconnectMaxDelay,
+		timeout:            common.DefaultTimeout,
+		maxResponseSize:    defaultMaxResponseSize,
 	}
 }
 
@@ -84,9 +92,9 @@ func (wc ClientConfig) WithFaucetProvider(fp common.FaucetProvider) ClientConfig
 	return wc
 }
 
-// WithMaxRetries sets the consecutive monitoring-failure limit and the
-// bounded polling limit for transactions without LastLedgerSequence. It does
-// not limit ledger-driven monitoring when LastLedgerSequence is present.
+// WithMaxRetries limits consecutive incomplete reliable-submission polling
+// rounds caused by query or transport errors. It does not limit successful
+// finality polling.
 // Default: 10
 func (wc ClientConfig) WithMaxRetries(maxRetries int) ClientConfig {
 	wc.maxRetries = maxRetries

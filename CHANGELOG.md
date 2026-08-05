@@ -93,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `WithNetworkIdentity` for trusted network identity configuration.
 - Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, and `ErrAccountIDTagNotAllowed` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, `ErrNetworkIDOverrideMismatch`, and `ErrNetworkIDOverrideUnverified` for network identity errors.
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, RegularKey, Delegate, NFTokenMinter, Subject, Issuer, and Holder fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`, and tagged X-addresses in fields without a tag counterpart return `ErrAccountIDTagNotAllowed`.
-- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for preliminary rejection, validated failure, ledger expiry, bounded unknown finality, and repeated monitoring transport failure.
+- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for malformed preliminary results, ledger expiry, and repeated monitoring transport failure.
 
 #### xrpl/transaction/integration
 
@@ -109,7 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ClientConfig.WithNetworkIdentity` for trusted network identity configuration, `NetworkIdentity` for concurrency-safe identity access, and `ErrAlreadyConnected` for attempts to replace a live connection.
 - Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, `ErrMismatchedTag`, and `ErrAccountIDTagNotAllowed` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, `ErrNetworkIDOverrideMismatch`, and `ErrNetworkIDOverrideUnverified` for network identity errors.
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, RegularKey, Delegate, NFTokenMinter, Subject, Issuer, and Holder fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`, and tagged X-addresses in fields without a tag counterpart return `ErrAccountIDTagNotAllowed`.
-- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for preliminary rejection, validated failure, ledger expiry, bounded unknown finality, and repeated monitoring transport failure.
+- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for malformed preliminary results, ledger expiry, and repeated monitoring transport failure.
 
 ### Changed
 
@@ -211,12 +211,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Autofill now normalizes named string address values, such as `types.Address`, before account checks.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
-- Made reliable submission monitor preliminary `tes`, `ter`, and `tec` results through ledger finality, accept validation at `LastLedgerSequence`, expire only after that ledger passes, and use bounded uncertainty rather than rejecting legal transactions without `LastLedgerSequence`.
+- Matched xrpl.js finality outcomes by requiring `LastLedgerSequence` before submission, failing immediately only for preliminary `tem` results, retrying `txnNotFound`, and returning all validated transaction responses without an error. Expiry now requires a validated ledger greater than `LastLedgerSequence` and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
 
 #### xrpl/websocket
 
 - Reconnection exhaustion now unwraps the last connection or identity failure while preserving `errors.As` checks for `ErrMaxReconnectionAttemptsReached`.
-- Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation. Added a request gate that keeps application traffic off new sockets until identity discovery completes.
+- Made connection-time network discovery atomic and leak-free. Reconnecting sockets remain private and application requests remain gated until identity checks finish. Cancellation closes in-progress connection attempts, and failed attempts cannot replace a live connection.
 - AccountDelete autofill now runs blocker checks for plain and named string Account values, including values converted from X-addresses.
 - Identity discovery now accepts out-of-order frames, replays buffered stream messages, clears temporary read deadlines after failed reads, and bounds replacement dials by the client timeout.
 - Made autofill and unsigned signing reject public network identity values until successful discovery, unless `WithNetworkIdentity` supplies an explicit trusted override.
@@ -226,7 +226,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Kept the `VaultCreate` fee at one incremental owner reserve. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 - `AutofillMultisigned` now preserves a supplied `Fee`, when absent, it calculates the fee once with the signer count.
 - `SubmitTxBlobAndWait` now decodes the signed blob once and uses the decoded transaction for preflight and hashing.
-- Made reliable submission match RPC ledger-finality semantics, including cancellation-safe polling and writes, validation-at-boundary handling, and transport timeouts that remain distinct from transaction failure.
+- Matched RPC and xrpl.js finality outcomes, including required `LastLedgerSequence`, preliminary `tem` rejection, `txnNotFound` retries, nil errors for all validated responses, strict ledger expiry, and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
+- Closed and invalidated WebSocket connections after write or write-deadline failures. The active read loop now attempts reconnection after any read error, not only close errors, within the existing `WithMaxReconnects` budget.
+- Made manual disconnect claim an in-progress reconnect socket before lifecycle cancellation so cancellation-driven invalidation cannot cause a false not-connected error.
+- Made reconnect backoff configuration immutable per client to prevent concurrent clients and reconnect tests from racing over shared delay state.
 
 ## [v0.2.0]
 

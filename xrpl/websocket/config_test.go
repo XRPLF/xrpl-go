@@ -14,6 +14,8 @@ func TestNewClientConfig(t *testing.T) {
 	config := NewClientConfig()
 	require.Equal(t, common.DefaultMaxRetries, config.maxRetries)
 	require.Equal(t, common.DefaultRetryDelay, config.retryDelay)
+	require.Equal(t, defaultReconnectBaseDelay, config.reconnectBaseDelay)
+	require.Equal(t, defaultReconnectMaxDelay, config.reconnectMaxDelay)
 	require.Equal(t, common.DefaultHost, config.host)
 	require.InEpsilon(t, common.DefaultFeeCushion, config.feeCushion, 0)
 	require.InEpsilon(t, common.DefaultMaxFeeXRP, config.maxFeeXRP, 0)

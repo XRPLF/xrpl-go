@@ -80,9 +80,8 @@ type Client struct {
 	// streamHandlerResetMu serializes full lifecycle resets while old stream
 	// handler runners are waited on outside streamHandlerStateMu.
 	streamHandlerResetMu sync.Mutex
-	// connectionHandshakeMu prevents normal requests from using a new socket
-	// until network identity discovery completes. Connect and reconnect take the
-	// write lock. Request takes the read lock only while writing.
+	// connectionHandshakeMu keeps ordinary requests off a new socket until
+	// network identity discovery and socket publication complete.
 	connectionHandshakeMu sync.RWMutex
 	ctx                   context.Context
 	cancel                context.CancelFunc
@@ -98,6 +97,12 @@ type Client struct {
 // This client will open and close a websocket connection for each request.
 func NewClient(cfg ClientConfig) *Client {
 	clientconfig.WarnIfInsecureScheme("websocket", cfg.host)
+	if cfg.reconnectBaseDelay <= 0 {
+		cfg.reconnectBaseDelay = defaultReconnectBaseDelay
+	}
+	if cfg.reconnectMaxDelay <= 0 {
+		cfg.reconnectMaxDelay = defaultReconnectMaxDelay
+	}
 
 	// Pre-canceled so handlers registered before Connect are deferred to the
 	// first lifecycle reset, and any stray reportError before Connect is dropped.
@@ -177,7 +182,7 @@ func (c *Client) cancelLifecycle() {
 // to reconnect, start Connect in a separate goroutine or coordinate it outside
 // the handler callback.
 func (c *Client) Connect() error {
-	bufferedMessages, err := c.connectAndPrepareNetworkIdentity(context.Background())
+	bufferedMessages, err := c.connect(context.Background())
 	if err != nil {
 		return err
 	}
@@ -190,21 +195,25 @@ func (c *Client) Connect() error {
 	return nil
 }
 
-// connectAndPrepareNetworkIdentity keeps ordinary requests off a new socket
-// until the server_info identity handshake succeeds. It returns stream messages
-// read during discovery so the caller can replay them.
-func (c *Client) connectAndPrepareNetworkIdentity(ctx context.Context) ([][]byte, error) {
+// connect prepares a newly dialed socket before it becomes available to normal
+// client requests. It returns stream messages read during identity discovery so
+// the caller can replay them after the socket is published.
+func (c *Client) connect(ctx context.Context) ([][]byte, error) {
 	c.connectionHandshakeMu.Lock()
 	defer c.connectionHandshakeMu.Unlock()
 
-	if err := c.conn.connect(ctx); err != nil {
+	conn, err := c.conn.beginConnect(ctx)
+	if err != nil {
 		return nil, err
 	}
-	bufferedMessages, err := c.prepareNetworkIdentity()
+	bufferedMessages, err := c.prepareNetworkIdentity(ctx, conn)
 	if err != nil {
-		if disconnectErr := c.conn.Disconnect(); disconnectErr != nil && !errors.Is(disconnectErr, ErrNotConnected) {
-			return nil, errors.Join(err, disconnectErr)
+		if closeErr := c.conn.invalidateSocket(conn); closeErr != nil {
+			return nil, errors.Join(err, closeErr)
 		}
+		return nil, err
+	}
+	if err := c.conn.publishSocket(ctx, conn); err != nil {
 		return nil, err
 	}
 	return bufferedMessages, nil
@@ -216,15 +225,14 @@ func (c *Client) connectAndPrepareNetworkIdentity(ctx context.Context) ([][]byte
 // exit: doing so would deadlock when Disconnect is called from inside a
 // stream handler. The lifecycle context is canceled and handler runners are
 // detached so they drain asynchronously, and the readMessages goroutine is
-// unblocked by the socket close performed by conn.Disconnect rather than by
-// context cancellation. On* registrations themselves persist across
+// unblocked by the socket close performed by the connection disconnect
+// operation rather than by context cancellation. On* registrations persist across
 // Disconnect, a subsequent successful Connect restarts handler runners
 // against the new lifecycle (and resetLifecycle waits for the previous
 // runners before starting fresh ones). Callers must serialize concurrent
 // calls to Connect and Disconnect externally.
 func (c *Client) Disconnect() error {
-	c.cancelLifecycle()
-	return c.conn.Disconnect()
+	return c.conn.disconnect(c.cancelLifecycle)
 }
 
 // IsConnected returns true if the client is connected to the server.
@@ -388,15 +396,15 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 		return nil, err
 	}
 
-	if !c.conn.IsConnected() {
-		return nil, ErrNotConnectedToServer
-	}
-
 	deadline := time.Now().Add(c.cfg.timeout)
 	responseChan := c.registerPendingResponse(id)
 	defer c.unregisterPendingResponse(id)
 
 	c.connectionHandshakeMu.RLock()
+	if !c.conn.IsConnected() {
+		c.connectionHandshakeMu.RUnlock()
+		return nil, ErrNotConnectedToServer
+	}
 	remaining := time.Until(deadline)
 	if remaining <= 0 {
 		c.connectionHandshakeMu.RUnlock()
@@ -502,9 +510,8 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 }
 
 // SubmitTxBlobAndWait submits a pre-signed transaction and waits for an
-// authoritative validated-ledger result. Transactions with LastLedgerSequence
-// are monitored through that ledger and expire only after it passes. Without
-// LastLedgerSequence, monitoring uses the configured bounded fallback.
+// authoritative validated-ledger result. LastLedgerSequence is required and
+// expiry occurs only after the validated ledger passes it.
 func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.TxResponse, error) {
 	return c.SubmitTxBlobAndWaitContext(context.Background(), txBlob, failHard)
 }
@@ -517,20 +524,26 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 	txBlob string,
 	failHard bool,
 ) (*requests.TxResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return nil, err
 	}
 
-	var lastLedgerSequence *uint32
-	if sequence, ok := tx["LastLedgerSequence"].(uint32); ok {
-		lastLedgerSequence = &sequence
+	lastLedgerSequence, ok := tx["LastLedgerSequence"].(uint32)
+	if !ok {
+		return nil, ErrMissingLastLedgerSequenceInTransaction
 	}
 	submitResponse, err := c.submitTxBlobContext(ctx, txBlob, tx, failHard)
 	if err != nil {
 		return nil, err
 	}
-	if err := clientinternal.ValidatePreliminaryResult(submitResponse.EngineResult); err != nil {
+	if err := clientinternal.ValidatePreliminaryResult(
+		submitResponse.EngineResult,
+		submitResponse.EngineResultMessage,
+	); err != nil {
 		return nil, err
 	}
 
@@ -539,7 +552,7 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 		return nil, err
 	}
 
-	return c.waitForTransaction(ctx, txHash, lastLedgerSequence)
+	return c.waitForTransaction(ctx, txHash, lastLedgerSequence, submitResponse.EngineResult)
 }
 
 // SubmitTxAndWait prepares, submits, and monitors a transaction until its
@@ -575,12 +588,14 @@ func (c *Client) SubmitTxAndWaitContext(
 func (c *Client) waitForTransaction(
 	ctx context.Context,
 	txHash string,
-	lastLedgerSequence *uint32,
+	lastLedgerSequence uint32,
+	preliminaryResult string,
 ) (*requests.TxResponse, error) {
 	return clientinternal.WaitForFinality(
 		ctx,
 		clientinternal.FinalityConfig{
 			LastLedgerSequence: lastLedgerSequence,
+			PreliminaryResult:  preliminaryResult,
 			PollInterval:       c.cfg.retryDelay,
 			MaxAttempts:        c.cfg.maxRetries,
 		},
@@ -951,14 +966,6 @@ func (c *Client) handleStream(ctx context.Context, t streamtypes.Type, message [
 	}
 }
 
-// reconnectBaseDelay and reconnectMaxDelay control the capped exponential
-// backoff applied between reconnect attempts in readMessages. They are vars
-// (not consts) so tests can shrink the wait without exposing a public knob.
-var (
-	reconnectBaseDelay = 1 * time.Second
-	reconnectMaxDelay  = 30 * time.Second
-)
-
 func (c *Client) readMessages(ctx context.Context) {
 	retryCount := 0
 	maxRetries := c.cfg.maxReconnects
@@ -980,22 +987,21 @@ func (c *Client) readMessages(ctx context.Context) {
 		default:
 		}
 
-		switch {
-		case ws.IsCloseError(err) || ws.IsUnexpectedCloseError(err):
+		if err != nil {
 			c.disconnectConnection(ctx)
+			if !ws.IsCloseError(err) && !ws.IsUnexpectedCloseError(err) {
+				c.reportError(ctx, err)
+			}
 			if !c.reconnectWithBackoff(ctx, &retryCount, maxRetries) {
 				return
 			}
-		case err != nil:
-			c.disconnectConnection(ctx)
-			c.reportError(ctx, err)
-			return
-		default:
-			// Send the message to the channel
-			c.handleMessage(ctx, message)
-			// Reset retry count on successful message
-			retryCount = 0
+			continue
 		}
+
+		// Send the message to the channel.
+		c.handleMessage(ctx, message)
+		// Reset retry count on a successful message.
+		retryCount = 0
 	}
 }
 
@@ -1021,7 +1027,11 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 		}
 		*retryCount++
 
-		timer := time.NewTimer(reconnectDelay(*retryCount))
+		timer := time.NewTimer(reconnectDelay(
+			*retryCount,
+			c.cfg.reconnectBaseDelay,
+			c.cfg.reconnectMaxDelay,
+		))
 		select {
 		case <-ctx.Done():
 			timer.Stop()
@@ -1029,12 +1039,12 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 		case <-timer.C:
 		}
 
-		bufferedMessages, err := c.connectAndPrepareNetworkIdentity(ctx)
-		if err != nil {
-			if errors.Is(err, context.Canceled) {
+		bufferedMessages, connErr := c.connect(ctx)
+		if connErr != nil {
+			if ctx.Err() != nil || errors.Is(connErr, context.Canceled) {
 				return false
 			}
-			lastErr = err
+			lastErr = connErr
 			continue
 		}
 		for _, message := range bufferedMessages {
@@ -1048,18 +1058,18 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 	}
 }
 
-// reconnectDelay returns reconnectBaseDelay * 2^(attempt-1), capped at
-// reconnectMaxDelay. attempt is 1-indexed.
-func reconnectDelay(attempt int) time.Duration {
+// reconnectDelay returns baseDelay * 2^(attempt-1), capped at maxDelay.
+// Attempt is 1-indexed.
+func reconnectDelay(attempt int, baseDelay, maxDelay time.Duration) time.Duration {
 	if attempt < 1 {
 		attempt = 1
 	}
-	backoff := reconnectBaseDelay
-	for i := 1; i < attempt && backoff < reconnectMaxDelay; i++ {
+	backoff := baseDelay
+	for i := 1; i < attempt && backoff < maxDelay; i++ {
 		backoff *= 2
 	}
-	if backoff > reconnectMaxDelay {
-		return reconnectMaxDelay
+	if backoff > maxDelay {
+		return maxDelay
 	}
 	return backoff
 }

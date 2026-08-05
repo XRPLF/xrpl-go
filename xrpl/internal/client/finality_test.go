@@ -23,27 +23,29 @@ type finalityLedgerStep struct {
 }
 
 func TestValidatePreliminaryResult(t *testing.T) {
+	const resultMessage = "preliminary result message"
 	tests := []struct {
 		name         string
 		engineResult string
 		wantFamily   EngineResultFamily
-		wantMonitor  bool
+		wantError    bool
 	}{
-		{name: "tes preliminary success", engineResult: "tesSUCCESS", wantFamily: EngineResultTES, wantMonitor: true},
-		{name: "ter retryable", engineResult: "terQUEUED", wantFamily: EngineResultTER, wantMonitor: true},
-		{name: "tec fee claiming", engineResult: "tecPATH_DRY", wantFamily: EngineResultTEC, wantMonitor: true},
-		{name: "tef local failure", engineResult: "tefPAST_SEQ", wantFamily: EngineResultTEF},
-		{name: "tem malformed", engineResult: "temBAD_AMOUNT", wantFamily: EngineResultTEM},
-		{name: "tel is outside monitored policy", engineResult: "telINSUF_FEE_P", wantFamily: EngineResultUnknown},
+		{name: "tes preliminary success", engineResult: "tesSUCCESS", wantFamily: EngineResultTES},
+		{name: "ter retryable", engineResult: "terQUEUED", wantFamily: EngineResultTER},
+		{name: "tec fee claiming", engineResult: "tecPATH_DRY", wantFamily: EngineResultTEC},
+		{name: "tef failure", engineResult: "tefPAST_SEQ", wantFamily: EngineResultTEF},
+		{name: "tel local error", engineResult: "telINSUF_FEE_P", wantFamily: EngineResultTEL},
+		{name: "unknown result", engineResult: "customResult", wantFamily: EngineResultUnknown},
 		{name: "empty result", engineResult: "", wantFamily: EngineResultUnknown},
+		{name: "tem malformed", engineResult: "temBAD_AMOUNT", wantFamily: EngineResultTEM, wantError: true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.wantFamily, ClassifyEngineResult(tt.engineResult))
 
-			err := ValidatePreliminaryResult(tt.engineResult)
-			if tt.wantMonitor {
+			err := ValidatePreliminaryResult(tt.engineResult, resultMessage)
+			if !tt.wantError {
 				require.NoError(t, err)
 				return
 			}
@@ -52,56 +54,49 @@ func TestValidatePreliminaryResult(t *testing.T) {
 			var preliminaryErr *PreliminaryResultError
 			require.ErrorAs(t, err, &preliminaryErr)
 			require.Equal(t, tt.engineResult, preliminaryErr.EngineResult)
+			require.Equal(t, resultMessage, preliminaryErr.EngineResultMessage)
+			require.ErrorContains(t, err, resultMessage)
 		})
 	}
 }
 
 func TestWaitForFinalityMatrix(t *testing.T) {
 	transportTimeout := errors.New("transport timeout")
-	lastLedger20 := uint32(20)
+	const (
+		lastLedger20      = uint32(20)
+		preliminaryResult = "terQUEUED"
+	)
 	success := &finalityTestResponse{result: "tesSUCCESS"}
-	tecFailure := &finalityTestResponse{result: "tecPATH_DRY"}
+	tecResult := &finalityTestResponse{result: "tecPATH_DRY"}
+	unknownResult := &finalityTestResponse{result: "customResult"}
 
 	notFound := TransactionStatus[finalityTestResponse]{}
 	unvalidated := TransactionStatus[finalityTestResponse]{
 		Response: &finalityTestResponse{result: "provisional"},
 		Found:    true,
 	}
-	validatedSuccessAt20 := TransactionStatus[finalityTestResponse]{
-		Response:     success,
-		Found:        true,
-		Validated:    true,
-		LedgerIndex:  20,
-		EngineResult: "tesSUCCESS",
-	}
-	validatedTECAt20 := TransactionStatus[finalityTestResponse]{
-		Response:     tecFailure,
-		Found:        true,
-		Validated:    true,
-		LedgerIndex:  20,
-		EngineResult: "tecPATH_DRY",
-	}
+	validatedSuccess := TransactionStatus[finalityTestResponse]{Response: success, Found: true, Validated: true}
+	validatedTEC := TransactionStatus[finalityTestResponse]{Response: tecResult, Found: true, Validated: true}
+	validatedUnknown := TransactionStatus[finalityTestResponse]{Response: unknownResult, Found: true, Validated: true}
 
 	tests := []struct {
-		name                 string
-		lastLedgerSequence   *uint32
-		maxAttempts          int
-		lookupSteps          []finalityLookupStep
-		ledgerSteps          []finalityLedgerStep
-		wantResponse         *finalityTestResponse
-		wantError            error
-		wantValidatedFailure bool
-		wantTransportCause   error
-		wantLookupCalls      int
-		wantLedgerCalls      int
+		name               string
+		maxAttempts        int
+		lookupSteps        []finalityLookupStep
+		ledgerSteps        []finalityLedgerStep
+		wantResponse       *finalityTestResponse
+		wantError          error
+		wantTransportCause error
+		wantLookupCalls    int
+		wantLedgerCalls    int
+		wantExpiryLedger   uint32
 	}{
 		{
-			name:               "validated success exactly at LastLedgerSequence",
-			lastLedgerSequence: &lastLedger20,
-			maxAttempts:        1,
+			name:        "validated success exactly at LastLedgerSequence",
+			maxAttempts: 1,
 			lookupSteps: []finalityLookupStep{
 				{status: notFound},
-				{status: validatedSuccessAt20},
+				{status: validatedSuccess},
 			},
 			ledgerSteps:     []finalityLedgerStep{{index: 20}},
 			wantResponse:    success,
@@ -109,14 +104,13 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			wantLedgerCalls: 1,
 		},
 		{
-			name:               "fixed attempt budget does not override ledger finality",
-			lastLedgerSequence: &lastLedger20,
-			maxAttempts:        1,
+			name:        "fixed attempt budget does not override ledger finality",
+			maxAttempts: 1,
 			lookupSteps: []finalityLookupStep{
 				{status: notFound},
 				{status: unvalidated},
 				{status: notFound},
-				{status: validatedSuccessAt20},
+				{status: validatedSuccess},
 			},
 			ledgerSteps: []finalityLedgerStep{
 				{index: 17},
@@ -128,12 +122,11 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			wantLedgerCalls: 3,
 		},
 		{
-			name:               "validation racing expiry is rechecked",
-			lastLedgerSequence: &lastLedger20,
-			maxAttempts:        1,
+			name:        "validation racing expiry is rechecked",
+			maxAttempts: 1,
 			lookupSteps: []finalityLookupStep{
 				{status: notFound},
-				{status: validatedSuccessAt20},
+				{status: validatedSuccess},
 			},
 			ledgerSteps:     []finalityLedgerStep{{index: 21}},
 			wantResponse:    success,
@@ -141,9 +134,8 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			wantLedgerCalls: 1,
 		},
 		{
-			name:               "expiry only after LastLedgerSequence passes",
-			lastLedgerSequence: &lastLedger20,
-			maxAttempts:        1,
+			name:        "expiry only after LastLedgerSequence passes",
+			maxAttempts: 1,
 			lookupSteps: []finalityLookupStep{
 				{status: notFound},
 				{status: notFound},
@@ -153,33 +145,34 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 				{index: 20},
 				{index: 21},
 			},
-			wantError:       ErrTransactionExpired,
-			wantLookupCalls: 3,
-			wantLedgerCalls: 2,
+			wantError:        ErrTransactionExpired,
+			wantLookupCalls:  3,
+			wantLedgerCalls:  2,
+			wantExpiryLedger: 21,
 		},
 		{
-			name:               "validated tec is authoritative failure",
-			lastLedgerSequence: &lastLedger20,
-			maxAttempts:        1,
-			lookupSteps: []finalityLookupStep{
-				{status: notFound},
-				{status: validatedTECAt20},
-			},
-			ledgerSteps:          []finalityLedgerStep{{index: 20}},
-			wantResponse:         tecFailure,
-			wantError:            ErrValidatedTransaction,
-			wantValidatedFailure: true,
-			wantLookupCalls:      2,
-			wantLedgerCalls:      1,
+			name:            "validated tec returns response without error",
+			maxAttempts:     1,
+			lookupSteps:     []finalityLookupStep{{status: validatedTEC}},
+			wantResponse:    tecResult,
+			wantLookupCalls: 1,
+			wantLedgerCalls: 0,
 		},
 		{
-			name:               "transient transaction transport error is retried",
-			lastLedgerSequence: &lastLedger20,
-			maxAttempts:        2,
+			name:            "unknown validated result returns response without error",
+			maxAttempts:     1,
+			lookupSteps:     []finalityLookupStep{{status: validatedUnknown}},
+			wantResponse:    unknownResult,
+			wantLookupCalls: 1,
+			wantLedgerCalls: 0,
+		},
+		{
+			name:        "transient transaction transport error is retried",
+			maxAttempts: 2,
 			lookupSteps: []finalityLookupStep{
 				{err: transportTimeout},
 				{status: notFound},
-				{status: validatedSuccessAt20},
+				{status: validatedSuccess},
 			},
 			ledgerSteps:     []finalityLedgerStep{{index: 20}},
 			wantResponse:    success,
@@ -187,24 +180,35 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			wantLedgerCalls: 1,
 		},
 		{
-			name:               "transient ledger transport error is retried",
-			lastLedgerSequence: &lastLedger20,
-			maxAttempts:        2,
+			name:        "transient ledger transport error is retried",
+			maxAttempts: 2,
 			lookupSteps: []finalityLookupStep{
 				{status: notFound},
-				{status: validatedSuccessAt20},
+				{status: validatedSuccess},
 			},
-			ledgerSteps: []finalityLedgerStep{
-				{err: transportTimeout},
-			},
+			ledgerSteps:     []finalityLedgerStep{{err: transportTimeout}},
 			wantResponse:    success,
 			wantLookupCalls: 2,
 			wantLedgerCalls: 1,
 		},
 		{
-			name:               "repeated transport errors remain transport outcome",
-			lastLedgerSequence: &lastLedger20,
-			maxAttempts:        2,
+			name:        "complete round resets incomplete round count",
+			maxAttempts: 2,
+			lookupSteps: []finalityLookupStep{
+				{err: transportTimeout},
+				{status: notFound},
+				{err: transportTimeout},
+				{err: transportTimeout},
+			},
+			ledgerSteps:        []finalityLedgerStep{{index: 19}},
+			wantError:          ErrFinalityTransport,
+			wantTransportCause: transportTimeout,
+			wantLookupCalls:    4,
+			wantLedgerCalls:    1,
+		},
+		{
+			name:        "repeated transport errors remain transport outcome",
+			maxAttempts: 2,
 			lookupSteps: []finalityLookupStep{
 				{err: transportTimeout},
 				{err: transportTimeout},
@@ -214,19 +218,22 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			wantLookupCalls:    2,
 		},
 		{
-			name:            "missing LastLedgerSequence uses bounded unknown fallback",
-			maxAttempts:     2,
-			lookupSteps:     []finalityLookupStep{{status: notFound}, {status: unvalidated}},
-			wantError:       ErrFinalityNotDetermined,
-			wantLookupCalls: 2,
-		},
-		{
-			name:               "nonpositive attempt budget still performs one lookup",
-			lastLedgerSequence: nil,
-			maxAttempts:        0,
-			lookupSteps:        []finalityLookupStep{{status: notFound}},
-			wantError:          ErrFinalityNotDetermined,
-			wantLookupCalls:    1,
+			name:        "expiry recheck errors consume transport budget",
+			maxAttempts: 2,
+			lookupSteps: []finalityLookupStep{
+				{status: notFound},
+				{err: transportTimeout},
+				{status: notFound},
+				{err: transportTimeout},
+			},
+			ledgerSteps: []finalityLedgerStep{
+				{index: 21},
+				{index: 21},
+			},
+			wantError:          ErrFinalityTransport,
+			wantTransportCause: transportTimeout,
+			wantLookupCalls:    4,
+			wantLedgerCalls:    2,
 		},
 	}
 
@@ -252,7 +259,8 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			response, err := WaitForFinality(
 				context.Background(),
 				FinalityConfig{
-					LastLedgerSequence: tt.lastLedgerSequence,
+					LastLedgerSequence: lastLedger20,
+					PreliminaryResult:  preliminaryResult,
 					MaxAttempts:        tt.maxAttempts,
 				},
 				hooks,
@@ -264,17 +272,18 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			} else {
 				require.ErrorIs(t, err, tt.wantError)
 			}
-			if tt.wantValidatedFailure {
-				var validatedErr *ValidatedTransactionError
-				require.ErrorAs(t, err, &validatedErr)
-				require.Equal(t, "tecPATH_DRY", validatedErr.EngineResult)
-				require.Equal(t, uint32(20), validatedErr.LedgerIndex)
-			}
 			if tt.wantTransportCause != nil {
 				require.ErrorIs(t, err, tt.wantTransportCause)
 				var transportErr *FinalityTransportError
 				require.ErrorAs(t, err, &transportErr)
 				require.Equal(t, tt.maxAttempts, transportErr.Attempts)
+			}
+			if tt.wantExpiryLedger != 0 {
+				var expiryErr *TransactionExpiredError
+				require.ErrorAs(t, err, &expiryErr)
+				require.Equal(t, lastLedger20, expiryErr.LastLedgerSequence)
+				require.Equal(t, tt.wantExpiryLedger, expiryErr.ValidatedLedger)
+				require.Equal(t, preliminaryResult, expiryErr.PreliminaryResult)
 			}
 			require.Equal(t, tt.wantLookupCalls, lookupCalls)
 			require.Equal(t, tt.wantLedgerCalls, ledgerCalls)
@@ -284,11 +293,11 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 
 func TestWaitForFinalityReturnsContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	lastLedger := uint32(20)
+	const lastLedger = uint32(20)
 
 	response, err := WaitForFinality(
 		ctx,
-		FinalityConfig{LastLedgerSequence: &lastLedger, MaxAttempts: 2},
+		FinalityConfig{LastLedgerSequence: lastLedger, MaxAttempts: 2},
 		FinalityHooks[finalityTestResponse]{
 			LookupTransaction: func(context.Context) (TransactionStatus[finalityTestResponse], error) {
 				return TransactionStatus[finalityTestResponse]{}, nil
