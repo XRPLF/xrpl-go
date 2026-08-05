@@ -26,9 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/queries/server
 
 - Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID. Current self-hosted rippled nodes can omit `server_info.network_id`: rippled sends it only when a network ID is configured, and the example configuration stanza is disabled by default. This is not only an old-server case. Clients can use `rpc.WithNetworkIdentity` or `websocket.ClientConfig.WithNetworkIdentity` with trusted deployment values.
+- Changed `ClosedLedger.BaseFeeXRP` from `float32` to `float64` so fee calculation starts with binary64 precision.
+- Changed `types.Info.LoadFactor` from `uint` to `float64` so fractional server load factors are accepted.
+
+#### xrpl/queries/clio
+
+- Changed `LedgerInfo.BaseFeeXRP` from `float32` to `float64` for consistency with server fee responses.
 
 #### xrpl/rpc
 
+- Changed `WithFeeCushion` from `float32` to `float64` and `WithMaxFeeXRP` from `float32` to a decimal string so fee configuration preserves binary64 inputs and exact decimal caps. The shared `common.DefaultFeeCushion` and `common.DefaultMaxFeeXRP` constants now use the corresponding types.
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID remains distinct from mainnet ID `0`. Use `WithNetworkIdentity(networkID, buildVersion)` to bypass discovery with trusted deployment values.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
 - Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form, `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
@@ -44,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
+- Changed `ClientConfig.WithFeeCushion` and `DefaultFeeCushion` from `float32` to `float64`; changed `ClientConfig.WithMaxFeeXRP` and `DefaultMaxFeeXRP` from `float32` to decimal strings. Fee configuration now preserves binary64 inputs and exact decimal caps.
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID remains distinct from mainnet ID `0`. Use `ClientConfig.WithNetworkIdentity(networkID, buildVersion)` to bypass discovery with trusted deployment values.
 - Changed `Client.Connect` to request `server_info` before it starts the background reader. A request, response, or identity failure now fails `Connect` and closes the new connection. A missing `network_id` fails with `ErrNetworkIDUnavailable`.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, websocket.ErrMismatchedTag)`.
@@ -205,16 +213,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Concurrent callers now share one in-flight network identity discovery result, including failures, while later independent operations can retry.
 - Rippled prerelease versions with numeric suffixes now compare the suffix numerically.
 - Made autofill and unsigned signing fail closed when network identity discovery or validation fails, unless `WithNetworkIdentity` supplies an explicit trusted identity.
+- Corrected fee precision and rounding with shared exact rational arithmetic, including fractional load factors, empty and fractional `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Kept the `VaultCreate` fee at one incremental owner reserve. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
-- `AutofillMultisigned` now preserves a supplied `Fee`, when absent, it calculates the fee once with the signer count.
+- `AutofillMultisigned` now preserves a supplied `Fee`; when absent, it calculates the fee once with the signer count.
 - `SubmitTxBlobAndWait` now decodes the signed blob once and uses the decoded transaction for preflight and hashing.
 - Autofill now normalizes named string address values, such as `types.Address`, before account checks.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
-- Matched xrpl.js finality outcomes by requiring `LastLedgerSequence` before submission, failing immediately only for preliminary `tem` results, retrying `txnNotFound`, and returning all validated transaction responses without an error. Expiry now requires a validated ledger greater than `LastLedgerSequence` and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
+- Corrected reliable-submission outcomes by requiring `LastLedgerSequence` before submission, failing immediately only for preliminary `tem` results, retrying `txnNotFound`, and returning all validated transaction responses without an error. Expiry now requires a validated ledger greater than `LastLedgerSequence` and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
 
 #### xrpl/websocket
 
+- Corrected fee precision and rounding with shared exact rational arithmetic, including fractional load factors, empty and fractional `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
+- Pending requests now return `ErrDisconnected` immediately on connection loss or write failure and are never replayed after reconnection. A request timeout covers both its write and response wait, stale read failures do not close replacement sockets, and disconnecting an idle client succeeds.
 - Reconnection exhaustion now unwraps the last connection or identity failure while preserving `errors.As` checks for `ErrMaxReconnectionAttemptsReached`.
 - Made connection-time network discovery atomic and leak-free. Reconnecting sockets remain private and application requests remain gated until identity checks finish. Cancellation closes in-progress connection attempts, and failed attempts cannot replace a live connection.
 - AccountDelete autofill now runs blocker checks for plain and named string Account values, including values converted from X-addresses.
@@ -224,9 +235,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Kept the `VaultCreate` fee at one incremental owner reserve. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
-- `AutofillMultisigned` now preserves a supplied `Fee`, when absent, it calculates the fee once with the signer count.
+- `AutofillMultisigned` now preserves a supplied `Fee`; when absent, it calculates the fee once with the signer count.
 - `SubmitTxBlobAndWait` now decodes the signed blob once and uses the decoded transaction for preflight and hashing.
-- Matched RPC and xrpl.js finality outcomes, including required `LastLedgerSequence`, preliminary `tem` rejection, `txnNotFound` retries, nil errors for all validated responses, strict ledger expiry, and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
+- Aligned WebSocket and RPC finality outcomes, including required `LastLedgerSequence`, preliminary `tem` rejection, `txnNotFound` retries, nil errors for all validated responses, strict ledger expiry, and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
 - Closed and invalidated WebSocket connections after write or write-deadline failures. The active read loop now attempts reconnection after any read error, not only close errors, within the existing `WithMaxReconnects` budget.
 - Made manual disconnect claim an in-progress reconnect socket before lifecycle cancellation so cancellation-driven invalidation cannot cause a false not-connected error.
 - Made reconnect backoff configuration immutable per client to prevent concurrent clients and reconnect tests from racing over shared delay state.
@@ -344,7 +355,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/currency
 
-- Deprecated exported `DropsPerXrp`, it remains available for compatibility, but native amount conversion helpers use exact rational arithmetic internally instead of `float64`.
+- Replaced the deprecated `float64` constant `DropsPerXrp` with the exact untyped constant `DropsPerXRP`. This is a source-breaking rename; use `DropsPerXRP` or the native amount conversion helpers.
 - Changed `MaxFractionLength` from `uint` to `int` to match Go precision and length APIs without repeated casts.
 
 #### xrpl/rpc
@@ -430,7 +441,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - `AccountSet.Validate` now rejects invalid `TransferRate`, `ClearFlag`, and reserved `SetFlag` values before submission.
-- `AccountSet.Validate` now rejects `SetFlag == ClearFlag` (non-zero) locally, matching rippled's `temINVALID` and xrpl.js's `validateAccountSet`. Returned via the new `ErrAccountSetMutuallyExclusiveFlags` sentinel.
+- `AccountSet.Validate` now rejects `SetFlag == ClearFlag` (non-zero) locally, matching rippled's `temINVALID`. Returned via the new `ErrAccountSetMutuallyExclusiveFlags` sentinel.
 - `EscrowCreate`, `CheckCreate`, `NFTokenCreateOffer`, and `OfferCreate` now omit nil amount fields in `Flatten()` instead of panicking.
 - `EscrowCreate.Validate` now rejects `Condition` values that are not valid hex-encoded byte sequences with the new `ErrEscrowCreateInvalidCondition` sentinel, matching the parity check on `EscrowFinish`.
 - `EscrowCreate.Validate` now rejects zero `Amount` (XRP, IOU, or MPT) with `ErrEscrowCreateZeroAmount`, matching rippled's `temBAD_AMOUNT` rejection.

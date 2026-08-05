@@ -476,8 +476,7 @@ func TestClient_DisconnectCancelsLifecycle(t *testing.T) {
 	cl := NewClient(*NewClientConfig())
 	ctx := cl.lifecycleContext()
 
-	err := cl.Disconnect()
-	require.ErrorIs(t, err, ErrNotConnected)
+	require.NoError(t, cl.Disconnect())
 
 	select {
 	case <-ctx.Done():

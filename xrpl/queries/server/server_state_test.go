@@ -1,11 +1,37 @@
 package server
 
 import (
+	"encoding/json"
 	"testing"
 
 	servertypes "github.com/Peersyst/xrpl-go/xrpl/queries/server/types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
+	"github.com/stretchr/testify/require"
 )
+
+func TestServerStateReserveIncPresence(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		expected uint
+		present  bool
+	}{
+		{name: "missing", response: `{"state":{"validated_ledger":{}}}`},
+		{name: "null", response: `{"state":{"validated_ledger":{"reserve_inc":null}}}`},
+		{name: "explicit zero", response: `{"state":{"validated_ledger":{"reserve_inc":0}}}`, present: true},
+		{name: "positive", response: `{"state":{"validated_ledger":{"reserve_inc":5000000}}}`, expected: 5000000, present: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var response StateResponse
+			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
+			actual, present := response.State.ValidatedLedger.ReserveIncValue()
+			require.Equal(t, tt.present, present)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
 
 func TestServerStateResponse(t *testing.T) {
 	s := StateResponse{

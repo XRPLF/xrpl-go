@@ -373,7 +373,7 @@ func TestClientAutofillMultisignedFee(t *testing.T) {
 			"id": 1,
 			"result": map[string]any{
 				"info": map[string]any{
-					"validated_ledger": map[string]any{"base_fee_xrp": float32(0)},
+					"validated_ledger": map[string]any{},
 				},
 			},
 		}})

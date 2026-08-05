@@ -37,8 +37,8 @@ type ClientConfig struct {
 	maxResponseSize    int64
 
 	// Fee config
-	feeCushion float32
-	maxFeeXRP  float32
+	feeCushion float64
+	maxFeeXRP  string
 
 	// Faucet config
 	faucetProvider common.FaucetProvider
@@ -73,15 +73,15 @@ func (wc ClientConfig) WithHost(host string) ClientConfig {
 
 // WithFeeCushion sets the fee cushion of the websocket client.
 // Default: 1.2
-func (wc ClientConfig) WithFeeCushion(feeCushion float32) ClientConfig {
+func (wc ClientConfig) WithFeeCushion(feeCushion float64) ClientConfig {
 	wc.feeCushion = feeCushion
 	return wc
 }
 
 // WithMaxFeeXRP sets the maximum fee in XRP that the websocket client will use.
-// Default: 2
-func (wc ClientConfig) WithMaxFeeXRP(maxFeeXrp float32) ClientConfig {
-	wc.maxFeeXRP = maxFeeXrp
+// Default: "2"
+func (wc ClientConfig) WithMaxFeeXRP(maxFeeXRP string) ClientConfig {
+	wc.maxFeeXRP = maxFeeXRP
 	return wc
 }
 

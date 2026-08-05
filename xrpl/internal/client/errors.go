@@ -83,4 +83,13 @@ var (
 	ErrTransactionNotMultisigned = errors.New("transaction is not multisigned")
 	// ErrAmountAndDeliverMaxMustBeIdentical indicates that a Payment has conflicting Amount and DeliverMax values.
 	ErrAmountAndDeliverMaxMustBeIdentical = errors.New("payment transaction: Amount and DeliverMax fields must be identical when both are provided")
+
+	// fee
+
+	// ErrInvalidFeeValue is returned when a fee input is not a finite,
+	// non-negative decimal value.
+	ErrInvalidFeeValue = errors.New("invalid fee value")
+	// ErrFeeHasTooManyDecimals is returned when an XRP fee cannot be represented
+	// as a whole number of drops.
+	ErrFeeHasTooManyDecimals = errors.New("fee has more than six decimal places")
 )
