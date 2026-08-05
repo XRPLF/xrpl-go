@@ -241,6 +241,9 @@ func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.Simu
 	if err := res.GetResult(&response); err != nil {
 		return nil, err
 	}
+	if err := response.ValidateForRequest(req); err != nil {
+		return nil, err
+	}
 	return &response, nil
 }
 

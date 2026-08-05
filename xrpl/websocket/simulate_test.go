@@ -251,6 +251,45 @@ func TestClient_Simulate(t *testing.T) {
 	}
 }
 
+func TestClient_SimulateRejectsMismatchedResponseMode(t *testing.T) {
+	tests := []struct {
+		name    string
+		request *transactions.SimulateRequest
+		result  map[string]any
+	}{
+		{
+			name:    "JSON output requested but binary returned",
+			request: &transactions.SimulateRequest{TxBlob: websocketSimulateTxBlob},
+			result: map[string]any{
+				"applied": false, "engine_result": "tesSUCCESS", "engine_result_code": 0,
+				"engine_result_message": "ok", "ledger_index": uint32(1), "tx_blob": "1200",
+			},
+		},
+		{
+			name:    "binary output requested but JSON returned",
+			request: &transactions.SimulateRequest{TxBlob: websocketSimulateTxBlob, Binary: true},
+			result: map[string]any{
+				"applied": false, "engine_result": "tesSUCCESS", "engine_result_code": 0,
+				"engine_result_message": "ok", "ledger_index": uint32(1),
+				"tx_json": map[string]any{
+					"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TransactionType": "Payment",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, cleanup := setupTestClient(t, []map[string]any{{"id": 1, "result": tt.result}})
+			defer cleanup()
+
+			response, err := client.Simulate(tt.request)
+			require.ErrorIs(t, err, transactions.ErrInvalidSimulateResponse)
+			require.Nil(t, response)
+		})
+	}
+}
+
 func TestClient_SimulateRejectsLocally(t *testing.T) {
 	tests := []struct {
 		name    string

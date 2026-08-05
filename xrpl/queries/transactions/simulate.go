@@ -158,6 +158,24 @@ func (r SimulateResponse) Validate() error {
 	return nil
 }
 
+// ValidateForRequest verifies that the response payload matches the output mode
+// selected by the request.
+func (r SimulateResponse) ValidateForRequest(req *SimulateRequest) error {
+	if req == nil {
+		return ErrInvalidSimulateRequest
+	}
+	if err := r.Validate(); err != nil {
+		return err
+	}
+	if req.Binary && r.TxBlob == "" {
+		return fmt.Errorf("%w: binary output was requested but the response contains JSON output", ErrInvalidSimulateResponse)
+	}
+	if !req.Binary && len(r.TxJSON) == 0 {
+		return fmt.Errorf("%w: JSON output was requested but the response contains binary output", ErrInvalidSimulateResponse)
+	}
+	return nil
+}
+
 // MarshalJSON validates and encodes a JSON or binary simulate response.
 func (r SimulateResponse) MarshalJSON() ([]byte, error) {
 	if err := r.Validate(); err != nil {

@@ -231,6 +231,9 @@ func (r DefinitionsResponse) Validate() error {
 		len(r.TransactionTypes) == 0 || len(r.TransactionResults) == 0 {
 		return ErrInvalidDefinitionsResponse
 	}
+	if err := r.validateEnhancedSections(); err != nil {
+		return err
+	}
 
 	for _, field := range r.Fields {
 		if err := field.Validate(); err != nil {
@@ -241,6 +244,33 @@ func (r DefinitionsResponse) Validate() error {
 		return err
 	}
 	return validateFormatSection("TRANSACTION_FORMATS", r.TransactionFormats)
+}
+
+func (r DefinitionsResponse) validateEnhancedSections() error {
+	sections := [...]struct {
+		present  bool
+		nonEmpty bool
+	}{
+		{present: r.LedgerEntryFormats != nil, nonEmpty: len(r.LedgerEntryFormats) > 0},
+		{present: r.TransactionFormats != nil, nonEmpty: len(r.TransactionFormats) > 0},
+		{present: r.LedgerEntryFlags != nil, nonEmpty: len(r.LedgerEntryFlags) > 0},
+		{present: r.TransactionFlags != nil, nonEmpty: len(r.TransactionFlags) > 0},
+		{present: r.AccountSetFlags != nil, nonEmpty: len(r.AccountSetFlags) > 0},
+	}
+	present := 0
+	for _, section := range sections {
+		if !section.present {
+			continue
+		}
+		present++
+		if !section.nonEmpty {
+			return fmt.Errorf("%w: enhanced sections must not be empty", ErrInvalidDefinitionsResponse)
+		}
+	}
+	if present != 0 && present != len(sections) {
+		return fmt.Errorf("%w: enhanced sections must be all present or all absent", ErrInvalidDefinitionsResponse)
+	}
+	return nil
 }
 
 func validateFormatSection(section string, formats map[string][]DefinitionFormatField) error {

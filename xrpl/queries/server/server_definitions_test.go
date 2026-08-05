@@ -89,6 +89,62 @@ func TestDefinitionsResponseLegacyJSON(t *testing.T) {
 	requireDefinitionsResponseJSONRoundTrip(t, got)
 }
 
+func TestDefinitionsResponseRejectsPartialEnhancedSections(t *testing.T) {
+	sections := []struct {
+		name  string
+		clear func(*DefinitionsResponse)
+		empty func(*DefinitionsResponse)
+	}{
+		{
+			name:  "ledger entry formats",
+			clear: func(r *DefinitionsResponse) { r.LedgerEntryFormats = nil },
+			empty: func(r *DefinitionsResponse) { r.LedgerEntryFormats = map[string][]DefinitionFormatField{} },
+		},
+		{
+			name:  "transaction formats",
+			clear: func(r *DefinitionsResponse) { r.TransactionFormats = nil },
+			empty: func(r *DefinitionsResponse) { r.TransactionFormats = map[string][]DefinitionFormatField{} },
+		},
+		{
+			name:  "ledger entry flags",
+			clear: func(r *DefinitionsResponse) { r.LedgerEntryFlags = nil },
+			empty: func(r *DefinitionsResponse) { r.LedgerEntryFlags = map[string]map[string]uint32{} },
+		},
+		{
+			name:  "transaction flags",
+			clear: func(r *DefinitionsResponse) { r.TransactionFlags = nil },
+			empty: func(r *DefinitionsResponse) { r.TransactionFlags = map[string]map[string]uint32{} },
+		},
+		{
+			name:  "account set flags",
+			clear: func(r *DefinitionsResponse) { r.AccountSetFlags = nil },
+			empty: func(r *DefinitionsResponse) { r.AccountSetFlags = map[string]uint32{} },
+		},
+	}
+
+	for _, section := range sections {
+		t.Run("missing "+section.name, func(t *testing.T) {
+			response := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
+			section.clear(&response)
+			require.ErrorIs(t, response.Validate(), ErrInvalidDefinitionsResponse)
+		})
+		t.Run("only "+section.name, func(t *testing.T) {
+			response := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
+			for _, other := range sections {
+				if other.name != section.name {
+					other.clear(&response)
+				}
+			}
+			require.ErrorIs(t, response.Validate(), ErrInvalidDefinitionsResponse)
+		})
+		t.Run("empty "+section.name, func(t *testing.T) {
+			response := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
+			section.empty(&response)
+			require.ErrorIs(t, response.Validate(), ErrInvalidDefinitionsResponse)
+		})
+	}
+}
+
 func TestDefinitionsResponseHashOnlyJSON(t *testing.T) {
 	got := mustDecodeDefinitionsResponse(t, `{"hash":"`+definitionsHash+`"}`)
 
