@@ -54,11 +54,9 @@ func InspectSignedTransaction(tx map[string]any, allowInnerBatch bool) (SignedTr
 		if hasSignature {
 			return UnsignedTransaction, invalidSignedForm("TxnSignature and Signers cannot be mixed")
 		}
-		if hasPubKey {
-			pubKey, ok := pubKeyValue.(string)
-			if !ok || pubKey != "" {
-				return UnsignedTransaction, invalidSignedForm("a multisigned transaction's top-level SigningPubKey must be empty when present")
-			}
+		pubKey, ok := pubKeyValue.(string)
+		if !hasPubKey || !ok || pubKey != "" {
+			return UnsignedTransaction, invalidSignedForm("a multisigned transaction's top-level SigningPubKey must be present and empty")
 		}
 		if err := validateSigners(signersValue); err != nil {
 			return UnsignedTransaction, err
