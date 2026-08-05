@@ -82,7 +82,7 @@ type Client struct {
 	idCounter atomic.Uint64
 
 	// NetworkID is the discovered network identity or a compare-mode override.
-	// Nil means unknown; a pointer to zero is mainnet. Configure overrides before
+	// Nil means unknown. A pointer to zero is mainnet. Configure overrides before
 	// Connect and do not mutate identity fields concurrently. Use
 	// WithNetworkIdentity for an explicit trusted discovery bypass.
 	NetworkID *uint32

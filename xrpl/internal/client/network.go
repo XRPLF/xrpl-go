@@ -18,7 +18,7 @@ const (
 )
 
 // NetworkIdentity is the server identity needed to apply transaction NetworkID
-// policy. A nil NetworkID means the server identity is unknown; a non-nil zero
+// policy. A nil NetworkID means the server identity is unknown. A non-nil zero
 // value is the explicitly discovered mainnet ID.
 type NetworkIdentity struct {
 	NetworkID    *uint32

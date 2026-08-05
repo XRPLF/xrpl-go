@@ -105,7 +105,7 @@ func (c *Connection) ReadMessage() ([]byte, error) {
 }
 
 // readMessage reads one message. A non-zero deadline applies only to this
-// read and is cleared again on success; it is used for the synchronous
+// read and is cleared again on success. It is used for the synchronous
 // server_info handshake before the background reader starts.
 func (c *Connection) readMessage(deadline time.Time) ([]byte, error) {
 	c.readMu.Lock()
