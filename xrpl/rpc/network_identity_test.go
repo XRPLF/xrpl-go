@@ -3,7 +3,10 @@ package rpc
 import (
 	"errors"
 	"net/http"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -127,6 +130,73 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClientEnsureNetworkIdentityCoalescesConcurrentDiscovery(t *testing.T) {
+	const callers = 32
+
+	mockClient := &testutil.JSONRPCMockClient{}
+	var requestCount atomic.Int32
+	var signalRequest sync.Once
+	requestStarted := make(chan struct{})
+	releaseResponse := make(chan struct{})
+	mockClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		requestCount.Add(1)
+		signalRequest.Do(func() { close(requestStarted) })
+		<-releaseResponse
+		return testutil.MockResponse(
+			`{"result":{"info":{"network_id":21337,"build_version":"1.12.0"}}}`,
+			http.StatusOK,
+			mockClient,
+		)(req)
+	}
+
+	cfg, err := NewClientConfig("http://localhost/", WithHTTPClient(mockClient))
+	require.NoError(t, err)
+	cl := NewClient(cfg)
+
+	type result struct {
+		networkID    uint32
+		buildVersion string
+		err          error
+	}
+	results := make(chan result, callers)
+	start := make(chan struct{})
+	var ready sync.WaitGroup
+	ready.Add(callers)
+	for range callers {
+		go func() {
+			<-start
+			ready.Done()
+			identity, discoveryErr := cl.ensureNetworkIdentity()
+			var networkID uint32
+			if identity.NetworkID != nil {
+				networkID = *identity.NetworkID
+			}
+			results <- result{
+				networkID:    networkID,
+				buildVersion: identity.BuildVersion,
+				err:          discoveryErr,
+			}
+		}()
+	}
+
+	close(start)
+	ready.Wait()
+	select {
+	case <-requestStarted:
+	case <-time.After(time.Second):
+		t.Fatal("concurrent identity discovery did not send server_info")
+	}
+	close(releaseResponse)
+
+	for range callers {
+		result := <-results
+		require.NoError(t, result.err)
+		require.Equal(t, uint32(21337), result.networkID)
+		require.Equal(t, "1.12.0", result.buildVersion)
+	}
+	require.Equal(t, int32(1), requestCount.Load())
 }
 
 func TestClientAutofillFailsBeforeMutationWhenNetworkIdentityIsMissing(t *testing.T) {

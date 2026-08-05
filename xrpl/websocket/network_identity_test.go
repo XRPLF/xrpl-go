@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -290,6 +291,76 @@ func TestClientConnectRejectsAlreadyConnected(t *testing.T) {
 	require.True(t, cl.IsConnected())
 	require.Equal(t, int32(1), connectionCount.Load())
 	require.NoError(t, cl.Disconnect())
+}
+
+func TestClientConcurrentConnectKeepsOneSocket(t *testing.T) {
+	var arrivals atomic.Int32
+	var activeConnections atomic.Int32
+	bothArrived := make(chan struct{})
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if arrivals.Add(1) == 2 {
+			close(bothArrived)
+		}
+		select {
+		case <-bothArrived:
+		case <-time.After(time.Second):
+			return
+		}
+
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		activeConnections.Add(1)
+		defer activeConnections.Add(-1)
+		defer conn.Close()
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cl := NewClient(NewClientConfig().WithHost(url).WithNetworkIdentity(0, "1.12.0"))
+
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	for range 2 {
+		go func() {
+			<-start
+			results <- cl.Connect()
+		}()
+	}
+	close(start)
+
+	var successCount int
+	var alreadyConnectedCount int
+	for range 2 {
+		connectErr := <-results
+		switch {
+		case connectErr == nil:
+			successCount++
+		case errors.Is(connectErr, ErrAlreadyConnected):
+			alreadyConnectedCount++
+		default:
+			t.Fatalf("unexpected concurrent Connect error: %v", connectErr)
+		}
+	}
+	require.Equal(t, 1, successCount)
+	require.Equal(t, 1, alreadyConnectedCount)
+	require.True(t, cl.IsConnected())
+	require.Eventually(t, func() bool {
+		return activeConnections.Load() == 1
+	}, time.Second, time.Millisecond)
+
+	require.NoError(t, cl.Disconnect())
+	require.Eventually(t, func() bool {
+		return activeConnections.Load() == 0
+	}, time.Second, time.Millisecond)
 }
 
 func TestClientDisconnectCancelsInFlightReconnectDial(t *testing.T) {
