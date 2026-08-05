@@ -262,8 +262,8 @@ func NormalizeDeliverMax(tx map[string]any) bool {
 	return true
 }
 
-// SubmissionFailHard forces fail_hard for AccountDelete, as required by the
-// reliable-submission safety guidance for this high-cost transaction type.
+// SubmissionFailHard forces fail_hard for AccountDelete, as recommended by
+// XRPL guidance to reduce the risk of paying its high transaction cost on failure.
 func SubmissionFailHard(tx map[string]any, requested bool) bool {
 	return requested || tx["TransactionType"] == "AccountDelete"
 }
