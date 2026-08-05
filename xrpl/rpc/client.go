@@ -152,7 +152,7 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 }
 
 // SubmitTxBlob sends a pre-signed transaction blob to the server.
-// Its preflight validates only the structure of signing fields; rippled remains
+// Its preflight validates only the structure of signing fields. rippled remains
 // authoritative for cryptographic signature validity. AccountDelete always uses
 // fail_hard as required by reliable-submission safety guidance.
 func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitResponse, error) {
@@ -269,7 +269,8 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 }
 
 // Autofill fills missing fields in a transaction. It commits all changes to the
-// caller's map only after autofill succeeds; on error, the caller's map is unchanged.
+// caller's map only after autofill succeeds. If autofill returns an error, the
+// caller's map is unchanged.
 func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 	if tx == nil || *tx == nil {
 		return ErrNilTransaction

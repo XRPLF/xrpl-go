@@ -17,6 +17,6 @@ type SubmitOptions struct {
 	Autofill bool
 	// Wallet signs an otherwise unsigned transaction.
 	Wallet *wallet.Wallet
-	// FailHard requests fail_hard submission; AccountDelete always enables it.
+	// FailHard requests fail_hard submission. AccountDelete always enables it.
 	FailHard bool
 }

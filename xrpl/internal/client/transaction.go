@@ -12,7 +12,7 @@ import (
 )
 
 // SignedTransactionForm identifies the structurally valid signing form of a
-// transaction. These forms do not establish cryptographic validity; rippled is
+// transaction. These forms do not establish cryptographic validity. rippled is
 // authoritative for signature verification.
 type SignedTransactionForm uint8
 
@@ -28,7 +28,7 @@ const (
 )
 
 // InspectSignedTransaction returns the transaction's structural signing form.
-// It checks field presence, types, and nonempty values only; rippled remains
+// It checks field presence, types, and nonempty values only. rippled remains
 // authoritative for whether signatures are cryptographically valid.
 //
 // When allowInnerBatch is true, a transaction carrying tfInnerBatchTxn is valid

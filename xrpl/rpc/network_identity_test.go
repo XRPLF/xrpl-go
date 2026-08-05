@@ -23,7 +23,7 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 		requestErr       error
 		override         *uint32
 		buildOverride    string
-		ensureCalls      int // number of ensureNetworkIdentity calls. A value of 0 means 1.
+		ensureCalls      int // number of ensureNetworkIdentity calls, where 0 means 1
 		expectedID       *uint32
 		expectedBuild    string
 		expectedErr      error

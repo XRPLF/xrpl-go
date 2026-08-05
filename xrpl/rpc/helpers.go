@@ -432,7 +432,7 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 	// Autofill when enabled. Otherwise, sign the caller-supplied transaction unchanged.
 	if autofill {
 		// working is already a private deep copy, so the unexported worker is
-		// enough; the public Autofill wrapper would clone it a second time.
+		// enough. The public Autofill wrapper would clone it a second time.
 		if err := c.autofill(&working); err != nil {
 			return "", err
 		}
