@@ -98,6 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/rpc
 
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
+- Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 
 #### xrpl/websocket
