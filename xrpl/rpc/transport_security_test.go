@@ -284,6 +284,18 @@ func TestRedactAuthorizationErrorMalformedURLUserinfo(t *testing.T) {
 	require.ErrorIs(t, err, ErrAuthorizationRequestFailed)
 }
 
+func TestRedactAuthorizationErrorPercentEncodedUsername(t *testing.T) {
+	endpoint := &url.URL{
+		Scheme: "https",
+		Host:   "node.example",
+		User:   url.UserPassword("user@domain", testURLPassword),
+	}
+	rawURL := endpoint.String()
+	err := redactAuthorizationError(credentialEchoError("request failure: "+endpoint.Redacted()), rawURL, nil)
+
+	require.ErrorIs(t, err, ErrAuthorizationRequestFailed)
+}
+
 func TestClient_AuthorizationRedirectDowngrade(t *testing.T) {
 	tests := []struct {
 		name             string
