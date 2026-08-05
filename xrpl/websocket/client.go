@@ -180,15 +180,31 @@ func (c *Client) Connect() error {
 	if err := c.conn.Connect(); err != nil {
 		return err
 	}
-	if err := c.prepareNetworkIdentity(); err != nil {
+
+	identityErr := c.prepareNetworkIdentity()
+	if identityErr != nil && !errors.Is(identityErr, errNetworkIdentityDiscovery) {
 		if disconnectErr := c.conn.Disconnect(); disconnectErr != nil && !errors.Is(disconnectErr, ErrNotConnected) {
-			return errors.Join(err, disconnectErr)
+			return errors.Join(identityErr, disconnectErr)
 		}
-		return err
+		return identityErr
+	}
+	if errors.Is(identityErr, errNetworkIdentityConnection) {
+		// A failed synchronous write or read can make the Gorilla WebSocket
+		// connection unusable. Replace it without another identity request, then
+		// continue with unknown identity.
+		disconnectErr := c.conn.Disconnect()
+		if errors.Is(disconnectErr, ErrNotConnected) {
+			disconnectErr = nil
+		}
+		if reconnectErr := c.conn.Connect(); reconnectErr != nil {
+			return errors.Join(identityErr, disconnectErr, reconnectErr)
+		}
+		identityErr = errors.Join(identityErr, disconnectErr)
 	}
 
 	ctx := c.resetLifecycle()
 	go c.readMessages(ctx)
+	c.reportError(ctx, identityErr)
 	return nil
 }
 
@@ -957,10 +973,6 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 			}
 			continue
 		}
-		if identityErr := c.prepareNetworkIdentity(); identityErr != nil {
-			c.disconnectAfterRead(ctx)
-			continue
-		}
 		if ctx.Err() != nil {
 			c.disconnectAfterRead(ctx)
 			return false
@@ -1005,7 +1017,7 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		return "", ErrMissingWallet
 	}
 
-	// Autofill, or at minimum establish and apply network identity before signing.
+	// Autofill, or validate the caller-supplied NetworkID without changing it.
 	if autofill {
 		if err := c.Autofill(&tx); err != nil {
 			return "", err
@@ -1015,7 +1027,7 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		if err != nil {
 			return "", err
 		}
-		if err := clientinternal.ApplyNetworkIDPolicy(tx, identity); err != nil {
+		if err := clientinternal.ValidateNetworkIDPolicy(tx, identity); err != nil {
 			return "", err
 		}
 	}

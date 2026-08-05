@@ -28,17 +28,25 @@ func (c *Client) ensureNetworkIdentity() (clientinternal.NetworkIdentity, error)
 			continue
 		}
 
-		response, err := c.GetServerInfo(&server.InfoRequest{})
-		var resolved clientinternal.NetworkIdentity
-		if err == nil {
-			resolved, err = clientinternal.ResolveNetworkIdentity(identity.NetworkID, clientinternal.NetworkIdentity{
+		response, requestErr := c.GetServerInfo(&server.InfoRequest{})
+		resolved := identity
+		var policyErr error
+		if requestErr == nil {
+			resolved, policyErr = clientinternal.ResolveNetworkIdentity(identity.NetworkID, clientinternal.NetworkIdentity{
 				NetworkID:    response.Info.NetworkID,
 				BuildVersion: response.Info.BuildVersion,
 			})
 		}
-		c.finishNetworkIdentityDiscovery(resolved, err)
-		if err != nil {
-			return clientinternal.NetworkIdentity{}, err
+		// A server_info request failure leaves the existing identity unchanged and
+		// does not block client operations. Do not cache the failure, so a later
+		// operation can try discovery again.
+		cacheErr := policyErr
+		if requestErr != nil {
+			cacheErr = requestErr
+		}
+		c.finishNetworkIdentityDiscovery(resolved, cacheErr)
+		if policyErr != nil {
+			return clientinternal.NetworkIdentity{}, policyErr
 		}
 		return resolved, nil
 	}

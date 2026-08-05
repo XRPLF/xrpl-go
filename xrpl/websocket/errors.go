@@ -56,12 +56,10 @@ var (
 	ErrNetworkIDFieldIsNotAUint32 = clientinternal.ErrNetworkIDFieldIsNotAUint32
 	// ErrNetworkIDFieldMismatch is returned when the NetworkID field does not match the expected NetworkID.
 	ErrNetworkIDFieldMismatch = clientinternal.ErrNetworkIDFieldMismatch
+	// ErrNetworkIDFieldMissing is returned when NetworkID is required but autofill is disabled.
+	ErrNetworkIDFieldMissing = clientinternal.ErrNetworkIDFieldMissing
 	// ErrNetworkIDFieldUnexpected is returned when NetworkID must be omitted for the target network.
 	ErrNetworkIDFieldUnexpected = clientinternal.ErrNetworkIDFieldUnexpected
-	// ErrNetworkIDUnavailable is returned when server identity discovery did not produce a network ID.
-	ErrNetworkIDUnavailable = clientinternal.ErrNetworkIDUnavailable
-	// ErrBuildVersionUnavailable is returned when restricted-network policy cannot be determined without a build version.
-	ErrBuildVersionUnavailable = clientinternal.ErrBuildVersionUnavailable
 	// ErrInvalidBuildVersion is returned when the discovered rippled version cannot be compared.
 	ErrInvalidBuildVersion = clientinternal.ErrInvalidBuildVersion
 	// ErrNetworkIDOverrideMismatch is returned when a trusted override differs from server_info.

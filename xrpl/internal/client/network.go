@@ -37,10 +37,11 @@ func CloneNetworkID(networkID *uint32) *uint32 {
 
 // ResolveNetworkIdentity validates a server_info identity against an optional
 // trusted override. A matching override pointer is preserved instead of being
-// replaced by the discovered pointer.
+// replaced by the discovered pointer. A missing discovered NetworkID remains
+// unknown so clients can omit the transaction field.
 func ResolveNetworkIdentity(override *uint32, discovered NetworkIdentity) (NetworkIdentity, error) {
 	if discovered.NetworkID == nil {
-		return NetworkIdentity{}, ErrNetworkIDUnavailable
+		return ValidateNetworkIdentity(discovered)
 	}
 	if override != nil && *override != *discovered.NetworkID {
 		return NetworkIdentity{}, fmt.Errorf(
@@ -72,19 +73,13 @@ func ValidateNetworkIdentity(identity NetworkIdentity) (NetworkIdentity, error) 
 // and, for Batch transactions, every inner transaction using the same policy.
 // Validation completes for every target before any map is mutated.
 func ApplyNetworkIDPolicy(tx map[string]any, identity NetworkIdentity) error {
-	required, err := NetworkIDRequired(identity)
+	targets, required, err := networkIDPolicyTargets(tx, identity)
 	if err != nil {
 		return err
 	}
-
-	inners, err := batchInnerTransactions(tx)
-	if err != nil {
-		return err
-	}
-	targets := append([]map[string]any{tx}, inners...)
 
 	for _, target := range targets {
-		if err := validateNetworkID(target, identity, required); err != nil {
+		if err := validatePresentNetworkID(target, identity, required); err != nil {
 			return err
 		}
 	}
@@ -100,18 +95,56 @@ func ApplyNetworkIDPolicy(tx map[string]any, identity NetworkIdentity) error {
 	return nil
 }
 
+// ValidateNetworkIDPolicy validates NetworkID without changing the transaction.
+// A required NetworkID must already be present when autofill is disabled. The
+// same rule applies to the outer transaction and every Batch inner transaction.
+func ValidateNetworkIDPolicy(tx map[string]any, identity NetworkIdentity) error {
+	targets, required, err := networkIDPolicyTargets(tx, identity)
+	if err != nil {
+		return err
+	}
+
+	for _, target := range targets {
+		value, present := target["NetworkID"]
+		if !present || value == nil {
+			if required {
+				return ErrNetworkIDFieldMissing
+			}
+			continue
+		}
+		if err := validatePresentNetworkID(target, identity, required); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func networkIDPolicyTargets(tx map[string]any, identity NetworkIdentity) ([]map[string]any, bool, error) {
+	required, err := NetworkIDRequired(identity)
+	if err != nil {
+		return nil, false, err
+	}
+
+	inners, err := batchInnerTransactions(tx)
+	if err != nil {
+		return nil, false, err
+	}
+	return append([]map[string]any{tx}, inners...), required, nil
+}
+
 // NetworkIDRequired reports whether transactions for identity must include a
 // NetworkID. Networks 0 through 1024 always omit it. Restricted networks add it
-// only when the server is rippled 1.11.0 or newer.
+// only when the server is rippled 1.11.0 or newer. Unknown identity data omits
+// NetworkID.
 func NetworkIDRequired(identity NetworkIdentity) (bool, error) {
 	if identity.NetworkID == nil {
-		return false, ErrNetworkIDUnavailable
+		return false, nil
 	}
 	if *identity.NetworkID <= RestrictedNetworks {
 		return false, nil
 	}
 	if identity.BuildVersion == "" {
-		return false, ErrBuildVersionUnavailable
+		return false, nil
 	}
 
 	comparison, err := compareRippledVersions(identity.BuildVersion, RequiredNetworkIDVersion)
@@ -142,7 +175,7 @@ func batchInnerTransactions(tx map[string]any) ([]map[string]any, error) {
 	return inners, nil
 }
 
-func validateNetworkID(tx map[string]any, identity NetworkIdentity, required bool) error {
+func validatePresentNetworkID(tx map[string]any, identity NetworkIdentity, required bool) error {
 	value, present := tx["NetworkID"]
 	if !present || value == nil {
 		return nil
@@ -151,6 +184,9 @@ func validateNetworkID(tx map[string]any, identity NetworkIdentity, required boo
 	networkID, ok := value.(uint32)
 	if !ok {
 		return ErrNetworkIDFieldIsNotAUint32
+	}
+	if identity.NetworkID == nil || (*identity.NetworkID > RestrictedNetworks && identity.BuildVersion == "") {
+		return nil
 	}
 	if networkID != *identity.NetworkID {
 		return ErrNetworkIDFieldMismatch
