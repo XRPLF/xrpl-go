@@ -18,9 +18,9 @@ var NonDelegatableTransactionsMap = map[string]uint8{
 	string(DelegateSetTx):   0,
 	string(AccountDeleteTx): 0,
 	// Pseudo transactions below:
-	"EnableAmendment": 0,
-	"SetFee":          0,
-	"UNLModify":       0,
+	EnableAmendmentTx.String(): 0,
+	SetFeeTx.String():          0,
+	UNLModifyTx.String():       0,
 }
 
 // DelegateSet allows an account to delegate a set of permissions to another account.

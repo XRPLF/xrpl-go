@@ -81,13 +81,16 @@ func collectAddressChange(tx map[string]any, addressField, tagField string, chan
 	if err != nil {
 		return fmt.Errorf("decode %s X-address: %w", addressField, err)
 	}
+	if hasTag && tagField == "" {
+		return fmt.Errorf("%w: %s", ErrAccountIDTagNotAllowed, addressField)
+	}
 	change := addressChange{
 		tx:           tx,
 		addressField: addressField,
 		classic:      classic,
 		tagField:     tagField,
 		tag:          tag,
-		hasTag:       hasTag && tagField != "",
+		hasTag:       hasTag,
 	}
 	if change.hasTag {
 		explicit, explicitPresent := tx[tagField]

@@ -129,6 +129,9 @@ func TestClientSubmitRejectsInvalidSignedForms(t *testing.T) {
 		{name: "partial single-sign", tx: transaction.FlatTransaction{"TransactionType": "Payment", "SigningPubKey": "AABB"}},
 		{name: "malformed multisign", tx: transaction.FlatTransaction{"TransactionType": "Payment", "Signers": []any{"invalid"}}},
 		{name: "inner Batch cannot be submitted", tx: transaction.FlatTransaction{"TransactionType": "Payment", "Flags": uint32(0x40000000), "SigningPubKey": ""}},
+		{name: "EnableAmendment cannot be submitted", tx: transaction.FlatTransaction{"TransactionType": transaction.EnableAmendmentTx.String(), "SigningPubKey": ""}},
+		{name: "SetFee cannot be submitted", tx: transaction.FlatTransaction{"TransactionType": transaction.SetFeeTx.String(), "SigningPubKey": ""}},
+		{name: "UNLModify cannot be submitted", tx: transaction.FlatTransaction{"TransactionType": transaction.UNLModifyTx.String(), "SigningPubKey": ""}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -238,6 +241,30 @@ func TestClientPaymentAmountAliasMatrix(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestClientAutofillAccountDeleteChecksBlockers(t *testing.T) {
+	const account = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+	tx := transaction.FlatTransaction{
+		"TransactionType":    "AccountDelete",
+		"Account":            account,
+		"Destination":        "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+		"Fee":                "2000000",
+		"Sequence":           uint32(1),
+		"LastLedgerSequence": uint32(20),
+	}
+	original := clientinternal.CloneTransaction(tx)
+	cl := setupTestRPCClientForAutofill(t, []string{`{
+		"result": {
+			"account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			"account_objects": [{"LedgerEntryType": "Escrow"}],
+			"ledger_index": 1,
+			"validated": true
+		}
+	}`})
+
+	require.ErrorIs(t, cl.Autofill(&tx), ErrAccountCannotBeDeleted)
+	require.Equal(t, original, map[string]any(tx), "failed autofill must not mutate the caller's map")
 }
 
 func TestClientAutofillRawTransactionsRejectsNullSigningFields(t *testing.T) {

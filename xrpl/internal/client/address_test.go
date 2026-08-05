@@ -107,19 +107,71 @@ func TestSetValidAddresses(t *testing.T) {
 			expectedErr: ErrTagFieldIsNotAUint32,
 		},
 		{
-			name: "additional address fields discard embedded tags",
+			name: "additional untagged address fields convert",
 			tx: map[string]any{
 				"Authorize":   mainnetNoTag,
-				"Unauthorize": testnetTag14,
-				"Owner":       mainnetTagOne,
-				"RegularKey":  mainnetTagZero,
+				"Unauthorize": mainnetNoTag,
+				"Owner":       mainnetNoTag,
+				"RegularKey":  mainnetNoTag,
 			},
 			expected: map[string]any{
 				"Authorize":   classic,
 				"Unauthorize": classic,
 				"Owner":       classic,
-				"RegularKey":  pepperClassic,
+				"RegularKey":  classic,
 			},
+		},
+		{
+			name:        "tagged Authorize is rejected",
+			tx:          map[string]any{"Authorize": mainnetTagOne},
+			expected:    map[string]any{"Authorize": mainnetTagOne},
+			expectedErr: ErrAccountIDTagNotAllowed,
+		},
+		{
+			name:        "tagged Unauthorize is rejected",
+			tx:          map[string]any{"Unauthorize": testnetTag14},
+			expected:    map[string]any{"Unauthorize": testnetTag14},
+			expectedErr: ErrAccountIDTagNotAllowed,
+		},
+		{
+			name:        "tagged Owner is rejected",
+			tx:          map[string]any{"Owner": mainnetTagOne},
+			expected:    map[string]any{"Owner": mainnetTagOne},
+			expectedErr: ErrAccountIDTagNotAllowed,
+		},
+		{
+			name:        "tagged RegularKey is rejected",
+			tx:          map[string]any{"RegularKey": mainnetTagZero},
+			expected:    map[string]any{"RegularKey": mainnetTagZero},
+			expectedErr: ErrAccountIDTagNotAllowed,
+		},
+		{
+			name: "unsupported tag leaves earlier address unchanged",
+			tx: map[string]any{
+				"Account": mainnetNoTag,
+				"Owner":   mainnetTagOne,
+			},
+			expected: map[string]any{
+				"Account": mainnetNoTag,
+				"Owner":   mainnetTagOne,
+			},
+			expectedErr: ErrAccountIDTagNotAllowed,
+		},
+		{
+			name: "tagged Batch inner field is rejected",
+			tx: map[string]any{
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{"RawTransaction": map[string]any{"Owner": testnetTag14}},
+				},
+			},
+			expected: map[string]any{
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{"RawTransaction": map[string]any{"Owner": testnetTag14}},
+				},
+			},
+			expectedErr: ErrAccountIDTagNotAllowed,
 		},
 		{
 			name: "Batch inner addresses and tags",

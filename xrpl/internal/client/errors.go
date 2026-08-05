@@ -1,6 +1,10 @@
 package client
 
-import "errors"
+import (
+	"errors"
+
+	codectypes "github.com/Peersyst/xrpl-go/binary-codec/types"
+)
 
 var (
 	// address
@@ -17,9 +21,18 @@ var (
 	// ErrMismatchedTag indicates that an explicit transaction tag conflicts with
 	// the tag embedded in an X-address.
 	ErrMismatchedTag = errors.New("transaction tag mismatch")
+	// ErrAccountIDTagNotAllowed indicates that an X-address contains a tag for
+	// a transaction field that cannot represent one.
+	ErrAccountIDTagNotAllowed = codectypes.ErrAccountIDTagNotAllowed
 
 	// network
 
+	// ErrNetworkIDUnavailable indicates that a client cannot safely determine
+	// the server's network identity.
+	ErrNetworkIDUnavailable = errors.New("server network ID is unavailable")
+	// ErrBuildVersionUnavailable indicates that a restricted network's rippled
+	// version is unavailable, so NetworkID requiredness cannot be determined.
+	ErrBuildVersionUnavailable = errors.New("server build version is unavailable")
 	// ErrInvalidBuildVersion indicates that a restricted network returned a
 	// build version that cannot be compared with rippled 1.11.0.
 	ErrInvalidBuildVersion = errors.New("invalid server build version")
