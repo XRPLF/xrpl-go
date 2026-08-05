@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/hash
 
-- `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`.
+- `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Multisigned transactions require an explicit empty top-level `SigningPubKey`. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`.
 
 #### xrpl/ledger-entry-types
 
@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID remains distinct from mainnet ID `0`. Use `WithNetworkIdentity(networkID, buildVersion)` to bypass discovery with trusted deployment values.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
-- Submit preflight now requires a complete single-sign or multisign structure and `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
+- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
 
 #### xrpl/transaction
 
@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID remains distinct from mainnet ID `0`. Use `ClientConfig.WithNetworkIdentity(networkID, buildVersion)` to bypass discovery with trusted deployment values.
 - Changed `Client.Connect` to request `server_info` before it starts the background reader, adding one network round trip to each explicit connection unless `ClientConfig.WithNetworkIdentity` supplies a trusted identity. A request failure is reported through `OnError` but does not fail the connection. A missing `network_id` makes `NetworkIdentity()` return a nil network ID.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, websocket.ErrMismatchedTag)`.
-- Submit preflight now requires a complete single-sign or multisign structure and `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
+- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
 
 ### Added
 
