@@ -297,3 +297,44 @@ func TestSimulateResponseJSONVariants(t *testing.T) {
 		})
 	}
 }
+
+func TestSimulateResponseValidateForRequest(t *testing.T) {
+	jsonResponse := SimulateResponse{
+		EngineResult:        "tesSUCCESS",
+		EngineResultMessage: "ok",
+		LedgerIndex:         1,
+		TxJSON:              transaction.FlatTransaction{"TransactionType": "Payment"},
+	}
+	binaryResponse := SimulateResponse{
+		EngineResult:        "tesSUCCESS",
+		EngineResultMessage: "ok",
+		LedgerIndex:         1,
+		TxBlob:              "1200",
+	}
+	jsonRequest := &SimulateRequest{TxJSON: validSimulateTxJSON()}
+	binaryRequest := &SimulateRequest{TxBlob: simulateTxBlob, Binary: true}
+
+	tests := []struct {
+		name     string
+		response SimulateResponse
+		request  *SimulateRequest
+		wantErr  error
+	}{
+		{name: "JSON request with JSON response", response: jsonResponse, request: jsonRequest},
+		{name: "binary request with binary response", response: binaryResponse, request: binaryRequest},
+		{name: "JSON request with binary response", response: binaryResponse, request: jsonRequest, wantErr: ErrInvalidSimulateResponse},
+		{name: "binary request with JSON response", response: jsonResponse, request: binaryRequest, wantErr: ErrInvalidSimulateResponse},
+		{name: "nil request", response: jsonResponse, wantErr: ErrInvalidSimulateRequest},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.response.ValidateForRequest(tt.request)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
