@@ -22,15 +22,6 @@ func validateAuthorizationTransport(rawURL string, headers map[string][]string, 
 	return authorizationHTTPClient(client, hasAuthorization)
 }
 
-func hasAuthorizationHeader(headers map[string][]string) bool {
-	for name := range headers {
-		if strings.EqualFold(name, authorizationHeader) {
-			return true
-		}
-	}
-	return false
-}
-
 func validateAuthorizationEndpoint(rawURL string, headers map[string][]string) (bool, error) {
 	hasHeader := hasAuthorizationHeader(headers)
 	endpoint, err := url.Parse(rawURL)
@@ -46,6 +37,15 @@ func validateAuthorizationEndpoint(rawURL string, headers map[string][]string) (
 		return true, ErrInsecureAuthorization
 	}
 	return hasAuthorization, nil
+}
+
+func hasAuthorizationHeader(headers map[string][]string) bool {
+	for name := range headers {
+		if strings.EqualFold(name, authorizationHeader) {
+			return true
+		}
+	}
+	return false
 }
 
 func isHTTPSURL(endpoint *url.URL) bool {
