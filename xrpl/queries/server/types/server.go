@@ -19,7 +19,7 @@ type Info struct {
 	JQTransOverflow          string               `json:"jq_trans_overflow"`
 	LastClose                ServerClose          `json:"last_close"`
 	Load                     ServerLoad           `json:"load,omitzero"`
-	LoadFactor               float64              `json:"load_factor"`
+	LoadFactor               float64              `json:"load_factor"` // Normalized server_info fee multiplier, can be fractional.
 	NetworkID                *uint32              `json:"network_id,omitempty"`
 	LoadFactorLocal          uint                 `json:"load_factor_local,omitempty"`
 	LoadFactorNet            uint                 `json:"load_factor_net,omitempty"`
