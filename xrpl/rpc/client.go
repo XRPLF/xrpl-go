@@ -193,9 +193,8 @@ func (c *Client) submitTxBlob(ctx context.Context, txBlob string, failHard bool)
 }
 
 // SubmitTxBlobAndWait submits a pre-signed transaction and waits for an
-// authoritative validated-ledger result. Transactions with LastLedgerSequence
-// are monitored through that ledger and expire only after it passes. Without
-// LastLedgerSequence, monitoring uses the configured bounded fallback.
+// authoritative validated-ledger result. LastLedgerSequence is required and
+// expiry occurs only after the validated ledger passes it.
 func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.TxResponse, error) {
 	return c.SubmitTxBlobAndWaitContext(context.Background(), txBlob, failHard)
 }
@@ -208,21 +207,27 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 	txBlob string,
 	failHard bool,
 ) (*requests.TxResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return nil, err
 	}
 
-	var lastLedgerSequence *uint32
-	if sequence, ok := tx["LastLedgerSequence"].(uint32); ok {
-		lastLedgerSequence = &sequence
+	lastLedgerSequence, ok := tx["LastLedgerSequence"].(uint32)
+	if !ok {
+		return nil, ErrMissingLastLedgerSequenceInTransaction
 	}
 
 	submitResponse, err := c.submitTxBlob(ctx, txBlob, failHard)
 	if err != nil {
 		return nil, err
 	}
-	if err := clientinternal.ValidatePreliminaryResult(submitResponse.EngineResult); err != nil {
+	if err := clientinternal.ValidatePreliminaryResult(
+		submitResponse.EngineResult,
+		submitResponse.EngineResultMessage,
+	); err != nil {
 		return nil, err
 	}
 
@@ -231,7 +236,7 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 		return nil, err
 	}
 
-	return c.waitForTransaction(ctx, txHash, lastLedgerSequence)
+	return c.waitForTransaction(ctx, txHash, lastLedgerSequence, submitResponse.EngineResult)
 }
 
 // SubmitTx signs the transaction (if necessary) and submits it to the server

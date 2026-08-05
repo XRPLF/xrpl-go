@@ -8,11 +8,22 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type websocketConnection interface {
+	Close() error
+	SetReadLimit(limit int64)
+	SetReadDeadline(t time.Time) error
+	ReadMessage() (messageType int, p []byte, err error)
+	SetWriteDeadline(t time.Time) error
+	WriteMessage(messageType int, data []byte) error
+}
+
 // Connection is a wrapper around a websocket connection.
 // It provides a method to read messages from the connection.
 // All methods are safe for concurrent use.
 type Connection struct {
-	conn            *websocket.Conn
+	conn            websocketConnection
+	preparing       websocketConnection
+	disconnecting   websocketConnection
 	url             string
 	maxResponseSize int64
 
@@ -36,15 +47,22 @@ func newConnection(url string, maxResponseSize int64) *Connection {
 
 // Connect opens a websocket connection to the server.
 func (c *Connection) Connect() error {
-	return c.connect(context.Background())
+	ctx := context.Background()
+	conn, err := c.beginConnect(ctx)
+	if err != nil {
+		return err
+	}
+	return c.publishSocket(ctx, conn)
 }
 
-func (c *Connection) connect(ctx context.Context) error {
+// beginConnect dials a socket and keeps it unavailable to normal reads and
+// writes until publishSocket is called.
+func (c *Connection) beginConnect(ctx context.Context) (websocketConnection, error) {
 	c.mu.Lock()
-	alreadyConnected := c.conn != nil
+	alreadyConnected := c.conn != nil || c.preparing != nil || c.disconnecting != nil
 	c.mu.Unlock()
 	if alreadyConnected {
-		return ErrAlreadyConnected
+		return nil, ErrAlreadyConnected
 	}
 
 	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, c.url, nil)
@@ -52,7 +70,7 @@ func (c *Connection) connect(ctx context.Context) error {
 		_ = resp.Body.Close()
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if c.maxResponseSize > 0 {
 		conn.SetReadLimit(c.maxResponseSize)
@@ -60,14 +78,34 @@ func (c *Connection) connect(ctx context.Context) error {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.conn != nil {
+	if c.conn != nil || c.preparing != nil || c.disconnecting != nil {
 		_ = conn.Close()
-		return ErrAlreadyConnected
+		return nil, ErrAlreadyConnected
 	}
 	if err := ctx.Err(); err != nil {
 		_ = conn.Close()
+		return nil, err
+	}
+	c.preparing = conn
+	return conn, nil
+}
+
+func (c *Connection) publishSocket(ctx context.Context, conn websocketConnection) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.preparing != conn {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		return ErrNotConnected
+	}
+	if err := ctx.Err(); err != nil {
+		c.preparing = nil
+		_ = conn.Close()
 		return err
 	}
+	c.preparing = nil
 	c.conn = conn
 	return nil
 }
@@ -75,19 +113,59 @@ func (c *Connection) connect(ctx context.Context) error {
 // Disconnect closes the websocket connection and sets the connection to nil.
 // It returns an error if the connection is not connected.
 func (c *Connection) Disconnect() error {
+	return c.disconnect(nil)
+}
+
+// disconnect claims the current or preparing socket before lifecycleCancel
+// can wake an operation that invalidates it. The claim makes the disconnect
+// successful for the socket that was active when this method started.
+func (c *Connection) disconnect(lifecycleCancel func()) error {
 	c.mu.Lock()
 	conn := c.conn
-	if conn == nil {
-		c.mu.Unlock()
-		return ErrNotConnected
+	if conn != nil {
+		c.conn = nil
+	} else {
+		conn = c.preparing
+		c.preparing = nil
 	}
-	c.conn = nil
+	if conn != nil {
+		c.disconnecting = conn
+	}
 	c.mu.Unlock()
 
-	if err := conn.Close(); err != nil {
-		return err
+	if lifecycleCancel != nil {
+		lifecycleCancel()
 	}
-	return nil
+	if conn == nil {
+		return ErrNotConnected
+	}
+
+	err := conn.Close()
+	c.mu.Lock()
+	if c.disconnecting == conn {
+		c.disconnecting = nil
+	}
+	c.mu.Unlock()
+	return err
+}
+
+// invalidateSocket removes a failed socket only if it is still current or is
+// being prepared. It closes the exact failed socket unless Disconnect already
+// claimed it, so a late failure cannot affect a replacement.
+func (c *Connection) invalidateSocket(failed websocketConnection) error {
+	c.mu.Lock()
+	if c.conn == failed {
+		c.conn = nil
+	}
+	if c.preparing == failed {
+		c.preparing = nil
+	}
+	claimedByDisconnect := c.disconnecting == failed
+	c.mu.Unlock()
+	if claimedByDisconnect {
+		return nil
+	}
+	return failed.Close()
 }
 
 // IsConnected returns true if the connection is connected.
@@ -105,20 +183,23 @@ func (c *Connection) ReadMessage() ([]byte, error) {
 	return c.readMessage(time.Time{})
 }
 
-// readMessage reads one message. A non-zero deadline applies only to this
-// read and is cleared again on success. It is used for the synchronous
-// server_info handshake before the background reader starts.
 func (c *Connection) readMessage(deadline time.Time) ([]byte, error) {
-	c.readMu.Lock()
-	defer c.readMu.Unlock()
-
 	c.mu.Lock()
 	conn := c.conn
 	c.mu.Unlock()
-
 	if conn == nil {
 		return nil, ErrNotConnected
 	}
+	return c.readMessageFrom(conn, deadline)
+}
+
+// readMessageFrom reads one message from an exact socket. A non-zero deadline
+// applies only to this read and is cleared again on success. Identity discovery
+// uses it before the socket is published to normal requests.
+func (c *Connection) readMessageFrom(conn websocketConnection, deadline time.Time) ([]byte, error) {
+	c.readMu.Lock()
+	defer c.readMu.Unlock()
+
 	if err := conn.SetReadDeadline(deadline); err != nil {
 		return nil, err
 	}
@@ -144,18 +225,29 @@ func (c *Connection) writeMessage(ctx context.Context, message []byte, timeout t
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-
-	if err := c.acquireWrite(ctx); err != nil {
-		return err
-	}
-	defer c.releaseWrite()
-
 	c.mu.Lock()
 	conn := c.conn
 	c.mu.Unlock()
 	if conn == nil {
 		return ErrNotConnected
 	}
+	return c.writeMessageTo(ctx, conn, message, timeout)
+}
+
+func (c *Connection) writeMessageTo(
+	ctx context.Context,
+	conn websocketConnection,
+	message []byte,
+	timeout time.Duration,
+) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	if err := c.acquireWrite(ctx); err != nil {
+		return err
+	}
+	defer c.releaseWrite()
 
 	deadline := time.Time{}
 	if timeout > 0 {
@@ -165,6 +257,7 @@ func (c *Connection) writeMessage(ctx context.Context, message []byte, timeout t
 		deadline = contextDeadline
 	}
 	if err := conn.SetWriteDeadline(deadline); err != nil {
+		_ = c.invalidateSocket(conn)
 		return err
 	}
 
@@ -179,7 +272,12 @@ func (c *Connection) writeMessage(ctx context.Context, message []byte, timeout t
 			defer close(watchDone)
 			select {
 			case <-ctx.Done():
-				_ = conn.SetWriteDeadline(time.Now())
+				select {
+				case <-writeDone:
+					return
+				default:
+					_ = c.invalidateSocket(conn)
+				}
 			case <-writeDone:
 			}
 		}()
@@ -190,14 +288,20 @@ func (c *Connection) writeMessage(ctx context.Context, message []byte, timeout t
 		close(writeDone)
 		<-watchDone
 	}
-	clearErr := conn.SetWriteDeadline(time.Time{})
+	if writeErr != nil {
+		_ = c.invalidateSocket(conn)
+	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if writeErr != nil {
 		return writeErr
 	}
-	return clearErr
+	if err := conn.SetWriteDeadline(time.Time{}); err != nil {
+		_ = c.invalidateSocket(conn)
+		return err
+	}
+	return nil
 }
 
 func (c *Connection) acquireWrite(ctx context.Context) error {

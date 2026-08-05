@@ -356,12 +356,14 @@ func (c *Client) submitRequest(
 func (c *Client) waitForTransaction(
 	ctx context.Context,
 	txHash string,
-	lastLedgerSequence *uint32,
+	lastLedgerSequence uint32,
+	preliminaryResult string,
 ) (*requests.TxResponse, error) {
 	return clientinternal.WaitForFinality(
 		ctx,
 		clientinternal.FinalityConfig{
 			LastLedgerSequence: lastLedgerSequence,
+			PreliminaryResult:  preliminaryResult,
 			PollInterval:       c.cfg.retryDelay,
 			MaxAttempts:        c.cfg.maxRetries,
 		},

@@ -37,11 +37,9 @@ func TxFinalityHooks(
 				return TransactionStatus[transactions.TxResponse]{}, err
 			}
 			return TransactionStatus[transactions.TxResponse]{
-				Response:     &txResponse,
-				Found:        true,
-				Validated:    txResponse.Validated,
-				LedgerIndex:  txResponse.LedgerIndex.Uint32(),
-				EngineResult: txResponse.Meta.TransactionResult,
+				Response:  &txResponse,
+				Found:     true,
+				Validated: txResponse.Validated,
 			}, nil
 		},
 		GetValidatedLedger: func(ctx context.Context) (uint32, error) {

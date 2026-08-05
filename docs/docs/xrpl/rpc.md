@@ -37,7 +37,7 @@ func (wc ClientConfig) WithFaucetProvider(fp common.FaucetProvider) ClientConfig
 
 ### Reliable-submission polling
 
-`WithMaxRetries` limits consecutive monitoring transport failures. For a legal transaction without `LastLedgerSequence`, it also bounds inconclusive polling attempts. It never limits ledger-driven monitoring when `LastLedgerSequence` is present. `WithRetryDelay` sets the interval between polling rounds.
+`WithMaxRetries` limits consecutive incomplete monitoring rounds caused by query or transport errors. A complete round resets the count. It does not limit successful finality polling. `WithRetryDelay` sets the interval between polling rounds.
 
 ```go
 func WithMaxRetries(maxRetries int) ConfigOpt
@@ -124,9 +124,11 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 
 ### SubmitTxAndWait/SubmitTxBlobAndWait
 
-The reliable-submission methods monitor preliminary `tes`, `ter`, and `tec` results until the transaction has an authoritative validated-ledger outcome. Preliminary `tef` and `tem` results return `PreliminaryResultError` immediately; this is an SDK monitoring policy, not a claim that the provisional result was validated.
+The reliable-submission methods require `LastLedgerSequence` before they send the `submit` request. The Go SDK does not enable autofill by default. Provide `LastLedgerSequence` directly or set `Autofill: true` when you submit a transaction that the client can sign.
 
-A transaction with `LastLedgerSequence` expires only after the current validated ledger is strictly greater than that value and the transaction is still not validated. Validation exactly at `LastLedgerSequence` is accepted. A transaction without `LastLedgerSequence` is legal; the client uses the `WithMaxRetries` bounded fallback and returns `FinalityNotDeterminedError` rather than claiming ledger expiry.
+Only a preliminary `tem` result returns `PreliminaryResultError` immediately. The error includes the engine result and its message. The client monitors `tes`, `ter`, `tec`, `tef`, `tel`, and unknown preliminary results. An exact `txnNotFound` response is inconclusive and the client retries it.
+
+The transaction expires only after the current validated ledger is strictly greater than `LastLedgerSequence` and a final transaction lookup still does not find a validated result. Validation exactly at `LastLedgerSequence` is accepted. Unlike xrpl.js, the Go SDK performs this final lookup as a deliberate safety check before it reports expiry.
 
 ```go
 func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *rpctypes.SubmitOptions) (*requests.TxResponse, error)
@@ -135,9 +137,9 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 func (c *Client) SubmitTxBlobAndWaitContext(ctx context.Context, txBlob string, failHard bool) (*requests.TxResponse, error)
 ```
 
-A validated `tec` result returns both the non-nil `TxResponse` and a `ValidatedTransactionError`, so callers can inspect authoritative metadata. `TransactionExpiredError`, `FinalityNotDeterminedError`, and `FinalityTransportError` distinguish ledger expiry, bounded uncertainty, and repeated query/transport failure. Context-aware methods return `ctx.Err()` directly on cancellation or deadline.
+Every validated transaction response returns with a nil error, including validated `tec` results. Inspect `TxResponse.Meta.TransactionResult` to determine the validated engine result. `TransactionExpiredError` retains the preliminary engine result and ledger expiry details. `FinalityTransportError` reports repeated query or transport failure. Context-aware methods return `ctx.Err()` directly on cancellation or deadline.
 
-Migration note: `ErrMissingLastLedgerSequenceInTransaction` is retained but deprecated and is no longer returned by these methods. Code that depended on that error should handle `ErrFinalityNotDetermined` after bounded fallback monitoring instead. `ErrTransactionNotFound` is also no longer a terminal reliable-submission outcome; not-found responses remain an internal polling state until validation, expiry, or bounded uncertainty.
+Expiry is relative to the transaction history that is available from the queried server or endpoint. The final lookup reduces a race between the transaction lookup and ledger lookup. Without `searched_all` history proof, it does not prove that the transaction is absent from history that the server does not hold.
 
 ## Queries
 

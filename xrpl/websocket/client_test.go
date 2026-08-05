@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -2228,8 +2229,79 @@ func TestClient_FundWallet(t *testing.T) {
 	})
 }
 
+func TestClient_ReconnectsAfterNonCloseReadError(t *testing.T) {
+	var dialCount atomic.Int32
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dialCount.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			return
+		}
+		var request struct {
+			ID uint64 `json:"id"`
+		}
+		if err := json.Unmarshal(message, &request); err != nil {
+			return
+		}
+		_ = conn.WriteJSON(map[string]any{
+			"id":     request.ID,
+			"status": "success",
+			"type":   "response",
+			"result": map[string]any{},
+		})
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithMaxReconnects(2).
+			WithTimeout(time.Second),
+		time.Millisecond,
+		time.Millisecond,
+	)
+	client := NewClient(cfg)
+	setTrustedTestNetworkIdentity(client, 0)
+	client.conn.conn = newFakeWebsocketConnection()
+	ctx := client.resetLifecycle()
+	readDone := make(chan struct{})
+	go func() {
+		defer close(readDone)
+		client.readMessages(ctx)
+	}()
+	defer func() {
+		client.cancelLifecycle()
+		if client.IsConnected() {
+			_ = client.conn.Disconnect()
+		}
+		select {
+		case <-readDone:
+		case <-time.After(time.Second):
+			t.Fatal("read loop did not stop")
+		}
+	}()
+
+	require.Eventually(t, func() bool {
+		return dialCount.Load() == 1 && client.IsConnected()
+	}, time.Second, time.Millisecond)
+
+	response, err := client.Request(newAccountChannelsRequest())
+	require.NoError(t, err)
+	require.NotNil(t, response)
+}
+
 // TestClient_ReconnectConsumesBudgetOnConnectFailures verifies that a failed
-// reconnect Connect() does not abort the read loop early: the loop must keep
+// reconnect Connect() does not abort the read loop early. The loop must keep
 // retrying until the full WithMaxReconnects budget is exhausted, and only then
 // report ErrMaxReconnectionAttemptsReached. The server accepts the initial
 // upgrade once (then closes the conn to trigger the reconnect path) and
@@ -2256,12 +2328,14 @@ func TestClient_ReconnectConsumesBudgetOnConnectFailures(t *testing.T) {
 	url, err := testutil.ConvertHTTPToWS(server.URL)
 	require.NoError(t, err)
 
-	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
-
-	cfg := NewClientConfig().
-		WithHost(url).
-		WithTimeout(1 * time.Second).
-		WithMaxReconnects(budget)
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithTimeout(1*time.Second).
+			WithMaxReconnects(budget),
+		time.Millisecond,
+		time.Millisecond,
+	)
 
 	cl := NewClient(cfg)
 	setTrustedTestNetworkIdentity(cl, 0)
@@ -2312,12 +2386,14 @@ func TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage(t *testi
 	url, err := testutil.ConvertHTTPToWS(server.URL)
 	require.NoError(t, err)
 
-	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
-
-	cfg := NewClientConfig().
-		WithHost(url).
-		WithTimeout(1 * time.Second).
-		WithMaxReconnects(budget)
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithTimeout(1*time.Second).
+			WithMaxReconnects(budget),
+		time.Millisecond,
+		time.Millisecond,
+	)
 
 	cl := NewClient(cfg)
 	setTrustedTestNetworkIdentity(cl, 0)
@@ -2344,24 +2420,22 @@ func TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage(t *testi
 }
 
 func TestReconnectDelayUsesCappedExponentialBackoff(t *testing.T) {
-	t.Cleanup(swapReconnectDelays(time.Millisecond, 30*time.Millisecond))
+	const (
+		baseDelay = time.Millisecond
+		maxDelay  = 30 * time.Millisecond
+	)
 
-	require.Equal(t, time.Millisecond, reconnectDelay(1))
-	require.Equal(t, 2*time.Millisecond, reconnectDelay(2))
-	require.Equal(t, 4*time.Millisecond, reconnectDelay(3))
-	require.Equal(t, 30*time.Millisecond, reconnectDelay(6))
-	require.Equal(t, 30*time.Millisecond, reconnectDelay(100))
+	require.Equal(t, time.Millisecond, reconnectDelay(1, baseDelay, maxDelay))
+	require.Equal(t, 2*time.Millisecond, reconnectDelay(2, baseDelay, maxDelay))
+	require.Equal(t, 4*time.Millisecond, reconnectDelay(3, baseDelay, maxDelay))
+	require.Equal(t, 30*time.Millisecond, reconnectDelay(6, baseDelay, maxDelay))
+	require.Equal(t, 30*time.Millisecond, reconnectDelay(100, baseDelay, maxDelay))
 }
 
-// swapReconnectDelays overrides the package-level reconnect backoff vars and
-// returns a function that restores their previous values. Intended for use
-// with t.Cleanup. Not safe under t.Parallel: the vars are read/written without
-// synchronization, so callers must not run in parallel with each other or with
-// any test that exercises the reconnect path.
-func swapReconnectDelays(base, maxDelay time.Duration) func() {
-	prevBase, prevMax := reconnectBaseDelay, reconnectMaxDelay
-	reconnectBaseDelay, reconnectMaxDelay = base, maxDelay
-	return func() {
-		reconnectBaseDelay, reconnectMaxDelay = prevBase, prevMax
-	}
+// withReconnectDelays returns a config with test-specific reconnect delays.
+// The config is copied into one client before its read loop starts.
+func withReconnectDelays(cfg ClientConfig, baseDelay, maxDelay time.Duration) ClientConfig {
+	cfg.reconnectBaseDelay = baseDelay
+	cfg.reconnectMaxDelay = maxDelay
+	return cfg
 }

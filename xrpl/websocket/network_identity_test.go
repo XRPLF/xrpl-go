@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -25,23 +26,6 @@ func setTrustedTestNetworkIdentity(cl *Client, networkID uint32) {
 	cl.identity.trusted = true
 	cl.identity.current.NetworkID = uint32Pointer(networkID)
 	cl.identity.current.BuildVersion = "1.12.0"
-}
-
-type reconnectGateRequest struct {
-	started chan struct{}
-}
-
-func (r *reconnectGateRequest) Method() string {
-	return "server_info"
-}
-
-func (r *reconnectGateRequest) Validate() error {
-	close(r.started)
-	return nil
-}
-
-func (r *reconnectGateRequest) APIVersion() int {
-	return 2
 }
 
 func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
@@ -181,11 +165,6 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 				require.NotNil(t, cl.NetworkID)
 				require.Equal(t, *tt.expectedID, *cl.NetworkID)
 				require.Equal(t, tt.expectedBuild, cl.BuildVersion)
-
-				identity, identityErr := cl.networkIdentity()
-				require.NoError(t, identityErr)
-				require.Equal(t, *tt.expectedID, *identity.NetworkID)
-				require.Equal(t, tt.expectedBuild, identity.BuildVersion)
 			}
 
 			if err != nil {
@@ -287,8 +266,11 @@ func TestClientReconnectRediscoversNetworkIdentity(t *testing.T) {
 
 	url, err := testutil.ConvertHTTPToWS(server.URL)
 	require.NoError(t, err)
-	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
-	cl := NewClient(NewClientConfig().WithHost(url).WithMaxReconnects(1).WithTimeout(time.Second))
+	cl := NewClient(withReconnectDelays(
+		NewClientConfig().WithHost(url).WithMaxReconnects(1).WithTimeout(time.Second),
+		time.Millisecond,
+		time.Millisecond,
+	))
 
 	require.NoError(t, cl.Connect())
 	defer cl.Disconnect()
@@ -300,12 +282,10 @@ func TestClientReconnectRediscoversNetworkIdentity(t *testing.T) {
 	require.Equal(t, int32(2), connectionCount.Load())
 }
 
-func TestClientReconnectBlocksRequestsDuringNetworkIdentityDiscovery(t *testing.T) {
+func TestClientReconnectKeepsSocketPrivateDuringIdentityDiscovery(t *testing.T) {
 	var connectionCount atomic.Int32
-	closeFirstConnection := make(chan struct{})
-	reconnectDiscoveryStarted := make(chan struct{})
-	checkForEarlyRequest := make(chan struct{})
-	earlyRequest := make(chan bool, 1)
+	secondDiscoveryStarted := make(chan struct{})
+	allowSecondDiscovery := make(chan struct{})
 	serverErr := make(chan error, 1)
 	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -317,77 +297,40 @@ func TestClientReconnectBlocksRequestsDuringNetworkIdentityDiscovery(t *testing.
 		defer conn.Close()
 
 		connectionNumber := connectionCount.Add(1)
-		discoveryRequest := make(map[string]any)
-		if err := conn.ReadJSON(&discoveryRequest); err != nil {
+		request := make(map[string]any)
+		if err := conn.ReadJSON(&request); err != nil {
 			serverErr <- err
 			return
 		}
-		identityResponse := map[string]any{
-			"id": discoveryRequest["id"],
+		if connectionNumber == 2 {
+			close(secondDiscoveryStarted)
+			<-allowSecondDiscovery
+		}
+		if err := conn.WriteJSON(map[string]any{
+			"id": request["id"],
 			"result": map[string]any{"info": map[string]any{
 				"network_id":    uint32(1),
 				"build_version": "1.12.0",
 			}},
+		}); err != nil {
+			serverErr <- err
+			return
 		}
-
 		if connectionNumber == 1 {
-			if err := conn.WriteJSON(identityResponse); err != nil {
-				serverErr <- err
-				return
-			}
-			<-closeFirstConnection
-			return
-		}
-		if connectionNumber != 2 {
 			return
 		}
 
-		close(reconnectDiscoveryStarted)
-		normalRequest := make(chan map[string]any, 1)
-		normalRequestErr := make(chan error, 1)
-		go func() {
-			request := make(map[string]any)
-			if err := conn.ReadJSON(&request); err != nil {
-				normalRequestErr <- err
-				return
-			}
-			normalRequest <- request
-		}()
-
-		<-checkForEarlyRequest
-		var request map[string]any
-		select {
-		case request = <-normalRequest:
-			earlyRequest <- true
-			if err := conn.WriteJSON(map[string]any{"id": request["id"], "result": map[string]any{}}); err != nil {
-				serverErr <- err
-				return
-			}
-			if err := conn.WriteJSON(identityResponse); err != nil {
-				serverErr <- err
-			}
-			return
-		case err := <-normalRequestErr:
-			serverErr <- err
-			return
-		case <-time.After(100 * time.Millisecond):
-			earlyRequest <- false
-		}
-
-		if err := conn.WriteJSON(identityResponse); err != nil {
+		request = make(map[string]any)
+		if err := conn.ReadJSON(&request); err != nil {
 			serverErr <- err
 			return
 		}
-		select {
-		case request = <-normalRequest:
-		case err := <-normalRequestErr:
-			serverErr <- err
-			return
-		case <-time.After(time.Second):
-			serverErr <- ErrRequestTimedOut
-			return
-		}
-		if err := conn.WriteJSON(map[string]any{"id": request["id"], "result": map[string]any{}}); err != nil {
+		if err := conn.WriteJSON(map[string]any{
+			"id":     request["id"],
+			"status": "success",
+			"type":   "response",
+			"result": map[string]any{},
+		}); err != nil {
 			serverErr <- err
 			return
 		}
@@ -399,49 +342,125 @@ func TestClientReconnectBlocksRequestsDuringNetworkIdentityDiscovery(t *testing.
 
 	url, err := testutil.ConvertHTTPToWS(server.URL)
 	require.NoError(t, err)
-	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
-	cl := NewClient(NewClientConfig().WithHost(url).WithMaxReconnects(1).WithTimeout(time.Second))
+	cl := NewClient(withReconnectDelays(
+		NewClientConfig().WithHost(url).WithMaxReconnects(1).WithTimeout(time.Second),
+		time.Millisecond,
+		time.Millisecond,
+	))
 
 	require.NoError(t, cl.Connect())
-	defer cl.Disconnect()
-	close(closeFirstConnection)
+	defer func() {
+		if cl.IsConnected() {
+			_ = cl.Disconnect()
+		}
+	}()
 	select {
-	case <-reconnectDiscoveryStarted:
+	case <-secondDiscoveryStarted:
 	case <-time.After(time.Second):
 		t.Fatal("reconnect identity discovery did not start")
 	}
 
-	requestStarted := make(chan struct{})
-	requestDone := make(chan error, 1)
-	go func() {
-		_, err := cl.Request(&reconnectGateRequest{started: requestStarted})
-		requestDone <- err
-	}()
-	select {
-	case <-requestStarted:
-	case <-time.After(time.Second):
-		t.Fatal("normal request did not start")
-	}
-	close(checkForEarlyRequest)
+	response, err := cl.Request(newAccountChannelsRequest())
+	require.Nil(t, response)
+	require.ErrorIs(t, err, ErrNotConnectedToServer)
 
-	select {
-	case arrivedEarly := <-earlyRequest:
-		require.False(t, arrivedEarly, "normal request reached the socket before identity discovery completed")
-	case <-time.After(time.Second):
-		t.Fatal("server did not check for an early request")
-	}
-	select {
-	case err := <-requestDone:
-		require.NoError(t, err)
-	case <-time.After(2 * time.Second):
-		t.Fatal("normal request did not complete after identity discovery")
-	}
-	require.True(t, cl.IsConnected())
-	require.Equal(t, int32(2), connectionCount.Load())
+	close(allowSecondDiscovery)
+	require.Eventually(t, cl.IsConnected, time.Second, time.Millisecond)
+	response, err = cl.Request(newAccountChannelsRequest())
+	require.NoError(t, err)
+	require.NotNil(t, response)
 	select {
 	case err := <-serverErr:
 		require.NoError(t, err)
 	default:
+	}
+}
+
+func TestClientDisconnectClaimsReconnectSocketBeforeCancellationInvalidation(t *testing.T) {
+	cl := NewClient(NewClientConfig().WithHost("ws://unused"))
+	socket := newFakeWebsocketConnection()
+	cl.conn.mu.Lock()
+	cl.conn.preparing = socket
+	cl.conn.mu.Unlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var invalidationErr error
+	cl.streamHandlerStateMu.Lock()
+	cl.ctx = ctx
+	cl.cancel = func() {
+		cancel()
+		// This reproduces the identity write watcher invalidation before the
+		// lifecycle cancellation call returns.
+		invalidationErr = cl.conn.invalidateSocket(socket)
+	}
+	cl.streamHandlerStateMu.Unlock()
+
+	require.NoError(t, cl.Disconnect())
+	require.NoError(t, invalidationErr)
+	require.ErrorIs(t, ctx.Err(), context.Canceled)
+	require.False(t, cl.IsConnected())
+	require.Equal(t, int32(1), socket.closeCount.Load())
+	cl.conn.mu.Lock()
+	require.Nil(t, cl.conn.preparing)
+	require.Nil(t, cl.conn.disconnecting)
+	cl.conn.mu.Unlock()
+}
+
+func TestClientDisconnectClosesSocketDuringReconnectIdentityDiscovery(t *testing.T) {
+	var connectionCount atomic.Int32
+	secondDiscoveryStarted := make(chan struct{})
+	secondConnectionClosed := make(chan struct{})
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		connectionNumber := connectionCount.Add(1)
+		request := make(map[string]any)
+		if err := conn.ReadJSON(&request); err != nil {
+			return
+		}
+		if connectionNumber == 1 {
+			_ = conn.WriteJSON(map[string]any{
+				"id": request["id"],
+				"result": map[string]any{"info": map[string]any{
+					"network_id":    uint32(1),
+					"build_version": "1.12.0",
+				}},
+			})
+			return
+		}
+
+		close(secondDiscoveryStarted)
+		if _, _, err := conn.ReadMessage(); err != nil {
+			close(secondConnectionClosed)
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cl := NewClient(withReconnectDelays(
+		NewClientConfig().WithHost(url).WithMaxReconnects(1).WithTimeout(time.Second),
+		time.Millisecond,
+		time.Millisecond,
+	))
+
+	require.NoError(t, cl.Connect())
+	select {
+	case <-secondDiscoveryStarted:
+	case <-time.After(time.Second):
+		t.Fatal("reconnect identity discovery did not start")
+	}
+	require.NoError(t, cl.Disconnect())
+	require.False(t, cl.IsConnected())
+	select {
+	case <-secondConnectionClosed:
+	case <-time.After(time.Second):
+		t.Fatal("Disconnect did not close the reconnecting socket")
 	}
 }
 
@@ -492,11 +511,14 @@ func TestClientDisconnectCancelsInFlightReconnectDial(t *testing.T) {
 
 	url, err := testutil.ConvertHTTPToWS(server.URL)
 	require.NoError(t, err)
-	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
-	cl := NewClient(NewClientConfig().
-		WithHost(url).
-		WithMaxReconnects(1).
-		WithNetworkIdentity(0, "1.12.0"))
+	cl := NewClient(withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithMaxReconnects(1).
+			WithNetworkIdentity(0, "1.12.0"),
+		time.Millisecond,
+		time.Millisecond,
+	))
 
 	require.NoError(t, cl.Connect())
 	select {

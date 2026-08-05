@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `WithNetworkIdentity` for trusted network identity configuration.
 - Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, and `ErrInvalidAddress` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
-- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for preliminary rejection, validated failure, ledger expiry, bounded unknown finality, and repeated monitoring transport failure.
+- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for malformed preliminary results, ledger expiry, and repeated monitoring transport failure.
 
 #### xrpl/transaction/integration
 
@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ClientConfig.WithNetworkIdentity` for trusted network identity configuration and `ErrAlreadyConnected` for attempts to replace a live connection.
 - Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, and `ErrMismatchedTag` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
-- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for preliminary rejection, validated failure, ledger expiry, bounded unknown finality, and repeated monitoring transport failure.
+- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for malformed preliminary results, ledger expiry, and repeated monitoring transport failure.
 
 ### Changed
 
@@ -102,16 +102,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
-- Made reliable submission monitor preliminary `tes`, `ter`, and `tec` results through ledger finality, accept validation at `LastLedgerSequence`, expire only after that ledger passes, and use bounded uncertainty rather than rejecting legal transactions without `LastLedgerSequence`.
+- Matched xrpl.js finality outcomes by requiring `LastLedgerSequence` before submission, failing immediately only for preliminary `tem` results, retrying `txnNotFound`, and returning all validated transaction responses without an error. Expiry now requires a validated ledger greater than `LastLedgerSequence` and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
 
 #### xrpl/websocket
 
-- Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation. Added a request gate that keeps application traffic off new sockets until identity discovery completes.
+- Made connection-time network discovery atomic and leak-free. Reconnecting sockets remain private until identity checks finish, cancellation closes in-progress connection attempts, and failed attempts cannot replace a live connection.
 - Made autofill and unsigned signing reject public network identity values until successful discovery, unless `WithNetworkIdentity` supplies an explicit trusted override.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
-- Made reliable submission match RPC ledger-finality semantics, including cancellation-safe polling and writes, validation-at-boundary handling, and transport timeouts that remain distinct from transaction failure.
+- Matched RPC and xrpl.js finality outcomes, including required `LastLedgerSequence`, preliminary `tem` rejection, `txnNotFound` retries, nil errors for all validated responses, strict ledger expiry, and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
+- Closed and invalidated WebSocket connections after write or write-deadline failures. The active read loop now attempts reconnection after any read error, not only close errors, within the existing `WithMaxReconnects` budget.
+- Made manual disconnect claim an in-progress reconnect socket before lifecycle cancellation so cancellation-driven invalidation cannot cause a false not-connected error.
+- Made reconnect backoff configuration immutable per client to prevent concurrent clients and reconnect tests from racing over shared delay state.
 
 ## [v0.2.0]
 

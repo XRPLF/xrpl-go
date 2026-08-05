@@ -9,17 +9,11 @@ import (
 
 var (
 	// ErrPreliminaryResult indicates that reliable submission stopped on a
-	// non-monitorable provisional engine result.
-	ErrPreliminaryResult = errors.New("non-monitorable preliminary transaction result")
-	// ErrValidatedTransaction indicates that a transaction was included in a
-	// validated ledger with a non-success result.
-	ErrValidatedTransaction = errors.New("transaction validated with a failure result")
+	// malformed preliminary engine result.
+	ErrPreliminaryResult = errors.New("malformed preliminary transaction result")
 	// ErrTransactionExpired indicates that the validated ledger passed the
 	// transaction's LastLedgerSequence without a validated transaction result.
 	ErrTransactionExpired = errors.New("transaction expired before validation")
-	// ErrFinalityNotDetermined indicates that bounded monitoring of a transaction
-	// without LastLedgerSequence ended without an authoritative result.
-	ErrFinalityNotDetermined = errors.New("transaction finality was not determined")
 	// ErrFinalityTransport indicates that repeated transport or response failures
 	// prevented reliable-submission monitoring from making progress.
 	ErrFinalityTransport = errors.New("transaction finality monitoring transport failure")
@@ -35,28 +29,30 @@ const (
 	EngineResultTER EngineResultFamily = "ter"
 	// EngineResultTEC is the fee-claiming family.
 	EngineResultTEC EngineResultFamily = "tec"
-	// EngineResultTEF is the local failure family.
+	// EngineResultTEF is the failure family.
 	EngineResultTEF EngineResultFamily = "tef"
+	// EngineResultTEL is the local-error family.
+	EngineResultTEL EngineResultFamily = "tel"
 	// EngineResultTEM is the malformed family.
 	EngineResultTEM EngineResultFamily = "tem"
 	// EngineResultUnknown is an unrecognized result family.
 	EngineResultUnknown EngineResultFamily = ""
 )
 
-// engineResultValidatedSuccess is the exact engine result of a validated
-// success. Validated success is an exact-token match, not a tes-family check.
-const engineResultValidatedSuccess = "tesSUCCESS"
-
-// PreliminaryResultError reports a provisional submit result that the SDK does
-// not monitor. It does not claim that the transaction has a validated-ledger
-// outcome.
+// PreliminaryResultError reports a malformed preliminary submit result. It
+// does not claim that the transaction has a validated-ledger outcome.
 type PreliminaryResultError struct {
-	EngineResult string
+	EngineResult        string
+	EngineResultMessage string
 }
 
 // Error implements error.
 func (e *PreliminaryResultError) Error() string {
-	return fmt.Sprintf("transaction failed to submit with engine result: %s", e.EngineResult)
+	return fmt.Sprintf(
+		"transaction failed to submit with engine result %s: %s",
+		e.EngineResult,
+		e.EngineResultMessage,
+	)
 }
 
 // Is supports errors.Is with ErrPreliminaryResult.
@@ -64,36 +60,22 @@ func (e *PreliminaryResultError) Is(target error) bool {
 	return target == ErrPreliminaryResult
 }
 
-// ValidatedTransactionError reports an authoritative non-success result from a
-// validated ledger. The caller also receives the transaction response.
-type ValidatedTransactionError struct {
-	EngineResult string
-	LedgerIndex  uint32
-}
-
-// Error implements error.
-func (e *ValidatedTransactionError) Error() string {
-	return fmt.Sprintf("transaction validated with engine result %s in ledger %d", e.EngineResult, e.LedgerIndex)
-}
-
-// Is supports errors.Is with ErrValidatedTransaction.
-func (e *ValidatedTransactionError) Is(target error) bool {
-	return target == ErrValidatedTransaction
-}
-
 // TransactionExpiredError reports ledger-driven expiry after the validated
-// ledger has advanced strictly beyond LastLedgerSequence.
+// ledger has advanced strictly beyond LastLedgerSequence. PreliminaryResult
+// retains the engine result returned by the submit request.
 type TransactionExpiredError struct {
 	LastLedgerSequence uint32
 	ValidatedLedger    uint32
+	PreliminaryResult  string
 }
 
 // Error implements error.
 func (e *TransactionExpiredError) Error() string {
 	return fmt.Sprintf(
-		"transaction expired: validated ledger %d passed LastLedgerSequence %d",
+		"transaction expired: validated ledger %d passed LastLedgerSequence %d, preliminary result %s",
 		e.ValidatedLedger,
 		e.LastLedgerSequence,
+		e.PreliminaryResult,
 	)
 }
 
@@ -102,23 +84,7 @@ func (e *TransactionExpiredError) Is(target error) bool {
 	return target == ErrTransactionExpired
 }
 
-// FinalityNotDeterminedError reports exhaustion of the bounded fallback used
-// when a transaction has no LastLedgerSequence.
-type FinalityNotDeterminedError struct {
-	Attempts int
-}
-
-// Error implements error.
-func (e *FinalityNotDeterminedError) Error() string {
-	return fmt.Sprintf("transaction finality was not determined after %d polling attempts", e.Attempts)
-}
-
-// Is supports errors.Is with ErrFinalityNotDetermined.
-func (e *FinalityNotDeterminedError) Is(target error) bool {
-	return target == ErrFinalityNotDetermined
-}
-
-// FinalityTransportError reports repeated query failures while monitoring. Err
+// FinalityTransportError reports consecutive incomplete polling rounds. Err
 // retains the transport-specific cause, including request timeout sentinels.
 type FinalityTransportError struct {
 	Operation string
@@ -128,7 +94,12 @@ type FinalityTransportError struct {
 
 // Error implements error.
 func (e *FinalityTransportError) Error() string {
-	return fmt.Sprintf("%s failed %d consecutive times while monitoring transaction finality: %v", e.Operation, e.Attempts, e.Err)
+	return fmt.Sprintf(
+		"transaction finality monitoring had %d consecutive incomplete rounds, last failed operation %s: %v",
+		e.Attempts,
+		e.Operation,
+		e.Err,
+	)
 }
 
 // Is supports errors.Is with ErrFinalityTransport.
@@ -136,7 +107,7 @@ func (e *FinalityTransportError) Is(target error) bool {
 	return target == ErrFinalityTransport
 }
 
-// Unwrap retains the transport-specific failure for errors.Is/errors.As.
+// Unwrap retains the transport-specific failure for errors.Is and errors.As.
 func (e *FinalityTransportError) Unwrap() error {
 	return e.Err
 }
@@ -149,7 +120,7 @@ func ClassifyEngineResult(engineResult string) EngineResultFamily {
 	}
 
 	switch family := EngineResultFamily(engineResult[:3]); family {
-	case EngineResultTES, EngineResultTER, EngineResultTEC, EngineResultTEF, EngineResultTEM:
+	case EngineResultTES, EngineResultTER, EngineResultTEC, EngineResultTEF, EngineResultTEL, EngineResultTEM:
 		return family
 	case EngineResultUnknown:
 		return EngineResultUnknown
@@ -158,36 +129,33 @@ func ClassifyEngineResult(engineResult string) EngineResultFamily {
 	}
 }
 
-// ValidatePreliminaryResult accepts provisional families that require ledger
-// monitoring and returns a typed error for fail-fast or unknown families.
-func ValidatePreliminaryResult(engineResult string) error {
-	switch ClassifyEngineResult(engineResult) {
-	case EngineResultTES, EngineResultTER, EngineResultTEC:
+// ValidatePreliminaryResult rejects malformed results and monitors all other
+// preliminary results until a validated result or ledger expiry is available.
+func ValidatePreliminaryResult(engineResult, engineResultMessage string) error {
+	if ClassifyEngineResult(engineResult) != EngineResultTEM {
 		return nil
-	case EngineResultTEF, EngineResultTEM, EngineResultUnknown:
-		return &PreliminaryResultError{EngineResult: engineResult}
-	default:
-		return &PreliminaryResultError{EngineResult: engineResult}
+	}
+	return &PreliminaryResultError{
+		EngineResult:        engineResult,
+		EngineResultMessage: engineResultMessage,
 	}
 }
 
 // TransactionStatus is the transport-neutral result of looking up a submitted
 // transaction by hash.
 type TransactionStatus[T any] struct {
-	Response     *T
-	Found        bool
-	Validated    bool
-	LedgerIndex  uint32
-	EngineResult string
+	Response  *T
+	Found     bool
+	Validated bool
 }
 
 // FinalityConfig configures ledger-driven transaction monitoring.
 type FinalityConfig struct {
-	LastLedgerSequence *uint32
+	LastLedgerSequence uint32
+	PreliminaryResult  string
 	PollInterval       time.Duration
-	// MaxAttempts limits consecutive failed polling rounds. When
-	// LastLedgerSequence is absent, it also limits successful inconclusive
-	// polling rounds so monitoring cannot continue forever.
+	// MaxAttempts limits consecutive incomplete polling rounds caused by query
+	// or transport errors. It does not limit successful finality polling.
 	MaxAttempts int
 }
 
@@ -207,19 +175,17 @@ func WaitForFinality[T any](
 	hooks FinalityHooks[T],
 ) (*T, error) {
 	maxAttempts := max(cfg.MaxAttempts, 1)
+	incompleteRounds := 0
 
-	transportFailures := 0
-	inconclusiveAttempts := 0
-
-	transportFailure := func(operation string, cause error) error {
+	incompleteRound := func(operation string, cause error) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		transportFailures++
-		if transportFailures >= maxAttempts {
+		incompleteRounds++
+		if incompleteRounds >= maxAttempts {
 			return &FinalityTransportError{
 				Operation: operation,
-				Attempts:  transportFailures,
+				Attempts:  incompleteRounds,
 				Err:       cause,
 			}
 		}
@@ -236,13 +202,7 @@ func WaitForFinality[T any](
 				Err:       errors.New("validated transaction response is nil"),
 			}, true
 		}
-		if status.EngineResult == engineResultValidatedSuccess {
-			return status.Response, nil, true
-		}
-		return status.Response, &ValidatedTransactionError{
-			EngineResult: status.EngineResult,
-			LedgerIndex:  status.LedgerIndex,
-		}, true
+		return status.Response, nil, true
 	}
 
 	for {
@@ -252,7 +212,7 @@ func WaitForFinality[T any](
 
 		status, err := hooks.LookupTransaction(ctx)
 		if err != nil {
-			if failureErr := transportFailure("transaction lookup", err); failureErr != nil {
+			if failureErr := incompleteRound("transaction lookup", err); failureErr != nil {
 				return nil, failureErr
 			}
 			continue
@@ -262,34 +222,21 @@ func WaitForFinality[T any](
 			return response, resultErr
 		}
 
-		if cfg.LastLedgerSequence == nil {
-			transportFailures = 0
-			inconclusiveAttempts++
-			if inconclusiveAttempts >= maxAttempts {
-				return nil, &FinalityNotDeterminedError{Attempts: inconclusiveAttempts}
-			}
-			if err := Wait(ctx, cfg.PollInterval); err != nil {
-				return nil, err
-			}
-			continue
-		}
-
 		validatedLedger, err := hooks.GetValidatedLedger(ctx)
 		if err != nil {
-			if failureErr := transportFailure("validated ledger lookup", err); failureErr != nil {
+			if failureErr := incompleteRound("validated ledger lookup", err); failureErr != nil {
 				return nil, failureErr
 			}
 			continue
 		}
-		transportFailures = 0
 
-		if validatedLedger > *cfg.LastLedgerSequence {
+		if validatedLedger > cfg.LastLedgerSequence {
 			// The lookup that preceded the ledger query may have raced with
 			// validation at LastLedgerSequence. Recheck after observing the
 			// passed ledger before declaring expiry.
 			status, err := hooks.LookupTransaction(ctx)
 			if err != nil {
-				if failureErr := transportFailure("transaction expiry recheck", err); failureErr != nil {
+				if failureErr := incompleteRound("transaction expiry recheck", err); failureErr != nil {
 					return nil, failureErr
 				}
 				continue
@@ -298,11 +245,13 @@ func WaitForFinality[T any](
 				return response, resultErr
 			}
 			return nil, &TransactionExpiredError{
-				LastLedgerSequence: *cfg.LastLedgerSequence,
+				LastLedgerSequence: cfg.LastLedgerSequence,
 				ValidatedLedger:    validatedLedger,
+				PreliminaryResult:  cfg.PreliminaryResult,
 			}
 		}
 
+		incompleteRounds = 0
 		if err := Wait(ctx, cfg.PollInterval); err != nil {
 			return nil, err
 		}
