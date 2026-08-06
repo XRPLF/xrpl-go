@@ -157,6 +157,26 @@ func TestQualityCodec_Decode(t *testing.T) {
 			expected: "195796912.5171664",
 		},
 		{
+			name:     "pass - quality below one - leading fractional zero",
+			input:    "6200000000000005",
+			expected: "0.05",
+		},
+		{
+			name:     "pass - quality below one - one mantissa digit",
+			input:    "6300000000000005",
+			expected: "0.5",
+		},
+		{
+			name:     "pass - quality below one - two mantissa digits",
+			input:    "6200000000000037",
+			expected: "0.55",
+		},
+		{
+			name:     "pass - quality below one - three mantissa digits",
+			input:    "610000000000007B",
+			expected: "0.123",
+		},
+		{
 			name:     "pass - valid quality - non decimal",
 			input:    "640000000BAB9FB0",
 			expected: "195796912",
