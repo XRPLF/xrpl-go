@@ -1235,8 +1235,9 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := setupTestRPCClientForAutofill(t, tt.mockResponses)
 
-			// Set NetworkID for test
-			cl.NetworkID = tt.networkID
+			// Set a trusted network identity for this direct helper test.
+			cl.NetworkID = uint32Pointer(tt.networkID)
+			cl.BuildVersion = "1.12.0"
 
 			err := cl.autofillRawTransactions(&tt.tx)
 
@@ -1294,9 +1295,12 @@ func setupTestRPCClientForAutofill(t *testing.T, mockResponses []string) *Client
 		return testutil.MockResponse(`{"result": {}}`, 200, mc)(req)
 	}
 
-	cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc))
+	cfg, err := NewClientConfig(
+		"http://testnode/",
+		WithHTTPClient(mc),
+		WithNetworkIdentity(0, "1.12.0"),
+	)
 	require.NoError(t, err)
-
 	return NewClient(cfg)
 }
 

@@ -1,7 +1,9 @@
 package websocket
 
 import (
+	"context"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -33,10 +35,18 @@ func newConnection(url string, maxResponseSize int64) *Connection {
 
 // Connect opens a websocket connection to the server.
 func (c *Connection) Connect() error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	return c.connect(context.Background())
+}
 
-	conn, resp, err := websocket.DefaultDialer.Dial(c.url, nil)
+func (c *Connection) connect(ctx context.Context) error {
+	c.mu.Lock()
+	alreadyConnected := c.conn != nil
+	c.mu.Unlock()
+	if alreadyConnected {
+		return ErrAlreadyConnected
+	}
+
+	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, c.url, nil)
 	if resp != nil && resp.Body != nil {
 		_ = resp.Body.Close()
 	}
@@ -45,6 +55,17 @@ func (c *Connection) Connect() error {
 	}
 	if c.maxResponseSize > 0 {
 		conn.SetReadLimit(c.maxResponseSize)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.conn != nil {
+		_ = conn.Close()
+		return ErrAlreadyConnected
+	}
+	if err := ctx.Err(); err != nil {
+		_ = conn.Close()
+		return err
 	}
 	c.conn = conn
 	return nil
@@ -80,6 +101,13 @@ func (c *Connection) IsConnected() bool {
 // It returns the message and an error if the message is not read.
 // This method is blocking, it will block until a message is read.
 func (c *Connection) ReadMessage() ([]byte, error) {
+	return c.readMessage(time.Time{})
+}
+
+// readMessage reads one message. A non-zero deadline applies only to this
+// read and is cleared again on success. It is used for the synchronous
+// server_info handshake before the background reader starts.
+func (c *Connection) readMessage(deadline time.Time) ([]byte, error) {
 	c.readMu.Lock()
 	defer c.readMu.Unlock()
 
@@ -90,9 +118,17 @@ func (c *Connection) ReadMessage() ([]byte, error) {
 	if conn == nil {
 		return nil, ErrNotConnected
 	}
+	if err := conn.SetReadDeadline(deadline); err != nil {
+		return nil, err
+	}
 	_, message, err := conn.ReadMessage()
 	if err != nil {
 		return nil, err
+	}
+	if !deadline.IsZero() {
+		if err := conn.SetReadDeadline(time.Time{}); err != nil {
+			return nil, err
+		}
 	}
 	return message, nil
 }

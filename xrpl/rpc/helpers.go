@@ -25,135 +25,15 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 )
 
 const (
-	// RestrictedNetworks is the threshold above which sidechains are expected to have network IDs.
-	// Sidechains are expected to have network IDs above this.
-	// Networks with ID above this restricted number are expected specify an accurate NetworkID field
-	// in every transaction to that chain to prevent replay attacks.
-	// Mainnet and testnet are exceptions. More context: https://github.com/XRPLF/rippled/pull/4370
-	RestrictedNetworks = 1024
-	// RequiredNetworkIDVersion is the minimum rippled version that requires NetworkID validation.
-	RequiredNetworkIDVersion = "1.11.0"
+	// RestrictedNetworks is the largest network ID for which transactions omit NetworkID.
+	RestrictedNetworks = clientinternal.RestrictedNetworks
+	// RequiredNetworkIDVersion is the first rippled version that enforces NetworkID.
+	RequiredNetworkIDVersion = clientinternal.RequiredNetworkIDVersion
 )
-
-// isNotLaterRippledVersion determines whether the source rippled version is not later than the target rippled version.
-// Example usage: isNotLaterRippledVersion("1.10.0", "1.11.0") returns true.
-//
-//	isNotLaterRippledVersion("1.10.0", "1.10.0-b1") returns false.
-func isNotLaterRippledVersion(source, target string) bool {
-	if source == target {
-		return true
-	}
-
-	sourceDecomp := strings.Split(source, ".")
-	targetDecomp := strings.Split(target, ".")
-
-	if len(sourceDecomp) < 3 || len(targetDecomp) < 3 {
-		return false
-	}
-
-	sourceMajor, err := strconv.Atoi(sourceDecomp[0])
-	if err != nil {
-		return false
-	}
-	sourceMinor, err := strconv.Atoi(sourceDecomp[1])
-	if err != nil {
-		return false
-	}
-	targetMajor, err := strconv.Atoi(targetDecomp[0])
-	if err != nil {
-		return false
-	}
-	targetMinor, err := strconv.Atoi(targetDecomp[1])
-	if err != nil {
-		return false
-	}
-
-	// Compare major version
-	if sourceMajor != targetMajor {
-		return sourceMajor < targetMajor
-	}
-
-	// Compare minor version
-	if sourceMinor != targetMinor {
-		return sourceMinor < targetMinor
-	}
-
-	sourcePatch := strings.Split(sourceDecomp[2], "-")
-	targetPatch := strings.Split(targetDecomp[2], "-")
-
-	sourcePatchVersion, err := strconv.Atoi(sourcePatch[0])
-	if err != nil {
-		return false
-	}
-	targetPatchVersion, err := strconv.Atoi(targetPatch[0])
-	if err != nil {
-		return false
-	}
-
-	// Compare patch version
-	if sourcePatchVersion != targetPatchVersion {
-		return sourcePatchVersion < targetPatchVersion
-	}
-
-	// Compare release version
-	if len(sourcePatch) != len(targetPatch) {
-		return len(sourcePatch) > len(targetPatch)
-	}
-
-	if len(sourcePatch) == 2 {
-		// Compare different release types
-		if !strings.HasPrefix(sourcePatch[1], string(targetPatch[1][0])) {
-			return sourcePatch[1] < targetPatch[1]
-		}
-
-		// Compare beta version
-		if strings.HasPrefix(sourcePatch[1], "b") {
-			sourceBeta, err := strconv.Atoi(sourcePatch[1][1:])
-			if err != nil {
-				return false
-			}
-			targetBeta, err := strconv.Atoi(targetPatch[1][1:])
-			if err != nil {
-				return false
-			}
-			return sourceBeta < targetBeta
-		}
-
-		// Compare rc version
-		if strings.HasPrefix(sourcePatch[1], "rc") {
-			sourceRC, err := strconv.Atoi(sourcePatch[1][2:])
-			if err != nil {
-				return false
-			}
-			targetRC, err := strconv.Atoi(targetPatch[1][2:])
-			if err != nil {
-				return false
-			}
-			return sourceRC < targetRC
-		}
-	}
-
-	return false
-}
-
-// txNeedsNetworkID determines if the transaction required a networkID to be valid.
-// Transaction needs networkID if later than restricted ID and build version is >= 1.11.0
-func (c *Client) txNeedsNetworkID() (bool, error) {
-	if c.NetworkID != 0 && c.NetworkID > RestrictedNetworks {
-		res, err := c.GetServerInfo(&server.InfoRequest{})
-		if err != nil {
-			return false, err
-		}
-
-		if res.Info.BuildVersion != "" {
-			return isNotLaterRippledVersion(RequiredNetworkIDVersion, res.Info.BuildVersion), nil
-		}
-	}
-	return false, nil
-}
 
 // CreateRequest formats the parameters and method name ready for sending request
 // Params will have been serialised if required and added to request struct before being passed to this method
@@ -257,57 +137,9 @@ func readResponseBody(body io.Reader, maxResponseSize int64) ([]byte, error) {
 	return b, nil
 }
 
-// Sets valid addresses for the transaction.
+// setValidTransactionAddresses applies the shared X-address and tag policy.
 func (c *Client) setValidTransactionAddresses(tx *transaction.FlatTransaction) error {
-	// Validate if "Account" address is an xAddress
-	if err := c.validateTransactionAddress(tx, "Account", "SourceTag"); err != nil {
-		return err
-	}
-
-	if _, ok := (*tx)["Destination"]; ok {
-		if err := c.validateTransactionAddress(tx, "Destination", "DestinationTag"); err != nil {
-			return err
-		}
-	}
-
-	// DepositPreuaht
-	c.convertTransactionAddressToClassicAddress(tx, "Authorize")
-	c.convertTransactionAddressToClassicAddress(tx, "Unauthorize")
-	// EscrowCancel, EscrowFinish
-	c.convertTransactionAddressToClassicAddress(tx, "Owner")
-	// SetRegularKey
-	c.convertTransactionAddressToClassicAddress(tx, "RegularKey")
-
-	return nil
-}
-
-// TODO: Implement this when IsValidXAddress is implemented
-func (c *Client) getClassicAccountAndTag(address string) (string, uint32) {
-	return address, 0
-}
-
-func (c *Client) convertTransactionAddressToClassicAddress(tx *transaction.FlatTransaction, fieldName string) {
-	if address, ok := (*tx)[fieldName].(string); ok {
-		classicAddress, _ := c.getClassicAccountAndTag(address)
-		(*tx)[fieldName] = classicAddress
-	}
-}
-
-func (c *Client) validateTransactionAddress(tx *transaction.FlatTransaction, addressField, tagField string) error {
-	classicAddress, tag := c.getClassicAccountAndTag((*tx)[addressField].(string))
-	(*tx)[addressField] = classicAddress
-
-	if tag != uint32(0) {
-		if txTag, ok := (*tx)[tagField].(uint32); ok && txTag != tag {
-			return ErrMismatchedTag{
-				Expected: addressField,
-				Actual:   tagField,
-			}
-		}
-		(*tx)[tagField] = tag
-	}
-
-	return nil
+	return clientinternal.SetValidAddresses(*tx)
 }
 
 // Sets the next valid sequence number for a given transaction.
@@ -590,7 +422,7 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		return "", ErrMissingWallet
 	}
 
-	// Optionally autofill the transaction.
+	// Autofill when enabled. Otherwise, sign the caller-supplied transaction unchanged.
 	if autofill {
 		if err := c.Autofill(&tx); err != nil {
 			return "", err

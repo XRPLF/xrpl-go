@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### BREAKING CHANGES
+
+#### xrpl/queries/server
+
+- Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID.
+
+#### xrpl/rpc
+
+- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
+- Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
+
+#### xrpl/websocket
+
+- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
+- Changed `Client.Connect` to request `server_info` before it starts the background reader. A request failure is reported through `OnError` but does not fail the connection. A missing `network_id` leaves `NetworkID` nil.
+
+### Added
+
+#### keypairs
+
+- Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
+
+#### xrpl/rpc
+
+- Added `WithNetworkIdentity` for trusted network identity configuration.
+- Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, and `ErrInvalidAddress` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
+- Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
+
+#### xrpl/transaction/integration
+
+- Added RPC and WebSocket live-ledger coverage for X-address autofill and discovered NetworkID policy.
+
+#### xrpl/websocket
+
+- Added `ClientConfig.WithNetworkIdentity` for trusted network identity configuration and `ErrAlreadyConnected` for attempts to replace a live connection.
+- Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, and `ErrMismatchedTag` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
+- Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
+
 ### Changed
 
 #### dependencies
@@ -21,11 +59,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - secp256k1 verification now rejects malleable high-S signatures that do not meet XRPL's fully canonical signature requirement.
 - `DeriveClassicAddress` now verifies that secp256k1 public keys encode valid curve points while preserving the caller's valid compressed or uncompressed encoding for address hashing.
 
-### Added
+#### xrpl/rpc
 
-#### keypairs
+- Autofill now omits and rejects an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. It adds and requires the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
+- The client now discovers and caches network identity with `server_info` before an identity-dependent operation. A discovery failure leaves the identity unknown, does not block the operation, and is retried by a later operation.
+- Client-side signing now skips network identity discovery and policy validation when autofill is disabled.
 
-- Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
+#### xrpl/websocket
+
+- Autofill now omits and rejects an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. It adds and requires the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
+- Missing network identity or build-version data now causes autofill to omit `NetworkID`.
+- Client-side signing now skips network identity policy validation when autofill is disabled.
+
+### Fixed
+
+#### xrpl/websocket
+
+- Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation.
 
 ## [v0.2.0]
 
@@ -700,7 +750,7 @@ Support for the XLS-77d (deep freeze)
 
 ## [v0.1.3]
 
-### Added
+###  Added
 
 - Added `APIVersion` field to the `Client` struct.
 - Added `RippledAPIV1` and `RippledAPIV2` constants.

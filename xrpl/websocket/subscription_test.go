@@ -61,6 +61,7 @@ func TestClient_Subscribe(t *testing.T) {
 
 			url, _ := testutil.ConvertHTTPToWS(s.URL)
 			cl := NewClient(NewClientConfig().WithHost(url))
+			setTrustedTestNetworkIdentity(cl, 0)
 
 			if err := cl.Connect(); err != nil {
 				t.Errorf("Error connecting to server: %v", err)
@@ -124,6 +125,7 @@ func TestClient_Unsubscribe(t *testing.T) {
 
 			url, _ := testutil.ConvertHTTPToWS(s.URL)
 			cl := NewClient(NewClientConfig().WithHost(url))
+			setTrustedTestNetworkIdentity(cl, 0)
 
 			if err := cl.Connect(); err != nil {
 				t.Errorf("Error connecting to server: %v", err)

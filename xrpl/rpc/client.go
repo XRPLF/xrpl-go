@@ -12,6 +12,7 @@ import (
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	requests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
@@ -37,13 +38,28 @@ const maxDrainBytes = 4 << 10 // 4 KiB
 type Client struct {
 	cfg *Config
 
-	NetworkID uint32
+	// NetworkID is the discovered network identity or a compare-mode override.
+	// Nil means unknown. A pointer to zero is mainnet. Configure overrides before
+	// first use and do not mutate identity fields concurrently. Use
+	// WithNetworkIdentity for an explicit trusted discovery bypass.
+	NetworkID *uint32
+	// BuildVersion is the discovered rippled version used for NetworkID policy.
+	// Configure it before first use and do not mutate it concurrently.
+	BuildVersion string
+
+	identity networkIdentityState
 }
 
 // NewClient creates a new RPC Client with the given configuration.
 func NewClient(cfg *Config) *Client {
+	networkID := clientinternal.CloneNetworkID(cfg.networkID)
 	return &Client{
-		cfg: cfg,
+		cfg:          cfg,
+		NetworkID:    networkID,
+		BuildVersion: cfg.buildVersion,
+		identity: networkIdentityState{
+			ready: networkID != nil && cfg.buildVersion != "",
+		},
 	}
 }
 
@@ -254,6 +270,11 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 
 // Autofill fills in the missing fields in a transaction.
 func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
+	identity, err := c.ensureNetworkIdentity()
+	if err != nil {
+		return err
+	}
+
 	if err := c.setValidTransactionAddresses(tx); err != nil {
 		return err
 	}
@@ -266,10 +287,8 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 		return err
 	}
 
-	if _, ok := (*tx)["NetworkID"]; !ok {
-		if c.NetworkID != 0 {
-			(*tx)["NetworkID"] = c.NetworkID
-		}
+	if err := clientinternal.ApplyNetworkIDPolicy(*tx, identity); err != nil {
+		return err
 	}
 	if _, ok := (*tx)["Sequence"]; !ok {
 		err := c.setTransactionNextValidSequenceNumber(tx)
@@ -383,21 +402,17 @@ type validatedInnerTx struct {
 }
 
 func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
+	identity, err := c.networkIdentity()
+	if err != nil {
+		return err
+	}
+	if err := clientinternal.ApplyNetworkIDPolicy(*tx, identity); err != nil {
+		return err
+	}
+
 	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
 		return ErrRawTransactionsFieldIsNotAnArray
-	}
-
-	var outerNetworkID *uint32
-	if outer := (*tx)["NetworkID"]; outer != nil {
-		outerNetworkIDUint, ok := outer.(uint32)
-		if !ok {
-			return ErrNetworkIDFieldIsNotAUint32
-		}
-		if outerNetworkIDUint != c.NetworkID {
-			return ErrNetworkIDFieldMismatch
-		}
-		outerNetworkID = &outerNetworkIDUint
 	}
 
 	inners := make([]validatedInnerTx, 0, len(rawTxs))
@@ -427,25 +442,7 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 			return ErrSignersFieldMustBeEmpty
 		}
 
-		if networkID := innerRawTx["NetworkID"]; networkID != nil {
-			innerNetworkID, ok := networkID.(uint32)
-			if !ok {
-				return ErrNetworkIDFieldIsNotAUint32
-			}
-			if innerNetworkID != c.NetworkID {
-				return ErrNetworkIDFieldMismatch
-			}
-			if outerNetworkID != nil && innerNetworkID != *outerNetworkID {
-				return ErrNetworkIDFieldMismatch
-			}
-		}
-
 		inners = append(inners, validatedInnerTx{rawTx: innerRawTx, account: acc})
-	}
-
-	needsNetworkID, err := c.txNeedsNetworkID()
-	if err != nil {
-		return err
 	}
 
 	accountSeq := make(map[string]uint32, len(inners))
@@ -458,10 +455,6 @@ func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error 
 
 		if innerRawTx["SigningPubKey"] == nil {
 			innerRawTx["SigningPubKey"] = ""
-		}
-
-		if innerRawTx["NetworkID"] == nil && needsNetworkID {
-			innerRawTx["NetworkID"] = c.NetworkID
 		}
 
 		if innerRawTx["Sequence"] == nil && innerRawTx["TicketSequence"] == nil {
