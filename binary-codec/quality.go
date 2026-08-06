@@ -93,7 +93,7 @@ func DecodeQuality(quality string) (string, error) {
 	if exp < 0 {
 		// Need to add leading zeros
 		if len(mantissaStr) <= -exp {
-			zeros := strings.Repeat("0", -exp-len(mantissaStr)+1)
+			zeros := strings.Repeat("0", -exp-len(mantissaStr))
 			mantissaStr = "0." + zeros + mantissaStr
 		} else {
 			// Insert decimal point from right to left
