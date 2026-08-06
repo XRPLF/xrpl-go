@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added query field coverage for account lines (`ignore_default`, `limit`), AMM info (`account`, frozen flags, auction `time_interval`), NFT offer pagination (`limit`/`marker`), vault current-ledger metadata, and v1 account NFT ledger metadata, with protocol-accurate default and v1 JSON fixtures including the AMM expired-slot interval sentinel.
 - Expanded typed `ledger_entry` selector support with exactly-one top-level request validation, Clio deleted-entry metadata, and distinct validated JSON (`node`) and binary (`node_binary`) responses across RPC and WebSocket transports.
+- Added typed `server_definitions` support for validated full, legacy, and hash-only protocol definitions. Validation rejects null or incomplete core sections, requires all five enhanced sections to appear together, and requires hash-only responses to match the request hash. RPC and WebSocket integration tests cover full and hash-only response forms.
+- Added XLS-69 `simulate` dry runs to the RPC and WebSocket clients, with JSON and binary responses and validated JSON or opaque hexadecimal blob requests. JSON requests support server-autofilled NetworkID values, validate supplied NetworkID values, permit non-empty `SigningPubKey` values and unsigned `Signers` entries, and reject non-empty transaction signatures. Blob requests check hexadecimal syntax and delegate transaction, signature, and NetworkID validation to the server. Responses must match the requested binary mode. Integration tests cover JSON and binary simulations.
 
 #### xrpl/queries/amm
 
@@ -88,6 +90,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - secp256k1 signing now rejects zero and out-of-range private scalars instead of reducing them modulo the curve order.
 - secp256k1 verification now rejects malleable high-S signatures that do not meet XRPL's fully canonical signature requirement.
 - `DeriveClassicAddress` now verifies that secp256k1 public keys encode valid curve points while preserving the caller's valid compressed or uncompressed encoding for address hashing.
+
+#### xrpl/queries
+
+- `simulate` now keeps `tx_blob` opaque after hexadecimal syntax checks and delegates transaction, signature, and NetworkID validation to the server, preserving compatibility with server-specific definitions.
+- `simulate` validation now permits non-empty `SigningPubKey` values and unsigned `Signers` entries while continuing to reject non-empty transaction signatures, matching `rippled` dry-run rules.
+- `server_definitions` now rejects null or incomplete definition sections and accepts a hash-only response only when it matches the request hash.
 
 ## [v0.2.0]
 
