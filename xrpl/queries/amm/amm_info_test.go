@@ -4,12 +4,73 @@ import (
 	"testing"
 
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAMMInfoRequest(t *testing.T) {
+	tests := []struct {
+		name     string
+		request  InfoRequest
+		expected string
+	}{
+		{
+			name: "asset pair",
+			request: InfoRequest{
+				Asset:  ledger.Asset{Currency: "USD", Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
+				Asset2: ledger.Asset{Currency: "XRP"},
+			},
+			expected: `{
+	"asset": {
+		"currency": "USD",
+		"issuer": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+	},
+	"asset2": {
+		"currency": "XRP"
+	}
+}`,
+		},
+		{
+			name: "asset pair with liquidity provider",
+			request: InfoRequest{
+				Asset:   ledger.Asset{Currency: "XRP"},
+				Asset2:  ledger.Asset{Currency: "USD", Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
+				Account: "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+			},
+			expected: `{
+	"asset": {
+		"currency": "XRP"
+	},
+	"asset2": {
+		"currency": "USD",
+		"issuer": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+	},
+	"account": "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm"
+}`,
+		},
+		{
+			name: "amm_account",
+			request: InfoRequest{
+				AMMAccount: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+			},
+			expected: `{
+	"amm_account": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S"
+}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := testutil.SerializeAndDeserialize(t, tt.request, tt.expected); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
+func TestAMMInfoRequest_WithLedgerIndex(t *testing.T) {
 	s := InfoRequest{
 		Asset: ledger.Asset{
 			Currency: "USD",
@@ -18,6 +79,7 @@ func TestAMMInfoRequest(t *testing.T) {
 		Asset2: ledger.Asset{
 			Currency: "XRP",
 		},
+		LedgerIndex: common.Validated,
 	}
 
 	j := `{
@@ -27,36 +89,23 @@ func TestAMMInfoRequest(t *testing.T) {
 	},
 	"asset2": {
 		"currency": "XRP"
-	}
+	},
+	"ledger_index": "validated"
 }`
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
+	if err := testutil.Serialize(t, s, j); err != nil {
 		t.Error(err)
 	}
 }
 
-func TestAMMInfoRequest_WithAMMAccount(t *testing.T) {
+func TestAMMInfoRequest_WithAMMAccountAndLedgerHash(t *testing.T) {
 	s := InfoRequest{
-		Asset: ledger.Asset{
-			Currency: "USD",
-			Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-		},
-		Asset2: ledger.Asset{
-			Currency: "BTC",
-			Issuer:   "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
-		},
 		AMMAccount: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		LedgerHash: "4C99E5F63C0D0B1C2283B4F5DCE2239F80CE92E8B1A6AED1E110C198FC96E659",
 	}
 
 	j := `{
-	"asset": {
-		"currency": "USD",
-		"issuer": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
-	},
-	"asset2": {
-		"currency": "BTC",
-		"issuer": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe"
-	},
-	"amm_account": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S"
+	"amm_account": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+	"ledger_hash": "4C99E5F63C0D0B1C2283B4F5DCE2239F80CE92E8B1A6AED1E110C198FC96E659"
 }`
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
@@ -64,6 +113,9 @@ func TestAMMInfoRequest_WithAMMAccount(t *testing.T) {
 }
 
 func TestAMMInfoResponse(t *testing.T) {
+	assetFrozen := true
+	asset2Frozen := false
+
 	s := InfoResponse{
 		AMM: Info{
 			Account: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
@@ -77,6 +129,8 @@ func TestAMMInfoResponse(t *testing.T) {
 				Issuer:   "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
 				Value:    "0.5",
 			},
+			AssetFrozen:  &assetFrozen,
+			Asset2Frozen: &asset2Frozen,
 			AuctionSlot: &AuctionSlotInfo{
 				Account: "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
 				AuthAccounts: []AuthAccountInfo{
@@ -88,7 +142,8 @@ func TestAMMInfoResponse(t *testing.T) {
 					Issuer:   "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
 					Value:    "100",
 				},
-				Expiration: "2024-01-01T00:00:00Z",
+				Expiration:   "2024-01-01T00:00:00Z",
+				TimeInterval: 0,
 			},
 			LPToken: types.IssuedCurrencyAmount{
 				Currency: "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
@@ -122,6 +177,8 @@ func TestAMMInfoResponse(t *testing.T) {
 			"currency": "BTC",
 			"value": "0.5"
 		},
+		"asset_frozen": true,
+		"asset2_frozen": false,
 		"auction_slot": {
 			"account": "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
 			"auth_accounts": [
@@ -135,7 +192,8 @@ func TestAMMInfoResponse(t *testing.T) {
 				"currency": "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
 				"value": "100"
 			},
-			"expiration": "2024-01-01T00:00:00Z"
+			"expiration": "2024-01-01T00:00:00Z",
+			"time_interval": 0
 		},
 		"lp_token": {
 			"issuer": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
@@ -155,12 +213,41 @@ func TestAMMInfoResponse(t *testing.T) {
 	"ledger_index": 1234,
 	"validated": true
 }`
-	if err := testutil.Serialize(t, s, j); err != nil {
+	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
 	}
 }
 
-func TestAMMInfoResponse_XRPAssets(t *testing.T) {
+func TestAuctionSlotInfo_TimeIntervalExpiredSentinel(t *testing.T) {
+	s := AuctionSlotInfo{
+		Account:       "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+		DiscountedFee: 0,
+		Price: types.IssuedCurrencyAmount{
+			Currency: "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
+			Issuer:   "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+			Value:    "100",
+		},
+		TimeInterval: 20,
+	}
+
+	j := `{
+	"account": "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm",
+	"discounted_fee": 0,
+	"price": {
+		"issuer": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		"currency": "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
+		"value": "100"
+	},
+	"time_interval": 20
+}`
+	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestAMMInfoResponse_OpenLedgerWithXRPAssets(t *testing.T) {
+	asset2Frozen := false
+
 	s := InfoResponse{
 		AMM: Info{
 			Account: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
@@ -170,6 +257,7 @@ func TestAMMInfoResponse_XRPAssets(t *testing.T) {
 				Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
 				Value:    "500",
 			},
+			Asset2Frozen: &asset2Frozen,
 			LPToken: types.IssuedCurrencyAmount{
 				Currency: "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
 				Issuer:   "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
@@ -177,7 +265,8 @@ func TestAMMInfoResponse_XRPAssets(t *testing.T) {
 			},
 			TradingFee: 600,
 		},
-		Validated: false,
+		LedgerCurrentIndex: 106107390,
+		Validated:          false,
 	}
 
 	j := `{
@@ -189,60 +278,133 @@ func TestAMMInfoResponse_XRPAssets(t *testing.T) {
 			"currency": "USD",
 			"value": "500"
 		},
+		"asset2_frozen": false,
 		"lp_token": {
 			"issuer": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
 			"currency": "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
 			"value": "22360679.77"
 		},
 		"trading_fee": 600
-	}
+	},
+	"ledger_current_index": 106107390
 }`
-	if err := testutil.Serialize(t, s, j); err != nil {
+	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
 	}
 }
 
+func TestAMMInfoResponse_FrozenFieldOptionality(t *testing.T) {
+	unfrozen := false
+	issuedAmount := types.IssuedCurrencyAmount{
+		Currency: "USD",
+		Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+		Value:    "500",
+	}
+	lpToken := types.IssuedCurrencyAmount{
+		Currency: "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
+		Issuer:   "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		Value:    "22360679.77",
+	}
+
+	tests := []struct {
+		name     string
+		info     Info
+		expected string
+	}{
+		{
+			name: "asset is XRP",
+			info: Info{
+				Account:      "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+				Amount:       types.XRPCurrencyAmount(1000000),
+				Amount2:      issuedAmount,
+				Asset2Frozen: &unfrozen,
+				LPToken:      lpToken,
+			},
+			expected: `{
+	"account": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+	"amount": "1000000",
+	"amount2": {
+		"issuer": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+		"currency": "USD",
+		"value": "500"
+	},
+	"asset2_frozen": false,
+	"lp_token": {
+		"issuer": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		"currency": "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
+		"value": "22360679.77"
+	},
+	"trading_fee": 0
+}`,
+		},
+		{
+			name: "asset2 is XRP",
+			info: Info{
+				Account:     "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+				Amount:      issuedAmount,
+				Amount2:     types.XRPCurrencyAmount(1000000),
+				AssetFrozen: &unfrozen,
+				LPToken:     lpToken,
+			},
+			expected: `{
+	"account": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+	"amount": {
+		"issuer": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+		"currency": "USD",
+		"value": "500"
+	},
+	"amount2": "1000000",
+	"asset_frozen": false,
+	"lp_token": {
+		"issuer": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		"currency": "039C99CD9AB0B70B32ECDA51EAAE471625608EA2",
+		"value": "22360679.77"
+	},
+	"trading_fee": 0
+}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := testutil.SerializeAndDeserialize(t, tt.info, tt.expected); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
 func TestAMMInfoRequest_Validate(t *testing.T) {
-	t.Run("pass - with asset and asset2", func(t *testing.T) {
-		req := InfoRequest{
-			Asset:  ledger.Asset{Currency: "XRP"},
-			Asset2: ledger.Asset{Currency: "USD", Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
-		}
-		require.NoError(t, req.Validate())
-	})
+	asset := ledger.Asset{Currency: "XRP"}
+	asset2 := ledger.Asset{Currency: "USD", Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"}
+	const ammAccount = "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S"
+	const liquidityProvider = "rJVUeRqDFNs2xqA7ncVE6ZoAhPUoaJJSQm"
 
-	t.Run("pass - with amm_account", func(t *testing.T) {
-		req := InfoRequest{
-			AMMAccount: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
-		}
-		require.NoError(t, req.Validate())
-	})
+	tests := []struct {
+		name     string
+		request  InfoRequest
+		expected error
+	}{
+		{name: "no selector", request: InfoRequest{}, expected: ErrInvalidInfoRequest},
+		{name: "asset only", request: InfoRequest{Asset: asset}, expected: ErrInvalidInfoRequest},
+		{name: "asset2 only", request: InfoRequest{Asset2: asset2}, expected: ErrInvalidInfoRequest},
+		{name: "asset pair", request: InfoRequest{Asset: asset, Asset2: asset2}},
+		{name: "amm_account only", request: InfoRequest{AMMAccount: ammAccount}},
+		{name: "asset and amm_account", request: InfoRequest{Asset: asset, AMMAccount: ammAccount}, expected: ErrInvalidInfoRequest},
+		{name: "asset2 and amm_account", request: InfoRequest{Asset2: asset2, AMMAccount: ammAccount}, expected: ErrInvalidInfoRequest},
+		{name: "asset pair and amm_account", request: InfoRequest{Asset: asset, Asset2: asset2, AMMAccount: ammAccount}, expected: ErrInvalidInfoRequest},
+		{name: "liquidity provider only", request: InfoRequest{Account: liquidityProvider}, expected: ErrInvalidInfoRequest},
+		{name: "amm_account with liquidity provider", request: InfoRequest{AMMAccount: ammAccount, Account: liquidityProvider}},
+	}
 
-	t.Run("pass - with amm_account and assets", func(t *testing.T) {
-		req := InfoRequest{
-			Asset:      ledger.Asset{Currency: "XRP"},
-			Asset2:     ledger.Asset{Currency: "USD", Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
-			AMMAccount: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
-		}
-		require.NoError(t, req.Validate())
-	})
-
-	t.Run("fail - no amm_account and no assets", func(t *testing.T) {
-		req := InfoRequest{}
-		require.ErrorIs(t, req.Validate(), ErrInvalidInfoRequest)
-	})
-
-	t.Run("fail - only asset specified", func(t *testing.T) {
-		req := InfoRequest{
-			Asset: ledger.Asset{Currency: "XRP"},
-		}
-		require.ErrorIs(t, req.Validate(), ErrInvalidInfoRequest)
-	})
-
-	t.Run("fail - only asset2 specified", func(t *testing.T) {
-		req := InfoRequest{
-			Asset2: ledger.Asset{Currency: "USD", Issuer: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
-		}
-		require.ErrorIs(t, req.Validate(), ErrInvalidInfoRequest)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.request.Validate()
+			if tt.expected == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, tt.expected)
+		})
+	}
 }
