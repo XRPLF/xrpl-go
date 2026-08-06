@@ -7,11 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### keypairs
+
+- Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
+
 ### Changed
 
 #### dependencies
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
+
+### Fixed
+
+#### address-codec
+
+- Base58Check checksum and family-seed-prefix comparisons now run in constant time (`crypto/subtle`) to avoid leaking timing information while decoding addresses and seeds.
+
+#### binary-codec
+
+- `BinaryParser.ReadBytes` now returns `ErrParserOutOfBound` for negative lengths instead of silently returning no data.
+- `DecodeQuality` now returns `ErrInvalidQuality` for malformed hex input or input that decodes to fewer than 8 bytes, instead of returning raw hex errors or panicking on short input.
 
 #### keypairs
 
@@ -20,12 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - secp256k1 signing now rejects zero and out-of-range private scalars instead of reducing them modulo the curve order.
 - secp256k1 verification now rejects malleable high-S signatures that do not meet XRPL's fully canonical signature requirement.
 - `DeriveClassicAddress` now verifies that secp256k1 public keys encode valid curve points while preserving the caller's valid compressed or uncompressed encoding for address hashing.
-
-### Added
-
-#### keypairs
-
-- Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
 
 ## [v0.2.0]
 

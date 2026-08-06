@@ -2,6 +2,7 @@ package addresscodec
 
 import (
 	"bytes"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 
@@ -128,6 +129,12 @@ func EncodeSeed(entropy []byte, encodingType interfaces.CryptoImplementation) (s
 	return "", errors.New("encoding type must be `ed25519` or `secp256k1`")
 }
 
+// hasPrefixConstantTime reports whether b starts with prefix, comparing the
+// prefix bytes in constant time.
+func hasPrefixConstantTime(b, prefix []byte) bool {
+	return len(b) >= len(prefix) && subtle.ConstantTimeCompare(b[:len(prefix)], prefix) == 1
+}
+
 // DecodeSeed returns the decoded seed and its corresponding algorithm.
 func DecodeSeed(seed string) ([]byte, interfaces.CryptoImplementation, error) {
 	decoded, err := Base58CheckDecode(seed)
@@ -137,7 +144,7 @@ func DecodeSeed(seed string) ([]byte, interfaces.CryptoImplementation, error) {
 
 	ed25519 := crypto.ED25519()
 	ed25519Prefix := ed25519.FamilySeedPrefix()
-	if bytes.HasPrefix(decoded, ed25519Prefix) {
+	if hasPrefixConstantTime(decoded, ed25519Prefix) {
 		if len(decoded) != len(ed25519Prefix)+FamilySeedLength {
 			return nil, nil, ErrInvalidSeedLength
 		}
@@ -146,7 +153,7 @@ func DecodeSeed(seed string) ([]byte, interfaces.CryptoImplementation, error) {
 
 	secp256k1 := crypto.SECP256K1()
 	secp256k1Prefix := secp256k1.FamilySeedPrefix()
-	if bytes.HasPrefix(decoded, secp256k1Prefix) {
+	if hasPrefixConstantTime(decoded, secp256k1Prefix) {
 		if len(decoded) != len(secp256k1Prefix)+FamilySeedLength {
 			return nil, nil, ErrInvalidSeedLength
 		}
