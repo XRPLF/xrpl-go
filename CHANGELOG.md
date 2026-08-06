@@ -123,6 +123,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 - Made reliable-submission outcomes ledger-driven: require `LastLedgerSequence`, reject preliminary `tem` results, retry exact `txnNotFound` responses, and return every validated transaction response without an error. Each polling round verifies the latest validated ledger before the transaction lookup and reports expiry only after that ledger passes `LastLedgerSequence`. Typed expiry errors retain the preliminary engine result, and negative polling intervals fail before submission.
 
+#### xrpl/testutil
+
+- Local integration wallet funding now waits for a validated `tesSUCCESS` result before it returns, preventing later validated-ledger autofill requests from observing an unfunded account.
+
 #### xrpl/websocket
 
 - Corrected fee precision and rounding with shared exact rational arithmetic, including fractional load factors, empty and fractional `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
