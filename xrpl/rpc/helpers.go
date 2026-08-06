@@ -398,12 +398,12 @@ func (c *Client) fetchOwnerReserveFee() (uint64, error) {
 		return 0, err
 	}
 
-	reserveInc, ok := response.State.ValidatedLedger.ReserveIncValue()
-	if !ok {
+	reserveInc := response.State.ValidatedLedger.ReserveInc
+	if reserveInc == nil {
 		return 0, ErrCouldNotFetchOwnerReserve
 	}
 
-	return uint64(reserveInc), nil
+	return uint64(*reserveInc), nil
 }
 
 // fetchCounterPartySignersCount fetches the number of signers for the counterparty account.

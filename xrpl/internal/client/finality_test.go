@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -92,15 +93,12 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 		wantExpiryLedger   uint32
 	}{
 		{
-			name:        "validated success exactly at LastLedgerSequence",
-			maxAttempts: 1,
-			lookupSteps: []finalityLookupStep{
-				{status: notFound},
-				{status: validatedSuccess},
-			},
+			name:            "validated success exactly at LastLedgerSequence",
+			maxAttempts:     1,
+			lookupSteps:     []finalityLookupStep{{status: validatedSuccess}},
 			ledgerSteps:     []finalityLedgerStep{{index: 20}},
 			wantResponse:    success,
-			wantLookupCalls: 2,
+			wantLookupCalls: 1,
 			wantLedgerCalls: 1,
 		},
 		{
@@ -116,29 +114,25 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 				{index: 17},
 				{index: 18},
 				{index: 20},
+				{index: 20},
 			},
 			wantResponse:    success,
 			wantLookupCalls: 4,
-			wantLedgerCalls: 3,
+			wantLedgerCalls: 4,
 		},
 		{
-			name:        "validation racing expiry is rechecked",
-			maxAttempts: 1,
-			lookupSteps: []finalityLookupStep{
-				{status: notFound},
-				{status: validatedSuccess},
-			},
-			ledgerSteps:     []finalityLedgerStep{{index: 21}},
-			wantResponse:    success,
-			wantLookupCalls: 2,
-			wantLedgerCalls: 1,
+			name:             "passed LastLedgerSequence expires before transaction lookup",
+			maxAttempts:      1,
+			ledgerSteps:      []finalityLedgerStep{{index: 21}},
+			wantError:        ErrTransactionExpired,
+			wantLookupCalls:  0,
+			wantLedgerCalls:  1,
+			wantExpiryLedger: 21,
 		},
 		{
 			name:        "expiry only after LastLedgerSequence passes",
 			maxAttempts: 1,
 			lookupSteps: []finalityLookupStep{
-				{status: notFound},
-				{status: notFound},
 				{status: notFound},
 			},
 			ledgerSteps: []finalityLedgerStep{
@@ -146,7 +140,7 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 				{index: 21},
 			},
 			wantError:        ErrTransactionExpired,
-			wantLookupCalls:  3,
+			wantLookupCalls:  1,
 			wantLedgerCalls:  2,
 			wantExpiryLedger: 21,
 		},
@@ -154,17 +148,19 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			name:            "validated tec returns response without error",
 			maxAttempts:     1,
 			lookupSteps:     []finalityLookupStep{{status: validatedTEC}},
+			ledgerSteps:     []finalityLedgerStep{{index: 20}},
 			wantResponse:    tecResult,
 			wantLookupCalls: 1,
-			wantLedgerCalls: 0,
+			wantLedgerCalls: 1,
 		},
 		{
 			name:            "unknown validated result returns response without error",
 			maxAttempts:     1,
 			lookupSteps:     []finalityLookupStep{{status: validatedUnknown}},
+			ledgerSteps:     []finalityLedgerStep{{index: 20}},
 			wantResponse:    unknownResult,
 			wantLookupCalls: 1,
-			wantLedgerCalls: 0,
+			wantLedgerCalls: 1,
 		},
 		{
 			name:        "transient transaction transport error is retried",
@@ -174,22 +170,23 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 				{status: notFound},
 				{status: validatedSuccess},
 			},
-			ledgerSteps:     []finalityLedgerStep{{index: 20}},
+			ledgerSteps: []finalityLedgerStep{
+				{index: 19},
+				{index: 20},
+				{index: 20},
+			},
 			wantResponse:    success,
 			wantLookupCalls: 3,
-			wantLedgerCalls: 1,
+			wantLedgerCalls: 3,
 		},
 		{
-			name:        "transient ledger transport error is retried",
-			maxAttempts: 2,
-			lookupSteps: []finalityLookupStep{
-				{status: notFound},
-				{status: validatedSuccess},
-			},
-			ledgerSteps:     []finalityLedgerStep{{err: transportTimeout}},
+			name:            "transient ledger transport error is retried",
+			maxAttempts:     2,
+			lookupSteps:     []finalityLookupStep{{status: validatedSuccess}},
+			ledgerSteps:     []finalityLedgerStep{{err: transportTimeout}, {index: 20}},
 			wantResponse:    success,
-			wantLookupCalls: 2,
-			wantLedgerCalls: 1,
+			wantLookupCalls: 1,
+			wantLedgerCalls: 2,
 		},
 		{
 			name:        "complete round resets incomplete round count",
@@ -200,11 +197,16 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 				{err: transportTimeout},
 				{err: transportTimeout},
 			},
-			ledgerSteps:        []finalityLedgerStep{{index: 19}},
+			ledgerSteps: []finalityLedgerStep{
+				{index: 19},
+				{index: 19},
+				{index: 19},
+				{index: 19},
+			},
 			wantError:          ErrFinalityTransport,
 			wantTransportCause: transportTimeout,
 			wantLookupCalls:    4,
-			wantLedgerCalls:    1,
+			wantLedgerCalls:    4,
 		},
 		{
 			name:        "repeated transport errors remain transport outcome",
@@ -213,26 +215,13 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 				{err: transportTimeout},
 				{err: transportTimeout},
 			},
+			ledgerSteps: []finalityLedgerStep{
+				{index: 19},
+				{index: 19},
+			},
 			wantError:          ErrFinalityTransport,
 			wantTransportCause: transportTimeout,
 			wantLookupCalls:    2,
-		},
-		{
-			name:        "expiry recheck errors consume transport budget",
-			maxAttempts: 2,
-			lookupSteps: []finalityLookupStep{
-				{status: notFound},
-				{err: transportTimeout},
-				{status: notFound},
-				{err: transportTimeout},
-			},
-			ledgerSteps: []finalityLedgerStep{
-				{index: 21},
-				{index: 21},
-			},
-			wantError:          ErrFinalityTransport,
-			wantTransportCause: transportTimeout,
-			wantLookupCalls:    4,
 			wantLedgerCalls:    2,
 		},
 	}
@@ -312,4 +301,32 @@ func TestWaitForFinalityReturnsContextCancellation(t *testing.T) {
 	require.Nil(t, response)
 	require.ErrorIs(t, err, context.Canceled)
 	require.NotErrorIs(t, err, ErrTransactionExpired)
+}
+
+func TestWaitForFinalityRejectsNegativePollInterval(t *testing.T) {
+	lookupCalls := 0
+	ledgerCalls := 0
+
+	response, err := WaitForFinality(
+		context.Background(),
+		FinalityConfig{PollInterval: -time.Nanosecond},
+		FinalityHooks[finalityTestResponse]{
+			LookupTransaction: func(context.Context) (TransactionStatus[finalityTestResponse], error) {
+				lookupCalls++
+				return TransactionStatus[finalityTestResponse]{}, nil
+			},
+			GetValidatedLedger: func(context.Context) (uint32, error) {
+				ledgerCalls++
+				return 0, nil
+			},
+		},
+	)
+
+	require.Nil(t, response)
+	require.ErrorIs(t, err, ErrInvalidPollInterval)
+	var intervalErr *InvalidPollIntervalError
+	require.ErrorAs(t, err, &intervalErr)
+	require.Equal(t, -time.Nanosecond, intervalErr.PollInterval)
+	require.Zero(t, lookupCalls)
+	require.Zero(t, ledgerCalls)
 }

@@ -100,6 +100,30 @@ func (e *FinalityTransportError) Unwrap() error {
 	return e.Err
 }
 
+// InvalidPollIntervalError reports a negative finality polling interval.
+type InvalidPollIntervalError struct {
+	PollInterval time.Duration
+}
+
+// Error implements error.
+func (e *InvalidPollIntervalError) Error() string {
+	return fmt.Sprintf("transaction finality poll interval must not be negative: %s", e.PollInterval)
+}
+
+// Is supports errors.Is with ErrInvalidPollInterval.
+func (e *InvalidPollIntervalError) Is(target error) bool {
+	return target == ErrInvalidPollInterval
+}
+
+// ValidatePollInterval rejects negative finality polling intervals. A zero
+// interval remains valid for callers that intentionally request no delay.
+func ValidatePollInterval(pollInterval time.Duration) error {
+	if pollInterval < 0 {
+		return &InvalidPollIntervalError{PollInterval: pollInterval}
+	}
+	return nil
+}
+
 // ClassifyEngineResult returns the textual family of an engine-result token.
 // Token strings, rather than numeric codes, are stable protocol identifiers.
 func ClassifyEngineResult(engineResult string) EngineResultFamily {
@@ -156,12 +180,18 @@ type FinalityHooks[T any] struct {
 
 // WaitForFinality monitors a transaction until it has an authoritative
 // validated-ledger result, expires, is cancelled, or monitoring itself can no
-// longer make bounded progress.
+// longer make bounded progress. Each polling round follows the xrpl.js order:
+// wait, read the latest validated ledger, check expiry, and then look up the
+// transaction.
 func WaitForFinality[T any](
 	ctx context.Context,
 	cfg FinalityConfig,
 	hooks FinalityHooks[T],
 ) (*T, error) {
+	if err := ValidatePollInterval(cfg.PollInterval); err != nil {
+		return nil, err
+	}
+
 	maxAttempts := max(cfg.MaxAttempts, 1)
 	incompleteRounds := 0
 
@@ -177,7 +207,7 @@ func WaitForFinality[T any](
 				Err:       cause,
 			}
 		}
-		return Wait(ctx, cfg.PollInterval)
+		return nil
 	}
 	authoritativeResult := func(status TransactionStatus[T]) (*T, error, bool) {
 		if !status.Found || !status.Validated {
@@ -194,8 +224,24 @@ func WaitForFinality[T any](
 	}
 
 	for {
-		if err := ctx.Err(); err != nil {
+		if err := Wait(ctx, cfg.PollInterval); err != nil {
 			return nil, err
+		}
+
+		validatedLedger, err := hooks.GetValidatedLedger(ctx)
+		if err != nil {
+			if failureErr := incompleteRound("validated ledger lookup", err); failureErr != nil {
+				return nil, failureErr
+			}
+			continue
+		}
+
+		if validatedLedger > cfg.LastLedgerSequence {
+			return nil, &TransactionExpiredError{
+				LastLedgerSequence: cfg.LastLedgerSequence,
+				ValidatedLedger:    validatedLedger,
+				PreliminaryResult:  cfg.PreliminaryResult,
+			}
 		}
 
 		status, err := hooks.LookupTransaction(ctx)
@@ -210,39 +256,7 @@ func WaitForFinality[T any](
 			return response, resultErr
 		}
 
-		validatedLedger, err := hooks.GetValidatedLedger(ctx)
-		if err != nil {
-			if failureErr := incompleteRound("validated ledger lookup", err); failureErr != nil {
-				return nil, failureErr
-			}
-			continue
-		}
-
-		if validatedLedger > cfg.LastLedgerSequence {
-			// The lookup that preceded the ledger query may have raced with
-			// validation at LastLedgerSequence. Recheck after observing the
-			// passed ledger before declaring expiry.
-			status, err := hooks.LookupTransaction(ctx)
-			if err != nil {
-				if failureErr := incompleteRound("transaction expiry recheck", err); failureErr != nil {
-					return nil, failureErr
-				}
-				continue
-			}
-			if response, resultErr, done := authoritativeResult(status); done {
-				return response, resultErr
-			}
-			return nil, &TransactionExpiredError{
-				LastLedgerSequence: cfg.LastLedgerSequence,
-				ValidatedLedger:    validatedLedger,
-				PreliminaryResult:  cfg.PreliminaryResult,
-			}
-		}
-
 		incompleteRounds = 0
-		if err := Wait(ctx, cfg.PollInterval); err != nil {
-			return nil, err
-		}
 	}
 }
 

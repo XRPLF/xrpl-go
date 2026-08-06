@@ -13,11 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Multisigned transactions require an explicit empty top-level `SigningPubKey`. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`. Consensus-generated `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions remain hashable without account signatures.
 
+#### xrpl/currency
+
+- Replaced the deprecated `float64` constant `DropsPerXrp` with the exact untyped constant `DropsPerXRP`. This is a source-breaking rename; use `DropsPerXRP` or the native amount conversion helpers.
+
 #### xrpl/queries/server
 
 - Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID.
 - Changed `ClosedLedger.BaseFeeXRP` from `float32` to `*float64` so fee calculation starts with binary64 precision and callers can distinguish a missing or null value from an explicit zero.
-- Changed `types.Info.LoadFactor` from `uint` to `float64` so fractional server load factors are accepted.
+- Changed `types.Info.LoadFactor` from `uint` to `float64` so fractional server load factors are accepted. A missing `load_factor` now uses the protocol default of `1` instead of `0`.
 - Changed `types.LedgerState.ReserveInc` from `uint` to `*uint`, so callers can distinguish a missing or null owner reserve from an explicit zero.
 
 #### xrpl/queries/clio
@@ -56,7 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `WithNetworkIdentity` for trusted network identity configuration.
 - Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, and `ErrInvalidAddress` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
-- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for malformed preliminary results, ledger expiry, and repeated monitoring transport failure.
+- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for malformed preliminary results, ledger expiry, repeated monitoring transport failure, and invalid polling intervals.
+- Added `ErrInvalidFeeValue` and `ErrFeeHasTooManyDecimals` for fee validation.
 
 #### xrpl/transaction/integration
 
@@ -67,7 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `ClientConfig.WithNetworkIdentity` for trusted network identity configuration and `ErrAlreadyConnected` for attempts to replace a live connection.
 - Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, and `ErrMismatchedTag` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
-- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for malformed preliminary results, ledger expiry, and repeated monitoring transport failure.
+- Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext`, plus typed reliable-submission errors for malformed preliminary results, ledger expiry, repeated monitoring transport failure, and invalid polling intervals.
+- Added `ErrInvalidFeeValue` and `ErrFeeHasTooManyDecimals` for fee validation.
 
 ### Changed
 
@@ -115,7 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
-- Corrected reliable-submission outcomes by requiring `LastLedgerSequence` before submission, failing immediately only for preliminary `tem` results, retrying `txnNotFound`, and returning all validated transaction responses without an error. Expiry now requires a validated ledger greater than `LastLedgerSequence` and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
+- Made reliable-submission outcomes ledger-driven: require `LastLedgerSequence`, reject preliminary `tem` results, retry exact `txnNotFound` responses, and return every validated transaction response without an error. Each polling round verifies the latest validated ledger before the transaction lookup and reports expiry only after that ledger passes `LastLedgerSequence`. Typed expiry errors retain the preliminary engine result, and negative polling intervals fail before submission.
 
 #### xrpl/websocket
 
@@ -126,7 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
-- Aligned WebSocket and RPC finality outcomes, including required `LastLedgerSequence`, preliminary `tem` rejection, `txnNotFound` retries, nil errors for all validated responses, strict ledger expiry, and one final transaction lookup. Typed expiry errors retain the preliminary engine result.
+- Matched RPC reliable-submission outcomes: require `LastLedgerSequence`, reject preliminary `tem` results, retry exact `txnNotFound` responses, and return every validated transaction response without an error. Each polling round verifies the latest validated ledger before the transaction lookup and reports expiry only after that ledger passes `LastLedgerSequence`. Typed expiry errors retain the preliminary engine result, and negative polling intervals fail before submission.
 - Closed and invalidated WebSocket connections after write or write-deadline failures. The active read loop now attempts reconnection after any read error, not only close errors, within the existing `WithMaxReconnects` budget.
 - Made manual disconnect claim an in-progress reconnect socket before lifecycle cancellation so cancellation-driven invalidation cannot cause a false not-connected error.
 - Made reconnect backoff configuration immutable per client to prevent concurrent clients and reconnect tests from racing over shared delay state.
@@ -244,7 +250,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/currency
 
-- Replaced the deprecated `float64` constant `DropsPerXrp` with the exact untyped constant `DropsPerXRP`. This is a source-breaking rename; use `DropsPerXRP` or the native amount conversion helpers.
+- Deprecated exported `DropsPerXrp`, it remains available for compatibility, but native amount conversion helpers use exact rational arithmetic internally instead of `float64`.
 - Changed `MaxFractionLength` from `uint` to `int` to match Go precision and length APIs without repeated casts.
 
 #### xrpl/rpc

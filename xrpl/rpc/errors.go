@@ -41,6 +41,8 @@ var (
 	ErrTransactionExpired = clientinternal.ErrTransactionExpired
 	// ErrFinalityTransport indicates repeated transport failures during monitoring.
 	ErrFinalityTransport = clientinternal.ErrFinalityTransport
+	// ErrInvalidPollInterval indicates a negative reliable-submission poll interval.
+	ErrInvalidPollInterval = clientinternal.ErrInvalidPollInterval
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
 	ErrInvalidFulfillmentLength = errors.New("invalid fulfillment length")
 	// fields
@@ -144,6 +146,9 @@ type TransactionExpiredError = clientinternal.TransactionExpiredError
 
 // FinalityTransportError reports repeated monitoring query failures and unwraps their cause.
 type FinalityTransportError = clientinternal.FinalityTransportError
+
+// InvalidPollIntervalError reports a negative finality polling interval.
+type InvalidPollIntervalError = clientinternal.InvalidPollIntervalError
 
 // ClientError represents a dynamic error with a custom error message string from the RPC client.
 type ClientError struct {

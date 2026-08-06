@@ -541,6 +541,9 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if err := clientinternal.ValidatePollInterval(c.cfg.retryDelay); err != nil {
+		return nil, err
+	}
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return nil, err
@@ -567,7 +570,12 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 		return nil, err
 	}
 
-	return c.waitForTransaction(ctx, txHash, lastLedgerSequence, submitResponse.EngineResult)
+	return c.waitForTransaction(
+		ctx,
+		txHash,
+		lastLedgerSequence,
+		submitResponse.EngineResult,
+	)
 }
 
 // SubmitTxAndWait prepares, submits, and monitors a transaction until its
@@ -585,6 +593,9 @@ func (c *Client) SubmitTxAndWaitContext(
 	opts *wstypes.SubmitOptions,
 ) (*requests.TxResponse, error) {
 	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := clientinternal.ValidatePollInterval(c.cfg.retryDelay); err != nil {
 		return nil, err
 	}
 	if opts == nil {
@@ -1114,12 +1125,12 @@ func (c *Client) fetchOwnerReserveFee() (uint64, error) {
 		return 0, err
 	}
 
-	reserveInc, ok := response.State.ValidatedLedger.ReserveIncValue()
-	if !ok {
+	reserveInc := response.State.ValidatedLedger.ReserveInc
+	if reserveInc == nil {
 		return 0, ErrCouldNotFetchOwnerReserve
 	}
 
-	return uint64(reserveInc), nil
+	return uint64(*reserveInc), nil
 }
 
 // fetchCounterPartySignersCount fetches the number of signers for the counterparty account.
