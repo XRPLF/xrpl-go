@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added query field coverage for account lines (`ignore_default`, `limit`), AMM info (`account`, frozen flags, auction `time_interval`), NFT offer pagination (`limit`/`marker`), vault current-ledger metadata, and v1 account NFT ledger metadata, with protocol-accurate default and v1 JSON fixtures including the AMM expired-slot interval sentinel.
 
+#### xrpl/queries/amm
+
+- Added `ledger_hash` and `ledger_index` fields to `InfoRequest`, and `ledger_current_index` to `InfoResponse` for open-ledger responses.
+
 #### xrpl/transaction
 
 - Added `ErrMPTIssuanceCreateInvalidMutableFlags` and `ErrMPTIssuanceSetInvalidMutableFlags` for unsupported Dynamic MPT flag bits.

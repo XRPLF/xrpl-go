@@ -25,6 +25,10 @@ type InfoRequest struct {
 	AMMAccount types.Address `json:"amm_account,omitempty"`
 	// (Optional) A liquidity provider whose LP Token holdings should be returned.
 	Account types.Address `json:"account,omitempty"`
+	// (Optional) The identifying hash of the ledger to use.
+	LedgerHash common.LedgerHash `json:"ledger_hash,omitempty"`
+	// (Optional) The ledger version to use.
+	LedgerIndex common.LedgerSpecifier `json:"ledger_index,omitempty"`
 }
 
 // Method returns the JSON-RPC method name for InfoRequest.
@@ -140,6 +144,8 @@ func (i *Info) UnmarshalJSON(data []byte) error {
 type InfoResponse struct {
 	// The AMM data.
 	AMM Info `json:"amm"`
+	// The index of the current in-progress ledger used to generate this response.
+	LedgerCurrentIndex common.LedgerIndex `json:"ledger_current_index,omitempty"`
 	// The identifying hash of the ledger used to generate this response.
 	LedgerHash common.LedgerHash `json:"ledger_hash,omitempty"`
 	// The ledger index of the ledger version used to generate this response.
