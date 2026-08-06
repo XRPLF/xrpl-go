@@ -15,32 +15,28 @@ const (
 	TfMPTUnlock uint32 = 0x00000002
 )
 
-// MutableFlags constants for MPTokenIssuanceSet (Set/Clear pairs).
+// MutableFlags constants for MPTokenIssuanceSet.
+// These flags enable issuance capabilities that were declared mutable at creation.
 const (
-	// TmfMPTSetCanLock sets the CanLock flag.
+	// TmfMPTSetCanLock enables the CanLock flag.
 	TmfMPTSetCanLock uint32 = 0x00000001
-	// TmfMPTClearCanLock clears the CanLock flag.
-	TmfMPTClearCanLock uint32 = 0x00000002
-	// TmfMPTSetRequireAuth sets the RequireAuth flag.
-	TmfMPTSetRequireAuth uint32 = 0x00000004
-	// TmfMPTClearRequireAuth clears the RequireAuth flag.
-	TmfMPTClearRequireAuth uint32 = 0x00000008
-	// TmfMPTSetCanEscrow sets the CanEscrow flag.
-	TmfMPTSetCanEscrow uint32 = 0x00000010
-	// TmfMPTClearCanEscrow clears the CanEscrow flag.
-	TmfMPTClearCanEscrow uint32 = 0x00000020
-	// TmfMPTSetCanTrade sets the CanTrade flag.
-	TmfMPTSetCanTrade uint32 = 0x00000040
-	// TmfMPTClearCanTrade clears the CanTrade flag.
-	TmfMPTClearCanTrade uint32 = 0x00000080
-	// TmfMPTSetCanTransfer sets the CanTransfer flag.
-	TmfMPTSetCanTransfer uint32 = 0x00000100
-	// TmfMPTClearCanTransfer clears the CanTransfer flag.
-	TmfMPTClearCanTransfer uint32 = 0x00000200
-	// TmfMPTSetCanClawback sets the CanClawback flag.
-	TmfMPTSetCanClawback uint32 = 0x00000400
-	// TmfMPTClearCanClawback clears the CanClawback flag.
-	TmfMPTClearCanClawback uint32 = 0x00000800
+	// TmfMPTSetRequireAuth enables the RequireAuth flag.
+	TmfMPTSetRequireAuth uint32 = 0x00000002
+	// TmfMPTSetCanEscrow enables the CanEscrow flag.
+	TmfMPTSetCanEscrow uint32 = 0x00000004
+	// TmfMPTSetCanTrade enables the CanTrade flag.
+	TmfMPTSetCanTrade uint32 = 0x00000008
+	// TmfMPTSetCanTransfer enables the CanTransfer flag.
+	TmfMPTSetCanTransfer uint32 = 0x00000010
+	// TmfMPTSetCanClawback enables the CanClawback flag.
+	TmfMPTSetCanClawback uint32 = 0x00000020
+
+	validMPTokenIssuanceSetMutableFlags = TmfMPTSetCanLock |
+		TmfMPTSetRequireAuth |
+		TmfMPTSetCanEscrow |
+		TmfMPTSetCanTrade |
+		TmfMPTSetCanTransfer |
+		TmfMPTSetCanClawback
 )
 
 // MPTokenIssuanceSet transaction is used to globally lock/unlock a MPTokenIssuance,
@@ -70,7 +66,8 @@ type MPTokenIssuanceSet struct {
 	MPTokenMetadata *string `json:",omitempty"`
 	// (Optional) New transfer fee value between 0 and 50,000.
 	TransferFee *uint16 `json:",omitempty"`
-	// (Optional) Set or clear the flags which were marked as mutable.
+	// (Optional) Enable issuance flags that were declared mutable at creation.
+	// Once enabled, these flags cannot be disabled by MPTokenIssuanceSet.
 	MutableFlags *uint32 `json:",omitempty"`
 }
 
@@ -131,64 +128,34 @@ func (m *MPTokenIssuanceSet) setMutableFlag(f uint32) {
 	*m.MutableFlags |= f
 }
 
-// SetMPTSetCanLockMutableFlag sets the CanLock mutable flag.
+// SetMPTSetCanLockMutableFlag enables the CanLock flag.
 func (m *MPTokenIssuanceSet) SetMPTSetCanLockMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanLock)
 }
 
-// SetMPTClearCanLockMutableFlag clears the CanLock mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanLockMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanLock)
-}
-
-// SetMPTSetRequireAuthMutableFlag sets the RequireAuth mutable flag.
+// SetMPTSetRequireAuthMutableFlag enables the RequireAuth flag.
 func (m *MPTokenIssuanceSet) SetMPTSetRequireAuthMutableFlag() {
 	m.setMutableFlag(TmfMPTSetRequireAuth)
 }
 
-// SetMPTClearRequireAuthMutableFlag clears the RequireAuth mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearRequireAuthMutableFlag() {
-	m.setMutableFlag(TmfMPTClearRequireAuth)
-}
-
-// SetMPTSetCanEscrowMutableFlag sets the CanEscrow mutable flag.
+// SetMPTSetCanEscrowMutableFlag enables the CanEscrow flag.
 func (m *MPTokenIssuanceSet) SetMPTSetCanEscrowMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanEscrow)
 }
 
-// SetMPTClearCanEscrowMutableFlag clears the CanEscrow mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanEscrowMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanEscrow)
-}
-
-// SetMPTSetCanTradeMutableFlag sets the CanTrade mutable flag.
+// SetMPTSetCanTradeMutableFlag enables the CanTrade flag.
 func (m *MPTokenIssuanceSet) SetMPTSetCanTradeMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanTrade)
 }
 
-// SetMPTClearCanTradeMutableFlag clears the CanTrade mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanTradeMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanTrade)
-}
-
-// SetMPTSetCanTransferMutableFlag sets the CanTransfer mutable flag.
+// SetMPTSetCanTransferMutableFlag enables the CanTransfer flag.
 func (m *MPTokenIssuanceSet) SetMPTSetCanTransferMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanTransfer)
 }
 
-// SetMPTClearCanTransferMutableFlag clears the CanTransfer mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanTransferMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanTransfer)
-}
-
-// SetMPTSetCanClawbackMutableFlag sets the CanClawback mutable flag.
+// SetMPTSetCanClawbackMutableFlag enables the CanClawback flag.
 func (m *MPTokenIssuanceSet) SetMPTSetCanClawbackMutableFlag() {
 	m.setMutableFlag(TmfMPTSetCanClawback)
-}
-
-// SetMPTClearCanClawbackMutableFlag clears the CanClawback mutable flag.
-func (m *MPTokenIssuanceSet) SetMPTClearCanClawbackMutableFlag() {
-	m.setMutableFlag(TmfMPTClearCanClawback)
 }
 
 // Validate validates the MPTokenIssuanceSet transaction ensuring all fields are correct.
@@ -238,15 +205,12 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTIssuanceSetFlagsMutuallyExclusive
 	}
 
-	// MutableFlags cannot be zero when set.
-	if m.MutableFlags != nil && *m.MutableFlags == 0 {
-		return false, ErrMPTIssuanceSetMutableFlagsZero
-	}
-
-	// Validate MutableFlags: cannot set and clear the same flag simultaneously.
 	if m.MutableFlags != nil {
-		if ok, err := validateMutableFlagsNoConflict(*m.MutableFlags); !ok {
-			return false, err
+		if *m.MutableFlags == 0 {
+			return false, ErrMPTIssuanceSetMutableFlagsZero
+		}
+		if *m.MutableFlags&^uint32(validMPTokenIssuanceSetMutableFlags) != 0 {
+			return false, ErrMPTIssuanceSetInvalidMutableFlags
 		}
 	}
 
@@ -266,28 +230,5 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTIssuanceSetDomainIDInvalid
 	}
 
-	// Non-zero TransferFee cannot be set together with tmfMPTClearCanTransfer (XLS-94).
-	if m.TransferFee != nil && *m.TransferFee != 0 && m.MutableFlags != nil && flag.Contains(*m.MutableFlags, TmfMPTClearCanTransfer) {
-		return false, ErrMPTIssuanceSetTransferFeeWithClearCanTransfer
-	}
-
-	return true, nil
-}
-
-// validateMutableFlagsNoConflict checks that no set/clear pair is active simultaneously.
-func validateMutableFlagsNoConflict(mf uint32) (bool, error) {
-	pairs := [6][2]uint32{
-		{TmfMPTSetCanLock, TmfMPTClearCanLock},
-		{TmfMPTSetRequireAuth, TmfMPTClearRequireAuth},
-		{TmfMPTSetCanEscrow, TmfMPTClearCanEscrow},
-		{TmfMPTSetCanTrade, TmfMPTClearCanTrade},
-		{TmfMPTSetCanTransfer, TmfMPTClearCanTransfer},
-		{TmfMPTSetCanClawback, TmfMPTClearCanClawback},
-	}
-	for _, p := range pairs {
-		if flag.Contains(mf, p[0]) && flag.Contains(mf, p[1]) {
-			return false, ErrMPTIssuanceSetMutableFlagsConflict
-		}
-	}
 	return true, nil
 }
