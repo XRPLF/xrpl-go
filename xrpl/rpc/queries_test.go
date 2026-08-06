@@ -2666,6 +2666,7 @@ func TestClient_GetManifest(t *testing.T) {
 }
 
 func TestClient_GetServerState(t *testing.T) {
+	reserveInc := uint(5)
 	tests := []struct {
 		name          string
 		mockResponse  string
@@ -2719,7 +2720,7 @@ func TestClient_GetServerState(t *testing.T) {
 						CloseTime:   638329241,
 						Hash:        "4BC50C9B0D8515D3EAAE1E74B29A95804346C491EE1A95BF25E4AAB854A6A652",
 						ReserveBase: 20,
-						ReserveInc:  5,
+						ReserveInc:  &reserveInc,
 						Seq:         6595042,
 					},
 					ValidationQuorum: 4,

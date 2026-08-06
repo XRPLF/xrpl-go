@@ -26,7 +26,11 @@ func TestServerStateReserveIncPresence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var response StateResponse
 			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
-			actual, present := response.State.ValidatedLedger.ReserveIncValue()
+			reserveInc := response.State.ValidatedLedger.ReserveInc
+			actual, present := uint(0), reserveInc != nil
+			if present {
+				actual = *reserveInc
+			}
 			require.Equal(t, tt.present, present)
 			require.Equal(t, tt.expected, actual)
 		})
@@ -34,6 +38,7 @@ func TestServerStateReserveIncPresence(t *testing.T) {
 }
 
 func TestServerStateResponse(t *testing.T) {
+	reserveInc := uint(5000000)
 	s := StateResponse{
 		State: servertypes.State{
 			BuildVersion:    "1.7.2",
@@ -83,7 +88,7 @@ func TestServerStateResponse(t *testing.T) {
 				CloseTime:   683153081,
 				Hash:        "B52AC3876412A152FE9C0442801E685D148D05448D0238587DBA256330A98FD3",
 				ReserveBase: 20000000,
-				ReserveInc:  5000000,
+				ReserveInc:  &reserveInc,
 				Seq:         65887201,
 			},
 			ValidationQuorum: 33,

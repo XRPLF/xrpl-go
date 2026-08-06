@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -32,7 +33,8 @@ func TestIsTransactionNotFoundError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, isTransactionNotFoundError(tt.err))
+			got := isTransactionNotFoundError(tt.err)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -58,31 +60,27 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			name:        "validation exactly at LastLedgerSequence",
 			maxAttempts: 1,
 			steps: []rpcFinalityStep{
-				{method: "tx", body: rpcTxnNotFoundResponse},
 				{method: "ledger", body: rpcLedgerResponse(20)},
 				{method: "tx", body: rpcValidatedTxResponse(20, "tesSUCCESS")},
 			},
 			wantResult: "tesSUCCESS",
 		},
 		{
-			name:        "validation racing expiry is rechecked",
+			name:        "passed LastLedgerSequence expires before transaction lookup",
 			maxAttempts: 1,
 			steps: []rpcFinalityStep{
-				{method: "tx", body: rpcTxnNotFoundResponse},
 				{method: "ledger", body: rpcLedgerResponse(21)},
-				{method: "tx", body: rpcValidatedTxResponse(20, "tesSUCCESS")},
 			},
-			wantResult: "tesSUCCESS",
+			wantError:    ErrTransactionExpired,
+			wantExpiryAt: 21,
 		},
 		{
 			name:        "expiry only after LastLedgerSequence",
 			maxAttempts: 1,
 			steps: []rpcFinalityStep{
-				{method: "tx", body: rpcTxnNotFoundResponse},
 				{method: "ledger", body: rpcLedgerResponse(20)},
 				{method: "tx", body: rpcTxnNotFoundResponse},
 				{method: "ledger", body: rpcLedgerResponse(21)},
-				{method: "tx", body: rpcTxnNotFoundResponse},
 			},
 			wantError:    ErrTransactionExpired,
 			wantExpiryAt: 21,
@@ -91,7 +89,8 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			name:        "validated tec returns response without error",
 			maxAttempts: 1,
 			steps: []rpcFinalityStep{
-				{method: "tx", body: rpcValidatedTxResponse(19, "tecPATH_DRY")},
+				{method: "ledger", body: rpcLedgerResponse(20)},
+				{method: "tx", body: rpcValidatedTxResponse(20, "tecPATH_DRY")},
 			},
 			wantResult: "tecPATH_DRY",
 		},
@@ -99,7 +98,9 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			name:        "transient transport error does not become transaction failure",
 			maxAttempts: 2,
 			steps: []rpcFinalityStep{
+				{method: "ledger", body: rpcLedgerResponse(19)},
 				{method: "tx", err: transportTimeout},
+				{method: "ledger", body: rpcLedgerResponse(20)},
 				{method: "tx", body: rpcValidatedTxResponse(20, "tesSUCCESS")},
 			},
 			wantResult: "tesSUCCESS",
@@ -108,7 +109,9 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			name:        "repeated transport timeout remains observable",
 			maxAttempts: 2,
 			steps: []rpcFinalityStep{
+				{method: "ledger", body: rpcLedgerResponse(19)},
 				{method: "tx", err: transportTimeout},
+				{method: "ledger", body: rpcLedgerResponse(19)},
 				{method: "tx", err: transportTimeout},
 			},
 			wantError: ErrFinalityTransport,
@@ -199,15 +202,35 @@ func TestClientSubmitTxBlobAndWaitRequiresLastLedgerSequence(t *testing.T) {
 	require.Zero(t, requestCount)
 }
 
+func TestClientSubmitTxBlobAndWaitRejectsNegativePollInterval(t *testing.T) {
+	lastLedger := uint32(20)
+	blob := signedRPCFinalityBlob(t, &lastLedger)
+	requestCount := 0
+	mockClient := &testutil.JSONRPCMockClient{}
+	mockClient.DoFunc = func(*http.Request) (*http.Response, error) {
+		requestCount++
+		return nil, nil
+	}
+	cfg, err := NewClientConfig(
+		"http://testnode/",
+		WithHTTPClient(mockClient),
+		WithRetryDelay(-time.Nanosecond),
+	)
+	require.NoError(t, err)
+
+	response, err := NewClient(cfg).SubmitTxBlobAndWait(blob, false)
+	require.Nil(t, response)
+	require.ErrorIs(t, err, ErrInvalidPollInterval)
+	require.Zero(t, requestCount)
+}
+
 func TestClientSubmitTxBlobAndWaitExpiryRetainsPreliminaryResult(t *testing.T) {
 	const preliminaryResult = "terQUEUED"
 	lastLedger := uint32(20)
 	blob := signedRPCFinalityBlob(t, &lastLedger)
 	steps := []rpcFinalityStep{
 		{method: "submit", body: rpcSubmitResponse(preliminaryResult, "queued")},
-		{method: "tx", body: rpcTxnNotFoundResponse},
 		{method: "ledger", body: rpcLedgerResponse(21)},
-		{method: "tx", body: rpcTxnNotFoundResponse},
 	}
 	stepIndex := 0
 	mockClient := &testutil.JSONRPCMockClient{}
@@ -262,7 +285,7 @@ func TestClientSubmitTxBlobAndWaitPreliminaryResultFamilies(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			methods := make([]string, 0, 2)
+			methods := make([]string, 0, 3)
 			mockClient := &testutil.JSONRPCMockClient{}
 			mockClient.DoFunc = func(req *http.Request) (*http.Response, error) {
 				var request struct {
@@ -277,6 +300,8 @@ func TestClientSubmitTxBlobAndWaitPreliminaryResultFamilies(t *testing.T) {
 						http.StatusOK,
 						mockClient,
 					)(req)
+				case "ledger":
+					return testutil.MockResponse(rpcLedgerResponse(20), http.StatusOK, mockClient)(req)
 				case "tx":
 					return testutil.MockResponse(rpcValidatedTxResponse(20, "tesSUCCESS"), http.StatusOK, mockClient)(req)
 				default:
@@ -296,7 +321,7 @@ func TestClientSubmitTxBlobAndWaitPreliminaryResultFamilies(t *testing.T) {
 			if tt.wantMonitored {
 				require.NoError(t, err)
 				require.NotNil(t, response)
-				require.Equal(t, []string{"submit", "tx"}, methods)
+				require.Equal(t, []string{"submit", "ledger", "tx"}, methods)
 				return
 			}
 
@@ -321,7 +346,7 @@ func rpcValidatedTxResponse(index uint32, result string) string {
 }
 
 func rpcSubmitResponse(result, message string) string {
-	return `{"result":{"engine_result":"` + result + `","engine_result_message":"` + message + `"}}`
+	return `{"result":{"engine_result":"` + result + `","engine_result_message":"` + message + `","validated_ledger_index":17}}`
 }
 
 func signedRPCFinalityBlob(t *testing.T, lastLedgerSequence *uint32) string {

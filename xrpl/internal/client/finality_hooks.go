@@ -52,6 +52,9 @@ func TxFinalityHooks(
 			if err := res.GetResult(&ledgerResponse); err != nil {
 				return 0, err
 			}
+			if !ledgerResponse.Validated || ledgerResponse.LedgerIndex.Uint32() == 0 {
+				return 0, ErrInvalidValidatedLedgerResponse
+			}
 			return ledgerResponse.LedgerIndex.Uint32(), nil
 		},
 	}

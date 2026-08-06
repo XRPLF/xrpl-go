@@ -218,6 +218,9 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if err := clientinternal.ValidatePollInterval(c.cfg.retryDelay); err != nil {
+		return nil, err
+	}
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return nil, err
@@ -244,7 +247,12 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 		return nil, err
 	}
 
-	return c.waitForTransaction(ctx, txHash, lastLedgerSequence, submitResponse.EngineResult)
+	return c.waitForTransaction(
+		ctx,
+		txHash,
+		lastLedgerSequence,
+		submitResponse.EngineResult,
+	)
 }
 
 // SubmitTx signs the transaction (if necessary) and submits it to the server
@@ -276,6 +284,9 @@ func (c *Client) SubmitTxAndWaitContext(
 	opts *rpctypes.SubmitOptions,
 ) (*requests.TxResponse, error) {
 	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := clientinternal.ValidatePollInterval(c.cfg.retryDelay); err != nil {
 		return nil, err
 	}
 	if opts == nil {
