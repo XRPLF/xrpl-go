@@ -124,6 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
+- Redacted percent-encoded URL passwords from authorized RPC request errors.
 - Corrected fee precision and rounding with shared exact rational arithmetic, including fractional load factors, empty and fractional `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.

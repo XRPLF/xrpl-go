@@ -33,12 +33,16 @@ func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 type opaqueHTTPClient struct {
 	called            *atomic.Bool
 	authorizationSeen *atomic.Bool
+	err               error
 }
 
 func (c opaqueHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	c.called.Store(true)
 	if c.authorizationSeen != nil {
 		c.authorizationSeen.Store(hasAuthorizationHeader(req.Header))
+	}
+	if c.err != nil {
+		return nil, c.err
 	}
 	return successfulHTTPResponse(req), nil
 }
@@ -324,6 +328,31 @@ func TestRedactAuthorizationErrorPercentEncodedUsername(t *testing.T) {
 	err := redactAuthorizationError(credentialEchoError("request failure: "+endpoint.Redacted()), rawURL, nil)
 
 	require.ErrorIs(t, err, ErrAuthorizationRequestFailed)
+}
+
+func TestClient_RequestRedactsPercentEncodedPassword(t *testing.T) {
+	const (
+		password        = "p@ss"
+		encodedPassword = "p%40ss"
+	)
+	endpoint := &url.URL{
+		Scheme: "https",
+		Host:   "node.example",
+		User:   url.UserPassword(testURLUsername, password),
+	}
+	var called atomic.Bool
+	httpClient := opaqueHTTPClient{
+		called: &called,
+		err:    credentialEchoError("transport failure: " + encodedPassword),
+	}
+	cfg, err := NewClientConfig(endpoint.String(), WithHTTPClient(httpClient))
+	require.NoError(t, err)
+
+	_, err = NewClient(cfg).Request(validTransportSecurityRequest())
+
+	require.True(t, called.Load())
+	require.ErrorIs(t, err, ErrAuthorizationRequestFailed)
+	require.NotContains(t, err.Error(), encodedPassword)
 }
 
 func TestClient_AuthorizationRedirectDowngrade(t *testing.T) {
