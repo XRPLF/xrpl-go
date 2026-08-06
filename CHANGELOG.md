@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### xrpl/hash
+
+- `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Multisigned transactions require an explicit empty top-level `SigningPubKey`. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`. Consensus-generated `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions remain hashable without account signatures.
+
 #### xrpl/queries/server
 
 - Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID.
@@ -17,17 +21,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
+- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
 
 #### xrpl/websocket
 
 - Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
 - Changed `Client.Connect` to request `server_info` before it starts the background reader. A request failure is reported through `OnError` but does not fail the connection. A missing `network_id` leaves `NetworkID` nil.
+- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
 
 ### Added
 
 #### keypairs
 
 - Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
+
+#### xrpl/transaction
+
+- Added centralized transaction type constants and `IsPseudoTransactionType` classification for `EnableAmendment`, `SetFee`, and `UNLModify`.
 
 #### xrpl/rpc
 
@@ -65,6 +75,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The client now discovers and caches network identity with `server_info` before an identity-dependent operation. A discovery failure leaves the identity unknown, does not block the operation, and is retried by a later operation.
 - Client-side signing now skips network identity discovery and policy validation when autofill is disabled.
 
+#### xrpl/transaction
+
+- Inner Batch transaction flattening now preserves the wire-required empty `SigningPubKey`, and raw inner-transaction validation requires that explicit empty field.
+
 #### xrpl/websocket
 
 - Autofill now omits and rejects an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. It adds and requires the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
@@ -73,9 +87,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### binary-codec
+
+- Added rippled-compatible empty `Account` serialization for `UNLModify` pseudo-transactions.
+
+#### xrpl/hash
+
+- Restored transaction ID calculation for `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions while preserving strict validation for user transactions.
+
+#### xrpl/rpc
+
+- Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
+- Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
+- Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
+
 #### xrpl/websocket
 
-- Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation.
+- Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation. Added a request gate that keeps application traffic off new sockets until identity discovery completes.
+- Made autofill and unsigned signing reject public network identity values until successful discovery, unless `WithNetworkIdentity` supplies an explicit trusted override.
+- Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
+- Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
+- Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 
 ## [v0.2.0]
 

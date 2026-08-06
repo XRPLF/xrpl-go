@@ -6,20 +6,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func uint32Pointer(value uint32) *uint32 {
+	return &value
+}
+
 func TestResolveNetworkIdentity(t *testing.T) {
 	tests := []struct {
 		name             string
 		override         *uint32
 		discovered       NetworkIdentity
 		expectedID       *uint32
-		expectedBuild    string
 		expectedErr      error
 		preserveOverride bool
 	}{
 		{
-			name:          "missing network ID remains unknown",
-			discovered:    NetworkIdentity{BuildVersion: "1.12.0"},
-			expectedBuild: "1.12.0",
+			name:        "missing network ID",
+			discovered:  NetworkIdentity{BuildVersion: "1.12.0"},
+			expectedErr: ErrNetworkIDUnavailable,
 		},
 		{
 			name: "valid zero",
@@ -27,8 +30,7 @@ func TestResolveNetworkIdentity(t *testing.T) {
 				NetworkID:    uint32Pointer(0),
 				BuildVersion: "1.12.0",
 			},
-			expectedID:    uint32Pointer(0),
-			expectedBuild: "1.12.0",
+			expectedID: uint32Pointer(0),
 		},
 		{
 			name:     "matching override is preserved",
@@ -38,7 +40,6 @@ func TestResolveNetworkIdentity(t *testing.T) {
 				BuildVersion: "1.12.0",
 			},
 			expectedID:       uint32Pointer(21337),
-			expectedBuild:    "1.12.0",
 			preserveOverride: true,
 		},
 		{
@@ -60,13 +61,8 @@ func TestResolveNetworkIdentity(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			if tt.expectedID == nil {
-				require.Nil(t, resolved.NetworkID)
-			} else {
-				require.NotNil(t, resolved.NetworkID)
-				require.Equal(t, *tt.expectedID, *resolved.NetworkID)
-			}
-			require.Equal(t, tt.expectedBuild, resolved.BuildVersion)
+			require.NotNil(t, resolved.NetworkID)
+			require.Equal(t, *tt.expectedID, *resolved.NetworkID)
 			if tt.preserveOverride {
 				require.Same(t, tt.override, resolved.NetworkID)
 			}
@@ -81,10 +77,10 @@ func TestNetworkIDRequired(t *testing.T) {
 		required bool
 		expected error
 	}{
-		{name: "unknown ID", identity: NetworkIdentity{}, required: false},
+		{name: "unknown ID", identity: NetworkIdentity{}, expected: ErrNetworkIDUnavailable},
 		{name: "mainnet zero", identity: NetworkIdentity{NetworkID: uint32Pointer(0)}, required: false},
 		{name: "unrestricted boundary", identity: NetworkIdentity{NetworkID: uint32Pointer(1024)}, required: false},
-		{name: "restricted missing version", identity: NetworkIdentity{NetworkID: uint32Pointer(1025)}, required: false},
+		{name: "restricted missing version", identity: NetworkIdentity{NetworkID: uint32Pointer(1025)}, expected: ErrBuildVersionUnavailable},
 		{name: "restricted invalid version", identity: NetworkIdentity{NetworkID: uint32Pointer(1025), BuildVersion: "invalid"}, expected: ErrInvalidBuildVersion},
 		{name: "pre 1.11", identity: NetworkIdentity{NetworkID: uint32Pointer(1025), BuildVersion: "1.10.9"}, required: false},
 		{name: "1.11 beta", identity: NetworkIdentity{NetworkID: uint32Pointer(1025), BuildVersion: "1.11.0-b1"}, required: false},
@@ -126,31 +122,6 @@ func TestApplyNetworkIDPolicy(t *testing.T) {
 		}
 	})
 
-	t.Run("unknown identity omits NetworkID", func(t *testing.T) {
-		tx := map[string]any{}
-		require.NoError(t, ApplyNetworkIDPolicy(tx, NetworkIdentity{}))
-		require.NotContains(t, tx, "NetworkID")
-	})
-
-	t.Run("missing build version omits NetworkID", func(t *testing.T) {
-		tx := map[string]any{}
-		require.NoError(t, ApplyNetworkIDPolicy(tx, NetworkIdentity{NetworkID: uint32Pointer(21337)}))
-		require.NotContains(t, tx, "NetworkID")
-	})
-
-	t.Run("unknown identity preserves explicit NetworkID", func(t *testing.T) {
-		tx := map[string]any{"NetworkID": uint32(21337)}
-		require.NoError(t, ApplyNetworkIDPolicy(tx, NetworkIdentity{}))
-		require.Equal(t, uint32(21337), tx["NetworkID"])
-	})
-
-	t.Run("missing build version preserves explicit NetworkID", func(t *testing.T) {
-		tx := map[string]any{"NetworkID": uint32(21337)}
-		identity := NetworkIdentity{NetworkID: uint32Pointer(21337)}
-		require.NoError(t, ApplyNetworkIDPolicy(tx, identity))
-		require.Equal(t, uint32(21337), tx["NetworkID"])
-	})
-
 	t.Run("matching explicit value is preserved", func(t *testing.T) {
 		tx := map[string]any{"NetworkID": uint32(21337)}
 		require.NoError(t, ApplyNetworkIDPolicy(tx, restricted))
@@ -185,8 +156,4 @@ func TestApplyNetworkIDPolicy(t *testing.T) {
 			require.ErrorIs(t, err, ErrNetworkIDFieldUnexpected)
 		})
 	}
-}
-
-func uint32Pointer(value uint32) *uint32 {
-	return &value
 }

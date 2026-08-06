@@ -27,14 +27,17 @@ func NewSTObject(bs interfaces.BinarySerializer) *STObject {
 // and value), and then serializing each field instance.
 // This method returns an error if the JSON input is not a valid object.
 func (t *STObject) FromJSON(json any) ([]byte, error) {
-	if _, ok := json.(map[string]any); !ok {
+	object, ok := json.(map[string]any)
+	if !ok {
 		return nil, errNotValidJSON
 	}
-	fimap, err := createFieldInstanceMapFromJson(json.(map[string]any))
+	fimap, err := createFieldInstanceMapFromJson(object)
 	if err != nil {
 		return nil, err
 	}
 
+	txType, _ := object["TransactionType"].(string)
+	isUNLModify := txType == "UNLModify"
 	sk := getSortedKeys(fimap)
 
 	for _, v := range sk {
@@ -42,10 +45,16 @@ func (t *STObject) FromJSON(json any) ([]byte, error) {
 			continue
 		}
 
-		st := GetSerializedType(v.Type)
-		b, err := st.FromJSON(fimap[v])
-		if err != nil {
-			return nil, err
+		var b []byte
+		if isUNLModify && v.FieldName == "Account" {
+			// rippled serializes the UNLModify Account field with zero length.
+			b = []byte{}
+		} else {
+			st := GetSerializedType(v.Type)
+			b, err = st.FromJSON(fimap[v])
+			if err != nil {
+				return nil, err
+			}
 		}
 		err = t.binarySerializer.WriteFieldAndValue(v, b)
 		if err != nil {

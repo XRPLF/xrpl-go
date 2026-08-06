@@ -17,8 +17,12 @@ const (
 var (
 	// transaction
 
-	// ErrMissingTxSignatureOrSigningPubKey is returned when a transaction lacks both TxSignature and SigningPubKey.
-	ErrMissingTxSignatureOrSigningPubKey = errors.New("transaction must include either TxSignature or SigningPubKey")
+	// ErrMissingTxSignatureOrSigningPubKey is returned when a transaction has no complete signing form.
+	ErrMissingTxSignatureOrSigningPubKey = errors.New("transaction must include a complete TxnSignature/SigningPubKey or Signers form")
+	// ErrInvalidSignedTransaction is returned when signing fields are malformed, incomplete, empty, or mixed.
+	ErrInvalidSignedTransaction = clientinternal.ErrInvalidSignedTransaction
+	// ErrNilTransaction is returned when a nil transaction is submitted or autofilled.
+	ErrNilTransaction = errors.New("transaction must not be nil")
 	// ErrMissingLastLedgerSequenceInTransaction is returned when LastLedgerSequence is missing from a transaction.
 	ErrMissingLastLedgerSequenceInTransaction = errors.New("missing LastLedgerSequence in transaction")
 	// ErrMissingWallet is returned when a wallet is required but not provided for an unsigned transaction.
@@ -40,6 +44,9 @@ var (
 	ErrInvalidAddress = clientinternal.ErrInvalidAddress
 	// ErrMismatchedTag is returned when an explicit transaction tag conflicts with an X-address tag.
 	ErrMismatchedTag = clientinternal.ErrMismatchedTag
+	// ErrAccountIDTagNotAllowed is returned when an X-address contains a tag for
+	// a transaction field that cannot represent one.
+	ErrAccountIDTagNotAllowed = clientinternal.ErrAccountIDTagNotAllowed
 	// ErrRawTransactionsFieldIsNotAnArray is returned when the RawTransactions field is not an array type.
 	ErrRawTransactionsFieldIsNotAnArray = clientinternal.ErrRawTransactionsFieldIsNotAnArray
 	// ErrRawTransactionFieldIsNotAnObject is returned when the RawTransaction field is not an object type.
@@ -58,6 +65,10 @@ var (
 	ErrNetworkIDFieldMismatch = clientinternal.ErrNetworkIDFieldMismatch
 	// ErrNetworkIDFieldUnexpected is returned when NetworkID must be omitted for the target network.
 	ErrNetworkIDFieldUnexpected = clientinternal.ErrNetworkIDFieldUnexpected
+	// ErrNetworkIDUnavailable is returned when server identity discovery did not produce a network ID.
+	ErrNetworkIDUnavailable = clientinternal.ErrNetworkIDUnavailable
+	// ErrBuildVersionUnavailable is returned when restricted-network policy cannot be determined without a build version.
+	ErrBuildVersionUnavailable = clientinternal.ErrBuildVersionUnavailable
 	// ErrInvalidBuildVersion is returned when the discovered rippled version cannot be compared.
 	ErrInvalidBuildVersion = clientinternal.ErrInvalidBuildVersion
 	// ErrNetworkIDOverrideMismatch is returned when a trusted override differs from server_info.

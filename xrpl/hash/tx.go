@@ -5,30 +5,29 @@ import (
 	"encoding/hex"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
-	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 )
 
-// SignTxBlob hashes a signed transaction blob
-// It takes a transaction blob and returns the hash of the signed transaction.
+// SignTxBlob hashes a signed or pseudo-transaction blob.
 // It returns an error if the transaction blob is invalid.
 func SignTxBlob(txBlob string) (string, error) {
-	tx, err := binarycodec.Decode(txBlob)
+	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return "", err
 	}
 
-	if valid, err := isTxValid(tx); !valid {
+	if err := validateHashableTransactionForm(tx); err != nil {
 		return "", err
 	}
 
 	return encodeSignedTxBlob(txBlob)
 }
 
-// SignTx hashes a signed transaction
-// It takes a signed transaction and returns the hash of the signed transaction.
+// SignTx hashes a signed or pseudo-transaction.
 // It returns an error if the transaction is invalid.
 func SignTx(tx map[string]any) (string, error) {
-	if valid, err := isTxValid(tx); !valid {
+	if err := validateHashableTransactionForm(tx); err != nil {
 		return "", err
 	}
 
@@ -56,19 +55,19 @@ func encodeSignedTxBlob(txBlob string) (string, error) {
 	return EncodeToHashString(payload), nil
 }
 
-func isTxValid(tx map[string]any) (bool, error) {
-	isInnerBatchTxn := false
-	if flags, ok := tx["Flags"].(uint32); ok {
-		isInnerBatchTxn = (flags & types.TfInnerBatchTxn) != 0
+func validateHashableTransactionForm(tx map[string]any) error {
+	txType, _ := tx["TransactionType"].(string)
+	if transaction.IsPseudoTransactionType(transaction.TxType(txType)) {
+		return nil
 	}
 
-	hasTxnSignature := tx["TxnSignature"] != nil
-	hasSigners := tx["Signers"] != nil
-	hasSigningPubKey := tx["SigningPubKey"] != nil
-
-	if !hasTxnSignature && !hasSigners && !hasSigningPubKey && !isInnerBatchTxn {
-		return false, ErrNonSignedTransaction
+	// Allow the canonical unsigned form used by inner Batch transactions.
+	form, err := clientinternal.InspectSignedTransaction(tx, true)
+	if err != nil {
+		return err
 	}
-
-	return true, nil
+	if form == clientinternal.UnsignedTransaction {
+		return ErrNonSignedTransaction
+	}
+	return nil
 }

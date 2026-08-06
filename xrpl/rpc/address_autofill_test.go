@@ -45,6 +45,12 @@ func TestClientSetValidTransactionAddressesXAddress(t *testing.T) {
 			expectedErr: ErrMismatchedTag,
 		},
 		{
+			name:        "tagged unsupported field",
+			tx:          transaction.FlatTransaction{"Owner": testnetTag14},
+			expected:    transaction.FlatTransaction{"Owner": testnetTag14},
+			expectedErr: ErrAccountIDTagNotAllowed,
+		},
+		{
 			name:        "invalid X-address",
 			tx:          transaction.FlatTransaction{"Account": invalidXAddress},
 			expected:    transaction.FlatTransaction{"Account": invalidXAddress},
