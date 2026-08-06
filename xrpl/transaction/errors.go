@@ -220,6 +220,8 @@ var (
 	// ErrHolderAccountConflict is returned when the holder account is the same as the issuing account.
 	ErrHolderAccountConflict = errors.New("holder must be different from the account")
 
+	// ErrMPTIssuanceCreateMaximumAmountInvalid is returned when MaximumAmount is outside 1..2^63-1.
+	ErrMPTIssuanceCreateMaximumAmountInvalid = errors.New("mptoken issuance create: MaximumAmount must be between 1 and 9223372036854775807")
 	// ErrMPTIssuanceCreateMutableFlagsZero is returned when MutableFlags is set to zero in MPTokenIssuanceCreate.
 	ErrMPTIssuanceCreateMutableFlagsZero = errors.New("mptoken issuance create: MutableFlags cannot be zero")
 	// ErrMPTIssuanceCreateInvalidMutableFlags is returned when MutableFlags contains unsupported bits.
@@ -312,10 +314,22 @@ var (
 
 	// ErrClawbackMissingAmount is returned when the Amount field is not set.
 	ErrClawbackMissingAmount = errors.New("clawback: missing field Amount")
-	// ErrClawbackInvalidAmount is returned when the Amount is not a valid issued currency.
+	// ErrClawbackInvalidAmount is returned when Amount is not a valid, non-zero issued-currency or MPT amount.
 	ErrClawbackInvalidAmount = errors.New("clawback: invalid Amount")
-	// ErrClawbackSameAccount is returned when the clawback account and the token issuer are the same.
+	// ErrClawbackMPTIssuerMismatch is returned when Account is not the issuer encoded in an MPT issuance ID.
+	ErrClawbackMPTIssuerMismatch = errors.New("clawback: Account must match the issuer encoded in Amount.mpt_issuance_id")
+	// ErrClawbackHolderNotAllowed is returned when Holder is set for an issued-currency clawback.
+	ErrClawbackHolderNotAllowed = errors.New("clawback: Holder must be omitted for an issued-currency Amount")
+	// ErrClawbackMissingHolder is returned when Holder is not set for an MPT clawback.
+	ErrClawbackMissingHolder = errors.New("clawback: Holder is required for an MPT Amount")
+	// ErrClawbackInvalidHolder is returned when Holder is not a valid XRPL address.
+	ErrClawbackInvalidHolder = errors.New("clawback: invalid Holder")
+	// ErrClawbackHolderTagNotAllowed is returned when Holder is an X-address with an embedded tag.
+	ErrClawbackHolderTagNotAllowed = errors.New("clawback: Holder X-address cannot contain a tag")
+	// ErrClawbackSameAccount is returned when an IOU clawback issuer targets itself as the holder.
 	ErrClawbackSameAccount = errors.New("clawback: Account and Amount.issuer cannot be the same")
+	// ErrClawbackSameHolder is returned when an MPT clawback issuer targets itself as the holder.
+	ErrClawbackSameHolder = errors.New("clawback: Account and Holder cannot be the same")
 
 	// check
 

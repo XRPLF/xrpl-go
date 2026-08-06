@@ -1,9 +1,11 @@
 package transaction
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
@@ -15,7 +17,7 @@ func TestMPTokenIssuanceCreate_TxType(t *testing.T) {
 }
 
 func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
-	amount := types.XRPCurrencyAmount(10000)
+	amount := types.MPTAmount(10000)
 
 	tests := []struct {
 		name     string
@@ -98,7 +100,10 @@ func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
 }
 
 func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
-	amount := types.XRPCurrencyAmount(10000)
+	amount := types.MPTAmount(10000)
+	zeroAmount := types.MPTAmount(0)
+	maxAmount := types.MaxMPTAmount
+	tooLargeAmount := types.MPTAmount(uint64(types.MaxMPTAmount) + 1)
 	tests := []struct {
 		name       string
 		tx         *MPTokenIssuanceCreate
@@ -121,6 +126,44 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 			},
 			wantValid: true,
 			wantErr:   false,
+		},
+		{
+			name: "pass - maximum MaximumAmount",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MaximumAmount: &maxAmount,
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - zero MaximumAmount",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MaximumAmount: &zeroAmount,
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrMPTIssuanceCreateMaximumAmountInvalid,
+		},
+		{
+			name: "fail - MaximumAmount above protocol maximum",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MaximumAmount: &tooLargeAmount,
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrMPTIssuanceCreateMaximumAmountInvalid,
 		},
 		{
 			name: "pass - valid with minimal fields",
@@ -308,6 +351,35 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 	}
 }
 
+func TestMPTokenIssuanceCreate_MaximumAmountJSON(t *testing.T) {
+	const input = `{
+		"TransactionType":"MPTokenIssuanceCreate",
+		"Account":"rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+		"MaximumAmount":"9223372036854775807"
+	}`
+
+	var tx MPTokenIssuanceCreate
+	err := json.Unmarshal([]byte(input), &tx)
+	require.NoError(t, err)
+	require.NotNil(t, tx.MaximumAmount)
+	require.Equal(t, types.MaxMPTAmount, *tx.MaximumAmount)
+
+	encoded, err := json.Marshal(tx)
+	require.NoError(t, err)
+	flattened := make(map[string]any)
+	require.NoError(t, json.Unmarshal(encoded, &flattened))
+	require.Equal(t, "9223372036854775807", flattened["MaximumAmount"])
+
+	for _, invalid := range []string{`10000`, `"0x10"`, `"9223372036854775808"`} {
+		t.Run("reject "+invalid, func(t *testing.T) {
+			payload := `{"MaximumAmount":` + invalid + `}`
+			var invalidTx MPTokenIssuanceCreate
+			err := json.Unmarshal([]byte(payload), &invalidTx)
+			require.ErrorIs(t, err, types.ErrInvalidMPTAmount)
+		})
+	}
+}
+
 func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -454,4 +526,25 @@ func TestMPTokenIssuanceCreate_MutableFlags(t *testing.T) {
 		TmfMPTCanEnableCanTrade | TmfMPTCanEnableCanTransfer | TmfMPTCanEnableCanClawback |
 		TmfMPTCanMutateMetadata | TmfMPTCanMutateTransferFee
 	require.Equal(t, uint32(expectedMutableFlags), *tx.MutableFlags)
+}
+
+func TestMPTokenIssuanceCreate_SigningPayloadUsesDecimalMaximumAmount(t *testing.T) {
+	maximumAmount := types.MPTAmount(10000)
+	tx := MPTokenIssuanceCreate{
+		BaseTx: BaseTx{
+			Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+			TransactionType: MPTokenIssuanceCreateTx,
+			Fee:             types.XRPCurrencyAmount(12),
+			Sequence:        1,
+		},
+		MaximumAmount: &maximumAmount,
+	}
+
+	valid, err := tx.Validate()
+	require.NoError(t, err)
+	require.True(t, valid)
+
+	signingPayload, err := binarycodec.EncodeForSigning(tx.Flatten())
+	require.NoError(t, err)
+	require.Contains(t, signingPayload, "30180000000000002710")
 }

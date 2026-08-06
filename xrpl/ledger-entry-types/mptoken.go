@@ -29,16 +29,16 @@ type MPToken struct {
 	Account types.Address
 	// 	The MPTokenIssuance identifier.
 	MPTokenIssuanceID types.Hash192
-	// The amount of tokens currently held by the owner. The minimum is 0 and the maximum is 263-1.
-	MPTAmount uint64
-	// The amount of tokens currently locked up (for example, in escrow or payment channels). (Requires the TokenEscrow amendment .)
-	LockedAmount uint64 `json:",omitempty"`
+	// The amount of tokens currently held by the owner, represented as an unsigned integer string. The minimum is 0 and the maximum is 2^63-1.
+	MPTAmount string `json:",omitempty"`
+	// The amount of tokens currently locked up (for example, in escrow or payment channels), represented as an unsigned integer string. (Requires the TokenEscrow amendment.)
+	LockedAmount string `json:",omitempty"`
 	// The identifying hash of the transaction that most recently modified this entry.
 	PreviousTxnID types.Hash256
 	// The sequence of the ledger that contains the transaction that most recently modified this object.
 	PreviousTxnLgrSeq uint32
-	// A hint indicating which page of the owner directory links to this entry, in case the directory consists of multiple pages.
-	OwnerNode uint64
+	// A hexadecimal hint indicating which page of the owner directory links to this entry, in case the directory consists of multiple pages.
+	OwnerNode string
 }
 
 // EntryType returns the type of the ledger entry.

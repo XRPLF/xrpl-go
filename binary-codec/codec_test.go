@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/stretchr/testify/require"
 )
@@ -346,6 +347,113 @@ func TestEncode(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tc.output, got)
 			}
+		})
+	}
+}
+
+func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
+	const (
+		classicIssuer         = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+		mainnetXAddress       = "X7WZKEeNVS2p9Tire9DtNFkzWBZbFtJHWxDjN9fCrBGqVA4"
+		mainnetTaggedXAddress = "X7WZKEeNVS2p9Tire9DtNFkzWBZbFtSiS2eDBib7svZXuc2"
+	)
+
+	amount := func(issuer string) map[string]any {
+		return map[string]any{
+			"currency": "USD",
+			"issuer":   issuer,
+			"value":    "7072.8",
+		}
+	}
+	transaction := func(issuer string) map[string]any {
+		return map[string]any{"TakerPays": amount(issuer)}
+	}
+
+	classicEncoded, err := Encode(transaction(classicIssuer))
+	require.NoError(t, err)
+
+	testnetXAddress, err := addresscodec.ClassicAddressToXAddress(classicIssuer, 0, false, true)
+	require.NoError(t, err)
+	zeroTaggedAddress, err := addresscodec.ClassicAddressToXAddress(classicIssuer, 0, true, false)
+	require.NoError(t, err)
+	testnetTaggedAddress, err := addresscodec.ClassicAddressToXAddress(classicIssuer, 123, true, true)
+	require.NoError(t, err)
+	invalidXAddress := mainnetXAddress[:len(mainnetXAddress)-1] + "x"
+
+	tests := []struct {
+		name        string
+		address     string
+		wantErr     bool
+		expectedErr error
+	}{
+		{name: "mainnet tagless address", address: mainnetXAddress},
+		{name: "testnet tagless address", address: testnetXAddress},
+		{name: "mainnet tagged address", address: mainnetTaggedXAddress, wantErr: true, expectedErr: types.ErrAccountIDTagNotAllowed},
+		{name: "explicit zero tag", address: zeroTaggedAddress, wantErr: true, expectedErr: types.ErrAccountIDTagNotAllowed},
+		{name: "testnet tagged address", address: testnetTaggedAddress, wantErr: true, expectedErr: types.ErrAccountIDTagNotAllowed},
+		{name: "invalid X-address", address: invalidXAddress, wantErr: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			xAddressEncoded, err := Encode(transaction(test.address))
+			if test.wantErr {
+				require.Error(t, err)
+				if test.expectedErr != nil {
+					require.ErrorIs(t, err, test.expectedErr)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, classicEncoded, xAddressEncoded)
+
+			decoded, err := Decode(xAddressEncoded)
+			require.NoError(t, err)
+			require.Equal(t, amount(classicIssuer), decoded["TakerPays"])
+		})
+	}
+}
+
+func TestMPTUInt64FieldsUseDecimalJSON(t *testing.T) {
+	tests := []struct {
+		field  string
+		header string
+	}{
+		{field: "MaximumAmount", header: "3018"},
+		{field: "OutstandingAmount", header: "3019"},
+		{field: "MPTAmount", header: "301A"},
+		{field: "LockedAmount", header: "301D"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.field, func(t *testing.T) {
+			encoded, err := Encode(map[string]any{tt.field: "10000"})
+			require.NoError(t, err)
+			require.Equal(t, tt.header+"0000000000002710", encoded)
+
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.Equal(t, "10000", decoded[tt.field])
+		})
+	}
+}
+
+func TestUInt64NonAmountFieldRemainsHexadecimal(t *testing.T) {
+	encoded, err := Encode(map[string]any{"OwnerNode": "10000"})
+	require.NoError(t, err)
+	require.Equal(t, "340000000000010000", encoded)
+
+	decoded, err := Decode(encoded)
+	require.NoError(t, err)
+	require.Equal(t, "0000000000010000", decoded["OwnerNode"])
+}
+
+func TestMPTUInt64FieldsRejectInvalidDecimalJSON(t *testing.T) {
+	for _, value := range []string{"", "-1", "+1", "1.0", "0x10", "18446744073709551616"} {
+		t.Run(value, func(t *testing.T) {
+			_, err := Encode(map[string]any{"MaximumAmount": value})
+			require.ErrorIs(t, err, types.ErrInvalidUInt64String)
 		})
 	}
 }

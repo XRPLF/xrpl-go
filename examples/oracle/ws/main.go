@@ -92,7 +92,7 @@ func main() {
 				PriceData: ledger.PriceData{
 					BaseAsset:  currency.ConvertStringToHex("ACGB"),
 					QuoteAsset: "USD",
-					AssetPrice: 123,
+					AssetPrice: ledger.AssetPrice(123),
 					Scale:      3,
 				},
 			},

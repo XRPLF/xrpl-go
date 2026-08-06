@@ -118,6 +118,40 @@ func TestUint64_FromJson(t *testing.T) {
 	}
 }
 
+func TestUInt64_DecimalJSON(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		expected  []byte
+		shouldErr bool
+	}{
+		{name: "zero", input: "0", expected: []byte{0, 0, 0, 0, 0, 0, 0, 0}},
+		{name: "ten thousand", input: "10000", expected: []byte{0, 0, 0, 0, 0, 0, 0x27, 0x10}},
+		{name: "max uint64", input: "18446744073709551615", expected: []byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+		{name: "overflow", input: "18446744073709551616", shouldErr: true},
+		{name: "hex prefix", input: "0x10", shouldErr: true},
+		{name: "negative", input: "-1", shouldErr: true},
+		{name: "empty", input: "", shouldErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := (&UInt64{}).fromJSON(tt.input, uint64JSONBaseDecimal)
+			if tt.shouldErr {
+				require.ErrorIs(t, err, ErrInvalidUInt64String)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+
+	parser := serdes.NewBinaryParser([]byte{0, 0, 0, 0, 0, 0, 0x27, 0x10}, definitions.Get())
+	actual, err := (&UInt64{}).ToJSON(parser, uint64JSONBaseDecimal)
+	require.NoError(t, err)
+	require.Equal(t, "10000", actual)
+}
+
 func TestUint64_ToJson(t *testing.T) {
 	defs := definitions.Get()
 

@@ -49,7 +49,7 @@ func testIntegrationOracleDelete(t *testing.T, client integration.Client) {
 						PriceData: ledger.PriceData{
 							BaseAsset:  "XRP",
 							QuoteAsset: "USD",
-							AssetPrice: 740,
+							AssetPrice: ledger.AssetPrice(740),
 							Scale:      3,
 						},
 					},
