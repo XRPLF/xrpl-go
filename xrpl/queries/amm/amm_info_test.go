@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
@@ -66,6 +67,48 @@ func TestAMMInfoRequest(t *testing.T) {
 				t.Error(err)
 			}
 		})
+	}
+}
+
+func TestAMMInfoRequest_WithLedgerIndex(t *testing.T) {
+	s := InfoRequest{
+		Asset: ledger.Asset{
+			Currency: "USD",
+			Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+		},
+		Asset2: ledger.Asset{
+			Currency: "XRP",
+		},
+		LedgerIndex: common.Validated,
+	}
+
+	j := `{
+	"asset": {
+		"currency": "USD",
+		"issuer": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+	},
+	"asset2": {
+		"currency": "XRP"
+	},
+	"ledger_index": "validated"
+}`
+	if err := testutil.Serialize(t, s, j); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestAMMInfoRequest_WithAMMAccountAndLedgerHash(t *testing.T) {
+	s := InfoRequest{
+		AMMAccount: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		LedgerHash: "4C99E5F63C0D0B1C2283B4F5DCE2239F80CE92E8B1A6AED1E110C198FC96E659",
+	}
+
+	j := `{
+	"amm_account": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+	"ledger_hash": "4C99E5F63C0D0B1C2283B4F5DCE2239F80CE92E8B1A6AED1E110C198FC96E659"
+}`
+	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
+		t.Error(err)
 	}
 }
 
@@ -202,7 +245,7 @@ func TestAuctionSlotInfo_TimeIntervalExpiredSentinel(t *testing.T) {
 	}
 }
 
-func TestAMMInfoResponse_XRPAssets(t *testing.T) {
+func TestAMMInfoResponse_OpenLedgerWithXRPAssets(t *testing.T) {
 	asset2Frozen := false
 
 	s := InfoResponse{
@@ -222,7 +265,8 @@ func TestAMMInfoResponse_XRPAssets(t *testing.T) {
 			},
 			TradingFee: 600,
 		},
-		Validated: false,
+		LedgerCurrentIndex: 106107390,
+		Validated:          false,
 	}
 
 	j := `{
@@ -241,7 +285,8 @@ func TestAMMInfoResponse_XRPAssets(t *testing.T) {
 			"value": "22360679.77"
 		},
 		"trading_fee": 600
-	}
+	},
+	"ledger_current_index": 106107390
 }`
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
