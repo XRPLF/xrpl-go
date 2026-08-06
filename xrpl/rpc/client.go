@@ -64,6 +64,13 @@ func NewClient(cfg *Config) *Client {
 
 // Request sends a request to the XRPL server and returns the response and any error encountered.
 func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
+	return c.request(context.Background(), reqParams)
+}
+
+func (c *Client) request(ctx context.Context, reqParams XRPLRequest) (XRPLResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if err := reqParams.Validate(); err != nil {
 		return nil, err
 	}
@@ -83,10 +90,10 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 
 	// cfg.timeout bounds a single attempt, not the full retry window.
 	for attempt := range maxAttempts {
-		ctx, cancel := context.WithTimeout(context.Background(), c.cfg.timeout)
+		requestCtx, cancel := context.WithTimeout(ctx, c.cfg.timeout)
 
 		req, err := http.NewRequestWithContext(
-			ctx,
+			requestCtx,
 			http.MethodPost,
 			c.cfg.URL,
 			bytes.NewReader(body),
@@ -106,6 +113,9 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 				_ = response.Body.Close()
 			}
 			cancel()
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
 			return nil, err
 		}
 
@@ -132,9 +142,9 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 			return nil, &ClientError{ErrorString: "Server is overloaded, rate limit exceeded"}
 		}
 
-		// time.Sleep is non-cancellable. If Request ever accepts a caller
-		// context, switch to a select on ctx.Done() / time.After.
-		time.Sleep(backoffDuration)
+		if err := clientinternal.Wait(ctx, backoffDuration); err != nil {
+			return nil, err
+		}
 		backoffDuration *= 2
 	}
 	defer cancelFunc()
@@ -156,6 +166,10 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
 // authoritative for cryptographic signature validity. AccountDelete always uses
 // fail_hard as required by reliable-submission safety guidance.
 func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitResponse, error) {
+	return c.submitTxBlob(context.Background(), txBlob, failHard)
+}
+
+func (c *Client) submitTxBlob(ctx context.Context, txBlob string, failHard bool) (*requests.SubmitResponse, error) {
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return nil, err
@@ -172,17 +186,33 @@ func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitRes
 		return nil, ErrMissingTxSignatureOrSigningPubKey
 	}
 
-	return c.submitRequest(&requests.SubmitRequest{
+	return c.submitRequest(ctx, &requests.SubmitRequest{
 		TxBlob:   txBlob,
 		FailHard: clientinternal.SubmissionFailHard(tx, failHard),
 	})
 }
 
-// SubmitTxBlobAndWait sends a pre-signed transaction blob to the server,
-// decodes it to retrieve the required LastLedgerSequence, submits the blob,
-// and then waits until the transaction is confirmed in a ledger. It returns
-// the transaction response if the submission is successful.
+// SubmitTxBlobAndWait submits a pre-signed transaction and waits for an
+// authoritative validated-ledger result. LastLedgerSequence is required and
+// expiry occurs only after the validated ledger passes it.
 func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.TxResponse, error) {
+	return c.SubmitTxBlobAndWaitContext(context.Background(), txBlob, failHard)
+}
+
+// SubmitTxBlobAndWaitContext is SubmitTxBlobAndWait with caller cancellation.
+// Context cancellation is returned as ctx.Err and is never reported as a
+// transaction failure or expiry.
+func (c *Client) SubmitTxBlobAndWaitContext(
+	ctx context.Context,
+	txBlob string,
+	failHard bool,
+) (*requests.TxResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := clientinternal.ValidatePollInterval(c.cfg.retryDelay); err != nil {
+		return nil, err
+	}
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return nil, err
@@ -193,13 +223,15 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 		return nil, ErrMissingLastLedgerSequenceInTransaction
 	}
 
-	txResponse, err := c.SubmitTxBlob(txBlob, failHard)
+	submitResponse, err := c.submitTxBlob(ctx, txBlob, failHard)
 	if err != nil {
 		return nil, err
 	}
-
-	if txResponse.EngineResult != "tesSUCCESS" {
-		return nil, &ClientError{ErrorString: "transaction failed to submit with engine result: " + txResponse.EngineResult}
+	if err := clientinternal.ValidatePreliminaryResult(
+		submitResponse.EngineResult,
+		submitResponse.EngineResultMessage,
+	); err != nil {
+		return nil, err
 	}
 
 	txHash, err := hash.SignTxBlob(txBlob)
@@ -207,7 +239,12 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 		return nil, err
 	}
 
-	return c.waitForTransaction(txHash, lastLedgerSequence)
+	return c.waitForTransaction(
+		ctx,
+		txHash,
+		lastLedgerSequence,
+		submitResponse.EngineResult,
+	)
 }
 
 // SubmitTx signs the transaction (if necessary) and submits it to the server
@@ -225,23 +262,37 @@ func (c *Client) SubmitTx(tx transaction.FlatTransaction, opts *rpctypes.SubmitO
 	return c.SubmitTxBlob(txBlob, opts.FailHard)
 }
 
-// SubmitTxAndWait prepares a transaction by ensuring it is fully signed,
-// submits it to the server, and waits for ledger confirmation.
-// It validates that the transaction's EngineResult is successful before returning
-// the transaction response.
+// SubmitTxAndWait prepares, submits, and monitors a transaction until its
+// validated-ledger outcome is authoritative.
 func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *rpctypes.SubmitOptions) (*requests.TxResponse, error) {
+	return c.SubmitTxAndWaitContext(context.Background(), tx, opts)
+}
+
+// SubmitTxAndWaitContext is SubmitTxAndWait with caller cancellation for
+// submission and finality monitoring.
+func (c *Client) SubmitTxAndWaitContext(
+	ctx context.Context,
+	tx transaction.FlatTransaction,
+	opts *rpctypes.SubmitOptions,
+) (*requests.TxResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := clientinternal.ValidatePollInterval(c.cfg.retryDelay); err != nil {
+		return nil, err
+	}
 	if opts == nil {
 		opts = &rpctypes.SubmitOptions{}
 	}
-	// Get the signed transaction blob.
 	txBlob, err := c.getSignedTx(tx, opts.Autofill, opts.Wallet)
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
-	// Delegate to SubmitTxBlobAndWait to handle submission, engine result check,
-	// ledger sequence validation, and waiting for confirmation.
-	return c.SubmitTxBlobAndWait(txBlob, opts.FailHard)
+	return c.SubmitTxBlobAndWaitContext(ctx, txBlob, opts.FailHard)
 }
 
 // SubmitMultisigned submits a structurally complete multisigned transaction blob.

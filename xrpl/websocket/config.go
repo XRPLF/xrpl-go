@@ -8,7 +8,11 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig"
 )
 
-const defaultMaxResponseSize int64 = 16 * 1024 * 1024
+const (
+	defaultMaxResponseSize    int64 = 16 * 1024 * 1024
+	defaultReconnectBaseDelay       = 1 * time.Second
+	defaultReconnectMaxDelay        = 30 * time.Second
+)
 
 // SetLogger overrides the *log.Logger used for SDK-emitted warnings (currently
 // just the insecure-scheme warning). Pass nil to silence the warnings entirely.
@@ -22,16 +26,19 @@ func SetLogger(l *log.Logger) {
 // ClientConfig configures options for the XRPL WebSocket client.
 type ClientConfig struct {
 	// Connection config
-	host            string
-	maxRetries      int
-	maxReconnects   int
-	retryDelay      time.Duration
-	timeout         time.Duration
-	maxResponseSize int64
+	host string
+	// Reliable-submission monitoring limit.
+	maxRetries         int
+	maxReconnects      int
+	retryDelay         time.Duration
+	reconnectBaseDelay time.Duration
+	reconnectMaxDelay  time.Duration
+	timeout            time.Duration
+	maxResponseSize    int64
 
 	// Fee config
-	feeCushion float32
-	maxFeeXRP  float32
+	feeCushion float64
+	maxFeeXRP  string
 
 	// Faucet config
 	faucetProvider common.FaucetProvider
@@ -44,14 +51,16 @@ type ClientConfig struct {
 // NewClientConfig returns a ClientConfig initialized with default settings.
 func NewClientConfig() *ClientConfig {
 	return &ClientConfig{
-		host:            common.DefaultHost,
-		feeCushion:      common.DefaultFeeCushion,
-		maxFeeXRP:       common.DefaultMaxFeeXRP,
-		maxRetries:      common.DefaultMaxRetries,
-		maxReconnects:   common.DefaultMaxReconnects,
-		retryDelay:      common.DefaultRetryDelay,
-		timeout:         common.DefaultTimeout,
-		maxResponseSize: defaultMaxResponseSize,
+		host:               common.DefaultHost,
+		feeCushion:         common.DefaultFeeCushion,
+		maxFeeXRP:          common.DefaultMaxFeeXRP,
+		maxRetries:         common.DefaultMaxRetries,
+		maxReconnects:      common.DefaultMaxReconnects,
+		retryDelay:         common.DefaultRetryDelay,
+		reconnectBaseDelay: defaultReconnectBaseDelay,
+		reconnectMaxDelay:  defaultReconnectMaxDelay,
+		timeout:            common.DefaultTimeout,
+		maxResponseSize:    defaultMaxResponseSize,
 	}
 }
 
@@ -64,15 +73,15 @@ func (wc ClientConfig) WithHost(host string) ClientConfig {
 
 // WithFeeCushion sets the fee cushion of the websocket client.
 // Default: 1.2
-func (wc ClientConfig) WithFeeCushion(feeCushion float32) ClientConfig {
+func (wc ClientConfig) WithFeeCushion(feeCushion float64) ClientConfig {
 	wc.feeCushion = feeCushion
 	return wc
 }
 
 // WithMaxFeeXRP sets the maximum fee in XRP that the websocket client will use.
-// Default: 2
-func (wc ClientConfig) WithMaxFeeXRP(maxFeeXrp float32) ClientConfig {
-	wc.maxFeeXRP = maxFeeXrp
+// Default: "2"
+func (wc ClientConfig) WithMaxFeeXRP(maxFeeXRP string) ClientConfig {
+	wc.maxFeeXRP = maxFeeXRP
 	return wc
 }
 
@@ -83,7 +92,9 @@ func (wc ClientConfig) WithFaucetProvider(fp common.FaucetProvider) ClientConfig
 	return wc
 }
 
-// WithMaxRetries sets the maximum number of retries for a transaction.
+// WithMaxRetries limits consecutive incomplete reliable-submission polling
+// rounds caused by query or transport errors. It does not limit successful
+// finality polling.
 // Default: 10
 func (wc ClientConfig) WithMaxRetries(maxRetries int) ClientConfig {
 	wc.maxRetries = maxRetries
@@ -97,7 +108,7 @@ func (wc ClientConfig) WithMaxReconnects(maxReconnects int) ClientConfig {
 	return wc
 }
 
-// WithRetryDelay sets the delay between retries for a transaction.
+// WithRetryDelay sets the delay between reliable-submission polling rounds.
 // Default: 1 second
 func (wc ClientConfig) WithRetryDelay(retryDelay time.Duration) ClientConfig {
 	wc.retryDelay = retryDelay

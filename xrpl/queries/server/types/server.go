@@ -19,7 +19,7 @@ type Info struct {
 	JQTransOverflow          string               `json:"jq_trans_overflow"`
 	LastClose                ServerClose          `json:"last_close"`
 	Load                     ServerLoad           `json:"load,omitzero"`
-	LoadFactor               uint                 `json:"load_factor"`
+	LoadFactor               float64              `json:"load_factor"` // Normalized server_info fee multiplier, can be fractional.
 	NetworkID                *uint32              `json:"network_id,omitempty"`
 	LoadFactorLocal          uint                 `json:"load_factor_local,omitempty"`
 	LoadFactorNet            uint                 `json:"load_factor_net,omitempty"`
@@ -43,6 +43,27 @@ type Info struct {
 	ValidationQuorum         uint                 `json:"validation_quorum"`
 	ValidatorListExpires     string               `json:"validator_list_expires,omitempty"`
 	ValidatorList            ServerValidatorList  `json:"validator_list,omitzero"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler for Info. A missing load_factor
+// uses rippled's default factor of one, while an explicit zero remains zero.
+func (i *Info) UnmarshalJSON(data []byte) error {
+	type Alias Info
+	aux := struct {
+		LoadFactor *float64 `json:"load_factor"`
+		Alias
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	*i = Info(aux.Alias)
+	if aux.LoadFactor == nil {
+		i.LoadFactor = 1
+	} else {
+		i.LoadFactor = *aux.LoadFactor
+	}
+	return nil
 }
 
 // ServerValidatorList holds the count, expiration, and status of the server's validator list.
@@ -150,7 +171,7 @@ type LedgerState struct {
 	CloseTime   uint   `json:"close_time"`
 	Hash        string `json:"hash"`
 	ReserveBase uint   `json:"reserve_base"`
-	ReserveInc  uint   `json:"reserve_inc"`
+	ReserveInc  *uint  `json:"reserve_inc"`
 	Seq         uint   `json:"seq"`
 }
 

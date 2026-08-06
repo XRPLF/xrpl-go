@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"sync"
@@ -20,13 +21,13 @@ type networkIdentityState struct {
 // prepareNetworkIdentity returns a configured identity or performs the
 // synchronous server_info handshake used by Connect. WithNetworkIdentity marks
 // the initial state trusted and intentionally bypasses discovery.
-func (c *Client) prepareNetworkIdentity() error {
+func (c *Client) prepareNetworkIdentity(ctx context.Context, conn websocketConnection) error {
 	identity, ready, trusted := c.networkIdentitySnapshot()
 	if ready && trusted {
 		_, err := clientinternal.ValidateNetworkIdentity(identity)
 		return err
 	}
-	resolved, err := c.discoverNetworkIdentity(identity.NetworkID)
+	resolved, err := c.discoverNetworkIdentity(ctx, conn, identity.NetworkID)
 	if err != nil {
 		return err
 	}
@@ -62,17 +63,21 @@ func (c *Client) storeDiscoveredNetworkIdentity(identity clientinternal.NetworkI
 	c.identity.trusted = false
 }
 
-func (c *Client) discoverNetworkIdentity(override *uint32) (clientinternal.NetworkIdentity, error) {
+func (c *Client) discoverNetworkIdentity(
+	ctx context.Context,
+	conn websocketConnection,
+	override *uint32,
+) (clientinternal.NetworkIdentity, error) {
 	id := c.idCounter.Add(1)
 	message, err := c.formatRequest(&server.InfoRequest{}, id, nil)
 	if err != nil {
 		return clientinternal.NetworkIdentity{}, err
 	}
-	if err := c.conn.WriteMessage(message); err != nil {
+	if err := c.conn.writeMessageTo(ctx, conn, message, 0); err != nil {
 		return clientinternal.NetworkIdentity{}, err
 	}
 
-	responseBytes, err := c.conn.readMessage(time.Now().Add(c.cfg.timeout))
+	responseBytes, err := c.conn.readMessageFrom(conn, time.Now().Add(c.cfg.timeout))
 	if err != nil {
 		var timeoutErr interface{ Timeout() bool }
 		if errors.As(err, &timeoutErr) && timeoutErr.Timeout() {

@@ -64,4 +64,27 @@ var (
 	// ErrInvalidSignedTransaction indicates that transaction signing fields do not
 	// form a complete single-sign, multisign, or permitted inner-Batch structure.
 	ErrInvalidSignedTransaction = errors.New("transaction has an invalid signed form")
+
+	// fee
+
+	// ErrInvalidFeeValue is returned when a fee input is not a finite,
+	// non-negative decimal value.
+	ErrInvalidFeeValue = errors.New("invalid fee value")
+	// ErrFeeHasTooManyDecimals is returned when an XRP fee cannot be represented
+	// as a whole number of drops.
+	ErrFeeHasTooManyDecimals = errors.New("fee has more than six decimal places")
+	// ErrPreliminaryResult indicates that reliable submission stopped on a
+	// malformed preliminary engine result.
+	ErrPreliminaryResult = errors.New("malformed preliminary transaction result")
+	// ErrTransactionExpired indicates that the validated ledger passed the
+	// transaction's LastLedgerSequence without a validated transaction result.
+	ErrTransactionExpired = errors.New("transaction expired before validation")
+	// ErrFinalityTransport indicates that repeated transport or response failures
+	// prevented reliable-submission monitoring from making progress.
+	ErrFinalityTransport = errors.New("transaction finality monitoring transport failure")
+	// ErrInvalidPollInterval indicates that a reliable-submission poll interval is negative.
+	ErrInvalidPollInterval = errors.New("transaction finality poll interval must not be negative")
+	// ErrInvalidValidatedLedgerResponse indicates that a validated-ledger query
+	// returned a response that was not validated or did not identify a ledger.
+	ErrInvalidValidatedLedgerResponse = errors.New("invalid validated ledger response")
 )

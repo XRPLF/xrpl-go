@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -586,7 +587,7 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 		serverMessages []map[string]any
 		expectedFee    string
 		expectedErr    error
-		feeCushion     float32
+		feeCushion     float64
 		nSigners       uint64
 	}{
 		{
@@ -610,6 +611,28 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 			expectedFee: "10",
 			expectedErr: nil,
 			feeCushion:  1,
+		},
+		{
+			name: "Half drop rounds upward",
+			tx: transaction.FlatTransaction{
+				"TransactionType": transaction.PaymentTx,
+			},
+			serverMessages: []map[string]any{
+				{
+					"id": 1,
+					"result": map[string]any{
+						"info": map[string]any{
+							"validated_ledger": map[string]any{
+								"base_fee_xrp": 0.000001,
+							},
+							"load_factor": 10,
+						},
+					},
+				},
+			},
+			expectedFee: "11",
+			expectedErr: nil,
+			feeCushion:  1.05,
 		},
 		{
 			name: "Fee calculation with high load factor",
@@ -674,7 +697,30 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 					},
 				},
 			},
-			expectedFee: "340", // 10 * (33 + 1) = 340
+			expectedFee: "333", // ceil(10 * (33 + 4/16))
+			expectedErr: nil,
+			feeCushion:  1,
+		},
+		{
+			name: "EscrowFinish with empty Fulfillment",
+			tx: transaction.FlatTransaction{
+				"TransactionType": "EscrowFinish",
+				"Fulfillment":     "",
+			},
+			serverMessages: []map[string]any{
+				{
+					"id": 1,
+					"result": map[string]any{
+						"info": map[string]any{
+							"validated_ledger": map[string]any{
+								"base_fee_xrp": float32(0.00001),
+							},
+							"load_factor": float32(1),
+						},
+					},
+				},
+			},
+			expectedFee: "330",
 			expectedErr: nil,
 			feeCushion:  1,
 		},
@@ -964,6 +1010,132 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClient_FeePresenceSemantics(t *testing.T) {
+	tests := []struct {
+		name        string
+		ledger      map[string]any
+		expected    string
+		expectedErr error
+	}{
+		{name: "missing base fee", ledger: map[string]any{}, expectedErr: ErrCouldNotGetBaseFeeXrp},
+		{name: "null base fee", ledger: map[string]any{"base_fee_xrp": nil}, expectedErr: ErrCouldNotGetBaseFeeXrp},
+		{name: "explicit zero base fee", ledger: map[string]any{"base_fee_xrp": 0}, expected: "0"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, cleanup := setupTestClient(t, []map[string]any{{
+				"id": 1,
+				"result": map[string]any{
+					"info": map[string]any{"validated_ledger": tt.ledger, "load_factor": 1},
+				},
+			}})
+			defer cleanup()
+			actual, err := client.getFeeXrp(1)
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestClient_OwnerReservePresenceSemantics(t *testing.T) {
+	tests := []struct {
+		name        string
+		ledger      map[string]any
+		expected    uint64
+		expectedErr error
+	}{
+		{name: "missing reserve", ledger: map[string]any{}, expectedErr: ErrCouldNotFetchOwnerReserve},
+		{name: "null reserve", ledger: map[string]any{"reserve_inc": nil}, expectedErr: ErrCouldNotFetchOwnerReserve},
+		{name: "explicit zero reserve", ledger: map[string]any{"reserve_inc": 0}, expected: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, cleanup := setupTestClient(t, []map[string]any{{
+				"id": 1,
+				"result": map[string]any{
+					"state": map[string]any{"validated_ledger": tt.ledger},
+				},
+			}})
+			defer cleanup()
+			actual, err := client.fetchOwnerReserveFee()
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestClient_LoanSetFeeUsesValidatedLedger(t *testing.T) {
+	const owner = "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH"
+	requests := make(chan map[string]any, 2)
+	ws := &testutil.MockWebSocketServer{}
+	server := ws.TestWebSocketServer(func(conn *websocket.Conn) {
+		defer conn.Close()
+		for range 2 {
+			var request map[string]any
+			if err := conn.ReadJSON(&request); err != nil {
+				return
+			}
+			requests <- request
+			var result map[string]any
+			switch request["command"] {
+			case "ledger_entry":
+				result = map[string]any{"node": map[string]any{"Owner": owner}}
+			case "account_info":
+				result = map[string]any{"signer_lists": []any{}}
+			default:
+				return
+			}
+			if err := conn.WriteJSON(map[string]any{
+				"id": request["id"], "status": "success", "type": "response", "result": result,
+			}); err != nil {
+				return
+			}
+		}
+	})
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	client := NewClient(NewClientConfig().WithHost(url).WithNetworkIdentity(0, "1.12.0"))
+	require.NoError(t, client.Connect())
+	defer client.Disconnect()
+
+	count, err := client.fetchCounterPartySignersCount(transaction.FlatTransaction{"LoanBrokerID": "ABC"})
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), count)
+	close(requests)
+	for request := range requests {
+		require.Equal(t, "validated", request["ledger_index"])
+	}
+}
+
+func TestClient_InvalidMaximumFeeUsesPublicError(t *testing.T) {
+	serverMessages := []map[string]any{{
+		"id": 1,
+		"result": map[string]any{
+			"info": map[string]any{
+				"validated_ledger": map[string]any{"base_fee_xrp": 0.00001},
+				"load_factor":      1,
+			},
+		},
+	}}
+	client, cleanup := setupTestClient(t, serverMessages)
+	defer cleanup()
+	client.cfg.maxFeeXRP = "invalid"
+	tx := transaction.FlatTransaction{"TransactionType": "Payment"}
+	require.ErrorIs(t, client.calculateFeePerTransactionType(&tx, 0), ErrInvalidFeeValue)
 }
 
 func TestClient_setLastLedgerSequence(t *testing.T) {
@@ -2228,8 +2400,79 @@ func TestClient_FundWallet(t *testing.T) {
 	})
 }
 
+func TestClient_ReconnectsAfterNonCloseReadError(t *testing.T) {
+	var dialCount atomic.Int32
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dialCount.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			return
+		}
+		var request struct {
+			ID uint64 `json:"id"`
+		}
+		if err := json.Unmarshal(message, &request); err != nil {
+			return
+		}
+		_ = conn.WriteJSON(map[string]any{
+			"id":     request.ID,
+			"status": "success",
+			"type":   "response",
+			"result": map[string]any{},
+		})
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithMaxReconnects(2).
+			WithTimeout(time.Second),
+		time.Millisecond,
+		time.Millisecond,
+	)
+	client := NewClient(cfg)
+	setTrustedTestNetworkIdentity(client, 0)
+	client.conn.conn = newFakeWebsocketConnection()
+	ctx := client.resetLifecycle()
+	readDone := make(chan struct{})
+	go func() {
+		defer close(readDone)
+		client.readMessages(ctx)
+	}()
+	defer func() {
+		client.cancelLifecycle()
+		if client.IsConnected() {
+			_ = client.conn.Disconnect()
+		}
+		select {
+		case <-readDone:
+		case <-time.After(time.Second):
+			t.Fatal("read loop did not stop")
+		}
+	}()
+
+	require.Eventually(t, func() bool {
+		return dialCount.Load() == 1 && client.IsConnected()
+	}, time.Second, time.Millisecond)
+
+	response, err := client.Request(newAccountChannelsRequest())
+	require.NoError(t, err)
+	require.NotNil(t, response)
+}
+
 // TestClient_ReconnectConsumesBudgetOnConnectFailures verifies that a failed
-// reconnect Connect() does not abort the read loop early: the loop must keep
+// reconnect Connect() does not abort the read loop early. The loop must keep
 // retrying until the full WithMaxReconnects budget is exhausted, and only then
 // report ErrMaxReconnectionAttemptsReached. The server accepts the initial
 // upgrade once (then closes the conn to trigger the reconnect path) and
@@ -2256,12 +2499,14 @@ func TestClient_ReconnectConsumesBudgetOnConnectFailures(t *testing.T) {
 	url, err := testutil.ConvertHTTPToWS(server.URL)
 	require.NoError(t, err)
 
-	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
-
-	cfg := NewClientConfig().
-		WithHost(url).
-		WithTimeout(1 * time.Second).
-		WithMaxReconnects(budget)
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithTimeout(1*time.Second).
+			WithMaxReconnects(budget),
+		time.Millisecond,
+		time.Millisecond,
+	)
 
 	cl := NewClient(cfg)
 	setTrustedTestNetworkIdentity(cl, 0)
@@ -2312,12 +2557,14 @@ func TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage(t *testi
 	url, err := testutil.ConvertHTTPToWS(server.URL)
 	require.NoError(t, err)
 
-	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
-
-	cfg := NewClientConfig().
-		WithHost(url).
-		WithTimeout(1 * time.Second).
-		WithMaxReconnects(budget)
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithTimeout(1*time.Second).
+			WithMaxReconnects(budget),
+		time.Millisecond,
+		time.Millisecond,
+	)
 
 	cl := NewClient(cfg)
 	setTrustedTestNetworkIdentity(cl, 0)
@@ -2344,24 +2591,22 @@ func TestClient_ReconnectConsumesBudgetWhenReconnectClosesBeforeMessage(t *testi
 }
 
 func TestReconnectDelayUsesCappedExponentialBackoff(t *testing.T) {
-	t.Cleanup(swapReconnectDelays(time.Millisecond, 30*time.Millisecond))
+	const (
+		baseDelay = time.Millisecond
+		maxDelay  = 30 * time.Millisecond
+	)
 
-	require.Equal(t, time.Millisecond, reconnectDelay(1))
-	require.Equal(t, 2*time.Millisecond, reconnectDelay(2))
-	require.Equal(t, 4*time.Millisecond, reconnectDelay(3))
-	require.Equal(t, 30*time.Millisecond, reconnectDelay(6))
-	require.Equal(t, 30*time.Millisecond, reconnectDelay(100))
+	require.Equal(t, time.Millisecond, reconnectDelay(1, baseDelay, maxDelay))
+	require.Equal(t, 2*time.Millisecond, reconnectDelay(2, baseDelay, maxDelay))
+	require.Equal(t, 4*time.Millisecond, reconnectDelay(3, baseDelay, maxDelay))
+	require.Equal(t, 30*time.Millisecond, reconnectDelay(6, baseDelay, maxDelay))
+	require.Equal(t, 30*time.Millisecond, reconnectDelay(100, baseDelay, maxDelay))
 }
 
-// swapReconnectDelays overrides the package-level reconnect backoff vars and
-// returns a function that restores their previous values. Intended for use
-// with t.Cleanup. Not safe under t.Parallel: the vars are read/written without
-// synchronization, so callers must not run in parallel with each other or with
-// any test that exercises the reconnect path.
-func swapReconnectDelays(base, maxDelay time.Duration) func() {
-	prevBase, prevMax := reconnectBaseDelay, reconnectMaxDelay
-	reconnectBaseDelay, reconnectMaxDelay = base, maxDelay
-	return func() {
-		reconnectBaseDelay, reconnectMaxDelay = prevBase, prevMax
-	}
+// withReconnectDelays returns a config with test-specific reconnect delays.
+// The config is copied into one client before its read loop starts.
+func withReconnectDelays(cfg ClientConfig, baseDelay, maxDelay time.Duration) ClientConfig {
+	cfg.reconnectBaseDelay = baseDelay
+	cfg.reconnectMaxDelay = maxDelay
+	return cfg
 }

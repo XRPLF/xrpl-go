@@ -12,7 +12,7 @@ import (
 func main() {
 	cfg, err := rpc.NewClientConfig(
 		"https://s.altnet.rippletest.net:51234/",
-		rpc.WithMaxFeeXRP(5.0),
+		rpc.WithMaxFeeXRP("5"),
 		rpc.WithFeeCushion(1.5),
 		rpc.WithFaucetProvider(faucet.NewTestnetFaucetProvider()),
 	)

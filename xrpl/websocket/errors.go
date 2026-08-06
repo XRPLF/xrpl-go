@@ -23,12 +23,22 @@ var (
 	ErrInvalidSignedTransaction = clientinternal.ErrInvalidSignedTransaction
 	// ErrNilTransaction is returned when a nil transaction is submitted or autofilled.
 	ErrNilTransaction = errors.New("transaction must not be nil")
-	// ErrMissingLastLedgerSequenceInTransaction is returned when LastLedgerSequence is missing from a transaction.
+	// ErrMissingLastLedgerSequenceInTransaction is returned when a reliable-submission transaction does not contain LastLedgerSequence.
 	ErrMissingLastLedgerSequenceInTransaction = errors.New("missing LastLedgerSequence in transaction")
 	// ErrMissingWallet is returned when a wallet is required but not provided for an unsigned transaction.
 	ErrMissingWallet = errors.New("wallet must be provided when submitting an unsigned transaction")
-	// ErrTransactionNotFound is returned when a transaction cannot be found.
+	// ErrTransactionNotFound is retained for compatibility.
+	//
+	// Deprecated: no client operation returns this error.
 	ErrTransactionNotFound = errors.New("transaction not found")
+	// ErrPreliminaryResult indicates a malformed preliminary submit result.
+	ErrPreliminaryResult = clientinternal.ErrPreliminaryResult
+	// ErrTransactionExpired indicates ledger-driven expiry after LastLedgerSequence.
+	ErrTransactionExpired = clientinternal.ErrTransactionExpired
+	// ErrFinalityTransport indicates repeated transport failures during monitoring.
+	ErrFinalityTransport = clientinternal.ErrFinalityTransport
+	// ErrInvalidPollInterval indicates a negative reliable-submission poll interval.
+	ErrInvalidPollInterval = clientinternal.ErrInvalidPollInterval
 	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
@@ -88,6 +98,8 @@ var (
 	ErrNotConnectedToServer = errors.New("not connected to server")
 	// ErrRequestTimedOut indicates that a request to the server timed out.
 	ErrRequestTimedOut = errors.New("request timed out")
+	// ErrDisconnected indicates that a pending request could not receive a response because the connection closed.
+	ErrDisconnected = errors.New("websocket disconnected before response")
 	// ErrSignerDataIsEmpty is returned when signer data is empty or missing.
 	ErrSignerDataIsEmpty = errors.New("signer data is empty")
 
@@ -100,6 +112,10 @@ var (
 
 	// fees
 
+	// ErrInvalidFeeValue is returned when fee configuration is not a finite, non-negative decimal value.
+	ErrInvalidFeeValue = clientinternal.ErrInvalidFeeValue
+	// ErrFeeHasTooManyDecimals is returned when an XRP fee cannot be represented as whole drops.
+	ErrFeeHasTooManyDecimals = clientinternal.ErrFeeHasTooManyDecimals
 	// ErrCouldNotGetBaseFeeXrp is returned when BaseFeeXrp cannot be retrieved from ServerInfo.
 	ErrCouldNotGetBaseFeeXrp = errors.New("get fee xrp: could not get BaseFeeXrp from ServerInfo")
 	// ErrCouldNotFetchOwnerReserve is returned when the owner reserve fee cannot be fetched.
@@ -132,6 +148,18 @@ var (
 )
 
 // Dynamic errors
+
+// PreliminaryResultError reports a malformed preliminary engine result.
+type PreliminaryResultError = clientinternal.PreliminaryResultError
+
+// TransactionExpiredError reports expiry with ledger and preliminary-result diagnostics.
+type TransactionExpiredError = clientinternal.TransactionExpiredError
+
+// FinalityTransportError reports repeated monitoring query failures and unwraps their cause.
+type FinalityTransportError = clientinternal.FinalityTransportError
+
+// InvalidPollIntervalError reports a negative finality polling interval.
+type InvalidPollIntervalError = clientinternal.InvalidPollIntervalError
 
 // ClientError represents a dynamic error with a custom error message string.
 type ClientError struct {

@@ -35,7 +35,56 @@ func TestServerInfoNetworkIDPresence(t *testing.T) {
 	}
 }
 
+func TestServerInfoLoadFactor(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		expected float64
+	}{
+		{name: "missing defaults to one", response: `{"info":{}}`, expected: 1},
+		{name: "fractional", response: `{"info":{"load_factor":1.5}}`, expected: 1.5},
+		{name: "explicit zero", response: `{"info":{"load_factor":0}}`, expected: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var response InfoResponse
+			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
+			require.InDelta(t, tt.expected, response.Info.LoadFactor, 0)
+		})
+	}
+}
+
+func TestServerInfoBaseFeeXRPPresence(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		expected float64
+		present  bool
+	}{
+		{name: "missing", response: `{"info":{"validated_ledger":{}}}`},
+		{name: "null", response: `{"info":{"validated_ledger":{"base_fee_xrp":null}}}`},
+		{name: "explicit zero", response: `{"info":{"validated_ledger":{"base_fee_xrp":0}}}`, present: true},
+		{name: "positive", response: `{"info":{"validated_ledger":{"base_fee_xrp":0.00001}}}`, expected: 0.00001, present: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var response InfoResponse
+			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
+			actual := response.Info.ValidatedLedger.BaseFeeXRP
+			if !tt.present {
+				require.Nil(t, actual)
+				return
+			}
+			require.NotNil(t, actual)
+			require.InDelta(t, tt.expected, *actual, 0)
+		})
+	}
+}
+
 func TestServerInfoResponse(t *testing.T) {
+	baseFeeXRP := 0.00001
 	s := InfoResponse{
 		Info: servertypes.Info{
 			BuildVersion:    "1.9.4",
@@ -78,7 +127,7 @@ func TestServerInfoResponse(t *testing.T) {
 			Uptime: 4360976,
 			ValidatedLedger: servertypes.ClosedLedger{
 				Age:            1,
-				BaseFeeXRP:     0.00001,
+				BaseFeeXRP:     &baseFeeXRP,
 				Hash:           "3147A41F5F013209581FCDCBBB7A87A4F01EF6842963E13B2B14C8565E00A22B",
 				ReserveBaseXRP: 10,
 				ReserveIncXRP:  2,

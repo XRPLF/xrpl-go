@@ -2220,6 +2220,7 @@ func TestClient_GetRipplePathFind(t *testing.T) {
 }
 
 func TestClient_GetServerInfo(t *testing.T) {
+	baseFeeXRP := 0.00001
 	tests := []struct {
 		name          string
 		mockResponse  string
@@ -2275,7 +2276,7 @@ func TestClient_GetServerInfo(t *testing.T) {
 					ServerState: "full",
 					ValidatedLedger: servertypes.ClosedLedger{
 						Age:            2,
-						BaseFeeXRP:     0.00001,
+						BaseFeeXRP:     &baseFeeXRP,
 						Hash:           "4482DEE5362332F54A4036ED57EE1767C9F33CF7CE5A6670355C16CECE381D46",
 						ReserveBaseXRP: 20,
 						ReserveIncXRP:  5,
@@ -2665,6 +2666,7 @@ func TestClient_GetManifest(t *testing.T) {
 }
 
 func TestClient_GetServerState(t *testing.T) {
+	reserveInc := uint(5)
 	tests := []struct {
 		name          string
 		mockResponse  string
@@ -2718,7 +2720,7 @@ func TestClient_GetServerState(t *testing.T) {
 						CloseTime:   638329241,
 						Hash:        "4BC50C9B0D8515D3EAAE1E74B29A95804346C491EE1A95BF25E4AAB854A6A652",
 						ReserveBase: 20,
-						ReserveInc:  5,
+						ReserveInc:  &reserveInc,
 						Seq:         6595042,
 					},
 					ValidationQuorum: 4,

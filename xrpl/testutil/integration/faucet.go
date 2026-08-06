@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"fmt"
+
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
@@ -53,9 +55,25 @@ func (f *Runner) fundWalletWithGenesis(w *wallet.Wallet) error {
 	}
 
 	flatTx := payment.Flatten()
-	_, err = f.TestTransaction(&flatTx, &genesisWallet, "tesSUCCESS", nil)
+	if err := f.client.Autofill(&flatTx); err != nil {
+		return err
+	}
+
+	blob, _, err := genesisWallet.Sign(flatTx)
 	if err != nil {
 		return err
+	}
+
+	response, err := f.client.SubmitTxBlobAndWait(blob, true)
+	if err != nil {
+		return err
+	}
+	if response.Meta.TransactionResult != transaction.TesSUCCESS.String() {
+		return fmt.Errorf(
+			"%w: validated transaction result %q",
+			ErrFailedToFundWallet,
+			response.Meta.TransactionResult,
+		)
 	}
 
 	return nil
