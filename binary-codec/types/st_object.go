@@ -46,7 +46,7 @@ func (t *STObject) FromJSON(json any) ([]byte, error) {
 		if st == nil {
 			return nil, fmt.Errorf("unknown type %q for field %q", v.Type, v.FieldName)
 		}
-    
+
 		var b []byte
 		if v.Type == "UInt64" {
 			b, err = (&UInt64{}).fromJSON(fimap[v], uint64JSONBaseForField(v.FieldName))

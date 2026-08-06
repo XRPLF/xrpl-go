@@ -128,10 +128,10 @@ func TestMPTokenSerialization(t *testing.T) {
 				Flags:             LsfMPTAMM,
 				Account:           types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				MPTokenIssuanceID: types.Hash192("00000002430427B80BD2D09D36B70B969E12801065F22308"),
-				MPTAmount:         1000000,
+				MPTAmount:         "1000000",
 				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
 				PreviousTxnLgrSeq: 234644,
-				OwnerNode:         1,
+				OwnerNode:         "1",
 			},
 			expected: `{
 	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
@@ -139,10 +139,10 @@ func TestMPTokenSerialization(t *testing.T) {
 	"Flags": 4,
 	"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 	"MPTokenIssuanceID": "00000002430427B80BD2D09D36B70B969E12801065F22308",
-	"MPTAmount": 1000000,
+	"MPTAmount": "1000000",
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
-	"OwnerNode": 1
+	"OwnerNode": "1"
 }`,
 		},
 		{
