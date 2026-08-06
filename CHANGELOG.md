@@ -248,6 +248,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Concurrent callers now share one in-flight network identity discovery result, including failures, while later independent operations can retry.
 - Rippled prerelease versions with numeric suffixes now compare the suffix numerically.
 - Made autofill and unsigned signing fail closed when network identity discovery or validation fails, unless `WithNetworkIdentity` supplies an explicit trusted identity.
+- Redacted percent-encoded URL passwords from authorized RPC request errors.
 - Corrected fee precision and rounding with shared exact rational arithmetic, including fractional base fees and load factors, rippled-compatible integer `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Used the normal network fee for `VaultCreate` instead of the incremental owner reserve. The standard `maxFeeXRP` cap now applies. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 - `AutofillMultisigned` now preserves a supplied `Fee`; when absent, it calculates the fee once with the signer count.
