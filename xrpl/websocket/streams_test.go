@@ -170,10 +170,6 @@ func TestClient_StreamHandlersReceiveReportedStreams(t *testing.T) {
 			},
 		},
 		{
-			// TODO: handleStream has no OrderBookStreamType case (it aliases
-			// TransactionStreamType in xrpl/queries/subscription/types), so this
-			// case exercises the handler runner via reportOrderBook directly and
-			// does not cover wire dispatch.
 			name: "orderBook",
 			register: func(c *Client, received chan struct{}) {
 				c.OnOrderBook(func(*streamtypes.OrderBookStream) {
@@ -185,10 +181,6 @@ func TestClient_StreamHandlersReceiveReportedStreams(t *testing.T) {
 			},
 		},
 		{
-			// TODO: handleStream has no BookChangesStreamType case (the type is
-			// not defined in xrpl/queries/subscription/types), so this case
-			// exercises the handler runner via reportBookChanges directly and
-			// does not cover wire dispatch.
 			name: "bookChanges",
 			register: func(c *Client, received chan struct{}) {
 				c.OnBookChanges(func(*streamtypes.BookChangesStream) {
@@ -283,10 +275,6 @@ func TestClient_StreamHandlersReplacePreviousHandler(t *testing.T) {
 			},
 		},
 		{
-			// TODO: handleStream has no OrderBookStreamType case (it aliases
-			// TransactionStreamType in xrpl/queries/subscription/types), so this
-			// case exercises the handler runner via reportOrderBook directly and
-			// does not cover wire dispatch.
 			name: "orderBook",
 			register: func(c *Client, handler func()) {
 				c.OnOrderBook(func(*streamtypes.OrderBookStream) {
@@ -298,10 +286,6 @@ func TestClient_StreamHandlersReplacePreviousHandler(t *testing.T) {
 			},
 		},
 		{
-			// TODO: handleStream has no BookChangesStreamType case (the type is
-			// not defined in xrpl/queries/subscription/types), so this case
-			// exercises the handler runner via reportBookChanges directly and
-			// does not cover wire dispatch.
 			name: "bookChanges",
 			register: func(c *Client, handler func()) {
 				c.OnBookChanges(func(*streamtypes.BookChangesStream) {
@@ -426,20 +410,12 @@ func TestClient_ReportStreamSkipsWhenChannelUnset(t *testing.T) {
 			},
 		},
 		{
-			// TODO: handleStream has no OrderBookStreamType case (it aliases
-			// TransactionStreamType in xrpl/queries/subscription/types), so this
-			// case exercises the handler runner via reportOrderBook directly and
-			// does not cover wire dispatch.
 			name: "orderBook",
 			report: func(c *Client) {
 				c.reportOrderBook(c.lifecycleContext(), &streamtypes.OrderBookStream{})
 			},
 		},
 		{
-			// TODO: handleStream has no BookChangesStreamType case (the type is
-			// not defined in xrpl/queries/subscription/types), so this case
-			// exercises the handler runner via reportBookChanges directly and
-			// does not cover wire dispatch.
 			name: "bookChanges",
 			report: func(c *Client) {
 				c.reportBookChanges(c.lifecycleContext(), &streamtypes.BookChangesStream{})
@@ -895,10 +871,6 @@ func TestClient_ReportStreamAfterDisconnectDoesNotBlock(t *testing.T) {
 			},
 		},
 		{
-			// TODO: handleStream has no OrderBookStreamType case (it aliases
-			// TransactionStreamType in xrpl/queries/subscription/types), so this
-			// case exercises the handler runner via reportOrderBook directly and
-			// does not cover wire dispatch.
 			name: "orderBook",
 			register: func(c *Client) {
 				c.OnOrderBook(func(*streamtypes.OrderBookStream) {})
@@ -908,10 +880,6 @@ func TestClient_ReportStreamAfterDisconnectDoesNotBlock(t *testing.T) {
 			},
 		},
 		{
-			// TODO: handleStream has no BookChangesStreamType case (the type is
-			// not defined in xrpl/queries/subscription/types), so this case
-			// exercises the handler runner via reportBookChanges directly and
-			// does not cover wire dispatch.
 			name: "bookChanges",
 			register: func(c *Client) {
 				c.OnBookChanges(func(*streamtypes.BookChangesStream) {})

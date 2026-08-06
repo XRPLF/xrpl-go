@@ -77,6 +77,17 @@ func (p *pendingResponse) cancel() {
 }
 
 // Client is a WebSocket client for interacting with an XRPL server.
+//
+// Each On* handler is invoked on its own per-stream delivery goroutine, not on
+// the socket reader goroutine. Calls to one handler are serialized in wire
+// order, while handlers for different streams may run concurrently and have no
+// global ordering guarantee. Delivery uses an unbuffered handoff with no event
+// queue: while a handler is running, the reader can continue until the next
+// event for that same handler, at which point that event applies backpressure
+// to the shared reader and can delay all stream and request dispatch. Handlers
+// should offload long-running work when that backpressure is undesirable.
+// Automatic reconnect preserves On* handler registrations but does not replay
+// server-side subscriptions. Callers must resubscribe after reconnect.
 type Client struct {
 	cfg  ClientConfig
 	conn *Connection
@@ -905,7 +916,9 @@ func (c *Client) awaitResponse(ctx context.Context, response *pendingResponse) (
 
 func (c *Client) handleMessage(ctx context.Context, message []byte) {
 	var stream wstypes.Message
-	c.unmarshalMessage(ctx, message, &stream)
+	if !c.unmarshalMessage(ctx, message, &stream) {
+		return
+	}
 	if stream.IsRequest() {
 		c.handleRequest(ctx, message)
 	} else if stream.IsStream() {
@@ -915,7 +928,9 @@ func (c *Client) handleMessage(ctx context.Context, message []byte) {
 
 func (c *Client) handleRequest(ctx context.Context, message []byte) {
 	var res ClientResponse
-	c.unmarshalMessage(ctx, message, &res)
+	if !c.unmarshalMessage(ctx, message, &res) {
+		return
+	}
 	response, ok := c.lookupPendingResponse(res.ID)
 	if !ok {
 		return
@@ -924,34 +939,55 @@ func (c *Client) handleRequest(ctx context.Context, message []byte) {
 	response.complete(pendingResponseResult{response: &res})
 }
 
-func (c *Client) unmarshalMessage(ctx context.Context, message []byte, v any) {
+func (c *Client) unmarshalMessage(ctx context.Context, message []byte, v any) bool {
 	if err := json.Unmarshal(message, v); err != nil {
 		c.reportError(ctx, err)
+		return false
 	}
+	return true
 }
 
 func (c *Client) handleStream(ctx context.Context, t streamtypes.Type, message []byte) {
 	switch t {
 	case streamtypes.LedgerStreamType:
 		var ledger streamtypes.LedgerStream
-		c.unmarshalMessage(ctx, message, &ledger)
-		c.reportLedgerClosed(ctx, &ledger)
+		if c.unmarshalMessage(ctx, message, &ledger) {
+			c.reportLedgerClosed(ctx, &ledger)
+		}
 	case streamtypes.TransactionStreamType:
 		var transactionStream streamtypes.TransactionStream
-		c.unmarshalMessage(ctx, message, &transactionStream)
+		if !c.unmarshalMessage(ctx, message, &transactionStream) {
+			return
+		}
 		c.reportTransaction(ctx, &transactionStream)
+
+		// Order-book subscriptions use the transaction wire type too. The
+		// message does not identify which subscription matched, so dispatch all
+		// transaction messages to both exported transaction handlers.
+		var orderBook streamtypes.OrderBookStream
+		if c.unmarshalMessage(ctx, message, &orderBook) {
+			c.reportOrderBook(ctx, &orderBook)
+		}
 	case streamtypes.ValidationStreamType:
 		var validation streamtypes.ValidationStream
-		c.unmarshalMessage(ctx, message, &validation)
-		c.reportValidationReceived(ctx, &validation)
+		if c.unmarshalMessage(ctx, message, &validation) {
+			c.reportValidationReceived(ctx, &validation)
+		}
 	case streamtypes.PeerStatusStreamType:
 		var peerStatus streamtypes.PeerStatusStream
-		c.unmarshalMessage(ctx, message, &peerStatus)
-		c.reportPeerStatusChange(ctx, &peerStatus)
+		if c.unmarshalMessage(ctx, message, &peerStatus) {
+			c.reportPeerStatusChange(ctx, &peerStatus)
+		}
+	case streamtypes.BookChangesStreamType:
+		var bookChanges streamtypes.BookChangesStream
+		if c.unmarshalMessage(ctx, message, &bookChanges) {
+			c.reportBookChanges(ctx, &bookChanges)
+		}
 	case streamtypes.ConsensusStreamType:
 		var consensus streamtypes.ConsensusStream
-		c.unmarshalMessage(ctx, message, &consensus)
-		c.reportConsensusPhase(ctx, &consensus)
+		if c.unmarshalMessage(ctx, message, &consensus) {
+			c.reportConsensusPhase(ctx, &consensus)
+		}
 	default:
 		c.reportError(ctx, ErrUnknownStreamType{
 			Type: t,
