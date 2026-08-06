@@ -97,8 +97,58 @@ func TestQualityCodec_Decode(t *testing.T) {
 			expectedErr: ErrInvalidQuality,
 		},
 		{
-			name:     "pass - valid zero quality",
+			name:        "fail - invalid quality - malformed hex",
+			input:       "GG00000000000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - odd-length hex",
+			input:       "550000000000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - one decoded byte",
+			input:       "00",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - two decoded bytes",
+			input:       "0000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - three decoded bytes",
+			input:       "000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - four decoded bytes",
+			input:       "00000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - five decoded bytes",
+			input:       "0000000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - six decoded bytes",
+			input:       "000000000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:        "fail - invalid quality - seven decoded bytes",
+			input:       "00000000000000",
+			expectedErr: ErrInvalidQuality,
+		},
+		{
+			name:     "pass - exact eight decoded bytes - zero quality",
 			input:    "5500000000000000",
+			expected: "0",
+		},
+		{
+			name:     "pass - longer input uses final eight decoded bytes",
+			input:    "FF5500000000000000",
 			expected: "0",
 		},
 		{

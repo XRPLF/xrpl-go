@@ -114,8 +114,12 @@ func (p *BinaryParser) Peek() (byte, error) {
 }
 
 // ReadBytes reads the next n bytes in the data.
-// It returns an error if fewer than n bytes are available.
+// It returns an error if n is negative or fewer than n bytes are available.
 func (p *BinaryParser) ReadBytes(n int) ([]byte, error) {
+	if n < 0 {
+		return nil, ErrParserOutOfBound
+	}
+
 	var bytes []byte
 	for range n {
 		b, err := p.ReadByte()

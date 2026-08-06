@@ -58,9 +58,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### address-codec
+
+- Base58Check checksum and family-seed-prefix comparisons now run in constant time (`crypto/subtle`) to avoid leaking timing information while decoding addresses and seeds.
+
 #### binary-codec
 
 - Encoding a field with an unsupported serialized type now returns a descriptive error instead of panicking.
+- `BinaryParser.ReadBytes` now returns `ErrParserOutOfBound` for negative lengths instead of silently returning no data.
+- `DecodeQuality` now returns `ErrInvalidQuality` for malformed hex input or input that decodes to fewer than 8 bytes, instead of returning raw hex errors or panicking on short input.
 
 #### keypairs
 

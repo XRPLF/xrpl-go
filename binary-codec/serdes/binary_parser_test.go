@@ -108,32 +108,40 @@ func TestBinaryParser_ReadByte(t *testing.T) {
 
 func TestBinaryParser_ReadBytes(t *testing.T) {
 	testcases := []struct {
-		name        string
-		input       []byte
-		length      int
-		expected    []byte
-		expectedErr error
+		name            string
+		input           []byte
+		length          int
+		expected        []byte
+		expectedErr     error
+		expectedHasMore bool
 	}{
 		{
-			name:        "fail - no more bytes",
-			input:       []byte{},
-			length:      1,
-			expected:    []byte{},
-			expectedErr: ErrParserOutOfBound,
+			name:            "fail - negative length",
+			input:           []byte{1, 2, 3, 4, 5},
+			length:          -1,
+			expectedErr:     ErrParserOutOfBound,
+			expectedHasMore: true,
 		},
 		{
-			name:        "fail - not enough bytes",
-			input:       []byte{1, 2, 3, 4, 5},
-			length:      6,
-			expected:    []byte{},
-			expectedErr: ErrParserOutOfBound,
+			name:            "pass - zero length",
+			input:           []byte{1, 2, 3, 4, 5},
+			length:          0,
+			expected:        nil,
+			expectedHasMore: true,
 		},
 		{
-			name:        "pass - returns first byte",
-			input:       []byte{1, 2, 3, 4, 5},
-			length:      5,
-			expected:    []byte{1, 2, 3, 4, 5},
-			expectedErr: nil,
+			name:            "pass - exact length",
+			input:           []byte{1, 2, 3, 4, 5},
+			length:          5,
+			expected:        []byte{1, 2, 3, 4, 5},
+			expectedHasMore: false,
+		},
+		{
+			name:            "fail - over-read",
+			input:           []byte{1, 2, 3, 4, 5},
+			length:          6,
+			expectedErr:     ErrParserOutOfBound,
+			expectedHasMore: false,
 		},
 	}
 
@@ -142,12 +150,27 @@ func TestBinaryParser_ReadBytes(t *testing.T) {
 			p := NewBinaryParser(tc.input, definitions.Get())
 			actual, err := p.ReadBytes(tc.length)
 			if tc.expectedErr != nil {
-				require.Error(t, err)
-				return
+				require.ErrorIs(t, err, tc.expectedErr)
+				require.Nil(t, actual)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expected, actual)
 			}
-			require.Equal(t, tc.expected, actual)
+			require.Equal(t, tc.expectedHasMore, p.HasMore())
 		})
 	}
+}
+
+func TestBinaryParser_ReadBytes_NegativeLengthDoesNotConsume(t *testing.T) {
+	input := []byte{1, 2, 3, 4, 5}
+	p := NewBinaryParser(input, definitions.Get())
+
+	_, err := p.ReadBytes(-1)
+	require.ErrorIs(t, err, ErrParserOutOfBound)
+
+	remaining, err := p.ReadBytes(len(input))
+	require.NoError(t, err)
+	require.Equal(t, input, remaining)
 }
 
 func TestBinaryParser_HasMore(t *testing.T) {
