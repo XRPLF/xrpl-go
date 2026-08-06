@@ -247,62 +247,125 @@ func validateUnsignedSimulateTx(tx transaction.FlatTransaction) error {
 		}
 	}
 
-	signers, present := tx["Signers"]
-	if !present {
-		return nil
+	if signers, present := tx["Signers"]; present {
+		if err := validateUnsignedSimulateSigners(signers, "Signers"); err != nil {
+			return err
+		}
 	}
 
+	if batchSigners, present := tx["BatchSigners"]; present {
+		if err := validateUnsignedSimulateBatchSigners(batchSigners); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type simulateSignerFields struct {
+	SigningPubKey json.RawMessage `json:"SigningPubKey"`
+	TxnSignature  json.RawMessage `json:"TxnSignature"`
+}
+
+type simulateSignerEntry struct {
+	Signer *simulateSignerFields `json:"Signer"`
+}
+
+type simulateBatchSignerFields struct {
+	SigningPubKey json.RawMessage `json:"SigningPubKey"`
+	TxnSignature  json.RawMessage `json:"TxnSignature"`
+	Signers       json.RawMessage `json:"Signers"`
+}
+
+type simulateBatchSignerEntry struct {
+	BatchSigner *simulateBatchSignerFields `json:"BatchSigner"`
+}
+
+func validateUnsignedSimulateSigners(signers any, field string) error {
 	data, err := json.Marshal(signers)
 	if err != nil {
-		return fmt.Errorf("%w: Signers: %w", ErrInvalidSimulateTxJSON, err)
+		return fmt.Errorf("%w: %s: %w", ErrInvalidSimulateTxJSON, field, err)
 	}
 	if string(data) == "null" {
-		return fmt.Errorf("%w: Signers must be an array", ErrInvalidSimulateTxJSON)
+		return fmt.Errorf("%w: %s must be an array", ErrInvalidSimulateTxJSON, field)
 	}
 
-	type signerFields struct {
-		SigningPubKey json.RawMessage `json:"SigningPubKey"`
-		TxnSignature  json.RawMessage `json:"TxnSignature"`
-	}
-	type signerEntry struct {
-		Signer *signerFields `json:"Signer"`
-	}
-	entries := make([]signerEntry, 0)
+	entries := make([]simulateSignerEntry, 0)
 	if err := json.Unmarshal(data, &entries); err != nil {
-		return fmt.Errorf("%w: Signers must be an array of Signer objects: %w", ErrInvalidSimulateTxJSON, err)
-	}
-
-	decodeString := func(raw json.RawMessage, field string) (string, bool, error) {
-		if len(raw) == 0 {
-			return "", false, nil
-		}
-		var value string
-		if err := json.Unmarshal(raw, &value); err != nil {
-			return "", true, fmt.Errorf("%w: %s must be a string", ErrInvalidSimulateTxJSON, field)
-		}
-		return value, true, nil
+		return fmt.Errorf("%w: %s must be an array of Signer objects: %w", ErrInvalidSimulateTxJSON, field, err)
 	}
 
 	for i, entry := range entries {
+		signerField := fmt.Sprintf("%s[%d].Signer", field, i)
 		if entry.Signer == nil {
-			return fmt.Errorf("%w: Signers[%d].Signer must be an object", ErrInvalidSimulateTxJSON, i)
+			return fmt.Errorf("%w: %s must be an object", ErrInvalidSimulateTxJSON, signerField)
 		}
 
-		if _, _, err := decodeString(entry.Signer.SigningPubKey, fmt.Sprintf("Signers[%d].Signer.SigningPubKey", i)); err != nil {
+		if _, _, err := decodeSimulateString(entry.Signer.SigningPubKey, signerField+".SigningPubKey"); err != nil {
 			return err
 		}
-		signature, signaturePresent, err := decodeString(
-			entry.Signer.TxnSignature,
-			fmt.Sprintf("Signers[%d].Signer.TxnSignature", i),
+		signature, signaturePresent, err := decodeSimulateString(entry.Signer.TxnSignature, signerField+".TxnSignature")
+		if err != nil {
+			return err
+		}
+		if signaturePresent && signature != "" {
+			return fmt.Errorf("%w: %s.TxnSignature is non-empty", ErrSignedSimulateTransaction, signerField)
+		}
+	}
+	return nil
+}
+
+func validateUnsignedSimulateBatchSigners(batchSigners any) error {
+	data, err := json.Marshal(batchSigners)
+	if err != nil {
+		return fmt.Errorf("%w: BatchSigners: %w", ErrInvalidSimulateTxJSON, err)
+	}
+	if string(data) == "null" {
+		return fmt.Errorf("%w: BatchSigners must be an array", ErrInvalidSimulateTxJSON)
+	}
+
+	entries := make([]simulateBatchSignerEntry, 0)
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return fmt.Errorf("%w: BatchSigners must be an array of BatchSigner objects: %w", ErrInvalidSimulateTxJSON, err)
+	}
+
+	for i, entry := range entries {
+		batchSignerField := fmt.Sprintf("BatchSigners[%d].BatchSigner", i)
+		if entry.BatchSigner == nil {
+			return fmt.Errorf("%w: %s must be an object", ErrInvalidSimulateTxJSON, batchSignerField)
+		}
+
+		if _, _, err := decodeSimulateString(entry.BatchSigner.SigningPubKey, batchSignerField+".SigningPubKey"); err != nil {
+			return err
+		}
+		signature, signaturePresent, err := decodeSimulateString(
+			entry.BatchSigner.TxnSignature,
+			batchSignerField+".TxnSignature",
 		)
 		if err != nil {
 			return err
 		}
 		if signaturePresent && signature != "" {
-			return fmt.Errorf("%w: Signers[%d].Signer.TxnSignature is non-empty", ErrSignedSimulateTransaction, i)
+			return fmt.Errorf("%w: %s.TxnSignature is non-empty", ErrSignedSimulateTransaction, batchSignerField)
+		}
+
+		if len(entry.BatchSigner.Signers) > 0 {
+			if err := validateUnsignedSimulateSigners(entry.BatchSigner.Signers, batchSignerField+".Signers"); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
+}
+
+func decodeSimulateString(raw json.RawMessage, field string) (string, bool, error) {
+	if len(raw) == 0 {
+		return "", false, nil
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return "", true, fmt.Errorf("%w: %s must be a string", ErrInvalidSimulateTxJSON, field)
+	}
+	return value, true, nil
 }
 
 func hasNonEmptyStringField(tx transaction.FlatTransaction, field string) bool {

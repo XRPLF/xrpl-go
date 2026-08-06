@@ -60,6 +60,30 @@ func TestSimulateRequestValidate(t *testing.T) {
 				"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "SigningPubKey": "ED0123", "TxnSignature": "3045022100AB",
 			}}},
 		}}, wantErr: ErrSignedSimulateTransaction},
+		{name: "unsigned JSON BatchSigners remain unsigned", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Batch", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			"BatchSigners": []any{map[string]any{"BatchSigner": map[string]any{
+				"Account": "rLs1MzkFWCxTbuAHgjeTZK4fcCDDnf2KRv", "SigningPubKey": "ED0123", "TxnSignature": "",
+			}}},
+		}}},
+		{name: "signed JSON BatchSigners", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Batch", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			"BatchSigners": []any{map[string]any{"BatchSigner": map[string]any{
+				"Account": "rLs1MzkFWCxTbuAHgjeTZK4fcCDDnf2KRv", "SigningPubKey": "ED0123", "TxnSignature": "3045022100AB",
+			}}},
+		}}, wantErr: ErrSignedSimulateTransaction},
+		{name: "signed nested JSON BatchSigners", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Batch", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			"BatchSigners": []any{map[string]any{"BatchSigner": map[string]any{
+				"Account": "rLs1MzkFWCxTbuAHgjeTZK4fcCDDnf2KRv", "Signers": []any{map[string]any{"Signer": map[string]any{
+					"Account": "rK5VzeCz2zAYvfni1fN6sC2CaqZiXYvS3N", "SigningPubKey": "ED0456", "TxnSignature": "3045022100CD",
+				}}},
+			}}},
+		}}, wantErr: ErrSignedSimulateTransaction},
+		{name: "malformed batch signer signature type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Batch", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			"BatchSigners": []any{map[string]any{"BatchSigner": map[string]any{"TxnSignature": 1}}},
+		}}, wantErr: ErrInvalidSimulateTxJSON},
 		{name: "malformed signature type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TxnSignature": 1,
 		}}, wantErr: ErrInvalidSimulateTxJSON},
