@@ -23,18 +23,18 @@ const (
 
 // Ledger-state mutable flags for MPTokenIssuance (Lsmf prefix).
 const (
-	// LsmfMPTCanMutateCanLock indicates the CanLock property can be mutated.
-	LsmfMPTCanMutateCanLock uint32 = 0x00000002
-	// LsmfMPTCanMutateRequireAuth indicates the RequireAuth property can be mutated.
-	LsmfMPTCanMutateRequireAuth uint32 = 0x00000004
-	// LsmfMPTCanMutateCanEscrow indicates the CanEscrow property can be mutated.
-	LsmfMPTCanMutateCanEscrow uint32 = 0x00000008
-	// LsmfMPTCanMutateCanTrade indicates the CanTrade property can be mutated.
-	LsmfMPTCanMutateCanTrade uint32 = 0x00000010
-	// LsmfMPTCanMutateCanTransfer indicates the CanTransfer property can be mutated.
-	LsmfMPTCanMutateCanTransfer uint32 = 0x00000020
-	// LsmfMPTCanMutateCanClawback indicates the CanClawback property can be mutated.
-	LsmfMPTCanMutateCanClawback uint32 = 0x00000040
+	// LsmfMPTCanEnableCanLock indicates the CanLock property can be enabled.
+	LsmfMPTCanEnableCanLock uint32 = 0x00000002
+	// LsmfMPTCanEnableRequireAuth indicates the RequireAuth property can be enabled.
+	LsmfMPTCanEnableRequireAuth uint32 = 0x00000004
+	// LsmfMPTCanEnableCanEscrow indicates the CanEscrow property can be enabled.
+	LsmfMPTCanEnableCanEscrow uint32 = 0x00000008
+	// LsmfMPTCanEnableCanTrade indicates the CanTrade property can be enabled.
+	LsmfMPTCanEnableCanTrade uint32 = 0x00000010
+	// LsmfMPTCanEnableCanTransfer indicates the CanTransfer property can be enabled.
+	LsmfMPTCanEnableCanTransfer uint32 = 0x00000020
+	// LsmfMPTCanEnableCanClawback indicates the CanClawback property can be enabled.
+	LsmfMPTCanEnableCanClawback uint32 = 0x00000040
 	// LsmfMPTCanMutateMetadata indicates the MPTokenMetadata can be mutated.
 	LsmfMPTCanMutateMetadata uint32 = 0x00010000
 	// LsmfMPTCanMutateTransferFee indicates the TransferFee can be mutated.
@@ -83,8 +83,10 @@ type MPTokenIssuance struct {
 	LockedAmount string `json:",omitempty"`
 	// DomainID is the ledger entry ID of a permissioned domain that grants access to the MPT.
 	DomainID string `json:",omitempty"`
-	// MutableFlags indicates which properties of this MPT can be mutated after creation.
+	// MutableFlags indicates which issuance flags can be enabled, or which fields can be mutated, after creation.
 	MutableFlags uint32 `json:",omitempty"`
+	// ReferenceHolding identifies the ledger entry that holds this issuance's reference balance.
+	ReferenceHolding types.Hash256 `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.

@@ -9,6 +9,9 @@ const (
 	// LsfMPTAuthorized if set, indicates that the issuer has authorized the holder for the MPT. (Only applicable for allow-listing).
 	// This flag can be set using a MPTokenAuthorize transaction; it can also be "un-set" using a MPTokenAuthorize transaction specifying the TfMPTUnauthorize flag.
 	LsfMPTAuthorized uint32 = 0x00000002
+
+	// LsfMPTAMM indicates that the MPToken belongs to an AMM pseudo-account.
+	LsfMPTAMM uint32 = 0x00000004
 )
 
 // An MPToken entry tracks MPTs held by an account that is not the token issuer. You can create or delete an empty MPToken entry by sending an MPTokenAuthorize transaction.
@@ -51,4 +54,9 @@ func (c *MPToken) SetLsfMPTLocked() {
 // SetLsfMPTAuthorized sets the LsfMPTAuthorized flag.
 func (c *MPToken) SetLsfMPTAuthorized() {
 	c.Flags |= LsfMPTAuthorized
+}
+
+// SetLsfMPTAMM sets the LsfMPTAMM flag.
+func (c *MPToken) SetLsfMPTAMM() {
+	c.Flags |= LsfMPTAMM
 }

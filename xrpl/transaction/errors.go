@@ -224,6 +224,8 @@ var (
 	ErrMPTIssuanceCreateMaximumAmountInvalid = errors.New("mptoken issuance create: MaximumAmount must be between 1 and 9223372036854775807")
 	// ErrMPTIssuanceCreateMutableFlagsZero is returned when MutableFlags is set to zero in MPTokenIssuanceCreate.
 	ErrMPTIssuanceCreateMutableFlagsZero = errors.New("mptoken issuance create: MutableFlags cannot be zero")
+	// ErrMPTIssuanceCreateInvalidMutableFlags is returned when MutableFlags contains unsupported bits.
+	ErrMPTIssuanceCreateInvalidMutableFlags = errors.New("mptoken issuance create: MutableFlags contains unsupported flags")
 	// ErrMPTIssuanceCreateDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
 	ErrMPTIssuanceCreateDomainIDInvalid = errors.New("mptoken issuance create: DomainID must be a valid 64-character hexadecimal string")
 	// ErrMPTIssuanceCreateDomainIDRequiresRequireAuth is returned when DomainID is set without enabling TfMPTRequireAuth flag.
@@ -236,10 +238,8 @@ var (
 	ErrMPTIssuanceSetFlagsMutuallyExclusive = errors.New("mptoken issuance set: Flags is mutually exclusive with MutableFlags/MPTokenMetadata/TransferFee")
 	// ErrMPTIssuanceSetMutableFlagsZero is returned when MutableFlags is set to zero.
 	ErrMPTIssuanceSetMutableFlagsZero = errors.New("mptoken issuance set: MutableFlags cannot be zero")
-	// ErrMPTIssuanceSetMutableFlagsConflict is returned when MutableFlags has both set and clear for the same flag.
-	ErrMPTIssuanceSetMutableFlagsConflict = errors.New("mptoken issuance set: cannot set and clear the same flag simultaneously")
-	// ErrMPTIssuanceSetTransferFeeWithClearCanTransfer is returned when a non-zero TransferFee is set together with tmfMPTClearCanTransfer.
-	ErrMPTIssuanceSetTransferFeeWithClearCanTransfer = errors.New("mptoken issuance set: non-zero TransferFee cannot be set together with tmfMPTClearCanTransfer")
+	// ErrMPTIssuanceSetInvalidMutableFlags is returned when MutableFlags contains unsupported bits.
+	ErrMPTIssuanceSetInvalidMutableFlags = errors.New("mptoken issuance set: MutableFlags contains unsupported flags")
 	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string (and not empty).
 	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string or empty")
 

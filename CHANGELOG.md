@@ -9,23 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### binary-codec
+
+- Renamed the `UInt384` and `UInt512` protocol type definitions to `Hash384` and `Hash512`, and removed the `tecHOOK_REJECTED` and `tecNO_DELEGATE_PERMISSION` transaction result mappings.
+
 #### xrpl/ledger-entry-types
 
 - Changed MPT ledger amount fields from `uint64` to quoted base-10 strings. Changed `MPToken.OwnerNode` and `MPTokenIssuance.OwnerNode` from `uint64` to hexadecimal strings.
 - Changed `Oracle.OwnerNode` and `Escrow.IssuerNode` from `uint64` to hexadecimal strings. Changed `PriceData.AssetPrice` from `uint64` to `*uint64`; use `ledger.AssetPrice` to set a value. `PriceData` now decodes `rippled` hexadecimal price strings, preserves absent and explicit zero prices, and omits `Scale` when `AssetPrice` is absent. Added the missing `Oracle.LedgerEntryType` and `Oracle.Flags` fields.
+- Renamed the six Dynamic MPT capability constants from `LsmfMPTCanMutate*` to `LsmfMPTCanEnable*`. The metadata and transfer-fee constants retain their `LsmfMPTCanMutate*` names.
 
 #### xrpl/transaction
 
+- Renamed the six `MPTokenIssuanceCreate` capability constants and setters from `TmfMPTCanMutate*`/`SetMPTCanMutate*` to `TmfMPTCanEnable*`/`SetMPTCanEnable*`. Metadata and transfer-fee mutation names are unchanged.
+- Removed the six `TmfMPTClear*` constants and corresponding `MPTokenIssuanceSet` clear methods; Dynamic MPT capability flags can now only be enabled.
+- Changed the `MPTokenIssuanceSet` mutable-flag values to a contiguous mask: `TmfMPTSetCanLock` (`0x01`), `TmfMPTSetRequireAuth` (`0x02`), `TmfMPTSetCanEscrow` (`0x04`), `TmfMPTSetCanTrade` (`0x08`), `TmfMPTSetCanTransfer` (`0x10`), and `TmfMPTSetCanClawback` (`0x20`).
+- Removed `ErrMPTIssuanceSetMutableFlagsConflict` and `ErrMPTIssuanceSetTransferFeeWithClearCanTransfer` along with the set/clear validation model.
 - Added `types.MPTAmount` for quoted base-10 MPT values and changed `MPTokenIssuanceCreate.MaximumAmount` from `*types.XRPCurrencyAmount` to `*types.MPTAmount`. When present, `MaximumAmount` must be in the range `1..2^63-1`.
 
 ### Added
+
+#### binary-codec
+
+- Added serialization definitions for `ReferenceHolding`, `TakerPaysMPT`, and `TakerGetsMPT`.
 
 #### keypairs
 
 - Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
 
+#### xrpl/ledger-entry-types
+
+- Added `MPTokenIssuance.ReferenceHolding`, `DirectoryNode.TakerPaysMPT`, and `DirectoryNode.TakerGetsMPT`, plus the `LsfMPTAMM` flag and `SetLsfMPTAMM` setter for AMM-owned MPT holdings.
+
 #### xrpl/transaction
 
+- Added `ErrMPTIssuanceCreateInvalidMutableFlags` and `ErrMPTIssuanceSetInvalidMutableFlags` for unsupported Dynamic MPT flag bits.
 - Added MPT amount and `Holder` support to `Clawback`, including JSON, binary encoding, signing, and validation. Validation rejects invalid issuer and holder combinations, invalid or zero amounts, and XRP amounts.
 
 ### Changed
@@ -34,10 +52,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `UInt64` serialization is now field-aware. MPT amount fields (`MaximumAmount`, `OutstandingAmount`, `MPTAmount`, and `LockedAmount`) use quoted base-10 strings, while other `UInt64` fields use hexadecimal strings.
 - Issued-currency amounts now accept tagless mainnet and testnet X-address issuers and encode the underlying AccountID. Issuers with embedded tags are rejected.
+- Expanded the embedded protocol definitions with account-set, ledger-entry, and transaction flag maps; ledger-entry and transaction format maps; and updated protocol type and transaction result mappings.
 
 #### dependencies
 
 - Raised the minimum Go version to 1.25.12 and upgraded `golang.org/x/crypto` to v0.54.0, incorporating upstream standard-library and SSH security fixes.
+
+#### xrpl/transaction
+
+- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `MutableFlags` bits in addition to an explicitly zero mask.
 
 ### Fixed
 
@@ -47,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
+- Encoding a field with an unsupported serialized type now returns a descriptive error instead of panicking.
 - `BinaryParser.ReadBytes` now returns `ErrParserOutOfBound` for negative lengths instead of silently returning no data.
 - `DecodeQuality` now returns `ErrInvalidQuality` for malformed hex input or input that decodes to fewer than 8 bytes, instead of returning raw hex errors or panicking on short input.
 
@@ -735,7 +759,7 @@ Support for the XLS-77d (deep freeze)
 
 ## [v0.1.3]
 
-### Added
+### Added
 
 - Added `APIVersion` field to the `Client` struct.
 - Added `RippledAPIV1` and `RippledAPIV2` constants.

@@ -42,6 +42,34 @@ func TestOfferDirectoryNode(t *testing.T) {
 	}
 }
 
+func TestMPTOfferDirectoryNode(t *testing.T) {
+	var s Object = &DirectoryNode{
+		Flags: 0,
+		Indexes: []types.Hash256{
+			"AD7EAE148287EF12D213A251015F86E6D4BD34B3C4A0A1ED9A17198373F908AD",
+		},
+		LedgerEntryType: DirectoryNodeEntry,
+		RootIndex:       "1BBEF97EDE88D40CEE2ADE6FEF121166AFE80D99EBADB01A4F069BA8FF484000",
+		TakerGetsMPT:    "00000003430427B80BD2D09D36B70B969E12801065F22308",
+		TakerPaysMPT:    "00000002430427B80BD2D09D36B70B969E12801065F22308",
+	}
+
+	j := `{
+	"Flags": 0,
+	"Indexes": [
+		"AD7EAE148287EF12D213A251015F86E6D4BD34B3C4A0A1ED9A17198373F908AD"
+	],
+	"LedgerEntryType": "DirectoryNode",
+	"RootIndex": "1BBEF97EDE88D40CEE2ADE6FEF121166AFE80D99EBADB01A4F069BA8FF484000",
+	"TakerGetsMPT": "00000003430427B80BD2D09D36B70B969E12801065F22308",
+	"TakerPaysMPT": "00000002430427B80BD2D09D36B70B969E12801065F22308"
+}`
+
+	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestOwnerDirectoryNode(t *testing.T) {
 	var s Object = &DirectoryNode{
 		Flags: 0,
