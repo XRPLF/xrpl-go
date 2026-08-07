@@ -59,7 +59,7 @@ var (
 	// ErrRawTransactionFieldIsNotAnObject indicates a malformed inner Batch wrapper.
 	ErrRawTransactionFieldIsNotAnObject = errors.New("field RawTransaction must be an object")
 	// ErrBatchRawTransactionsCount indicates that a Batch has fewer than two or more than eight inner transactions.
-	ErrBatchRawTransactionsCount = errors.New("Batch RawTransactions must contain between 2 and 8 transactions")
+	ErrBatchRawTransactionsCount = errors.New("batch RawTransactions must contain between 2 and 8 transactions")
 	// ErrSigningPubKeyFieldMustBeEmpty indicates that an inner Batch SigningPubKey is not an empty string.
 	ErrSigningPubKeyFieldMustBeEmpty = errors.New("field SigningPubKey must be empty")
 	// ErrTxnSignatureFieldMustBeEmpty indicates that an inner Batch contains a forbidden TxnSignature field.

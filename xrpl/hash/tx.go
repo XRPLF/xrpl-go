@@ -4,9 +4,9 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"maps"
-	"reflect"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 )
@@ -58,7 +58,7 @@ func encodeSignedTxBlob(txBlob string) (string, error) {
 }
 
 func validateHashableTransactionForm(tx map[string]any) error {
-	txType, ok := transactionTypeString(tx["TransactionType"])
+	txType, ok := typecheck.ToString(tx["TransactionType"])
 	if ok && transaction.IsPseudoTransactionType(transaction.TxType(txType)) {
 		if signingPubKey, present := tx["SigningPubKey"]; present {
 			value, isString := signingPubKey.(string)
@@ -86,17 +86,6 @@ func validateHashableTransactionForm(tx map[string]any) error {
 	return nil
 }
 
-func transactionTypeString(value any) (string, bool) {
-	if txType, ok := value.(string); ok {
-		return txType, true
-	}
-	reflected := reflect.ValueOf(value)
-	if reflected.IsValid() && reflected.Kind() == reflect.String {
-		return reflected.String(), true
-	}
-	return "", false
-}
-
 func normalizeTransactionType(tx map[string]any) map[string]any {
 	txTypeValue, present := tx["TransactionType"]
 	if !present {
@@ -105,7 +94,7 @@ func normalizeTransactionType(tx map[string]any) map[string]any {
 	if _, plainString := txTypeValue.(string); plainString {
 		return tx
 	}
-	txType, ok := transactionTypeString(txTypeValue)
+	txType, ok := typecheck.ToString(txTypeValue)
 	if !ok {
 		return tx
 	}

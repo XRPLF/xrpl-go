@@ -21,14 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
-- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form; `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
+- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form, `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
 - `DeliverMax` normalization is Payment-only. Other transaction types do not rewrite this field.
 
 #### xrpl/websocket
 
 - Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. These fields keep the configured or first-discovered identity. Use `CurrentNetworkIdentity` for the latest identity after a reconnect. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
 - Changed `Client.Connect` to request `server_info` before it starts the background reader. A request, response, or identity failure now fails `Connect` and closes the new connection. A missing `network_id` fails with `ErrNetworkIDUnavailable`.
-- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form; `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
+- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form, `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
 - `DeliverMax` normalization is Payment-only. Other transaction types do not rewrite this field.
 
 ### Added
@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### keypairs
 
 - Added `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat`, which wrap `ErrInvalidCryptoImplementation` for backward-compatible `errors.Is` checks without exposing key material.
+
+#### pkg/typecheck
+
+- Added `ToString` to convert plain and named string values through one shared helper.
 
 #### xrpl/transaction
 
@@ -99,7 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
-- Encoded the empty `Account` of `UNLModify` pseudo-transactions through a transaction-boundary raw field-value override, keeping generic `STObject` encoding transaction-agnostic and rippled-compatible. `UNLModify` now accepts an absent `Account`, an empty string, or the canonical XRPL zero account, including equivalent named strings; other supplied values return `ErrInvalidUNLModifyAccount` without changing caller data.
+- Encoded the empty `Account` of `UNLModify` pseudo-transactions through a transaction-boundary raw field-value override, keeping generic `STObject` encoding transaction-agnostic and rippled-compatible. `UNLModify` now accepts an absent `Account`, an empty string, or the canonical XRPL zero account, including equivalent named strings, other supplied values return `ErrInvalidUNLModifyAccount` without changing caller data.
 - `Decode` now returns an error for malformed `Vector256` fields whose byte length is not a multiple of 32 instead of panicking.
 
 #### xrpl/internal/client
@@ -107,10 +111,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preserved recovered binary codec error identity during transaction blob decoding so callers can use `errors.Is` and `errors.As`, while converting non-error panic values to ordinary errors.
 - Centralized Batch inner traversal and validation for RPC and WebSocket autofill, and removed the duplicate NetworkID policy application.
 - Shared DeliverMax conflict, signed-Batch count, and non-multisigned transaction error identities across both public clients.
+- Normalized the Batch transaction count error text to the Go error-string convention while preserving sentinel identity.
 
 #### xrpl/hash
 
-- Restored transaction ID calculation for `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions while preserving strict validation for user transactions. Pseudo-transactions now accept only an absent or empty `SigningPubKey` and reject any `TxnSignature` or `Signers`; named string `TransactionType` map values are supported without changing caller data.
+- Restored transaction ID calculation for `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions while preserving strict validation for user transactions. Pseudo-transactions now accept only an absent or empty `SigningPubKey` and reject any `TxnSignature` or `Signers`, named string `TransactionType` map values are supported without changing caller data.
 
 #### xrpl/transaction
 
@@ -121,7 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Made autofill and unsigned signing fail closed when network identity discovery or validation fails, unless `WithNetworkIdentity` supplies an explicit trusted identity.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Kept the `VaultCreate` fee at one incremental owner reserve. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
-- `AutofillMultisigned` now preserves a supplied `Fee`; when absent, it calculates the fee once with the signer count.
+- `AutofillMultisigned` now preserves a supplied `Fee`, when absent, it calculates the fee once with the signer count.
 - `SubmitTxBlobAndWait` now decodes the signed blob once and uses the decoded transaction for preflight and hashing.
 - Autofill now normalizes named string address values, such as `types.Address`, before account checks.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
@@ -136,7 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Kept the `VaultCreate` fee at one incremental owner reserve. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
-- `AutofillMultisigned` now preserves a supplied `Fee`; when absent, it calculates the fee once with the signer count.
+- `AutofillMultisigned` now preserves a supplied `Fee`, when absent, it calculates the fee once with the signer count.
 - `SubmitTxBlobAndWait` now decodes the signed blob once and uses the decoded transaction for preflight and hashing.
 
 ## [v0.2.0]

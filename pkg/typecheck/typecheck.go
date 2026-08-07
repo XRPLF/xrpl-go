@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"math/big"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,6 +21,20 @@ func IsUint8(num any) bool {
 func IsString(str any) bool {
 	_, ok := str.(string)
 	return ok
+}
+
+// ToString converts a plain or named string value to a string. The second
+// return value reports whether the value has a string underlying type.
+func ToString(value any) (string, bool) {
+	if value, ok := value.(string); ok {
+		return value, true
+	}
+
+	reflected := reflect.ValueOf(value)
+	if reflected.IsValid() && reflected.Kind() == reflect.String {
+		return reflected.String(), true
+	}
+	return "", false
 }
 
 // IsUint32 checks if the given interface is a uint32.

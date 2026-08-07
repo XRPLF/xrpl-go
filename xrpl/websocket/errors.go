@@ -26,6 +26,7 @@ var (
 	// ErrTransactionNotMultisigned is returned when SubmitMultisigned receives a transaction in another signing form.
 	ErrTransactionNotMultisigned = clientinternal.ErrTransactionNotMultisigned
 	// ErrSignerDataIsEmpty is a compatibility alias for ErrTransactionNotMultisigned.
+	//
 	// Deprecated: Use ErrTransactionNotMultisigned.
 	ErrSignerDataIsEmpty = ErrTransactionNotMultisigned
 	// ErrMissingLastLedgerSequenceInTransaction is returned when LastLedgerSequence is missing from a transaction.
