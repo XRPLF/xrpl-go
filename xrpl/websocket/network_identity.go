@@ -10,11 +10,38 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/server"
 )
 
+// NetworkIdentity is a concurrency-safe snapshot of the latest network
+// identity known to a WebSocket client.
+type NetworkIdentity struct {
+	// NetworkID is nil only when no network ID is available. A pointer to zero is
+	// the mainnet ID.
+	NetworkID *uint32
+	// BuildVersion is the rippled-compatible server version used for NetworkID
+	// policy. For Clio servers, it can come from rippled_version.
+	BuildVersion string
+}
+
 type networkIdentityState struct {
 	mu      sync.Mutex
 	ready   bool
 	trusted bool
 	current clientinternal.NetworkIdentity
+}
+
+// CurrentNetworkIdentity returns the latest configured or discovered identity.
+// Reconnect discovery can update this value without changing the stable
+// Client.NetworkID and Client.BuildVersion fields. The returned NetworkID is a
+// copy and can be changed by the caller. ErrNetworkIDUnavailable is returned
+// before identity configuration or discovery completes.
+func (c *Client) CurrentNetworkIdentity() (NetworkIdentity, error) {
+	identity, err := c.networkIdentity()
+	if err != nil {
+		return NetworkIdentity{}, err
+	}
+	return NetworkIdentity{
+		NetworkID:    clientinternal.CloneNetworkID(identity.NetworkID),
+		BuildVersion: identity.BuildVersion,
+	}, nil
 }
 
 // prepareNetworkIdentity returns a configured identity or performs the
@@ -98,7 +125,7 @@ func (c *Client) discoverNetworkIdentity(override *uint32) (clientinternal.Netwo
 	}
 	return clientinternal.ResolveNetworkIdentity(override, clientinternal.NetworkIdentity{
 		NetworkID:    serverInfo.Info.NetworkID,
-		BuildVersion: serverInfo.Info.BuildVersion,
+		BuildVersion: serverInfo.Info.ServerVersion(),
 	})
 }
 

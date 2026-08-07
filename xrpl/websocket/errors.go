@@ -156,11 +156,20 @@ func (e ErrUnknownStreamType) Error() string {
 // ErrMaxReconnectionAttemptsReached is returned when maximum reconnection attempts are reached.
 type ErrMaxReconnectionAttemptsReached struct {
 	Attempts int
+	Err      error
 }
 
-// Error implements the error interface for ErrMaxReconnectionAttemptsReached
+// Error implements the error interface for ErrMaxReconnectionAttemptsReached.
 func (e ErrMaxReconnectionAttemptsReached) Error() string {
-	return fmt.Sprintf("max reconnection attempts reached: %d", e.Attempts)
+	if e.Err == nil {
+		return fmt.Sprintf("max reconnection attempts reached: %d", e.Attempts)
+	}
+	return fmt.Sprintf("max reconnection attempts reached: %d: %v", e.Attempts, e.Err)
+}
+
+// Unwrap returns the last connection or network identity failure.
+func (e ErrMaxReconnectionAttemptsReached) Unwrap() error {
+	return e.Err
 }
 
 // ErrFailedToParseFee is returned when fee parsing fails.

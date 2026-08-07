@@ -3,10 +3,12 @@ package websocket
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/testutil"
@@ -16,6 +18,70 @@ import (
 
 func uint32Pointer(value uint32) *uint32 {
 	return &value
+}
+
+func boolPointer(value bool) *bool {
+	return &value
+}
+
+func TestClientCurrentNetworkIdentityBeforeReady(t *testing.T) {
+	cl := NewClient(*NewClientConfig())
+
+	identity, err := cl.CurrentNetworkIdentity()
+
+	require.ErrorIs(t, err, ErrNetworkIDUnavailable)
+	require.Nil(t, identity.NetworkID)
+	require.Empty(t, identity.BuildVersion)
+}
+
+func TestClientCurrentNetworkIdentityConcurrentRefresh(t *testing.T) {
+	cl := NewClient(*NewClientConfig())
+	cl.storeDiscoveredNetworkIdentity(clientNetworkIdentity(1, "1.12.0"))
+
+	const iterations = 1_000
+	var invalidSnapshots atomic.Int32
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		<-start
+		for i := range iterations {
+			if i%2 == 0 {
+				cl.storeDiscoveredNetworkIdentity(clientNetworkIdentity(1, "1.12.0"))
+				continue
+			}
+			cl.storeDiscoveredNetworkIdentity(clientNetworkIdentity(2, "1.13.0"))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		<-start
+		for range iterations {
+			identity, err := cl.CurrentNetworkIdentity()
+			if err != nil || identity.NetworkID == nil {
+				invalidSnapshots.Add(1)
+				continue
+			}
+			if (*identity.NetworkID == 1 && identity.BuildVersion != "1.12.0") ||
+				(*identity.NetworkID == 2 && identity.BuildVersion != "1.13.0") ||
+				(*identity.NetworkID != 1 && *identity.NetworkID != 2) {
+				invalidSnapshots.Add(1)
+			}
+		}
+	}()
+
+	close(start)
+	wg.Wait()
+	require.Zero(t, invalidSnapshots.Load())
+}
+
+func clientNetworkIdentity(networkID uint32, buildVersion string) clientinternal.NetworkIdentity {
+	return clientinternal.NetworkIdentity{
+		NetworkID:    uint32Pointer(networkID),
+		BuildVersion: buildVersion,
+	}
 }
 
 func setTrustedTestNetworkIdentity(cl *Client, networkID uint32) {
@@ -46,18 +112,19 @@ func (r *reconnectGateRequest) APIVersion() int {
 
 func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 	tests := []struct {
-		name             string
-		result           map[string]any
-		responseError    string
-		override         *uint32
-		buildOverride    string
-		expectedID       *uint32
-		expectedBuild    string
-		expectedErr      error
-		expectedErrText  string
-		expectedRequests int32
-		preserveOverride bool
-		trustedConfig    bool
+		name                      string
+		result                    map[string]any
+		responseError             string
+		override                  *uint32
+		buildOverride             string
+		expectedID                *uint32
+		expectedBuild             string
+		expectedErr               error
+		expectedErrText           string
+		expectedRequests          int32
+		expectedNetworkIDRequired *bool
+		preserveOverride          bool
+		trustedConfig             bool
 	}{
 		{
 			name: "valid mainnet zero",
@@ -68,6 +135,29 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 			expectedID:       uint32Pointer(0),
 			expectedBuild:    "1.12.0",
 			expectedRequests: 1,
+		},
+		{
+			name: "Clio rippled version fallback",
+			result: map[string]any{"info": map[string]any{
+				"network_id":      uint32(21337),
+				"rippled_version": "1.12.0",
+			}},
+			expectedID:                uint32Pointer(21337),
+			expectedBuild:             "1.12.0",
+			expectedRequests:          1,
+			expectedNetworkIDRequired: boolPointer(true),
+		},
+		{
+			name: "build version preferred over rippled version",
+			result: map[string]any{"info": map[string]any{
+				"network_id":      uint32(21337),
+				"build_version":   "1.10.0",
+				"rippled_version": "1.12.0",
+			}},
+			expectedID:                uint32Pointer(21337),
+			expectedBuild:             "1.10.0",
+			expectedRequests:          1,
+			expectedNetworkIDRequired: boolPointer(false),
 		},
 		{
 			name: "missing network ID",
@@ -186,6 +276,11 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 				require.NoError(t, identityErr)
 				require.Equal(t, *tt.expectedID, *identity.NetworkID)
 				require.Equal(t, tt.expectedBuild, identity.BuildVersion)
+				if tt.expectedNetworkIDRequired != nil {
+					required, policyErr := clientinternal.NetworkIDRequired(identity)
+					require.NoError(t, policyErr)
+					require.Equal(t, *tt.expectedNetworkIDRequired, required)
+				}
 			}
 
 			if err != nil {
@@ -266,11 +361,16 @@ func TestClientReconnectRediscoversNetworkIdentity(t *testing.T) {
 		if err := conn.ReadJSON(&request); err != nil {
 			return
 		}
+		networkID := uint32(1)
+		buildVersion := "1.12.0"
+		if connectionNumber == 2 {
+			buildVersion = "1.13.0"
+		}
 		if err := conn.WriteJSON(map[string]any{
 			"id": request["id"],
 			"result": map[string]any{"info": map[string]any{
-				"network_id":    uint32(1),
-				"build_version": "1.12.0",
+				"network_id":    networkID,
+				"build_version": buildVersion,
 			}},
 		}); err != nil {
 			return
@@ -297,7 +397,84 @@ func TestClientReconnectRediscoversNetworkIdentity(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("reconnect did not rediscover network identity")
 	}
+	require.Eventually(t, func() bool {
+		identity, err := cl.CurrentNetworkIdentity()
+		return err == nil && identity.NetworkID != nil && identity.BuildVersion == "1.13.0"
+	}, time.Second, time.Millisecond)
 	require.Equal(t, int32(2), connectionCount.Load())
+
+	// Exported fields retain the first discovery value for compatibility and to
+	// keep concurrent reads safe after Connect.
+	require.NotNil(t, cl.NetworkID)
+	require.Equal(t, uint32(1), *cl.NetworkID)
+	require.Equal(t, "1.12.0", cl.BuildVersion)
+
+	identity, err := cl.CurrentNetworkIdentity()
+	require.NoError(t, err)
+	require.NotNil(t, identity.NetworkID)
+	require.Equal(t, uint32(1), *identity.NetworkID)
+	require.Equal(t, "1.13.0", identity.BuildVersion)
+
+	// The public snapshot must not alias the client's internal pointer.
+	*identity.NetworkID = 99
+	identity, err = cl.CurrentNetworkIdentity()
+	require.NoError(t, err)
+	require.Equal(t, uint32(1), *identity.NetworkID)
+}
+
+func TestClientReconnectReportsLastNetworkIdentityFailure(t *testing.T) {
+	var connectionCount atomic.Int32
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		connectionNumber := connectionCount.Add(1)
+		request := make(map[string]any)
+		if err := conn.ReadJSON(&request); err != nil {
+			return
+		}
+		info := map[string]any{"build_version": "1.12.0"}
+		if connectionNumber == 1 {
+			info["network_id"] = uint32(1)
+		}
+		if err := conn.WriteJSON(map[string]any{
+			"id":     request["id"],
+			"result": map[string]any{"info": info},
+		}); err != nil {
+			return
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	t.Cleanup(swapReconnectDelays(time.Millisecond, time.Millisecond))
+	cl := NewClient(NewClientConfig().WithHost(url).WithMaxReconnects(1).WithTimeout(time.Second))
+
+	errCh := make(chan error, 1)
+	cl.OnError(func(err error) {
+		select {
+		case errCh <- err:
+		default:
+		}
+	})
+
+	require.NoError(t, cl.Connect())
+	defer cl.Disconnect()
+	select {
+	case got := <-errCh:
+		var maxErr ErrMaxReconnectionAttemptsReached
+		require.ErrorAs(t, got, &maxErr)
+		require.Equal(t, 1, maxErr.Attempts)
+		require.ErrorIs(t, got, ErrNetworkIDUnavailable)
+		require.ErrorIs(t, maxErr.Err, ErrNetworkIDUnavailable)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for reconnect identity failure")
+	}
 }
 
 func TestClientReconnectBlocksRequestsDuringNetworkIdentityDiscovery(t *testing.T) {
@@ -470,6 +647,106 @@ func TestClientConnectRejectsAlreadyConnected(t *testing.T) {
 	require.True(t, cl.IsConnected())
 	require.Equal(t, int32(1), connectionCount.Load())
 	require.NoError(t, cl.Disconnect())
+}
+
+func TestClientConcurrentConnectKeepsOneSocket(t *testing.T) {
+	var connectionCount atomic.Int32
+	identityRequestReceived := make(chan struct{})
+	releaseIdentityResponse := make(chan struct{})
+	var releaseIdentityResponseOnce sync.Once
+	releaseIdentityHandshake := func() {
+		releaseIdentityResponseOnce.Do(func() {
+			close(releaseIdentityResponse)
+		})
+	}
+	t.Cleanup(releaseIdentityHandshake)
+	serverErr := make(chan error, 1)
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+		defer conn.Close()
+
+		if connectionCount.Add(1) != 1 {
+			return
+		}
+		request := make(map[string]any)
+		if err := conn.ReadJSON(&request); err != nil {
+			serverErr <- err
+			return
+		}
+		close(identityRequestReceived)
+		<-releaseIdentityResponse
+		if err := conn.WriteJSON(map[string]any{
+			"id": request["id"],
+			"result": map[string]any{"info": map[string]any{
+				"network_id":    uint32(1),
+				"build_version": "1.12.0",
+			}},
+		}); err != nil {
+			serverErr <- err
+			return
+		}
+		if _, _, err := conn.ReadMessage(); err != nil {
+			return
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cl := NewClient(NewClientConfig().WithHost(url).WithTimeout(time.Second))
+
+	firstResult := make(chan error, 1)
+	go func() {
+		firstResult <- cl.Connect()
+	}()
+	select {
+	case <-identityRequestReceived:
+	case <-time.After(time.Second):
+		t.Fatal("first Connect did not start identity discovery")
+	}
+
+	secondStarted := make(chan struct{})
+	secondResult := make(chan error, 1)
+	go func() {
+		close(secondStarted)
+		secondResult <- cl.Connect()
+	}()
+	<-secondStarted
+	select {
+	case connectErr := <-secondResult:
+		t.Fatalf("second Connect returned before the first identity handshake completed: %v", connectErr)
+	default:
+	}
+
+	releaseIdentityHandshake()
+	var firstErr error
+	select {
+	case firstErr = <-firstResult:
+	case <-time.After(time.Second):
+		t.Fatal("first Connect did not complete")
+	}
+	var secondErr error
+	select {
+	case secondErr = <-secondResult:
+	case <-time.After(time.Second):
+		t.Fatal("second Connect did not complete")
+	}
+
+	require.NoError(t, firstErr)
+	require.ErrorIs(t, secondErr, ErrAlreadyConnected)
+	require.True(t, cl.IsConnected())
+	require.Equal(t, int32(1), connectionCount.Load())
+	require.NoError(t, cl.Disconnect())
+	select {
+	case err := <-serverErr:
+		require.NoError(t, err)
+	default:
+	}
 }
 
 func TestClientDisconnectCancelsInFlightReconnectDial(t *testing.T) {

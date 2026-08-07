@@ -85,12 +85,16 @@ type Client struct {
 
 	idCounter atomic.Uint64
 
-	// NetworkID is the discovered network identity or a compare-mode override.
-	// Nil means unknown. A pointer to zero is mainnet. Configure overrides before
-	// Connect and do not mutate identity fields concurrently. Use
-	// WithNetworkIdentity for an explicit trusted discovery bypass.
+	// NetworkID is the configured network ID or the ID found by the first
+	// successful Connect. Nil means unknown. A pointer to zero is mainnet. This
+	// field stays stable after Connect. Use CurrentNetworkIdentity to read the
+	// identity refreshed by reconnects. Configure overrides before Connect and do
+	// not mutate this field concurrently. Use WithNetworkIdentity for an explicit
+	// trusted discovery bypass.
 	NetworkID *uint32
-	// BuildVersion is the discovered rippled version used for NetworkID policy.
+	// BuildVersion is the configured rippled version or the version found by the
+	// first successful Connect. This field stays stable after Connect. Use
+	// CurrentNetworkIdentity to read the version refreshed by reconnects.
 	// Configure it before Connect and do not mutate it concurrently.
 	BuildVersion string
 
@@ -972,10 +976,12 @@ func (c *Client) disconnectAfterRead(ctx context.Context) {
 // success and false when the budget is exhausted or ctx is cancelled.
 // retryCount is updated in place so it persists across disconnect events.
 func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxRetries int) bool {
+	var lastErr error
 	for {
 		if *retryCount >= maxRetries {
 			c.reportError(ctx, ErrMaxReconnectionAttemptsReached{
 				Attempts: maxRetries,
+				Err:      lastErr,
 			})
 			return false
 		}
@@ -993,6 +999,7 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 			if errors.Is(err, context.Canceled) {
 				return false
 			}
+			lastErr = err
 			continue
 		}
 		if ctx.Err() != nil {

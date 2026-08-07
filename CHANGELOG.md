@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/queries/server
 
-- Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID.
+- Changed `types.Info.NetworkID` from `uint` to `*uint32`, so callers must check for `nil` before dereferencing the server-reported network ID. Current self-hosted rippled nodes can omit `server_info.network_id`: rippled sends it only when a network ID is configured, and the example configuration stanza is disabled by default. This is not only an old-server case. Clients can use `rpc.WithNetworkIdentity` or `websocket.ClientConfig.WithNetworkIdentity` with trusted deployment values.
 
 #### xrpl/rpc
 
@@ -25,8 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
-- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
-- Changed `Client.Connect` to request `server_info` before it starts the background reader. A request failure is reported through `OnError` but does not fail the connection. A missing `network_id` leaves `NetworkID` nil.
+- Changed the client `NetworkID` field from `uint32` to `*uint32` and added `BuildVersion`, preserving missing identity separately from mainnet ID `0`. These fields keep the configured or first-discovered identity. Use `CurrentNetworkIdentity` for the latest identity after a reconnect. Direct field values are checked against `server_info`. Use `WithNetworkIdentity(networkID, buildVersion)` only to bypass discovery with trusted deployment values.
+- Changed `Client.Connect` to request `server_info` before it starts the background reader. A request, response, or identity failure now fails `Connect` and closes the new connection. A missing `network_id` fails with `ErrNetworkIDUnavailable`.
 - Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
 
 ### Added
@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Added centralized transaction type constants and `IsPseudoTransactionType` classification for `EnableAmendment`, `SetFee`, and `UNLModify`.
+
+#### xrpl/queries/server
+
+- Added `types.Info.RippledVersion` for Clio `server_info` responses and `types.Info.ServerVersion` to prefer `build_version` with `rippled_version` as the fallback.
 
 #### xrpl/rpc
 
@@ -51,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
-- Added `ClientConfig.WithNetworkIdentity` for trusted network identity configuration and `ErrAlreadyConnected` for attempts to replace a live connection.
+- Added `ClientConfig.WithNetworkIdentity` for trusted network identity configuration, `NetworkIdentity` and `CurrentNetworkIdentity` for concurrency-safe access to the latest reconnect identity, and `ErrAlreadyConnected` for attempts to replace a live connection.
 - Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, and `ErrMismatchedTag` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, and RegularKey fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`.
 
@@ -72,8 +76,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/rpc
 
 - Autofill now omits and rejects an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. It adds and requires the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
-- The client now discovers and caches network identity with `server_info` before an identity-dependent operation. A discovery failure leaves the identity unknown, does not block the operation, and is retried by a later operation.
-- Client-side signing now skips network identity discovery and policy validation when autofill is disabled.
+- The client now discovers and caches network identity with `server_info` before an identity-dependent operation. A discovery failure fails the operation without mutation and is retried by a later operation.
+- Client-side submission helpers now discover and validate network identity before they sign an unsigned transaction, including when autofill is disabled. Use `wallet.Sign` for fully offline signing, or `WithNetworkIdentity` when trusted deployment configuration supplies the identity.
+- Network identity discovery now uses Clio `rippled_version` only when `build_version` is absent.
 
 #### xrpl/transaction
 
@@ -82,8 +87,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/websocket
 
 - Autofill now omits and rejects an explicit `NetworkID` for network IDs from 0 through 1024 and for network IDs above 1024 on rippled versions before 1.11.0. It adds and requires the exact `NetworkID` for IDs above 1024 on rippled 1.11.0 or later. The same rules apply to outer and Batch inner transactions.
-- Missing network identity or build-version data now causes autofill to omit `NetworkID`.
-- Client-side signing now skips network identity policy validation when autofill is disabled.
+- Missing network identity or required build-version data now makes `Connect`, autofill, and unsigned signing fail closed instead of omitting `NetworkID`.
+- Client-side signing now applies network identity policy when autofill is disabled.
+- Network identity discovery now uses Clio `rippled_version` only when `build_version` is absent.
 
 ### Fixed
 
@@ -107,6 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
+- Made autofill and unsigned signing fail closed when network identity discovery or validation fails, unless `WithNetworkIdentity` supplies an explicit trusted identity.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 - Autofill now normalizes named string address values, such as `types.Address`, before account checks.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
@@ -114,6 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
+- Reconnection exhaustion now unwraps the last connection or identity failure while preserving `errors.As` checks for `ErrMaxReconnectionAttemptsReached`.
 - Prevented connection setup from replacing an existing live connection and prevented canceled reconnect dials from installing a connection after cancellation. Added a request gate that keeps application traffic off new sockets until identity discovery completes.
 - Made autofill and unsigned signing reject public network identity values until successful discovery, unless `WithNetworkIdentity` supplies an explicit trusted override.
 - Autofill now normalizes named string address values, such as `types.Address`, before account checks.

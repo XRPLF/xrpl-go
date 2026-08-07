@@ -12,6 +12,7 @@ import (
 type Info struct {
 	AmendmentBlocked         bool                 `json:"amendment_blocked,omitempty"`
 	BuildVersion             string               `json:"build_version"`
+	RippledVersion           string               `json:"rippled_version,omitempty"`
 	CompleteLedgers          string               `json:"complete_ledgers"`
 	ClosedLedger             ClosedLedger         `json:"closed_ledger,omitzero"`
 	HostID                   string               `json:"hostid"`
@@ -43,6 +44,15 @@ type Info struct {
 	ValidationQuorum         uint                 `json:"validation_quorum"`
 	ValidatorListExpires     string               `json:"validator_list_expires,omitempty"`
 	ValidatorList            ServerValidatorList  `json:"validator_list,omitzero"`
+}
+
+// ServerVersion returns build_version when present. It uses rippled_version as
+// a fallback for Clio server_info responses.
+func (i Info) ServerVersion() string {
+	if i.BuildVersion != "" {
+		return i.BuildVersion
+	}
+	return i.RippledVersion
 }
 
 // ServerValidatorList holds the count, expiration, and status of the server's validator list.

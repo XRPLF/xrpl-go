@@ -2282,6 +2282,8 @@ func TestClient_ReconnectConsumesBudgetOnConnectFailures(t *testing.T) {
 		var maxErr ErrMaxReconnectionAttemptsReached
 		require.ErrorAs(t, got, &maxErr)
 		require.Equal(t, budget, maxErr.Attempts)
+		require.ErrorIs(t, got, websocket.ErrBadHandshake)
+		require.ErrorIs(t, maxErr.Err, websocket.ErrBadHandshake)
 	case <-time.After(2 * time.Second):
 		t.Fatalf("timed out waiting for ErrMaxReconnectionAttemptsReached, dial count=%d", dialCount.Load())
 	}
