@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math"
+	"reflect"
 	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/definitions"
@@ -32,6 +34,8 @@ var (
 	ErrBatchFlagsNotUInt32 = errors.New("flags field must be a uint32")
 	// ErrBatchTxIDsLengthTooLong is returned when the 'txIDs' field is too long.
 	ErrBatchTxIDsLengthTooLong = errors.New("txIDs length exceeds maximum uint32 value")
+	// ErrInvalidUNLModifyAccount is returned when a supplied UNLModify Account is not canonical.
+	ErrInvalidUNLModifyAccount = errors.New("invalid UNLModify Account: must be an empty string or the canonical XRPL zero account")
 )
 
 const (
@@ -40,6 +44,7 @@ const (
 	txSigPrefix               = "53545800"
 	batchPrefix               = "42434800"
 	unlModifyTransactionType  = "UNLModify"
+	xrplZeroAccount           = "rrrrrrrrrrrrrrrrrrrrrhoLvTp"
 )
 
 // Encode converts a JSON transaction object to a hex string in the canonical binary format.
@@ -54,10 +59,16 @@ func Encode(json map[string]any) (string, error) {
 		}
 	}
 
-	b, err := st.FromJSONWithRawFieldValueOverrides(
-		filteredJSON,
-		transactionRawFieldValueOverrides(filteredJSON),
-	)
+	overrides, err := transactionRawFieldValueOverrides(filteredJSON)
+	if err != nil {
+		return "", err
+	}
+	if overrides != nil {
+		// UInt16 expects a built-in string. Normalize only the private copy used for encoding.
+		filteredJSON["TransactionType"] = unlModifyTransactionType
+	}
+
+	b, err := st.FromJSONWithRawFieldValueOverrides(filteredJSON, overrides)
 	if err != nil {
 		return "", err
 	}
@@ -65,16 +76,38 @@ func Encode(json map[string]any) (string, error) {
 	return hexutil.EncodeToUpperHex(b), nil
 }
 
-func transactionRawFieldValueOverrides(json map[string]any) types.RawFieldValueOverrides {
-	transactionType, ok := json["TransactionType"].(string)
+func transactionRawFieldValueOverrides(json map[string]any) (types.RawFieldValueOverrides, error) {
+	transactionType, ok := underlyingString(json["TransactionType"])
 	if !ok || transactionType != unlModifyTransactionType {
-		return nil
+		return nil, nil
+	}
+
+	if accountValue, present := json["Account"]; present {
+		account, isString := underlyingString(accountValue)
+		if !isString {
+			return nil, fmt.Errorf("%w; got %T", ErrInvalidUNLModifyAccount, accountValue)
+		}
+		if account != "" && account != xrplZeroAccount {
+			return nil, fmt.Errorf("%w; got %q", ErrInvalidUNLModifyAccount, account)
+		}
 	}
 
 	// rippled represents the Account of a consensus-generated UNLModify transaction as a
 	// default STAccount. STAccount::add serializes that default as a zero-length value:
 	// https://github.com/XRPLF/rippled/blob/d4c1359921f34a4e96c5c8483119e59f0e30e4df/src/libxrpl/protocol/STAccount.cpp#L71-L81
-	return types.RawFieldValueOverrides{"Account": []byte{}}
+	return types.RawFieldValueOverrides{"Account": []byte{}}, nil
+}
+
+func underlyingString(value any) (string, bool) {
+	if value, ok := value.(string); ok {
+		return value, true
+	}
+
+	reflected := reflect.ValueOf(value)
+	if reflected.IsValid() && reflected.Kind() == reflect.String {
+		return reflected.String(), true
+	}
+	return "", false
 }
 
 // EncodeForMultisigning encodes a transaction into binary format in preparation for providing one

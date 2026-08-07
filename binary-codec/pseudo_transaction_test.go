@@ -8,8 +8,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type unlModifyNamedString string
+
 func TestTransactionRawFieldValueOverrides(t *testing.T) {
-	overrides := transactionRawFieldValueOverrides(map[string]any{"TransactionType": "UNLModify"})
+	overrides, err := transactionRawFieldValueOverrides(map[string]any{"TransactionType": "UNLModify"})
+	require.NoError(t, err)
 	require.Equal(t, types.RawFieldValueOverrides{"Account": []byte{}}, overrides)
 
 	tests := []struct {
@@ -27,12 +30,16 @@ func TestTransactionRawFieldValueOverrides(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var overrides types.RawFieldValueOverrides
+			var (
+				overrides types.RawFieldValueOverrides
+				err       error
+			)
 			require.NotPanics(t, func() {
-				overrides = transactionRawFieldValueOverrides(map[string]any{
+				overrides, err = transactionRawFieldValueOverrides(map[string]any{
 					"TransactionType": test.transactionType,
 				})
 			})
+			require.NoError(t, err)
 			require.Nil(t, overrides)
 		})
 	}
@@ -41,7 +48,10 @@ func TestTransactionRawFieldValueOverrides(t *testing.T) {
 func TestEncodeUNLModifyAccountOverride(t *testing.T) {
 	// This vector is mainnet transaction 80CDD04AC3C26F02C678881C546280C116648C9B116F87320B1CE68490F13907:
 	// https://livenet.xrpl.org/transactions/80CDD04AC3C26F02C678881C546280C116648C9B116F87320B1CE68490F13907
-	const expected = "120066240000000026040B52006840000000000000007300701321EDB6FC8E803EE8EDC2793F1EC917B2EE41D35255618DEB91D3F9B1FC89B75D4539810000101101"
+	const (
+		canonicalBlob = "120066240000000026040B52006840000000000000007300701321EDB6FC8E803EE8EDC2793F1EC917B2EE41D35255618DEB91D3F9B1FC89B75D4539810000101101"
+		absentBlob    = "120066240000000026040B52006840000000000000007300701321EDB6FC8E803EE8EDC2793F1EC917B2EE41D35255618DEB91D3F9B1FC89B75D453900101101"
+	)
 
 	base := map[string]any{
 		"Fee":                "0",
@@ -53,15 +63,50 @@ func TestEncodeUNLModifyAccountOverride(t *testing.T) {
 		"UNLModifyValidator": "EDB6FC8E803EE8EDC2793F1EC917B2EE41D35255618DEB91D3F9B1FC89B75D4539",
 	}
 
-	for _, account := range []string{"", "rrrrrrrrrrrrrrrrrrrrrhoLvTp"} {
-		t.Run("Account "+account, func(t *testing.T) {
+	tests := []struct {
+		name            string
+		account         any
+		accountPresent  bool
+		transactionType any
+		expected        string
+		wantErr         bool
+	}{
+		{name: "empty", account: "", accountPresent: true, expected: canonicalBlob},
+		{name: "zero account", account: xrplZeroAccount, accountPresent: true, expected: canonicalBlob},
+		{name: "arbitrary classic account", account: "rUpy3eEg8rqjqfUoLeBnZkscbKbFsKXC3v", accountPresent: true, wantErr: true},
+		{name: "non-string", account: uint32(0), accountPresent: true, wantErr: true},
+		{
+			name:            "named string",
+			account:         unlModifyNamedString(xrplZeroAccount),
+			accountPresent:  true,
+			transactionType: unlModifyNamedString(unlModifyTransactionType),
+			expected:        canonicalBlob,
+		},
+		{name: "absent", expected: absentBlob},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
 			tx := make(map[string]any, len(base)+1)
 			maps.Copy(tx, base)
-			tx["Account"] = account
+			if test.accountPresent {
+				tx["Account"] = test.account
+			}
+			if test.transactionType != nil {
+				tx["TransactionType"] = test.transactionType
+			}
+			before := maps.Clone(tx)
 
 			actual, err := Encode(tx)
+
+			require.Equal(t, before, tx)
+			if test.wantErr {
+				require.ErrorIs(t, err, ErrInvalidUNLModifyAccount)
+				require.Empty(t, actual)
+				return
+			}
 			require.NoError(t, err)
-			require.Equal(t, expected, actual)
+			require.Equal(t, test.expected, actual)
 		})
 	}
 }
