@@ -189,14 +189,25 @@ func invalidSignedForm(detail string) error {
 
 // DecodeTransactionBlob decodes a transaction blob and converts malformed
 // codec panics into ordinary errors at public client/hash boundaries.
-func DecodeTransactionBlob(txBlob string) (tx map[string]any, err error) {
+func DecodeTransactionBlob(txBlob string) (map[string]any, error) {
+	return decodeTransactionBlob(txBlob, binarycodec.Decode)
+}
+
+func decodeTransactionBlob(
+	txBlob string,
+	decode func(string) (map[string]any, error),
+) (tx map[string]any, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			tx = nil
+			if recoveredErr, ok := recovered.(error); ok {
+				err = fmt.Errorf("decode transaction blob: %w", recoveredErr)
+				return
+			}
 			err = fmt.Errorf("decode transaction blob: %v", recovered)
 		}
 	}()
-	return binarycodec.Decode(txBlob)
+	return decode(txBlob)
 }
 
 // CloneTransaction recursively copies the map and JSON-like nested maps/slices

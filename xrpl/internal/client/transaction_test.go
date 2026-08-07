@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -96,6 +97,28 @@ func TestInspectSignedBatchInners(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestDecodeTransactionBlobRecovery(t *testing.T) {
+	t.Run("error panic preserves identity", func(t *testing.T) {
+		panicErr := errors.New("codec panic")
+		tx, err := decodeTransactionBlob("ignored", func(string) (map[string]any, error) {
+			panic(panicErr)
+		})
+
+		require.Nil(t, tx)
+		require.EqualError(t, err, "decode transaction blob: codec panic")
+		require.ErrorIs(t, err, panicErr)
+	})
+
+	t.Run("non-error panic becomes decode error", func(t *testing.T) {
+		tx, err := decodeTransactionBlob("ignored", func(string) (map[string]any, error) {
+			panic("codec panic")
+		})
+
+		require.Nil(t, tx)
+		require.EqualError(t, err, "decode transaction blob: codec panic")
+	})
 }
 
 func TestTransactionHelpers(t *testing.T) {
