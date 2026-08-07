@@ -113,6 +113,19 @@ func TestTransactionHelpers(t *testing.T) {
 		require.Equal(t, "10", originalRaw[0]["RawTransaction"].(map[string]any)["Fee"])
 	})
 
+	t.Run("clone is deep for flattened concrete slice types", func(t *testing.T) {
+		original := map[string]any{
+			"NFTokenOffers": []string{"offer-1", "offer-2"},
+			"Paths":         [][]any{{map[string]any{"issuer": "rIssuer"}}},
+		}
+		cloned := CloneTransaction(original)
+		cloned["NFTokenOffers"].([]string)[0] = "changed"
+		cloned["Paths"].([][]any)[0][0].(map[string]any)["issuer"] = "rChanged"
+
+		require.Equal(t, []string{"offer-1", "offer-2"}, original["NFTokenOffers"])
+		require.Equal(t, "rIssuer", original["Paths"].([][]any)[0][0].(map[string]any)["issuer"])
+	})
+
 	t.Run("replace preserves map aliases", func(t *testing.T) {
 		destination := map[string]any{"old": true}
 		alias := destination
