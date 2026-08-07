@@ -230,6 +230,16 @@ func cloneTransactionValue(value any) any {
 			cloned[i] = cloneTransactionValue(typed[i])
 		}
 		return cloned
+	case []string:
+		cloned := make([]string, len(typed))
+		copy(cloned, typed)
+		return cloned
+	case [][]any:
+		cloned := make([][]any, len(typed))
+		for i := range typed {
+			cloned[i] = cloneTransactionValue(typed[i]).([]any)
+		}
+		return cloned
 	case []map[string]any:
 		cloned := make([]map[string]any, len(typed))
 		for i := range typed {
