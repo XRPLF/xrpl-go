@@ -427,14 +427,14 @@ func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitRes
 		return nil, err
 	}
 
-	form, err := clientinternal.InspectSignedTransaction(tx, false)
+	signingType, err := clientinternal.InspectSignedTransaction(tx, false)
 	if err != nil {
 		return nil, err
 	}
 	if err := clientinternal.InspectSignedBatchInners(tx); err != nil {
 		return nil, err
 	}
-	if form == clientinternal.UnsignedTransaction {
+	if signingType == clientinternal.UnsignedTransaction {
 		return nil, ErrMissingTxSignatureOrSigningPubKey
 	}
 
@@ -466,14 +466,14 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 	if err != nil {
 		return nil, err
 	}
-	form, err := clientinternal.InspectSignedTransaction(tx, false)
+	signingType, err := clientinternal.InspectSignedTransaction(tx, false)
 	if err != nil {
 		return nil, err
 	}
 	if err := clientinternal.InspectSignedBatchInners(tx); err != nil {
 		return nil, err
 	}
-	if form != clientinternal.MultiSignedTransaction {
+	if signingType != clientinternal.MultiSignedTransaction {
 		return nil, ErrSignerDataIsEmpty
 	}
 
@@ -1031,11 +1031,11 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		return "", err
 	}
 
-	form, err := clientinternal.InspectSignedTransaction(working, false)
+	signingType, err := clientinternal.InspectSignedTransaction(working, false)
 	if err != nil {
 		return "", err
 	}
-	if form != clientinternal.UnsignedTransaction {
+	if signingType != clientinternal.UnsignedTransaction {
 		blob, err := binarycodec.Encode(working)
 		if err != nil {
 			return "", err

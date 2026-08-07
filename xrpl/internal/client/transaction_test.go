@@ -54,13 +54,13 @@ func TestInspectSignedTransaction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			form, err := InspectSignedTransaction(tt.tx, tt.allowInner)
+			signingType, err := InspectSignedTransaction(tt.tx, tt.allowInner)
 			if tt.wantErr {
 				require.ErrorIs(t, err, ErrInvalidSignedTransaction)
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.form, form)
+			require.Equal(t, tt.form, signingType)
 		})
 	}
 }

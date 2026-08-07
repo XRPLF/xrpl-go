@@ -413,11 +413,11 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		return "", err
 	}
 
-	form, err := clientinternal.InspectSignedTransaction(working, false)
+	signingType, err := clientinternal.InspectSignedTransaction(working, false)
 	if err != nil {
 		return "", err
 	}
-	if form != clientinternal.UnsignedTransaction {
+	if signingType != clientinternal.UnsignedTransaction {
 		blob, err := binarycodec.Encode(working)
 		if err != nil {
 			return "", err

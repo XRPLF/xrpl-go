@@ -92,11 +92,11 @@ func InspectSignedBatchInners(tx map[string]any) error {
 		return err
 	}
 	for _, inner := range inners {
-		form, err := InspectSignedTransaction(inner, true)
+		signingType, err := InspectSignedTransaction(inner, true)
 		if err != nil {
 			return err
 		}
-		if form != InnerBatchTransaction {
+		if signingType != InnerBatchTransaction {
 			return invalidSignedForm("Batch inner transactions must use the inner Batch form")
 		}
 	}
