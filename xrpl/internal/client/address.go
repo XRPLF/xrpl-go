@@ -71,6 +71,13 @@ func collectAddressChange(tx map[string]any, addressField, tagField string, chan
 		return fmt.Errorf("%w: %s", ErrAddressFieldIsNotAString, addressField)
 	}
 	if addresscodec.IsValidClassicAddress(address) {
+		if _, plainString := value.(string); !plainString {
+			*changes = append(*changes, addressChange{
+				tx:           tx,
+				addressField: addressField,
+				classic:      address,
+			})
+		}
 		return nil
 	}
 	if !addresscodec.IsValidXAddress(address) {

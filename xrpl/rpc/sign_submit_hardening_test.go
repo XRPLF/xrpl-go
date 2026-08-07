@@ -11,6 +11,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/testutil"
 	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
+	transactiontypes "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/stretchr/testify/require"
 )
@@ -243,11 +244,33 @@ func TestClientPaymentAmountAliasMatrix(t *testing.T) {
 	}
 }
 
+func TestClientAutofillNormalizesTypedAccount(t *testing.T) {
+	const account = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+	tx := transaction.FlatTransaction{
+		"TransactionType":    transaction.AccountSetTx,
+		"Account":            transactiontypes.Address(account),
+		"Fee":                "10",
+		"LastLedgerSequence": uint32(20),
+	}
+	cl := setupTestRPCClientForAutofill(t, []string{`{
+		"result": {
+			"account_data": {"Sequence": 42}
+		}
+	}`})
+
+	err := cl.Autofill(&tx)
+	require.NotErrorIs(t, err, ErrMissingAccountInTransaction)
+	require.NoError(t, err)
+	require.IsType(t, "", tx["Account"])
+	require.Equal(t, account, tx["Account"])
+	require.Equal(t, uint32(42), tx["Sequence"])
+}
+
 func TestClientAutofillAccountDeleteChecksBlockers(t *testing.T) {
 	const account = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
 	tx := transaction.FlatTransaction{
-		"TransactionType":    "AccountDelete",
-		"Account":            account,
+		"TransactionType":    transaction.AccountDeleteTx,
+		"Account":            transactiontypes.Address(account),
 		"Destination":        "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 		"Fee":                "2000000",
 		"Sequence":           uint32(1),
@@ -263,7 +286,9 @@ func TestClientAutofillAccountDeleteChecksBlockers(t *testing.T) {
 		}
 	}`})
 
-	require.ErrorIs(t, cl.Autofill(&tx), ErrAccountCannotBeDeleted)
+	err := cl.Autofill(&tx)
+	require.NotErrorIs(t, err, ErrMissingAccountInTransaction)
+	require.ErrorIs(t, err, ErrAccountCannotBeDeleted)
 	require.Equal(t, original, map[string]any(tx), "failed autofill must not mutate the caller's map")
 }
 
