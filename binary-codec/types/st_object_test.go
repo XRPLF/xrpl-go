@@ -79,6 +79,45 @@ func TestStObject_FromJson(t *testing.T) {
 	}
 }
 
+func TestStObject_FromJSONWithRawFieldValueOverrides(t *testing.T) {
+	input := map[string]any{
+		"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+		"Sequence":        uint32(0),
+		"TransactionType": "UNLModify",
+	}
+
+	t.Run("generic path serializes the Account value", func(t *testing.T) {
+		serializer := serdes.NewBinarySerializer(serdes.NewFieldIDCodec(definitions.Get()))
+		stObject := NewSTObject(serializer)
+
+		got, err := stObject.FromJSON(input)
+		require.NoError(t, err)
+		require.Equal(t, []byte{
+			0x12, 0x00, 0x66,
+			0x24, 0x00, 0x00, 0x00, 0x00,
+			0x81, 0x14,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		}, got)
+	})
+
+	t.Run("raw override replaces only the Account value", func(t *testing.T) {
+		serializer := serdes.NewBinarySerializer(serdes.NewFieldIDCodec(definitions.Get()))
+		stObject := NewSTObject(serializer)
+
+		got, err := stObject.FromJSONWithRawFieldValueOverrides(
+			input,
+			RawFieldValueOverrides{"Account": []byte{}},
+		)
+		require.NoError(t, err)
+		require.Equal(t, []byte{
+			0x12, 0x00, 0x66,
+			0x24, 0x00, 0x00, 0x00, 0x00,
+			0x81, 0x00,
+		}, got)
+	})
+}
+
 func TestCreateFieldInstanceMapFromJsonXAddressZeroTag(t *testing.T) {
 	got, err := createFieldInstanceMapFromJson(map[string]any{
 		"Destination": "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2m4Er6SnvjVLpMWPjR",

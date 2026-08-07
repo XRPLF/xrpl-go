@@ -39,6 +39,7 @@ const (
 	paymentChannelClaimPrefix = "434C4D00"
 	txSigPrefix               = "53545800"
 	batchPrefix               = "42434800"
+	unlModifyTransactionType  = "UNLModify"
 )
 
 // Encode converts a JSON transaction object to a hex string in the canonical binary format.
@@ -53,12 +54,27 @@ func Encode(json map[string]any) (string, error) {
 		}
 	}
 
-	b, err := st.FromJSON(filteredJSON)
+	b, err := st.FromJSONWithRawFieldValueOverrides(
+		filteredJSON,
+		transactionRawFieldValueOverrides(filteredJSON),
+	)
 	if err != nil {
 		return "", err
 	}
 
 	return hexutil.EncodeToUpperHex(b), nil
+}
+
+func transactionRawFieldValueOverrides(json map[string]any) types.RawFieldValueOverrides {
+	transactionType, ok := json["TransactionType"].(string)
+	if !ok || transactionType != unlModifyTransactionType {
+		return nil
+	}
+
+	// rippled represents the Account of a consensus-generated UNLModify transaction as a
+	// default STAccount. STAccount::add serializes that default as a zero-length value:
+	// https://github.com/XRPLF/rippled/blob/d4c1359921f34a4e96c5c8483119e59f0e30e4df/src/libxrpl/protocol/STAccount.cpp#L71-L81
+	return types.RawFieldValueOverrides{"Account": []byte{}}
 }
 
 // EncodeForMultisigning encodes a transaction into binary format in preparation for providing one
