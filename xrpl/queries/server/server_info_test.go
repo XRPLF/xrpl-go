@@ -35,6 +35,46 @@ func TestServerInfoNetworkIDPresence(t *testing.T) {
 	}
 }
 
+func TestServerInfoVersionParsing(t *testing.T) {
+	tests := []struct {
+		name                   string
+		response               string
+		expectedBuildVersion   string
+		expectedRippledVersion string
+		expectedServerVersion  string
+	}{
+		{
+			name:                  "rippled build version",
+			response:              `{"info":{"build_version":"2.5.0","network_id":0}}`,
+			expectedBuildVersion:  "2.5.0",
+			expectedServerVersion: "2.5.0",
+		},
+		{
+			name:                   "Clio rippled version fallback",
+			response:               `{"info":{"rippled_version":"2.4.0","network_id":1}}`,
+			expectedRippledVersion: "2.4.0",
+			expectedServerVersion:  "2.4.0",
+		},
+		{
+			name:                   "build version preferred",
+			response:               `{"info":{"build_version":"2.5.0","rippled_version":"2.4.0","network_id":2}}`,
+			expectedBuildVersion:   "2.5.0",
+			expectedRippledVersion: "2.4.0",
+			expectedServerVersion:  "2.5.0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var response InfoResponse
+			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
+			require.Equal(t, tt.expectedBuildVersion, response.Info.BuildVersion)
+			require.Equal(t, tt.expectedRippledVersion, response.Info.RippledVersion)
+			require.Equal(t, tt.expectedServerVersion, response.Info.ServerVersion())
+		})
+	}
+}
+
 func TestServerInfoResponse(t *testing.T) {
 	s := InfoResponse{
 		Info: servertypes.Info{

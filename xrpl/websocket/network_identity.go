@@ -107,7 +107,7 @@ func (c *Client) discoverNetworkIdentity() (clientinternal.NetworkIdentity, [][]
 		}
 		return clientinternal.NetworkIdentity{
 			NetworkID:    serverInfo.Info.NetworkID,
-			BuildVersion: serverInfo.Info.BuildVersion,
+			BuildVersion: serverInfo.Info.ServerVersion(),
 		}, bufferedMessages, nil
 	}
 }

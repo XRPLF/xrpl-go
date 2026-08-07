@@ -404,6 +404,10 @@ func (c *Client) waitForTransaction(txHash string, lastLedgerSequence uint32) (*
 // getSignedTx ensures the transaction is fully signed and returns the transaction blob.
 // Submission works on a deep copy, so autofill, address conversion, NetworkID policy,
 // and DeliverMax normalization never mutate the caller-owned transaction map.
+//
+// Even when autofill is disabled, this client submission path needs a discovered
+// network identity, or trusted values from WithNetworkIdentity, before it signs.
+// Call wallet.Sign directly when signing must be fully offline.
 func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wallet *wallet.Wallet) (string, error) {
 	working := transaction.FlatTransaction(clientinternal.CloneTransaction(tx))
 	if working == nil {

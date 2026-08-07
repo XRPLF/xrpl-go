@@ -988,10 +988,12 @@ func (c *Client) disconnectConnection(ctx context.Context) {
 // success and false when the budget is exhausted or ctx is cancelled.
 // retryCount is updated in place so it persists across disconnect events.
 func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxRetries int) bool {
+	var lastErr error
 	for {
 		if *retryCount >= maxRetries {
 			c.reportError(ctx, ErrMaxReconnectionAttemptsReached{
 				Attempts: maxRetries,
+				Err:      lastErr,
 			})
 			return false
 		}
@@ -1010,6 +1012,7 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 			if errors.Is(err, context.Canceled) {
 				return false
 			}
+			lastErr = err
 			continue
 		}
 		for _, message := range bufferedMessages {

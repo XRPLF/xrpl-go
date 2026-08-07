@@ -47,7 +47,7 @@ func (c *Client) ensureNetworkIdentity() (clientinternal.NetworkIdentity, error)
 	if requestErr == nil {
 		resolved, discoveryErr = clientinternal.ResolveNetworkIdentity(attempt.identity.NetworkID, clientinternal.NetworkIdentity{
 			NetworkID:    response.Info.NetworkID,
-			BuildVersion: response.Info.BuildVersion,
+			BuildVersion: response.Info.ServerVersion(),
 		})
 	}
 	c.finishNetworkIdentityDiscovery(resolved, discoveryErr)
