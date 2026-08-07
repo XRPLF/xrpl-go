@@ -10,6 +10,7 @@ import (
 	"time"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	clientconfigtestutil "github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
@@ -1130,6 +1131,44 @@ func TestClient_Autofill(t *testing.T) {
 	}
 }
 
+func TestClient_AutofillChecksAccountDeleteBlockersForStringAddress(t *testing.T) {
+	const (
+		classicAddress = "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"
+		xAddress       = "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ"
+	)
+	blockerResponse := map[string]any{
+		"id":     1,
+		"result": map[string]any{"account_objects": []any{map[string]any{}}},
+	}
+
+	tests := []struct {
+		name    string
+		account any
+	}{
+		{name: "plain string", account: classicAddress},
+		{name: "named X-address", account: types.Address(xAddress)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := transaction.FlatTransaction{
+				"Account":            tt.account,
+				"TransactionType":    transaction.AccountDeleteTx.String(),
+				"Sequence":           uint32(1),
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(100),
+			}
+			cl, cleanup := setupTestClientForAutofill(t, []map[string]any{blockerResponse})
+			defer cleanup()
+
+			err := cl.Autofill(&tx)
+
+			require.ErrorIs(t, err, ErrAccountCannotBeDeleted)
+			require.Equal(t, classicAddress, tx["Account"])
+		})
+	}
+}
+
 func TestClient_autofillRawTransactions(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1923,10 +1962,15 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			cl, cleanup := setupTestClientForAutofill(t, tt.serverMessages)
 			defer cleanup()
 
-			// Set a trusted network identity for this direct helper test.
+			// Apply the policy once before this direct raw-transaction helper test.
 			setTrustedTestNetworkIdentity(cl, tt.networkID)
-
-			err := cl.autofillRawTransactions(&tt.tx)
+			identity, err := cl.networkIdentity()
+			if err == nil {
+				err = clientinternal.ApplyNetworkIDPolicy(tt.tx, identity)
+			}
+			if err == nil {
+				err = cl.autofillRawTransactions(&tt.tx)
+			}
 
 			if tt.expectedErr != nil {
 				if err == nil {

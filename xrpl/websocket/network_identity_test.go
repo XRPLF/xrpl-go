@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
+	streamtypes "github.com/Peersyst/xrpl-go/xrpl/queries/subscription/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/testutil"
@@ -30,7 +32,7 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 		expectedRequests      int32
 		expectedConnections   int32
 		preserveOverride      bool
-		trustedConfig         bool
+		configuredIdentity    bool
 	}{
 		{
 			name: "valid mainnet zero",
@@ -86,6 +88,19 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 			preserveOverride:    true,
 		},
 		{
+			name: "incomplete configured identity performs discovery",
+			result: map[string]any{"info": map[string]any{
+				"network_id":    uint32(21337),
+				"build_version": "1.12.0",
+			}},
+			override:            uint32Pointer(21337),
+			expectedID:          uint32Pointer(21337),
+			expectedBuild:       "1.12.0",
+			expectedRequests:    1,
+			expectedConnections: 1,
+			configuredIdentity:  true,
+		},
+		{
 			name:                "complete trusted override bypasses discovery",
 			override:            uint32Pointer(21337),
 			buildOverride:       "1.12.0",
@@ -93,7 +108,7 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 			expectedBuild:       "1.12.0",
 			expectedRequests:    0,
 			expectedConnections: 1,
-			trustedConfig:       true,
+			configuredIdentity:  true,
 		},
 	}
 
@@ -142,15 +157,14 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 			url, err := testutil.ConvertHTTPToWS(server.URL)
 			require.NoError(t, err)
 			config := NewClientConfig().WithHost(url).WithTimeout(200 * time.Millisecond)
-			if tt.trustedConfig {
+			if tt.configuredIdentity {
 				config = config.WithNetworkIdentity(*tt.override, tt.buildOverride)
 			}
 			cl := NewClient(config)
 			reportedErrors := make(chan error, 1)
 			cl.OnError(func(reportedErr error) { reportedErrors <- reportedErr })
-			if !tt.trustedConfig {
-				cl.NetworkID = tt.override
-				cl.BuildVersion = tt.buildOverride
+			if !tt.configuredIdentity {
+				setTestNetworkIdentity(cl, tt.override, tt.buildOverride)
 			}
 
 			err = cl.Connect()
@@ -159,13 +173,14 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.True(t, cl.IsConnected())
+				networkID, buildVersion := cl.NetworkIdentity()
 				if tt.expectedID == nil {
-					require.Nil(t, cl.NetworkID)
+					require.Nil(t, networkID)
 				} else {
-					require.NotNil(t, cl.NetworkID)
-					require.Equal(t, *tt.expectedID, *cl.NetworkID)
+					require.NotNil(t, networkID)
+					require.Equal(t, *tt.expectedID, *networkID)
 				}
-				require.Equal(t, tt.expectedBuild, cl.BuildVersion)
+				require.Equal(t, tt.expectedBuild, buildVersion)
 			}
 
 			if tt.expectedReportedError != "" {
@@ -187,7 +202,9 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 				require.NoError(t, cl.Disconnect())
 			}
 			if tt.preserveOverride {
-				require.Same(t, tt.override, cl.NetworkID)
+				networkID, _ := cl.NetworkIdentity()
+				require.NotNil(t, networkID)
+				require.Equal(t, *tt.override, *networkID)
 			}
 			select {
 			case serverError := <-serverErr:
@@ -196,6 +213,87 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClientConnectBuffersFramesBeforeIdentityResponse(t *testing.T) {
+	serverErr := make(chan error, 1)
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			serverErr <- err
+			return
+		}
+		defer conn.Close()
+
+		request := make(map[string]any)
+		if err := conn.ReadJSON(&request); err != nil {
+			serverErr <- err
+			return
+		}
+		messages := []map[string]any{
+			{"type": "ledgerClosed", "ledger_index": 1},
+			{"id": uint64(999), "result": map[string]any{}},
+			{
+				"id": request["id"],
+				"result": map[string]any{"info": map[string]any{
+					"network_id":    uint32(21337),
+					"build_version": "1.12.0",
+				}},
+			},
+		}
+		for _, message := range messages {
+			if err := conn.WriteJSON(message); err != nil {
+				serverErr <- err
+				return
+			}
+		}
+		if _, _, err := conn.ReadMessage(); err != nil {
+			return
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cl := NewClient(NewClientConfig().WithHost(url).WithTimeout(time.Second))
+	ledgerClosed := make(chan *streamtypes.LedgerStream, 1)
+	cl.OnLedgerClosed(func(ledger *streamtypes.LedgerStream) {
+		ledgerClosed <- ledger
+	})
+
+	require.NoError(t, cl.Connect())
+	networkID, buildVersion := cl.NetworkIdentity()
+	require.NotNil(t, networkID)
+	require.Equal(t, uint32(21337), *networkID)
+	require.Equal(t, "1.12.0", buildVersion)
+	select {
+	case ledger := <-ledgerClosed:
+		require.EqualValues(t, 1, ledger.LedgerIndex)
+	case <-time.After(time.Second):
+		t.Fatal("Connect did not replay the buffered ledger stream")
+	}
+	require.NoError(t, cl.Disconnect())
+	select {
+	case err := <-serverErr:
+		require.NoError(t, err)
+	default:
+	}
+}
+
+func TestClientNetworkIdentityReturnsSnapshot(t *testing.T) {
+	cl := NewClient(NewClientConfig().WithNetworkIdentity(21337, "1.12.0"))
+
+	networkID, buildVersion := cl.NetworkIdentity()
+	require.NotNil(t, networkID)
+	require.Equal(t, uint32(21337), *networkID)
+	require.Equal(t, "1.12.0", buildVersion)
+
+	*networkID = 1
+	storedNetworkID, storedBuildVersion := cl.NetworkIdentity()
+	require.NotNil(t, storedNetworkID)
+	require.Equal(t, uint32(21337), *storedNetworkID)
+	require.Equal(t, "1.12.0", storedBuildVersion)
 }
 
 func TestClientConnectDiscoveryTimeoutDoesNotBlockConnect(t *testing.T) {
@@ -236,7 +334,8 @@ func TestClientConnectDiscoveryTimeoutDoesNotBlockConnect(t *testing.T) {
 
 	require.NoError(t, cl.Connect())
 	require.True(t, cl.IsConnected())
-	require.Nil(t, cl.NetworkID)
+	networkID, _ := cl.NetworkIdentity()
+	require.Nil(t, networkID)
 	select {
 	case <-firstRequestRead:
 	case <-time.After(time.Second):
@@ -262,6 +361,52 @@ func TestClientConnectDiscoveryTimeoutDoesNotBlockConnect(t *testing.T) {
 		t.Fatal("Connect did not report the server_info timeout")
 	}
 	require.NoError(t, cl.Disconnect())
+}
+
+func TestClientConnectRecoveryDialUsesTimeout(t *testing.T) {
+	var connectionCount atomic.Int32
+	firstRequestRead := make(chan struct{})
+	secondHandshakeStarted := make(chan struct{})
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if connectionCount.Add(1) == 2 {
+			close(secondHandshakeStarted)
+			<-r.Context().Done()
+			return
+		}
+
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		if _, _, err := conn.ReadMessage(); err != nil {
+			return
+		}
+		close(firstRequestRead)
+		_, _, _ = conn.ReadMessage()
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cl := NewClient(NewClientConfig().WithHost(url).WithTimeout(20 * time.Millisecond))
+
+	err = cl.Connect()
+
+	require.Error(t, err)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	select {
+	case <-firstRequestRead:
+	case <-time.After(time.Second):
+		t.Fatal("server did not receive server_info request")
+	}
+	select {
+	case <-secondHandshakeStarted:
+	case <-time.After(time.Second):
+		t.Fatal("Connect did not start the replacement handshake")
+	}
+	require.False(t, cl.IsConnected())
 }
 
 func TestClientReconnectKeepsDiscoveredNetworkIdentity(t *testing.T) {
@@ -311,9 +456,10 @@ func TestClientReconnectKeepsDiscoveredNetworkIdentity(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("client did not reconnect")
 	}
-	require.NotNil(t, cl.NetworkID)
-	require.Equal(t, uint32(1), *cl.NetworkID)
-	require.Equal(t, "1.12.0", cl.BuildVersion)
+	networkID, buildVersion := cl.NetworkIdentity()
+	require.NotNil(t, networkID)
+	require.Equal(t, uint32(1), *networkID)
+	require.Equal(t, "1.12.0", buildVersion)
 	require.Equal(t, int32(2), connectionCount.Load())
 	select {
 	case <-unexpectedRequest:
@@ -359,15 +505,66 @@ func TestClientExplicitReconnectRefreshesUnknownNetworkIdentity(t *testing.T) {
 	cl := NewClient(NewClientConfig().WithHost(url).WithTimeout(time.Second))
 
 	require.NoError(t, cl.Connect())
-	require.Nil(t, cl.NetworkID)
-	require.Equal(t, "1.12.0", cl.BuildVersion)
+	networkID, buildVersion := cl.NetworkIdentity()
+	require.Nil(t, networkID)
+	require.Equal(t, "1.12.0", buildVersion)
 	require.NoError(t, cl.Disconnect())
 
 	require.NoError(t, cl.Connect())
-	require.NotNil(t, cl.NetworkID)
-	require.Equal(t, uint32(21337), *cl.NetworkID)
-	require.Equal(t, "1.12.0", cl.BuildVersion)
+	networkID, buildVersion = cl.NetworkIdentity()
+	require.NotNil(t, networkID)
+	require.Equal(t, uint32(21337), *networkID)
+	require.Equal(t, "1.12.0", buildVersion)
 	require.NoError(t, cl.Disconnect())
+	require.Equal(t, int32(2), connectionCount.Load())
+}
+
+func TestClientExplicitReconnectRejectsNetworkIdentityChange(t *testing.T) {
+	var connectionCount atomic.Int32
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		connectionNumber := connectionCount.Add(1)
+		request := make(map[string]any)
+		if err := conn.ReadJSON(&request); err != nil {
+			return
+		}
+		if err := conn.WriteJSON(map[string]any{
+			"id": request["id"],
+			"result": map[string]any{"info": map[string]any{
+				"network_id":    uint32(connectionNumber),
+				"build_version": "1.12.0",
+			}},
+		}); err != nil {
+			return
+		}
+		_, _, _ = conn.ReadMessage()
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cl := NewClient(NewClientConfig().WithHost(url).WithTimeout(time.Second))
+
+	require.NoError(t, cl.Connect())
+	networkID, buildVersion := cl.NetworkIdentity()
+	require.NotNil(t, networkID)
+	require.Equal(t, uint32(1), *networkID)
+	require.Equal(t, "1.12.0", buildVersion)
+	require.NoError(t, cl.Disconnect())
+
+	err = cl.Connect()
+	require.ErrorIs(t, err, ErrNetworkIDOverrideMismatch)
+	require.False(t, cl.IsConnected())
+	networkID, buildVersion = cl.NetworkIdentity()
+	require.NotNil(t, networkID)
+	require.Equal(t, uint32(1), *networkID)
+	require.Equal(t, "1.12.0", buildVersion)
 	require.Equal(t, int32(2), connectionCount.Load())
 }
 
@@ -548,9 +745,19 @@ func uint32Pointer(value uint32) *uint32 {
 	return &value
 }
 
+func setTestNetworkIdentity(cl *Client, networkID *uint32, buildVersion string) {
+	cl.identity.mu.Lock()
+	defer cl.identity.mu.Unlock()
+	cl.identity.current.NetworkID = nil
+	if networkID != nil {
+		cl.identity.current.NetworkID = uint32Pointer(*networkID)
+	}
+	cl.identity.current.BuildVersion = buildVersion
+}
+
 func setTrustedTestNetworkIdentity(cl *Client, networkID uint32) {
-	cl.NetworkID = uint32Pointer(networkID)
-	cl.BuildVersion = "1.12.0"
+	cl.identity.mu.Lock()
+	defer cl.identity.mu.Unlock()
 	cl.identity.ready = true
 	cl.identity.trusted = true
 	cl.identity.current.NetworkID = uint32Pointer(networkID)

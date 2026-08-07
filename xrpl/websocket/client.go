@@ -1,4 +1,9 @@
 // Package websocket provides a client for connecting to an XRPL WebSocket server.
+//
+// A Client discovers network identity on every explicit Connect unless a
+// trusted identity was configured. Automatic background reconnects keep the
+// current discovered identity without another discovery request. Explicit
+// reconnects reject a change from the previous discovered network ID.
 package websocket
 
 import (
@@ -81,15 +86,6 @@ type Client struct {
 
 	idCounter atomic.Uint64
 
-	// NetworkID is the discovered network identity or a compare-mode override.
-	// Nil means unknown. A pointer to zero is mainnet. Configure overrides before
-	// Connect and do not mutate identity fields concurrently. Use
-	// WithNetworkIdentity for an explicit trusted discovery bypass.
-	NetworkID *uint32
-	// BuildVersion is the discovered rippled version used for NetworkID policy.
-	// Configure it before Connect and do not mutate it concurrently.
-	BuildVersion string
-
 	identity networkIdentityState
 }
 
@@ -111,8 +107,6 @@ func NewClient(cfg ClientConfig) *Client {
 		conn:             newConnection(cfg.host, cfg.maxResponseSize),
 		ctx:              ctx,
 		cancel:           cancel,
-		NetworkID:        networkID,
-		BuildVersion:     cfg.buildVersion,
 		identity: networkIdentityState{
 			ready:   trustedIdentity,
 			trusted: trustedIdentity,
@@ -173,15 +167,17 @@ func (c *Client) cancelLifecycle() {
 }
 
 // Connect opens a websocket connection to the server. It starts reading messages in a goroutine.
-// Do not call Connect synchronously from a stream or error handler. If a handler
-// needs to reconnect, start Connect in a separate goroutine or coordinate it
-// outside the handler callback.
+// A server_info discovery failure is reported through OnError, keeps the
+// connection active, and does not replace the stored network identity. Do not
+// call Connect synchronously from a stream or error handler. If a handler needs
+// to reconnect, start Connect in a separate goroutine or coordinate it outside
+// the handler callback.
 func (c *Client) Connect() error {
 	if err := c.conn.Connect(); err != nil {
 		return err
 	}
 
-	identityErr := c.prepareNetworkIdentity()
+	bufferedMessages, identityErr := c.prepareNetworkIdentity()
 	if identityErr != nil && !errors.Is(identityErr, errNetworkIdentityDiscovery) {
 		if disconnectErr := c.conn.Disconnect(); disconnectErr != nil && !errors.Is(disconnectErr, ErrNotConnected) {
 			return errors.Join(identityErr, disconnectErr)
@@ -196,13 +192,22 @@ func (c *Client) Connect() error {
 		if errors.Is(disconnectErr, ErrNotConnected) {
 			disconnectErr = nil
 		}
-		if reconnectErr := c.conn.Connect(); reconnectErr != nil {
+		reconnectCtx, cancelReconnect := context.WithTimeout(context.Background(), c.cfg.timeout)
+		reconnectErr := c.conn.connect(reconnectCtx)
+		if reconnectErr != nil {
+			reconnectErr = errors.Join(reconnectErr, reconnectCtx.Err())
+		}
+		cancelReconnect()
+		if reconnectErr != nil {
 			return errors.Join(identityErr, disconnectErr, reconnectErr)
 		}
 		identityErr = errors.Join(identityErr, disconnectErr)
 	}
 
 	ctx := c.resetLifecycle()
+	for _, message := range bufferedMessages {
+		c.handleMessage(ctx, message)
+	}
 	go c.readMessages(ctx)
 	c.reportError(ctx, identityErr)
 	return nil
@@ -277,8 +282,8 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 	}
 
 	if txType, ok := (*tx)["TransactionType"].(string); ok {
-		if acc, ok := (*tx)["Account"].(types.Address); txType == transaction.AccountDeleteTx.String() && ok {
-			err := c.checkAccountDeleteBlockers(acc)
+		if acc, ok := clientinternal.TransactionString((*tx)["Account"]); txType == transaction.AccountDeleteTx.String() && ok {
+			err := c.checkAccountDeleteBlockers(types.Address(acc))
 			if err != nil {
 				return err
 			}
@@ -922,12 +927,12 @@ func (c *Client) readMessages(ctx context.Context) {
 
 		switch {
 		case ws.IsCloseError(err) || ws.IsUnexpectedCloseError(err):
-			c.disconnectAfterRead(ctx)
+			c.disconnectConnection(ctx)
 			if !c.reconnectWithBackoff(ctx, &retryCount, maxRetries) {
 				return
 			}
 		case err != nil:
-			c.disconnectAfterRead(ctx)
+			c.disconnectConnection(ctx)
 			c.reportError(ctx, err)
 			return
 		default:
@@ -939,7 +944,7 @@ func (c *Client) readMessages(ctx context.Context) {
 	}
 }
 
-func (c *Client) disconnectAfterRead(ctx context.Context) {
+func (c *Client) disconnectConnection(ctx context.Context) {
 	if err := c.conn.Disconnect(); err != nil && !errors.Is(err, ErrNotConnected) {
 		c.reportError(ctx, err)
 	}
@@ -974,7 +979,7 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 			continue
 		}
 		if ctx.Err() != nil {
-			c.disconnectAfterRead(ctx)
+			c.disconnectConnection(ctx)
 			return false
 		}
 		return true
@@ -1163,14 +1168,6 @@ type validatedInnerTx struct {
 }
 
 func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
-	identity, err := c.networkIdentity()
-	if err != nil {
-		return err
-	}
-	if err := clientinternal.ApplyNetworkIDPolicy(*tx, identity); err != nil {
-		return err
-	}
-
 	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
 		return ErrRawTransactionsFieldIsNotAnArray

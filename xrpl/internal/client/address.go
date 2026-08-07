@@ -8,7 +8,7 @@ import (
 )
 
 type addressChange struct {
-	tx           map[string]any
+	tx           transactionMap
 	addressField string
 	classic      string
 	tagField     string
@@ -16,13 +16,24 @@ type addressChange struct {
 	hasTag       bool
 }
 
+var taglessAddressFields = [...]string{
+	"Authorize",
+	"Unauthorize",
+	"Owner",
+	"RegularKey",
+	"Delegate",
+	"NFTokenMinter",
+	"Subject",
+	"Issuer",
+	"Holder",
+}
+
 // SetValidAddresses converts every in-scope X-address in an outer transaction
 // and its Batch inner transactions to a classic address. Embedded Account and
 // Destination tags are applied only after all conflicts have been validated.
-func SetValidAddresses(tx map[string]any) error {
-	// Reserve space for four common-case changes while allowing the slice to grow for larger transactions.
-	changes := make([]addressChange, 0, 4)
-	if err := collectTransactionAddressChanges(tx, &changes); err != nil {
+func SetValidAddresses(tx transactionMap) error {
+	changes, err := collectTransactionAddressChanges(tx)
+	if err != nil {
 		return err
 	}
 
@@ -35,7 +46,16 @@ func SetValidAddresses(tx map[string]any) error {
 	return nil
 }
 
-func collectTransactionAddressChanges(tx map[string]any, changes *[]addressChange) error {
+func collectTransactionAddressChanges(tx transactionMap) ([]addressChange, error) {
+	// Reserve space for four common-case changes while allowing the slice to grow for larger transactions.
+	changes := make([]addressChange, 0, 4)
+	if err := appendTransactionAddressChanges(tx, &changes); err != nil {
+		return nil, err
+	}
+	return changes, nil
+}
+
+func appendTransactionAddressChanges(tx transactionMap, changes *[]addressChange) error {
 	if err := collectAddressChange(tx, "Account", "SourceTag", changes); err != nil {
 		return err
 	}
@@ -43,7 +63,7 @@ func collectTransactionAddressChanges(tx map[string]any, changes *[]addressChang
 		return err
 	}
 
-	for _, field := range [...]string{"Authorize", "Unauthorize", "Owner", "RegularKey"} {
+	for _, field := range taglessAddressFields {
 		if err := collectAddressChange(tx, field, "", changes); err != nil {
 			return err
 		}
@@ -54,19 +74,19 @@ func collectTransactionAddressChanges(tx map[string]any, changes *[]addressChang
 		return err
 	}
 	for _, inner := range inners {
-		if err := collectTransactionAddressChanges(inner, changes); err != nil {
+		if err := appendTransactionAddressChanges(inner, changes); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func collectAddressChange(tx map[string]any, addressField, tagField string, changes *[]addressChange) error {
+func collectAddressChange(tx transactionMap, addressField, tagField string, changes *[]addressChange) error {
 	value, present := tx[addressField]
 	if !present || value == nil {
 		return nil
 	}
-	address, ok := transactionString(value)
+	address, ok := TransactionString(value)
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrAddressFieldIsNotAString, addressField)
 	}
@@ -81,13 +101,16 @@ func collectAddressChange(tx map[string]any, addressField, tagField string, chan
 	if err != nil {
 		return fmt.Errorf("decode %s X-address: %w", addressField, err)
 	}
+	if hasTag && tagField == "" {
+		return fmt.Errorf("%w: %s", ErrAccountIDTagNotAllowed, addressField)
+	}
 	change := addressChange{
 		tx:           tx,
 		addressField: addressField,
 		classic:      classic,
 		tagField:     tagField,
 		tag:          tag,
-		hasTag:       hasTag && tagField != "",
+		hasTag:       hasTag,
 	}
 	if change.hasTag {
 		explicit, explicitPresent := tx[tagField]
@@ -105,7 +128,8 @@ func collectAddressChange(tx map[string]any, addressField, tagField string, chan
 	return nil
 }
 
-func transactionString(value any) (string, bool) {
+// TransactionString returns value as a string when it is a string or a named string type.
+func TransactionString(value any) (string, bool) {
 	if address, ok := value.(string); ok {
 		return address, true
 	}

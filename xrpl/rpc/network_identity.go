@@ -10,46 +10,59 @@ import (
 type networkIdentityState struct {
 	mu          sync.Mutex
 	ready       bool
-	discovering chan struct{}
+	discovering *networkIdentityDiscovery
+}
+
+type networkIdentityDiscovery struct {
+	done     chan struct{}
+	identity clientinternal.NetworkIdentity
+	err      error
+}
+
+type networkIdentityAttempt struct {
+	identity  clientinternal.NetworkIdentity
+	ready     bool
+	discovery *networkIdentityDiscovery
+	leader    bool
 }
 
 // ensureNetworkIdentity returns a configured identity or discovers it with
 // server_info. A caller-provided NetworkID is compared with discovery and is
 // never replaced when it matches. WithNetworkIdentity marks the initial state
-// ready and intentionally bypasses discovery.
+// ready and intentionally bypasses discovery. Discovery errors are returned and
+// are not cached, so a later operation can retry.
 func (c *Client) ensureNetworkIdentity() (clientinternal.NetworkIdentity, error) {
-	for {
-		identity, ready, discoveryDone, discover := c.beginNetworkIdentityDiscovery()
-		if ready {
-			return clientinternal.ValidateNetworkIdentity(identity)
-		}
-		if !discover {
-			<-discoveryDone
-			continue
-		}
-
-		response, requestErr := c.GetServerInfo(&server.InfoRequest{})
-		resolved := identity
-		var policyErr error
-		if requestErr == nil {
-			resolved, policyErr = clientinternal.ResolveNetworkIdentity(identity.NetworkID, clientinternal.NetworkIdentity{
-				NetworkID:    response.Info.NetworkID,
-				BuildVersion: response.Info.BuildVersion,
-			})
-		}
-		// A server_info request failure leaves the existing identity unchanged and
-		// does not block client operations. Do not cache the failure, so a later
-		// operation can try discovery again.
-		cacheErr := policyErr
-		if requestErr != nil {
-			cacheErr = requestErr
-		}
-		c.finishNetworkIdentityDiscovery(resolved, cacheErr)
-		if policyErr != nil {
-			return clientinternal.NetworkIdentity{}, policyErr
-		}
-		return resolved, nil
+	attempt := c.beginNetworkIdentityDiscovery()
+	if attempt.ready {
+		return clientinternal.ValidateNetworkIdentity(attempt.identity)
 	}
+	if !attempt.leader {
+		<-attempt.discovery.done
+		return attempt.discovery.identity, attempt.discovery.err
+	}
+
+	response, requestErr := c.GetServerInfo(&server.InfoRequest{})
+	resolved := attempt.identity
+	discoveryErr := requestErr
+	if requestErr == nil {
+		resolved, discoveryErr = clientinternal.ResolveNetworkIdentity(attempt.identity.NetworkID, clientinternal.NetworkIdentity{
+			NetworkID:    response.Info.NetworkID,
+			BuildVersion: response.Info.BuildVersion,
+		})
+	}
+	c.finishNetworkIdentityDiscovery(resolved, discoveryErr)
+	if discoveryErr != nil {
+		return clientinternal.NetworkIdentity{}, discoveryErr
+	}
+	return resolved, nil
+}
+
+// NetworkIdentity returns a thread-safe snapshot of the client network ID and
+// server build version. The returned network ID does not alias client state.
+func (c *Client) NetworkIdentity() (*uint32, string) {
+	c.identity.mu.Lock()
+	defer c.identity.mu.Unlock()
+	return clientinternal.CloneNetworkID(c.networkID), c.buildVersion
 }
 
 func (c *Client) networkIdentity() (clientinternal.NetworkIdentity, error) {
@@ -57,40 +70,46 @@ func (c *Client) networkIdentity() (clientinternal.NetworkIdentity, error) {
 	defer c.identity.mu.Unlock()
 
 	return clientinternal.ValidateNetworkIdentity(clientinternal.NetworkIdentity{
-		NetworkID:    c.NetworkID,
-		BuildVersion: c.BuildVersion,
+		NetworkID:    c.networkID,
+		BuildVersion: c.buildVersion,
 	})
 }
 
-func (c *Client) beginNetworkIdentityDiscovery() (clientinternal.NetworkIdentity, bool, <-chan struct{}, bool) {
+func (c *Client) beginNetworkIdentityDiscovery() networkIdentityAttempt {
 	c.identity.mu.Lock()
 	defer c.identity.mu.Unlock()
 
 	identity := clientinternal.NetworkIdentity{
-		NetworkID:    c.NetworkID,
-		BuildVersion: c.BuildVersion,
+		NetworkID:    c.networkID,
+		BuildVersion: c.buildVersion,
 	}
 	if c.identity.ready {
-		return identity, true, nil, false
+		return networkIdentityAttempt{identity: identity, ready: true}
 	}
 	if c.identity.discovering != nil {
-		return identity, false, c.identity.discovering, false
+		return networkIdentityAttempt{identity: identity, discovery: c.identity.discovering}
 	}
 
-	c.identity.discovering = make(chan struct{})
-	return identity, false, c.identity.discovering, true
+	discovery := &networkIdentityDiscovery{done: make(chan struct{})}
+	c.identity.discovering = discovery
+	return networkIdentityAttempt{identity: identity, discovery: discovery, leader: true}
 }
 
 func (c *Client) finishNetworkIdentityDiscovery(identity clientinternal.NetworkIdentity, discoveryErr error) {
 	c.identity.mu.Lock()
 	defer c.identity.mu.Unlock()
 
+	discovery := c.identity.discovering
+	discovery.err = discoveryErr
 	if discoveryErr == nil {
-		c.NetworkID = identity.NetworkID
-		c.BuildVersion = identity.BuildVersion
+		c.networkID = clientinternal.CloneNetworkID(identity.NetworkID)
+		c.buildVersion = identity.BuildVersion
 		c.identity.ready = true
+		discovery.identity = clientinternal.NetworkIdentity{
+			NetworkID:    clientinternal.CloneNetworkID(identity.NetworkID),
+			BuildVersion: identity.BuildVersion,
+		}
 	}
-	discoveryDone := c.identity.discovering
 	c.identity.discovering = nil
-	close(discoveryDone)
+	close(discovery.done)
 }

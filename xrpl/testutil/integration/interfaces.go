@@ -19,6 +19,7 @@ type FaucetProvider interface {
 // Client defines the interface for submitting transactions and funding wallets in integration tests.
 type Client interface {
 	FaucetProvider() common.FaucetProvider
+	NetworkIdentity() (*uint32, string)
 
 	FundWallet(wallet *wallet.Wallet) error
 	Autofill(tx *transaction.FlatTransaction) error

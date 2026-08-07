@@ -40,6 +40,8 @@ var (
 	ErrInvalidAddress = clientinternal.ErrInvalidAddress
 	// ErrMismatchedTag is returned when an explicit transaction tag conflicts with an X-address tag.
 	ErrMismatchedTag = clientinternal.ErrMismatchedTag
+	// ErrAccountIDTagNotAllowed is returned when a tagless AccountID field receives a tagged X-address.
+	ErrAccountIDTagNotAllowed = clientinternal.ErrAccountIDTagNotAllowed
 	// ErrRawTransactionsFieldIsNotAnArray is returned when the RawTransactions field is not an array type.
 	ErrRawTransactionsFieldIsNotAnArray = clientinternal.ErrRawTransactionsFieldIsNotAnArray
 	// ErrRawTransactionFieldIsNotAnObject is returned when the RawTransaction field is not an object type.
@@ -60,8 +62,10 @@ var (
 	ErrNetworkIDFieldUnexpected = clientinternal.ErrNetworkIDFieldUnexpected
 	// ErrInvalidBuildVersion is returned when the discovered rippled version cannot be compared.
 	ErrInvalidBuildVersion = clientinternal.ErrInvalidBuildVersion
-	// ErrNetworkIDOverrideMismatch is returned when a trusted override differs from server_info.
+	// ErrNetworkIDOverrideMismatch is returned when an override differs from server_info.
 	ErrNetworkIDOverrideMismatch = clientinternal.ErrNetworkIDOverrideMismatch
+	// ErrNetworkIDOverrideUnverified is returned when server_info omits the ID needed to verify an override.
+	ErrNetworkIDOverrideUnverified = clientinternal.ErrNetworkIDOverrideUnverified
 	// ErrRawTransactionsFieldMissing is returned when the RawTransactions field is missing from a Batch transaction.
 	ErrRawTransactionsFieldMissing = errors.New("RawTransactions field missing from Batch transaction")
 	// ErrRawTransactionFieldMissing is returned when the RawTransaction field is missing from a wrapper.

@@ -6,6 +6,7 @@ import (
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
@@ -60,13 +61,19 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 		flatPaymentTx := paymentTx.Flatten()
 		_, err = runner.TestTransaction(&flatPaymentTx, sender, "tesSUCCESS", nil)
 		require.NoError(t, err)
-		networkID := discoveredNetworkID(t, client)
+		networkID, buildVersion := client.NetworkIdentity()
+		networkIDRequired, err := clientinternal.NetworkIDRequired(clientinternal.NetworkIdentity{
+			NetworkID:    networkID,
+			BuildVersion: buildVersion,
+		})
+		require.NoError(t, err)
 		require.Equal(t, sender.GetAddress().String(), flatPaymentTx["Account"])
 		require.Equal(t, uint32(0), flatPaymentTx["SourceTag"])
 		require.Equal(t, receiver.GetAddress().String(), flatPaymentTx["Destination"])
 		require.Equal(t, uint32(14), flatPaymentTx["DestinationTag"])
-		if networkID > rpc.RestrictedNetworks {
-			require.Equal(t, networkID, flatPaymentTx["NetworkID"])
+		if networkIDRequired {
+			require.NotNil(t, networkID)
+			require.Equal(t, *networkID, flatPaymentTx["NetworkID"])
 		} else {
 			require.NotContains(t, flatPaymentTx, "NetworkID")
 		}
@@ -168,22 +175,6 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 		require.NoError(t, err)
 		require.Equal(t, "100", objects.AccountObjects[0]["OutstandingAmount"])
 	})
-}
-
-func discoveredNetworkID(t *testing.T, client integration.Client) uint32 {
-	t.Helper()
-
-	var networkID *uint32
-	switch cl := client.(type) {
-	case *rpc.Client:
-		networkID = cl.NetworkID
-	case *websocket.Client:
-		networkID = cl.NetworkID
-	default:
-		t.Fatalf("unsupported integration client type %T", client)
-	}
-	require.NotNil(t, networkID)
-	return *networkID
 }
 
 func TestIntegrationPayment_Websocket(t *testing.T) {

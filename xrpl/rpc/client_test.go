@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	requests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
@@ -29,7 +30,12 @@ func TestClient(t *testing.T) {
 
 		jsonRpcClient := NewClient(cfg)
 
-		assert.Equal(t, &Client{cfg: cfg}, jsonRpcClient)
+		assert.Same(t, cfg, jsonRpcClient.cfg)
+		networkID, buildVersion := jsonRpcClient.NetworkIdentity()
+		assert.Nil(t, networkID)
+		assert.Empty(t, buildVersion)
+		assert.False(t, jsonRpcClient.identity.ready)
+		assert.Nil(t, jsonRpcClient.identity.discovering)
 	})
 }
 
@@ -645,6 +651,40 @@ func TestClient_Autofill(t *testing.T) {
 	}
 }
 
+func TestClient_AutofillChecksAccountDeleteBlockersForStringAddress(t *testing.T) {
+	const (
+		classicAddress  = "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"
+		xAddress        = "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ"
+		blockerResponse = `{"result":{"account_objects":[{}]}}`
+	)
+
+	tests := []struct {
+		name    string
+		account any
+	}{
+		{name: "plain string", account: classicAddress},
+		{name: "named X-address", account: types.Address(xAddress)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := transaction.FlatTransaction{
+				"Account":            tt.account,
+				"TransactionType":    transaction.AccountDeleteTx.String(),
+				"Sequence":           uint32(1),
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(100),
+			}
+			cl := setupTestRPCClientForAutofill(t, []string{blockerResponse})
+
+			err := cl.Autofill(&tx)
+
+			require.ErrorIs(t, err, ErrAccountCannotBeDeleted)
+			require.Equal(t, classicAddress, tx["Account"])
+		})
+	}
+}
+
 func TestClient_autofillRawTransactions(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -1235,11 +1275,15 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := setupTestRPCClientForAutofill(t, tt.mockResponses)
 
-			// Set a trusted network identity for this direct helper test.
-			cl.NetworkID = uint32Pointer(tt.networkID)
-			cl.BuildVersion = "1.12.0"
-
-			err := cl.autofillRawTransactions(&tt.tx)
+			// Apply the policy once before this direct raw-transaction helper test.
+			setTestNetworkIdentity(cl, uint32Pointer(tt.networkID), "1.12.0")
+			identity, err := cl.networkIdentity()
+			if err == nil {
+				err = clientinternal.ApplyNetworkIDPolicy(tt.tx, identity)
+			}
+			if err == nil {
+				err = cl.autofillRawTransactions(&tt.tx)
+			}
 
 			if tt.expectedErr != nil {
 				require.Error(t, err)

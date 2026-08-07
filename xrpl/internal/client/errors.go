@@ -1,6 +1,10 @@
 package client
 
-import "errors"
+import (
+	"errors"
+
+	binarycodectypes "github.com/Peersyst/xrpl-go/binary-codec/types"
+)
 
 var (
 	// address
@@ -17,6 +21,9 @@ var (
 	// ErrMismatchedTag indicates that an explicit transaction tag conflicts with
 	// the tag embedded in an X-address.
 	ErrMismatchedTag = errors.New("transaction tag mismatch")
+	// ErrAccountIDTagNotAllowed indicates that a tagless AccountID field received
+	// an X-address with an embedded tag.
+	ErrAccountIDTagNotAllowed = binarycodectypes.ErrAccountIDTagNotAllowed
 
 	// network
 
@@ -26,9 +33,12 @@ var (
 	// errInvalidRippledVersionFormat indicates that a rippled version does not
 	// contain its required major, minor, and patch components.
 	errInvalidRippledVersionFormat = errors.New("version must have major, minor, and patch components")
-	// ErrNetworkIDOverrideMismatch indicates that a trusted client override does
-	// not match the identity discovered from server_info.
+	// ErrNetworkIDOverrideMismatch indicates that a client override does not
+	// match the identity discovered from server_info.
 	ErrNetworkIDOverrideMismatch = errors.New("configured network ID does not match server network ID")
+	// ErrNetworkIDOverrideUnverified indicates that server_info did not include
+	// the network ID needed to verify a client override.
+	ErrNetworkIDOverrideUnverified = errors.New("configured network ID cannot be verified because server network ID is missing")
 	// ErrNetworkIDFieldIsNotAUint32 indicates that a transaction NetworkID value
 	// has the wrong Go type.
 	ErrNetworkIDFieldIsNotAUint32 = errors.New("field NetworkID must be a uint32")
