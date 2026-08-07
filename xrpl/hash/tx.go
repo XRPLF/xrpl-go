@@ -62,11 +62,11 @@ func validateHashableTransactionForm(tx map[string]any) error {
 	}
 
 	// Allow the canonical unsigned form used by inner Batch transactions.
-	form, err := clientinternal.InspectSignedTransaction(tx, true)
+	signingType, err := clientinternal.InspectSignedTransaction(tx, true)
 	if err != nil {
 		return err
 	}
-	if form == clientinternal.UnsignedTransaction {
+	if signingType == clientinternal.UnsignedTransaction {
 		return ErrNonSignedTransaction
 	}
 	return nil
