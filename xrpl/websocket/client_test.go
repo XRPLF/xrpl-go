@@ -10,6 +10,7 @@ import (
 	"time"
 
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	clientconfigtestutil "github.com/Peersyst/xrpl-go/xrpl/internal/clientconfig/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
@@ -1926,7 +1927,13 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			// Set a trusted network identity for this direct helper test.
 			setTrustedTestNetworkIdentity(cl, tt.networkID)
 
-			err := cl.autofillRawTransactions(&tt.tx)
+			identity, err := cl.networkIdentity()
+			if err == nil {
+				err = clientinternal.ApplyNetworkIDPolicy(tt.tx, identity)
+			}
+			if err == nil {
+				err = cl.autofillRawTransactions(&tt.tx)
+			}
 
 			if tt.expectedErr != nil {
 				if err == nil {

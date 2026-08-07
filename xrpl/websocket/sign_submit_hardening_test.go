@@ -64,14 +64,24 @@ func TestClientSubmitOptionsAndCallerOwnership(t *testing.T) {
 				"Fee":                "40",
 				"Sequence":           uint32(1),
 				"LastLedgerSequence": uint32(20),
-				"RawTransactions": []map[string]any{{"RawTransaction": map[string]any{
-					"TransactionType": "Payment",
-					"Account":         signer.ClassicAddress.String(),
-					"Destination":     "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
-					"Amount":          "1",
-					"Flags":           uint32(0x40000000),
-					"Sequence":        uint32(2),
-				}}},
+				"RawTransactions": []map[string]any{
+					{"RawTransaction": map[string]any{
+						"TransactionType": "Payment",
+						"Account":         signer.ClassicAddress.String(),
+						"Destination":     "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+						"Amount":          "1",
+						"Flags":           uint32(0x40000000),
+						"Sequence":        uint32(2),
+					}},
+					{"RawTransaction": map[string]any{
+						"TransactionType": "Payment",
+						"Account":         signer.ClassicAddress.String(),
+						"Destination":     "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+						"Amount":          "2",
+						"Flags":           uint32(0x40000000),
+						"Sequence":        uint32(3),
+					}},
+				},
 			},
 			opts: &wstypes.SubmitOptions{Autofill: true, Wallet: &signer},
 		},
@@ -290,7 +300,9 @@ func TestClientAutofillRawTransactionsRejectsNullSigningFields(t *testing.T) {
 		field       string
 		expectedErr error
 	}{
+		{name: "null Fee", field: "Fee", expectedErr: transactiontypes.ErrBatchInnerTransactionInvalid},
 		{name: "null SigningPubKey", field: "SigningPubKey", expectedErr: ErrSigningPubKeyFieldMustBeEmpty},
+		{name: "null LastLedgerSequence", field: "LastLedgerSequence", expectedErr: ErrLastLedgerSequenceFieldMustBeAbsent},
 		{name: "null TxnSignature", field: "TxnSignature", expectedErr: ErrTxnSignatureFieldMustBeEmpty},
 		{name: "null Signers", field: "Signers", expectedErr: ErrSignersFieldMustBeEmpty},
 	}
@@ -307,6 +319,69 @@ func TestClientAutofillRawTransactionsRejectsNullSigningFields(t *testing.T) {
 			require.ErrorIs(t, cl.autofillRawTransactions(&tx), tt.expectedErr)
 		})
 	}
+}
+
+func TestClientAutofillMultisignedFee(t *testing.T) {
+	serverInfo := map[string]any{
+		"id": 1,
+		"result": map[string]any{
+			"info": map[string]any{
+				"validated_ledger": map[string]any{"base_fee_xrp": float32(0.00001)},
+				"load_factor":      float32(1),
+			},
+		},
+	}
+	tests := []struct {
+		name      string
+		fee       any
+		responses []map[string]any
+		expected  string
+	}{
+		{name: "preserves supplied fee", fee: "99", expected: "99"},
+		{name: "calculates missing fee once", responses: []map[string]any{serverInfo}, expected: "30"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := transaction.FlatTransaction{
+				"TransactionType":    "Payment",
+				"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"Sequence":           uint32(1),
+				"LastLedgerSequence": uint32(20),
+			}
+			if tt.fee != nil {
+				tx["Fee"] = tt.fee
+			}
+			cl, cleanup := setupTestClientForAutofill(t, tt.responses)
+			defer cleanup()
+			cl.cfg.feeCushion = 1
+
+			require.NoError(t, cl.AutofillMultisigned(&tx, 2))
+			require.Equal(t, tt.expected, tx["Fee"])
+		})
+	}
+
+	t.Run("fee failure is atomic", func(t *testing.T) {
+		tx := transaction.FlatTransaction{
+			"TransactionType":    "Payment",
+			"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+			"Sequence":           uint32(1),
+			"LastLedgerSequence": uint32(20),
+		}
+		original := clientinternal.CloneTransaction(tx)
+		cl, cleanup := setupTestClientForAutofill(t, []map[string]any{{
+			"id": 1,
+			"result": map[string]any{
+				"info": map[string]any{
+					"validated_ledger": map[string]any{"base_fee_xrp": float32(0)},
+				},
+			},
+		}})
+		defer cleanup()
+
+		require.ErrorIs(t, cl.AutofillMultisigned(&tx, 2), ErrCouldNotGetBaseFeeXrp)
+		require.Equal(t, original, map[string]any(tx))
+	})
 }
 
 func TestClientFeeParity(t *testing.T) {
@@ -350,6 +425,21 @@ func TestClientFeeParity(t *testing.T) {
 			require.Equal(t, tt.expected, tx["Fee"])
 		})
 	}
+}
+
+func TestClientSubmitTxBlobWorkerUsesDecodedTransaction(t *testing.T) {
+	cl, seen, cleanup := setupWSSubmitCapture(t)
+	defer cleanup()
+	tx := map[string]any{
+		"TransactionType": "Payment",
+		"SigningPubKey":   "AABB",
+		"TxnSignature":    "CCDD",
+	}
+
+	response, err := cl.submitTxBlob("not-hex", tx, false)
+	require.NoError(t, err)
+	require.Equal(t, "tesSUCCESS", response.EngineResult)
+	<-seen
 }
 
 func TestClientSubmitTxBlobStructuralPreflight(t *testing.T) {
@@ -402,6 +492,19 @@ func TestClientSubmitMultisignedStructuralPreflight(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "tesSUCCESS", response.EngineResult)
 	<-seen
+
+	singleSignedBlob, _, err := signer.Sign(map[string]any{
+		"TransactionType": "Payment",
+		"Account":         signer.ClassicAddress.String(),
+		"Destination":     "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+		"Amount":          "1",
+		"Fee":             "10",
+		"Sequence":        uint32(1),
+	})
+	require.NoError(t, err)
+	_, err = cl.SubmitMultisigned(singleSignedBlob, false)
+	require.ErrorIs(t, err, ErrTransactionNotMultisigned)
+	require.ErrorIs(t, err, ErrSignerDataIsEmpty)
 
 	require.NotPanics(t, func() {
 		_, err := cl.SubmitMultisigned("malformed", false)

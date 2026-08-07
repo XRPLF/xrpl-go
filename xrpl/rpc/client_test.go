@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	requests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
@@ -1234,7 +1235,13 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			cl.NetworkID = uint32Pointer(tt.networkID)
 			cl.BuildVersion = "1.12.0"
 
-			err := cl.autofillRawTransactions(&tt.tx)
+			identity, err := cl.networkIdentity()
+			if err == nil {
+				err = clientinternal.ApplyNetworkIDPolicy(tt.tx, identity)
+			}
+			if err == nil {
+				err = cl.autofillRawTransactions(&tt.tx)
+			}
 
 			if tt.expectedErr != nil {
 				require.Error(t, err)

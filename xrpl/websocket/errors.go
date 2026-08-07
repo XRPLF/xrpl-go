@@ -23,6 +23,11 @@ var (
 	ErrInvalidSignedTransaction = clientinternal.ErrInvalidSignedTransaction
 	// ErrNilTransaction is returned when a nil transaction is submitted or autofilled.
 	ErrNilTransaction = errors.New("transaction must not be nil")
+	// ErrTransactionNotMultisigned is returned when SubmitMultisigned receives a transaction in another signing form.
+	ErrTransactionNotMultisigned = clientinternal.ErrTransactionNotMultisigned
+	// ErrSignerDataIsEmpty is a compatibility alias for ErrTransactionNotMultisigned.
+	// Deprecated: Use ErrTransactionNotMultisigned.
+	ErrSignerDataIsEmpty = ErrTransactionNotMultisigned
 	// ErrMissingLastLedgerSequenceInTransaction is returned when LastLedgerSequence is missing from a transaction.
 	ErrMissingLastLedgerSequenceInTransaction = errors.New("missing LastLedgerSequence in transaction")
 	// ErrMissingWallet is returned when a wallet is required but not provided for an unsigned transaction.
@@ -51,14 +56,18 @@ var (
 	ErrRawTransactionsFieldIsNotAnArray = clientinternal.ErrRawTransactionsFieldIsNotAnArray
 	// ErrRawTransactionFieldIsNotAnObject is returned when the RawTransaction field is not an object type.
 	ErrRawTransactionFieldIsNotAnObject = clientinternal.ErrRawTransactionFieldIsNotAnObject
+	// ErrBatchRawTransactionsCount is returned when a Batch does not contain 2 through 8 inner transactions.
+	ErrBatchRawTransactionsCount = clientinternal.ErrBatchRawTransactionsCount
 	// ErrSigningPubKeyFieldMustBeEmpty is returned when the SigningPubKey field should be empty but isn't.
-	ErrSigningPubKeyFieldMustBeEmpty = errors.New("field SigningPubKey must be empty")
-	// ErrTxnSignatureFieldMustBeEmpty is returned when the TxnSignature field should be empty but isn't.
-	ErrTxnSignatureFieldMustBeEmpty = errors.New("field TxnSignature must be empty")
-	// ErrSignersFieldMustBeEmpty is returned when the Signers field should be empty but isn't.
-	ErrSignersFieldMustBeEmpty = errors.New("field Signers must be empty")
+	ErrSigningPubKeyFieldMustBeEmpty = clientinternal.ErrSigningPubKeyFieldMustBeEmpty
+	// ErrTxnSignatureFieldMustBeEmpty is returned when the TxnSignature field should be absent but isn't.
+	ErrTxnSignatureFieldMustBeEmpty = clientinternal.ErrTxnSignatureFieldMustBeEmpty
+	// ErrSignersFieldMustBeEmpty is returned when the Signers field should be absent but isn't.
+	ErrSignersFieldMustBeEmpty = clientinternal.ErrSignersFieldMustBeEmpty
+	// ErrLastLedgerSequenceFieldMustBeAbsent is returned when an inner Batch includes LastLedgerSequence.
+	ErrLastLedgerSequenceFieldMustBeAbsent = clientinternal.ErrLastLedgerSequenceFieldMustBeAbsent
 	// ErrAccountFieldIsNotAString is returned when the Account field is not a string type.
-	ErrAccountFieldIsNotAString = errors.New("field Account must be a string")
+	ErrAccountFieldIsNotAString = clientinternal.ErrAccountFieldIsNotAString
 	// ErrNetworkIDFieldIsNotAUint32 is returned when the NetworkID field is set but not a uint32.
 	ErrNetworkIDFieldIsNotAUint32 = clientinternal.ErrNetworkIDFieldIsNotAUint32
 	// ErrNetworkIDFieldMismatch is returned when the NetworkID field does not match the expected NetworkID.
@@ -88,8 +97,6 @@ var (
 	ErrNotConnectedToServer = errors.New("not connected to server")
 	// ErrRequestTimedOut indicates that a request to the server timed out.
 	ErrRequestTimedOut = errors.New("request timed out")
-	// ErrSignerDataIsEmpty is returned when signer data is empty or missing.
-	ErrSignerDataIsEmpty = errors.New("signer data is empty")
 
 	// wallet
 
@@ -121,7 +128,7 @@ var (
 	// payment
 
 	// ErrAmountAndDeliverMaxMustBeIdentical is returned when Amount and DeliverMax fields are not identical.
-	ErrAmountAndDeliverMaxMustBeIdentical = errors.New("payment transaction: Amount and DeliverMax fields must be identical when both are provided")
+	ErrAmountAndDeliverMaxMustBeIdentical = clientinternal.ErrAmountAndDeliverMaxMustBeIdentical
 
 	// connection
 

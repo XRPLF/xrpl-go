@@ -58,10 +58,26 @@ var (
 	ErrRawTransactionsFieldIsNotAnArray = errors.New("field RawTransactions must be an array")
 	// ErrRawTransactionFieldIsNotAnObject indicates a malformed inner Batch wrapper.
 	ErrRawTransactionFieldIsNotAnObject = errors.New("field RawTransaction must be an object")
+	// ErrBatchRawTransactionsCount indicates that a Batch has fewer than two or more than eight inner transactions.
+	ErrBatchRawTransactionsCount = errors.New("Batch RawTransactions must contain between 2 and 8 transactions")
+	// ErrSigningPubKeyFieldMustBeEmpty indicates that an inner Batch SigningPubKey is not an empty string.
+	ErrSigningPubKeyFieldMustBeEmpty = errors.New("field SigningPubKey must be empty")
+	// ErrTxnSignatureFieldMustBeEmpty indicates that an inner Batch contains a forbidden TxnSignature field.
+	ErrTxnSignatureFieldMustBeEmpty = errors.New("field TxnSignature must be empty")
+	// ErrSignersFieldMustBeEmpty indicates that an inner Batch contains a forbidden Signers field.
+	ErrSignersFieldMustBeEmpty = errors.New("field Signers must be empty")
+	// ErrLastLedgerSequenceFieldMustBeAbsent indicates that an inner Batch contains a forbidden LastLedgerSequence field.
+	ErrLastLedgerSequenceFieldMustBeAbsent = errors.New("field LastLedgerSequence must be absent")
+	// ErrAccountFieldIsNotAString indicates that an inner Batch Account field is not a string.
+	ErrAccountFieldIsNotAString = errors.New("field Account must be a string")
 
 	// transaction
 
 	// ErrInvalidSignedTransaction indicates that transaction signing fields do not
 	// form a complete single-sign, multisign, or permitted inner-Batch structure.
 	ErrInvalidSignedTransaction = errors.New("transaction has an invalid signed form")
+	// ErrTransactionNotMultisigned indicates that SubmitMultisigned received a transaction in another signing form.
+	ErrTransactionNotMultisigned = errors.New("transaction is not multisigned")
+	// ErrAmountAndDeliverMaxMustBeIdentical indicates that a Payment has conflicting Amount and DeliverMax values.
+	ErrAmountAndDeliverMaxMustBeIdentical = errors.New("payment transaction: Amount and DeliverMax fields must be identical when both are provided")
 )

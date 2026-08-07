@@ -326,9 +326,10 @@ var (
 
 	// batch
 
-	// ErrBatchRawTransactionsEmpty is returned when the RawTransactions array is empty or nil.
-	// This validates that a batch transaction contains at least one inner transaction to execute.
-	ErrBatchRawTransactionsEmpty = errors.New("rawTransactions must be a non-empty array")
+	// ErrBatchRawTransactionsCount is returned when RawTransactions does not contain 2 through 8 inner transactions.
+	ErrBatchRawTransactionsCount = errors.New("RawTransactions must contain between 2 and 8 transactions")
+	// ErrBatchRawTransactionsEmpty is a compatibility alias for ErrBatchRawTransactionsCount.
+	ErrBatchRawTransactionsEmpty = ErrBatchRawTransactionsCount
 
 	// balance
 

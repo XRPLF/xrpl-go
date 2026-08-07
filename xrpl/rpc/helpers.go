@@ -221,7 +221,7 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 		}
 	}
 
-	// These transaction types destroy one incremental owner reserve.
+	// The fee for these transaction types includes one incremental owner reserve.
 	isSpecialTxCost := transactionType == "AccountDelete" || transactionType == "AMMCreate" || transactionType == "VaultCreate"
 
 	switch transactionType {
@@ -318,10 +318,7 @@ func (c *Client) checkPaymentAmounts(tx *transaction.FlatTransaction) error {
 	if tx.TxType() != transaction.PaymentTx {
 		return nil
 	}
-	if !clientinternal.NormalizeDeliverMax(*tx) {
-		return ErrAmountAndDeliverMaxMustBeIdentical
-	}
-	return nil
+	return clientinternal.NormalizeDeliverMax(*tx)
 }
 
 func (c *Client) submitMultisignedRequest(req *requests.SubmitMultisignedRequest) (*requests.SubmitMultisignedResponse, error) {
@@ -436,7 +433,7 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 	if autofill {
 		// working is already a private deep copy, so the unexported worker is
 		// enough. The public Autofill wrapper would clone it a second time.
-		if err := c.autofill(&working); err != nil {
+		if err := c.autofill(&working, 0); err != nil {
 			return "", err
 		}
 	} else {

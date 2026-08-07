@@ -247,14 +247,14 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 		return ErrNilTransaction
 	}
 	working := transaction.FlatTransaction(clientinternal.CloneTransaction(*tx))
-	if err := c.autofill(&working); err != nil {
+	if err := c.autofill(&working, 0); err != nil {
 		return err
 	}
 	clientinternal.ReplaceTransactionContents(*tx, working)
 	return nil
 }
 
-func (c *Client) autofill(tx *transaction.FlatTransaction) error {
+func (c *Client) autofill(tx *transaction.FlatTransaction, nSigners uint64) error {
 	if err := tx.RequireTransactionType(); err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func (c *Client) autofill(tx *transaction.FlatTransaction) error {
 		}
 	}
 	if _, ok := (*tx)["Fee"]; !ok {
-		if err := c.calculateFeePerTransactionType(tx, 0); err != nil {
+		if err := c.calculateFeePerTransactionType(tx, nSigners); err != nil {
 			return err
 		}
 	}
@@ -317,10 +317,7 @@ func (c *Client) AutofillMultisigned(tx *transaction.FlatTransaction, nSigners u
 		return ErrNilTransaction
 	}
 	working := transaction.FlatTransaction(clientinternal.CloneTransaction(*tx))
-	if err := c.autofill(&working); err != nil {
-		return err
-	}
-	if err := c.calculateFeePerTransactionType(&working, nSigners); err != nil {
+	if err := c.autofill(&working, nSigners); err != nil {
 		return err
 	}
 	clientinternal.ReplaceTransactionContents(*tx, working)
@@ -430,7 +427,10 @@ func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitRes
 	if err != nil {
 		return nil, err
 	}
+	return c.submitTxBlob(txBlob, tx, failHard)
+}
 
+func (c *Client) submitTxBlob(txBlob string, tx map[string]any, failHard bool) (*requests.SubmitResponse, error) {
 	signingType, err := clientinternal.InspectSignedTransaction(tx, false)
 	if err != nil {
 		return nil, err
@@ -478,7 +478,7 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 		return nil, err
 	}
 	if signingType != clientinternal.MultiSignedTransaction {
-		return nil, ErrSignerDataIsEmpty
+		return nil, ErrTransactionNotMultisigned
 	}
 
 	return c.submitMultisignedRequest(&requests.SubmitMultisignedRequest{
@@ -501,7 +501,7 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 	if !ok {
 		return nil, ErrMissingLastLedgerSequenceInTransaction
 	}
-	txResponse, err := c.SubmitTxBlob(txBlob, failHard)
+	txResponse, err := c.submitTxBlob(txBlob, tx, failHard)
 	if err != nil {
 		return nil, err
 	}
@@ -510,7 +510,7 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 		return nil, &ClientError{ErrorString: "transaction failed to submit with engine result: " + txResponse.EngineResult}
 	}
 
-	txHash, err := hash.SignTxBlob(txBlob)
+	txHash, err := hash.SignTx(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -711,7 +711,7 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 		}
 	}
 
-	// These transaction types destroy one incremental owner reserve.
+	// The fee for these transaction types includes one incremental owner reserve.
 	isSpecialTxCost := transactionType == "AccountDelete" || transactionType == "AMMCreate" || transactionType == "VaultCreate"
 
 	switch transactionType {
@@ -808,10 +808,7 @@ func (c *Client) checkPaymentAmounts(tx *transaction.FlatTransaction) error {
 	if tx.TxType() != transaction.PaymentTx {
 		return nil
 	}
-	if !clientinternal.NormalizeDeliverMax(*tx) {
-		return ErrAmountAndDeliverMaxMustBeIdentical
-	}
-	return nil
+	return clientinternal.NormalizeDeliverMax(*tx)
 }
 
 func (c *Client) registerPendingResponse(id uint64) chan *ClientResponse {
@@ -1057,7 +1054,7 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 	if autofill {
 		// working is already a private deep copy, so the unexported worker is
 		// enough. The public Autofill wrapper would clone it a second time.
-		if err := c.autofill(&working); err != nil {
+		if err := c.autofill(&working, 0); err != nil {
 			return "", err
 		}
 	} else {
@@ -1202,93 +1199,14 @@ func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (uint64, er
 	return totalFees, nil
 }
 
-type validatedInnerTx struct {
-	rawTx   map[string]any
-	account string
-}
-
 func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
-	identity, err := c.networkIdentity()
-	if err != nil {
-		return err
-	}
-	if err := clientinternal.ApplyNetworkIDPolicy(*tx, identity); err != nil {
-		return err
-	}
-
-	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
-	if !ok {
-		return ErrRawTransactionsFieldIsNotAnArray
-	}
-
-	inners := make([]validatedInnerTx, 0, len(rawTxs))
-	for _, rawTx := range rawTxs {
-		innerRawTx, ok := rawTx["RawTransaction"].(map[string]any)
-		if !ok {
-			return ErrRawTransactionFieldIsNotAnObject
+	return clientinternal.AutofillBatchRawTransactions(*tx, func(accountAddress string) (uint32, error) {
+		accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
+			Account: types.Address(accountAddress),
+		})
+		if err != nil {
+			return 0, err
 		}
-
-		acc, ok := innerRawTx["Account"].(string)
-		if !ok {
-			return ErrAccountFieldIsNotAString
-		}
-
-		// Interface comparisons against a string literal are false for any
-		// non-string value (including nil), so no type assertion is needed.
-		if fee, exists := innerRawTx["Fee"]; exists && fee != "0" {
-			return types.ErrBatchInnerTransactionInvalid
-		}
-
-		if signingPubKey, exists := innerRawTx["SigningPubKey"]; exists && signingPubKey != "" {
-			return ErrSigningPubKeyFieldMustBeEmpty
-		}
-
-		if _, exists := innerRawTx["TxnSignature"]; exists {
-			return ErrTxnSignatureFieldMustBeEmpty
-		}
-		if _, exists := innerRawTx["Signers"]; exists {
-			return ErrSignersFieldMustBeEmpty
-		}
-
-		inners = append(inners, validatedInnerTx{rawTx: innerRawTx, account: acc})
-	}
-
-	accountSeq := make(map[string]uint32, len(inners))
-
-	for _, inner := range inners {
-		innerRawTx := inner.rawTx
-		if innerRawTx["Fee"] == nil {
-			innerRawTx["Fee"] = "0"
-		}
-
-		if innerRawTx["SigningPubKey"] == nil {
-			innerRawTx["SigningPubKey"] = ""
-		}
-
-		if innerRawTx["Sequence"] == nil && innerRawTx["TicketSequence"] == nil {
-			acc := inner.account
-
-			if accountSeq[acc] != 0 {
-				innerRawTx["Sequence"] = accountSeq[acc]
-				accountSeq[acc]++
-			} else {
-				accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
-					Account: types.Address(acc),
-				})
-				if err != nil {
-					return err
-				}
-				var seq uint32
-				if innerRawTx["Account"] == (*tx)["Account"] {
-					seq = accountInfo.AccountData.Sequence + 1
-				} else {
-					seq = accountInfo.AccountData.Sequence
-				}
-				accountSeq[acc] = seq + 1
-				innerRawTx["Sequence"] = seq
-			}
-		}
-	}
-
-	return nil
+		return accountInfo.AccountData.Sequence, nil
+	})
 }
