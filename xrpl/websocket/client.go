@@ -20,6 +20,7 @@ import (
 	"time"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
@@ -291,7 +292,7 @@ func (c *Client) autofill(tx *transaction.FlatTransaction, nSigners uint64) erro
 
 	txType := tx.TxType()
 	if txType == transaction.AccountDeleteTx {
-		accountAddress, ok := clientinternal.TransactionString((*tx)["Account"])
+		accountAddress, ok := typecheck.ToString((*tx)["Account"])
 		if !ok {
 			return ErrMissingAccountInTransaction
 		}

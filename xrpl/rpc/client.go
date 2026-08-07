@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	commonconstants "github.com/Peersyst/xrpl-go/xrpl/common"
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
@@ -323,7 +324,7 @@ func (c *Client) autofill(tx *transaction.FlatTransaction, nSigners uint64) erro
 	}
 	txType := tx.TxType()
 	if txType == transaction.AccountDeleteTx {
-		accountAddress, ok := clientinternal.TransactionString((*tx)["Account"])
+		accountAddress, ok := typecheck.ToString((*tx)["Account"])
 		if !ok {
 			return ErrMissingAccountInTransaction
 		}

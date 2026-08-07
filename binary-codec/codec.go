@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"reflect"
 	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/definitions"
@@ -15,6 +14,7 @@ import (
 	"github.com/Peersyst/xrpl-go/binary-codec/serdes"
 	"github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
 
 var (
@@ -77,13 +77,13 @@ func Encode(json map[string]any) (string, error) {
 }
 
 func transactionRawFieldValueOverrides(json map[string]any) (types.RawFieldValueOverrides, error) {
-	transactionType, ok := underlyingString(json["TransactionType"])
+	transactionType, ok := typecheck.ToString(json["TransactionType"])
 	if !ok || transactionType != unlModifyTransactionType {
 		return nil, nil
 	}
 
 	if accountValue, present := json["Account"]; present {
-		account, isString := underlyingString(accountValue)
+		account, isString := typecheck.ToString(accountValue)
 		if !isString {
 			return nil, fmt.Errorf("%w; got %T", ErrInvalidUNLModifyAccount, accountValue)
 		}
@@ -96,18 +96,6 @@ func transactionRawFieldValueOverrides(json map[string]any) (types.RawFieldValue
 	// default STAccount. STAccount::add serializes that default as a zero-length value:
 	// https://github.com/XRPLF/rippled/blob/d4c1359921f34a4e96c5c8483119e59f0e30e4df/src/libxrpl/protocol/STAccount.cpp#L71-L81
 	return types.RawFieldValueOverrides{"Account": []byte{}}, nil
-}
-
-func underlyingString(value any) (string, bool) {
-	if value, ok := value.(string); ok {
-		return value, true
-	}
-
-	reflected := reflect.ValueOf(value)
-	if reflected.IsValid() && reflected.Kind() == reflect.String {
-		return reflected.String(), true
-	}
-	return "", false
 }
 
 // EncodeForMultisigning encodes a transaction into binary format in preparation for providing one

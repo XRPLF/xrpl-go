@@ -38,6 +38,38 @@ func TestIsString(t *testing.T) {
 	}
 }
 
+func TestToString(t *testing.T) {
+	type namedString string
+
+	tests := []struct {
+		name     string
+		value    any
+		expected string
+		ok       bool
+	}{
+		{name: "plain string", value: "Payment", expected: "Payment", ok: true},
+		{name: "empty string", value: "", expected: "", ok: true},
+		{name: "named string", value: namedString("Payment"), expected: "Payment", ok: true},
+		{name: "empty named string", value: namedString(""), expected: "", ok: true},
+		{name: "nil", value: nil},
+		{name: "integer", value: 42},
+		{name: "byte slice", value: []byte("Payment")},
+		{name: "string pointer", value: new(string)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := ToString(tt.value)
+			if ok != tt.ok {
+				t.Fatalf("ToString(%v) ok = %v, want %v", tt.value, ok, tt.ok)
+			}
+			if got != tt.expected {
+				t.Errorf("ToString(%v) = %q, want %q", tt.value, got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestIsUint32(t *testing.T) {
 	tests := []struct {
 		name string

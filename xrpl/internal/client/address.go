@@ -2,9 +2,9 @@ package client
 
 import (
 	"fmt"
-	"reflect"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
 
 type addressChange struct {
@@ -86,7 +86,7 @@ func collectAddressChange(tx transactionMap, addressField, tagField string, chan
 	if !present || value == nil {
 		return nil
 	}
-	address, ok := TransactionString(value)
+	address, ok := typecheck.ToString(value)
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrAddressFieldIsNotAString, addressField)
 	}
@@ -133,17 +133,4 @@ func collectAddressChange(tx transactionMap, addressField, tagField string, chan
 	}
 	*changes = append(*changes, change)
 	return nil
-}
-
-// TransactionString returns value as a string when it is a string or a named string type.
-func TransactionString(value any) (string, bool) {
-	if address, ok := value.(string); ok {
-		return address, true
-	}
-	// Use reflection to accept named string types for compatibility with typed transaction values.
-	reflected := reflect.ValueOf(value)
-	if reflected.IsValid() && reflected.Kind() == reflect.String {
-		return reflected.String(), true
-	}
-	return "", false
 }

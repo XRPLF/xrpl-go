@@ -7,6 +7,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Test transaction constants
@@ -434,13 +435,13 @@ func TestBatchValidateRawTransactionCount(t *testing.T) {
 			valid, err := batch.Validate()
 			if count == 2 || count == 8 {
 				assert.True(t, valid)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				return
 			}
 			assert.False(t, valid)
-			assert.ErrorIs(t, err, ErrBatchRawTransactionsCount)
+			require.ErrorIs(t, err, ErrBatchRawTransactionsCount)
 			if count == 0 {
-				assert.ErrorIs(t, err, ErrBatchRawTransactionsEmpty)
+				require.ErrorIs(t, err, ErrBatchRawTransactionsEmpty)
 			}
 		})
 	}
