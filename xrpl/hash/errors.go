@@ -15,7 +15,7 @@ var (
 	//
 	// Deprecated: SignTx and SignTxBlob now return ErrNonSignedTransaction or
 	// ErrInvalidSignedTransaction.
-	ErrMissingSignature = errors.New("transaction must have at least one of TxnSignature, Signers, or SigningPubKey")
+	ErrMissingSignature = ErrNonSignedTransaction
 	// ErrInvalidSignedTransaction is returned when signing fields are incomplete, empty,
 	// malformed, or mixed between single-sign and multisign forms.
 	ErrInvalidSignedTransaction = clientinternal.ErrInvalidSignedTransaction

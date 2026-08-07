@@ -17,6 +17,10 @@ const (
 	testSigner    = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
 )
 
+func TestErrMissingSignatureAliasesErrNonSignedTransaction(t *testing.T) {
+	require.ErrorIs(t, ErrNonSignedTransaction, ErrMissingSignature)
+}
+
 func TestSignTxSignedFormMatrix(t *testing.T) {
 	validSigner := map[string]any{
 		"Signer": map[string]any{
