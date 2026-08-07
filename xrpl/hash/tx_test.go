@@ -179,6 +179,10 @@ func TestSignTxSignedFormMatrix(t *testing.T) {
 }
 
 func TestSignTxPseudoTransactions(t *testing.T) {
+	// These vectors are validated mainnet transactions:
+	// EnableAmendment: https://livenet.xrpl.org/transactions/CA4562711E4679FE9317DD767871E90A404C7A8B84FAFD35EC2CF0231F1F6DAF
+	// SetFee: https://livenet.xrpl.org/transactions/1C15FEA3E1D50F96B6598607FC773FF1F6E0125F30160144BE0C5CBC52F5151B
+	// UNLModify: https://livenet.xrpl.org/transactions/80CDD04AC3C26F02C678881C546280C116648C9B116F87320B1CE68490F13907
 	tests := []struct {
 		name     string
 		txType   transaction.TxType

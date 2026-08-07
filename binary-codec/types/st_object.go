@@ -17,6 +17,10 @@ type STObject struct {
 	binarySerializer interfaces.BinarySerializer
 }
 
+// RawFieldValueOverrides maps field names to their serialized value bytes.
+// STObject still writes each field header and variable-length prefix in canonical field order.
+type RawFieldValueOverrides map[string][]byte
+
 // NewSTObject returns a new STObject with the given binary serializer.
 func NewSTObject(bs interfaces.BinarySerializer) *STObject {
 	return &STObject{binarySerializer: bs}
@@ -27,6 +31,19 @@ func NewSTObject(bs interfaces.BinarySerializer) *STObject {
 // and value), and then serializing each field instance.
 // This method returns an error if the JSON input is not a valid object.
 func (t *STObject) FromJSON(json any) ([]byte, error) {
+	return t.fromJSON(json, nil)
+}
+
+// FromJSONWithRawFieldValueOverrides converts a JSON object into a serialized byte slice and
+// replaces the value bytes of fields in the current object with the supplied raw values.
+func (t *STObject) FromJSONWithRawFieldValueOverrides(
+	json any,
+	overrides RawFieldValueOverrides,
+) ([]byte, error) {
+	return t.fromJSON(json, overrides)
+}
+
+func (t *STObject) fromJSON(json any, overrides RawFieldValueOverrides) ([]byte, error) {
 	object, ok := json.(map[string]any)
 	if !ok {
 		return nil, errNotValidJSON
@@ -36,8 +53,6 @@ func (t *STObject) FromJSON(json any) ([]byte, error) {
 		return nil, err
 	}
 
-	txType, _ := object["TransactionType"].(string)
-	isUNLModify := txType == "UNLModify"
 	sk := getSortedKeys(fimap)
 
 	for _, v := range sk {
@@ -45,11 +60,8 @@ func (t *STObject) FromJSON(json any) ([]byte, error) {
 			continue
 		}
 
-		var b []byte
-		if isUNLModify && v.FieldName == "Account" {
-			// rippled serializes the UNLModify Account field with zero length.
-			b = []byte{}
-		} else {
+		b, overridden := overrides[v.FieldName]
+		if !overridden {
 			st := GetSerializedType(v.Type)
 			b, err = st.FromJSON(fimap[v])
 			if err != nil {
