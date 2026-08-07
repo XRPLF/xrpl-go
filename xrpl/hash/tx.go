@@ -3,6 +3,8 @@ package hash
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"maps"
+	"reflect"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
@@ -31,7 +33,7 @@ func SignTx(tx map[string]any) (string, error) {
 		return "", err
 	}
 
-	txBlob, err := binarycodec.Encode(tx)
+	txBlob, err := binarycodec.Encode(normalizeTransactionType(tx))
 	if err != nil {
 		return "", err
 	}
@@ -56,8 +58,20 @@ func encodeSignedTxBlob(txBlob string) (string, error) {
 }
 
 func validateHashableTransactionForm(tx map[string]any) error {
-	txType, _ := tx["TransactionType"].(string)
-	if transaction.IsPseudoTransactionType(transaction.TxType(txType)) {
+	txType, ok := transactionTypeString(tx["TransactionType"])
+	if ok && transaction.IsPseudoTransactionType(transaction.TxType(txType)) {
+		if signingPubKey, present := tx["SigningPubKey"]; present {
+			value, isString := signingPubKey.(string)
+			if !isString || value != "" {
+				return ErrInvalidSignedTransaction
+			}
+		}
+		if _, present := tx["TxnSignature"]; present {
+			return ErrInvalidSignedTransaction
+		}
+		if _, present := tx["Signers"]; present {
+			return ErrInvalidSignedTransaction
+		}
 		return nil
 	}
 
@@ -70,4 +84,32 @@ func validateHashableTransactionForm(tx map[string]any) error {
 		return ErrNonSignedTransaction
 	}
 	return nil
+}
+
+func transactionTypeString(value any) (string, bool) {
+	if txType, ok := value.(string); ok {
+		return txType, true
+	}
+	reflected := reflect.ValueOf(value)
+	if reflected.IsValid() && reflected.Kind() == reflect.String {
+		return reflected.String(), true
+	}
+	return "", false
+}
+
+func normalizeTransactionType(tx map[string]any) map[string]any {
+	txTypeValue, present := tx["TransactionType"]
+	if !present {
+		return tx
+	}
+	if _, plainString := txTypeValue.(string); plainString {
+		return tx
+	}
+	txType, ok := transactionTypeString(txTypeValue)
+	if !ok {
+		return tx
+	}
+	normalized := maps.Clone(tx)
+	normalized["TransactionType"] = txType
+	return normalized
 }
