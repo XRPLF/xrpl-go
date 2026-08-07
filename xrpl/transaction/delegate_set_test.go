@@ -100,6 +100,30 @@ func TestDelegateSet_Flatten(t *testing.T) {
 	}
 }
 
+func TestDelegateSet_ValidateRejectsBatchPermission(t *testing.T) {
+	tx := &DelegateSet{
+		BaseTx: BaseTx{
+			Account:         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+			TransactionType: DelegateSetTx,
+			Fee:             types.XRPCurrencyAmount(12),
+			Sequence:        1,
+		},
+		Authorize: "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+		Permissions: []types.Permission{
+			{
+				Permission: types.PermissionValue{
+					PermissionValue: string(BatchTx),
+				},
+			},
+		},
+	}
+
+	valid, err := tx.Validate()
+
+	require.False(t, valid)
+	require.ErrorIs(t, err, ErrDelegateSetNonDelegatableTransaction)
+}
+
 func TestDelegateSet_Validate(t *testing.T) {
 	tests := []struct {
 		name     string

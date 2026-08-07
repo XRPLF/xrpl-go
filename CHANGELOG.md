@@ -165,6 +165,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `simulate` validation now permits non-empty `SigningPubKey` values and unsigned `Signers` entries while continuing to reject non-empty transaction signatures, matching `rippled` dry-run rules.
 - `server_definitions` now rejects null or incomplete definition sections and accepts a hash-only response only when it matches the request hash.
 
+#### xrpl/transaction
+
+- Fixed `DelegateSet` validation to reject `Batch` permissions as required by XLS-75.
+
 #### xrpl/transaction/types
 
 - Rejected currency amount JSON that combines `mpt_issuance_id` with issued-currency `currency` or `issuer` fields.
