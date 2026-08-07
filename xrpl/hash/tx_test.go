@@ -55,6 +55,14 @@ func TestSignTxSignedFormMatrix(t *testing.T) {
 			}),
 		},
 		{
+			name: "pass - named transaction type",
+			tx: with(map[string]any{
+				"TransactionType": transaction.PaymentTx,
+				"SigningPubKey":   testPublicKey,
+				"TxnSignature":    testSignature,
+			}),
+		},
+		{
 			name: "pass - complete multisign",
 			tx: with(map[string]any{
 				"SigningPubKey": "",
@@ -173,11 +181,13 @@ func TestSignTxSignedFormMatrix(t *testing.T) {
 func TestSignTxPseudoTransactions(t *testing.T) {
 	tests := []struct {
 		name     string
+		txType   transaction.TxType
 		tx       map[string]any
 		expected string
 	}{
 		{
-			name: "EnableAmendment",
+			name:   "EnableAmendment",
+			txType: transaction.EnableAmendmentTx,
 			tx: map[string]any{
 				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
 				"Amendment":       "AE35ABDEFBDE520372B31C957020B34A7A4A9DC3115A69803A44016477C84D6E",
@@ -190,7 +200,8 @@ func TestSignTxPseudoTransactions(t *testing.T) {
 			expected: "CA4562711E4679FE9317DD767871E90A404C7A8B84FAFD35EC2CF0231F1F6DAF",
 		},
 		{
-			name: "SetFee",
+			name:   "SetFee",
+			txType: transaction.SetFeeTx,
 			tx: map[string]any{
 				"Account":           "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
 				"BaseFee":           "000000000000000A",
@@ -205,7 +216,8 @@ func TestSignTxPseudoTransactions(t *testing.T) {
 			expected: "1C15FEA3E1D50F96B6598607FC773FF1F6E0125F30160144BE0C5CBC52F5151B",
 		},
 		{
-			name: "UNLModify",
+			name:   "UNLModify",
+			txType: transaction.UNLModifyTx,
 			tx: map[string]any{
 				"Account":            "",
 				"Fee":                "0",
@@ -226,11 +238,115 @@ func TestSignTxPseudoTransactions(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, actual)
 
+			namedTx := maps.Clone(tt.tx)
+			namedTx["TransactionType"] = tt.txType
+			actual, err = SignTx(namedTx)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+			require.IsType(t, transaction.TxType(""), namedTx["TransactionType"])
+
 			blob, err := binarycodec.Encode(tt.tx)
 			require.NoError(t, err)
 			actual, err = SignTxBlob(blob)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestSignTxPseudoTransactionSigningFields(t *testing.T) {
+	validSigner := map[string]any{
+		"Signer": map[string]any{
+			"Account":       testSigner,
+			"SigningPubKey": testPublicKey,
+			"TxnSignature":  testSignature,
+		},
+	}
+	tests := []struct {
+		name     string
+		fields   map[string]any
+		wantErr  bool
+		blobPath bool
+	}{
+		{name: "pass - absent SigningPubKey", blobPath: true},
+		{name: "pass - empty SigningPubKey", fields: map[string]any{"SigningPubKey": ""}, blobPath: true},
+		{name: "fail - nonempty SigningPubKey", fields: map[string]any{"SigningPubKey": testPublicKey}, wantErr: true, blobPath: true},
+		{name: "fail - false SigningPubKey", fields: map[string]any{"SigningPubKey": false}, wantErr: true},
+		{name: "fail - empty TxnSignature", fields: map[string]any{"TxnSignature": ""}, wantErr: true, blobPath: true},
+		{name: "fail - nonempty TxnSignature", fields: map[string]any{"TxnSignature": testSignature}, wantErr: true, blobPath: true},
+		{name: "fail - false TxnSignature", fields: map[string]any{"TxnSignature": false}, wantErr: true},
+		{name: "fail - empty Signers", fields: map[string]any{"Signers": []any{}}, wantErr: true, blobPath: true},
+		{name: "fail - nonempty Signers", fields: map[string]any{"Signers": []any{validSigner}}, wantErr: true, blobPath: true},
+		{name: "fail - false Signers", fields: map[string]any{"Signers": false}, wantErr: true},
+	}
+
+	for _, txType := range []transaction.TxType{
+		transaction.EnableAmendmentTx,
+		transaction.SetFeeTx,
+		transaction.UNLModifyTx,
+	} {
+		t.Run(txType.String(), func(t *testing.T) {
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					tx := map[string]any{"TransactionType": txType}
+					maps.Copy(tx, tt.fields)
+
+					hash, err := SignTx(tx)
+					if tt.wantErr {
+						require.ErrorIs(t, err, ErrInvalidSignedTransaction)
+						require.Empty(t, hash)
+					} else {
+						require.NoError(t, err)
+						require.NotEmpty(t, hash)
+					}
+
+					if !tt.blobPath {
+						return
+					}
+					blobTx := maps.Clone(tx)
+					blobTx["TransactionType"] = txType.String()
+					blob, err := binarycodec.Encode(blobTx)
+					require.NoError(t, err)
+
+					hash, err = SignTxBlob(blob)
+					if tt.wantErr {
+						require.ErrorIs(t, err, ErrInvalidSignedTransaction)
+						require.Empty(t, hash)
+					} else {
+						require.NoError(t, err)
+						require.NotEmpty(t, hash)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestSignTxMalformedTransactionType(t *testing.T) {
+	tests := []struct {
+		name  string
+		value any
+	}{
+		{name: "nil", value: nil},
+		{name: "boolean", value: false},
+		{name: "unknown string", value: "Unknown"},
+		{name: "unknown named string", value: transaction.TxType("Unknown")},
+		{name: "slice", value: []string{transaction.EnableAmendmentTx.String()}},
+		{name: "map", value: map[string]string{"type": transaction.EnableAmendmentTx.String()}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.NotPanics(t, func() {
+				hash, err := SignTx(map[string]any{
+					"TransactionType": tt.value,
+					"Account":         testAccount,
+					"SigningPubKey":   testPublicKey,
+					"TxnSignature":    testSignature,
+				})
+				require.Error(t, err)
+				require.Empty(t, hash)
+			})
 		})
 	}
 }

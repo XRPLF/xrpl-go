@@ -93,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/hash
 
-- Restored transaction ID calculation for `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions while preserving strict validation for user transactions.
+- Restored transaction ID calculation for `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions while preserving strict validation for user transactions. Pseudo-transactions now accept only an absent or empty `SigningPubKey` and reject any `TxnSignature` or `Signers`; named string `TransactionType` map values are supported without changing caller data.
 
 #### xrpl/rpc
 
