@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"encoding/json"
+	"reflect"
 
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
@@ -49,11 +50,16 @@ func (f FlatTransaction) RequireTransactionType() error {
 
 // TxType returns the transaction type of the flattened transaction.
 func (f FlatTransaction) TxType() TxType {
-	txType, ok := f["TransactionType"].(string)
-	if !ok {
+	value := f["TransactionType"]
+	if txType, ok := value.(string); ok {
+		return TxType(txType)
+	}
+
+	reflected := reflect.ValueOf(value)
+	if !reflected.IsValid() || reflected.Kind() != reflect.String {
 		return TxType("")
 	}
-	return TxType(txType)
+	return TxType(reflected.String())
 }
 
 // Sequence returns the sequence number of the flattened transaction.

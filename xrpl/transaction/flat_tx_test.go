@@ -72,6 +72,28 @@ func TestFlatTransaction_NormalizeFlagsErr(t *testing.T) {
 	}
 }
 
+func TestFlatTransaction_TxType(t *testing.T) {
+	tests := []struct {
+		name     string
+		tx       FlatTransaction
+		expected TxType
+	}{
+		{name: "plain string", tx: FlatTransaction{"TransactionType": "Payment"}, expected: PaymentTx},
+		{name: "named string", tx: FlatTransaction{"TransactionType": AccountDeleteTx}, expected: AccountDeleteTx},
+		{name: "missing", tx: FlatTransaction{}, expected: TxType("")},
+		{name: "nil", tx: FlatTransaction{"TransactionType": nil}, expected: TxType("")},
+		{name: "slice", tx: FlatTransaction{"TransactionType": []string{"Payment"}}, expected: TxType("")},
+		{name: "map", tx: FlatTransaction{"TransactionType": map[string]any{"type": "Payment"}}, expected: TxType("")},
+		{name: "integer", tx: FlatTransaction{"TransactionType": 42}, expected: TxType("")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, tt.tx.TxType())
+		})
+	}
+}
+
 func TestFlatTransaction_RequireTransactionType(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -79,8 +101,13 @@ func TestFlatTransaction_RequireTransactionType(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "present",
+			name:    "plain string",
 			tx:      FlatTransaction{"TransactionType": string(PaymentTx)},
+			wantErr: nil,
+		},
+		{
+			name:    "named string",
+			tx:      FlatTransaction{"TransactionType": PaymentTx},
 			wantErr: nil,
 		},
 		{
@@ -89,7 +116,22 @@ func TestFlatTransaction_RequireTransactionType(t *testing.T) {
 			wantErr: ErrTransactionTypeMissing,
 		},
 		{
-			name:    "wrong type",
+			name:    "nil",
+			tx:      FlatTransaction{"TransactionType": nil},
+			wantErr: ErrTransactionTypeMissing,
+		},
+		{
+			name:    "slice",
+			tx:      FlatTransaction{"TransactionType": []string{"Payment"}},
+			wantErr: ErrTransactionTypeMissing,
+		},
+		{
+			name:    "map",
+			tx:      FlatTransaction{"TransactionType": map[string]any{"type": "Payment"}},
+			wantErr: ErrTransactionTypeMissing,
+		},
+		{
+			name:    "integer",
 			tx:      FlatTransaction{"TransactionType": 42},
 			wantErr: ErrTransactionTypeMissing,
 		},

@@ -291,11 +291,11 @@ func (c *Client) autofill(tx *transaction.FlatTransaction) error {
 
 	txType := tx.TxType()
 	if txType == transaction.AccountDeleteTx {
-		account, ok := clientinternal.TransactionString((*tx)["Account"])
+		accountAddress, ok := clientinternal.TransactionString((*tx)["Account"])
 		if !ok {
 			return ErrMissingAccountInTransaction
 		}
-		if err := c.checkAccountDeleteBlockers(types.Address(account)); err != nil {
+		if err := c.checkAccountDeleteBlockers(types.Address(accountAddress)); err != nil {
 			return err
 		}
 	}

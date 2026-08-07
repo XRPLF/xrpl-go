@@ -173,6 +173,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Fixed `DelegateSet` validation to reject `Batch` permissions as required by XLS-75.
+- `FlatTransaction.TxType` now accepts named string values while safely rejecting malformed transaction type values.
 
 #### xrpl/transaction/types
 
@@ -184,6 +185,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Concurrent callers now share one in-flight network identity discovery result, including failures, while later independent operations can retry.
 - Rippled prerelease versions with numeric suffixes now compare the suffix numerically.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
+- Autofill now normalizes named string address values, such as `types.Address`, before account checks.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 
@@ -193,6 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AccountDelete autofill now runs blocker checks for plain and named string Account values, including values converted from X-addresses.
 - Identity discovery now accepts out-of-order frames, replays buffered stream messages, clears temporary read deadlines after failed reads, and bounds replacement dials by the client timeout.
 - Made autofill and unsigned signing reject public network identity values until successful discovery, unless `WithNetworkIdentity` supplies an explicit trusted override.
+- Autofill now normalizes named string address values, such as `types.Address`, before account checks.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
