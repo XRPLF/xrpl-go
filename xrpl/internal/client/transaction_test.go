@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -79,10 +80,10 @@ func TestInspectSignedBatchInners(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "non-Batch is ignored", tx: map[string]any{"TransactionType": "Payment", "SigningPubKey": publicKey}},
-		{name: "valid inner form", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{validInner}}},
-		{name: "flattened inner slice", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []map[string]any{validInner}}},
-		{name: "inner carries a signature", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{map[string]any{"RawTransaction": map[string]any{"Flags": uint32(types.TfInnerBatchTxn), "SigningPubKey": "", "TxnSignature": signature}}}}, wantErr: true},
-		{name: "inner missing inner-batch flag", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{map[string]any{"RawTransaction": map[string]any{"SigningPubKey": ""}}}}, wantErr: true},
+		{name: "valid inner form", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{validInner, validInner}}},
+		{name: "flattened inner slice", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []map[string]any{validInner, validInner}}},
+		{name: "inner carries a signature", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{map[string]any{"RawTransaction": map[string]any{"Flags": uint32(types.TfInnerBatchTxn), "SigningPubKey": "", "TxnSignature": signature}}, validInner}}, wantErr: true},
+		{name: "inner missing inner-batch flag", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{map[string]any{"RawTransaction": map[string]any{"SigningPubKey": ""}}, validInner}}, wantErr: true},
 		{name: "malformed RawTransactions", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": "invalid"}, wantErr: true},
 		{name: "malformed inner wrapper", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{42}}, wantErr: true},
 	}
@@ -95,6 +96,31 @@ func TestInspectSignedBatchInners(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestInspectSignedBatchInnersCount(t *testing.T) {
+	validInner := map[string]any{"RawTransaction": map[string]any{
+		"Flags":         uint32(types.TfInnerBatchTxn),
+		"SigningPubKey": "",
+	}}
+
+	for _, count := range []int{0, 1, 2, 8, 9} {
+		t.Run(fmt.Sprintf("count %d", count), func(t *testing.T) {
+			rawTransactions := make([]any, count)
+			for i := range rawTransactions {
+				rawTransactions[i] = validInner
+			}
+			err := InspectSignedBatchInners(map[string]any{
+				"TransactionType": "Batch",
+				"RawTransactions": rawTransactions,
+			})
+			if count == 2 || count == 8 {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, ErrBatchRawTransactionsCount)
 		})
 	}
 }
@@ -159,14 +185,14 @@ func TestTransactionHelpers(t *testing.T) {
 	t.Run("DeliverMax conversion", func(t *testing.T) {
 		deliverMax := map[string]any{"currency": "USD", "issuer": "rIssuer", "value": "1"}
 		tx := map[string]any{"DeliverMax": deliverMax}
-		require.True(t, NormalizeDeliverMax(tx))
+		require.NoError(t, NormalizeDeliverMax(tx))
 		require.Equal(t, deliverMax, tx["Amount"])
 		require.NotContains(t, tx, "DeliverMax")
 	})
 
 	t.Run("DeliverMax conflict is non-mutating", func(t *testing.T) {
 		tx := map[string]any{"Amount": "1", "DeliverMax": "2"}
-		require.False(t, NormalizeDeliverMax(tx))
+		require.ErrorIs(t, NormalizeDeliverMax(tx), ErrAmountAndDeliverMaxMustBeIdentical)
 		require.Equal(t, map[string]any{"Amount": "1", "DeliverMax": "2"}, tx)
 	})
 

@@ -8,7 +8,11 @@ const (
 	TfInnerBatchTxn uint32 = 0x40000000
 )
 
-// RawTransaction represents the wrapper structure for transactions within a Batch.
+// RawTransaction represents the wrapper structure for a transaction within a Batch.
+//
+// The inner transaction Fee can be absent or the string "0". SigningPubKey
+// must be present and must be an empty string. LastLedgerSequence, Signers, and
+// TxnSignature are forbidden on inner transactions.
 type RawTransaction struct {
 	RawTransaction map[string]any `json:"RawTransaction"`
 }

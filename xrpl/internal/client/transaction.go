@@ -91,6 +91,9 @@ func InspectSignedBatchInners(tx map[string]any) error {
 	if err != nil {
 		return err
 	}
+	if len(inners) < 2 || len(inners) > 8 {
+		return fmt.Errorf("%w: got %d", ErrBatchRawTransactionsCount, len(inners))
+	}
 	for _, inner := range inners {
 		signingType, err := InspectSignedTransaction(inner, true)
 		if err != nil {
@@ -187,6 +190,88 @@ func invalidSignedForm(detail string) error {
 	return fmt.Errorf("%w: %s", ErrInvalidSignedTransaction, detail)
 }
 
+// AutofillBatchRawTransactions validates and fills the transport-independent
+// fields of flattened Batch inner transactions. fetchAccountSequence supplies
+// only the client-specific account_info request.
+func AutofillBatchRawTransactions(
+	tx map[string]any,
+	fetchAccountSequence func(string) (uint32, error),
+) error {
+	rawTxs, ok := tx["RawTransactions"].([]map[string]any)
+	if !ok {
+		return ErrRawTransactionsFieldIsNotAnArray
+	}
+
+	type validatedInner struct {
+		rawTx   map[string]any
+		account string
+	}
+	inners := make([]validatedInner, 0, len(rawTxs))
+	for _, wrapper := range rawTxs {
+		inner, ok := wrapper["RawTransaction"].(map[string]any)
+		if !ok {
+			return ErrRawTransactionFieldIsNotAnObject
+		}
+
+		account, ok := inner["Account"].(string)
+		if !ok {
+			return ErrAccountFieldIsNotAString
+		}
+		if fee, exists := inner["Fee"]; exists {
+			fee, ok := fee.(string)
+			if !ok || fee != "0" {
+				return types.ErrBatchInnerTransactionInvalid
+			}
+		}
+		if signingPubKey, exists := inner["SigningPubKey"]; exists {
+			signingPubKey, ok := signingPubKey.(string)
+			if !ok || signingPubKey != "" {
+				return ErrSigningPubKeyFieldMustBeEmpty
+			}
+		}
+		if _, exists := inner["LastLedgerSequence"]; exists {
+			return ErrLastLedgerSequenceFieldMustBeAbsent
+		}
+		if _, exists := inner["TxnSignature"]; exists {
+			return ErrTxnSignatureFieldMustBeEmpty
+		}
+		if _, exists := inner["Signers"]; exists {
+			return ErrSignersFieldMustBeEmpty
+		}
+
+		inners = append(inners, validatedInner{rawTx: inner, account: account})
+	}
+
+	accountSequences := make(map[string]uint32, len(inners))
+	for _, inner := range inners {
+		if _, exists := inner.rawTx["Fee"]; !exists {
+			inner.rawTx["Fee"] = "0"
+		}
+		if _, exists := inner.rawTx["SigningPubKey"]; !exists {
+			inner.rawTx["SigningPubKey"] = ""
+		}
+		if inner.rawTx["Sequence"] != nil || inner.rawTx["TicketSequence"] != nil {
+			continue
+		}
+
+		sequence, cached := accountSequences[inner.account]
+		if !cached {
+			var err error
+			sequence, err = fetchAccountSequence(inner.account)
+			if err != nil {
+				return err
+			}
+			if inner.account == tx["Account"] {
+				sequence++
+			}
+		}
+		inner.rawTx["Sequence"] = sequence
+		accountSequences[inner.account] = sequence + 1
+	}
+
+	return nil
+}
+
 // DecodeTransactionBlob decodes a transaction blob and converts malformed
 // codec panics into ordinary errors at public client/hash boundaries.
 func DecodeTransactionBlob(txBlob string) (map[string]any, error) {
@@ -263,22 +348,22 @@ func cloneTransactionValue(value any) any {
 }
 
 // NormalizeDeliverMax converts the API v2 Payment alias DeliverMax to the
-// wire-compatible Amount field and removes DeliverMax. It reports false when
-// both fields are present with different values and leaves tx unchanged then.
-func NormalizeDeliverMax(tx map[string]any) bool {
+// wire-compatible Amount field and removes DeliverMax. It returns a shared
+// error and leaves tx unchanged when both fields have different values.
+func NormalizeDeliverMax(tx map[string]any) error {
 	deliverMax, present := tx["DeliverMax"]
 	if !present {
-		return true
+		return nil
 	}
 	if amount, hasAmount := tx["Amount"]; hasAmount {
 		if !reflect.DeepEqual(amount, deliverMax) {
-			return false
+			return ErrAmountAndDeliverMaxMustBeIdentical
 		}
 	} else {
 		tx["Amount"] = deliverMax
 	}
 	delete(tx, "DeliverMax")
-	return true
+	return nil
 }
 
 // SubmissionFailHard forces fail_hard for AccountDelete, as recommended by

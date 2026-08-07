@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -270,9 +271,8 @@ func TestBatch_Validate(t *testing.T) {
 					Flags:           TfAllOrNothing,
 				},
 				RawTransactions: []types.RawTransaction{
-					{
-						RawTransaction: paymentTx.Flatten(),
-					},
+					{RawTransaction: paymentTx.Flatten()},
+					{RawTransaction: offerCreateTx.Flatten()},
 				},
 			},
 			expected: true,
@@ -409,6 +409,38 @@ func TestBatch_Validate(t *testing.T) {
 			valid, err := tt.input.Validate()
 			if valid != tt.expected {
 				t.Errorf("expected %v, got %v, error: %v", tt.expected, valid, err)
+			}
+		})
+	}
+}
+
+func TestBatchValidateRawTransactionCount(t *testing.T) {
+	for _, count := range []int{0, 1, 2, 8, 9} {
+		t.Run(fmt.Sprintf("count %d", count), func(t *testing.T) {
+			rawTransactions := make([]types.RawTransaction, count)
+			for i := range rawTransactions {
+				rawTransactions[i] = types.RawTransaction{RawTransaction: paymentTx.Flatten()}
+			}
+			batch := Batch{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: BatchTx,
+					Fee:             types.XRPCurrencyAmount(12),
+					Flags:           TfAllOrNothing,
+				},
+				RawTransactions: rawTransactions,
+			}
+
+			valid, err := batch.Validate()
+			if count == 2 || count == 8 {
+				assert.True(t, valid)
+				assert.NoError(t, err)
+				return
+			}
+			assert.False(t, valid)
+			assert.ErrorIs(t, err, ErrBatchRawTransactionsCount)
+			if count == 0 {
+				assert.ErrorIs(t, err, ErrBatchRawTransactionsEmpty)
 			}
 		})
 	}

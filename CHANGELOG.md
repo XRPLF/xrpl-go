@@ -31,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID remains distinct from mainnet ID `0`. Use `WithNetworkIdentity(networkID, buildVersion)` to bypass discovery with trusted deployment values.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
-- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
+- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form; `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
+- `DeliverMax` normalization is Payment-only. Other transaction types do not rewrite this field.
 
 #### xrpl/transaction
 
@@ -46,7 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID remains distinct from mainnet ID `0`. Use `ClientConfig.WithNetworkIdentity(networkID, buildVersion)` to bypass discovery with trusted deployment values.
 - Changed `Client.Connect` to request `server_info` before it starts the background reader. A request, response, or identity failure now fails `Connect` and closes the new connection. A missing `network_id` fails with `ErrNetworkIDUnavailable`.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, websocket.ErrMismatchedTag)`.
-- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. `SubmitMultisigned` rejects non-multisigned blobs. Callers should use `errors.Is` with `ErrInvalidSignedTransaction` instead of matching submission error strings.
+- Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form; `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
+- `DeliverMax` normalization is Payment-only. Other transaction types do not rewrite this field.
 
 ### Added
 
@@ -76,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Added centralized transaction type constants and `IsPseudoTransactionType` classification for `EnableAmendment`, `SetFee`, and `UNLModify`.
+- Added `ErrBatchRawTransactionsCount` for the XLS-56 limit of 2 through 8 Batch inner transactions. RPC and WebSocket expose the shared signed-Batch preflight sentinel with the same name.
 
 #### xrpl/queries/server
 
@@ -128,7 +131,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `MutableFlags` bits in addition to an explicitly zero mask.
-- Inner Batch transaction flattening now preserves the wire-required empty `SigningPubKey`, and raw inner-transaction validation requires that explicit empty field.
+- Inner Batch transaction flattening now preserves the wire-required empty `SigningPubKey`, and raw inner-transaction validation requires that explicit empty field. Explicit null Batch inner fields now fail where the wire requires absent or empty values.
+- `Batch.Validate` now requires 2 through 8 inner transactions. `ErrBatchRawTransactionsEmpty` remains a compatibility alias that matches the new count error with `errors.Is`.
 
 #### xrpl/websocket
 
@@ -157,6 +161,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/internal/client
 
 - Preserved recovered binary codec error identity during transaction blob decoding so callers can use `errors.Is` and `errors.As`, while converting non-error panic values to ordinary errors.
+- Centralized Batch inner traversal and validation for RPC and WebSocket autofill, and removed the duplicate NetworkID policy application.
+- Shared DeliverMax conflict, signed-Batch count, and non-multisigned transaction error identities across both public clients.
 
 #### xrpl/hash
 
@@ -191,7 +197,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Concurrent callers now share one in-flight network identity discovery result, including failures, while later independent operations can retry.
 - Rippled prerelease versions with numeric suffixes now compare the suffix numerically.
 - Made autofill and unsigned signing fail closed when network identity discovery or validation fails, unless `WithNetworkIdentity` supplies an explicit trusted identity.
-- Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
+- Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Kept the `VaultCreate` fee at one incremental owner reserve. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
+- `AutofillMultisigned` now preserves a supplied `Fee`; when absent, it calculates the fee once with the signer count.
+- `SubmitTxBlobAndWait` now decodes the signed blob once and uses the decoded transaction for preflight and hashing.
 - Autofill now normalizes named string address values, such as `types.Address`, before account checks.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
@@ -206,7 +214,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Autofill now normalizes named string address values, such as `types.Address`, before account checks.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.
 - Signed Batch blob submission now rejects a malformed inner transaction (non-empty `TxnSignature`/`Signers`, or a missing inner-Batch form) even when the outer signature is valid.
-- Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
+- Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Kept the `VaultCreate` fee at one incremental owner reserve. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
+- `AutofillMultisigned` now preserves a supplied `Fee`; when absent, it calculates the fee once with the signer count.
+- `SubmitTxBlobAndWait` now decodes the signed blob once and uses the decoded transaction for preflight and hashing.
 
 ## [v0.2.0]
 

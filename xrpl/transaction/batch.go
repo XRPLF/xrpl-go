@@ -1,10 +1,15 @@
 package transaction
 
 import (
+	"fmt"
+
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
 const (
+	minBatchTransactionCount = 2
+	maxBatchTransactionCount = 8
+
 	// TfAllOrNothing if this flag is set, all transactions in the batch must succeed for any of them to be applied.
 	TfAllOrNothing uint32 = 0x00010000
 	// TfOnlyOne if this flag is set, at most one transaction in the batch will be applied.
@@ -122,8 +127,8 @@ func (b *Batch) Validate() (bool, error) {
 		return false, err
 	}
 
-	if len(b.RawTransactions) == 0 {
-		return false, ErrBatchRawTransactionsEmpty
+	if count := len(b.RawTransactions); count < minBatchTransactionCount || count > maxBatchTransactionCount {
+		return false, fmt.Errorf("%w: got %d", ErrBatchRawTransactionsCount, count)
 	}
 
 	// Validate each RawTransaction
