@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -104,10 +105,10 @@ func (c *Connection) ReadMessage() ([]byte, error) {
 	return c.readMessage(time.Time{})
 }
 
-// readMessage reads one message. A non-zero deadline applies only to this
-// read and is cleared again on success. It is used for the synchronous
+// readMessage reads one message. A non-zero deadline applies only to this read
+// and is cleared after every read attempt. It is used for the synchronous
 // server_info handshake before the background reader starts.
-func (c *Connection) readMessage(deadline time.Time) ([]byte, error) {
+func (c *Connection) readMessage(deadline time.Time) (message []byte, err error) {
 	c.readMu.Lock()
 	defer c.readMu.Unlock()
 
@@ -121,14 +122,14 @@ func (c *Connection) readMessage(deadline time.Time) ([]byte, error) {
 	if err := conn.SetReadDeadline(deadline); err != nil {
 		return nil, err
 	}
-	_, message, err := conn.ReadMessage()
+	if !deadline.IsZero() {
+		defer func() {
+			err = errors.Join(err, conn.SetReadDeadline(time.Time{}))
+		}()
+	}
+	_, message, err = conn.ReadMessage()
 	if err != nil {
 		return nil, err
-	}
-	if !deadline.IsZero() {
-		if err := conn.SetReadDeadline(time.Time{}); err != nil {
-			return nil, err
-		}
 	}
 	return message, nil
 }

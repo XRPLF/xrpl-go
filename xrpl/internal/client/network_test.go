@@ -1,6 +1,7 @@
 package client
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,6 +21,12 @@ func TestResolveNetworkIdentity(t *testing.T) {
 			name:          "missing network ID remains unknown",
 			discovered:    NetworkIdentity{BuildVersion: "1.12.0"},
 			expectedBuild: "1.12.0",
+		},
+		{
+			name:        "missing network ID cannot verify override",
+			override:    uint32Pointer(21337),
+			discovered:  NetworkIdentity{BuildVersion: "1.12.0"},
+			expectedErr: ErrNetworkIDOverrideUnverified,
 		},
 		{
 			name: "valid zero",
@@ -106,6 +113,39 @@ func TestNetworkIDRequired(t *testing.T) {
 	}
 }
 
+func TestCompareRippledVersions(t *testing.T) {
+	tests := []struct {
+		name     string
+		left     string
+		right    string
+		expected int
+	}{
+		{name: "beta ten after beta two", left: "1.11.0-b10", right: "1.11.0-b2", expected: 1},
+		{name: "beta two before beta ten", left: "1.11.0-b2", right: "1.11.0-b10", expected: -1},
+		{name: "release candidate ten after release candidate two", left: "1.11.0-rc10", right: "1.11.0-rc2", expected: 1},
+		{name: "numeric tail can exceed uint64", left: "1.11.0-b18446744073709551616", right: "1.11.0-b9", expected: 1},
+		{name: "leading zeroes do not change numeric tail", left: "1.11.0-b002", right: "1.11.0-b2", expected: 0},
+		{name: "beta before release candidate", left: "1.11.0-b10", right: "1.11.0-rc2", expected: -1},
+		{name: "missing numeric tail uses text order", left: "1.11.0-b", right: "1.11.0-b2", expected: -1},
+		{name: "release after prerelease", left: "1.11.0", right: "1.11.0-rc10", expected: 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			comparison, err := compareRippledVersions(tt.left, tt.right)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, comparison)
+		})
+	}
+}
+
+func TestCompareRippledVersionsPreservesParseError(t *testing.T) {
+	_, err := compareRippledVersions("1.invalid.0", "1.0.0")
+
+	var numberError *strconv.NumError
+	require.ErrorAs(t, err, &numberError)
+}
+
 func TestApplyNetworkIDPolicy(t *testing.T) {
 	restricted := NetworkIdentity{NetworkID: uint32Pointer(21337), BuildVersion: "1.12.0"}
 
@@ -144,11 +184,19 @@ func TestApplyNetworkIDPolicy(t *testing.T) {
 		require.Equal(t, uint32(21337), tx["NetworkID"])
 	})
 
-	t.Run("missing build version preserves explicit NetworkID", func(t *testing.T) {
+	t.Run("missing build version preserves matching explicit NetworkID", func(t *testing.T) {
 		tx := map[string]any{"NetworkID": uint32(21337)}
 		identity := NetworkIdentity{NetworkID: uint32Pointer(21337)}
 		require.NoError(t, ApplyNetworkIDPolicy(tx, identity))
 		require.Equal(t, uint32(21337), tx["NetworkID"])
+	})
+
+	t.Run("missing build version rejects mismatching explicit NetworkID", func(t *testing.T) {
+		tx := map[string]any{"NetworkID": uint32(9999)}
+		identity := NetworkIdentity{NetworkID: uint32Pointer(21337)}
+		err := ApplyNetworkIDPolicy(tx, identity)
+		require.ErrorIs(t, err, ErrNetworkIDFieldMismatch)
+		require.Equal(t, uint32(9999), tx["NetworkID"])
 	})
 
 	t.Run("matching explicit value is preserved", func(t *testing.T) {

@@ -36,11 +36,14 @@ func CloneNetworkID(networkID *uint32) *uint32 {
 }
 
 // ResolveNetworkIdentity validates a server_info identity against an optional
-// trusted override. A matching override pointer is preserved instead of being
-// replaced by the discovered pointer. A missing discovered NetworkID remains
-// unknown so clients can omit the transaction field.
+// caller-provided override. A matching override pointer is preserved instead of
+// being replaced by the discovered pointer. A missing discovered NetworkID
+// remains unknown when there is no override and cannot verify an override.
 func ResolveNetworkIdentity(override *uint32, discovered NetworkIdentity) (NetworkIdentity, error) {
 	if discovered.NetworkID == nil {
+		if override != nil {
+			return NetworkIdentity{}, fmt.Errorf("%w: configured %d", ErrNetworkIDOverrideUnverified, *override)
+		}
 		return ValidateNetworkIdentity(discovered)
 	}
 	if override != nil && *override != *discovered.NetworkID {
@@ -72,7 +75,7 @@ func ValidateNetworkIdentity(identity NetworkIdentity) (NetworkIdentity, error) 
 // ApplyNetworkIDPolicy validates and applies NetworkID to an outer transaction
 // and, for Batch transactions, every inner transaction using the same policy.
 // Validation completes for every target before any map is mutated.
-func ApplyNetworkIDPolicy(tx map[string]any, identity NetworkIdentity) error {
+func ApplyNetworkIDPolicy(tx transactionMap, identity NetworkIdentity) error {
 	targets, required, err := networkIDPolicyTargets(tx, identity)
 	if err != nil {
 		return err
@@ -84,18 +87,20 @@ func ApplyNetworkIDPolicy(tx map[string]any, identity NetworkIdentity) error {
 		}
 	}
 	for _, target := range targets {
-		if value, present := target["NetworkID"]; present && value != nil {
+		value, present := target["NetworkID"]
+		if present && value != nil {
 			continue
 		}
-		delete(target, "NetworkID")
 		if required {
 			target["NetworkID"] = *identity.NetworkID
+		} else if present {
+			delete(target, "NetworkID")
 		}
 	}
 	return nil
 }
 
-func networkIDPolicyTargets(tx map[string]any, identity NetworkIdentity) ([]map[string]any, bool, error) {
+func networkIDPolicyTargets(tx transactionMap, identity NetworkIdentity) ([]transactionMap, bool, error) {
 	required, err := NetworkIDRequired(identity)
 	if err != nil {
 		return nil, false, err
@@ -105,7 +110,7 @@ func networkIDPolicyTargets(tx map[string]any, identity NetworkIdentity) ([]map[
 	if err != nil {
 		return nil, false, err
 	}
-	return append([]map[string]any{tx}, inners...), required, nil
+	return append([]transactionMap{tx}, inners...), required, nil
 }
 
 // NetworkIDRequired reports whether transactions for identity must include a
@@ -132,17 +137,17 @@ func NetworkIDRequired(identity NetworkIdentity) (bool, error) {
 
 // batchInnerTransactions returns the inner transaction objects of a Batch
 // transaction, or nil when tx is not a Batch transaction.
-func batchInnerTransactions(tx map[string]any) ([]map[string]any, error) {
+func batchInnerTransactions(tx transactionMap) ([]transactionMap, error) {
 	if txType, _ := tx["TransactionType"].(string); txType != "Batch" {
 		return nil, nil
 	}
-	rawTransactions, ok := tx["RawTransactions"].([]map[string]any)
+	rawTransactions, ok := tx["RawTransactions"].([]transactionMap)
 	if !ok {
 		return nil, ErrRawTransactionsFieldIsNotAnArray
 	}
-	inners := make([]map[string]any, 0, len(rawTransactions))
+	inners := make([]transactionMap, 0, len(rawTransactions))
 	for _, wrapper := range rawTransactions {
-		inner, ok := wrapper["RawTransaction"].(map[string]any)
+		inner, ok := wrapper["RawTransaction"].(transactionMap)
 		if !ok {
 			return nil, ErrRawTransactionFieldIsNotAnObject
 		}
@@ -151,7 +156,7 @@ func batchInnerTransactions(tx map[string]any) ([]map[string]any, error) {
 	return inners, nil
 }
 
-func validatePresentNetworkID(tx map[string]any, identity NetworkIdentity, required bool) error {
+func validatePresentNetworkID(tx transactionMap, identity NetworkIdentity, required bool) error {
 	value, present := tx["NetworkID"]
 	if !present || value == nil {
 		return nil
@@ -161,11 +166,14 @@ func validatePresentNetworkID(tx map[string]any, identity NetworkIdentity, requi
 	if !ok {
 		return ErrNetworkIDFieldIsNotAUint32
 	}
-	if identity.NetworkID == nil || (*identity.NetworkID > RestrictedNetworks && identity.BuildVersion == "") {
+	if identity.NetworkID == nil {
 		return nil
 	}
 	if networkID != *identity.NetworkID {
 		return ErrNetworkIDFieldMismatch
+	}
+	if *identity.NetworkID > RestrictedNetworks && identity.BuildVersion == "" {
+		return nil
 	}
 	if !required {
 		return ErrNetworkIDFieldUnexpected
@@ -197,16 +205,54 @@ func compareRippledVersions(left, right string) (int, error) {
 		}
 	}
 
+	return comparePrereleases(leftVersion.prerelease, rightVersion.prerelease), nil
+}
+
+func comparePrereleases(left, right string) int {
 	switch {
-	case leftVersion.prerelease == rightVersion.prerelease:
-		return 0, nil
-	case leftVersion.prerelease == "":
-		return 1, nil
-	case rightVersion.prerelease == "":
-		return -1, nil
-	default:
-		return strings.Compare(leftVersion.prerelease, rightVersion.prerelease), nil
+	case left == right:
+		return 0
+	case left == "":
+		return 1
+	case right == "":
+		return -1
 	}
+
+	leftLabel, leftNumber, leftHasNumber := splitPrereleaseNumber(left)
+	rightLabel, rightNumber, rightHasNumber := splitPrereleaseNumber(right)
+	if !leftHasNumber || !rightHasNumber {
+		return strings.Compare(left, right)
+	}
+	if comparison := strings.Compare(leftLabel, rightLabel); comparison != 0 {
+		return comparison
+	}
+	if len(leftNumber) != len(rightNumber) {
+		if len(leftNumber) < len(rightNumber) {
+			return -1
+		}
+		return 1
+	}
+	return strings.Compare(leftNumber, rightNumber)
+}
+
+func splitPrereleaseNumber(prerelease string) (string, string, bool) {
+	numberStart := len(prerelease)
+	for numberStart > 0 {
+		character := prerelease[numberStart-1]
+		if character < '0' || character > '9' {
+			break
+		}
+		numberStart--
+	}
+	if numberStart == len(prerelease) {
+		return "", "", false
+	}
+
+	number := strings.TrimLeft(prerelease[numberStart:], "0")
+	if number == "" {
+		number = "0"
+	}
+	return prerelease[:numberStart], number, true
 }
 
 func parseRippledVersion(version string) (rippledVersion, error) {
@@ -225,7 +271,7 @@ func parseRippledVersion(version string) (rippledVersion, error) {
 	for i, part := range parts {
 		value, err := strconv.ParseUint(part, 10, 64)
 		if err != nil {
-			return rippledVersion{}, fmt.Errorf("component %q is not an unsigned integer", part)
+			return rippledVersion{}, fmt.Errorf("component %q is not an unsigned integer: %w", part, err)
 		}
 		parsed.core[i] = value
 	}

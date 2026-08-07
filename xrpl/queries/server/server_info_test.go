@@ -17,7 +17,7 @@ func TestServerInfoNetworkIDPresence(t *testing.T) {
 		present  bool
 	}{
 		{name: "missing", response: `{"info":{"build_version":"1.10.0"}}`},
-		{name: "mainnet zero", response: `{"info":{"network_id":0,"build_version":"1.12.0"}}`, present: true},
+		{name: "explicit zero", response: `{"info":{"network_id":0,"build_version":"1.12.0"}}`, present: true},
 		{name: "restricted", response: `{"info":{"network_id":21337,"build_version":"1.12.0"}}`, expected: 21337, present: true},
 	}
 

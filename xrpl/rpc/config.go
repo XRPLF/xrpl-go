@@ -111,9 +111,9 @@ func WithFaucetProvider(fp common.FaucetProvider) ConfigOpt {
 	}
 }
 
-// WithNetworkIdentity configures a trusted network identity and bypasses
-// server_info discovery. Use this only when both values come from a trusted
-// deployment configuration.
+// WithNetworkIdentity configures a network identity from a trusted deployment.
+// A nonempty buildVersion is required to bypass server_info discovery. An empty
+// buildVersion leaves the identity incomplete, so the client performs discovery.
 func WithNetworkIdentity(networkID uint32, buildVersion string) ConfigOpt {
 	return func(c *Config) {
 		c.networkID = &networkID

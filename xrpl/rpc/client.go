@@ -1,4 +1,9 @@
 // Package rpc provides RPC client functionality for interacting with XRPL servers.
+//
+// A Client discovers network identity before its first identity-dependent
+// operation and caches the first successful discovery for the client lifetime.
+// A failed discovery is returned and a later operation retries it. A trusted
+// identity configured with WithNetworkIdentity bypasses discovery.
 package rpc
 
 import (
@@ -38,14 +43,8 @@ const maxDrainBytes = 4 << 10 // 4 KiB
 type Client struct {
 	cfg *Config
 
-	// NetworkID is the discovered network identity or a compare-mode override.
-	// Nil means unknown. A pointer to zero is mainnet. Configure overrides before
-	// first use and do not mutate identity fields concurrently. Use
-	// WithNetworkIdentity for an explicit trusted discovery bypass.
-	NetworkID *uint32
-	// BuildVersion is the discovered rippled version used for NetworkID policy.
-	// Configure it before first use and do not mutate it concurrently.
-	BuildVersion string
+	networkID    *uint32
+	buildVersion string
 
 	identity networkIdentityState
 }
@@ -55,8 +54,8 @@ func NewClient(cfg *Config) *Client {
 	networkID := clientinternal.CloneNetworkID(cfg.networkID)
 	return &Client{
 		cfg:          cfg,
-		NetworkID:    networkID,
-		BuildVersion: cfg.buildVersion,
+		networkID:    networkID,
+		buildVersion: cfg.buildVersion,
 		identity: networkIdentityState{
 			ready: networkID != nil && cfg.buildVersion != "",
 		},
@@ -309,8 +308,8 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 		}
 	}
 	if txType, ok := (*tx)["TransactionType"].(string); ok {
-		if acc, ok := (*tx)["Account"].(types.Address); txType == transaction.AccountDeleteTx.String() && ok {
-			err := c.checkAccountDeleteBlockers(acc)
+		if acc, ok := clientinternal.TransactionString((*tx)["Account"]); txType == transaction.AccountDeleteTx.String() && ok {
+			err := c.checkAccountDeleteBlockers(types.Address(acc))
 			if err != nil {
 				return err
 			}
@@ -402,14 +401,6 @@ type validatedInnerTx struct {
 }
 
 func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
-	identity, err := c.networkIdentity()
-	if err != nil {
-		return err
-	}
-	if err := clientinternal.ApplyNetworkIDPolicy(*tx, identity); err != nil {
-		return err
-	}
-
 	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
 		return ErrRawTransactionsFieldIsNotAnArray

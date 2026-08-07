@@ -17,6 +17,13 @@ func TestSetValidAddresses(t *testing.T) {
 		invalidXAddress = "XVLhHMPHU98es4dbozjVtdWzVrDjtV5fdx1mHp98tDMoQXa"
 	)
 
+	taglessXAddresses := make(map[string]any, len(taglessAddressFields))
+	taglessClassicAddresses := make(map[string]any, len(taglessAddressFields))
+	for _, field := range taglessAddressFields {
+		taglessXAddresses[field] = mainnetNoTag
+		taglessClassicAddresses[field] = classic
+	}
+
 	tests := []struct {
 		name        string
 		tx          map[string]any
@@ -107,19 +114,9 @@ func TestSetValidAddresses(t *testing.T) {
 			expectedErr: ErrTagFieldIsNotAUint32,
 		},
 		{
-			name: "additional address fields discard embedded tags",
-			tx: map[string]any{
-				"Authorize":   mainnetNoTag,
-				"Unauthorize": testnetTag14,
-				"Owner":       mainnetTagOne,
-				"RegularKey":  mainnetTagZero,
-			},
-			expected: map[string]any{
-				"Authorize":   classic,
-				"Unauthorize": classic,
-				"Owner":       classic,
-				"RegularKey":  pepperClassic,
-			},
+			name:     "all tagless address fields",
+			tx:       taglessXAddresses,
+			expected: taglessClassicAddresses,
 		},
 		{
 			name: "Batch inner addresses and tags",
@@ -158,5 +155,25 @@ func TestSetValidAddresses(t *testing.T) {
 			}
 			require.Equal(t, tt.expected, tt.tx)
 		})
+	}
+
+	taggedXAddresses := []struct {
+		name    string
+		address string
+	}{
+		{name: "nonzero tag", address: mainnetTagOne},
+		{name: "zero tag", address: mainnetTagZero},
+	}
+	for _, field := range taglessAddressFields {
+		for _, tagged := range taggedXAddresses {
+			t.Run(field+" rejects embedded "+tagged.name, func(t *testing.T) {
+				tx := map[string]any{field: tagged.address}
+
+				err := SetValidAddresses(tx)
+
+				require.ErrorIs(t, err, ErrAccountIDTagNotAllowed)
+				require.Equal(t, map[string]any{field: tagged.address}, tx)
+			})
+		}
 	}
 }

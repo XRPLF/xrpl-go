@@ -18,18 +18,18 @@ import (
 func TestClientEnsureNetworkIdentity(t *testing.T) {
 	requestFailure := errors.New("server_info unavailable")
 	tests := []struct {
-		name             string
-		response         string
-		requestErr       error
-		override         *uint32
-		buildOverride    string
-		ensureCalls      int // number of ensureNetworkIdentity calls. A value of 0 means 1.
-		expectedID       *uint32
-		expectedBuild    string
-		expectedErr      error
-		expectedRequests int
-		preserveOverride bool
-		trustedConfig    bool
+		name               string
+		response           string
+		requestErr         error
+		override           *uint32
+		buildOverride      string
+		ensureCalls        int // number of ensureNetworkIdentity calls. A value of 0 means 1.
+		expectedID         *uint32
+		expectedBuild      string
+		expectedErr        error
+		expectedRequests   int
+		preserveOverride   bool
+		configuredIdentity bool
 	}{
 		{
 			name:             "discovers valid mainnet zero",
@@ -45,9 +45,10 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			expectedRequests: 1,
 		},
 		{
-			name:             "request error leaves identity unknown and retries",
+			name:             "request error is returned and later calls retry",
 			requestErr:       requestFailure,
 			ensureCalls:      2,
+			expectedErr:      requestFailure,
 			expectedRequests: 2,
 		},
 		{
@@ -69,13 +70,22 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			preserveOverride: true,
 		},
 		{
-			name:             "complete trusted override bypasses discovery",
-			override:         uint32Pointer(21337),
-			buildOverride:    "1.12.0",
-			expectedID:       uint32Pointer(21337),
-			expectedBuild:    "1.12.0",
-			expectedRequests: 0,
-			trustedConfig:    true,
+			name:               "incomplete configured identity performs discovery",
+			response:           `{"result":{"info":{"network_id":21337,"build_version":"1.12.0"}}}`,
+			override:           uint32Pointer(21337),
+			expectedID:         uint32Pointer(21337),
+			expectedBuild:      "1.12.0",
+			expectedRequests:   1,
+			configuredIdentity: true,
+		},
+		{
+			name:               "complete trusted override bypasses discovery",
+			override:           uint32Pointer(21337),
+			buildOverride:      "1.12.0",
+			expectedID:         uint32Pointer(21337),
+			expectedBuild:      "1.12.0",
+			expectedRequests:   0,
+			configuredIdentity: true,
 		},
 		{
 			name:             "cached discovery is reused",
@@ -99,15 +109,14 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 				return testutil.MockResponse(tt.response, http.StatusOK, mockClient)(req)
 			}
 			options := []ConfigOpt{WithHTTPClient(mockClient)}
-			if tt.trustedConfig {
+			if tt.configuredIdentity {
 				options = append(options, WithNetworkIdentity(*tt.override, tt.buildOverride))
 			}
 			cfg, err := NewClientConfig("http://localhost/", options...)
 			require.NoError(t, err)
 			cl := NewClient(cfg)
-			if !tt.trustedConfig {
-				cl.NetworkID = tt.override
-				cl.BuildVersion = tt.buildOverride
+			if !tt.configuredIdentity {
+				setTestNetworkIdentity(cl, tt.override, tt.buildOverride)
 			}
 
 			identity, err := cl.ensureNetworkIdentity()
@@ -127,14 +136,33 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 				require.Equal(t, tt.expectedBuild, identity.BuildVersion)
 			}
 			require.Equal(t, tt.expectedRequests, requestCount)
+			storedNetworkID, storedBuildVersion := cl.NetworkIdentity()
 			if tt.preserveOverride {
-				require.Same(t, tt.override, cl.NetworkID)
+				require.NotNil(t, storedNetworkID)
+				require.Equal(t, *tt.override, *storedNetworkID)
 			}
 			if tt.expectedErr == nil {
-				require.Equal(t, tt.expectedBuild, cl.BuildVersion)
+				require.Equal(t, tt.expectedBuild, storedBuildVersion)
 			}
 		})
 	}
+}
+
+func TestClientNetworkIdentityReturnsSnapshot(t *testing.T) {
+	cfg, err := NewClientConfig("http://localhost/", WithNetworkIdentity(21337, "1.12.0"))
+	require.NoError(t, err)
+	cl := NewClient(cfg)
+
+	networkID, buildVersion := cl.NetworkIdentity()
+	require.NotNil(t, networkID)
+	require.Equal(t, uint32(21337), *networkID)
+	require.Equal(t, "1.12.0", buildVersion)
+
+	*networkID = 1
+	storedNetworkID, storedBuildVersion := cl.NetworkIdentity()
+	require.NotNil(t, storedNetworkID)
+	require.Equal(t, uint32(21337), *storedNetworkID)
+	require.Equal(t, "1.12.0", storedBuildVersion)
 }
 
 func TestClientEnsureNetworkIdentityCoalescesConcurrentDiscovery(t *testing.T) {
@@ -204,6 +232,61 @@ func TestClientEnsureNetworkIdentityCoalescesConcurrentDiscovery(t *testing.T) {
 	require.Equal(t, int32(1), requestCount.Load())
 }
 
+func TestClientEnsureNetworkIdentityCoalescesConcurrentFailure(t *testing.T) {
+	const callers = 32
+
+	requestFailure := errors.New("server_info unavailable")
+	mockClient := &testutil.JSONRPCMockClient{}
+	var requestCount atomic.Int32
+	var signalRequest sync.Once
+	requestStarted := make(chan struct{})
+	releaseResponse := make(chan struct{})
+	mockClient.DoFunc = func(*http.Request) (*http.Response, error) {
+		requestCount.Add(1)
+		signalRequest.Do(func() { close(requestStarted) })
+		<-releaseResponse
+		return nil, requestFailure
+	}
+
+	cfg, err := NewClientConfig("http://localhost/", WithHTTPClient(mockClient))
+	require.NoError(t, err)
+	cl := NewClient(cfg)
+
+	results := make(chan error, callers)
+	start := make(chan struct{})
+	var ready sync.WaitGroup
+	ready.Add(callers)
+	for range callers {
+		go func() {
+			<-start
+			ready.Done()
+			_, discoveryErr := cl.ensureNetworkIdentity()
+			results <- discoveryErr
+		}()
+	}
+
+	close(start)
+	ready.Wait()
+	select {
+	case <-requestStarted:
+	case <-time.After(time.Second):
+		t.Fatal("concurrent identity discovery did not send server_info")
+	}
+	// Give every released caller time to join the in-flight discovery before the
+	// leader publishes its failure.
+	time.Sleep(10 * time.Millisecond)
+	close(releaseResponse)
+
+	for range callers {
+		require.ErrorIs(t, <-results, requestFailure)
+	}
+	require.Equal(t, int32(1), requestCount.Load())
+
+	_, err = cl.ensureNetworkIdentity()
+	require.ErrorIs(t, err, requestFailure)
+	require.Equal(t, int32(2), requestCount.Load())
+}
+
 func TestClientAutofillOmitsNetworkIDWhenIdentityIsMissing(t *testing.T) {
 	mockClient := &testutil.JSONRPCMockClient{}
 	mockClient.DoFunc = testutil.MockResponse(
@@ -236,11 +319,13 @@ func TestClientGetSignedTxSkipsNetworkPolicyWhenAutofillDisabled(t *testing.T) {
 		requestCount.Add(1)
 		return nil, errors.New("unexpected request")
 	}
-	cfg, err := NewClientConfig("http://localhost/", WithHTTPClient(mockClient))
+	cfg, err := NewClientConfig(
+		"http://localhost/",
+		WithHTTPClient(mockClient),
+		WithNetworkIdentity(21337, "1.12.0"),
+	)
 	require.NoError(t, err)
 	cl := NewClient(cfg)
-	cl.NetworkID = uint32Pointer(21337)
-	cl.BuildVersion = "1.12.0"
 	signer, err := wallet.FromSeed("sEd7io6yt5dFJrcePgRiFVHvmkJhJD1", "")
 	require.NoError(t, err)
 	tx := transaction.FlatTransaction{
@@ -264,4 +349,16 @@ func TestClientGetSignedTxSkipsNetworkPolicyWhenAutofillDisabled(t *testing.T) {
 
 func uint32Pointer(value uint32) *uint32 {
 	return &value
+}
+
+func setTestNetworkIdentity(cl *Client, networkID *uint32, buildVersion string) {
+	cl.identity.mu.Lock()
+	defer cl.identity.mu.Unlock()
+	if networkID == nil {
+		cl.networkID = nil
+	} else {
+		value := *networkID
+		cl.networkID = &value
+	}
+	cl.buildVersion = buildVersion
 }
