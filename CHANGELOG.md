@@ -95,6 +95,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Restored transaction ID calculation for `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions while preserving strict validation for user transactions. Pseudo-transactions now accept only an absent or empty `SigningPubKey` and reject any `TxnSignature` or `Signers`; named string `TransactionType` map values are supported without changing caller data.
 
+#### xrpl/transaction
+
+- Fixed `DelegateSet` validation to reject `Batch` permissions as required by XLS-75.
+
 #### xrpl/rpc
 
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Added the `VaultCreate` owner-reserve fee. Normalized `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
