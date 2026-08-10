@@ -8,6 +8,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/binary-codec/definitions"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
 
 // UInt16 represents a 16-bit unsigned integer.
@@ -22,13 +23,13 @@ func (u *UInt16) checkRange(value int64) error {
 }
 
 // FromJSON converts a JSON value into a serialized byte slice representing a 16-bit unsigned integer.
-// If the input value is a string, it's assumed to be a transaction type or ledger entry type name, and the
-// method will attempt to convert it into a corresponding type code. If the conversion fails, an error is returned.
+// If the input value has a string underlying type, it is treated as a transaction type or ledger entry type name.
+// The method returns an error when the name does not have a corresponding type code.
 func (u *UInt16) FromJSON(value any) ([]byte, error) {
-	if _, ok := value.(string); ok {
-		tc, err := definitions.Get().GetTransactionTypeCodeByTransactionTypeName(value.(string))
+	if stringValue, ok := typecheck.ToString(value); ok {
+		tc, err := definitions.Get().GetTransactionTypeCodeByTransactionTypeName(stringValue)
 		if err != nil {
-			tc, err = definitions.Get().GetLedgerEntryTypeCodeByLedgerEntryTypeName(value.(string))
+			tc, err = definitions.Get().GetLedgerEntryTypeCodeByLedgerEntryTypeName(stringValue)
 			if err != nil {
 				return nil, err
 			}

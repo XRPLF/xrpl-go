@@ -338,7 +338,7 @@ func TestBatch_Validate(t *testing.T) {
 					{
 						RawTransaction: FlatTransaction{
 							"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-							"TransactionType": "Batch", // Nested batch not allowed
+							"TransactionType": BatchTx, // Nested batch not allowed
 							"Fee":             "0",
 							"Flags":           uint32(types.TfInnerBatchTxn),
 							"SigningPubKey":   "",

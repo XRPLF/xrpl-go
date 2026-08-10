@@ -676,7 +676,7 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 		{
 			name: "EscrowFinish with Fulfillment",
 			tx: transaction.FlatTransaction{
-				"TransactionType": "EscrowFinish",
+				"TransactionType": transaction.EscrowFinishTx,
 				"Fulfillment":     "A0028000", // 8 characters = 4 bytes
 			},
 			serverMessages: []map[string]any{
@@ -699,7 +699,7 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 		{
 			name: "EscrowFinish without Fulfillment",
 			tx: transaction.FlatTransaction{
-				"TransactionType": "EscrowFinish",
+				"TransactionType": transaction.EscrowFinishTx,
 			},
 			serverMessages: []map[string]any{
 				{
@@ -721,7 +721,7 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 		{
 			name: "AccountDelete special transaction cost",
 			tx: transaction.FlatTransaction{
-				"TransactionType": "AccountDelete",
+				"TransactionType": transaction.AccountDeleteTx,
 			},
 			serverMessages: []map[string]any{
 				{
@@ -753,7 +753,7 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 		{
 			name: "AMMCreate special transaction cost",
 			tx: transaction.FlatTransaction{
-				"TransactionType": "AMMCreate",
+				"TransactionType": transaction.AMMCreateTx,
 			},
 			serverMessages: []map[string]any{
 				{
@@ -785,7 +785,7 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 		{
 			name: "Batch transaction",
 			tx: transaction.FlatTransaction{
-				"TransactionType": "Batch",
+				"TransactionType": transaction.BatchTx,
 				"RawTransactions": []map[string]any{
 					{
 						"RawTransaction": map[string]any{
@@ -860,7 +860,7 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 		{
 			name: "Batch transaction with multisign",
 			tx: transaction.FlatTransaction{
-				"TransactionType": "Batch",
+				"TransactionType": transaction.BatchTx,
 				"RawTransactions": []map[string]any{
 					{
 						"RawTransaction": map[string]any{

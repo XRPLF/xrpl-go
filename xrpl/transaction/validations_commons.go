@@ -23,9 +23,8 @@ func ValidateOptionalField(tx FlatTransaction, paramName string, checkValidity f
 	if value, ok := tx[paramName]; ok {
 		// Check if the field is valid.
 		if !checkValidity(value) {
-			transactionType, _ := tx["TransactionType"].(string)
 			return ErrTransactionInvalidField{
-				Type:  transactionType,
+				Type:  tx.TxType().String(),
 				Field: paramName,
 			}
 		}

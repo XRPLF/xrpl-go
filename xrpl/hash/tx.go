@@ -3,7 +3,6 @@ package hash
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"maps"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
@@ -33,7 +32,7 @@ func SignTx(tx map[string]any) (string, error) {
 		return "", err
 	}
 
-	txBlob, err := binarycodec.Encode(normalizeTransactionType(tx))
+	txBlob, err := binarycodec.Encode(tx)
 	if err != nil {
 		return "", err
 	}
@@ -84,21 +83,4 @@ func validateHashableTransactionForm(tx map[string]any) error {
 		return ErrNonSignedTransaction
 	}
 	return nil
-}
-
-func normalizeTransactionType(tx map[string]any) map[string]any {
-	txTypeValue, present := tx["TransactionType"]
-	if !present {
-		return tx
-	}
-	if _, plainString := txTypeValue.(string); plainString {
-		return tx
-	}
-	txType, ok := typecheck.ToString(txTypeValue)
-	if !ok {
-		return tx
-	}
-	normalized := maps.Clone(tx)
-	normalized["TransactionType"] = txType
-	return normalized
 }

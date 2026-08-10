@@ -153,6 +153,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
+- `UInt16` transaction and ledger entry type encoding now accepts named string values, including `transaction.TxType` values.
 - Encoding a field with an unsupported serialized type now returns a descriptive error instead of panicking.
 - `BinaryParser.ReadBytes` now returns `ErrParserOutOfBound` for negative lengths instead of silently returning no data.
 - `DecodeQuality` now returns `ErrInvalidQuality` for malformed hex input or input that decodes to fewer than 8 bytes, instead of returning raw hex errors or panicking on short input.
@@ -190,7 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Fixed `DelegateSet` validation to reject `Batch` permissions as required by XLS-75.
-- `FlatTransaction.TxType` now accepts named string values while safely rejecting malformed transaction type values.
+- Named string `TransactionType` values now work consistently through `FlatTransaction` validation, special fee selection, Batch inner processing, submission policy, and binary encoding. Malformed values remain rejected.
 
 #### xrpl/transaction/types
 

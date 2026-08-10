@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 )
 
 const (
@@ -137,7 +139,8 @@ func NetworkIDRequired(identity NetworkIdentity) (bool, error) {
 // batchInnerTransactions returns the inner transaction objects of a Batch
 // transaction, or nil when tx is not a Batch transaction.
 func batchInnerTransactions(tx transactionMap) ([]transactionMap, error) {
-	if txType, _ := tx["TransactionType"].(string); txType != "Batch" {
+	txType, _ := typecheck.ToString(tx["TransactionType"])
+	if txType != "Batch" {
 		return nil, nil
 	}
 	rawTransactions, ok := tx["RawTransactions"].([]transactionMap)

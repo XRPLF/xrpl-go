@@ -12,6 +12,8 @@ import (
 )
 
 func TestUint16_FromJson(t *testing.T) {
+	type namedString string
+
 	tt := []struct {
 		name        string
 		input       any
@@ -48,6 +50,12 @@ func TestUint16_FromJson(t *testing.T) {
 		{
 			name:        "pass - valid uint16 from TransactionType",
 			input:       "Payment",
+			expected:    []byte{0, 0},
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - valid uint16 from named TransactionType",
+			input:       namedString("Payment"),
 			expected:    []byte{0, 0},
 			expectedErr: nil,
 		},

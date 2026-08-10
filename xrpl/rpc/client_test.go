@@ -680,6 +680,17 @@ func TestClient_AutofillChecksAccountDeleteBlockersForStringAddress(t *testing.T
 	}
 }
 
+func TestClientCalculateFeeForNamedTransactionType(t *testing.T) {
+	cl := setupTestRPCClientForAutofill(t, []string{
+		`{"result":{"info":{"validated_ledger":{"base_fee_xrp":0.00001},"load_factor":1}}}`,
+		`{"result":{"state":{"validated_ledger":{"reserve_inc":2000000}}}}`,
+	})
+	tx := transaction.FlatTransaction{"TransactionType": transaction.AccountDeleteTx}
+
+	require.NoError(t, cl.calculateFeePerTransactionType(&tx, 0))
+	require.Equal(t, "2000000", tx["Fee"])
+}
+
 func TestClient_autofillRawTransactions(t *testing.T) {
 	tests := []struct {
 		name          string

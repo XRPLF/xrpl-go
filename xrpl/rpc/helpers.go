@@ -213,19 +213,15 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 
 	baseFee := baseFeeUint
 
-	// Get transaction type
-	transactionType := ""
-	if txType, ok := (*tx)["TransactionType"]; ok {
-		if str, ok := txType.(string); ok {
-			transactionType = str
-		}
-	}
+	transactionType := tx.TxType()
 
 	// The fee for these transaction types includes one incremental owner reserve.
-	isSpecialTxCost := transactionType == "AccountDelete" || transactionType == "AMMCreate" || transactionType == "VaultCreate"
+	isSpecialTxCost := transactionType == transaction.AccountDeleteTx ||
+		transactionType == transaction.AMMCreateTx ||
+		transactionType == transaction.VaultCreateTx
 
-	switch transactionType {
-	case "EscrowFinish":
+	switch transactionType { //nolint:exhaustive // Only transaction types with nonstandard fees need cases.
+	case transaction.EscrowFinishTx:
 		if fulfillment, ok := (*tx)["Fulfillment"]; ok && fulfillment != nil {
 			if fulfillmentStr, ok := fulfillment.(string); ok && fulfillmentStr != "" {
 				fulfillmentBytesSize := (len(fulfillmentStr) + 1) / 2 // Math.ceil(length / 2)
@@ -237,25 +233,27 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 				baseFee = baseFeeUint * (33 + chunks)
 			}
 		}
-	case "AccountDelete", "AMMCreate", "VaultCreate":
+	case transaction.AccountDeleteTx, transaction.AMMCreateTx, transaction.VaultCreateTx:
 		reserveFee, err := c.fetchOwnerReserveFee()
 		if err != nil {
 			return err
 		}
 		baseFee = reserveFee
-	case "Batch":
+	case transaction.BatchTx:
 		rawTxFees, err := c.calculateBatchFees(tx)
 		if err != nil {
 			return err
 		}
 		baseFee = baseFeeUint*2 + rawTxFees
-	case "LoanSet":
+	case transaction.LoanSetTx:
 		// For LoanSet, account for counterparty signers
 		counterPartySignersCount, err := c.fetchCounterPartySignersCount(*tx)
 		if err != nil {
 			return err
 		}
 		baseFee = baseFeeUint + (baseFeeUint * counterPartySignersCount)
+	default:
+		// All other transaction types use the base fee.
 	}
 
 	// Multi-signed Transaction: BaseFee × (1 + Number of Signatures Provided)

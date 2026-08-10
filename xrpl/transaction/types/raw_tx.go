@@ -1,7 +1,10 @@
 //revive:disable:var-naming
 package types
 
-import "github.com/Peersyst/xrpl-go/xrpl/flag"
+import (
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
+)
 
 const (
 	// TfInnerBatchTxn flag that must be set on inner transactions within a batch
@@ -36,7 +39,7 @@ func (r *RawTransaction) Validate() (bool, error) {
 
 func validateRawTransaction(rawTx map[string]any) (bool, error) {
 	// Check that TransactionType is not "Batch" (no nesting)
-	if txType, ok := rawTx["TransactionType"].(string); ok && txType == "Batch" {
+	if txType, ok := typecheck.ToString(rawTx["TransactionType"]); ok && txType == "Batch" {
 		return false, ErrBatchNestedTransaction
 	}
 

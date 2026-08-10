@@ -68,6 +68,8 @@ func TestInspectSignedTransaction(t *testing.T) {
 }
 
 func TestInspectSignedBatchInners(t *testing.T) {
+	type namedTransactionType string
+
 	const (
 		publicKey = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
 		signature = "AABBCC"
@@ -80,7 +82,7 @@ func TestInspectSignedBatchInners(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "non-Batch is ignored", tx: map[string]any{"TransactionType": "Payment", "SigningPubKey": publicKey}},
-		{name: "valid inner form", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{validInner, validInner}}},
+		{name: "valid inner form with named type", tx: map[string]any{"TransactionType": namedTransactionType("Batch"), "RawTransactions": []any{validInner, validInner}}},
 		{name: "flattened inner slice", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []map[string]any{validInner, validInner}}},
 		{name: "inner carries a signature", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{map[string]any{"RawTransaction": map[string]any{"Flags": uint32(types.TfInnerBatchTxn), "SigningPubKey": "", "TxnSignature": signature}}, validInner}}, wantErr: true},
 		{name: "inner missing inner-batch flag", tx: map[string]any{"TransactionType": "Batch", "RawTransactions": []any{map[string]any{"RawTransaction": map[string]any{"SigningPubKey": ""}}, validInner}}, wantErr: true},
@@ -197,7 +199,9 @@ func TestTransactionHelpers(t *testing.T) {
 	})
 
 	t.Run("AccountDelete forces fail hard", func(t *testing.T) {
-		require.True(t, SubmissionFailHard(map[string]any{"TransactionType": "AccountDelete"}, false))
+		type namedTransactionType string
+
+		require.True(t, SubmissionFailHard(map[string]any{"TransactionType": namedTransactionType("AccountDelete")}, false))
 		require.False(t, SubmissionFailHard(map[string]any{"TransactionType": "Payment"}, false))
 		require.True(t, SubmissionFailHard(map[string]any{"TransactionType": "Payment"}, true))
 	})

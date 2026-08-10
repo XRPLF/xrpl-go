@@ -94,6 +94,18 @@ func TestFlatTransaction_TxType(t *testing.T) {
 	}
 }
 
+func TestValidateOptionalFieldPreservesNamedTransactionType(t *testing.T) {
+	tx := FlatTransaction{
+		"TransactionType": PaymentTx,
+		"TestField":       "invalid",
+	}
+
+	err := ValidateOptionalField(tx, "TestField", func(any) bool { return false })
+	var invalidField ErrTransactionInvalidField
+	require.ErrorAs(t, err, &invalidField)
+	require.Equal(t, PaymentTx.String(), invalidField.Type)
+}
+
 func TestFlatTransaction_RequireTransactionType(t *testing.T) {
 	tests := []struct {
 		name    string

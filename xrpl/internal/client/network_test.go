@@ -143,11 +143,13 @@ func TestCompareRippledVersionsPreservesParseError(t *testing.T) {
 }
 
 func TestApplyNetworkIDPolicy(t *testing.T) {
+	type namedTransactionType string
+
 	restricted := NetworkIdentity{NetworkID: uint32Pointer(21337), BuildVersion: "1.12.0"}
 
 	t.Run("applies to outer and Batch inner transactions", func(t *testing.T) {
 		tx := map[string]any{
-			"TransactionType": "Batch",
+			"TransactionType": namedTransactionType("Batch"),
 			"RawTransactions": []map[string]any{
 				{"RawTransaction": map[string]any{"TransactionType": "Payment"}},
 				{"RawTransaction": map[string]any{"TransactionType": "OfferCreate"}},

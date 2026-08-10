@@ -84,7 +84,8 @@ func InspectSignedTransaction(tx map[string]any, allowInnerBatch bool) (SignedTr
 // to a decoded signed blob, after the inner transactions carry their final
 // wire fields.
 func InspectSignedBatchInners(tx map[string]any) error {
-	if txType, _ := tx["TransactionType"].(string); txType != "Batch" {
+	txType, _ := typecheck.ToString(tx["TransactionType"])
+	if txType != "Batch" {
 		return nil
 	}
 	inners, err := rawTransactionObjects(tx["RawTransactions"])
@@ -369,5 +370,6 @@ func NormalizeDeliverMax(tx map[string]any) error {
 // SubmissionFailHard forces fail_hard for AccountDelete, as recommended by
 // XRPL guidance to reduce the risk of paying its high transaction cost on failure.
 func SubmissionFailHard(tx map[string]any, requested bool) bool {
-	return requested || tx["TransactionType"] == "AccountDelete"
+	txType, _ := typecheck.ToString(tx["TransactionType"])
+	return requested || txType == "AccountDelete"
 }
