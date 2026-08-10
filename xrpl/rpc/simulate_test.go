@@ -162,7 +162,7 @@ func TestClient_Simulate(t *testing.T) {
 			config, err := NewClientConfig("http://testnode/", WithHTTPClient(&mockClient))
 			require.NoError(t, err)
 			client := NewClient(config)
-			client.NetworkID = tt.networkID
+			setTestNetworkIdentity(client, uint32Pointer(tt.networkID), "")
 
 			response, err := client.Simulate(tt.request)
 			if tt.expectedErrText != "" {
@@ -255,7 +255,7 @@ func TestClient_SimulateRejectsLocally(t *testing.T) {
 			config, err := NewClientConfig("http://testnode/", WithHTTPClient(&mockClient))
 			require.NoError(t, err)
 			client := NewClient(config)
-			client.NetworkID = tt.networkID
+			setTestNetworkIdentity(client, uint32Pointer(tt.networkID), "")
 
 			response, err := client.Simulate(tt.request)
 			require.ErrorIs(t, err, tt.wantErr)

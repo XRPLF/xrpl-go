@@ -237,7 +237,7 @@ func TestClient_Simulate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client, cleanup := setupTestClient(t, []map[string]any{tt.message})
 			defer cleanup()
-			client.NetworkID = tt.networkID
+			setTestNetworkIdentity(client, uint32Pointer(tt.networkID), "")
 
 			response, err := client.Simulate(tt.request)
 			if tt.expectedErrText != "" {
@@ -315,7 +315,7 @@ func TestClient_SimulateRejectsLocally(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// No connection: rejection must happen before the transport is used.
 			client := NewClient(*NewClientConfig())
-			client.NetworkID = 2048
+			setTestNetworkIdentity(client, uint32Pointer(2048), "")
 
 			response, err := client.Simulate(tt.request)
 			require.ErrorIs(t, err, tt.wantErr)

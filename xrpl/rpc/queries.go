@@ -228,7 +228,12 @@ func (c *Client) GetChannelVerify(req *channel.VerifyRequest) (*channel.VerifyRe
 // to the network. Results reflect current ledger state and do not guarantee the
 // outcome of a later submission.
 func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error) {
-	if err := req.ValidateNetworkID(c.NetworkID); err != nil {
+	networkID, _ := c.NetworkIdentity()
+	var expectedNetworkID uint32
+	if networkID != nil {
+		expectedNetworkID = *networkID
+	}
+	if err := req.ValidateNetworkID(expectedNetworkID); err != nil {
 		return nil, err
 	}
 	res, err := c.Request(req)
