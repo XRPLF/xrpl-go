@@ -3,7 +3,7 @@
 ## identity
 
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 40 | Decentralized Identity on XRP Ledger | Final | `references/identity/xls-0040.md` |
 | 63 | SignIn Transaction | Stagnant | `references/identity/xls-0063.md` |
 | 70 | On-Chain Credentials | Final | `references/identity/xls-0070.md` |
@@ -11,7 +11,7 @@
 ## tokens
 
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 10 | Non-Transferable Token (NTT) standard | Stagnant | `references/tokens/xls-0010.md` |
 | 16 | NFT Metadata | Stagnant | `references/tokens/xls-0016.md` |
 | 20 | Non-Fungible Token Support | Final | `references/tokens/xls-0020.md` |
@@ -24,6 +24,7 @@
 | 52 | NFTokenMintOffer | Final | `references/tokens/xls-0052.md` |
 | 54 | NFTokenOffer Destination Tag | Stagnant | `references/tokens/xls-0054.md` |
 | 61 | CrossCurrency NFTokenAcceptOffer | Stagnant | `references/tokens/xls-0061.md` |
+| 87 | Token Pre-Authorization | Stagnant | `references/tokens/xls-0087.md` |
 | 89 | Multi-Purpose Token Metadata Schema | Final | `references/tokens/xls-0089.md` |
 | 94 | Dynamic Multi-Purpose Tokens | Draft | `references/tokens/xls-0094.md` |
 | 96 | Confidential Transfers for Multi-Purpose Tokens | Draft | `references/tokens/xls-0096.md` |
@@ -31,7 +32,7 @@
 ## defi
 
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 30 | Automated Market Maker on XRPL | Final | `references/defi/xls-0030.md` |
 | 60 | Default AutoBridge | Stagnant | `references/defi/xls-0060.md` |
 | 62 | Options | Stagnant | `references/defi/xls-0062.md` |
@@ -45,7 +46,7 @@
 ## payments
 
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 34 | Token-Enabled Escrows and Payment Channels | Withdrawn | `references/payments/xls-0034.md` |
 | 55 | Remit | Final | `references/payments/xls-0055.md` |
 | 56 | Atomic/Batch Transactions | Final | `references/payments/xls-0056.md` |
@@ -57,7 +58,7 @@
 ## accounts
 
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 7 | Deletable Accounts | Final | `references/accounts/xls-0007.md` |
 | 23 | Lite Accounts | Stagnant | `references/accounts/xls-0023.md` |
 | 39 | Clawback Support | Final | `references/accounts/xls-0039.md` |
@@ -88,7 +89,7 @@
 ## smart-contracts
 
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 42 | XRPL Plugins | Stagnant | `references/smart-contracts/xls-0042.md` |
 | 101 | XRPL Smart Contracts | Draft | `references/smart-contracts/xls-0101.md` |
 | 102 | WASM VM | Draft | `references/smart-contracts/xls-0102.md` |
@@ -96,7 +97,7 @@
 ## core
 
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 1 | XLS Process and Guidelines | Living | `references/core/xls-0001.md` |
 | 5 | Tagged Addresses | Final | `references/core/xls-0005.md` |
 | 8 | Tickets | Withdrawn | `references/core/xls-0008.md` |
@@ -121,9 +122,8 @@
 ## ecosystem
 
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 2 | XRPL destination information | Stagnant | `references/ecosystem/xls-0002.md` |
 | 3 | Sharing and deeplinking signed transactions | Stagnant | `references/ecosystem/xls-0003.md` |
 | 4 | Trustline Add URI | Stagnant | `references/ecosystem/xls-0004.md` |
 | 6 | Standard for Visual Account Icons | Final | `references/ecosystem/xls-0006.md` |
-
