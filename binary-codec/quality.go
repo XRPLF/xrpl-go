@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -14,12 +16,12 @@ import (
 const (
 	// zeroQualityHex is the hex representation of the zero quality.
 	zeroQualityHex = 0x5500000000000000
-	// maxIOUPrecision is the maximum precision for an IOU.
-	maxIOUPrecision = 16
-	// minIOUExponent is the minimum exponent for an IOU.
-	minIOUExponent = -96
-	// maxIOUExponent is the maximum exponent for an IOU.
-	maxIOUExponent = 80
+	// maxQualityPrecision is the canonical quality mantissa precision.
+	maxQualityPrecision = 16
+	// minQualityExponent is the minimum exponent for a canonical quality.
+	minQualityExponent = -96
+	// maxQualityExponent is the maximum exponent for a canonical quality.
+	maxQualityExponent = 80
 )
 
 // Static errors
@@ -27,46 +29,56 @@ const (
 // ErrInvalidQuality is returned when the quality is invalid.
 var ErrInvalidQuality = errors.New("invalid quality")
 
+// qualityFormat matches an optionally signed decimal number with an optional
+// exponent.
+var qualityFormat = regexp.MustCompile(`^-?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$`)
+
 // EncodeQuality encodes a quality amount to a hex string.
 func EncodeQuality(quality string) (string, error) {
-	if len(quality) == 0 {
+	if !qualityFormat.MatchString(quality) {
+		// Report the underlying bigdecimal error when there is one, so
+		// callers can keep matching it with errors.Is.
+		if _, err := bigdecimal.NewBigDecimal(quality); err != nil {
+			return "", fmt.Errorf("%w: %w", ErrInvalidQuality, err)
+		}
 		return "", ErrInvalidQuality
 	}
-	if len(strings.Trim(strings.Trim(quality, "0"), ".")) == 0 {
+
+	// A validated input is zero when its mantissa digits are all zero,
+	// whatever the sign and exponent say.
+	mantissaPart, _, _ := strings.Cut(strings.TrimPrefix(strings.ToLower(quality), "-"), "e")
+	if strings.Trim(strings.Trim(mantissaPart, "0"), ".") == "" {
 		zeroAmount := make([]byte, 8)
 		binary.BigEndian.PutUint64(zeroAmount, uint64(zeroQualityHex))
-		return hex.EncodeToString(zeroAmount), nil
+		return hexutil.EncodeToUpperHex(zeroAmount), nil
 	}
 
 	bigDecimal, err := bigdecimal.NewBigDecimal(quality)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %w", ErrInvalidQuality, err)
 	}
 
-	if !isValidQuality(*bigDecimal) {
+	if bigDecimal.Precision > maxQualityPrecision {
 		return "", ErrInvalidQuality
 	}
 
-	if bigDecimal.UnscaledValue == "" {
-		zeroAmount := make([]byte, 8)
-		binary.BigEndian.PutUint64(zeroAmount, uint64(zeroQualityHex))
-		// if the value is zero, then return the zero currency amount hex
-		return hex.EncodeToString(zeroAmount), nil
+	// Normalize the quality to the 16-digit mantissa used by XRPL.
+	padding := maxQualityPrecision - bigDecimal.Precision
+	exp := bigDecimal.Scale - padding
+	if exp < minQualityExponent || exp > maxQualityExponent {
+		return "", ErrInvalidQuality
 	}
 
-	// convert the unscaled value to an unsigned integer
-	mantissa, err := strconv.ParseUint(bigDecimal.UnscaledValue, 10, 64)
+	mantissaString := bigDecimal.UnscaledValue + strings.Repeat("0", padding)
+	mantissa, err := strconv.ParseUint(mantissaString, 10, 64)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%w: %w", ErrInvalidQuality, err)
 	}
-
-	// get the scale
-	exp := bigDecimal.Scale
 
 	serialized := make([]byte, 8)
 	binary.BigEndian.PutUint64(serialized, mantissa)
-	//nolint:gosec // G115: exp is bounded by IOU exponent range (-96 to 80), fits in byte
-	serialized[0] += byte(exp) + 100
+	//nolint:gosec // G115: exp plus its bias is bounded to [4, 180], which fits in a byte
+	serialized[0] = byte(exp + 100)
 	return hexutil.EncodeToUpperHex(serialized), nil
 }
 
@@ -93,7 +105,7 @@ func DecodeQuality(quality string) (string, error) {
 	if exp < 0 {
 		// Need to add leading zeros
 		if len(mantissaStr) <= -exp {
-			zeros := strings.Repeat("0", -exp-len(mantissaStr)+1)
+			zeros := strings.Repeat("0", -exp-len(mantissaStr))
 			mantissaStr = "0." + zeros + mantissaStr
 		} else {
 			// Insert decimal point from right to left
@@ -112,8 +124,4 @@ func DecodeQuality(quality string) (string, error) {
 	}
 
 	return mantissaStr, nil
-}
-
-func isValidQuality(quality bigdecimal.BigDecimal) bool {
-	return quality.Precision <= maxIOUPrecision && quality.Scale >= minIOUExponent && quality.Scale <= maxIOUExponent
 }

@@ -88,6 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Encoding a field with an unsupported serialized type now returns a descriptive error instead of panicking.
 - `BinaryParser.ReadBytes` now returns `ErrParserOutOfBound` for negative lengths instead of silently returning no data.
 - `DecodeQuality` now returns `ErrInvalidQuality` for malformed hex input or input that decodes to fewer than 8 bytes, instead of returning raw hex errors or panicking on short input.
+- `DecodeQuality` now positions the decimal point correctly for quality values below 1.
+- `EncodeQuality` now normalizes nonzero values to the canonical 16-digit XRPL quality mantissa, validates the normalized exponent range from -96 through 80, and wraps invalid input errors with `ErrInvalidQuality`.
+- `EncodeQuality` now validates the complete numeric syntax before zero detection. Malformed inputs such as `.` or `0..0` no longer encode as zero and return `ErrInvalidQuality`, while valid zero forms such as `-0` and `0e5` now encode as the canonical zero quality.
 
 #### keypairs
 
