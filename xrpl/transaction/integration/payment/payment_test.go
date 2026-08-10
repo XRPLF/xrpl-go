@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
+	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
@@ -87,6 +88,7 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 		sequence := integration.TxFieldUint32(t, res.Tx, "Sequence")
 
 		mptID, err := hash.MPTID(sequence, issuer.GetAddress().String())
+		require.NoError(t, err)
 
 		objects, err := client.GetAccountObjects(&account.ObjectsRequest{
 			Account: issuer.GetAddress(),
@@ -94,6 +96,11 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 		})
 		require.NoError(t, err)
 		require.Len(t, objects.AccountObjects, 1, "should be exactly one issuance on the ledger")
+
+		issuance := integration.DecodeLedgerObject[ledger.MPTokenIssuance](t, objects.AccountObjects[0])
+		require.Equal(t, ledger.MPTokenIssuanceEntry, issuance.LedgerEntryType)
+		require.Equal(t, issuer.GetAddress(), issuance.Issuer)
+		require.Equal(t, sequence, issuance.Sequence)
 
 		mptTokenAuthTx := &transaction.MPTokenAuthorize{
 			BaseTx:            transaction.BaseTx{Account: holder.GetAddress()},
@@ -110,11 +117,17 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 		require.NoError(t, err)
 		require.Len(t, objects.AccountObjects, 1, "holder owns 1 MPToken on the ledger")
 
+		heldToken := integration.DecodeLedgerObject[ledger.MPToken](t, objects.AccountObjects[0])
+		require.Equal(t, ledger.MPTokenEntry, heldToken.LedgerEntryType)
+		require.Equal(t, holder.GetAddress(), heldToken.Account)
+		require.Equal(t, types.Hash192(mptID), heldToken.MPTokenIssuanceID)
+
+		paymentAmount := "100"
 		paymentTx := &transaction.Payment{
 			BaseTx: transaction.BaseTx{Account: issuer.GetAddress()},
 			Amount: types.MPTCurrencyAmount{
 				MPTIssuanceID: mptID,
-				Value:         "100",
+				Value:         paymentAmount,
 			},
 			Destination: holder.GetAddress(),
 		}
@@ -127,7 +140,20 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 			Type:    account.MPTIssuanceObject,
 		})
 		require.NoError(t, err)
-		require.Equal(t, "100", objects.AccountObjects[0]["OutstandingAmount"])
+		require.Len(t, objects.AccountObjects, 1)
+
+		issuance = integration.DecodeLedgerObject[ledger.MPTokenIssuance](t, objects.AccountObjects[0])
+		require.Equal(t, paymentAmount, issuance.OutstandingAmount)
+
+		objects, err = client.GetAccountObjects(&account.ObjectsRequest{
+			Account: holder.GetAddress(),
+			Type:    account.MPTokenObject,
+		})
+		require.NoError(t, err)
+		require.Len(t, objects.AccountObjects, 1)
+
+		heldToken = integration.DecodeLedgerObject[ledger.MPToken](t, objects.AccountObjects[0])
+		require.Equal(t, paymentAmount, heldToken.MPTAmount)
 	})
 }
 

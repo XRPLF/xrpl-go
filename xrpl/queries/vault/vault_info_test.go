@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"encoding/json"
 	"testing"
 
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
@@ -119,9 +120,65 @@ func TestInfoRequest_Validate(t *testing.T) {
 	}
 }
 
+func TestVaultInfoResponse_LedgerMetadata(t *testing.T) {
+	currentIndex := uint32(3280200)
+	zeroIndex := uint32(0)
+	validatedIndex := uint32(3280199)
+
+	tests := []struct {
+		name     string
+		response Response
+	}{
+		{
+			name: "open ledger",
+			response: Response{
+				LedgerCurrentIndex: &currentIndex,
+			},
+		},
+		{
+			name: "present zero current index",
+			response: Response{
+				LedgerCurrentIndex: &zeroIndex,
+			},
+		},
+		{
+			name:     "omitted ledger metadata",
+			response: Response{},
+		},
+		{
+			name: "validated ledger",
+			response: Response{
+				LedgerHash:  "4C99E5F63C0D0B1C2283B4F5DCE2239F80CE92E8B1A6AED1E110C198FC96E659",
+				LedgerIndex: &validatedIndex,
+				Validated:   true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.response)
+			require.NoError(t, err)
+
+			var encoded map[string]any
+			require.NoError(t, json.Unmarshal(data, &encoded))
+			if tt.response.LedgerCurrentIndex == nil {
+				require.NotContains(t, encoded, "ledger_current_index")
+			} else {
+				require.EqualValues(t, *tt.response.LedgerCurrentIndex, encoded["ledger_current_index"])
+			}
+
+			var decoded Response
+			require.NoError(t, json.Unmarshal(data, &decoded))
+			require.Equal(t, tt.response, decoded)
+		})
+	}
+}
+
 func TestVaultInfoResponse(t *testing.T) {
 	withdrawalPolicy := types.VaultWithdrawalPolicy(0)
 	flags := uint32(0)
+	ledgerIndex := uint32(1234)
 
 	s := Response{
 		Vault: Vault{
@@ -153,8 +210,9 @@ func TestVaultInfoResponse(t *testing.T) {
 			OwnerNode:        "0000000000000000",
 			Flags:            &flags,
 		},
-		LedgerHash: "4C99E5F63C0D0B1C2283B4F5DCE2239F80CE92E8B1A6AED1E110C198FC96E659",
-		Validated:  true,
+		LedgerHash:  "4C99E5F63C0D0B1C2283B4F5DCE2239F80CE92E8B1A6AED1E110C198FC96E659",
+		LedgerIndex: &ledgerIndex,
+		Validated:   true,
 	}
 
 	j := `{
@@ -188,9 +246,10 @@ func TestVaultInfoResponse(t *testing.T) {
 		"Flags": 0
 	},
 	"ledger_hash": "4C99E5F63C0D0B1C2283B4F5DCE2239F80CE92E8B1A6AED1E110C198FC96E659",
+	"ledger_index": 1234,
 	"validated": true
 }`
-	if err := testutil.Serialize(t, s, j); err != nil {
+	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
 	}
 }

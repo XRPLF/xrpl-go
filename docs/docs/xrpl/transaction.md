@@ -344,6 +344,7 @@ func main() {
     }
     
     hexStr, _ := types.EncodeMPTokenMetadata(metadata)
+    maximumAmount := types.MPTAmount(50000000)
     
     // Use in transaction
     tx := transaction.MPTokenIssuanceCreate{
@@ -351,9 +352,9 @@ func main() {
             TransactionType: "MPTokenIssuanceCreate",
             Account:         "rajgkBmMxmz161r8bWYH7CQAFZP5bA9oSG",
         },
-        AssetScale:     2,
-        TransferFee:    314,
-        MaximumAmount: "50000000",
+        AssetScale:      types.AssetScale(2),
+        TransferFee:     types.TransferFee(314),
+        MaximumAmount:   &maximumAmount,
         MPTokenMetadata: types.MPTokenMetadata(hexStr),
     }
     

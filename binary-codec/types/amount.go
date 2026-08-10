@@ -539,6 +539,26 @@ func serializeIssuedCurrencyCodeChars(currency string) ([]byte, error) {
 	return currencyBytes, nil
 }
 
+// serializeIssuedCurrencyIssuer decodes an issued-currency issuer into its
+// 20-byte AccountID. Tagless mainnet X-addresses and testnet T-addresses are
+// normalized to the same AccountID as their classic address. Tagged addresses
+// are invalid because an Amount issuer has no corresponding tag field.
+func serializeIssuedCurrencyIssuer(issuer string) ([]byte, error) {
+	_, accountID, classicErr := addresscodec.DecodeClassicAddressToAccountID(issuer)
+	if classicErr == nil {
+		return accountID, nil
+	}
+
+	accountID, _, hasTag, _, xAddressErr := addresscodec.DecodeXAddress(issuer)
+	if xAddressErr != nil {
+		return nil, classicErr
+	}
+	if hasTag {
+		return nil, ErrAccountIDTagNotAllowed
+	}
+	return accountID, nil
+}
+
 // SerializeIssuedCurrencyAmount serializes the currency field of an issued currency amount to its bytes representation
 // from value, currency code, and issuer address in string form (e.g. "USD", "r123456789").
 // The currency code can be 3 allowed string characters, or 20 bytes of hex in standard currency format (e.g. with "00" prefix)
@@ -552,7 +572,7 @@ func serializeIssuedCurrencyAmount(value, currency, issuer string) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	_, issuerBytes, err := addresscodec.DecodeClassicAddressToAccountID(issuer) // decode the issuer address
+	issuerBytes, err := serializeIssuedCurrencyIssuer(issuer)
 	if err != nil {
 		return nil, err
 	}

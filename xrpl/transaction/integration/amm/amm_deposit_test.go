@@ -39,10 +39,10 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 	require.NoError(t, err)
 	defer runner.Teardown()
 
-	pool := setupAMMPool(t, runner, client)
+	pool := setupValidatedAMMPool(t, runner, client)
 
 	t.Run("pass - deposit with Amount", func(t *testing.T) {
-		preAmm := getAMMInfo(t, client, pool)
+		preAmm := getValidatedAMMInfo(t, client, pool)
 
 		preAmountDrops := xrpDrops(t, preAmm.Amount)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
@@ -58,10 +58,10 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 		}
 		depositTx.SetSingleAssetFlag()
 		flatDepositTx := depositTx.Flatten()
-		_, err = runner.TestTransaction(&flatDepositTx, pool.testWallet, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatDepositTx, pool.testWallet, nil)
 		require.NoError(t, err)
 
-		postAmm := getAMMInfo(t, client, pool)
+		postAmm := getValidatedAMMInfo(t, client, pool)
 
 		postAmountDrops := xrpDrops(t, postAmm.Amount)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
@@ -73,7 +73,7 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 	})
 
 	t.Run("pass - deposit with Amount and Amount2", func(t *testing.T) {
-		preAmm := getAMMInfo(t, client, pool)
+		preAmm := getValidatedAMMInfo(t, client, pool)
 
 		preAmountDrops := xrpDrops(t, preAmm.Amount)
 		preAmount2Value := icaValue(t, preAmm.Amount2)
@@ -95,10 +95,10 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 		}
 		depositTx.SetTwoAssetFlag()
 		flatDepositTx := depositTx.Flatten()
-		_, err = runner.TestTransaction(&flatDepositTx, pool.issuerWallet, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatDepositTx, pool.issuerWallet, nil)
 		require.NoError(t, err)
 
-		postAmm := getAMMInfo(t, client, pool)
+		postAmm := getValidatedAMMInfo(t, client, pool)
 
 		postAmountDrops := xrpDrops(t, postAmm.Amount)
 		postAmount2Value := icaValue(t, postAmm.Amount2)
@@ -111,7 +111,7 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 	})
 
 	t.Run("pass - deposit with Amount and LPTokenOut", func(t *testing.T) {
-		preAmm := getAMMInfo(t, client, pool)
+		preAmm := getValidatedAMMInfo(t, client, pool)
 
 		preAmountDrops := xrpDrops(t, preAmm.Amount)
 		preLPTokenValue, err := strconv.ParseFloat(preAmm.LPToken.Value, 64)
@@ -134,10 +134,10 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 		}
 		depositTx.SetOneAssetLPTokenFlag()
 		flatDepositTx := depositTx.Flatten()
-		_, err = runner.TestTransaction(&flatDepositTx, pool.testWallet, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatDepositTx, pool.testWallet, nil)
 		require.NoError(t, err)
 
-		postAmm := getAMMInfo(t, client, pool)
+		postAmm := getValidatedAMMInfo(t, client, pool)
 
 		postAmountDrops := xrpDrops(t, postAmm.Amount)
 		postLPTokenValue, err := strconv.ParseFloat(postAmm.LPToken.Value, 64)
@@ -149,7 +149,7 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 	})
 
 	t.Run("pass - deposit with LPTokenOut", func(t *testing.T) {
-		preAmm := getAMMInfo(t, client, pool)
+		preAmm := getValidatedAMMInfo(t, client, pool)
 
 		preAmountDrops := xrpDrops(t, preAmm.Amount)
 		preAmount2Value := icaValue(t, preAmm.Amount2)
@@ -172,10 +172,10 @@ func testIntegrationAMMDeposit(t *testing.T, client integration.Client) {
 		}
 		depositTx.SetLPTokentFlag()
 		flatDepositTx := depositTx.Flatten()
-		_, err = runner.TestTransaction(&flatDepositTx, pool.lpWallet, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatDepositTx, pool.lpWallet, nil)
 		require.NoError(t, err)
 
-		postAmm := getAMMInfo(t, client, pool)
+		postAmm := getValidatedAMMInfo(t, client, pool)
 
 		postAmountDrops := xrpDrops(t, postAmm.Amount)
 		postAmount2Value := icaValue(t, postAmm.Amount2)

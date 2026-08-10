@@ -59,7 +59,7 @@ func main() {
 	}
 	fmt.Println("💸 Customer wallet funded!")
 
-	amount := types.XRPCurrencyAmount(10000)
+	amount := types.MPTAmount(10000)
 
 	fmt.Println("⏳ Issuing MPToken...")
 	// Create the MPTokenIssuanceCreate transaction.

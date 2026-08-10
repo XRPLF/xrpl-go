@@ -1,9 +1,11 @@
 package transaction
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
@@ -15,7 +17,7 @@ func TestMPTokenIssuanceCreate_TxType(t *testing.T) {
 }
 
 func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
-	amount := types.XRPCurrencyAmount(10000)
+	amount := types.MPTAmount(10000)
 
 	tests := []struct {
 		name     string
@@ -62,7 +64,7 @@ func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
 				BaseTx: BaseTx{
 					Account: "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 				},
-				MutableFlags: types.MutableFlags(TmfMPTCanMutateCanLock | TmfMPTCanMutateMetadata),
+				MutableFlags: types.MutableFlags(TmfMPTCanEnableCanLock | TmfMPTCanMutateMetadata),
 			},
 			expected: `{
 				"Account": "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
@@ -98,7 +100,10 @@ func TestMPTokenIssuanceCreate_Flatten(t *testing.T) {
 }
 
 func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
-	amount := types.XRPCurrencyAmount(10000)
+	amount := types.MPTAmount(10000)
+	zeroAmount := types.MPTAmount(0)
+	maxAmount := types.MaxMPTAmount
+	tooLargeAmount := types.MPTAmount(uint64(types.MaxMPTAmount) + 1)
 	tests := []struct {
 		name       string
 		tx         *MPTokenIssuanceCreate
@@ -121,6 +126,44 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 			},
 			wantValid: true,
 			wantErr:   false,
+		},
+		{
+			name: "pass - maximum MaximumAmount",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MaximumAmount: &maxAmount,
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - zero MaximumAmount",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MaximumAmount: &zeroAmount,
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrMPTIssuanceCreateMaximumAmountInvalid,
+		},
+		{
+			name: "fail - MaximumAmount above protocol maximum",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MaximumAmount: &tooLargeAmount,
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrMPTIssuanceCreateMaximumAmountInvalid,
 		},
 		{
 			name: "pass - valid with minimal fields",
@@ -206,7 +249,7 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: MPTokenIssuanceCreateTx,
 				},
-				MutableFlags: types.MutableFlags(TmfMPTCanMutateCanLock | TmfMPTCanMutateMetadata),
+				MutableFlags: types.MutableFlags(TmfMPTCanEnableCanLock | TmfMPTCanMutateMetadata),
 			},
 			wantValid: true,
 			wantErr:   false,
@@ -223,6 +266,19 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 			wantValid:  false,
 			wantErr:    true,
 			errMessage: ErrMPTIssuanceCreateMutableFlagsZero,
+		},
+		{
+			name: "fail - MutableFlags contains unsupported bits",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: MPTokenIssuanceCreateTx,
+				},
+				MutableFlags: types.MutableFlags(0x00000001),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrMPTIssuanceCreateInvalidMutableFlags,
 		},
 		{
 			name: "pass - valid with DomainID and TfMPTRequireAuth",
@@ -291,6 +347,35 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 				require.NoError(t, err)
 				require.True(t, valid)
 			}
+		})
+	}
+}
+
+func TestMPTokenIssuanceCreate_MaximumAmountJSON(t *testing.T) {
+	const input = `{
+		"TransactionType":"MPTokenIssuanceCreate",
+		"Account":"rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+		"MaximumAmount":"9223372036854775807"
+	}`
+
+	var tx MPTokenIssuanceCreate
+	err := json.Unmarshal([]byte(input), &tx)
+	require.NoError(t, err)
+	require.NotNil(t, tx.MaximumAmount)
+	require.Equal(t, types.MaxMPTAmount, *tx.MaximumAmount)
+
+	encoded, err := json.Marshal(tx)
+	require.NoError(t, err)
+	flattened := make(map[string]any)
+	require.NoError(t, json.Unmarshal(encoded, &flattened))
+	require.Equal(t, "9223372036854775807", flattened["MaximumAmount"])
+
+	for _, invalid := range []string{`10000`, `"0x10"`, `"9223372036854775808"`} {
+		t.Run("reject "+invalid, func(t *testing.T) {
+			payload := `{"MaximumAmount":` + invalid + `}`
+			var invalidTx MPTokenIssuanceCreate
+			err := json.Unmarshal([]byte(payload), &invalidTx)
+			require.ErrorIs(t, err, types.ErrInvalidMPTAmount)
 		})
 	}
 }
@@ -366,40 +451,49 @@ func TestMPTokenIssuanceCreate_Flags(t *testing.T) {
 }
 
 func TestMPTokenIssuanceCreate_MutableFlags(t *testing.T) {
+	require.Equal(t, uint32(0x00000002), TmfMPTCanEnableCanLock)
+	require.Equal(t, uint32(0x00000004), TmfMPTCanEnableRequireAuth)
+	require.Equal(t, uint32(0x00000008), TmfMPTCanEnableCanEscrow)
+	require.Equal(t, uint32(0x00000010), TmfMPTCanEnableCanTrade)
+	require.Equal(t, uint32(0x00000020), TmfMPTCanEnableCanTransfer)
+	require.Equal(t, uint32(0x00000040), TmfMPTCanEnableCanClawback)
+	require.Equal(t, uint32(0x00010000), TmfMPTCanMutateMetadata)
+	require.Equal(t, uint32(0x00020000), TmfMPTCanMutateTransferFee)
+
 	tests := []struct {
 		name     string
 		setFlag  func(*MPTokenIssuanceCreate)
 		flagMask uint32
 	}{
 		{
-			name:     "MPTCanMutateCanLock",
-			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanLockFlag,
-			flagMask: TmfMPTCanMutateCanLock,
+			name:     "MPTCanEnableCanLock",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanEnableCanLockFlag,
+			flagMask: TmfMPTCanEnableCanLock,
 		},
 		{
-			name:     "MPTCanMutateRequireAuth",
-			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateRequireAuthFlag,
-			flagMask: TmfMPTCanMutateRequireAuth,
+			name:     "MPTCanEnableRequireAuth",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanEnableRequireAuthFlag,
+			flagMask: TmfMPTCanEnableRequireAuth,
 		},
 		{
-			name:     "MPTCanMutateCanEscrow",
-			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanEscrowFlag,
-			flagMask: TmfMPTCanMutateCanEscrow,
+			name:     "MPTCanEnableCanEscrow",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanEnableCanEscrowFlag,
+			flagMask: TmfMPTCanEnableCanEscrow,
 		},
 		{
-			name:     "MPTCanMutateCanTrade",
-			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanTradeFlag,
-			flagMask: TmfMPTCanMutateCanTrade,
+			name:     "MPTCanEnableCanTrade",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanEnableCanTradeFlag,
+			flagMask: TmfMPTCanEnableCanTrade,
 		},
 		{
-			name:     "MPTCanMutateCanTransfer",
-			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanTransferFlag,
-			flagMask: TmfMPTCanMutateCanTransfer,
+			name:     "MPTCanEnableCanTransfer",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanEnableCanTransferFlag,
+			flagMask: TmfMPTCanEnableCanTransfer,
 		},
 		{
-			name:     "MPTCanMutateCanClawback",
-			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanMutateCanClawbackFlag,
-			flagMask: TmfMPTCanMutateCanClawback,
+			name:     "MPTCanEnableCanClawback",
+			setFlag:  (*MPTokenIssuanceCreate).SetMPTCanEnableCanClawbackFlag,
+			flagMask: TmfMPTCanEnableCanClawback,
 		},
 		{
 			name:     "MPTCanMutateMetadata",
@@ -422,14 +516,35 @@ func TestMPTokenIssuanceCreate_MutableFlags(t *testing.T) {
 		})
 	}
 
-	// Test all mutable flags together
+	// Test all mutable flags together.
 	tx := &MPTokenIssuanceCreate{}
 	for _, tt := range tests {
 		tt.setFlag(tx)
 	}
 
-	expectedMutableFlags := TmfMPTCanMutateCanLock | TmfMPTCanMutateRequireAuth | TmfMPTCanMutateCanEscrow |
-		TmfMPTCanMutateCanTrade | TmfMPTCanMutateCanTransfer | TmfMPTCanMutateCanClawback |
+	expectedMutableFlags := TmfMPTCanEnableCanLock | TmfMPTCanEnableRequireAuth | TmfMPTCanEnableCanEscrow |
+		TmfMPTCanEnableCanTrade | TmfMPTCanEnableCanTransfer | TmfMPTCanEnableCanClawback |
 		TmfMPTCanMutateMetadata | TmfMPTCanMutateTransferFee
-	require.Equal(t, expectedMutableFlags, *tx.MutableFlags)
+	require.Equal(t, uint32(expectedMutableFlags), *tx.MutableFlags)
+}
+
+func TestMPTokenIssuanceCreate_SigningPayloadUsesDecimalMaximumAmount(t *testing.T) {
+	maximumAmount := types.MPTAmount(10000)
+	tx := MPTokenIssuanceCreate{
+		BaseTx: BaseTx{
+			Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+			TransactionType: MPTokenIssuanceCreateTx,
+			Fee:             types.XRPCurrencyAmount(12),
+			Sequence:        1,
+		},
+		MaximumAmount: &maximumAmount,
+	}
+
+	valid, err := tx.Validate()
+	require.NoError(t, err)
+	require.True(t, valid)
+
+	signingPayload, err := binarycodec.EncodeForSigning(tx.Flatten())
+	require.NoError(t, err)
+	require.Contains(t, signingPayload, "30180000000000002710")
 }

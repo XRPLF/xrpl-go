@@ -32,7 +32,7 @@ func testIntegrationMptTokenIssuanceAuthorize(t *testing.T, client integration.C
 	encodedMetadata, err := testIntegrationMptTokenCreationMetadata()
 	require.NoError(t, err)
 	assetScale := uint8(2)
-	maxAmount := types.XRPCurrencyAmount(1)
+	maxAmount := types.MPTAmount(10000)
 
 	tt := []MPTokenIssuanceAuthorizeTest{
 		{

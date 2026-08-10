@@ -2,6 +2,7 @@
 package websocket
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -545,16 +546,30 @@ func (c *Client) submitRequest(req *requests.SubmitRequest) (*requests.SubmitRes
 
 func (c *Client) formatRequest(req interfaces.Request, id uint64, marker any) ([]byte, error) {
 	m := make(map[string]any)
+	if _, ok := req.(json.Marshaler); ok {
+		requestJSON, err := json.Marshal(req)
+		if err != nil {
+			return nil, err
+		}
+		// UseNumber preserves numeric fidelity through the map round trip
+		// (plain Unmarshal would coerce every number to float64).
+		dec := json.NewDecoder(bytes.NewReader(requestJSON))
+		dec.UseNumber()
+		if err := dec.Decode(&m); err != nil {
+			return nil, err
+		}
+	} else {
+		dec, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{TagName: "json", Result: &m})
+		if err := dec.Decode(req); err != nil {
+			return nil, err
+		}
+	}
+
 	m["id"] = id
 	m["command"] = req.Method()
 	m["api_version"] = req.APIVersion()
 	if marker != nil {
 		m["marker"] = marker
-	}
-	dec, _ := mapstructure.NewDecoder(&mapstructure.DecoderConfig{TagName: "json", Result: &m})
-	err := dec.Decode(req)
-	if err != nil {
-		return nil, err
 	}
 
 	return json.Marshal(m)

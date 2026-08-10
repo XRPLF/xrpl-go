@@ -7,6 +7,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	accounttypes "github.com/Peersyst/xrpl-go/xrpl/queries/account/types"
 	ammqueries "github.com/Peersyst/xrpl-go/xrpl/queries/amm"
+	querycommon "github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -106,6 +107,17 @@ func createAMMPool(t *testing.T, runner *integration.Runner, client integration.
 // Equivalent to the JS setupAMMPool utility.
 func setupAMMPool(t *testing.T, runner *integration.Runner, client integration.Client) *ammPool {
 	t.Helper()
+	return setupAMMPoolWithValidation(t, runner, client, false)
+}
+
+// setupValidatedAMMPool creates an AMM pool and waits for its setup deposit to be validated.
+func setupValidatedAMMPool(t *testing.T, runner *integration.Runner, client integration.Client) *ammPool {
+	t.Helper()
+	return setupAMMPoolWithValidation(t, runner, client, true)
+}
+
+func setupAMMPoolWithValidation(t *testing.T, runner *integration.Runner, client integration.Client, waitForValidation bool) *ammPool {
+	t.Helper()
 
 	pool := createAMMPool(t, runner, client, false)
 
@@ -123,7 +135,14 @@ func setupAMMPool(t *testing.T, runner *integration.Runner, client integration.C
 	}
 	depositTx.SetSingleAssetFlag()
 	flatDepositTx := depositTx.Flatten()
-	_, err := runner.TestTransaction(&flatDepositTx, testWallet, "tesSUCCESS", nil)
+
+	var err error
+	if waitForValidation {
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatDepositTx, testWallet, nil)
+	} else {
+		_, err = runner.TestTransaction(&flatDepositTx, testWallet, "tesSUCCESS", nil)
+	}
+
 	require.NoError(t, err)
 
 	return pool
@@ -137,6 +156,19 @@ func getAMMInfo(t *testing.T, client integration.Client, pool *ammPool) ammqueri
 		Asset2: pool.asset2,
 	})
 	require.NoError(t, err)
+	return res.AMM
+}
+
+// getValidatedAMMInfo fetches AMM pool info from the most recently validated ledger.
+func getValidatedAMMInfo(t *testing.T, client integration.Client, pool *ammPool) ammqueries.Info {
+	t.Helper()
+	res, err := client.GetAMMInfo(&ammqueries.InfoRequest{
+		Asset:       pool.asset,
+		Asset2:      pool.asset2,
+		LedgerIndex: querycommon.Validated,
+	})
+	require.NoError(t, err)
+	require.True(t, res.Validated)
 	return res.AMM
 }
 

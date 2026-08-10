@@ -171,6 +171,30 @@ func TestMPTCurrencyAmount_Flatten(t *testing.T) {
 	}
 }
 
+func TestUnmarshalCurrencyAmount_RejectsMixedFields(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "mpt with currency",
+			input: `{"mpt_issuance_id":"issuance","currency":"USD","value":"42"}`,
+		},
+		{
+			name:  "mpt with issuer",
+			input: `{"mpt_issuance_id":"issuance","issuer":"rEXAMPLE","value":"42"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			amount, err := UnmarshalCurrencyAmount([]byte(tt.input))
+			require.ErrorIs(t, err, ErrMixedCurrencyAmountFields)
+			require.Nil(t, amount)
+		})
+	}
+}
+
 func TestUnmarshalCurrencyAmount_MPT(t *testing.T) {
 	testcases := []struct {
 		name     string

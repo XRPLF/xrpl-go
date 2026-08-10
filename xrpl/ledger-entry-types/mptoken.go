@@ -9,6 +9,9 @@ const (
 	// LsfMPTAuthorized if set, indicates that the issuer has authorized the holder for the MPT. (Only applicable for allow-listing).
 	// This flag can be set using a MPTokenAuthorize transaction; it can also be "un-set" using a MPTokenAuthorize transaction specifying the TfMPTUnauthorize flag.
 	LsfMPTAuthorized uint32 = 0x00000002
+
+	// LsfMPTAMM indicates that the MPToken belongs to an AMM pseudo-account.
+	LsfMPTAMM uint32 = 0x00000004
 )
 
 // An MPToken entry tracks MPTs held by an account that is not the token issuer. You can create or delete an empty MPToken entry by sending an MPTokenAuthorize transaction.
@@ -26,16 +29,16 @@ type MPToken struct {
 	Account types.Address
 	// 	The MPTokenIssuance identifier.
 	MPTokenIssuanceID types.Hash192
-	// The amount of tokens currently held by the owner. The minimum is 0 and the maximum is 263-1.
-	MPTAmount uint64
-	// The amount of tokens currently locked up (for example, in escrow or payment channels). (Requires the TokenEscrow amendment .)
-	LockedAmount uint64 `json:",omitempty"`
+	// The amount of tokens currently held by the owner, represented as an unsigned integer string. The minimum is 0 and the maximum is 2^63-1.
+	MPTAmount string `json:",omitempty"`
+	// The amount of tokens currently locked up (for example, in escrow or payment channels), represented as an unsigned integer string. (Requires the TokenEscrow amendment.)
+	LockedAmount string `json:",omitempty"`
 	// The identifying hash of the transaction that most recently modified this entry.
 	PreviousTxnID types.Hash256
 	// The sequence of the ledger that contains the transaction that most recently modified this object.
 	PreviousTxnLgrSeq uint32
-	// A hint indicating which page of the owner directory links to this entry, in case the directory consists of multiple pages.
-	OwnerNode uint64
+	// A hexadecimal hint indicating which page of the owner directory links to this entry, in case the directory consists of multiple pages.
+	OwnerNode string
 }
 
 // EntryType returns the type of the ledger entry.
@@ -51,4 +54,9 @@ func (c *MPToken) SetLsfMPTLocked() {
 // SetLsfMPTAuthorized sets the LsfMPTAuthorized flag.
 func (c *MPToken) SetLsfMPTAuthorized() {
 	c.Flags |= LsfMPTAuthorized
+}
+
+// SetLsfMPTAMM sets the LsfMPTAMM flag.
+func (c *MPToken) SetLsfMPTAMM() {
+	c.Flags |= LsfMPTAMM
 }

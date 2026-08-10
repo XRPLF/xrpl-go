@@ -74,10 +74,14 @@ type DirectoryNode struct {
 	TakerGetsCurrency string `json:",omitempty"`
 	// (Offer directories only) The issuer of the TakerGets amount from the offers in this directory.
 	TakerGetsIssuer string `json:",omitempty"`
+	// (Offer directories only) The MPT issuance ID of the TakerGets amount from the offers in this directory.
+	TakerGetsMPT types.Hash192 `json:",omitempty"`
 	// (Offer directories only) The currency code of the TakerPays amount from the offers in this directory.
 	TakerPaysCurrency string `json:",omitempty"`
 	// (Offer directories only) The issuer of the TakerPays amount from the offers in this directory.
 	TakerPaysIssuer string `json:",omitempty"`
+	// (Offer directories only) The MPT issuance ID of the TakerPays amount from the offers in this directory.
+	TakerPaysMPT types.Hash192 `json:",omitempty"`
 	// The domain that the offer directory is a part of.
 	DomainID string `json:",omitempty"`
 }

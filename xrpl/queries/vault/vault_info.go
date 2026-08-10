@@ -156,6 +156,8 @@ type Response struct {
 	LedgerHash string `json:"ledger_hash,omitempty"`
 	// The ledger index of the ledger version that was used to generate this response.
 	LedgerIndex *uint32 `json:"ledger_index,omitempty"`
+	// The ledger index of the current in-progress ledger used to generate this response.
+	LedgerCurrentIndex *uint32 `json:"ledger_current_index,omitempty"`
 	// If included and set to true, the information in this response comes from
 	// a validated ledger version. Otherwise, the information is subject to change.
 	Validated bool `json:"validated,omitempty"`

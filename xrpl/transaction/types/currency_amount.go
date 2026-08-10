@@ -43,6 +43,12 @@ func UnmarshalCurrencyAmount(data []byte) (CurrencyAmount, error) {
 		}
 
 		if _, hasMPTID := raw["mpt_issuance_id"]; hasMPTID {
+			_, hasCurrency := raw["currency"]
+			_, hasIssuer := raw["issuer"]
+			if hasCurrency || hasIssuer {
+				return nil, ErrMixedCurrencyAmountFields
+			}
+
 			var m MPTCurrencyAmount
 			if err := json.Unmarshal(data, &m); err != nil {
 				return nil, err

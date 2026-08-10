@@ -15,12 +15,13 @@ import (
 // All information is relative to a specific ledger version.
 type LinesRequest struct {
 	common.BaseRequest
-	Account     types.Address          `json:"account"`
-	LedgerHash  common.LedgerHash      `json:"ledger_hash,omitempty"`
-	LedgerIndex common.LedgerSpecifier `json:"ledger_index,omitempty"`
-	Peer        types.Address          `json:"peer,omitempty"`
-	Limit       int                    `json:"limit,omitempty"`
-	Marker      any                    `json:"marker,omitempty"`
+	Account       types.Address          `json:"account"`
+	LedgerHash    common.LedgerHash      `json:"ledger_hash,omitempty"`
+	LedgerIndex   common.LedgerSpecifier `json:"ledger_index,omitempty"`
+	Peer          types.Address          `json:"peer,omitempty"`
+	IgnoreDefault bool                   `json:"ignore_default,omitempty"`
+	Limit         int                    `json:"limit,omitempty"`
+	Marker        any                    `json:"marker,omitempty"`
 }
 
 // Method returns the JSON-RPC method name for LinesRequest.
@@ -50,4 +51,5 @@ type LinesResponse struct {
 	LedgerIndex        common.LedgerIndex       `json:"ledger_index,omitempty"`
 	LedgerHash         common.LedgerHash        `json:"ledger_hash,omitempty"`
 	Marker             any                      `json:"marker,omitempty"`
+	Limit              int                      `json:"limit,omitempty"`
 }

@@ -1,8 +1,21 @@
 package transaction
 
 import (
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
+
+// decodeAddressAccountID returns the AccountID represented by a classic or
+// X-address and reports whether the X-address carries a tag.
+func decodeAddressAccountID(address types.Address) (accountID []byte, hasTag bool, err error) {
+	_, accountID, err = addresscodec.DecodeClassicAddressToAccountID(address.String())
+	if err == nil {
+		return accountID, false, nil
+	}
+
+	accountID, _, hasTag, _, err = addresscodec.DecodeXAddress(address.String())
+	return accountID, hasTag, err
+}
 
 // ValidateOptionalField validates an optional field in the transaction map.
 func ValidateOptionalField(tx FlatTransaction, paramName string, checkValidity func(any) bool) error {

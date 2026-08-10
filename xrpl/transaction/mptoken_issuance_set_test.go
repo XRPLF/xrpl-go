@@ -301,17 +301,17 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantErr: ErrMPTIssuanceSetMutableFlagsZero,
 		},
 		{
-			name: "fail - MutableFlags set/clear conflict",
+			name: "fail - MutableFlags contains unsupported bits",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: MPTokenIssuanceSetTx,
 				},
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanLock | TmfMPTClearCanLock),
+				MutableFlags:      types.MutableFlags(0x00000040),
 			},
 			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
+			wantErr: ErrMPTIssuanceSetInvalidMutableFlags,
 		},
 		{
 			name: "fail - TransferFee exceeds maximum",
@@ -386,7 +386,7 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 					TransactionType: MPTokenIssuanceSetTx,
 				},
 				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanLock | TmfMPTClearCanEscrow),
+				MutableFlags:      types.MutableFlags(TmfMPTSetCanLock | TmfMPTSetCanEscrow),
 				TransferFee:       types.TransferFee(500),
 				MPTokenMetadata:   types.MPTokenMetadata("464f4f"),
 			},
@@ -447,34 +447,6 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantErr: ErrMPTIssuanceSetHolderMutuallyExclusive,
 		},
 		{
-			name: "fail - non-zero TransferFee with tmfMPTClearCanTransfer",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				TransferFee:       types.TransferFee(200),
-				MutableFlags:      types.MutableFlags(TmfMPTClearCanTransfer),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetTransferFeeWithClearCanTransfer,
-		},
-		{
-			name: "pass - zero TransferFee with tmfMPTClearCanTransfer",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				TransferFee:       types.TransferFee(0),
-				MutableFlags:      types.MutableFlags(TmfMPTClearCanTransfer),
-			},
-			wantOk:  true,
-			wantErr: nil,
-		},
-		{
 			name: "pass - zero TransferFee alone is valid DynamicMPT operation",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
@@ -501,71 +473,6 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantOk:  false,
 			wantErr: ErrMPTIssuanceSetFlagsMutuallyExclusive,
 		},
-		{
-			name: "fail - MutableFlags set/clear conflict RequireAuth",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetRequireAuth | TmfMPTClearRequireAuth),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict CanEscrow",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanEscrow | TmfMPTClearCanEscrow),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict CanTrade",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanTrade | TmfMPTClearCanTrade),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict CanTransfer",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanTransfer | TmfMPTClearCanTransfer),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
-		{
-			name: "fail - MutableFlags set/clear conflict CanClawback",
-			tx: &MPTokenIssuanceSet{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: MPTokenIssuanceSetTx,
-				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
-				MutableFlags:      types.MutableFlags(TmfMPTSetCanClawback | TmfMPTClearCanClawback),
-			},
-			wantOk:  false,
-			wantErr: ErrMPTIssuanceSetMutableFlagsConflict,
-		},
 	}
 
 	for _, tt := range tests {
@@ -579,69 +486,39 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 
 func TestMPTokenIssuanceSet_MutableFlags(t *testing.T) {
 	tests := []struct {
-		name     string
-		setFlag  func(*MPTokenIssuanceSet)
-		flagMask uint32
+		name    string
+		setFlag func(*MPTokenIssuanceSet)
+		want    uint32
 	}{
 		{
-			name:     "MPTSetCanLock",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanLockMutableFlag,
-			flagMask: TmfMPTSetCanLock,
+			name:    "MPTSetCanLock",
+			setFlag: (*MPTokenIssuanceSet).SetMPTSetCanLockMutableFlag,
+			want:    0x00000001,
 		},
 		{
-			name:     "MPTClearCanLock",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanLockMutableFlag,
-			flagMask: TmfMPTClearCanLock,
+			name:    "MPTSetRequireAuth",
+			setFlag: (*MPTokenIssuanceSet).SetMPTSetRequireAuthMutableFlag,
+			want:    0x00000002,
 		},
 		{
-			name:     "MPTSetRequireAuth",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetRequireAuthMutableFlag,
-			flagMask: TmfMPTSetRequireAuth,
+			name:    "MPTSetCanEscrow",
+			setFlag: (*MPTokenIssuanceSet).SetMPTSetCanEscrowMutableFlag,
+			want:    0x00000004,
 		},
 		{
-			name:     "MPTClearRequireAuth",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearRequireAuthMutableFlag,
-			flagMask: TmfMPTClearRequireAuth,
+			name:    "MPTSetCanTrade",
+			setFlag: (*MPTokenIssuanceSet).SetMPTSetCanTradeMutableFlag,
+			want:    0x00000008,
 		},
 		{
-			name:     "MPTSetCanEscrow",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanEscrowMutableFlag,
-			flagMask: TmfMPTSetCanEscrow,
+			name:    "MPTSetCanTransfer",
+			setFlag: (*MPTokenIssuanceSet).SetMPTSetCanTransferMutableFlag,
+			want:    0x00000010,
 		},
 		{
-			name:     "MPTClearCanEscrow",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanEscrowMutableFlag,
-			flagMask: TmfMPTClearCanEscrow,
-		},
-		{
-			name:     "MPTSetCanTrade",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanTradeMutableFlag,
-			flagMask: TmfMPTSetCanTrade,
-		},
-		{
-			name:     "MPTClearCanTrade",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanTradeMutableFlag,
-			flagMask: TmfMPTClearCanTrade,
-		},
-		{
-			name:     "MPTSetCanTransfer",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanTransferMutableFlag,
-			flagMask: TmfMPTSetCanTransfer,
-		},
-		{
-			name:     "MPTClearCanTransfer",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanTransferMutableFlag,
-			flagMask: TmfMPTClearCanTransfer,
-		},
-		{
-			name:     "MPTSetCanClawback",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTSetCanClawbackMutableFlag,
-			flagMask: TmfMPTSetCanClawback,
-		},
-		{
-			name:     "MPTClearCanClawback",
-			setFlag:  (*MPTokenIssuanceSet).SetMPTClearCanClawbackMutableFlag,
-			flagMask: TmfMPTClearCanClawback,
+			name:    "MPTSetCanClawback",
+			setFlag: (*MPTokenIssuanceSet).SetMPTSetCanClawbackMutableFlag,
+			want:    0x00000020,
 		},
 	}
 
@@ -650,23 +527,17 @@ func TestMPTokenIssuanceSet_MutableFlags(t *testing.T) {
 			tx := &MPTokenIssuanceSet{}
 			tt.setFlag(tx)
 			require.NotNil(t, tx.MutableFlags)
-			require.Equal(t, tt.flagMask, *tx.MutableFlags)
+			require.Equal(t, tt.want, *tx.MutableFlags)
 		})
 	}
 
-	// Test all mutable flags together
+	// Test all mutable flags together.
 	tx := &MPTokenIssuanceSet{}
 	for _, tt := range tests {
 		tt.setFlag(tx)
 	}
 
-	expectedMutableFlags := TmfMPTSetCanLock | TmfMPTClearCanLock |
-		TmfMPTSetRequireAuth | TmfMPTClearRequireAuth |
-		TmfMPTSetCanEscrow | TmfMPTClearCanEscrow |
-		TmfMPTSetCanTrade | TmfMPTClearCanTrade |
-		TmfMPTSetCanTransfer | TmfMPTClearCanTransfer |
-		TmfMPTSetCanClawback | TmfMPTClearCanClawback
-	require.Equal(t, expectedMutableFlags, *tx.MutableFlags)
+	require.Equal(t, uint32(0x0000003F), *tx.MutableFlags)
 }
 
 func TestMPTokenIssuanceSet_Flags(t *testing.T) {

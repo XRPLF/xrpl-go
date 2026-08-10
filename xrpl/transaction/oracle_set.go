@@ -32,7 +32,7 @@ const (
 //	      "PriceData": {
 //	        "BaseAsset": "XRP",
 //	        "QuoteAsset": "USD",
-//	        "AssetPrice": 740,
+//	        "AssetPrice": "00000000000002E4",
 //	        "Scale": 3
 //	      }
 //	    }
