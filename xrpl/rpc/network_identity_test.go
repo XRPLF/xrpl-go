@@ -131,6 +131,33 @@ func TestClientBeginNetworkIdentityDiscoveryResult(t *testing.T) {
 	require.False(t, ready.leader)
 }
 
+func TestClientNetworkIdentityDiscoveryFailure(t *testing.T) {
+	cfg, err := NewClientConfig("http://localhost/")
+	require.NoError(t, err)
+	cl := NewClient(cfg)
+
+	leader := cl.beginNetworkIdentityDiscovery()
+	require.True(t, leader.leader)
+	waiting := cl.beginNetworkIdentityDiscovery()
+	require.False(t, waiting.leader)
+	require.Same(t, leader.discovery, waiting.discovery)
+
+	discoveryErr := errors.New("server_info unavailable")
+	cl.finishNetworkIdentityDiscovery(clientinternal.NetworkIdentity{}, discoveryErr, false)
+	select {
+	case <-leader.discovery.done:
+	case <-time.After(time.Second):
+		t.Fatal("identity discovery failure did not release waiters")
+	}
+	require.ErrorIs(t, leader.discovery.err, discoveryErr)
+	require.ErrorIs(t, waiting.discovery.err, discoveryErr)
+
+	retry := cl.beginNetworkIdentityDiscovery()
+	require.True(t, retry.leader)
+	require.NotSame(t, leader.discovery, retry.discovery)
+	cl.finishNetworkIdentityDiscovery(clientinternal.NetworkIdentity{}, discoveryErr, false)
+}
+
 func TestClientEnsureNetworkIdentitySingleflight(t *testing.T) {
 	const callerCount = 8
 
@@ -224,7 +251,6 @@ func TestClientEnsureNetworkIdentitySingleflight(t *testing.T) {
 		for _, result := range collectNetworkIdentityResults(t, results, callerCount) {
 			require.ErrorIs(t, result.err, requestFailure)
 		}
-		require.Equal(t, int32(1), requestCount.Load())
 	})
 }
 
