@@ -95,6 +95,31 @@ func (r *Runner) TestTransaction(flatTx *transaction.FlatTransaction, signer *wa
 	return tx, nil
 }
 
+// TestSuccessfulTransactionAndWait submits a signed transaction and waits for final validation.
+func (r *Runner) TestSuccessfulTransactionAndWait(flatTx *transaction.FlatTransaction, signer *wallet.Wallet, opts *TestTransactionOptions) (*transactions.TxResponse, error) {
+	if opts == nil || !opts.SkipAutofill {
+		if err := r.client.Autofill(flatTx); err != nil {
+			return nil, err
+		}
+	}
+
+	blob, hash, err := signer.Sign(*flatTx)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := r.client.SubmitTxBlobAndWait(blob, true)
+	if err != nil {
+		return nil, err
+	}
+
+	require.True(r.t, tx.Validated)
+	require.Equal(r.t, hash, string(tx.Hash))
+	require.Equal(r.t, transaction.TesSUCCESS.String(), tx.Meta.TransactionResult)
+
+	return tx, nil
+}
+
 // TestMultisigTransaction submits a multisigned transaction and validates the result.
 // If validate is nil, the transaction is not validated.
 func (r *Runner) TestMultisigTransaction(blob string, expectedEngineResult string) (*transactions.SubmitMultisignedResponse, error) {
