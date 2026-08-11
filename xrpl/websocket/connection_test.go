@@ -89,7 +89,7 @@ func newMessageServer(t *testing.T, msg string) *httptest.Server {
 }
 
 // Exercises the fix that serializes concurrent ReadMessage calls under readMu.
-// Run with -race to expose a missing mutex; a lucky-scheduled run can pass without it.
+// Run with -race to expose a missing mutex. A lucky-scheduled run can pass without it.
 func TestConnection_ReadMessageSerializesConcurrentReaders(t *testing.T) {
 	readyToWrite := make(chan struct{})
 	serverErr := make(chan error, 1)
@@ -590,6 +590,219 @@ func TestClient_ExplicitDisconnectDoesNotReconnect(t *testing.T) {
 		t.Fatal("explicit disconnect started a reconnect")
 	case <-time.After(50 * time.Millisecond):
 	}
+}
+
+func TestClient_ManualConnectCancelsOldReaderBeforePublishing(t *testing.T) {
+	serverConnected := make(chan struct{})
+	writeResponse := make(chan struct{})
+	responseWritten := make(chan struct{})
+	stopServer := make(chan struct{})
+	upgrader := gorillaws.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		close(serverConnected)
+
+		select {
+		case <-writeResponse:
+		case <-stopServer:
+			return
+		}
+		if err := conn.WriteJSON(map[string]any{
+			"id":     uint64(77),
+			"status": "success",
+			"type":   "response",
+			"result": map[string]any{},
+		}); err != nil {
+			t.Errorf("write replacement response: %v", err)
+			return
+		}
+		close(responseWritten)
+		messageType, message, readErr := conn.ReadMessage()
+		if readErr == nil {
+			t.Errorf("unexpected client message type %d: %s", messageType, message)
+		}
+	}))
+	defer server.Close()
+	defer close(stopServer)
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithMaxReconnects(1).
+			WithTimeout(time.Second),
+		200*time.Millisecond,
+		200*time.Millisecond,
+	)
+	client := NewClient(cfg)
+	setTrustedTestNetworkIdentity(client, 0)
+
+	oldSocket := newFakeWebsocketConnection()
+	oldSocket.readErr = errors.New("old socket failed")
+	oldSocket.readRelease = make(chan struct{})
+	client.conn.conn = oldSocket
+	client.OnError(func(error) {})
+	oldCtx := client.resetLifecycle()
+	oldReaderDone := make(chan struct{})
+	go func() {
+		defer close(oldReaderDone)
+		client.readMessages(oldCtx)
+	}()
+	<-oldSocket.readStarted
+
+	client.streamHandlerResetMu.Lock()
+	resetLocked := true
+	defer func() {
+		if resetLocked {
+			client.streamHandlerResetMu.Unlock()
+		}
+		require.NoError(t, client.Disconnect())
+	}()
+	close(oldSocket.readRelease)
+	require.Eventually(t, func() bool {
+		return client.conn.currentSocket() == nil
+	}, time.Second, time.Millisecond)
+
+	connectResult := make(chan error, 1)
+	go func() {
+		connectResult <- client.Connect()
+	}()
+	select {
+	case <-serverConnected:
+	case <-time.After(time.Second):
+		t.Fatal("manual Connect did not reach the replacement server")
+	}
+	require.Eventually(t, client.IsConnected, time.Second, time.Millisecond)
+
+	// Connect is blocked in resetLifecycle. The old reader must already have
+	// stopped because its lifecycle was canceled before socket publication.
+	select {
+	case <-oldReaderDone:
+	case <-time.After(time.Second):
+		t.Fatal("old reader remained active after replacement publication")
+	}
+	oldRunnerTracked := func() bool {
+		client.errorStream.stateMu.Lock()
+		defer client.errorStream.stateMu.Unlock()
+		return client.errorStream.done != nil
+	}()
+	require.True(t, oldRunnerTracked, "manual Connect detached old handler runners before lifecycle reset")
+
+	const responseID = uint64(77)
+	pending := client.registerPendingResponse(responseID, client.conn.currentSocket())
+	defer client.unregisterPendingResponse(responseID)
+	close(writeResponse)
+	select {
+	case <-responseWritten:
+	case <-time.After(time.Second):
+		t.Fatal("server did not write the first replacement response")
+	}
+
+	client.streamHandlerResetMu.Unlock()
+	resetLocked = false
+	require.NoError(t, <-connectResult)
+
+	responseCtx, cancelResponse := context.WithTimeout(t.Context(), time.Second)
+	defer cancelResponse()
+	response, err := client.awaitResponse(responseCtx, pending)
+	require.NoError(t, err)
+	require.Equal(t, responseID, response.ID)
+}
+
+func TestClient_AutomaticReconnectWinsWithoutLifecycleCancellation(t *testing.T) {
+	upgrader := gorillaws.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		for {
+			var request struct {
+				ID uint64 `json:"id"`
+			}
+			if err := conn.ReadJSON(&request); err != nil {
+				return
+			}
+			if err := conn.WriteJSON(map[string]any{
+				"id":     request.ID,
+				"status": "success",
+				"type":   "response",
+				"result": map[string]any{},
+			}); err != nil {
+				return
+			}
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithMaxReconnects(1).
+			WithTimeout(time.Second),
+		time.Millisecond,
+		time.Millisecond,
+	)
+	client := NewClient(cfg)
+	setTrustedTestNetworkIdentity(client, 0)
+
+	failedSocket := newFakeWebsocketConnection()
+	failedSocket.readErr = errors.New("old socket failed")
+	client.conn.conn = failedSocket
+	ctx := client.resetLifecycle()
+	readDone := make(chan struct{})
+	go func() {
+		defer close(readDone)
+		client.readMessages(ctx)
+	}()
+	defer func() {
+		require.NoError(t, client.Disconnect())
+		select {
+		case <-readDone:
+		case <-time.After(time.Second):
+			t.Fatal("read loop did not stop")
+		}
+	}()
+
+	require.Eventually(t, client.IsConnected, time.Second, time.Millisecond)
+	require.ErrorIs(t, client.Connect(), ErrAlreadyConnected)
+	require.NoError(t, ctx.Err())
+
+	response, err := client.Request(newAccountChannelsRequest())
+	require.NoError(t, err)
+	require.NotNil(t, response)
+}
+
+func TestClient_ConnectFailureDoesNotCancelLifecycleBeforePublication(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "connection rejected", http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	client := NewClient(NewClientConfig().WithHost(url))
+	setTrustedTestNetworkIdentity(client, 0)
+	ctx := client.resetLifecycle()
+	beforePublishCalled := false
+
+	bufferedMessages, err := client.connect(ctx, func() {
+		beforePublishCalled = true
+	})
+	require.Error(t, err)
+	require.Empty(t, bufferedMessages)
+	require.False(t, beforePublishCalled)
+	require.NoError(t, ctx.Err())
+	require.False(t, client.IsConnected())
 }
 
 func TestClient_StaleReaderReturnsBeforeReplacementResponse(t *testing.T) {

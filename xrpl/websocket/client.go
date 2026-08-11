@@ -201,13 +201,22 @@ func (c *Client) cancelLifecycle() {
 	c.resetHandlerRunners()
 }
 
+// cancelLifecycleContext cancels the current lifecycle but keeps handler
+// runners tracked so resetLifecycle can wait for them before starting replacements.
+func (c *Client) cancelLifecycleContext() {
+	c.streamHandlerStateMu.Lock()
+	defer c.streamHandlerStateMu.Unlock()
+
+	c.cancel()
+}
+
 // Connect opens a websocket connection to the server. It completes network
 // identity discovery before it starts reading messages in a goroutine. Do not
 // call Connect synchronously from a stream or error handler. If a handler needs
 // to reconnect, start Connect in a separate goroutine or coordinate it outside
 // the handler callback.
 func (c *Client) Connect() error {
-	bufferedMessages, err := c.connect(context.Background())
+	bufferedMessages, err := c.connect(context.Background(), c.cancelLifecycleContext)
 	if err != nil {
 		return err
 	}
@@ -222,8 +231,11 @@ func (c *Client) Connect() error {
 
 // connect prepares a newly dialed socket before it becomes available to normal
 // client requests. It returns stream messages read during identity discovery so
-// the caller can replay them after the socket is published.
-func (c *Client) connect(ctx context.Context) ([][]byte, error) {
+// the caller can replay them after the socket is published. onBeforePublish runs
+// under connectionHandshakeMu after preparation succeeds and immediately before
+// publication. Manual Connect uses it to cancel the old lifecycle context before
+// the new socket becomes visible. Automatic reconnect keeps its current lifecycle.
+func (c *Client) connect(ctx context.Context, onBeforePublish func()) ([][]byte, error) {
 	c.connectionHandshakeMu.Lock()
 	defer c.connectionHandshakeMu.Unlock()
 
@@ -237,6 +249,9 @@ func (c *Client) connect(ctx context.Context) ([][]byte, error) {
 			return nil, errors.Join(err, closeErr)
 		}
 		return nil, err
+	}
+	if onBeforePublish != nil {
+		onBeforePublish()
 	}
 	if err := c.conn.publishSocket(ctx, conn); err != nil {
 		return nil, err
@@ -1113,7 +1128,7 @@ func (c *Client) reconnectWithBackoff(ctx context.Context, retryCount *int, maxR
 		case <-timer.C:
 		}
 
-		bufferedMessages, connErr := c.connect(ctx)
+		bufferedMessages, connErr := c.connect(ctx, nil)
 		if connErr != nil {
 			if ctx.Err() != nil || errors.Is(connErr, context.Canceled) {
 				return false
