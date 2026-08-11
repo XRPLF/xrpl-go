@@ -3,7 +3,8 @@
 // A Client discovers network identity before its first identity-dependent
 // operation and caches the first successful discovery for the client lifetime.
 // A failed discovery is returned and a later operation retries it. A trusted
-// identity configured with WithNetworkIdentity bypasses discovery.
+// identity configured with WithNetworkIdentity bypasses discovery only when its
+// build version is non-empty.
 package rpc
 
 import (

@@ -98,8 +98,9 @@ correct `NetworkID` transaction policy.
 networkID, buildVersion := client.NetworkIdentity()
 ```
 
-`WithNetworkIdentity` bypasses discovery. Use it only when both values come from
-trusted deployment configuration.
+`WithNetworkIdentity` bypasses discovery when `buildVersion` is non-empty. An
+empty build version leaves the identity incomplete, so the client performs
+discovery. Use trusted deployment configuration for both values.
 
 ```go
 func WithNetworkIdentity(networkID uint32, buildVersion string) ConfigOpt

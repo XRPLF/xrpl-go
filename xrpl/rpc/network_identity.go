@@ -31,8 +31,9 @@ type networkIdentityAttempt struct {
 // ensureNetworkIdentity returns a configured identity or discovers it with
 // server_info. A caller-provided NetworkID is compared with discovery and is
 // never replaced when it matches. WithNetworkIdentity marks the initial state
-// ready and intentionally bypasses discovery. Discovery errors are returned and
-// are not cached, so a later operation can retry.
+// ready and bypasses discovery only when its build version is non-empty.
+// Discovery errors are returned and are not cached, so a later operation can
+// retry.
 func (c *Client) ensureNetworkIdentity(ctx context.Context) (clientinternal.NetworkIdentity, error) {
 	for {
 		if err := ctx.Err(); err != nil {

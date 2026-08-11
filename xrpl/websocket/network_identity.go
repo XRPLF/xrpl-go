@@ -20,9 +20,9 @@ type networkIdentityState struct {
 
 // prepareNetworkIdentity returns a configured identity or performs the
 // synchronous server_info handshake used by Connect. WithNetworkIdentity marks
-// the initial state trusted and intentionally bypasses discovery. After a
-// successful discovery, a reconnect compares the new server identity with the
-// previous one and rejects a network ID change.
+// the initial state trusted and bypasses discovery only when its build version
+// is non-empty. After a successful discovery, a reconnect compares the new
+// server identity with the previous one and rejects a network ID change.
 func (c *Client) prepareNetworkIdentity(
 	ctx context.Context,
 	conn websocketConnection,
