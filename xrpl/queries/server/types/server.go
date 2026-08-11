@@ -22,12 +22,12 @@ type Info struct {
 	Load                     ServerLoad           `json:"load,omitzero"`
 	LoadFactor               float64              `json:"load_factor"` // Normalized server_info fee multiplier, can be fractional.
 	NetworkID                *uint32              `json:"network_id,omitempty"`
-	LoadFactorLocal          uint                 `json:"load_factor_local,omitempty"`
-	LoadFactorNet            uint                 `json:"load_factor_net,omitempty"`
-	LoadFactorCluster        uint                 `json:"load_factor_cluster,omitempty"`
-	LoadFactorFeeEscelation  uint                 `json:"load_factor_fee_escelation,omitempty"`
-	LoadFactorFeeQueue       uint                 `json:"load_factor_fee_queue,omitempty"`
-	LoadFactorServer         uint                 `json:"load_factor_server,omitempty"`
+	LoadFactorLocal          float64              `json:"load_factor_local,omitempty"`
+	LoadFactorNet            float64              `json:"load_factor_net,omitempty"`
+	LoadFactorCluster        float64              `json:"load_factor_cluster,omitempty"`
+	LoadFactorFeeEscalation  float64              `json:"load_factor_fee_escalation,omitempty"`
+	LoadFactorFeeQueue       float64              `json:"load_factor_fee_queue,omitempty"`
+	LoadFactorServer         float64              `json:"load_factor_server,omitempty"`
 	PeerDisconnects          string               `json:"peer_disconnects,omitempty"`
 	PeerDisconnectsResources string               `json:"peer_disconnects_resources,omitempty"`
 	NetworkLedger            string               `json:"network_ledger,omitempty"`

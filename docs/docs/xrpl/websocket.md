@@ -91,9 +91,18 @@ func SetLogger(l *log.Logger)
 
 ### Network identity
 
-By default, `Connect` gets the network ID and rippled build version from `server_info` before it makes the connection available to requests. The result is available in `Client.NetworkID` and `Client.BuildVersion`. A nil `NetworkID` means that the identity is not known. The client uses this identity to apply the correct `NetworkID` transaction policy.
+By default, `Connect` gets the network ID and rippled build version from
+`server_info` before it makes the connection available to requests. Use
+`Client.NetworkIdentity()` to read the result. A nil returned network ID means
+that the identity is not known. The client uses this identity to apply the
+correct `NetworkID` transaction policy.
 
-`WithNetworkIdentity` bypasses discovery. Use it only when both values come from trusted deployment configuration.
+```go
+networkID, buildVersion := client.NetworkIdentity()
+```
+
+`WithNetworkIdentity` bypasses discovery. Use it only when both values come from
+trusted deployment configuration.
 
 ```go
 func (wc ClientConfig) WithNetworkIdentity(networkID uint32, buildVersion string) ClientConfig

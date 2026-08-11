@@ -95,6 +95,26 @@ func TestServerInfoLoadFactor(t *testing.T) {
 	}
 }
 
+func TestServerInfoOptionalLoadFactors(t *testing.T) {
+	responseJSON := `{"info":{
+		"load_factor_local":1.00390625,
+		"load_factor_net":1.0078125,
+		"load_factor_cluster":1.015625,
+		"load_factor_fee_escalation":1.25,
+		"load_factor_fee_queue":1.5,
+		"load_factor_server":1.03125
+	}}`
+
+	var response InfoResponse
+	require.NoError(t, json.Unmarshal([]byte(responseJSON), &response))
+	require.InDelta(t, 1.00390625, response.Info.LoadFactorLocal, 0)
+	require.InDelta(t, 1.0078125, response.Info.LoadFactorNet, 0)
+	require.InDelta(t, 1.015625, response.Info.LoadFactorCluster, 0)
+	require.InDelta(t, 1.25, response.Info.LoadFactorFeeEscalation, 0)
+	require.InDelta(t, 1.5, response.Info.LoadFactorFeeQueue, 0)
+	require.InDelta(t, 1.03125, response.Info.LoadFactorServer, 0)
+}
+
 func TestServerInfoBaseFeeXRPPresence(t *testing.T) {
 	tests := []struct {
 		name     string
