@@ -3,6 +3,15 @@ package currency
 import "errors"
 
 var (
+	// ErrInvalidNativeAmount indicates an invalid native XRP amount.
+	ErrInvalidNativeAmount = errors.New("invalid native amount")
+	// ErrNegativeNativeAmount indicates a negative native XRP amount.
+	ErrNegativeNativeAmount = errors.New("native amount cannot be negative")
+	// ErrFractionalDrops indicates an amount that is not a whole number of drops.
+	ErrFractionalDrops = errors.New("amount contains fractional drops")
+	// ErrDropsDivisionByZero indicates a drops ratio with a zero denominator.
+	ErrDropsDivisionByZero = errors.New("drops ratio denominator cannot be zero")
+
 	// ErrXrpToDropsInvalidValue indicates an invalid XRP amount.
 	ErrXrpToDropsInvalidValue = errors.New("xrp to drops: invalid value")
 	// ErrXrpToDropsNegativeValue indicates a negative XRP amount.
