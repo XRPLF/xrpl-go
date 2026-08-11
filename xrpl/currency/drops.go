@@ -153,7 +153,7 @@ func (d Drops) XRPString() (string, error) {
 		return quotient.String(), nil
 	}
 
-	fraction := fmt.Sprintf("%06s", remainder.String())
+	fraction := fmt.Sprintf("%06d", remainder)
 	return quotient.String() + "." + strings.TrimRight(fraction, "0"), nil
 }
 
