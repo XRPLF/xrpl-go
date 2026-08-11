@@ -231,7 +231,7 @@ func TestConnection_WriteMessageHonorsCanceledContext(t *testing.T) {
 		require.True(t, connection.IsConnected())
 	})
 
-	t.Run("canceled after socket write clears deadline", func(t *testing.T) {
+	t.Run("canceled during socket write clears deadline", func(t *testing.T) {
 		connection := newConnection("ws://unused", defaultMaxResponseSize)
 		socket := newFakeWebsocketConnection()
 		connection.conn = socket
@@ -244,6 +244,19 @@ func TestConnection_WriteMessageHonorsCanceledContext(t *testing.T) {
 		require.Len(t, socket.writeDeadlines, 2)
 		require.False(t, socket.writeDeadlines[0].IsZero())
 		require.True(t, socket.writeDeadlines[1].IsZero())
+	})
+
+	t.Run("canceled after completed write keeps socket", func(t *testing.T) {
+		connection := newConnection("ws://unused", defaultMaxResponseSize)
+		socket := newFakeWebsocketConnection()
+		connection.conn = socket
+
+		ctx, cancel := context.WithCancel(context.Background())
+		require.NoError(t, connection.writeMessage(ctx, []byte("test"), time.Second))
+		cancel()
+
+		require.Zero(t, socket.closeCount.Load())
+		require.True(t, connection.IsConnected())
 	})
 }
 

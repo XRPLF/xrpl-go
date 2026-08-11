@@ -290,10 +290,15 @@ func (c *Connection) writeMessageTo(
 		}()
 	}
 
+	const (
+		writeActive uint32 = iota
+		writeFinished
+		writeCanceled
+	)
 	var (
-		writeCompleted atomic.Bool
-		writeDone      chan struct{}
-		watchDone      chan struct{}
+		writeState atomic.Uint32
+		writeDone  chan struct{}
+		watchDone  chan struct{}
 	)
 	if ctx.Done() != nil {
 		writeDone = make(chan struct{})
@@ -302,7 +307,7 @@ func (c *Connection) writeMessageTo(
 			defer close(watchDone)
 			select {
 			case <-ctx.Done():
-				if !writeCompleted.Load() {
+				if writeState.CompareAndSwap(writeActive, writeCanceled) {
 					_ = c.invalidateSocket(conn)
 				}
 			case <-writeDone:
@@ -311,7 +316,8 @@ func (c *Connection) writeMessageTo(
 	}
 
 	writeErr := conn.WriteMessage(websocket.TextMessage, message)
-	writeCompleted.Store(true)
+	// Publish completion only if cancellation has not already claimed the write.
+	writeState.CompareAndSwap(writeActive, writeFinished)
 	if writeDone != nil {
 		close(writeDone)
 		<-watchDone
