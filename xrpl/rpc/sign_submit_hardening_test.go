@@ -397,7 +397,8 @@ func TestClientFeeParity(t *testing.T) {
 		{name: "two multisigners", txType: "Payment", nSigners: 2, cushion: 1, responses: []string{serverInfo}, expected: "30"},
 		{name: "EscrowFinish absent fulfillment", txType: "EscrowFinish", cushion: 1, responses: []string{serverInfo}, expected: "10"},
 		{name: "EscrowFinish empty fulfillment", txType: "EscrowFinish", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "330"},
-		{name: "EscrowFinish fractional scaling", txType: "EscrowFinish", fulfillment: "A0028000", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "333"},
+		{name: "EscrowFinish below 16-byte fee step", txType: "EscrowFinish", fulfillment: "A0028000", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "330"},
+		{name: "EscrowFinish at 16-byte fee step", txType: "EscrowFinish", fulfillment: "00000000000000000000000000000000", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "340"},
 		{name: "VaultCreate base fee", txType: "VaultCreate", cushion: 1, responses: []string{serverInfo}, expected: "10"},
 	}
 

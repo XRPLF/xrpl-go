@@ -698,7 +698,7 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 			feeCushion:  1,
 		},
 		{
-			name: "EscrowFinish with Fulfillment",
+			name: "EscrowFinish below 16-byte fee step",
 			tx: transaction.FlatTransaction{
 				"TransactionType": transaction.EscrowFinishTx,
 				"Fulfillment":     "A0028000", // 8 characters = 4 bytes
@@ -716,7 +716,30 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 					},
 				},
 			},
-			expectedFee: "333", // ceil(10 * (33 + 4/16))
+			expectedFee: "330", // 10 * (33 + floor(4/16))
+			expectedErr: nil,
+			feeCushion:  1,
+		},
+		{
+			name: "EscrowFinish at 16-byte fee step",
+			tx: transaction.FlatTransaction{
+				"TransactionType": transaction.EscrowFinishTx,
+				"Fulfillment":     "00000000000000000000000000000000",
+			},
+			serverMessages: []map[string]any{
+				{
+					"id": 1,
+					"result": map[string]any{
+						"info": map[string]any{
+							"validated_ledger": map[string]any{
+								"base_fee_xrp": float32(0.00001),
+							},
+							"load_factor": float32(1),
+						},
+					},
+				},
+			},
+			expectedFee: "340", // 10 * (33 + floor(16/16))
 			expectedErr: nil,
 			feeCushion:  1,
 		},

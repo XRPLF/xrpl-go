@@ -818,10 +818,7 @@ func (c *Client) calculateFeePerTransactionType(
 	case transaction.EscrowFinishTx:
 		if fulfillment, ok := (*tx)["Fulfillment"].(string); ok {
 			fulfillmentBytesSize := (len(fulfillment) + 1) / 2
-			baseFee, err = netFee.MulRat(33*16+uint64(fulfillmentBytesSize), 16)
-			if err != nil {
-				return err
-			}
+			baseFee = netFee.Mul(33 + uint64(fulfillmentBytesSize)/16)
 		}
 	case transaction.AccountDeleteTx, transaction.AMMCreateTx:
 		reserveFee, reserveErr := c.fetchOwnerReserveFee(ctx)
