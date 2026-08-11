@@ -15,7 +15,8 @@ type Drops struct {
 }
 
 // DropsFromString creates Drops from a decimal drops string. The value must be
-// non-negative and equal to a whole number of drops.
+// non-negative and equal to a whole number of drops. Input is limited to 1024
+// bytes and a decimal exponent magnitude of 17 to keep exact parsing bounded.
 func DropsFromString(value string) (Drops, error) {
 	drops, err := parseNativeAmount(value)
 	if err != nil {
@@ -33,7 +34,8 @@ func DropsFromUint64(value uint64) Drops {
 }
 
 // DropsFromXRP creates Drops from a decimal XRP string. The value must be
-// non-negative and equal to a whole number of drops.
+// non-negative and equal to a whole number of drops. Input is limited to 1024
+// bytes and a decimal exponent magnitude of 17 to keep exact parsing bounded.
 func DropsFromXRP(value string) (Drops, error) {
 	xrp, err := parseNativeAmount(value)
 	if err != nil {
@@ -59,6 +61,8 @@ func (d Drops) Mul(multiplier uint64) Drops {
 }
 
 // MulDecimal returns d multiplied by an exact, non-negative decimal value.
+// Input is limited to 1024 bytes and a decimal exponent magnitude of 324 to
+// keep exact parsing bounded while accepting every finite float64 fee input.
 func (d Drops) MulDecimal(multiplier string) (Drops, error) {
 	factor, ok := multiplierRat(multiplier)
 	if !ok || factor.Sign() < 0 {

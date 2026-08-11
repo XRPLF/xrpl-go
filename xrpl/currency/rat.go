@@ -8,9 +8,11 @@ import (
 
 const (
 	maxNativeAmountDigits = 18
-	// maxDecimalRatInputLen bounds plain decimal input to the largest drop amount plus a decimal point and XRP fraction
-	// 18 + 1 (decimal point) + 6 (fraction length).
-	maxDecimalRatInputLen = maxNativeAmountDigits + 1 + MaxFractionLength
+	// maxDecimalRatInputLen bounds the work and allocations done by big.Rat.SetString.
+	// Real fee inputs formatted from finite float64 values are shorter than 32 bytes,
+	// while 1024 bytes leaves ample room for non-canonical fee text and exact user
+	// multipliers. This is a parser safety limit, not an XRPL protocol limit.
+	maxDecimalRatInputLen = 1024
 	// maxDecimalRatExponent bounds scientific notation before parsing to keep conversion work proportional to native amounts
 	// 1e17.
 	maxDecimalRatExponent = maxNativeAmountDigits - 1

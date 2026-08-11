@@ -102,12 +102,27 @@ func TestNetworkFeeDropsRejectsInvalidValues(t *testing.T) {
 func TestParseFeeXRP(t *testing.T) {
 	t.Parallel()
 
-	fee, err := ParseFeeXRP("0.000025")
-	require.NoError(t, err)
+	tests := []struct {
+		name     string
+		value    string
+		expected string
+	}{
+		{name: "canonical fee", value: "0.000025", expected: "25"},
+		{name: "long non-canonical fee", value: "2.000000000000000000000000", expected: "2000000"},
+	}
 
-	actual, err := fee.WholeString()
-	require.NoError(t, err)
-	require.Equal(t, "25", actual)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			fee, err := ParseFeeXRP(test.value)
+			require.NoError(t, err)
+
+			actual, err := fee.WholeString()
+			require.NoError(t, err)
+			require.Equal(t, test.expected, actual)
+		})
+	}
 }
 
 func TestParseFeeXRPRejectsInvalidValues(t *testing.T) {

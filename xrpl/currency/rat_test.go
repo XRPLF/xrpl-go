@@ -1,6 +1,7 @@
 package currency
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,13 +26,18 @@ func TestNativeAmountRatRejectsExpensiveInputs(t *testing.T) {
 			ok:    true,
 		},
 		{
-			name:  "valid input length boundary",
+			name:  "valid non-canonical native amount",
 			value: "100000000000000000.000000",
 			ok:    true,
 		},
 		{
+			name:  "valid input length boundary",
+			value: strings.Repeat("1", maxDecimalRatInputLen),
+			ok:    true,
+		},
+		{
 			name:  "input too long",
-			value: "10000000000000000000000000000000000000000000000000000000000000000",
+			value: strings.Repeat("1", maxDecimalRatInputLen+1),
 			ok:    false,
 		},
 		{

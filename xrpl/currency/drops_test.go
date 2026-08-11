@@ -2,6 +2,7 @@ package currency
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -176,22 +177,51 @@ func TestDropsArithmeticIsExactAndImmutable(t *testing.T) {
 func TestDropsMulDecimal(t *testing.T) {
 	t.Parallel()
 
-	base := DropsFromUint64(10)
-	product, err := base.MulDecimal("1.2")
-	require.NoError(t, err)
+	tests := []struct {
+		name       string
+		base       uint64
+		multiplier string
+		expected   string
+	}{
+		{name: "decimal", base: 10, multiplier: "1.2", expected: "12"},
+		{
+			name:       "high precision",
+			base:       1,
+			multiplier: "1234567890123456789012345678901234567890",
+			expected:   "1234567890123456789012345678901234567890",
+		},
+	}
 
-	actual, err := product.WholeString()
-	require.NoError(t, err)
-	require.Equal(t, "12", actual)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
 
-	fraction, err := base.MulDecimal("1.05")
+			product, err := DropsFromUint64(test.base).MulDecimal(test.multiplier)
+			require.NoError(t, err)
+
+			actual, err := product.WholeString()
+			require.NoError(t, err)
+			require.Equal(t, test.expected, actual)
+		})
+	}
+}
+
+func TestDropsMulDecimalFractionalResult(t *testing.T) {
+	t.Parallel()
+
+	fraction, err := DropsFromUint64(10).MulDecimal("1.05")
 	require.NoError(t, err)
 	require.False(t, fraction.IsWhole())
 
 	rounded, err := fraction.RoundHalfUp().WholeString()
 	require.NoError(t, err)
 	require.Equal(t, "11", rounded)
+}
 
+func TestDropsMulDecimalExponentBoundaries(t *testing.T) {
+	t.Parallel()
+
+	base := DropsFromUint64(10)
 	huge, err := base.MulDecimal("1e308")
 	require.NoError(t, err)
 	require.Equal(t, 1, huge.Cmp(base))
@@ -212,6 +242,7 @@ func TestDropsMulDecimalRejectsInvalidValues(t *testing.T) {
 		{name: "empty", value: "", expectedErr: ErrInvalidDecimalMultiplier},
 		{name: "invalid", value: "invalid", expectedErr: ErrInvalidDecimalMultiplier},
 		{name: "exponent too large", value: "1e325", expectedErr: ErrInvalidDecimalMultiplier},
+		{name: "input too long", value: strings.Repeat("1", maxDecimalRatInputLen+1), expectedErr: ErrInvalidDecimalMultiplier},
 		{name: "negative", value: "-1", expectedErr: ErrInvalidDecimalMultiplier},
 	}
 
