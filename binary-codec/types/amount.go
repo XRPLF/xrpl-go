@@ -58,8 +58,8 @@ const (
 	// MPTAmountFlag is the flag used to identify MPToken amounts.
 	MPTAmountFlag = 0x20
 
-	// MaxDrops is the maximum number of drops (100 billion XRP in drops).
-	MaxDrops uint64 = 100_000_000_000_000_000
+	// maxNativeDrops is the maximum native XRP amount accepted for serialization.
+	maxNativeDrops uint64 = 100_000_000_000_000_000
 
 	// IOUCodeRegex is the regular expression pattern for IOU currency codes.
 	IOUCodeRegex = `[0-9A-Za-z?!@#$%^&*<>(){}\[\]|]{3}`
@@ -85,7 +85,7 @@ var (
 	errInvalidAmountType             = errors.New("invalid amount type")
 	errFloat64AmountValue            = errors.New("float64 not allowed for amount value, string or json.Number must be used")
 
-	maxDropsBig = new(big.Int).SetUint64(MaxDrops)
+	maxDropsBig = new(big.Int).SetUint64(maxNativeDrops)
 )
 
 // InvalidAmountError is a custom error type for invalid amounts.

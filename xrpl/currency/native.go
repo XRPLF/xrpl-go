@@ -10,8 +10,8 @@ const (
 	// DropsPerXRP is the number of drops equivalent to one XRP.
 	// Use XrpToDrops and DropsToXrp for conversions. This constant is for reference only.
 	DropsPerXRP = 1_000_000
-	// MaxDrops is the maximum native XRP amount in drops.
-	MaxDrops = 100_000_000_000_000_000
+	// MaxNativeDrops is the maximum native XRP amount in drops.
+	MaxNativeDrops uint64 = 100_000_000_000_000_000
 	// MaxFractionLength is the maximum allowed decimal places in an XRP value.
 	MaxFractionLength int = 6
 	// NativeCurrencySymbol is the symbol representing the native XRP currency.
@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	maxDropsInt       = new(big.Int).SetUint64(MaxDrops)
+	maxDropsInt       = new(big.Int).SetUint64(MaxNativeDrops)
 	dropsPerXRPBigInt = big.NewInt(DropsPerXRP)
 	dropsPerXRPRat    = big.NewRat(DropsPerXRP, 1)
 	bigIntOne         = big.NewInt(1)

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### binary-codec
 
 - Renamed the `UInt384` and `UInt512` protocol type definitions to `Hash384` and `Hash512`, and removed the `tecHOOK_REJECTED` and `tecNO_DELEGATE_PERMISSION` transaction result mappings.
+- Removed `types.MaxDrops`. Use `currency.MaxNativeDrops` for the maximum native XRP amount in drops.
 
 #### xrpl/hash
 
@@ -79,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/currency
 
-- Exported the untyped `MaxDrops` constant for the maximum native XRP amount in drops.
+- Exported the typed `MaxNativeDrops` constant for the maximum native XRP amount in drops.
 - Added the exact, immutable `Drops` type for non-negative native XRP amounts, with drops and XRP constructors, fraction-preserving arithmetic, comparison, rounding, and formatting methods. Added `ErrInvalidNativeAmount`, `ErrNegativeNativeAmount`, `ErrInvalidDecimalMultiplier`, `ErrFractionalDrops`, and `ErrDropsDivisionByZero` for validation failures.
 
 #### xrpl/ledger-entry-types
