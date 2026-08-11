@@ -142,15 +142,18 @@ func (c *Client) setValidTransactionAddresses(tx *transaction.FlatTransaction) e
 }
 
 // Sets the next valid sequence number for a given transaction.
-func (c *Client) setTransactionNextValidSequenceNumber(tx *transaction.FlatTransaction) error {
+func (c *Client) setTransactionNextValidSequenceNumber(
+	ctx context.Context,
+	tx *transaction.FlatTransaction,
+) error {
 	if _, ok := (*tx)["Account"].(string); !ok {
 		return ErrMissingAccountInTransaction
 	}
-	res, err := c.GetAccountInfo(&account.InfoRequest{
+	var res account.InfoResponse
+	if err := c.requestResult(ctx, &account.InfoRequest{
 		Account:     types.Address((*tx)["Account"].(string)),
 		LedgerIndex: common.LedgerTitle("current"),
-	})
-	if err != nil {
+	}, &res); err != nil {
 		return err
 	}
 
@@ -159,9 +162,13 @@ func (c *Client) setTransactionNextValidSequenceNumber(tx *transaction.FlatTrans
 }
 
 // getFeeDrops calculates the current transaction fee for the ledger.
-func (c *Client) getFeeDrops(cushion float64, maxFee currency.Drops) (currency.Drops, error) {
-	res, err := c.GetServerInfo(&server.InfoRequest{})
-	if err != nil {
+func (c *Client) getFeeDrops(
+	ctx context.Context,
+	cushion float64,
+	maxFee currency.Drops,
+) (currency.Drops, error) {
+	var res server.InfoResponse
+	if err := c.requestResult(ctx, &server.InfoRequest{}, &res); err != nil {
 		return currency.Drops{}, err
 	}
 
@@ -181,13 +188,17 @@ func (c *Client) getFeeDrops(cushion float64, maxFee currency.Drops) (currency.D
 // calculateFeePerTransactionType calculates the fee for a transaction,
 // including special costs for EscrowFinish, owner-reserve transactions, Batch,
 // LoanSet, and multisigning.
-func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction, nSigners uint64) error {
+func (c *Client) calculateFeePerTransactionType(
+	ctx context.Context,
+	tx *transaction.FlatTransaction,
+	nSigners uint64,
+) error {
 	maxFee, err := clientinternal.ParseFeeXRP(c.cfg.maxFeeXRP)
 	if err != nil {
 		return err
 	}
 
-	netFee, err := c.getFeeDrops(c.cfg.feeCushion, maxFee)
+	netFee, err := c.getFeeDrops(ctx, c.cfg.feeCushion, maxFee)
 	if err != nil {
 		return err
 	}
@@ -208,19 +219,19 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 			}
 		}
 	case transaction.AccountDeleteTx, transaction.AMMCreateTx, transaction.VaultCreateTx:
-		reserveFee, reserveErr := c.fetchOwnerReserveFee()
+		reserveFee, reserveErr := c.fetchOwnerReserveFee(ctx)
 		if reserveErr != nil {
 			return reserveErr
 		}
 		baseFee = currency.DropsFromUint64(reserveFee)
 	case transaction.BatchTx:
-		rawTxFees, batchErr := c.calculateBatchFees(tx)
+		rawTxFees, batchErr := c.calculateBatchFees(ctx, tx)
 		if batchErr != nil {
 			return batchErr
 		}
 		baseFee = netFee.Mul(2).Add(rawTxFees)
 	case transaction.LoanSetTx:
-		counterPartySignersCount, signerErr := c.fetchCounterPartySignersCount(*tx)
+		counterPartySignersCount, signerErr := c.fetchCounterPartySignersCount(ctx, *tx)
 		if signerErr != nil {
 			return signerErr
 		}
@@ -246,25 +257,27 @@ func (c *Client) calculateFeePerTransactionType(tx *transaction.FlatTransaction,
 
 // Sets the latest validated ledger sequence for the transaction.
 // Modifies the `LastLedgerSequence` field in the tx.
-func (c *Client) setLastLedgerSequence(tx *transaction.FlatTransaction) error {
-	index, err := c.GetLedgerIndex()
-	if err != nil {
+func (c *Client) setLastLedgerSequence(ctx context.Context, tx *transaction.FlatTransaction) error {
+	var response ledger.Response
+	if err := c.requestResult(ctx, &ledger.Request{
+		LedgerIndex: common.LedgerTitle("validated"),
+	}, &response); err != nil {
 		return err
 	}
 
-	(*tx)["LastLedgerSequence"] = index.Uint32() + commonconstants.LedgerOffset
-	return err
+	(*tx)["LastLedgerSequence"] = response.LedgerIndex.Uint32() + commonconstants.LedgerOffset
+	return nil
 }
 
 // Checks for any blockers that prevent the deletion of an account.
 // Returns nil if there are no blockers, otherwise returns an error.
-func (c *Client) checkAccountDeleteBlockers(address types.Address) error {
-	accObjects, err := c.GetAccountObjects(&account.ObjectsRequest{
+func (c *Client) checkAccountDeleteBlockers(ctx context.Context, address types.Address) error {
+	var accObjects account.ObjectsResponse
+	if err := c.requestResult(ctx, &account.ObjectsRequest{
 		Account:              address,
 		LedgerIndex:          common.LedgerTitle("validated"),
 		DeletionBlockersOnly: true,
-	})
-	if err != nil {
+	}, &accObjects); err != nil {
 		return err
 	}
 
@@ -347,7 +360,15 @@ func isTransactionNotFoundError(err error) bool {
 // Even when autofill is disabled, this client submission path needs a discovered
 // network identity, or trusted values from WithNetworkIdentity, before it signs.
 // Call wallet.Sign directly when signing must be fully offline.
-func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wallet *wallet.Wallet) (string, error) {
+func (c *Client) getSignedTx(
+	ctx context.Context,
+	tx transaction.FlatTransaction,
+	autofill bool,
+	wallet *wallet.Wallet,
+) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	working := transaction.FlatTransaction(clientinternal.CloneTransaction(tx))
 	if working == nil {
 		return "", ErrNilTransaction
@@ -375,11 +396,11 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 	if autofill {
 		// working is already a private deep copy, so the unexported worker is
 		// enough. The public Autofill wrapper would clone it a second time.
-		if err := c.autofill(&working, 0); err != nil {
+		if err := c.autofill(ctx, &working, 0); err != nil {
 			return "", err
 		}
 	} else {
-		identity, err := c.ensureNetworkIdentity()
+		identity, err := c.ensureNetworkIdentity(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -388,6 +409,9 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 		}
 	}
 
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	txBlob, _, err := wallet.Sign(working)
 	if err != nil {
 		return "", err
@@ -396,9 +420,9 @@ func (c *Client) getSignedTx(tx transaction.FlatTransaction, autofill bool, wall
 }
 
 // fetchOwnerReserveFee fetches the owner reserve fee from the server state.
-func (c *Client) fetchOwnerReserveFee() (uint64, error) {
-	response, err := c.GetServerState(&server.StateRequest{})
-	if err != nil {
+func (c *Client) fetchOwnerReserveFee(ctx context.Context) (uint64, error) {
+	var response server.StateResponse
+	if err := c.requestResult(ctx, &server.StateRequest{}, &response); err != nil {
 		return 0, err
 	}
 
@@ -413,7 +437,10 @@ func (c *Client) fetchOwnerReserveFee() (uint64, error) {
 // fetchCounterPartySignersCount fetches the number of signers for the counterparty account.
 // For LoanSet transactions, if Counterparty is not provided, it fetches the LoanBroker and uses its Owner.
 // Returns the number of signers in the counterparty's signer list, or 1 if no signer list exists.
-func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (uint64, error) {
+func (c *Client) fetchCounterPartySignersCount(
+	ctx context.Context,
+	tx transaction.FlatTransaction,
+) (uint64, error) {
 	var counterparty types.Address
 
 	// Extract Counterparty from transaction if present
@@ -431,11 +458,11 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 		}
 
 		// Make ledger_entry request
-		res, err := c.GetLedgerEntry(&ledger.EntryRequest{
+		var res ledger.EntryResponse
+		if err := c.requestResult(ctx, &ledger.EntryRequest{
 			Index:       loanBrokerID,
 			LedgerIndex: common.LedgerTitle("validated"),
-		})
-		if err != nil {
+		}, &res); err != nil {
 			return 0, err
 		}
 
@@ -452,12 +479,12 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 	}
 
 	// Fetch account info with signer lists
-	accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
+	var accountInfo account.InfoResponse
+	if err := c.requestResult(ctx, &account.InfoRequest{
 		Account:     counterparty,
 		LedgerIndex: common.LedgerTitle("validated"),
 		SignerLists: true,
-	})
-	if err != nil {
+	}, &accountInfo); err != nil {
 		return 0, err
 	}
 
@@ -471,7 +498,10 @@ func (c *Client) fetchCounterPartySignersCount(tx transaction.FlatTransaction) (
 }
 
 // calculateBatchFees calculates the total fees for all inner transactions in a Batch.
-func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (currency.Drops, error) {
+func (c *Client) calculateBatchFees(
+	ctx context.Context,
+	tx *transaction.FlatTransaction,
+) (currency.Drops, error) {
 	var totalFees currency.Drops
 
 	// Get RawTransactions from the batch transaction
@@ -490,7 +520,7 @@ func (c *Client) calculateBatchFees(tx *transaction.FlatTransaction) (currency.D
 
 		// Calculate fee for this inner transaction (no multi-signing for inner transactions)
 		innerTxFlat := transaction.FlatTransaction(innerTx)
-		err := c.calculateFeePerTransactionType(&innerTxFlat, 0)
+		err := c.calculateFeePerTransactionType(ctx, &innerTxFlat, 0)
 		if err != nil {
 			return currency.Drops{}, err
 		}

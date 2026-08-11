@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -316,7 +317,7 @@ func TestClientAutofillRawTransactionsRejectsNullSigningFields(t *testing.T) {
 			}
 			cl, cleanup := setupTestClientForAutofill(t, nil)
 			defer cleanup()
-			require.ErrorIs(t, cl.autofillRawTransactions(&tx), tt.expectedErr)
+			require.ErrorIs(t, cl.autofillRawTransactions(context.Background(), &tx), tt.expectedErr)
 		})
 	}
 }
@@ -421,7 +422,7 @@ func TestClientFeeParity(t *testing.T) {
 			defer cleanup()
 			cl.cfg.feeCushion = 1
 			tx := transaction.FlatTransaction{"TransactionType": tt.txType}
-			require.NoError(t, cl.calculateFeePerTransactionType(&tx, tt.nSigners))
+			require.NoError(t, cl.calculateFeePerTransactionType(context.Background(), &tx, tt.nSigners))
 			require.Equal(t, tt.expected, tx["Fee"])
 		})
 	}
@@ -436,7 +437,7 @@ func TestClientSubmitTxBlobWorkerUsesDecodedTransaction(t *testing.T) {
 		"TxnSignature":    "CCDD",
 	}
 
-	response, err := cl.submitTxBlob("not-hex", tx, false)
+	response, err := cl.submitTxBlob(context.Background(), "not-hex", tx, false)
 	require.NoError(t, err)
 	require.Equal(t, "tesSUCCESS", response.EngineResult)
 	<-seen

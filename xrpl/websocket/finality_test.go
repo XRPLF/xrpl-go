@@ -11,6 +11,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/testutil"
+	wstypes "github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 	ws "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
 )
@@ -20,6 +21,7 @@ type wsFinalityStep struct {
 	result     map[string]any
 	errorCode  string
 	noResponse bool
+	onRequest  func()
 }
 
 func TestIsTransactionNotFoundError(t *testing.T) {
@@ -280,6 +282,35 @@ func TestClientSubmitTxAndWaitRejectsInvalidFinalityMonitoringBeforePreparation(
 	require.ErrorIs(t, err, ErrInvalidMaxRetries)
 }
 
+func TestClientSubmitTxAndWaitContextCancelsPreparation(t *testing.T) {
+	signer, err := wallet.FromSeed("sEdSuqBPSQaood2DmNYVkwWTn1oQTj2", "")
+	require.NoError(t, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client, requestCount, serverErrors, cleanup := setupWSFinalityClient(
+		t,
+		[]wsFinalityStep{{method: "account_info", noResponse: true, onRequest: cancel}},
+		2,
+		time.Second,
+	)
+	defer cleanup()
+
+	response, err := client.SubmitTxAndWaitContext(
+		ctx,
+		transaction.FlatTransaction{
+			"TransactionType": "AccountSet",
+			"Account":         signer.ClassicAddress.String(),
+		},
+		&wstypes.SubmitOptions{Autofill: true, Wallet: &signer},
+	)
+
+	require.Nil(t, response)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, int32(1), requestCount.Load())
+	requireNoWSFinalityServerError(t, serverErrors)
+}
+
 func TestClientSubmitTxBlobAndWaitExpiryRetainsPreliminaryResult(t *testing.T) {
 	const preliminaryResult = "terQUEUED"
 	lastLedger := uint32(20)
@@ -408,6 +439,9 @@ func setupWSFinalityClient(
 				return
 			}
 			step := steps[stepIndex]
+			if step.onRequest != nil {
+				step.onRequest()
+			}
 			if request.Command != step.method {
 				select {
 				case serverErrors <- fmt.Errorf("request %d: got method %s, want %s", stepIndex, request.Command, step.method):

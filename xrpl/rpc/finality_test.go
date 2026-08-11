@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
@@ -291,6 +292,63 @@ func TestClientSubmitTxAndWaitRejectsInvalidFinalityMonitoringBeforePreparation(
 	response, err := NewClient(cfg).SubmitTxAndWaitContext(context.Background(), nil, nil)
 	require.Nil(t, response)
 	require.ErrorIs(t, err, ErrInvalidMaxRetries)
+}
+
+func TestClientSubmitTxAndWaitContextCancelsPreparation(t *testing.T) {
+	signer, err := wallet.FromSeed("sEdSuqBPSQaood2DmNYVkwWTn1oQTj2", "")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		autofill   bool
+		configOpts []ConfigOpt
+		wantMethod string
+	}{
+		{name: "network identity discovery", wantMethod: "server_info"},
+		{
+			name:       "autofill query",
+			autofill:   true,
+			configOpts: []ConfigOpt{WithNetworkIdentity(0, "1.12.0")},
+			wantMethod: "account_info",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			requestCount := 0
+			mockClient := &testutil.JSONRPCMockClient{}
+			mockClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+				requestCount++
+				var request struct {
+					Method string `json:"method"`
+				}
+				require.NoError(t, json.NewDecoder(req.Body).Decode(&request))
+				require.Equal(t, tt.wantMethod, request.Method)
+				cancel()
+				<-req.Context().Done()
+				return nil, req.Context().Err()
+			}
+
+			configOpts := append([]ConfigOpt{WithHTTPClient(mockClient)}, tt.configOpts...)
+			cfg, err := NewClientConfig("http://testnode/", configOpts...)
+			require.NoError(t, err)
+			response, err := NewClient(cfg).SubmitTxAndWaitContext(
+				ctx,
+				transaction.FlatTransaction{
+					"TransactionType": "AccountSet",
+					"Account":         signer.ClassicAddress.String(),
+				},
+				&rpctypes.SubmitOptions{Autofill: tt.autofill, Wallet: &signer},
+			)
+
+			require.Nil(t, response)
+			require.ErrorIs(t, err, context.Canceled)
+			require.Equal(t, 1, requestCount)
+		})
+	}
 }
 
 func TestClientSubmitTxBlobAndWaitExpiryRetainsPreliminaryResult(t *testing.T) {

@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -571,7 +572,7 @@ func TestClient_setTransactionNextValidSequenceNumber(t *testing.T) {
 			cl, cleanup := setupTestClient(t, tt.serverMessages)
 			defer cleanup()
 
-			err := cl.setTransactionNextValidSequenceNumber(&tt.tx)
+			err := cl.setTransactionNextValidSequenceNumber(context.Background(), &tt.tx)
 
 			if tt.expectedErr != nil {
 				if !reflect.DeepEqual(err.Error(), tt.expectedErr.Error()) {
@@ -1012,7 +1013,7 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 			cl.cfg.feeCushion = tt.feeCushion
 			cl.cfg.maxFeeXRP = DefaultMaxFeeXRP
 
-			err := cl.calculateFeePerTransactionType(&tt.tx, tt.nSigners)
+			err := cl.calculateFeePerTransactionType(context.Background(), &tt.tx, tt.nSigners)
 
 			if tt.expectedErr != nil {
 				if !reflect.DeepEqual(err.Error(), tt.expectedErr.Error()) {
@@ -1054,7 +1055,7 @@ func TestClient_FeePresenceSemantics(t *testing.T) {
 			maxFee, err := clientinternal.ParseFeeXRP(client.cfg.maxFeeXRP)
 			require.NoError(t, err)
 
-			actual, err := client.getFeeDrops(1, maxFee)
+			actual, err := client.getFeeDrops(context.Background(), 1, maxFee)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
@@ -1088,7 +1089,7 @@ func TestClient_OwnerReservePresenceSemantics(t *testing.T) {
 				},
 			}})
 			defer cleanup()
-			actual, err := client.fetchOwnerReserveFee()
+			actual, err := client.fetchOwnerReserveFee(context.Background())
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
@@ -1135,7 +1136,10 @@ func TestClient_LoanSetFeeUsesValidatedLedger(t *testing.T) {
 	require.NoError(t, client.Connect())
 	defer client.Disconnect()
 
-	count, err := client.fetchCounterPartySignersCount(transaction.FlatTransaction{"LoanBrokerID": "ABC"})
+	count, err := client.fetchCounterPartySignersCount(
+		context.Background(),
+		transaction.FlatTransaction{"LoanBrokerID": "ABC"},
+	)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), count)
 	close(requests)
@@ -1148,7 +1152,11 @@ func TestClient_InvalidMaximumFeeUsesPublicError(t *testing.T) {
 	client := NewClient(NewClientConfig().WithHost("ws://unused"))
 	client.cfg.maxFeeXRP = "invalid"
 	tx := transaction.FlatTransaction{"TransactionType": "Payment"}
-	require.ErrorIs(t, client.calculateFeePerTransactionType(&tx, 0), ErrInvalidFeeValue)
+	require.ErrorIs(
+		t,
+		client.calculateFeePerTransactionType(context.Background(), &tx, 0),
+		ErrInvalidFeeValue,
+	)
 }
 
 func TestClient_setLastLedgerSequence(t *testing.T) {
@@ -1180,7 +1188,7 @@ func TestClient_setLastLedgerSequence(t *testing.T) {
 			cl, cleanup := setupTestClient(t, tt.serverMessages)
 			defer cleanup()
 
-			err := cl.setLastLedgerSequence(&tt.tx)
+			err := cl.setLastLedgerSequence(context.Background(), &tt.tx)
 
 			if tt.expectedErr != nil {
 				if err == nil || err.Error() != tt.expectedErr.Error() {
@@ -1241,7 +1249,7 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 			}
 			defer cl.Disconnect()
 
-			err := cl.checkAccountDeleteBlockers(tt.address)
+			err := cl.checkAccountDeleteBlockers(context.Background(), tt.address)
 
 			if tt.expectedErr != nil {
 				if err == nil || err.Error() != tt.expectedErr.Error() {
@@ -2153,7 +2161,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 				err = clientinternal.ApplyNetworkIDPolicy(tt.tx, identity)
 			}
 			if err == nil {
-				err = cl.autofillRawTransactions(&tt.tx)
+				err = cl.autofillRawTransactions(context.Background(), &tt.tx)
 			}
 
 			if tt.expectedErr != nil {

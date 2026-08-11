@@ -161,6 +161,14 @@ func (c *Client) request(ctx context.Context, reqParams XRPLRequest) (XRPLRespon
 	return &jr, nil
 }
 
+func (c *Client) requestResult(ctx context.Context, req XRPLRequest, result any) error {
+	response, err := c.request(ctx, req)
+	if err != nil {
+		return err
+	}
+	return response.GetResult(result)
+}
+
 // SubmitTxBlob sends a pre-signed transaction blob to the server.
 // Its preflight validates only the structure of signing fields. rippled remains
 // authoritative for cryptographic signature validity. AccountDelete always uses
@@ -170,14 +178,10 @@ func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitRes
 	if err != nil {
 		return nil, err
 	}
-	return c.submitTxBlobContext(context.Background(), txBlob, tx, failHard)
+	return c.submitTxBlob(context.Background(), txBlob, tx, failHard)
 }
 
-func (c *Client) submitTxBlob(txBlob string, tx map[string]any, failHard bool) (*requests.SubmitResponse, error) {
-	return c.submitTxBlobContext(context.Background(), txBlob, tx, failHard)
-}
-
-func (c *Client) submitTxBlobContext(
+func (c *Client) submitTxBlob(
 	ctx context.Context,
 	txBlob string,
 	tx map[string]any,
@@ -221,10 +225,10 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 	if err := clientinternal.ValidateFinalityMonitoring(c.cfg.retryDelay, c.cfg.maxRetries); err != nil {
 		return nil, err
 	}
-	return c.submitTxBlobAndWaitContext(ctx, txBlob, failHard)
+	return c.submitTxBlobAndWait(ctx, txBlob, failHard)
 }
 
-func (c *Client) submitTxBlobAndWaitContext(
+func (c *Client) submitTxBlobAndWait(
 	ctx context.Context,
 	txBlob string,
 	failHard bool,
@@ -242,7 +246,7 @@ func (c *Client) submitTxBlobAndWaitContext(
 		return nil, err
 	}
 
-	submitResponse, err := c.submitTxBlobContext(ctx, txBlob, tx, failHard)
+	submitResponse, err := c.submitTxBlob(ctx, txBlob, tx, failHard)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +277,7 @@ func (c *Client) SubmitTx(tx transaction.FlatTransaction, opts *rpctypes.SubmitO
 	if opts == nil {
 		opts = &rpctypes.SubmitOptions{}
 	}
-	txBlob, err := c.getSignedTx(tx, opts.Autofill, opts.Wallet)
+	txBlob, err := c.getSignedTx(context.Background(), tx, opts.Autofill, opts.Wallet)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +292,7 @@ func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *rpctypes.
 }
 
 // SubmitTxAndWaitContext is SubmitTxAndWait with caller cancellation for
-// submission and finality monitoring.
+// transaction preparation, submission, and finality monitoring.
 func (c *Client) SubmitTxAndWaitContext(
 	ctx context.Context,
 	tx transaction.FlatTransaction,
@@ -303,7 +307,7 @@ func (c *Client) SubmitTxAndWaitContext(
 	if opts == nil {
 		opts = &rpctypes.SubmitOptions{}
 	}
-	txBlob, err := c.getSignedTx(tx, opts.Autofill, opts.Wallet)
+	txBlob, err := c.getSignedTx(ctx, tx, opts.Autofill, opts.Wallet)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +315,7 @@ func (c *Client) SubmitTxAndWaitContext(
 		return nil, err
 	}
 
-	return c.submitTxBlobAndWaitContext(ctx, txBlob, opts.FailHard)
+	return c.submitTxBlobAndWait(ctx, txBlob, opts.FailHard)
 }
 
 // SubmitMultisigned submits a structurally complete multisigned transaction blob.
@@ -346,14 +350,17 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error {
 		return ErrNilTransaction
 	}
 	working := transaction.FlatTransaction(clientinternal.CloneTransaction(*tx))
-	if err := c.autofill(&working, 0); err != nil {
+	if err := c.autofill(context.Background(), &working, 0); err != nil {
 		return err
 	}
 	clientinternal.ReplaceTransactionContents(*tx, working)
 	return nil
 }
 
-func (c *Client) autofill(tx *transaction.FlatTransaction, nSigners uint64) error {
+func (c *Client) autofill(ctx context.Context, tx *transaction.FlatTransaction, nSigners uint64) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := tx.RequireTransactionType(); err != nil {
 		return err
 	}
@@ -364,7 +371,7 @@ func (c *Client) autofill(tx *transaction.FlatTransaction, nSigners uint64) erro
 		return err
 	}
 
-	identity, err := c.ensureNetworkIdentity()
+	identity, err := c.ensureNetworkIdentity(ctx)
 	if err != nil {
 		return err
 	}
@@ -375,17 +382,17 @@ func (c *Client) autofill(tx *transaction.FlatTransaction, nSigners uint64) erro
 		return err
 	}
 	if _, ok := (*tx)["Sequence"]; !ok {
-		if err := c.setTransactionNextValidSequenceNumber(tx); err != nil {
+		if err := c.setTransactionNextValidSequenceNumber(ctx, tx); err != nil {
 			return err
 		}
 	}
 	if _, ok := (*tx)["Fee"]; !ok {
-		if err := c.calculateFeePerTransactionType(tx, nSigners); err != nil {
+		if err := c.calculateFeePerTransactionType(ctx, tx, nSigners); err != nil {
 			return err
 		}
 	}
 	if _, ok := (*tx)["LastLedgerSequence"]; !ok {
-		if err := c.setLastLedgerSequence(tx); err != nil {
+		if err := c.setLastLedgerSequence(ctx, tx); err != nil {
 			return err
 		}
 	}
@@ -395,12 +402,12 @@ func (c *Client) autofill(tx *transaction.FlatTransaction, nSigners uint64) erro
 		if !ok {
 			return ErrMissingAccountInTransaction
 		}
-		if err := c.checkAccountDeleteBlockers(types.Address(accountAddress)); err != nil {
+		if err := c.checkAccountDeleteBlockers(ctx, types.Address(accountAddress)); err != nil {
 			return err
 		}
 	}
 	if txType == transaction.BatchTx {
-		if err := c.autofillRawTransactions(tx); err != nil {
+		if err := c.autofillRawTransactions(ctx, tx); err != nil {
 			return err
 		}
 	}
@@ -415,7 +422,7 @@ func (c *Client) AutofillMultisigned(tx *transaction.FlatTransaction, nSigners u
 		return ErrNilTransaction
 	}
 	working := transaction.FlatTransaction(clientinternal.CloneTransaction(*tx))
-	if err := c.autofill(&working, nSigners); err != nil {
+	if err := c.autofill(context.Background(), &working, nSigners); err != nil {
 		return err
 	}
 	clientinternal.ReplaceTransactionContents(*tx, working)
@@ -470,12 +477,15 @@ func isFundWalletActNotFound(err error) bool {
 	return errors.As(err, &clientErr) && clientErr.ErrorString == actNotFound
 }
 
-func (c *Client) autofillRawTransactions(tx *transaction.FlatTransaction) error {
+func (c *Client) autofillRawTransactions(
+	ctx context.Context,
+	tx *transaction.FlatTransaction,
+) error {
 	return clientinternal.AutofillBatchRawTransactions(*tx, func(accountAddress string) (uint32, error) {
-		accountInfo, err := c.GetAccountInfo(&account.InfoRequest{
+		var accountInfo account.InfoResponse
+		if err := c.requestResult(ctx, &account.InfoRequest{
 			Account: types.Address(accountAddress),
-		})
-		if err != nil {
+		}, &accountInfo); err != nil {
 			return 0, err
 		}
 		return accountInfo.AccountData.Sequence, nil

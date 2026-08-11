@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"sync"
@@ -21,6 +22,17 @@ func uint32Pointer(value uint32) *uint32 {
 
 func boolPointer(value bool) *bool {
 	return &value
+}
+
+type doneObservedContext struct {
+	context.Context
+	doneCalled chan struct{}
+	once       sync.Once
+}
+
+func (c *doneObservedContext) Done() <-chan struct{} {
+	c.once.Do(func() { close(c.doneCalled) })
+	return c.Context.Done()
 }
 
 func TestClientBeginNetworkIdentityDiscoveryResult(t *testing.T) {
@@ -44,7 +56,7 @@ func TestClientBeginNetworkIdentityDiscoveryResult(t *testing.T) {
 		NetworkID:    uint32Pointer(21337),
 		BuildVersion: "1.12.0",
 	}
-	cl.finishNetworkIdentityDiscovery(resolved, nil)
+	cl.finishNetworkIdentityDiscovery(resolved, nil, false)
 	select {
 	case <-first.discovery.done:
 	default:
@@ -76,7 +88,7 @@ func TestClientEnsureNetworkIdentitySingleflight(t *testing.T) {
 				ready <- struct{}{}
 				<-start
 				calling <- struct{}{}
-				identity, err := cl.ensureNetworkIdentity()
+				identity, err := cl.ensureNetworkIdentity(context.Background())
 				results <- ensureResult{identity: identity, err: err}
 			}()
 		}
@@ -206,6 +218,73 @@ func TestClientEnsureNetworkIdentitySingleflight(t *testing.T) {
 	})
 }
 
+func TestClientEnsureNetworkIdentityFollowerCancellation(t *testing.T) {
+	mockClient := &testutil.JSONRPCMockClient{}
+	var requestCount atomic.Int32
+	requestStarted := make(chan struct{})
+	releaseRequest := make(chan struct{})
+	var releaseRequestOnce sync.Once
+	release := func() { releaseRequestOnce.Do(func() { close(releaseRequest) }) }
+	t.Cleanup(release)
+	mockClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		requestCount.Add(1)
+		close(requestStarted)
+		<-releaseRequest
+		return testutil.MockResponse(
+			`{"result":{"info":{"network_id":21337,"build_version":"1.12.0"}}}`,
+			http.StatusOK,
+			mockClient,
+		)(req)
+	}
+	cfg, err := NewClientConfig("http://localhost/", WithHTTPClient(mockClient))
+	require.NoError(t, err)
+	cl := NewClient(cfg)
+
+	leaderResult := make(chan error, 1)
+	go func() {
+		_, discoveryErr := cl.ensureNetworkIdentity(context.Background())
+		leaderResult <- discoveryErr
+	}()
+	select {
+	case <-requestStarted:
+	case <-time.After(time.Second):
+		t.Fatal("server_info request did not start")
+	}
+
+	baseCtx, cancel := context.WithCancel(context.Background())
+	followerCtx := &doneObservedContext{
+		Context:    baseCtx,
+		doneCalled: make(chan struct{}),
+	}
+	followerResult := make(chan error, 1)
+	go func() {
+		_, discoveryErr := cl.ensureNetworkIdentity(followerCtx)
+		followerResult <- discoveryErr
+	}()
+	select {
+	case <-followerCtx.doneCalled:
+	case <-time.After(time.Second):
+		t.Fatal("identity follower did not wait for shared discovery")
+	}
+	cancel()
+
+	select {
+	case err := <-followerResult:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("cancelled identity follower did not return")
+	}
+
+	release()
+	select {
+	case err := <-leaderResult:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("identity leader did not return")
+	}
+	require.Equal(t, int32(1), requestCount.Load())
+}
+
 func TestClientEnsureNetworkIdentity(t *testing.T) {
 	requestFailure := errors.New("server_info unavailable")
 	tests := []struct {
@@ -327,9 +406,9 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 				setTestNetworkIdentity(cl, tt.override, tt.buildOverride)
 			}
 
-			identity, err := cl.ensureNetworkIdentity()
+			identity, err := cl.ensureNetworkIdentity(context.Background())
 			for call := 1; call < tt.ensureCalls; call++ {
-				identity, err = cl.ensureNetworkIdentity()
+				identity, err = cl.ensureNetworkIdentity(context.Background())
 			}
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
@@ -410,7 +489,7 @@ func TestClientEnsureNetworkIdentityCoalescesConcurrentDiscovery(t *testing.T) {
 		go func() {
 			<-start
 			ready.Done()
-			identity, discoveryErr := cl.ensureNetworkIdentity()
+			identity, discoveryErr := cl.ensureNetworkIdentity(context.Background())
 			var networkID uint32
 			if identity.NetworkID != nil {
 				networkID = *identity.NetworkID
@@ -469,7 +548,7 @@ func TestClientEnsureNetworkIdentityCoalescesConcurrentFailure(t *testing.T) {
 		go func() {
 			<-start
 			ready.Done()
-			_, discoveryErr := cl.ensureNetworkIdentity()
+			_, discoveryErr := cl.ensureNetworkIdentity(context.Background())
 			results <- discoveryErr
 		}()
 	}
@@ -491,7 +570,7 @@ func TestClientEnsureNetworkIdentityCoalescesConcurrentFailure(t *testing.T) {
 	}
 	require.Equal(t, int32(1), requestCount.Load())
 
-	_, err = cl.ensureNetworkIdentity()
+	_, err = cl.ensureNetworkIdentity(context.Background())
 	require.ErrorIs(t, err, requestFailure)
 	require.Equal(t, int32(2), requestCount.Load())
 }
@@ -538,6 +617,7 @@ func TestClientGetSignedTxFailsClosedWithoutAutofill(t *testing.T) {
 	cl := NewClient(cfg)
 
 	_, err = cl.getSignedTx(
+		context.Background(),
 		transaction.FlatTransaction{"TransactionType": "AccountSet"},
 		false,
 		&wallet.Wallet{},

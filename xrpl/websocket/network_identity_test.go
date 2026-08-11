@@ -1000,6 +1000,7 @@ func TestClientGetSignedTxFailsClosedWithoutAutofill(t *testing.T) {
 	cl := NewClient(*NewClientConfig())
 
 	_, err := cl.getSignedTx(
+		context.Background(),
 		transaction.FlatTransaction{"TransactionType": "AccountSet"},
 		false,
 		&wallet.Wallet{},

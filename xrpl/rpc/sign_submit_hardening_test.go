@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -323,7 +324,7 @@ func TestClientAutofillRawTransactionsRejectsNullSigningFields(t *testing.T) {
 				"RawTransactions": []map[string]any{{"RawTransaction": inner}},
 			}
 			cl := setupTestRPCClientForAutofill(t, nil)
-			require.ErrorIs(t, cl.autofillRawTransactions(&tx), tt.expectedErr)
+			require.ErrorIs(t, cl.autofillRawTransactions(context.Background(), &tx), tt.expectedErr)
 		})
 	}
 }
@@ -412,7 +413,7 @@ func TestClientFeeParity(t *testing.T) {
 			if tt.fulfillmentPresent {
 				tx["Fulfillment"] = tt.fulfillment
 			}
-			require.NoError(t, cl.calculateFeePerTransactionType(&tx, tt.nSigners))
+			require.NoError(t, cl.calculateFeePerTransactionType(context.Background(), &tx, tt.nSigners))
 			require.Equal(t, tt.expected, tx["Fee"])
 		})
 	}
@@ -426,7 +427,7 @@ func TestClientSubmitTxBlobWorkerUsesDecodedTransaction(t *testing.T) {
 		"TxnSignature":    "CCDD",
 	}
 
-	response, err := cl.submitTxBlob("not-hex", tx, false)
+	response, err := cl.submitTxBlob(context.Background(), "not-hex", tx, false)
 	require.NoError(t, err)
 	require.Equal(t, "tesSUCCESS", response.EngineResult)
 	require.Len(t, *requestsSeen, 1)
@@ -450,7 +451,7 @@ func TestClientFeePresenceSemantics(t *testing.T) {
 			maxFee, err := clientinternal.ParseFeeXRP(client.cfg.maxFeeXRP)
 			require.NoError(t, err)
 
-			actual, err := client.getFeeDrops(1, maxFee)
+			actual, err := client.getFeeDrops(context.Background(), 1, maxFee)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
@@ -478,7 +479,7 @@ func TestClientOwnerReservePresenceSemantics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := setupTestRPCClientForAutofill(t, []string{tt.response})
-			actual, err := client.fetchOwnerReserveFee()
+			actual, err := client.fetchOwnerReserveFee(context.Background())
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
@@ -514,7 +515,10 @@ func TestClientLoanSetFeeUsesValidatedLedger(t *testing.T) {
 	require.NoError(t, err)
 	client := NewClient(cfg)
 
-	count, err := client.fetchCounterPartySignersCount(transaction.FlatTransaction{"LoanBrokerID": "ABC"})
+	count, err := client.fetchCounterPartySignersCount(
+		context.Background(),
+		transaction.FlatTransaction{"LoanBrokerID": "ABC"},
+	)
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), count)
 	require.Len(t, requests, 2)
@@ -528,7 +532,11 @@ func TestClientInvalidMaximumFeeUsesPublicError(t *testing.T) {
 	cl := setupTestRPCClientForAutofill(t, []string{`{"result":{"info":{"validated_ledger":{"base_fee_xrp":0.00001},"load_factor":1}}}`})
 	cl.cfg.maxFeeXRP = "invalid"
 	tx := transaction.FlatTransaction{"TransactionType": "Payment"}
-	require.ErrorIs(t, cl.calculateFeePerTransactionType(&tx, 0), ErrInvalidFeeValue)
+	require.ErrorIs(
+		t,
+		cl.calculateFeePerTransactionType(context.Background(), &tx, 0),
+		ErrInvalidFeeValue,
+	)
 }
 
 func TestClientSubmitTxBlobStructuralPreflight(t *testing.T) {
