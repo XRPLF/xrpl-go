@@ -418,6 +418,19 @@ func TestClientFeeParity(t *testing.T) {
 	}
 }
 
+func TestClientCalculateBatchFeesRejectsNestedBatch(t *testing.T) {
+	tx := transaction.FlatTransaction{
+		"RawTransactions": []map[string]any{{
+			"RawTransaction": map[string]any{
+				"TransactionType": transaction.BatchTx,
+			},
+		}},
+	}
+
+	_, err := (&Client{}).calculateBatchFees(context.Background(), &tx)
+	require.ErrorIs(t, err, transactiontypes.ErrBatchNestedTransaction)
+}
+
 func TestClientSubmitTxBlobWorkerUsesDecodedTransaction(t *testing.T) {
 	cl, requestsSeen := setupRPCSubmitCapture(t)
 	tx := map[string]any{

@@ -1313,6 +1313,9 @@ func (c *Client) calculateBatchFees(
 
 		// Calculate fee for this inner transaction (no multi-signing for inner transactions)
 		innerTxFlat := transaction.FlatTransaction(innerTx)
+		if innerTxFlat.TxType() == transaction.BatchTx {
+			return currency.Drops{}, types.ErrBatchNestedTransaction
+		}
 		err := c.calculateFeePerTransactionType(ctx, &innerTxFlat, 0)
 		if err != nil {
 			return currency.Drops{}, err
