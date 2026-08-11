@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/queries/clio
 
-- Changed `LedgerInfo.BaseFeeXRP` from `float32` to `float64` for consistency with server fee responses.
+- Changed `LedgerInfo.BaseFeeXRP` and `LedgerInfo.ReserveIncXRP` from `float32` values to `*float64` pointers so Clio responses preserve missing or null fee data separately from explicit zero.
 
 #### xrpl/rpc
 
