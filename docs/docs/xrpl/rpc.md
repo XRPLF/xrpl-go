@@ -159,7 +159,7 @@ The reliable-submission methods require `LastLedgerSequence` before they send th
 
 A missing `engine_result` or a preliminary `tem` result returns `ErrPreliminaryResult` immediately. The error message includes the engine result and its message. The client monitors `tes`, `ter`, `tec`, `tef`, `tel`, and non-empty unknown preliminary results. An exact `txnNotFound` response is inconclusive and the client retries it.
 
-Each polling round waits for the configured interval, requests the latest validated ledger, checks expiry, and then looks up the transaction. The transaction expires only when the validated ledger is strictly greater than `LastLedgerSequence`. Validation exactly at `LastLedgerSequence` is accepted. The expiry decision does not use bounded `tx` searches or `searched_all`.
+Each polling round waits for the configured interval, requests the latest validated ledger, and then looks up the transaction. The transaction expires only when the validated ledger is strictly greater than `LastLedgerSequence` and the final transaction lookup does not return a validated result. Validation exactly at `LastLedgerSequence` is accepted. The final lookup reduces a race with lagging read backends, but without `searched_all` it does not prove absence from history that the endpoint does not provide.
 
 ```go
 func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *rpctypes.SubmitOptions) (*requests.TxResponse, error)

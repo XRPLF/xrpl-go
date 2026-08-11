@@ -121,11 +121,12 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			wantLedgerCalls: 4,
 		},
 		{
-			name:             "passed LastLedgerSequence expires before transaction lookup",
+			name:             "passed LastLedgerSequence expires after final transaction lookup",
 			maxAttempts:      1,
+			lookupSteps:      []finalityLookupStep{{status: notFound}},
 			ledgerSteps:      []finalityLedgerStep{{index: 21}},
 			wantError:        ErrTransactionExpired,
-			wantLookupCalls:  0,
+			wantLookupCalls:  1,
 			wantLedgerCalls:  1,
 			wantExpiryLedger: 21,
 		},
@@ -134,15 +135,31 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			maxAttempts: 1,
 			lookupSteps: []finalityLookupStep{
 				{status: notFound},
+				{status: notFound},
 			},
 			ledgerSteps: []finalityLedgerStep{
 				{index: 20},
 				{index: 21},
 			},
 			wantError:        ErrTransactionExpired,
-			wantLookupCalls:  1,
+			wantLookupCalls:  2,
 			wantLedgerCalls:  2,
 			wantExpiryLedger: 21,
+		},
+		{
+			name:        "final lookup finds transaction from last eligible ledger",
+			maxAttempts: 1,
+			lookupSteps: []finalityLookupStep{
+				{status: notFound},
+				{status: validatedSuccess},
+			},
+			ledgerSteps: []finalityLedgerStep{
+				{index: 20},
+				{index: 21},
+			},
+			wantResponse:    success,
+			wantLookupCalls: 2,
+			wantLedgerCalls: 2,
 		},
 		{
 			name:            "validated tec returns response without error",

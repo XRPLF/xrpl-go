@@ -111,9 +111,9 @@ type FinalityHooks[T any] struct {
 
 // WaitForFinality monitors a transaction until it has an authoritative
 // validated-ledger result, expires, is cancelled, or monitoring itself can no
-// longer make bounded progress. Each polling round follows the xrpl.js order:
-// wait, read the latest validated ledger, check expiry, and then look up the
-// transaction.
+// longer make bounded progress. Each polling round waits, reads the latest
+// validated ledger, looks up the transaction, and then reports expiry when the
+// final lookup remains inconclusive after LastLedgerSequence.
 func WaitForFinality[T any](
 	ctx context.Context,
 	cfg FinalityConfig,
@@ -155,16 +155,6 @@ func WaitForFinality[T any](
 			continue
 		}
 
-		if validatedLedger > cfg.LastLedgerSequence {
-			return nil, fmt.Errorf(
-				"%w: validated ledger %d passed LastLedgerSequence %d, preliminary result %s",
-				ErrTransactionExpired,
-				validatedLedger,
-				cfg.LastLedgerSequence,
-				cfg.PreliminaryResult,
-			)
-		}
-
 		status, err := hooks.LookupTransaction(ctx)
 		if err != nil {
 			if failureErr := incompleteRound("transaction lookup", err); failureErr != nil {
@@ -184,6 +174,16 @@ func WaitForFinality[T any](
 				continue
 			}
 			return status.Response, nil
+		}
+
+		if validatedLedger > cfg.LastLedgerSequence {
+			return nil, fmt.Errorf(
+				"%w: validated ledger %d passed LastLedgerSequence %d, preliminary result %s",
+				ErrTransactionExpired,
+				validatedLedger,
+				cfg.LastLedgerSequence,
+				cfg.PreliminaryResult,
+			)
 		}
 
 		incompleteRounds = 0

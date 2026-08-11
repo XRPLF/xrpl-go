@@ -75,10 +75,11 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			wantResult: "tesSUCCESS",
 		},
 		{
-			name:        "passed LastLedgerSequence expires before transaction lookup",
+			name:        "passed LastLedgerSequence expires after final transaction lookup",
 			maxAttempts: 1,
 			steps: []wsFinalityStep{
 				{method: "ledger", result: wsLedgerResult(21)},
+				{method: "tx", errorCode: txnNotFound},
 			},
 			wantError:    ErrTransactionExpired,
 			wantExpiryAt: 21,
@@ -90,9 +91,21 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 				{method: "ledger", result: wsLedgerResult(20)},
 				{method: "tx", errorCode: txnNotFound},
 				{method: "ledger", result: wsLedgerResult(21)},
+				{method: "tx", errorCode: txnNotFound},
 			},
 			wantError:    ErrTransactionExpired,
 			wantExpiryAt: 21,
+		},
+		{
+			name:        "final lookup finds transaction from last eligible ledger",
+			maxAttempts: 1,
+			steps: []wsFinalityStep{
+				{method: "ledger", result: wsLedgerResult(20)},
+				{method: "tx", errorCode: txnNotFound},
+				{method: "ledger", result: wsLedgerResult(21)},
+				{method: "tx", result: wsValidatedTxResult(20, "tesSUCCESS")},
+			},
+			wantResult: "tesSUCCESS",
 		},
 		{
 			name:        "validated tec returns response without error",
@@ -267,6 +280,7 @@ func TestClientSubmitTxBlobAndWaitExpiryRetainsPreliminaryResult(t *testing.T) {
 			},
 		},
 		{method: "ledger", result: wsLedgerResult(21)},
+		{method: "tx", errorCode: txnNotFound},
 	}
 	client, requestCount, serverErrors, cleanup := setupWSFinalityClient(t, steps, 1, time.Second)
 	defer cleanup()

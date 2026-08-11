@@ -66,10 +66,11 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 			wantResult: "tesSUCCESS",
 		},
 		{
-			name:        "passed LastLedgerSequence expires before transaction lookup",
+			name:        "passed LastLedgerSequence expires after final transaction lookup",
 			maxAttempts: 1,
 			steps: []rpcFinalityStep{
 				{method: "ledger", body: rpcLedgerResponse(21)},
+				{method: "tx", body: rpcTxnNotFoundResponse},
 			},
 			wantError:    ErrTransactionExpired,
 			wantExpiryAt: 21,
@@ -81,9 +82,21 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 				{method: "ledger", body: rpcLedgerResponse(20)},
 				{method: "tx", body: rpcTxnNotFoundResponse},
 				{method: "ledger", body: rpcLedgerResponse(21)},
+				{method: "tx", body: rpcTxnNotFoundResponse},
 			},
 			wantError:    ErrTransactionExpired,
 			wantExpiryAt: 21,
+		},
+		{
+			name:        "final lookup finds transaction from last eligible ledger",
+			maxAttempts: 1,
+			steps: []rpcFinalityStep{
+				{method: "ledger", body: rpcLedgerResponse(20)},
+				{method: "tx", body: rpcTxnNotFoundResponse},
+				{method: "ledger", body: rpcLedgerResponse(21)},
+				{method: "tx", body: rpcValidatedTxResponse(20, "tesSUCCESS")},
+			},
+			wantResult: "tesSUCCESS",
 		},
 		{
 			name:        "validated tec returns response without error",
@@ -273,6 +286,7 @@ func TestClientSubmitTxBlobAndWaitExpiryRetainsPreliminaryResult(t *testing.T) {
 	steps := []rpcFinalityStep{
 		{method: "submit", body: rpcSubmitResponse(preliminaryResult, "queued")},
 		{method: "ledger", body: rpcLedgerResponse(21)},
+		{method: "tx", body: rpcTxnNotFoundResponse},
 	}
 	stepIndex := 0
 	mockClient := &testutil.JSONRPCMockClient{}
