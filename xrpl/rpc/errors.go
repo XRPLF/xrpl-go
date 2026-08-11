@@ -35,10 +35,6 @@ var (
 	ErrMissingWallet = errors.New("wallet must be provided when submitting an unsigned transaction")
 	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
-	// ErrTransactionNotFound is retained for compatibility.
-	//
-	// Deprecated: no client operation returns this error.
-	ErrTransactionNotFound = errors.New("transaction not found")
 	// ErrPreliminaryResult indicates a malformed preliminary submit result.
 	ErrPreliminaryResult = clientinternal.ErrPreliminaryResult
 	// ErrTransactionExpired indicates ledger-driven expiry after LastLedgerSequence.

@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
 - Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form, `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
 - `DeliverMax` normalization is Payment-only. Other transaction types do not rewrite this field.
+- Removed `ErrTransactionNotFound`. Reliable submission now treats exact `txnNotFound` responses as a pending state until validation, expiry, finality transport failure, or context cancellation.
 
 #### xrpl/transaction
 
@@ -63,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, websocket.ErrMismatchedTag)`.
 - Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form; `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
 - `DeliverMax` normalization is Payment-only. Other transaction types do not rewrite this field.
+- Removed `ErrTransactionNotFound`. Reliable submission now treats exact `txnNotFound` responses as a pending state until validation, expiry, finality transport failure, or context cancellation.
 
 ### Added
 

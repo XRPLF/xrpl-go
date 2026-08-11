@@ -33,10 +33,6 @@ var (
 	ErrMissingLastLedgerSequenceInTransaction = errors.New("missing LastLedgerSequence in transaction")
 	// ErrMissingWallet is returned when a wallet is required but not provided for an unsigned transaction.
 	ErrMissingWallet = errors.New("wallet must be provided when submitting an unsigned transaction")
-	// ErrTransactionNotFound is retained for compatibility.
-	//
-	// Deprecated: no client operation returns this error.
-	ErrTransactionNotFound = errors.New("transaction not found")
 	// ErrPreliminaryResult indicates a malformed preliminary submit result.
 	ErrPreliminaryResult = clientinternal.ErrPreliminaryResult
 	// ErrTransactionExpired indicates ledger-driven expiry after LastLedgerSequence.
