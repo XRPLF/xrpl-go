@@ -58,6 +58,18 @@ func (d Drops) Mul(multiplier uint64) Drops {
 	return dropsFromRat(new(big.Rat).Mul(d.ratValue(), factor))
 }
 
+// MulDecimal returns d multiplied by an exact, non-negative decimal value.
+func (d Drops) MulDecimal(multiplier string) (Drops, error) {
+	factor, ok := multiplierRat(multiplier)
+	if !ok {
+		return Drops{}, ErrInvalidNativeAmount
+	}
+	if factor.Sign() < 0 {
+		return Drops{}, ErrNegativeNativeAmount
+	}
+	return dropsFromRat(new(big.Rat).Mul(d.ratValue(), factor)), nil
+}
+
 // MulRat returns d multiplied by numerator divided by denominator.
 func (d Drops) MulRat(numerator, denominator uint64) (Drops, error) {
 	if denominator == 0 {
@@ -145,7 +157,7 @@ func (d Drops) XRPString() (string, error) {
 }
 
 func parseNativeAmount(value string) (*big.Rat, error) {
-	amount, ok := decimalRat(value)
+	amount, ok := nativeAmountRat(value)
 	if !ok {
 		return nil, ErrInvalidNativeAmount
 	}

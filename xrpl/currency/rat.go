@@ -14,16 +14,27 @@ const (
 	// maxDecimalRatExponent bounds scientific notation before parsing to keep conversion work proportional to native amounts
 	// 1e17.
 	maxDecimalRatExponent = maxNativeAmountDigits - 1
+	// A finite float64 formatted as decimal text ranges from about 5e-324 to 1.8e308.
+	// Use 324 as a symmetric limit and to prevent unbounded big.Rat allocation.
+	maxMultiplierRatExponent = 324
 )
 
-func decimalRat(value string) (*big.Rat, bool) {
+func nativeAmountRat(value string) (*big.Rat, bool) {
+	return limitedDecimalRat(value, maxDecimalRatExponent)
+}
+
+func multiplierRat(value string) (*big.Rat, bool) {
+	return limitedDecimalRat(value, maxMultiplierRatExponent)
+}
+
+func limitedDecimalRat(value string, maxExponent int) (*big.Rat, bool) {
 	if len(value) > maxDecimalRatInputLen || containsInvalidChar(value) {
 		return nil, false
 	}
 
 	if i := strings.IndexAny(value, "eE"); i >= 0 {
 		exp, err := strconv.Atoi(value[i+1:])
-		if err != nil || exp < -maxDecimalRatExponent || exp > maxDecimalRatExponent {
+		if err != nil || exp < -maxExponent || exp > maxExponent {
 			return nil, false
 		}
 	}

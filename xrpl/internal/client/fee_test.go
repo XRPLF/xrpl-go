@@ -1,12 +1,13 @@
 package client
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestNetworkFeeXRP(t *testing.T) {
+func TestNetworkFeeDrops(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -24,54 +25,57 @@ func TestNetworkFeeXRP(t *testing.T) {
 		{name: "half drop rounds upward", baseFeeXRP: 0.000001, loadFactor: 10, cushion: 1.05, maxFeeXRP: "2", expected: "0.000011"},
 		{name: "maximum fee is applied before rounding", baseFeeXRP: 1, loadFactor: 1000, cushion: 1.2, maxFeeXRP: "2", expected: "2"},
 		{name: "decimal maximum fee", baseFeeXRP: 1, loadFactor: 1000, cushion: 1.2, maxFeeXRP: "0.123456", expected: "0.123456"},
+		{name: "maximum float load factor", baseFeeXRP: 0.00001, loadFactor: math.MaxFloat64, cushion: 1, maxFeeXRP: "2", expected: "2"},
+		{name: "minimum float load factor", baseFeeXRP: 0.00001, loadFactor: math.SmallestNonzeroFloat64, cushion: 1, maxFeeXRP: "2", expected: "0"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			actual, err := NetworkFeeXRP(test.baseFeeXRP, test.loadFactor, test.cushion, test.maxFeeXRP)
+			maxFee, err := ParseFeeXRP(test.maxFeeXRP)
 			require.NoError(t, err)
-			require.Equal(t, test.expected, actual)
+
+			actual, err := NetworkFeeDrops(test.baseFeeXRP, test.loadFactor, test.cushion, maxFee)
+			require.NoError(t, err)
+			actualXRP, err := actual.XRPString()
+			require.NoError(t, err)
+			require.Equal(t, test.expected, actualXRP)
 		})
 	}
 }
 
-func TestNetworkFeeXRPRejectsInvalidValues(t *testing.T) {
+func TestNetworkFeeDropsRejectsInvalidValues(t *testing.T) {
 	t.Parallel()
 
-	_, err := NetworkFeeXRP(-1, 1, 1.2, "2")
+	maxFee, err := ParseFeeXRP("2")
+	require.NoError(t, err)
+
+	_, err = NetworkFeeDrops(-1, 1, 1.2, maxFee)
 	require.ErrorIs(t, err, ErrInvalidFeeValue)
 
-	_, err = NetworkFeeXRP(0.00001, -1, 1.2, "2")
+	_, err = NetworkFeeDrops(0.00001, -1, 1.2, maxFee)
 	require.ErrorIs(t, err, ErrInvalidFeeValue)
-
-	for _, maxFee := range []string{"invalid", "1/2", "0x10", "-1"} {
-		_, err = NetworkFeeXRP(0.00001, 1, 1.2, maxFee)
-		require.ErrorIs(t, err, ErrInvalidFeeValue)
-	}
 }
 
-func TestFeeArithmetic(t *testing.T) {
+func TestParseFeeXRP(t *testing.T) {
 	t.Parallel()
 
-	base, err := NewFeeFromDrops("10")
+	fee, err := ParseFeeXRP("0.000025")
 	require.NoError(t, err)
 
-	emptyFulfillmentEscrow, err := base.MultiplyFraction(33*16, 16)
+	actual, err := fee.WholeString()
 	require.NoError(t, err)
-	require.Equal(t, "330", emptyFulfillmentEscrow.CeilDrops())
+	require.Equal(t, "25", actual)
+}
 
-	escrow, err := base.MultiplyFraction(33*16+4, 16)
-	require.NoError(t, err)
-	require.Equal(t, "333", escrow.CeilDrops())
+func TestParseFeeXRPRejectsInvalidValues(t *testing.T) {
+	t.Parallel()
 
-	multisigned := base.Add(base.Multiply(2))
-	require.Equal(t, "30", multisigned.CeilDrops())
-
-	maxFee, err := NewFeeFromXRP("0.000025")
-	require.NoError(t, err)
-	require.Equal(t, "25", multisigned.Min(maxFee).CeilDrops())
-
-	_, err = NewFeeFromXRP("0.0000001")
+	_, err := ParseFeeXRP("0.0000001")
 	require.ErrorIs(t, err, ErrFeeHasTooManyDecimals)
+
+	for _, value := range []string{"invalid", "1/2", "0x10", "-1"} {
+		_, err = ParseFeeXRP(value)
+		require.ErrorIs(t, err, ErrInvalidFeeValue)
+	}
 }

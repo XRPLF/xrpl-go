@@ -27,7 +27,7 @@ var (
 
 // XrpToDrops converts an amount in XRP to an amount in drops.
 func XrpToDrops(value string) (string, error) {
-	xrp, ok := decimalRat(value)
+	xrp, ok := nativeAmountRat(value)
 	if !ok {
 		return "", ErrXrpToDropsInvalidValue
 	}
@@ -50,7 +50,7 @@ func XrpToDrops(value string) (string, error) {
 
 // DropsToXrp converts an amount of drops into an amount of XRP.
 func DropsToXrp(value string) (string, error) {
-	drops, ok := decimalRat(value)
+	drops, ok := nativeAmountRat(value)
 	if !ok {
 		return "", ErrDropsToXrpInvalidValue
 	}

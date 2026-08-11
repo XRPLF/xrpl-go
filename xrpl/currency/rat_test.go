@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDecimalRatRejectsExpensiveInputs(t *testing.T) {
+func TestNativeAmountRatRejectsExpensiveInputs(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -50,9 +50,9 @@ func TestDecimalRatRejectsExpensiveInputs(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			actual, ok := decimalRat(test.value)
+			rat, ok := nativeAmountRat(test.value)
 			require.Equal(t, test.ok, ok)
-			require.Equal(t, test.ok, actual != nil)
+			require.Equal(t, test.ok, rat != nil)
 		})
 	}
 }

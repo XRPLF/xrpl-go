@@ -1051,13 +1051,18 @@ func TestClient_FeePresenceSemantics(t *testing.T) {
 				},
 			}})
 			defer cleanup()
-			actual, err := client.getFeeXrp(1)
+			maxFee, err := clientinternal.ParseFeeXRP(client.cfg.maxFeeXRP)
+			require.NoError(t, err)
+
+			actual, err := client.getFeeDrops(1, maxFee)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, actual)
+			actualXRP, err := actual.XRPString()
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actualXRP)
 		})
 	}
 }
@@ -1140,17 +1145,7 @@ func TestClient_LoanSetFeeUsesValidatedLedger(t *testing.T) {
 }
 
 func TestClient_InvalidMaximumFeeUsesPublicError(t *testing.T) {
-	serverMessages := []map[string]any{{
-		"id": 1,
-		"result": map[string]any{
-			"info": map[string]any{
-				"validated_ledger": map[string]any{"base_fee_xrp": 0.00001},
-				"load_factor":      1,
-			},
-		},
-	}}
-	client, cleanup := setupTestClient(t, serverMessages)
-	defer cleanup()
+	client := NewClient(NewClientConfig().WithHost("ws://unused"))
 	client.cfg.maxFeeXRP = "invalid"
 	tx := transaction.FlatTransaction{"TransactionType": "Payment"}
 	require.ErrorIs(t, client.calculateFeePerTransactionType(&tx, 0), ErrInvalidFeeValue)

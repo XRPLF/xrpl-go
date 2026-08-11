@@ -173,6 +173,58 @@ func TestDropsArithmeticIsExactAndImmutable(t *testing.T) {
 	require.Equal(t, "333", ceilString)
 }
 
+func TestDropsMulDecimal(t *testing.T) {
+	t.Parallel()
+
+	base := DropsFromUint64(10)
+	product, err := base.MulDecimal("1.2")
+	require.NoError(t, err)
+
+	actual, err := product.WholeString()
+	require.NoError(t, err)
+	require.Equal(t, "12", actual)
+
+	fraction, err := base.MulDecimal("1.05")
+	require.NoError(t, err)
+	require.False(t, fraction.IsWhole())
+
+	rounded, err := fraction.RoundHalfUp().WholeString()
+	require.NoError(t, err)
+	require.Equal(t, "11", rounded)
+
+	huge, err := base.MulDecimal("1e308")
+	require.NoError(t, err)
+	require.Equal(t, 1, huge.Cmp(base))
+
+	tiny, err := base.MulDecimal("5e-324")
+	require.NoError(t, err)
+	require.Equal(t, 1, tiny.Cmp(Drops{}))
+}
+
+func TestDropsMulDecimalRejectsInvalidValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		value       string
+		expectedErr error
+	}{
+		{name: "empty", value: "", expectedErr: ErrInvalidNativeAmount},
+		{name: "invalid", value: "invalid", expectedErr: ErrInvalidNativeAmount},
+		{name: "exponent too large", value: "1e325", expectedErr: ErrInvalidNativeAmount},
+		{name: "negative", value: "-1", expectedErr: ErrNegativeNativeAmount},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := DropsFromUint64(1).MulDecimal(test.value)
+			require.ErrorIs(t, err, test.expectedErr)
+		})
+	}
+}
+
 func TestDropsMulRatRejectsZeroDenominator(t *testing.T) {
 	t.Parallel()
 

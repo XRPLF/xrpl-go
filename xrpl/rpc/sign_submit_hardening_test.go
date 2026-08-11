@@ -447,13 +447,18 @@ func TestClientFeePresenceSemantics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := setupTestRPCClientForAutofill(t, []string{tt.response})
-			actual, err := client.getFeeXrp(1)
+			maxFee, err := clientinternal.ParseFeeXRP(client.cfg.maxFeeXRP)
+			require.NoError(t, err)
+
+			actual, err := client.getFeeDrops(1, maxFee)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, actual)
+			actualXRP, err := actual.XRPString()
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actualXRP)
 		})
 	}
 }
