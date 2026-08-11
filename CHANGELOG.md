@@ -250,7 +250,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/websocket
 
 - Corrected fee precision and rounding with shared exact rational arithmetic, including fractional base fees and load factors, empty and fractional `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
-- Pending requests now return `ErrDisconnected` immediately on connection loss or write failure and are never replayed after reconnection. A request timeout covers both its write and response wait, stale read failures do not close replacement sockets, and disconnecting an idle client succeeds.
+- Pending requests now return `ErrDisconnected` immediately on connection loss or write failure and are never replayed after reconnection. A request timeout covers both its write and response wait. Write deadlines are cleared on all completion paths, and cancellation after a completed write does not invalidate the healthy socket. Stale read failures do not close replacement sockets, and disconnecting an idle client succeeds.
 - Reconnection exhaustion now unwraps the last connection or identity failure while preserving `errors.As` checks for `ErrMaxReconnectionAttemptsReached`.
 - Made connection-time network discovery atomic and leak-free. Reconnecting sockets remain private and application requests remain gated until identity checks finish. Cancellation closes in-progress connection attempts, and failed attempts cannot replace a live connection.
 - AccountDelete autofill now runs blocker checks for plain and named string Account values, including values converted from X-addresses.

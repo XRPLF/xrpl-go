@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -259,7 +260,7 @@ func (c *Connection) writeMessageTo(
 	conn websocketConnection,
 	message []byte,
 	timeout time.Duration,
-) error {
+) (resultErr error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -280,10 +281,19 @@ func (c *Connection) writeMessageTo(
 		_ = c.invalidateSocket(conn)
 		return err
 	}
+	if !deadline.IsZero() {
+		defer func() {
+			if err := conn.SetWriteDeadline(time.Time{}); err != nil {
+				_ = c.invalidateSocket(conn)
+				resultErr = errors.Join(resultErr, err)
+			}
+		}()
+	}
 
 	var (
-		writeDone chan struct{}
-		watchDone chan struct{}
+		writeCompleted atomic.Bool
+		writeDone      chan struct{}
+		watchDone      chan struct{}
 	)
 	if ctx.Done() != nil {
 		writeDone = make(chan struct{})
@@ -292,10 +302,7 @@ func (c *Connection) writeMessageTo(
 			defer close(watchDone)
 			select {
 			case <-ctx.Done():
-				select {
-				case <-writeDone:
-					return
-				default:
+				if !writeCompleted.Load() {
 					_ = c.invalidateSocket(conn)
 				}
 			case <-writeDone:
@@ -304,6 +311,7 @@ func (c *Connection) writeMessageTo(
 	}
 
 	writeErr := conn.WriteMessage(websocket.TextMessage, message)
+	writeCompleted.Store(true)
 	if writeDone != nil {
 		close(writeDone)
 		<-watchDone
@@ -316,10 +324,6 @@ func (c *Connection) writeMessageTo(
 	}
 	if writeErr != nil {
 		return writeErr
-	}
-	if err := conn.SetWriteDeadline(time.Time{}); err != nil {
-		_ = c.invalidateSocket(conn)
-		return err
 	}
 	return nil
 }

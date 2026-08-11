@@ -230,6 +230,21 @@ func TestConnection_WriteMessageHonorsCanceledContext(t *testing.T) {
 		require.Zero(t, socket.closeCount.Load())
 		require.True(t, connection.IsConnected())
 	})
+
+	t.Run("canceled after socket write clears deadline", func(t *testing.T) {
+		connection := newConnection("ws://unused", defaultMaxResponseSize)
+		socket := newFakeWebsocketConnection()
+		connection.conn = socket
+
+		ctx, cancel := context.WithCancel(context.Background())
+		socket.writeHook = cancel
+
+		err := connection.writeMessage(ctx, []byte("test"), time.Second)
+		require.ErrorIs(t, err, context.Canceled)
+		require.Len(t, socket.writeDeadlines, 2)
+		require.False(t, socket.writeDeadlines[0].IsZero())
+		require.True(t, socket.writeDeadlines[1].IsZero())
+	})
 }
 
 func TestConnection_WriteFailureInvalidatesSocket(t *testing.T) {
@@ -429,6 +444,8 @@ type fakeWebsocketConnection struct {
 	writeRelease       chan struct{}
 	closed             chan struct{}
 	closeHook          func()
+	writeHook          func()
+	writeDeadlines     []time.Time
 	closeOnce          sync.Once
 	readStartOnce      sync.Once
 	writeStartOnce     sync.Once
@@ -485,6 +502,7 @@ func (f *fakeWebsocketConnection) ReadMessage() (int, []byte, error) {
 }
 
 func (f *fakeWebsocketConnection) SetWriteDeadline(deadline time.Time) error {
+	f.writeDeadlines = append(f.writeDeadlines, deadline)
 	if deadline.IsZero() {
 		return f.clearDeadlineErr
 	}
@@ -502,6 +520,9 @@ func (f *fakeWebsocketConnection) WriteMessage(int, []byte) error {
 		case <-f.closed:
 			return errors.New("socket closed")
 		}
+	}
+	if f.writeHook != nil {
+		f.writeHook()
 	}
 	return f.writeErr
 }
