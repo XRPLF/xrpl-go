@@ -77,6 +77,7 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 	validatedSuccess := TransactionStatus[finalityTestResponse]{Response: success, Found: true, Validated: true}
 	validatedTEC := TransactionStatus[finalityTestResponse]{Response: tecResult, Found: true, Validated: true}
 	validatedUnknown := TransactionStatus[finalityTestResponse]{Response: unknownResult, Found: true, Validated: true}
+	validatedNil := TransactionStatus[finalityTestResponse]{Found: true, Validated: true}
 
 	tests := []struct {
 		name               string
@@ -86,6 +87,7 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 		wantResponse       *finalityTestResponse
 		wantError          error
 		wantTransportCause error
+		wantOperation      string
 		wantLookupCalls    int
 		wantLedgerCalls    int
 		wantExpiryLedger   uint32
@@ -187,6 +189,38 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			wantLedgerCalls: 2,
 		},
 		{
+			name:        "transient nil validated response is retried",
+			maxAttempts: 2,
+			lookupSteps: []finalityLookupStep{
+				{status: validatedNil},
+				{status: validatedSuccess},
+			},
+			ledgerSteps: []finalityLedgerStep{
+				{index: 20},
+				{index: 20},
+			},
+			wantResponse:    success,
+			wantLookupCalls: 2,
+			wantLedgerCalls: 2,
+		},
+		{
+			name:        "repeated nil validated responses use attempt budget",
+			maxAttempts: 2,
+			lookupSteps: []finalityLookupStep{
+				{status: validatedNil},
+				{status: validatedNil},
+			},
+			ledgerSteps: []finalityLedgerStep{
+				{index: 20},
+				{index: 20},
+			},
+			wantError:          ErrFinalityTransport,
+			wantTransportCause: errNilValidatedTransactionResponse,
+			wantOperation:      "validated transaction response",
+			wantLookupCalls:    2,
+			wantLedgerCalls:    2,
+		},
+		{
 			name:        "complete round resets incomplete round count",
 			maxAttempts: 2,
 			lookupSteps: []finalityLookupStep{
@@ -262,6 +296,9 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			if tt.wantTransportCause != nil {
 				require.ErrorIs(t, err, tt.wantTransportCause)
 				require.ErrorContains(t, err, fmt.Sprintf("%d consecutive incomplete rounds", tt.maxAttempts))
+			}
+			if tt.wantOperation != "" {
+				require.ErrorContains(t, err, "last failed operation "+tt.wantOperation)
 			}
 			if tt.wantExpiryLedger != 0 {
 				require.ErrorContains(t, err, fmt.Sprintf("validated ledger %d", tt.wantExpiryLedger))

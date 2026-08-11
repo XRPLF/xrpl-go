@@ -108,4 +108,6 @@ var (
 	// ErrInvalidValidatedLedgerResponse indicates that a validated-ledger query
 	// returned a response that was not validated or did not identify a ledger.
 	ErrInvalidValidatedLedgerResponse = errors.New("invalid validated ledger response")
+
+	errNilValidatedTransactionResponse = errors.New("validated transaction response is nil")
 )

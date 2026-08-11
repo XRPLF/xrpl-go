@@ -142,19 +142,6 @@ func WaitForFinality[T any](
 		}
 		return nil
 	}
-	authoritativeResult := func(status TransactionStatus[T]) (*T, error, bool) {
-		if !status.Found || !status.Validated {
-			return nil, nil, false
-		}
-		if status.Response == nil {
-			return nil, fmt.Errorf(
-				"%w: validated transaction response is nil",
-				ErrFinalityTransport,
-			), true
-		}
-		return status.Response, nil, true
-	}
-
 	for {
 		if err := Wait(ctx, cfg.PollInterval); err != nil {
 			return nil, err
@@ -186,8 +173,17 @@ func WaitForFinality[T any](
 			continue
 		}
 
-		if response, resultErr, done := authoritativeResult(status); done {
-			return response, resultErr
+		if status.Found && status.Validated {
+			if status.Response == nil {
+				if failureErr := incompleteRound(
+					"validated transaction response",
+					errNilValidatedTransactionResponse,
+				); failureErr != nil {
+					return nil, failureErr
+				}
+				continue
+			}
+			return status.Response, nil
 		}
 
 		incompleteRounds = 0
