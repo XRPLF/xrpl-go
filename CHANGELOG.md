@@ -80,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/currency
 
 - Exported the untyped `MaxDrops` constant for the maximum native XRP amount in drops.
+- Added the exact, immutable `Drops` type for non-negative native XRP amounts, with drops and XRP constructors, fraction-preserving arithmetic, comparison, rounding, and formatting methods. Added `ErrInvalidNativeAmount`, `ErrNegativeNativeAmount`, `ErrInvalidDecimalMultiplier`, `ErrFractionalDrops`, and `ErrDropsDivisionByZero` for validation failures.
 
 #### xrpl/ledger-entry-types
 
@@ -184,6 +185,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Encoded the empty `Account` of `UNLModify` pseudo-transactions through a transaction-boundary raw field-value override, keeping generic `STObject` encoding transaction-agnostic and rippled-compatible. `UNLModify` now accepts an absent `Account`, an empty string, or the canonical XRPL zero account, including equivalent named strings; other supplied values return `ErrInvalidUNLModifyAccount` without changing caller data.
 - `Decode` now returns an error for malformed `Vector256` fields whose byte length is not a multiple of 32 instead of panicking.
 
+#### xrpl/currency
+
+- `XrpToDrops`, `DropsToXrp`, `DropsFromString`, `DropsFromXRP`, and `Drops.MulDecimal` now accept valid non-canonical decimal inputs up to 1024 bytes, including long zero-padded values, while retaining bounded exponent and input-size validation.
+
 #### xrpl/internal/client
 
 - Preserved recovered binary codec error identity during transaction blob decoding so callers can use `errors.Is` and `errors.As`, while converting non-error panic values to ordinary errors.
@@ -224,7 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Concurrent callers now share one in-flight network identity discovery result, including failures, while later independent operations can retry.
 - Rippled prerelease versions with numeric suffixes now compare the suffix numerically.
 - Made autofill and unsigned signing fail closed when network identity discovery or validation fails, unless `WithNetworkIdentity` supplies an explicit trusted identity.
-- Corrected fee precision and rounding with shared exact rational arithmetic, including fractional load factors, empty and fractional `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
+- Corrected fee precision and rounding with shared exact rational arithmetic, including fractional base fees and load factors, empty and fractional `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Kept the `VaultCreate` fee at one incremental owner reserve. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 - `AutofillMultisigned` now preserves a supplied `Fee`; when absent, it calculates the fee once with the signer count.
 - `SubmitTxBlobAndWait` now decodes the signed blob once and uses the decoded transaction for preflight and hashing.
@@ -239,7 +244,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
-- Corrected fee precision and rounding with shared exact rational arithmetic, including fractional load factors, empty and fractional `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
+- Corrected fee precision and rounding with shared exact rational arithmetic, including fractional base fees and load factors, empty and fractional `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
 - Pending requests now return `ErrDisconnected` immediately on connection loss or write failure and are never replayed after reconnection. A request timeout covers both its write and response wait, stale read failures do not close replacement sockets, and disconnecting an idle client succeeds.
 - Reconnection exhaustion now unwraps the last connection or identity failure while preserving `errors.As` checks for `ErrMaxReconnectionAttemptsReached`.
 - Made connection-time network discovery atomic and leak-free. Reconnecting sockets remain private and application requests remain gated until identity checks finish. Cancellation closes in-progress connection attempts, and failed attempts cannot replace a live connection.
