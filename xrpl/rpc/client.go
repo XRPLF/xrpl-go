@@ -238,6 +238,9 @@ func (c *Client) submitTxBlobAndWaitContext(
 	if !ok {
 		return nil, ErrMissingLastLedgerSequenceInTransaction
 	}
+	if err := clientinternal.ValidateLastLedgerSequence(lastLedgerSequence); err != nil {
+		return nil, err
+	}
 
 	submitResponse, err := c.submitTxBlobContext(ctx, txBlob, tx, failHard)
 	if err != nil {

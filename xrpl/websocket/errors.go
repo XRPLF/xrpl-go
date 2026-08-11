@@ -47,6 +47,8 @@ var (
 	ErrInvalidPollInterval = clientinternal.ErrInvalidPollInterval
 	// ErrInvalidMaxRetries indicates a non-positive reliable-submission retry limit.
 	ErrInvalidMaxRetries = clientinternal.ErrInvalidMaxRetries
+	// ErrInvalidLastLedgerSequence indicates a zero reliable-submission ledger boundary.
+	ErrInvalidLastLedgerSequence = clientinternal.ErrInvalidLastLedgerSequence
 	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.

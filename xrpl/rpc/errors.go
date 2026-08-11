@@ -49,6 +49,8 @@ var (
 	ErrInvalidPollInterval = clientinternal.ErrInvalidPollInterval
 	// ErrInvalidMaxRetries indicates a non-positive reliable-submission retry limit.
 	ErrInvalidMaxRetries = clientinternal.ErrInvalidMaxRetries
+	// ErrInvalidLastLedgerSequence indicates a zero reliable-submission ledger boundary.
+	ErrInvalidLastLedgerSequence = clientinternal.ErrInvalidLastLedgerSequence
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
 	ErrInvalidFulfillmentLength = errors.New("invalid fulfillment length")
 	// fields

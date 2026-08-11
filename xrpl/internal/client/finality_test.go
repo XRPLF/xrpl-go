@@ -414,3 +414,28 @@ func TestWaitForFinalityRejectsNonPositiveMaxRetries(t *testing.T) {
 		})
 	}
 }
+
+func TestWaitForFinalityRejectsZeroLastLedgerSequence(t *testing.T) {
+	lookupCalls := 0
+	ledgerCalls := 0
+
+	response, err := WaitForFinality(
+		context.Background(),
+		FinalityConfig{MaxAttempts: 1},
+		FinalityHooks[finalityTestResponse]{
+			LookupTransaction: func(context.Context) (TransactionStatus[finalityTestResponse], error) {
+				lookupCalls++
+				return TransactionStatus[finalityTestResponse]{}, nil
+			},
+			GetValidatedLedger: func(context.Context) (uint32, error) {
+				ledgerCalls++
+				return 0, nil
+			},
+		},
+	)
+
+	require.Nil(t, response)
+	require.ErrorIs(t, err, ErrInvalidLastLedgerSequence)
+	require.Zero(t, lookupCalls)
+	require.Zero(t, ledgerCalls)
+}

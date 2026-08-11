@@ -190,7 +190,7 @@ func (c *Client) SubmitTxBlobAndWaitContext(ctx context.Context, txBlob string, 
 
 Every validated transaction response returns with a nil error, including validated `tec` results. Inspect `TxResponse.Meta.TransactionResult` to determine the validated engine result. `ErrTransactionExpired` reports the preliminary engine result and ledger expiry details. `ErrFinalityTransport` reports repeated query or transport failure and wraps the last failure. Context-aware methods return `ctx.Err()` directly on cancellation or deadline.
 
-The client verifies that each validated-ledger response is marked as validated and contains a ledger index. A negative polling interval returns `ErrInvalidPollInterval` before submission. A zero or negative maximum retry value returns `ErrInvalidMaxRetries` before submission.
+The client verifies that each validated-ledger response is marked as validated and contains a ledger index. A negative polling interval returns `ErrInvalidPollInterval` before submission. A zero or negative maximum retry value returns `ErrInvalidMaxRetries` before submission. A zero `LastLedgerSequence` returns `ErrInvalidLastLedgerSequence` before submission.
 
 A WebSocket write or write-deadline failure invalidates and closes the failed socket. The active client read loop can then reconnect before a later request.
 

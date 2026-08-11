@@ -43,6 +43,14 @@ func ValidateMaxRetries(maxRetries int) error {
 	return nil
 }
 
+// ValidateLastLedgerSequence rejects a zero finality ledger boundary.
+func ValidateLastLedgerSequence(lastLedgerSequence uint32) error {
+	if lastLedgerSequence == 0 {
+		return ErrInvalidLastLedgerSequence
+	}
+	return nil
+}
+
 // ValidateFinalityMonitoring validates settings used before submission and by
 // the finality state machine.
 func ValidateFinalityMonitoring(pollInterval time.Duration, maxRetries int) error {
@@ -120,6 +128,9 @@ func WaitForFinality[T any](
 	hooks FinalityHooks[T],
 ) (*T, error) {
 	if err := ValidateFinalityMonitoring(cfg.PollInterval, cfg.MaxAttempts); err != nil {
+		return nil, err
+	}
+	if err := ValidateLastLedgerSequence(cfg.LastLedgerSequence); err != nil {
 		return nil, err
 	}
 

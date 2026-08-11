@@ -196,21 +196,35 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 	}
 }
 
-func TestClientSubmitTxBlobAndWaitRequiresLastLedgerSequence(t *testing.T) {
-	blob := signedRPCFinalityBlob(t, nil)
-	requestCount := 0
-	mockClient := &testutil.JSONRPCMockClient{}
-	mockClient.DoFunc = func(*http.Request) (*http.Response, error) {
-		requestCount++
-		return nil, nil
+func TestClientSubmitTxBlobAndWaitRejectsInvalidLastLedgerSequence(t *testing.T) {
+	zero := uint32(0)
+	tests := []struct {
+		name               string
+		lastLedgerSequence *uint32
+		wantError          error
+	}{
+		{name: "missing", wantError: ErrMissingLastLedgerSequenceInTransaction},
+		{name: "zero", lastLedgerSequence: &zero, wantError: ErrInvalidLastLedgerSequence},
 	}
-	cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mockClient))
-	require.NoError(t, err)
 
-	response, err := NewClient(cfg).SubmitTxBlobAndWait(blob, false)
-	require.Nil(t, response)
-	require.ErrorIs(t, err, ErrMissingLastLedgerSequenceInTransaction)
-	require.Zero(t, requestCount)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			blob := signedRPCFinalityBlob(t, tt.lastLedgerSequence)
+			requestCount := 0
+			mockClient := &testutil.JSONRPCMockClient{}
+			mockClient.DoFunc = func(*http.Request) (*http.Response, error) {
+				requestCount++
+				return nil, nil
+			}
+			cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mockClient))
+			require.NoError(t, err)
+
+			response, err := NewClient(cfg).SubmitTxBlobAndWait(blob, false)
+			require.Nil(t, response)
+			require.ErrorIs(t, err, tt.wantError)
+			require.Zero(t, requestCount)
+		})
+	}
 }
 
 func TestClientSubmitTxBlobAndWaitRejectsNegativePollInterval(t *testing.T) {

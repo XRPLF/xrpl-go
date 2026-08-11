@@ -201,16 +201,30 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 	}
 }
 
-func TestClientSubmitTxBlobAndWaitRequiresLastLedgerSequence(t *testing.T) {
-	blob := signedWSFinalityBlob(t, nil)
-	client, requestCount, serverErrors, cleanup := setupWSFinalityClient(t, nil, 2, time.Second)
-	defer cleanup()
+func TestClientSubmitTxBlobAndWaitRejectsInvalidLastLedgerSequence(t *testing.T) {
+	zero := uint32(0)
+	tests := []struct {
+		name               string
+		lastLedgerSequence *uint32
+		wantError          error
+	}{
+		{name: "missing", wantError: ErrMissingLastLedgerSequenceInTransaction},
+		{name: "zero", lastLedgerSequence: &zero, wantError: ErrInvalidLastLedgerSequence},
+	}
 
-	response, err := client.SubmitTxBlobAndWait(blob, false)
-	require.Nil(t, response)
-	require.ErrorIs(t, err, ErrMissingLastLedgerSequenceInTransaction)
-	require.Zero(t, requestCount.Load())
-	requireNoWSFinalityServerError(t, serverErrors)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			blob := signedWSFinalityBlob(t, tt.lastLedgerSequence)
+			client, requestCount, serverErrors, cleanup := setupWSFinalityClient(t, nil, 2, time.Second)
+			defer cleanup()
+
+			response, err := client.SubmitTxBlobAndWait(blob, false)
+			require.Nil(t, response)
+			require.ErrorIs(t, err, tt.wantError)
+			require.Zero(t, requestCount.Load())
+			requireNoWSFinalityServerError(t, serverErrors)
+		})
+	}
 }
 
 func TestClientSubmitTxBlobAndWaitRejectsNegativePollInterval(t *testing.T) {
