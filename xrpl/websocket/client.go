@@ -201,9 +201,13 @@ func (c *Client) cancelLifecycle() {
 	c.resetHandlerRunners()
 }
 
-// cancelLifecycleContext cancels the current lifecycle but keeps handler
-// runners tracked so resetLifecycle can wait for them before starting replacements.
-func (c *Client) cancelLifecycleContext() {
+// cancelLifecycleForReplacement fails pending requests for the old connection
+// and cancels its lifecycle. The caller holds connectionHandshakeMu exclusively,
+// so no replacement request can register before the new socket is published.
+// Handler runners stay tracked so resetLifecycle can wait for them.
+func (c *Client) cancelLifecycleForReplacement() {
+	c.failPendingResponses(ErrDisconnected)
+
 	c.streamHandlerStateMu.Lock()
 	defer c.streamHandlerStateMu.Unlock()
 
@@ -216,7 +220,7 @@ func (c *Client) cancelLifecycleContext() {
 // to reconnect, start Connect in a separate goroutine or coordinate it outside
 // the handler callback.
 func (c *Client) Connect() error {
-	bufferedMessages, err := c.connect(context.Background(), c.cancelLifecycleContext)
+	bufferedMessages, err := c.connect(context.Background(), c.cancelLifecycleForReplacement)
 	if err != nil {
 		return err
 	}

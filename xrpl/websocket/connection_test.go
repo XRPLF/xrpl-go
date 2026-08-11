@@ -467,6 +467,102 @@ func TestClient_ActiveWriteInvalidationReconnects(t *testing.T) {
 	require.NotNil(t, response)
 }
 
+func TestClient_ManualReplacementFailsPendingOldSocket(t *testing.T) {
+	upgrader := gorillaws.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		for {
+			var request struct {
+				ID uint64 `json:"id"`
+			}
+			if err := conn.ReadJSON(&request); err != nil {
+				return
+			}
+			if err := conn.WriteJSON(map[string]any{
+				"id":     request.ID,
+				"status": "success",
+				"type":   "response",
+				"result": map[string]any{},
+			}); err != nil {
+				return
+			}
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	client := NewClient(NewClientConfig().WithHost(url).WithTimeout(time.Second))
+	setTrustedTestNetworkIdentity(client, 0)
+
+	oldSocket := newFakeWebsocketConnection()
+	oldSocket.readRelease = make(chan struct{})
+	oldSocket.readCloseObserved = make(chan struct{})
+	oldSocket.readCloseRelease = make(chan struct{})
+	oldSocket.writeRelease = make(chan struct{})
+	client.conn.conn = oldSocket
+
+	oldCtx := client.resetLifecycle()
+	oldReaderDone := make(chan struct{})
+	go func() {
+		defer close(oldReaderDone)
+		client.readMessages(oldCtx)
+	}()
+	<-oldSocket.readStarted
+
+	var releaseOldReader sync.Once
+	defer func() {
+		releaseOldReader.Do(func() {
+			close(oldSocket.readCloseRelease)
+		})
+		require.NoError(t, client.Disconnect())
+	}()
+
+	const oldResponseID = uint64(901)
+	oldPending := client.registerPendingResponse(oldResponseID, oldSocket)
+	defer client.unregisterPendingResponse(oldResponseID)
+
+	writeCtx, cancelWrite := context.WithCancel(t.Context())
+	writeDone := make(chan error, 1)
+	go func() {
+		writeDone <- client.conn.writeMessage(writeCtx, []byte("request"), time.Second)
+	}()
+	<-oldSocket.writeStarted
+	cancelWrite()
+	require.ErrorIs(t, <-writeDone, context.Canceled)
+	select {
+	case <-oldSocket.readCloseObserved:
+	case <-time.After(time.Second):
+		t.Fatal("old reader did not observe the closed socket")
+	}
+
+	require.NoError(t, client.Connect())
+
+	responseCtx, cancelResponse := context.WithTimeout(t.Context(), time.Second)
+	defer cancelResponse()
+	response, err := client.awaitResponse(responseCtx, oldPending)
+	require.Nil(t, response)
+	require.ErrorIs(t, err, ErrDisconnected)
+
+	releaseOldReader.Do(func() {
+		close(oldSocket.readCloseRelease)
+	})
+	select {
+	case <-oldReaderDone:
+	case <-time.After(time.Second):
+		t.Fatal("old reader did not exit")
+	}
+
+	response, err = client.Request(newAccountChannelsRequest())
+	require.NoError(t, err)
+	require.NotNil(t, response)
+}
+
 func TestClient_ConcurrentFailurePathsUseSingleReconnect(t *testing.T) {
 	var dialCount atomic.Int32
 	unexpectedDial := make(chan struct{}, 1)
@@ -866,24 +962,27 @@ type fakeReadResult struct {
 }
 
 type fakeWebsocketConnection struct {
-	initialDeadlineErr error
-	clearDeadlineErr   error
-	writeErr           error
-	readErr            error
-	readStarted        chan struct{}
-	readRelease        chan struct{}
-	readResults        chan fakeReadResult
-	writeStarted       chan struct{}
-	writeRelease       chan struct{}
-	closed             chan struct{}
-	closeHook          func()
-	writeHook          func()
-	writeDeadlines     []time.Time
-	closeOnce          sync.Once
-	readStartOnce      sync.Once
-	writeStartOnce     sync.Once
-	closeCount         atomic.Int32
-	writeCount         atomic.Int32
+	initialDeadlineErr   error
+	clearDeadlineErr     error
+	writeErr             error
+	readErr              error
+	readStarted          chan struct{}
+	readRelease          chan struct{}
+	readResults          chan fakeReadResult
+	readCloseObserved    chan struct{}
+	readCloseRelease     chan struct{}
+	writeStarted         chan struct{}
+	writeRelease         chan struct{}
+	closed               chan struct{}
+	closeHook            func()
+	writeHook            func()
+	writeDeadlines       []time.Time
+	closeOnce            sync.Once
+	readStartOnce        sync.Once
+	readCloseObserveOnce sync.Once
+	writeStartOnce       sync.Once
+	closeCount           atomic.Int32
+	writeCount           atomic.Int32
 }
 
 func newFakeWebsocketConnection() *fakeWebsocketConnection {
@@ -917,6 +1016,7 @@ func (f *fakeWebsocketConnection) ReadMessage() (int, []byte, error) {
 		select {
 		case <-f.readRelease:
 		case <-f.closed:
+			f.waitForReadCloseRelease()
 			return 0, nil, errors.New("socket closed")
 		}
 	}
@@ -925,6 +1025,7 @@ func (f *fakeWebsocketConnection) ReadMessage() (int, []byte, error) {
 		case result := <-f.readResults:
 			return gorillaws.TextMessage, result.message, result.err
 		case <-f.closed:
+			f.waitForReadCloseRelease()
 			return 0, nil, errors.New("socket closed")
 		}
 	}
@@ -932,6 +1033,17 @@ func (f *fakeWebsocketConnection) ReadMessage() (int, []byte, error) {
 		return 0, nil, f.readErr
 	}
 	return 0, nil, errors.New("not implemented")
+}
+
+func (f *fakeWebsocketConnection) waitForReadCloseRelease() {
+	if f.readCloseObserved != nil {
+		f.readCloseObserveOnce.Do(func() {
+			close(f.readCloseObserved)
+		})
+	}
+	if f.readCloseRelease != nil {
+		<-f.readCloseRelease
+	}
 }
 
 func (f *fakeWebsocketConnection) SetWriteDeadline(deadline time.Time) error {
