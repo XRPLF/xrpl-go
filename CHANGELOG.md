@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Multisigned transactions require an explicit empty top-level `SigningPubKey`. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`. Consensus-generated `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions remain hashable without account signatures.
 
+#### xrpl/common
+
+- Changed `DefaultFeeCushion` from `float32` to `float64` and `DefaultMaxFeeXRP` from `float32` to a decimal string.
+
 #### xrpl/currency
 
 - Replaced the deprecated `float64` constant `DropsPerXrp` with the exact untyped constant `DropsPerXRP`. This is a source-breaking rename; use `DropsPerXRP` or the native amount conversion helpers.
@@ -42,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
-- Changed `WithFeeCushion` from `float32` to `float64` and `WithMaxFeeXRP` from `float32` to a decimal string so fee configuration preserves binary64 inputs and exact decimal caps. The shared `common.DefaultFeeCushion` and `common.DefaultMaxFeeXRP` constants now use the corresponding types.
+- Changed `WithFeeCushion` from `float32` to `float64` and `WithMaxFeeXRP` from `float32` to a decimal string so fee configuration preserves binary64 inputs and exact decimal caps.
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID remains distinct from mainnet ID `0`. Use `WithNetworkIdentity(networkID, buildVersion)` to bypass discovery with trusted deployment values.
 - Replaced the exported `ErrMismatchedTag` struct type with an error sentinel of the same name. Replace struct literals and `errors.As` checks with `errors.Is(err, rpc.ErrMismatchedTag)`.
 - Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form, `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
