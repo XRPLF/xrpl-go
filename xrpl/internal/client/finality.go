@@ -37,7 +37,7 @@ type PreliminaryResultError struct {
 // Error implements error.
 func (e *PreliminaryResultError) Error() string {
 	return fmt.Sprintf(
-		"transaction failed to submit with engine result %s: %s",
+		"transaction failed to submit with engine result %q: %s",
 		e.EngineResult,
 		e.EngineResultMessage,
 	)
@@ -141,10 +141,10 @@ func ClassifyEngineResult(engineResult string) EngineResultFamily {
 	}
 }
 
-// ValidatePreliminaryResult rejects malformed results and monitors all other
-// preliminary results until a validated result or ledger expiry is available.
+// ValidatePreliminaryResult rejects missing or malformed results and monitors
+// all other preliminary results until validation or ledger expiry.
 func ValidatePreliminaryResult(engineResult, engineResultMessage string) error {
-	if ClassifyEngineResult(engineResult) != EngineResultTEM {
+	if engineResult != "" && ClassifyEngineResult(engineResult) != EngineResultTEM {
 		return nil
 	}
 	return &PreliminaryResultError{

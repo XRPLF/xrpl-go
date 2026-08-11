@@ -37,7 +37,7 @@ func TestValidatePreliminaryResult(t *testing.T) {
 		{name: "tef failure", engineResult: "tefPAST_SEQ", wantFamily: EngineResultTEF},
 		{name: "tel local error", engineResult: "telINSUF_FEE_P", wantFamily: EngineResultTEL},
 		{name: "unknown result", engineResult: "customResult", wantFamily: EngineResultUnknown},
-		{name: "empty result", engineResult: "", wantFamily: EngineResultUnknown},
+		{name: "empty result", engineResult: "", wantFamily: EngineResultUnknown, wantError: true},
 		{name: "tem malformed", engineResult: "temBAD_AMOUNT", wantFamily: EngineResultTEM, wantError: true},
 	}
 
