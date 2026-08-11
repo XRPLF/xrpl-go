@@ -209,10 +209,10 @@ func TestDropsMulDecimalRejectsInvalidValues(t *testing.T) {
 		value       string
 		expectedErr error
 	}{
-		{name: "empty", value: "", expectedErr: ErrInvalidNativeAmount},
-		{name: "invalid", value: "invalid", expectedErr: ErrInvalidNativeAmount},
-		{name: "exponent too large", value: "1e325", expectedErr: ErrInvalidNativeAmount},
-		{name: "negative", value: "-1", expectedErr: ErrNegativeNativeAmount},
+		{name: "empty", value: "", expectedErr: ErrInvalidDecimalMultiplier},
+		{name: "invalid", value: "invalid", expectedErr: ErrInvalidDecimalMultiplier},
+		{name: "exponent too large", value: "1e325", expectedErr: ErrInvalidDecimalMultiplier},
+		{name: "negative", value: "-1", expectedErr: ErrInvalidDecimalMultiplier},
 	}
 
 	for _, test := range tests {

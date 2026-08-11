@@ -7,6 +7,9 @@ var (
 	ErrInvalidNativeAmount = errors.New("invalid native amount")
 	// ErrNegativeNativeAmount indicates a negative native XRP amount.
 	ErrNegativeNativeAmount = errors.New("native amount cannot be negative")
+	// ErrInvalidDecimalMultiplier indicates a malformed, negative, or out-of-range
+	// decimal multiplier.
+	ErrInvalidDecimalMultiplier = errors.New("invalid decimal multiplier")
 	// ErrFractionalDrops indicates an amount that is not a whole number of drops.
 	ErrFractionalDrops = errors.New("amount contains fractional drops")
 	// ErrDropsDivisionByZero indicates a drops ratio with a zero denominator.

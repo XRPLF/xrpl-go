@@ -61,11 +61,8 @@ func (d Drops) Mul(multiplier uint64) Drops {
 // MulDecimal returns d multiplied by an exact, non-negative decimal value.
 func (d Drops) MulDecimal(multiplier string) (Drops, error) {
 	factor, ok := multiplierRat(multiplier)
-	if !ok {
-		return Drops{}, ErrInvalidNativeAmount
-	}
-	if factor.Sign() < 0 {
-		return Drops{}, ErrNegativeNativeAmount
+	if !ok || factor.Sign() < 0 {
+		return Drops{}, ErrInvalidDecimalMultiplier
 	}
 	return dropsFromRat(new(big.Rat).Mul(d.ratValue(), factor)), nil
 }

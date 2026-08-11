@@ -44,6 +44,42 @@ func TestNetworkFeeDrops(t *testing.T) {
 	}
 }
 
+func TestNetworkFeeDropsFractionalBaseFee(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		baseFeeXRP    float64
+		loadFactor    float64
+		expectedXRP   string
+		expectedDrops string
+	}{
+		{name: "half drop rounds upward", baseFeeXRP: 0.0000125, loadFactor: 1, expectedXRP: "0.000013", expectedDrops: "13"},
+		{name: "half drop is multiplied before rounding", baseFeeXRP: 0.0000125, loadFactor: 2, expectedXRP: "0.000025", expectedDrops: "25"},
+		{name: "less than half drop rounds downward", baseFeeXRP: 0.0000124, loadFactor: 1, expectedXRP: "0.000012", expectedDrops: "12"},
+	}
+
+	maxFee, err := ParseFeeXRP("2")
+	require.NoError(t, err)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := NetworkFeeDrops(test.baseFeeXRP, test.loadFactor, 1, maxFee)
+			require.NoError(t, err)
+
+			actualXRP, err := actual.XRPString()
+			require.NoError(t, err)
+			require.Equal(t, test.expectedXRP, actualXRP)
+
+			actualDrops, err := actual.WholeString()
+			require.NoError(t, err)
+			require.Equal(t, test.expectedDrops, actualDrops)
+		})
+	}
+}
+
 func TestNetworkFeeDropsRejectsInvalidValues(t *testing.T) {
 	t.Parallel()
 
@@ -51,6 +87,12 @@ func TestNetworkFeeDropsRejectsInvalidValues(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = NetworkFeeDrops(-1, 1, 1.2, maxFee)
+	require.ErrorIs(t, err, ErrInvalidFeeValue)
+
+	_, err = NetworkFeeDrops(math.NaN(), 1, 1.2, maxFee)
+	require.ErrorIs(t, err, ErrInvalidFeeValue)
+
+	_, err = NetworkFeeDrops(math.Inf(1), 1, 1.2, maxFee)
 	require.ErrorIs(t, err, ErrInvalidFeeValue)
 
 	_, err = NetworkFeeDrops(0.00001, -1, 1.2, maxFee)

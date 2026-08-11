@@ -17,7 +17,10 @@ func NetworkFeeDrops(baseFeeXRP, loadFactor, cushion float64, maxFee currency.Dr
 	if err != nil {
 		return currency.Drops{}, fmt.Errorf("%w: base fee", ErrInvalidFeeValue)
 	}
-	baseFee, err := currency.DropsFromXRP(baseFeeText)
+	// Start with one XRP in drops so the base fee can keep fractional drops
+	// until the final rounding step.
+	oneXRP := currency.DropsFromUint64(currency.DropsPerXRP)
+	baseFee, err := oneXRP.MulDecimal(baseFeeText)
 	if err != nil {
 		return currency.Drops{}, fmt.Errorf("%w: base fee", ErrInvalidFeeValue)
 	}
