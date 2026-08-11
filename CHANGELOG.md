@@ -117,6 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext` with caller cancellation across transaction preparation, submission, and finality monitoring, plus reliable-submission error sentinels for malformed preliminary results, ledger expiry, repeated monitoring transport failure, and invalid polling intervals.
 - Added `ErrInvalidMaxRetries` and `ErrInvalidLastLedgerSequence` for non-positive retry limits and zero ledger boundaries.
 - Added `ErrInvalidFeeValue` and `ErrFeeHasTooManyDecimals` for fee validation.
+- Added `ErrResponseErrorFieldIsNotAString` for malformed RPC error responses.
 
 #### xrpl/transaction/integration
 

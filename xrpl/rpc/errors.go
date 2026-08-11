@@ -141,6 +141,8 @@ var (
 
 	// ErrEmptyURL is returned when the provided URL is empty (no port or IP specified).
 	ErrEmptyURL = errors.New("empty port and IP provided")
+	// ErrResponseErrorFieldIsNotAString is returned when an RPC response contains a non-string error field.
+	ErrResponseErrorFieldIsNotAString = errors.New("rpc response error field must be a string")
 	// ErrResponseTooLarge is returned when an RPC response body exceeds the configured limit.
 	ErrResponseTooLarge = errors.New("rpc response body exceeds maximum size")
 )

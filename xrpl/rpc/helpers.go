@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
@@ -103,8 +104,12 @@ func checkForError(res *http.Response, maxResponseSize int64) (Response, error) 
 	}
 
 	// result will have 'error' if error response
-	if _, ok := jr.Result["error"]; ok {
-		return jr, &ClientError{ErrorString: jr.Result["error"].(string)}
+	if errorValue, ok := jr.Result["error"]; ok {
+		errorString, ok := errorValue.(string)
+		if !ok {
+			return jr, fmt.Errorf("%w: got %T", ErrResponseErrorFieldIsNotAString, errorValue)
+		}
+		return jr, &ClientError{ErrorString: errorString}
 	}
 
 	return jr, nil
