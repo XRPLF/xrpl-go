@@ -45,6 +45,8 @@ var (
 	ErrFinalityTransport = clientinternal.ErrFinalityTransport
 	// ErrInvalidPollInterval indicates a negative reliable-submission poll interval.
 	ErrInvalidPollInterval = clientinternal.ErrInvalidPollInterval
+	// ErrInvalidMaxRetries indicates a non-positive reliable-submission retry limit.
+	ErrInvalidMaxRetries = clientinternal.ErrInvalidMaxRetries
 	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
@@ -157,18 +159,6 @@ var (
 )
 
 // Dynamic errors
-
-// PreliminaryResultError reports a malformed preliminary engine result.
-type PreliminaryResultError = clientinternal.PreliminaryResultError
-
-// TransactionExpiredError reports expiry with ledger and preliminary-result diagnostics.
-type TransactionExpiredError = clientinternal.TransactionExpiredError
-
-// FinalityTransportError reports repeated monitoring query failures and unwraps their cause.
-type FinalityTransportError = clientinternal.FinalityTransportError
-
-// InvalidPollIntervalError reports a negative finality polling interval.
-type InvalidPollIntervalError = clientinternal.InvalidPollIntervalError
 
 // ClientError represents a dynamic error with a custom error message string.
 type ClientError struct {

@@ -45,7 +45,7 @@ func WithFaucetProvider(fp common.FaucetProvider) ConfigOpt
 
 ### Reliable-submission polling
 
-`WithMaxRetries` limits consecutive incomplete monitoring rounds caused by query or transport errors. A complete round resets the count. It does not limit successful finality polling. `WithRetryDelay` sets the interval between polling rounds. The delay can be zero, but it must not be negative. A reliable-submission method returns `InvalidPollIntervalError` before it sends the transaction when the delay is negative.
+`WithMaxRetries` limits consecutive incomplete monitoring rounds caused by query or transport errors. A complete round resets the count. It does not limit successful finality polling. The value must be positive. A reliable-submission method returns `ErrInvalidMaxRetries` before it sends the transaction when the value is zero or negative. `WithRetryDelay` sets the interval between polling rounds. The delay can be zero, but it must not be negative. A reliable-submission method returns `ErrInvalidPollInterval` before it sends the transaction when the delay is negative.
 
 ```go
 func WithMaxRetries(maxRetries int) ConfigOpt
@@ -157,7 +157,7 @@ func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.Subm
 
 The reliable-submission methods require `LastLedgerSequence` before they send the `submit` request. The Go SDK does not enable autofill by default. Provide `LastLedgerSequence` directly or set `Autofill: true` when you submit a transaction that the client can sign.
 
-A missing `engine_result` or a preliminary `tem` result returns `PreliminaryResultError` immediately. The error includes the engine result and its message. The client monitors `tes`, `ter`, `tec`, `tef`, `tel`, and non-empty unknown preliminary results. An exact `txnNotFound` response is inconclusive and the client retries it.
+A missing `engine_result` or a preliminary `tem` result returns `ErrPreliminaryResult` immediately. The error message includes the engine result and its message. The client monitors `tes`, `ter`, `tec`, `tef`, `tel`, and non-empty unknown preliminary results. An exact `txnNotFound` response is inconclusive and the client retries it.
 
 Each polling round waits for the configured interval, requests the latest validated ledger, checks expiry, and then looks up the transaction. The transaction expires only when the validated ledger is strictly greater than `LastLedgerSequence`. Validation exactly at `LastLedgerSequence` is accepted. The expiry decision does not use bounded `tx` searches or `searched_all`.
 
@@ -168,9 +168,9 @@ func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.Tx
 func (c *Client) SubmitTxBlobAndWaitContext(ctx context.Context, txBlob string, failHard bool) (*requests.TxResponse, error)
 ```
 
-Every validated transaction response returns with a nil error, including validated `tec` results. Inspect `TxResponse.Meta.TransactionResult` to determine the validated engine result. `TransactionExpiredError` retains the preliminary engine result and ledger expiry details. `FinalityTransportError` reports repeated query or transport failure. Context-aware methods return `ctx.Err()` directly on cancellation or deadline.
+Every validated transaction response returns with a nil error, including validated `tec` results. Inspect `TxResponse.Meta.TransactionResult` to determine the validated engine result. `ErrTransactionExpired` reports the preliminary engine result and ledger expiry details. `ErrFinalityTransport` reports repeated query or transport failure and wraps the last failure. Context-aware methods return `ctx.Err()` directly on cancellation or deadline.
 
-The client verifies that each validated-ledger response is marked as validated and contains a ledger index. A negative polling interval returns `InvalidPollIntervalError` before submission.
+The client verifies that each validated-ledger response is marked as validated and contains a ledger index. A negative polling interval returns `ErrInvalidPollInterval` before submission. A zero or negative maximum retry value returns `ErrInvalidMaxRetries` before submission.
 
 ## Queries
 

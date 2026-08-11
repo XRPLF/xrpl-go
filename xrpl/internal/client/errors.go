@@ -103,6 +103,8 @@ var (
 	ErrFinalityTransport = errors.New("transaction finality monitoring transport failure")
 	// ErrInvalidPollInterval indicates that a reliable-submission poll interval is negative.
 	ErrInvalidPollInterval = errors.New("transaction finality poll interval must not be negative")
+	// ErrInvalidMaxRetries indicates that a reliable-submission retry limit is not positive.
+	ErrInvalidMaxRetries = errors.New("transaction finality max retries must be positive")
 	// ErrInvalidValidatedLedgerResponse indicates that a validated-ledger query
 	// returned a response that was not validated or did not identify a ledger.
 	ErrInvalidValidatedLedgerResponse = errors.New("invalid validated ledger response")

@@ -178,11 +178,9 @@ func TestClientWaitForTransactionFinalityMatrix(t *testing.T) {
 				require.ErrorIs(t, err, tt.wantCause)
 			}
 			if tt.wantExpiryAt != 0 {
-				var expiryErr *TransactionExpiredError
-				require.ErrorAs(t, err, &expiryErr)
-				require.Equal(t, lastLedger, expiryErr.LastLedgerSequence)
-				require.Equal(t, tt.wantExpiryAt, expiryErr.ValidatedLedger)
-				require.Equal(t, preliminaryResult, expiryErr.PreliminaryResult)
+				require.ErrorContains(t, err, fmt.Sprintf("validated ledger %d", tt.wantExpiryAt))
+				require.ErrorContains(t, err, fmt.Sprintf("LastLedgerSequence %d", lastLedger))
+				require.ErrorContains(t, err, preliminaryResult)
 			}
 			require.Equal(t, int32(len(tt.steps)), requestCount.Load())
 			requireNoWSFinalityServerError(t, serverErrors)
@@ -216,6 +214,45 @@ func TestClientSubmitTxBlobAndWaitRejectsNegativePollInterval(t *testing.T) {
 	requireNoWSFinalityServerError(t, serverErrors)
 }
 
+func TestClientSubmitTxBlobAndWaitRejectsNonPositiveMaxRetries(t *testing.T) {
+	lastLedger := uint32(20)
+	blob := signedWSFinalityBlob(t, &lastLedger)
+	tests := []struct {
+		name       string
+		maxRetries int
+	}{
+		{name: "zero", maxRetries: 0},
+		{name: "negative", maxRetries: -1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, requestCount, serverErrors, cleanup := setupWSFinalityClient(
+				t,
+				nil,
+				tt.maxRetries,
+				time.Second,
+			)
+			defer cleanup()
+
+			response, err := client.SubmitTxBlobAndWait(blob, false)
+			require.Nil(t, response)
+			require.ErrorIs(t, err, ErrInvalidMaxRetries)
+			require.ErrorContains(t, err, fmt.Sprintf(": %d", tt.maxRetries))
+			require.Zero(t, requestCount.Load())
+			requireNoWSFinalityServerError(t, serverErrors)
+		})
+	}
+}
+
+func TestClientSubmitTxAndWaitRejectsInvalidFinalityMonitoringBeforePreparation(t *testing.T) {
+	client := NewClient(NewClientConfig().WithMaxRetries(0))
+
+	response, err := client.SubmitTxAndWaitContext(context.Background(), nil, nil)
+	require.Nil(t, response)
+	require.ErrorIs(t, err, ErrInvalidMaxRetries)
+}
+
 func TestClientSubmitTxBlobAndWaitExpiryRetainsPreliminaryResult(t *testing.T) {
 	const preliminaryResult = "terQUEUED"
 	lastLedger := uint32(20)
@@ -237,11 +274,9 @@ func TestClientSubmitTxBlobAndWaitExpiryRetainsPreliminaryResult(t *testing.T) {
 	response, err := client.SubmitTxBlobAndWait(blob, false)
 	require.Nil(t, response)
 	require.ErrorIs(t, err, ErrTransactionExpired)
-	var expiryErr *TransactionExpiredError
-	require.ErrorAs(t, err, &expiryErr)
-	require.Equal(t, lastLedger, expiryErr.LastLedgerSequence)
-	require.Equal(t, uint32(21), expiryErr.ValidatedLedger)
-	require.Equal(t, preliminaryResult, expiryErr.PreliminaryResult)
+	require.ErrorContains(t, err, "validated ledger 21")
+	require.ErrorContains(t, err, fmt.Sprintf("LastLedgerSequence %d", lastLedger))
+	require.ErrorContains(t, err, preliminaryResult)
 	require.Equal(t, int32(len(steps)), requestCount.Load())
 	requireNoWSFinalityServerError(t, serverErrors)
 }
@@ -297,10 +332,7 @@ func TestClientSubmitTxBlobAndWaitPreliminaryResultFamilies(t *testing.T) {
 			} else {
 				require.Nil(t, response)
 				require.ErrorIs(t, err, ErrPreliminaryResult)
-				var preliminaryErr *PreliminaryResultError
-				require.ErrorAs(t, err, &preliminaryErr)
-				require.Equal(t, tt.preliminaryResult, preliminaryErr.EngineResult)
-				require.Equal(t, resultMessage, preliminaryErr.EngineResultMessage)
+				require.ErrorContains(t, err, tt.preliminaryResult)
 				require.ErrorContains(t, err, resultMessage)
 			}
 			require.Equal(t, int32(len(steps)), requestCount.Load())

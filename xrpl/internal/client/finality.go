@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 )
@@ -27,101 +26,30 @@ const (
 	EngineResultUnknown EngineResultFamily = ""
 )
 
-// PreliminaryResultError reports a malformed preliminary submit result. It
-// does not claim that the transaction has a validated-ledger outcome.
-type PreliminaryResultError struct {
-	EngineResult        string
-	EngineResultMessage string
-}
-
-// Error implements error.
-func (e *PreliminaryResultError) Error() string {
-	return fmt.Sprintf(
-		"transaction failed to submit with engine result %q: %s",
-		e.EngineResult,
-		e.EngineResultMessage,
-	)
-}
-
-// Is supports errors.Is with ErrPreliminaryResult.
-func (e *PreliminaryResultError) Is(target error) bool {
-	return target == ErrPreliminaryResult
-}
-
-// TransactionExpiredError reports ledger-driven expiry after the validated
-// ledger has advanced strictly beyond LastLedgerSequence. PreliminaryResult
-// retains the engine result returned by the submit request.
-type TransactionExpiredError struct {
-	LastLedgerSequence uint32
-	ValidatedLedger    uint32
-	PreliminaryResult  string
-}
-
-// Error implements error.
-func (e *TransactionExpiredError) Error() string {
-	return fmt.Sprintf(
-		"transaction expired: validated ledger %d passed LastLedgerSequence %d, preliminary result %s",
-		e.ValidatedLedger,
-		e.LastLedgerSequence,
-		e.PreliminaryResult,
-	)
-}
-
-// Is supports errors.Is with ErrTransactionExpired.
-func (e *TransactionExpiredError) Is(target error) bool {
-	return target == ErrTransactionExpired
-}
-
-// FinalityTransportError reports consecutive incomplete polling rounds. Err
-// retains the transport-specific cause, including request timeout sentinels.
-type FinalityTransportError struct {
-	Operation string
-	Attempts  int
-	Err       error
-}
-
-// Error implements error.
-func (e *FinalityTransportError) Error() string {
-	return fmt.Sprintf(
-		"transaction finality monitoring had %d consecutive incomplete rounds, last failed operation %s: %v",
-		e.Attempts,
-		e.Operation,
-		e.Err,
-	)
-}
-
-// Is supports errors.Is with ErrFinalityTransport.
-func (e *FinalityTransportError) Is(target error) bool {
-	return target == ErrFinalityTransport
-}
-
-// Unwrap retains the transport-specific failure for errors.Is and errors.As.
-func (e *FinalityTransportError) Unwrap() error {
-	return e.Err
-}
-
-// InvalidPollIntervalError reports a negative finality polling interval.
-type InvalidPollIntervalError struct {
-	PollInterval time.Duration
-}
-
-// Error implements error.
-func (e *InvalidPollIntervalError) Error() string {
-	return fmt.Sprintf("transaction finality poll interval must not be negative: %s", e.PollInterval)
-}
-
-// Is supports errors.Is with ErrInvalidPollInterval.
-func (e *InvalidPollIntervalError) Is(target error) bool {
-	return target == ErrInvalidPollInterval
-}
-
 // ValidatePollInterval rejects negative finality polling intervals. A zero
 // interval remains valid for callers that intentionally request no delay.
 func ValidatePollInterval(pollInterval time.Duration) error {
 	if pollInterval < 0 {
-		return &InvalidPollIntervalError{PollInterval: pollInterval}
+		return fmt.Errorf("%w: %s", ErrInvalidPollInterval, pollInterval)
 	}
 	return nil
+}
+
+// ValidateMaxRetries rejects non-positive finality retry limits.
+func ValidateMaxRetries(maxRetries int) error {
+	if maxRetries <= 0 {
+		return fmt.Errorf("%w: %d", ErrInvalidMaxRetries, maxRetries)
+	}
+	return nil
+}
+
+// ValidateFinalityMonitoring validates settings used before submission and by
+// the finality state machine.
+func ValidateFinalityMonitoring(pollInterval time.Duration, maxRetries int) error {
+	if err := ValidatePollInterval(pollInterval); err != nil {
+		return err
+	}
+	return ValidateMaxRetries(maxRetries)
 }
 
 // ClassifyEngineResult returns the textual family of an engine-result token.
@@ -147,10 +75,12 @@ func ValidatePreliminaryResult(engineResult, engineResultMessage string) error {
 	if engineResult != "" && ClassifyEngineResult(engineResult) != EngineResultTEM {
 		return nil
 	}
-	return &PreliminaryResultError{
-		EngineResult:        engineResult,
-		EngineResultMessage: engineResultMessage,
-	}
+	return fmt.Errorf(
+		"%w: engine result %q: %s",
+		ErrPreliminaryResult,
+		engineResult,
+		engineResultMessage,
+	)
 }
 
 // TransactionStatus is the transport-neutral result of looking up a submitted
@@ -167,7 +97,8 @@ type FinalityConfig struct {
 	PreliminaryResult  string
 	PollInterval       time.Duration
 	// MaxAttempts limits consecutive incomplete polling rounds caused by query
-	// or transport errors. It does not limit successful finality polling.
+	// or transport errors. It does not limit successful finality polling. The
+	// value must be positive.
 	MaxAttempts int
 }
 
@@ -188,11 +119,11 @@ func WaitForFinality[T any](
 	cfg FinalityConfig,
 	hooks FinalityHooks[T],
 ) (*T, error) {
-	if err := ValidatePollInterval(cfg.PollInterval); err != nil {
+	if err := ValidateFinalityMonitoring(cfg.PollInterval, cfg.MaxAttempts); err != nil {
 		return nil, err
 	}
 
-	maxAttempts := max(cfg.MaxAttempts, 1)
+	maxAttempts := cfg.MaxAttempts
 	incompleteRounds := 0
 
 	incompleteRound := func(operation string, cause error) error {
@@ -201,11 +132,13 @@ func WaitForFinality[T any](
 		}
 		incompleteRounds++
 		if incompleteRounds >= maxAttempts {
-			return &FinalityTransportError{
-				Operation: operation,
-				Attempts:  incompleteRounds,
-				Err:       cause,
-			}
+			return fmt.Errorf(
+				"%w after %d consecutive incomplete rounds, last failed operation %s: %w",
+				ErrFinalityTransport,
+				incompleteRounds,
+				operation,
+				cause,
+			)
 		}
 		return nil
 	}
@@ -214,11 +147,10 @@ func WaitForFinality[T any](
 			return nil, nil, false
 		}
 		if status.Response == nil {
-			return nil, &FinalityTransportError{
-				Operation: "validated transaction response",
-				Attempts:  1,
-				Err:       errors.New("validated transaction response is nil"),
-			}, true
+			return nil, fmt.Errorf(
+				"%w: validated transaction response is nil",
+				ErrFinalityTransport,
+			), true
 		}
 		return status.Response, nil, true
 	}
@@ -237,11 +169,13 @@ func WaitForFinality[T any](
 		}
 
 		if validatedLedger > cfg.LastLedgerSequence {
-			return nil, &TransactionExpiredError{
-				LastLedgerSequence: cfg.LastLedgerSequence,
-				ValidatedLedger:    validatedLedger,
-				PreliminaryResult:  cfg.PreliminaryResult,
-			}
+			return nil, fmt.Errorf(
+				"%w: validated ledger %d passed LastLedgerSequence %d, preliminary result %s",
+				ErrTransactionExpired,
+				validatedLedger,
+				cfg.LastLedgerSequence,
+				cfg.PreliminaryResult,
+			)
 		}
 
 		status, err := hooks.LookupTransaction(ctx)

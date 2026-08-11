@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -52,10 +53,7 @@ func TestValidatePreliminaryResult(t *testing.T) {
 			}
 
 			require.ErrorIs(t, err, ErrPreliminaryResult)
-			var preliminaryErr *PreliminaryResultError
-			require.ErrorAs(t, err, &preliminaryErr)
-			require.Equal(t, tt.engineResult, preliminaryErr.EngineResult)
-			require.Equal(t, resultMessage, preliminaryErr.EngineResultMessage)
+			require.ErrorContains(t, err, fmt.Sprintf("engine result %q", tt.engineResult))
 			require.ErrorContains(t, err, resultMessage)
 		})
 	}
@@ -263,16 +261,12 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 			}
 			if tt.wantTransportCause != nil {
 				require.ErrorIs(t, err, tt.wantTransportCause)
-				var transportErr *FinalityTransportError
-				require.ErrorAs(t, err, &transportErr)
-				require.Equal(t, tt.maxAttempts, transportErr.Attempts)
+				require.ErrorContains(t, err, fmt.Sprintf("%d consecutive incomplete rounds", tt.maxAttempts))
 			}
 			if tt.wantExpiryLedger != 0 {
-				var expiryErr *TransactionExpiredError
-				require.ErrorAs(t, err, &expiryErr)
-				require.Equal(t, lastLedger20, expiryErr.LastLedgerSequence)
-				require.Equal(t, tt.wantExpiryLedger, expiryErr.ValidatedLedger)
-				require.Equal(t, preliminaryResult, expiryErr.PreliminaryResult)
+				require.ErrorContains(t, err, fmt.Sprintf("validated ledger %d", tt.wantExpiryLedger))
+				require.ErrorContains(t, err, fmt.Sprintf("LastLedgerSequence %d", lastLedger20))
+				require.ErrorContains(t, err, preliminaryResult)
 			}
 			require.Equal(t, tt.wantLookupCalls, lookupCalls)
 			require.Equal(t, tt.wantLedgerCalls, ledgerCalls)
@@ -324,9 +318,45 @@ func TestWaitForFinalityRejectsNegativePollInterval(t *testing.T) {
 
 	require.Nil(t, response)
 	require.ErrorIs(t, err, ErrInvalidPollInterval)
-	var intervalErr *InvalidPollIntervalError
-	require.ErrorAs(t, err, &intervalErr)
-	require.Equal(t, -time.Nanosecond, intervalErr.PollInterval)
+	require.ErrorContains(t, err, (-time.Nanosecond).String())
 	require.Zero(t, lookupCalls)
 	require.Zero(t, ledgerCalls)
+}
+
+func TestWaitForFinalityRejectsNonPositiveMaxRetries(t *testing.T) {
+	tests := []struct {
+		name       string
+		maxRetries int
+	}{
+		{name: "zero", maxRetries: 0},
+		{name: "negative", maxRetries: -1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lookupCalls := 0
+			ledgerCalls := 0
+
+			response, err := WaitForFinality(
+				context.Background(),
+				FinalityConfig{MaxAttempts: tt.maxRetries},
+				FinalityHooks[finalityTestResponse]{
+					LookupTransaction: func(context.Context) (TransactionStatus[finalityTestResponse], error) {
+						lookupCalls++
+						return TransactionStatus[finalityTestResponse]{}, nil
+					},
+					GetValidatedLedger: func(context.Context) (uint32, error) {
+						ledgerCalls++
+						return 0, nil
+					},
+				},
+			)
+
+			require.Nil(t, response)
+			require.ErrorIs(t, err, ErrInvalidMaxRetries)
+			require.ErrorContains(t, err, fmt.Sprintf(": %d", tt.maxRetries))
+			require.Zero(t, lookupCalls)
+			require.Zero(t, ledgerCalls)
+		})
+	}
 }

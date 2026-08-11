@@ -94,7 +94,7 @@ func (wc ClientConfig) WithFaucetProvider(fp common.FaucetProvider) ClientConfig
 
 // WithMaxRetries limits consecutive incomplete reliable-submission polling
 // rounds caused by query or transport errors. It does not limit successful
-// finality polling.
+// finality polling. The value must be positive.
 // Default: 10
 func (wc ClientConfig) WithMaxRetries(maxRetries int) ClientConfig {
 	wc.maxRetries = maxRetries

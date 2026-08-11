@@ -218,9 +218,17 @@ func (c *Client) SubmitTxBlobAndWaitContext(
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := clientinternal.ValidatePollInterval(c.cfg.retryDelay); err != nil {
+	if err := clientinternal.ValidateFinalityMonitoring(c.cfg.retryDelay, c.cfg.maxRetries); err != nil {
 		return nil, err
 	}
+	return c.submitTxBlobAndWaitContext(ctx, txBlob, failHard)
+}
+
+func (c *Client) submitTxBlobAndWaitContext(
+	ctx context.Context,
+	txBlob string,
+	failHard bool,
+) (*requests.TxResponse, error) {
 	tx, err := clientinternal.DecodeTransactionBlob(txBlob)
 	if err != nil {
 		return nil, err
@@ -286,7 +294,7 @@ func (c *Client) SubmitTxAndWaitContext(
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if err := clientinternal.ValidatePollInterval(c.cfg.retryDelay); err != nil {
+	if err := clientinternal.ValidateFinalityMonitoring(c.cfg.retryDelay, c.cfg.maxRetries); err != nil {
 		return nil, err
 	}
 	if opts == nil {
@@ -300,7 +308,7 @@ func (c *Client) SubmitTxAndWaitContext(
 		return nil, err
 	}
 
-	return c.SubmitTxBlobAndWaitContext(ctx, txBlob, opts.FailHard)
+	return c.submitTxBlobAndWaitContext(ctx, txBlob, opts.FailHard)
 }
 
 // SubmitMultisigned submits a structurally complete multisigned transaction blob.

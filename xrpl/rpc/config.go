@@ -65,7 +65,7 @@ func WithHTTPClient(cl HTTPClient) ConfigOpt {
 
 // WithMaxRetries limits consecutive incomplete reliable-submission polling
 // rounds caused by query or transport errors. It does not limit successful
-// finality polling.
+// finality polling. The value must be positive.
 func WithMaxRetries(maxRetries int) ConfigOpt {
 	return func(c *Config) {
 		c.maxRetries = maxRetries
