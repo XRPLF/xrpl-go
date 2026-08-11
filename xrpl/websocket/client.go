@@ -1224,7 +1224,7 @@ func (c *Client) fetchOwnerReserveFee(ctx context.Context) (uint64, error) {
 		return 0, ErrCouldNotFetchOwnerReserve
 	}
 
-	return uint64(*reserveInc), nil
+	return *reserveInc, nil
 }
 
 // fetchCounterPartySignersCount fetches the number of signers for the counterparty account.

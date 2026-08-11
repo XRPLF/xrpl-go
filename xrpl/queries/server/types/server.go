@@ -167,22 +167,22 @@ func (s *State) UnmarshalJSON(data []byte) error {
 // ClosedLedgerState contains metadata for a closed ledger, such as age, fees, and sequence.
 type ClosedLedgerState struct {
 	Age         uint          `json:"age"`
-	BaseFee     float32       `json:"base_fee"`
+	BaseFee     uint64        `json:"base_fee"`
 	Hash        types.Hash256 `json:"hash"`
-	ReserveBase float32       `json:"reserve_base"`
-	ReserveInc  float32       `json:"reserve_inc"`
+	ReserveBase uint64        `json:"reserve_base"`
+	ReserveInc  *uint64       `json:"reserve_inc"`
 	Seq         uint          `json:"seq"`
 }
 
 // LedgerState represents the state of a validated ledger in the server state response.
 type LedgerState struct {
-	Age         uint   `json:"age,omitempty"`
-	BaseFee     uint   `json:"base_fee"`
-	CloseTime   uint   `json:"close_time"`
-	Hash        string `json:"hash"`
-	ReserveBase uint   `json:"reserve_base"`
-	ReserveInc  *uint  `json:"reserve_inc"`
-	Seq         uint   `json:"seq"`
+	Age         uint    `json:"age,omitempty"`
+	BaseFee     uint64  `json:"base_fee"`
+	CloseTime   uint    `json:"close_time"`
+	Hash        string  `json:"hash"`
+	ReserveBase uint64  `json:"reserve_base"`
+	ReserveInc  *uint64 `json:"reserve_inc"`
+	Seq         uint    `json:"seq"`
 }
 
 // CloseState describes metrics of a ledger close, including converge time and proposer count.

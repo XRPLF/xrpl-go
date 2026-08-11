@@ -2666,7 +2666,7 @@ func TestClient_GetManifest(t *testing.T) {
 }
 
 func TestClient_GetServerState(t *testing.T) {
-	reserveInc := uint(5)
+	reserveInc := uint64(5)
 	tests := []struct {
 		name          string
 		mockResponse  string

@@ -13,7 +13,7 @@ func TestServerStateReserveIncPresence(t *testing.T) {
 	tests := []struct {
 		name     string
 		response string
-		expected uint
+		expected uint64
 		present  bool
 	}{
 		{name: "missing", response: `{"state":{"validated_ledger":{}}}`},
@@ -27,7 +27,40 @@ func TestServerStateReserveIncPresence(t *testing.T) {
 			var response StateResponse
 			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
 			reserveInc := response.State.ValidatedLedger.ReserveInc
-			actual, present := uint(0), reserveInc != nil
+			actual, present := uint64(0), reserveInc != nil
+			if present {
+				actual = *reserveInc
+			}
+			require.Equal(t, tt.present, present)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestServerStateClosedLedgerFeePrecisionAndPresence(t *testing.T) {
+	tests := []struct {
+		name       string
+		reserveInc string
+		expected   uint64
+		present    bool
+	}{
+		{name: "missing"},
+		{name: "null", reserveInc: `,"reserve_inc":null`},
+		{name: "explicit zero", reserveInc: `,"reserve_inc":0`, present: true},
+		{name: "positive", reserveInc: `,"reserve_inc":5000001`, expected: 5000001, present: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			responseJSON := `{"state":{"closed_ledger":{"base_fee":16777217,"reserve_base":20000001` +
+				tt.reserveInc + `}}}`
+			var response StateResponse
+			require.NoError(t, json.Unmarshal([]byte(responseJSON), &response))
+			require.Equal(t, uint64(16777217), response.State.ClosedLedger.BaseFee)
+			require.Equal(t, uint64(20000001), response.State.ClosedLedger.ReserveBase)
+
+			reserveInc := response.State.ClosedLedger.ReserveInc
+			actual, present := uint64(0), reserveInc != nil
 			if present {
 				actual = *reserveInc
 			}
@@ -38,7 +71,7 @@ func TestServerStateReserveIncPresence(t *testing.T) {
 }
 
 func TestServerStateResponse(t *testing.T) {
-	reserveInc := uint(5000000)
+	reserveInc := uint64(5000000)
 	s := StateResponse{
 		State: servertypes.State{
 			BuildVersion:    "1.7.2",
