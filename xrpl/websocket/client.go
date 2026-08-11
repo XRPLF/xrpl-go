@@ -1050,7 +1050,11 @@ func (c *Client) readMessages(ctx context.Context) {
 					c.reportError(ctx, closeErr)
 				}
 				c.failPendingResponsesForSocket(failedSocket, ErrDisconnected)
-				if !wasCurrent {
+				// A failed socket is stale only when a replacement is already
+				// published. If no current socket exists, another operation, such
+				// as a failed active write, already invalidated this socket and this
+				// reader must still start reconnection.
+				if !wasCurrent && c.IsConnected() {
 					return
 				}
 			} else {

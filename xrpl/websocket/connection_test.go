@@ -385,6 +385,213 @@ func TestConnection_CanceledActiveWriteInvalidatesSocket(t *testing.T) {
 	require.GreaterOrEqual(t, socket.closeCount.Load(), int32(1))
 }
 
+func TestClient_ActiveWriteInvalidationReconnects(t *testing.T) {
+	var dialCount atomic.Int32
+	upgrader := gorillaws.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dialCount.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		for {
+			var request struct {
+				ID uint64 `json:"id"`
+			}
+			if err := conn.ReadJSON(&request); err != nil {
+				return
+			}
+			if err := conn.WriteJSON(map[string]any{
+				"id":     request.ID,
+				"status": "success",
+				"type":   "response",
+				"result": map[string]any{},
+			}); err != nil {
+				return
+			}
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithMaxReconnects(2).
+			WithTimeout(time.Second),
+		time.Millisecond,
+		time.Millisecond,
+	)
+	client := NewClient(cfg)
+	setTrustedTestNetworkIdentity(client, 0)
+
+	failedSocket := newFakeWebsocketConnection()
+	failedSocket.readResults = make(chan fakeReadResult)
+	failedSocket.writeRelease = make(chan struct{})
+	client.conn.conn = failedSocket
+
+	ctx := client.resetLifecycle()
+	readDone := make(chan struct{})
+	go func() {
+		defer close(readDone)
+		client.readMessages(ctx)
+	}()
+	<-failedSocket.readStarted
+	defer func() {
+		require.NoError(t, client.Disconnect())
+		select {
+		case <-readDone:
+		case <-time.After(time.Second):
+			t.Fatal("read loop did not stop")
+		}
+	}()
+
+	writeCtx, cancelWrite := context.WithCancel(t.Context())
+	writeDone := make(chan error, 1)
+	go func() {
+		writeDone <- client.conn.writeMessage(writeCtx, []byte("request"), time.Second)
+	}()
+	<-failedSocket.writeStarted
+	cancelWrite()
+	require.ErrorIs(t, <-writeDone, context.Canceled)
+
+	require.Eventually(t, func() bool {
+		return dialCount.Load() == 1 && client.IsConnected()
+	}, time.Second, time.Millisecond)
+
+	response, err := client.Request(newAccountChannelsRequest())
+	require.NoError(t, err)
+	require.NotNil(t, response)
+}
+
+func TestClient_ConcurrentFailurePathsUseSingleReconnect(t *testing.T) {
+	var dialCount atomic.Int32
+	unexpectedDial := make(chan struct{}, 1)
+	upgrader := gorillaws.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if dialCount.Add(1) > 1 {
+			select {
+			case unexpectedDial <- struct{}{}:
+			default:
+			}
+		}
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		messageType, message, readErr := conn.ReadMessage()
+		if readErr == nil {
+			t.Errorf("unexpected replacement message type %d: %s", messageType, message)
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithMaxReconnects(2).
+			WithTimeout(time.Second),
+		20*time.Millisecond,
+		20*time.Millisecond,
+	)
+	client := NewClient(cfg)
+	setTrustedTestNetworkIdentity(client, 0)
+
+	failedSocket := newFakeWebsocketConnection()
+	failedSocket.readErr = errors.New("socket failed")
+	failedSocket.readRelease = make(chan struct{})
+	client.conn.conn = failedSocket
+	ctx := client.resetLifecycle()
+
+	var readers sync.WaitGroup
+	for range 2 {
+		readers.Go(func() {
+			client.readMessages(ctx)
+		})
+	}
+	<-failedSocket.readStarted
+	close(failedSocket.readRelease)
+
+	require.Eventually(t, func() bool {
+		return dialCount.Load() == 1 && client.IsConnected()
+	}, time.Second, time.Millisecond)
+
+	// The reconnect delay is 20ms. This window gives the second failure path
+	// time to pass through connectionHandshakeMu after the first path publishes
+	// the replacement.
+	select {
+	case <-unexpectedDial:
+		t.Fatal("concurrent failure path opened a second replacement connection")
+	case <-time.After(100 * time.Millisecond):
+	}
+	require.Equal(t, int32(1), dialCount.Load())
+
+	require.NoError(t, client.Disconnect())
+	readersDone := make(chan struct{})
+	go func() {
+		readers.Wait()
+		close(readersDone)
+	}()
+	select {
+	case <-readersDone:
+	case <-time.After(time.Second):
+		t.Fatal("read loops did not stop")
+	}
+}
+
+func TestClient_ExplicitDisconnectDoesNotReconnect(t *testing.T) {
+	dialAttempted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		select {
+		case dialAttempted <- struct{}{}:
+		default:
+		}
+		http.Error(w, "unexpected reconnect", http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	cfg := withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithMaxReconnects(1),
+		time.Millisecond,
+		time.Millisecond,
+	)
+	client := NewClient(cfg)
+	setTrustedTestNetworkIdentity(client, 0)
+
+	socket := newFakeWebsocketConnection()
+	socket.readResults = make(chan fakeReadResult)
+	client.conn.conn = socket
+	ctx := client.resetLifecycle()
+	readDone := make(chan struct{})
+	go func() {
+		defer close(readDone)
+		client.readMessages(ctx)
+	}()
+	<-socket.readStarted
+
+	require.NoError(t, client.Disconnect())
+	select {
+	case <-readDone:
+	case <-time.After(time.Second):
+		t.Fatal("read loop did not stop")
+	}
+	select {
+	case <-dialAttempted:
+		t.Fatal("explicit disconnect started a reconnect")
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
 func TestClient_StaleReaderReturnsBeforeReplacementResponse(t *testing.T) {
 	client := NewClient(NewClientConfig().WithMaxReconnects(0))
 	oldSocket := newFakeWebsocketConnection()
