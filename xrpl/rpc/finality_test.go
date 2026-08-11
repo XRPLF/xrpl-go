@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/testutil"
+	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/stretchr/testify/require"

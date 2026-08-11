@@ -206,8 +206,7 @@ func (c *Client) calculateFeePerTransactionType(
 
 	transactionType := tx.TxType()
 	isSpecialTxCost := transactionType == transaction.AccountDeleteTx ||
-		transactionType == transaction.AMMCreateTx ||
-		transactionType == transaction.VaultCreateTx
+		transactionType == transaction.AMMCreateTx
 
 	switch transactionType { //nolint:exhaustive // Only transaction types with nonstandard fees need cases.
 	case transaction.EscrowFinishTx:
@@ -218,7 +217,7 @@ func (c *Client) calculateFeePerTransactionType(
 				return err
 			}
 		}
-	case transaction.AccountDeleteTx, transaction.AMMCreateTx, transaction.VaultCreateTx:
+	case transaction.AccountDeleteTx, transaction.AMMCreateTx:
 		reserveFee, reserveErr := c.fetchOwnerReserveFee(ctx)
 		if reserveErr != nil {
 			return reserveErr

@@ -379,7 +379,6 @@ func TestClientFeeParity(t *testing.T) {
 	serverInfo := `{"result":{"info":{"validated_ledger":{"base_fee_xrp":0.00001},"load_factor":1}}}`
 	halfDropServerInfo := `{"result":{"info":{"validated_ledger":{"base_fee_xrp":0.000001},"load_factor":10}}}`
 	highLoadServerInfo := `{"result":{"info":{"validated_ledger":{"base_fee_xrp":1},"load_factor":1000}}}`
-	reserve := `{"result":{"state":{"validated_ledger":{"reserve_inc":2000000}}}}`
 	tests := []struct {
 		name               string
 		txType             string
@@ -399,7 +398,7 @@ func TestClientFeeParity(t *testing.T) {
 		{name: "EscrowFinish absent fulfillment", txType: "EscrowFinish", cushion: 1, responses: []string{serverInfo}, expected: "10"},
 		{name: "EscrowFinish empty fulfillment", txType: "EscrowFinish", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "330"},
 		{name: "EscrowFinish fractional scaling", txType: "EscrowFinish", fulfillment: "A0028000", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "333"},
-		{name: "VaultCreate owner reserve", txType: "VaultCreate", cushion: 1, responses: []string{serverInfo, reserve}, expected: "2000000"},
+		{name: "VaultCreate base fee", txType: "VaultCreate", cushion: 1, responses: []string{serverInfo}, expected: "10"},
 	}
 
 	for _, tt := range tests {

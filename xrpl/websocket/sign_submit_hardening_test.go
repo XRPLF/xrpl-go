@@ -395,14 +395,6 @@ func TestClientFeeParity(t *testing.T) {
 			},
 		},
 	}
-	reserve := map[string]any{
-		"id": 2,
-		"result": map[string]any{
-			"state": map[string]any{
-				"validated_ledger": map[string]any{"reserve_inc": 2000000},
-			},
-		},
-	}
 	tests := []struct {
 		name      string
 		txType    string
@@ -413,7 +405,7 @@ func TestClientFeeParity(t *testing.T) {
 		{name: "single sign base fee", txType: "Payment", responses: []map[string]any{serverInfo}, expected: "10"},
 		{name: "one multisigner", txType: "Payment", nSigners: 1, responses: []map[string]any{serverInfo}, expected: "20"},
 		{name: "two multisigners", txType: "Payment", nSigners: 2, responses: []map[string]any{serverInfo}, expected: "30"},
-		{name: "VaultCreate owner reserve", txType: "VaultCreate", responses: []map[string]any{serverInfo, reserve}, expected: "2000000"},
+		{name: "VaultCreate base fee", txType: "VaultCreate", responses: []map[string]any{serverInfo}, expected: "10"},
 	}
 
 	for _, tt := range tests {
