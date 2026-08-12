@@ -89,6 +89,40 @@ func TestOracleSet_Flatten(t *testing.T) {
 	}
 }
 
+func TestOracleSet_ZeroScaleEncodingOmitsDefaultField(t *testing.T) {
+	priceData := ledger.PriceData{
+		BaseAsset:  "XRP",
+		QuoteAsset: "USD",
+		AssetPrice: ledger.AssetPrice(740),
+	}
+	tx := &OracleSet{
+		BaseTx: BaseTx{
+			Account:  "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+			Fee:      12,
+			Sequence: 1,
+		},
+		OracleDocumentID: 34,
+		Provider:         "70726F7669646572",
+		LastUpdateTime:   1724871860,
+		AssetClass:       "63757272656E6379",
+		PriceDataSeries:  []ledger.PriceDataWrapper{{PriceData: priceData}},
+	}
+
+	flattened := tx.Flatten()
+	priceDataSeries := flattened["PriceDataSeries"].([]map[string]any)
+	flattenedPriceData := priceDataSeries[0]["PriceData"].(map[string]any)
+	require.NotContains(t, flattenedPriceData, "Scale")
+
+	encoded, err := binarycodec.Encode(flattened)
+	require.NoError(t, err)
+	decoded, err := binarycodec.Decode(encoded)
+	require.NoError(t, err)
+	decodedPriceDataSeries := decoded["PriceDataSeries"].([]any)
+	decodedPriceDataWrapper := decodedPriceDataSeries[0].(map[string]any)
+	decodedPriceData := decodedPriceDataWrapper["PriceData"].(map[string]any)
+	require.NotContains(t, decodedPriceData, "Scale")
+}
+
 func TestOracleSet_AssetPriceEncoding(t *testing.T) {
 	// AssetPrice accepts decimal JSON input and uses the canonical UInt64
 	// hexadecimal form in flattened and decoded transaction data.

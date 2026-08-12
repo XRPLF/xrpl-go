@@ -236,6 +236,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
+- `OracleSet` now omits the default `Scale` value of zero from flattened price data, as required by the server object template.
 - Fixed `DelegateSet` validation to reject `Batch` permissions as required by XLS-75.
 - Named string `TransactionType` values now work consistently through `FlatTransaction` validation, special fee selection, Batch inner processing, submission policy, and binary encoding. Malformed values remain rejected.
 

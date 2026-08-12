@@ -36,7 +36,7 @@ func TestPriceData_Flatten(t *testing.T) {
 			},
 		},
 		{
-			name: "pass - explicit zero price",
+			name: "pass - explicit zero price omits default scale",
 			priceData: &PriceData{
 				BaseAsset:  "XRP",
 				QuoteAsset: "USD",
@@ -46,7 +46,6 @@ func TestPriceData_Flatten(t *testing.T) {
 				"BaseAsset":  "XRP",
 				"QuoteAsset": "USD",
 				"AssetPrice": "0000000000000000",
-				"Scale":      uint8(0),
 			},
 		},
 		{
