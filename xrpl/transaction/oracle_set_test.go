@@ -248,13 +248,14 @@ func TestOracleSet_Validate(t *testing.T) {
 						PriceData: ledger.PriceData{
 							BaseAsset:  "XRP",
 							QuoteAsset: "USD",
-							Scale:      11,
+							AssetPrice: ledger.AssetPrice(740),
+							Scale:      21,
 						},
 					},
 				},
 			},
 			expected: ledger.ErrPriceDataScale{
-				Value: 11,
+				Value: 21,
 				Limit: ledger.PriceDataScaleMax,
 			},
 		},

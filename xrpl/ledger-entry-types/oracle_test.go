@@ -282,10 +282,11 @@ func TestPriceData_Validate(t *testing.T) {
 			priceData: &PriceData{
 				BaseAsset:  "XRP",
 				QuoteAsset: "USD",
-				Scale:      11,
+				AssetPrice: AssetPrice(740),
+				Scale:      21,
 			},
 			expected: ErrPriceDataScale{
-				Value: 11,
+				Value: 21,
 				Limit: PriceDataScaleMax,
 			},
 		},
@@ -313,6 +314,16 @@ func TestPriceData_Validate(t *testing.T) {
 				BaseAsset:  "XRP",
 				QuoteAsset: "USD",
 				AssetPrice: AssetPrice(0),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - maximum scale",
+			priceData: &PriceData{
+				BaseAsset:  "XRP",
+				QuoteAsset: "USD",
+				AssetPrice: AssetPrice(740),
+				Scale:      PriceDataScaleMax,
 			},
 			expected: nil,
 		},
