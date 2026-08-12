@@ -248,7 +248,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Concurrent callers now share one in-flight network identity discovery result, including failures, while later independent operations can retry.
 - Rippled prerelease versions with numeric suffixes now compare the suffix numerically.
 - Made autofill and unsigned signing fail closed when network identity discovery or validation fails, unless `WithNetworkIdentity` supplies an explicit trusted identity.
-- Redacted percent-encoded URL passwords from authorized RPC request errors.
+- Rejected nil custom HTTP clients during configuration and request-time revalidation with `ErrNilHTTPClient` instead of allowing request-time panics.
+- Redacted bare authorization credentials and percent-encoded URL passwords from authorized RPC request errors.
+- Authorized RPC redirects now reject an HTTPS-to-HTTP downgrade before invoking the caller's `CheckRedirect`, so a callback never observes `Authorization` on a plaintext target.
 - Corrected fee precision and rounding with shared exact rational arithmetic, including fractional base fees and load factors, rippled-compatible integer `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Used the normal network fee for `VaultCreate` instead of the incremental owner reserve. The standard `maxFeeXRP` cap now applies. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 - `AutofillMultisigned` now preserves a supplied `Fee`; when absent, it calculates the fee once with the signer count.
@@ -283,8 +285,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Closed and invalidated WebSocket connections after write or write-deadline failures. The active read loop now attempts reconnection after any read error, not only close errors, within the existing `WithMaxReconnects` budget.
 - Made manual disconnect claim an in-progress reconnect socket before lifecycle cancellation so cancellation-driven invalidation cannot cause a false not-connected error.
 - Made reconnect backoff configuration immutable per client to prevent concurrent clients and reconnect tests from racing over shared delay state.
-- Dispatched `transaction` notifications to the exported order-book handler and `bookChanges` notifications to the exported book-changes handler, with typed decoding and no duplicate handler delivery across reconnects. Automatic reconnects do not replay subscriptions, so callers must resubscribe.
-- Authorized RPC redirects now reject an HTTPS-to-HTTP downgrade before invoking the caller's `CheckRedirect`, so a callback never observes `Authorization` on a plaintext target.
+- Dispatched `bookChanges` notifications to the exported book-changes handler with typed decoding and no duplicate handler delivery across reconnects. Automatic reconnects do not replay subscriptions, so callers must resubscribe.
 
 ## [v0.2.0]
 

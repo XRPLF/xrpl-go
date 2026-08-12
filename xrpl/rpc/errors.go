@@ -141,6 +141,8 @@ var (
 
 	// ErrEmptyURL is returned when the provided URL is empty (no port or IP specified).
 	ErrEmptyURL = errors.New("empty port and IP provided")
+	// ErrNilHTTPClient is returned when RPC configuration contains a nil HTTP client.
+	ErrNilHTTPClient = errors.New("rpc HTTP client must not be nil")
 	// ErrResponseErrorFieldIsNotAString is returned when an RPC response contains a non-string error field.
 	ErrResponseErrorFieldIsNotAString = errors.New("rpc response error field must be a string")
 	// errTooManyRedirects matches the net/http default redirect limit error.

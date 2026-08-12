@@ -214,10 +214,11 @@ func (c *Client) reportOrderBook(ctx context.Context, orderbook *streamtypes.Ord
 	c.orderBookStream.Report(ctx, orderbook)
 }
 
-// OnOrderBook handles order-book notifications. The XRPL protocol sends these
-// as "transaction" messages without identifying which subscription matched,
-// so this handler receives every transaction message, as does OnTransactions.
-// It follows the handler contract documented on [Client].
+// OnOrderBook registers an order-book handler. Rippled sends order-book
+// subscription updates as "transaction" messages without identifying the
+// matched subscription, so wire notifications are delivered through
+// [Client.OnTransactions] instead. It follows the handler contract documented
+// on [Client].
 func (c *Client) OnOrderBook(handler func(orderbook *streamtypes.OrderBookStream)) {
 	registerLifecycleHandler(c, &c.orderBookStream, handler)
 }

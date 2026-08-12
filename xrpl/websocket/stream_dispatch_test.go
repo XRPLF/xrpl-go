@@ -48,17 +48,6 @@ func TestClient_HandleMessageDispatchesExportedStreams(t *testing.T) {
 			},
 		},
 		{
-			name:    "order book transaction",
-			message: `{"type":"transaction","engine_result":"tesSUCCESS","tx_json":{"TransactionType":"OfferCreate","owner_funds":"100"}}`,
-			register: func(c *Client, received chan<- bool) {
-				c.OnOrderBook(func(event *streamtypes.OrderBookStream) {
-					ownerFunds, ok := event.Transaction["owner_funds"]
-					received <- event.Type == streamtypes.OrderBookStreamType &&
-						event.EngineResult == "tesSUCCESS" && ok && ownerFunds == "100"
-				})
-			},
-		},
-		{
 			name:    "peer status change",
 			message: `{"type":"peerStatusChange","action":"ACCEPTED_LEDGER","ledger_index":13}`,
 			register: func(c *Client, received chan<- bool) {
@@ -116,6 +105,8 @@ func TestClient_StreamHandlerOrderingAndBackpressure(t *testing.T) {
 
 	firstStarted := make(chan struct{})
 	releaseFirst := make(chan struct{})
+	// Release the blocked handler after an early test failure. The normal path
+	// closes the channel first, so cleanup must not close it a second time.
 	defer func() {
 		select {
 		case <-releaseFirst:

@@ -11,6 +11,8 @@ const (
 	ValidationStreamType  Type = "validationReceived"
 	TransactionStreamType Type = "transaction"
 	PeerStatusStreamType  Type = "peerStatusChange"
+	// OrderBookStreamType aliases TransactionStreamType because rippled sends
+	// order-book subscription updates as transaction messages.
 	OrderBookStreamType   Type = TransactionStreamType
 	BookChangesStreamType Type = "bookChanges"
 	ConsensusStreamType   Type = "consensusPhase"

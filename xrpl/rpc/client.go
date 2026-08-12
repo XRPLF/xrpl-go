@@ -112,6 +112,8 @@ func (c *Client) request(ctx context.Context, reqParams XRPLRequest) (XRPLRespon
 			return nil, redactAuthorizationError(err, requestURL, headers)
 		}
 
+		// Keep the config snapshot unchanged for redaction and later retries.
+		// A custom HTTPClient can mutate request headers, so each attempt gets a clone.
 		req.Header = headers.Clone()
 
 		response, err = requestHTTPClient.Do(req)

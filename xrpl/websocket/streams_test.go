@@ -170,6 +170,8 @@ func TestClient_StreamHandlersReceiveReportedStreams(t *testing.T) {
 			},
 		},
 		{
+			// Order-book wire notifications use the transaction runner, so this
+			// case exercises only the retained order-book handler runner.
 			name: "orderBook",
 			register: func(c *Client, received chan struct{}) {
 				c.OnOrderBook(func(*streamtypes.OrderBookStream) {
@@ -275,6 +277,8 @@ func TestClient_StreamHandlersReplacePreviousHandler(t *testing.T) {
 			},
 		},
 		{
+			// Order-book wire notifications use the transaction runner, so this
+			// case exercises only the retained order-book handler runner.
 			name: "orderBook",
 			register: func(c *Client, handler func()) {
 				c.OnOrderBook(func(*streamtypes.OrderBookStream) {
@@ -410,6 +414,8 @@ func TestClient_ReportStreamSkipsWhenChannelUnset(t *testing.T) {
 			},
 		},
 		{
+			// Order-book wire notifications use the transaction runner, so this
+			// case exercises only the retained order-book handler runner.
 			name: "orderBook",
 			report: func(c *Client) {
 				c.reportOrderBook(c.lifecycleContext(), &streamtypes.OrderBookStream{})
@@ -871,6 +877,8 @@ func TestClient_ReportStreamAfterDisconnectDoesNotBlock(t *testing.T) {
 			},
 		},
 		{
+			// Order-book wire notifications use the transaction runner, so this
+			// case exercises only the retained order-book handler runner.
 			name: "orderBook",
 			register: func(c *Client) {
 				c.OnOrderBook(func(*streamtypes.OrderBookStream) {})

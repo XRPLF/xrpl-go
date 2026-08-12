@@ -1042,14 +1042,6 @@ func (c *Client) handleStream(ctx context.Context, t streamtypes.Type, message [
 			return
 		}
 		c.reportTransaction(ctx, &transactionStream)
-
-		// Order-book subscriptions use the transaction wire type too. The
-		// message does not identify which subscription matched, so dispatch all
-		// transaction messages to both exported transaction handlers.
-		var orderBook streamtypes.OrderBookStream
-		if c.unmarshalMessage(ctx, message, &orderBook) {
-			c.reportOrderBook(ctx, &orderBook)
-		}
 	case streamtypes.ValidationStreamType:
 		var validation streamtypes.ValidationStream
 		if c.unmarshalMessage(ctx, message, &validation) {

@@ -173,6 +173,63 @@ func TestNewClientConfigAuthorizationTransport(t *testing.T) {
 	}
 }
 
+func TestNewClientConfigRejectsNilHTTPClient(t *testing.T) {
+	var typedNil *http.Client
+	tests := []struct {
+		name              string
+		httpClient        HTTPClient
+		withAuthorization bool
+		withTimeout       bool
+	}{
+		{name: "nil interface"},
+		{name: "nil interface with authorization", withAuthorization: true},
+		{name: "typed nil pointer", httpClient: typedNil},
+		{name: "typed nil pointer with authorization", httpClient: typedNil, withAuthorization: true},
+		{name: "typed nil pointer before timeout", httpClient: typedNil, withTimeout: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := []ConfigOpt{WithHTTPClient(tt.httpClient)}
+			if tt.withAuthorization {
+				opts = append(opts, withTestAuthorizationHeader("Authorization"))
+			}
+			if tt.withTimeout {
+				opts = append(opts, WithTimeout(0))
+			}
+
+			cfg, err := NewClientConfig("https://node.example", opts...)
+
+			require.ErrorIs(t, err, ErrNilHTTPClient)
+			require.Nil(t, cfg)
+		})
+	}
+}
+
+func TestClient_RequestRejectsMutatedNilHTTPClient(t *testing.T) {
+	var typedNil *http.Client
+	tests := []struct {
+		name       string
+		httpClient HTTPClient
+	}{
+		{name: "nil interface"},
+		{name: "typed nil pointer", httpClient: typedNil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := NewClientConfig("https://node.example")
+			require.NoError(t, err)
+			client := NewClient(cfg)
+			cfg.HTTPClient = tt.httpClient
+
+			_, err = client.Request(validTransportSecurityRequest())
+
+			require.ErrorIs(t, err, ErrNilHTTPClient)
+		})
+	}
+}
+
 func TestClient_RequestAuthorizationTransport(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -276,7 +333,7 @@ func TestClient_RequestAuthorizationTransport(t *testing.T) {
 	}
 }
 
-func TestAuthorizationDiagnosticsRedactHeaderValues(t *testing.T) {
+func TestNewClientConfig_AuthorizationValidationPrecedesInsecureSchemeWarning(t *testing.T) {
 	var logs bytes.Buffer
 	previousLogger := clientconfig.SetLogger(log.New(&logs, "", 0))
 	t.Cleanup(func() { clientconfig.SetLogger(previousLogger) })
@@ -289,12 +346,14 @@ func TestAuthorizationDiagnosticsRedactHeaderValues(t *testing.T) {
 	if !errors.Is(err, ErrInsecureAuthorization) {
 		t.Fatal("expected insecure authorization error")
 	}
-	assertAuthorizationTextRedacted(t, logs.String(), "authorization warning exposed credential material")
+	require.Empty(t, logs.String())
 }
 
-func TestClient_RequestRedactsTransportError(t *testing.T) {
+func TestClient_RequestRedactsTransportErrorAfterHeaderMutation(t *testing.T) {
 	httpClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		return nil, credentialEchoError("transport failure: " + req.Header.Get(authorizationHeader))
+		authorization := req.Header.Get(authorizationHeader)
+		req.Header.Del(authorizationHeader)
+		return nil, credentialEchoError("transport failure: " + authorization)
 	})}
 	cfg, err := NewClientConfig(
 		"https://node.example",
@@ -307,6 +366,58 @@ func TestClient_RequestRedactsTransportError(t *testing.T) {
 	assertAuthorizationErrorRedacted(t, err)
 	if !errors.Is(err, ErrAuthorizationRequestFailed) {
 		t.Fatal("expected redacted authorization request error")
+	}
+}
+
+func TestRedactAuthorizationErrorHeaderCredentials(t *testing.T) {
+	bearerToken := strings.Repeat("b", 32)
+	basicCredentials := base64.StdEncoding.EncodeToString([]byte("user:password"))
+	tests := []struct {
+		name               string
+		authorizationValue string
+		diagnostic         string
+		wantRedacted       bool
+	}{
+		{
+			name:               "complete Bearer value",
+			authorizationValue: "Bearer " + bearerToken,
+			diagnostic:         "transport failure: Bearer " + bearerToken,
+			wantRedacted:       true,
+		},
+		{
+			name:               "bare Bearer token",
+			authorizationValue: "Bearer " + bearerToken,
+			diagnostic:         "transport failure: " + bearerToken,
+			wantRedacted:       true,
+		},
+		{
+			name:               "bare Basic credentials",
+			authorizationValue: "Basic " + basicCredentials,
+			diagnostic:         "transport failure: " + basicCredentials,
+			wantRedacted:       true,
+		},
+		{
+			name:               "unrelated error",
+			authorizationValue: "Bearer " + bearerToken,
+			diagnostic:         "transport unavailable",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sourceErr := credentialEchoError(tt.diagnostic)
+			err := redactAuthorizationError(
+				sourceErr,
+				"https://node.example",
+				map[string][]string{authorizationHeader: {tt.authorizationValue}},
+			)
+
+			if tt.wantRedacted {
+				require.ErrorIs(t, err, ErrAuthorizationRequestFailed)
+				return
+			}
+			require.Equal(t, sourceErr, err)
+		})
 	}
 }
 
@@ -506,8 +617,20 @@ func assertAuthorizationErrorRedacted(t *testing.T, err error) {
 
 func assertAuthorizationTextRedacted(t *testing.T, text, failureMessage string) {
 	t.Helper()
-	basicAuthorization := "Basic " + base64.StdEncoding.EncodeToString([]byte(testURLUsername+":"+testURLPassword))
-	for _, value := range []string{testHeaderValue, testURLUsername, testURLPassword, basicAuthorization} {
+	encodedUsername := url.User(testURLUsername).String()
+	userInfo := url.UserPassword(testURLUsername, testURLPassword).String()
+	encodedPassword := strings.TrimPrefix(userInfo, encodedUsername+":")
+	basicCredentials := base64.StdEncoding.EncodeToString([]byte(testURLUsername + ":" + testURLPassword))
+	for _, value := range []string{
+		testHeaderValue,
+		testURLUsername,
+		encodedUsername,
+		testURLPassword,
+		encodedPassword,
+		userInfo,
+		basicCredentials,
+		"Basic " + basicCredentials,
+	} {
 		if strings.Contains(text, value) {
 			t.Fatal(failureMessage)
 		}

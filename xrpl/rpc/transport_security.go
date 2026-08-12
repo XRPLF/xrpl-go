@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 )
@@ -15,11 +16,31 @@ const authorizationHeader = "Authorization"
 // other HTTPClient implementations responsible for their own redirects. It is
 // the single entry point shared by config-time and request-time validation.
 func validateAuthorizationTransport(rawURL string, headers map[string][]string, client HTTPClient) (HTTPClient, error) {
+	if isNilHTTPClient(client) {
+		return nil, ErrNilHTTPClient
+	}
+
 	hasAuthorization, err := validateAuthorizationEndpoint(rawURL, headers)
 	if err != nil {
 		return nil, err
 	}
 	return authorizationHTTPClient(client, hasAuthorization)
+}
+
+func isNilHTTPClient(client HTTPClient) bool {
+	if client == nil {
+		return true
+	}
+
+	value := reflect.ValueOf(client)
+	kind := value.Kind()
+	isNilable := kind == reflect.Chan ||
+		kind == reflect.Func ||
+		kind == reflect.Interface ||
+		kind == reflect.Map ||
+		kind == reflect.Pointer ||
+		kind == reflect.Slice
+	return isNilable && value.IsNil()
 }
 
 func validateAuthorizationEndpoint(rawURL string, headers map[string][]string) (bool, error) {
@@ -107,6 +128,10 @@ func requestHasAuthorization(req *http.Request) bool {
 	return req != nil && (hasAuthorizationHeader(req.Header) || req.URL != nil && req.URL.User != nil)
 }
 
+// redactAuthorizationError replaces an error when its diagnostic contains a
+// known credential representation. A bare sentinel prevents error unwrapping
+// and structured logging from recovering the original text. Detection is
+// limited to the text returned by Error().
 func redactAuthorizationError(err error, rawURL string, headers map[string][]string) error {
 	if err == nil {
 		return nil
@@ -115,7 +140,7 @@ func redactAuthorizationError(err error, rawURL string, headers map[string][]str
 	var secrets []string
 	for name, values := range headers {
 		if strings.EqualFold(name, authorizationHeader) {
-			secrets = append(secrets, values...)
+			secrets = append(secrets, authorizationHeaderSecrets(values)...)
 		}
 	}
 	endpoint, parseErr := url.Parse(rawURL)
@@ -148,6 +173,23 @@ func redactAuthorizationError(err error, rawURL string, headers map[string][]str
 		}
 	}
 	return err
+}
+
+func authorizationHeaderSecrets(values []string) []string {
+	secrets := make([]string, 0, len(values)*3)
+	for _, value := range values {
+		secrets = append(secrets, value)
+
+		trimmed := strings.TrimSpace(value)
+		secrets = append(secrets, trimmed)
+		if separator := strings.IndexAny(trimmed, " \t"); separator >= 0 {
+			credentials := strings.TrimSpace(trimmed[separator:])
+			if credentials != "" {
+				secrets = append(secrets, credentials)
+			}
+		}
+	}
+	return secrets
 }
 
 func malformedURLHasUserinfo(rawURL string) bool {
