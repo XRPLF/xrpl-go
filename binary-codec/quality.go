@@ -3,7 +3,6 @@ package binarycodec
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -23,11 +22,6 @@ const (
 	// maxQualityExponent is the maximum exponent for a canonical quality.
 	maxQualityExponent = 80
 )
-
-// Static errors
-
-// ErrInvalidQuality is returned when the quality is invalid.
-var ErrInvalidQuality = errors.New("invalid quality")
 
 // qualityFormat matches an optionally signed decimal number with an optional
 // exponent.

@@ -15,7 +15,17 @@ var (
 
 	// fields
 
-	// ErrFlagsFieldIsNotAnUint32 is returned when the flags field is not an uint32.
+	// ErrAccountFieldIsNotAString is returned when the outer Batch account is missing or is not a string.
+	ErrAccountFieldIsNotAString = errors.New("account field is not a string")
+	// ErrSequenceFieldIsNotAnUint32 is returned when the outer Batch sequence is not a uint32.
+	ErrSequenceFieldIsNotAnUint32 = errors.New("sequence field is not an uint32")
+	// ErrTicketSequenceFieldIsNotAnUint32 is returned when the outer Batch ticket sequence is not a uint32.
+	ErrTicketSequenceFieldIsNotAnUint32 = errors.New("ticket sequence field is not an uint32")
+	// ErrBatchSequenceAndTicket is returned when a Batch specifies a non-zero Sequence and a TicketSequence.
+	ErrBatchSequenceAndTicket = errors.New("batch cannot have both a non-zero sequence and a ticket sequence")
+	// ErrBatchSequenceNotSet is returned when a Batch has neither a non-zero Sequence nor a TicketSequence.
+	ErrBatchSequenceNotSet = errors.New("batch must have a sequence or ticket sequence")
+	// ErrFlagsFieldIsNotAnUint32 is returned when the flags field is missing or is not an uint32.
 	ErrFlagsFieldIsNotAnUint32 = errors.New("flags field is not an uint32")
 	// ErrRawTransactionsFieldIsNotAnArray is returned when the raw transactions field is not an array.
 	ErrRawTransactionsFieldIsNotAnArray = errors.New("raw transactions field is not an array")

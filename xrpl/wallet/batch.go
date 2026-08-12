@@ -5,6 +5,7 @@ import (
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/keypairs"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -40,24 +41,33 @@ func SignMultiBatch(wallet Wallet, tx *transaction.FlatTransaction, opts *SignMu
 		}
 	}
 
-	// Check batch account exists in RawTransactions.Account
+	// A BatchV1_1 signer must authorize an inner transaction as its Account or
+	// Delegate, or be the Counterparty of an inner transaction.
 	batchAccountExists := false
 	rawTxs, ok := (*tx)["RawTransactions"].([]map[string]any)
 	if !ok {
 		return wallettypes.ErrRawTransactionsFieldIsNotAnArray
 	}
 	for _, rawTx := range rawTxs {
-		if innerRawTx, ok := rawTx["RawTransaction"].(map[string]any); ok {
-			acc, ok := innerRawTx["Account"]
-			if !ok {
-				return ErrBatchAccountNotFound
-			}
-			if acc == batchAccount {
-				batchAccountExists = true
-				break
-			}
-		} else {
+		innerRawTx, ok := rawTx["RawTransaction"].(map[string]any)
+		if !ok {
 			return wallettypes.ErrRawTransactionFieldIsNotAnObject
+		}
+
+		authorizer, ok := typecheck.ToString(innerRawTx["Account"])
+		if !ok {
+			return ErrBatchAccountNotFound
+		}
+		if delegate, ok := typecheck.ToString(innerRawTx["Delegate"]); ok {
+			authorizer = delegate
+		}
+		counterparty := ""
+		if value, ok := typecheck.ToString(innerRawTx["Counterparty"]); ok {
+			counterparty = value
+		}
+		if authorizer == batchAccount || counterparty == batchAccount {
+			batchAccountExists = true
+			break
 		}
 	}
 
@@ -69,6 +79,8 @@ func SignMultiBatch(wallet Wallet, tx *transaction.FlatTransaction, opts *SignMu
 	if err != nil {
 		return err
 	}
+	payload.BatchAccount = batchAccount
+	payload.SignerAccount = multisignAddress
 
 	encodedBatch, err := binarycodec.EncodeForSigningBatch(payload.Flatten())
 	if err != nil {
@@ -163,8 +175,18 @@ func CombineBatchSigners(transactions []transaction.Batch) (string, error) {
 		return "", err
 	}
 
+	uniqueSigners := make([]types.BatchSigner, 0, len(signers))
+	var previousAccount types.Address
+	for _, signer := range signers {
+		if signer.BatchSigner.Account == previousAccount {
+			continue
+		}
+		uniqueSigners = append(uniqueSigners, signer)
+		previousAccount = signer.BatchSigner.Account
+	}
+
 	tx := transactions[0]
-	tx.BatchSigners = signers
+	tx.BatchSigners = uniqueSigners
 
 	return binarycodec.Encode(tx.Flatten())
 }

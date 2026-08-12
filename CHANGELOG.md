@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
+- `EncodeForSigningBatch` now creates the `BatchV1_1` signing payload from xrpld 3.3.0 and requires the outer `account` and effective `sequence`. Optional `batchAccount` and `signerAccount` fields bind the Batch signer and nested multisigner accounts. The obsolete `Batch` signing payload is no longer supported.
+- Removed the unused `ErrBatchTxIDNotString` sentinel. Invalid transaction ID collection types continue to return `ErrBatchTxIDsNotArray`.
 - Renamed the `UInt384` and `UInt512` protocol type definitions to `Hash384` and `Hash512`, and removed the `tecHOOK_REJECTED` and `tecNO_DELEGATE_PERMISSION` transaction result mappings.
 - Removed `types.MaxDrops`. Use `currency.MaxNativeDrops` for the maximum native XRP amount in drops.
 
@@ -524,6 +526,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/wallet
 
+- `SignMultiBatch` and `CombineBatchSigners` now implement `BatchV1_1` signing from xrpld 3.3.0. Batch signatures bind the outer account and sequence or ticket value, support inner `Delegate` and `Counterparty` authorizers, bind nested multisigner accounts, reject fragments with different signed outer fields, and remove duplicate Batch signer accounts. Flat Batch transactions accept `Flags`, `Sequence`, and `TicketSequence` values of any whole-number Go type.
 - `Sign` and `Multisign` now return `ErrNilTransaction` for nil transaction maps instead of panicking.
 - `Wallet.Sign` and `Wallet.Multisign` no longer mutate caller-provided transaction maps while adding signing fields.
 
