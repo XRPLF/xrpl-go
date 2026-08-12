@@ -21,15 +21,22 @@ func TestResolveNetworkIdentity(t *testing.T) {
 		preserveOverride bool
 	}{
 		{
-			name:        "missing network ID",
-			discovered:  NetworkIdentity{BuildVersion: "1.12.0"},
-			expectedErr: ErrNetworkIDUnavailable,
+			name:       "missing network ID defaults to zero",
+			discovered: NetworkIdentity{BuildVersion: "1.12.0"},
+			expectedID: uint32Pointer(0),
 		},
 		{
-			name:        "missing network ID cannot verify override",
+			name:             "missing network ID matches zero override",
+			override:         uint32Pointer(0),
+			discovered:       NetworkIdentity{BuildVersion: "1.12.0"},
+			expectedID:       uint32Pointer(0),
+			preserveOverride: true,
+		},
+		{
+			name:        "missing network ID conflicts with nonzero override",
 			override:    uint32Pointer(21337),
 			discovered:  NetworkIdentity{BuildVersion: "1.12.0"},
-			expectedErr: ErrNetworkIDOverrideUnverified,
+			expectedErr: ErrNetworkIDOverrideMismatch,
 		},
 		{
 			name: "valid zero",

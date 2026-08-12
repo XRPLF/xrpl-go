@@ -165,11 +165,12 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 			expectedNetworkIDRequired: boolPointer(false),
 		},
 		{
-			name: "missing network ID",
+			name: "missing network ID defaults to zero",
 			result: map[string]any{"info": map[string]any{
 				"build_version": "1.12.0",
 			}},
-			expectedErr:      ErrNetworkIDUnavailable,
+			expectedID:       uint32Pointer(0),
+			expectedBuild:    "1.12.0",
 			expectedRequests: 1,
 		},
 		{
@@ -572,8 +573,8 @@ func TestClientReconnectReportsLastNetworkIdentityFailure(t *testing.T) {
 		var maxErr ErrMaxReconnectionAttemptsReached
 		require.ErrorAs(t, got, &maxErr)
 		require.Equal(t, 1, maxErr.Attempts)
-		require.ErrorIs(t, got, ErrNetworkIDOverrideUnverified)
-		require.ErrorIs(t, maxErr.Err, ErrNetworkIDOverrideUnverified)
+		require.ErrorIs(t, got, ErrNetworkIDOverrideMismatch)
+		require.ErrorIs(t, maxErr.Err, ErrNetworkIDOverrideMismatch)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for reconnect identity failure")
 	}

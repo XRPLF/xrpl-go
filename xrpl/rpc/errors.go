@@ -92,8 +92,6 @@ var (
 	ErrInvalidBuildVersion = clientinternal.ErrInvalidBuildVersion
 	// ErrNetworkIDOverrideMismatch is returned when an override differs from server_info.
 	ErrNetworkIDOverrideMismatch = clientinternal.ErrNetworkIDOverrideMismatch
-	// ErrNetworkIDOverrideUnverified is returned when server_info omits the ID needed to verify an override.
-	ErrNetworkIDOverrideUnverified = clientinternal.ErrNetworkIDOverrideUnverified
 	// ErrRawTransactionsFieldMissing is returned when the RawTransactions field is missing from a Batch transaction.
 	ErrRawTransactionsFieldMissing = errors.New("RawTransactions field missing from Batch transaction")
 	// ErrRawTransactionFieldMissing is returned when the RawTransaction field is missing from a wrapper.

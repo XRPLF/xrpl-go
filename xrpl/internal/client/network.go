@@ -39,14 +39,12 @@ func CloneNetworkID(networkID *uint32) *uint32 {
 
 // ResolveNetworkIdentity validates a server_info identity against an optional
 // caller-provided override. A matching override pointer is preserved instead of
-// being replaced by the discovered pointer. A missing discovered NetworkID
-// cannot verify an override.
+// being replaced by the discovered pointer. An omitted discovered NetworkID is
+// rippled's default network ID 0.
 func ResolveNetworkIdentity(override *uint32, discovered NetworkIdentity) (NetworkIdentity, error) {
 	if discovered.NetworkID == nil {
-		if override != nil {
-			return NetworkIdentity{}, fmt.Errorf("%w: configured %d", ErrNetworkIDOverrideUnverified, *override)
-		}
-		return ValidateNetworkIdentity(discovered)
+		defaultNetworkID := uint32(0)
+		discovered.NetworkID = &defaultNetworkID
 	}
 	if override != nil && *override != *discovered.NetworkID {
 		return NetworkIdentity{}, fmt.Errorf(

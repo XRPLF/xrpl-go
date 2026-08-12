@@ -42,9 +42,6 @@ var (
 	// ErrNetworkIDOverrideMismatch indicates that a client override does not
 	// match the identity discovered from server_info.
 	ErrNetworkIDOverrideMismatch = errors.New("configured network ID does not match server network ID")
-	// ErrNetworkIDOverrideUnverified indicates that server_info did not include
-	// the network ID needed to verify a client override.
-	ErrNetworkIDOverrideUnverified = errors.New("configured network ID cannot be verified because server network ID is missing")
 	// ErrNetworkIDFieldIsNotAUint32 indicates that a transaction NetworkID value
 	// has the wrong Go type.
 	ErrNetworkIDFieldIsNotAUint32 = errors.New("field NetworkID must be a uint32")
