@@ -56,15 +56,22 @@ func TestMPTokenIssuance_SetLsfMPTCanClawback(t *testing.T) {
 	require.Equal(t, LsfMPTCanClawback, mpTokenIssuance.Flags)
 }
 
-func TestMPTokenIssuanceMutableFlagValues(t *testing.T) {
-	require.Equal(t, uint32(0x00000002), LsmfMPTCanEnableCanLock)
-	require.Equal(t, uint32(0x00000004), LsmfMPTCanEnableRequireAuth)
-	require.Equal(t, uint32(0x00000008), LsmfMPTCanEnableCanEscrow)
-	require.Equal(t, uint32(0x00000010), LsmfMPTCanEnableCanTrade)
-	require.Equal(t, uint32(0x00000020), LsmfMPTCanEnableCanTransfer)
-	require.Equal(t, uint32(0x00000040), LsmfMPTCanEnableCanClawback)
-	require.Equal(t, uint32(0x00010000), LsmfMPTCanMutateMetadata)
-	require.Equal(t, uint32(0x00020000), LsmfMPTCanMutateTransferFee)
+func TestMPTokenIssuance_SetLsfMPTCanHoldConfidentialBalance(t *testing.T) {
+	mpTokenIssuance := &MPTokenIssuance{}
+	mpTokenIssuance.SetLsfMPTCanHoldConfidentialBalance()
+	require.Equal(t, LsfMPTCanHoldConfidentialBalance, mpTokenIssuance.Flags)
+}
+
+func TestMPTokenIssuanceImmutableFlagValues(t *testing.T) {
+	require.Equal(t, uint32(0x00000002), LsifMPTCanLock)
+	require.Equal(t, uint32(0x00000004), LsifMPTRequireAuth)
+	require.Equal(t, uint32(0x00000008), LsifMPTCanEscrow)
+	require.Equal(t, uint32(0x00000010), LsifMPTCanTrade)
+	require.Equal(t, uint32(0x00000020), LsifMPTCanTransfer)
+	require.Equal(t, uint32(0x00000040), LsifMPTCanClawback)
+	require.Equal(t, uint32(0x00000080), LsifMPTCanHoldConfidentialBalance)
+	require.Equal(t, uint32(0x00010000), LsifMPTMetadata)
+	require.Equal(t, uint32(0x00020000), LsifMPTTransferFee)
 }
 
 func TestMPTokenIssuance_OmitsAbsentOptionalFields(t *testing.T) {
@@ -402,7 +409,7 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 }`,
 		},
 		{
-			name: "pass - valid MPToken with MutableFlags",
+			name: "pass - valid MPToken with ImmutableFlags",
 			mpTokenIssuance: &MPTokenIssuance{
 				Index:             types.Hash256("A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9"),
 				LedgerEntryType:   MPTokenIssuanceEntry,
@@ -417,7 +424,7 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 				PreviousTxnID:     types.Hash256("8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB"),
 				PreviousTxnLgrSeq: 234644,
 				Sequence:          1,
-				MutableFlags:      LsmfMPTCanEnableCanLock | LsmfMPTCanMutateMetadata,
+				ImmutableFlags:    LsifMPTCanLock | LsifMPTMetadata,
 			},
 			expected: `{
 	"index": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
@@ -433,7 +440,7 @@ func TestMPTokenIssuanceSerialization(t *testing.T) {
 	"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
 	"PreviousTxnLgrSeq": 234644,
 	"Sequence": 1,
-	"MutableFlags": 65538
+	"ImmutableFlags": 65538
 }`,
 		},
 	}

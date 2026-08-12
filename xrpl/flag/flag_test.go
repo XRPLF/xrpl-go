@@ -63,3 +63,50 @@ func TestFlag_Contains(t *testing.T) {
 		})
 	}
 }
+
+func TestFlag_ContainsOnly(t *testing.T) {
+	testCases := []struct {
+		name         string
+		currentFlag  uint32
+		allowedFlags uint32
+		expected     bool
+	}{
+		{
+			name:         "pass - all flags are allowed",
+			currentFlag:  dummyFlagA | dummyFlagB,
+			allowedFlags: dummyFlagA | dummyFlagB | dummyFlagC,
+			expected:     true,
+		},
+		{
+			name:         "pass - unsupported flag",
+			currentFlag:  dummyFlagA | dummyFlagC,
+			allowedFlags: dummyFlagA | dummyFlagB,
+			expected:     false,
+		},
+		{
+			name:         "pass - no flags",
+			currentFlag:  0,
+			allowedFlags: dummyFlagA,
+			expected:     true,
+		},
+		{
+			name:         "pass - no flags allowed",
+			currentFlag:  dummyFlagA,
+			allowedFlags: 0,
+			expected:     false,
+		},
+		{
+			name:         "pass - zero values",
+			currentFlag:  0,
+			allowedFlags: 0,
+			expected:     true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := ContainsOnly(tc.currentFlag, tc.allowedFlags)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}

@@ -19,26 +19,30 @@ const (
 	LsfMPTCanTransfer uint32 = 0x00000020
 	// LsfMPTCanClawback if set, indicates that the issuer may use the Clawback transaction to claw back value from individual holders.
 	LsfMPTCanClawback uint32 = 0x00000040
+	// LsfMPTCanHoldConfidentialBalance if set, indicates that holders can hold confidential balances.
+	LsfMPTCanHoldConfidentialBalance uint32 = 0x00000080
 )
 
-// Ledger-state mutable flags for MPTokenIssuance (Lsmf prefix).
+// Ledger-state immutable flags for MPTokenIssuance.
 const (
-	// LsmfMPTCanEnableCanLock indicates the CanLock property can be enabled.
-	LsmfMPTCanEnableCanLock uint32 = 0x00000002
-	// LsmfMPTCanEnableRequireAuth indicates the RequireAuth property can be enabled.
-	LsmfMPTCanEnableRequireAuth uint32 = 0x00000004
-	// LsmfMPTCanEnableCanEscrow indicates the CanEscrow property can be enabled.
-	LsmfMPTCanEnableCanEscrow uint32 = 0x00000008
-	// LsmfMPTCanEnableCanTrade indicates the CanTrade property can be enabled.
-	LsmfMPTCanEnableCanTrade uint32 = 0x00000010
-	// LsmfMPTCanEnableCanTransfer indicates the CanTransfer property can be enabled.
-	LsmfMPTCanEnableCanTransfer uint32 = 0x00000020
-	// LsmfMPTCanEnableCanClawback indicates the CanClawback property can be enabled.
-	LsmfMPTCanEnableCanClawback uint32 = 0x00000040
-	// LsmfMPTCanMutateMetadata indicates the MPTokenMetadata can be mutated.
-	LsmfMPTCanMutateMetadata uint32 = 0x00010000
-	// LsmfMPTCanMutateTransferFee indicates the TransferFee can be mutated.
-	LsmfMPTCanMutateTransferFee uint32 = 0x00020000
+	// LsifMPTCanLock indicates that CanLock can no longer be enabled.
+	LsifMPTCanLock uint32 = 0x00000002
+	// LsifMPTRequireAuth indicates that RequireAuth can no longer be enabled.
+	LsifMPTRequireAuth uint32 = 0x00000004
+	// LsifMPTCanEscrow indicates that CanEscrow can no longer be enabled.
+	LsifMPTCanEscrow uint32 = 0x00000008
+	// LsifMPTCanTrade indicates that CanTrade can no longer be enabled.
+	LsifMPTCanTrade uint32 = 0x00000010
+	// LsifMPTCanTransfer indicates that CanTransfer can no longer be enabled.
+	LsifMPTCanTransfer uint32 = 0x00000020
+	// LsifMPTCanClawback indicates that CanClawback can no longer be enabled.
+	LsifMPTCanClawback uint32 = 0x00000040
+	// LsifMPTCanHoldConfidentialBalance indicates that confidential balances can no longer be enabled.
+	LsifMPTCanHoldConfidentialBalance uint32 = 0x00000080
+	// LsifMPTMetadata indicates that MPTokenMetadata can no longer be changed.
+	LsifMPTMetadata uint32 = 0x00010000
+	// LsifMPTTransferFee indicates that TransferFee can no longer be changed.
+	LsifMPTTransferFee uint32 = 0x00020000
 )
 
 // An MPTokenIssuance entry represents a single MPT issuance and holds data associated with the issuance itself.
@@ -83,8 +87,8 @@ type MPTokenIssuance struct {
 	LockedAmount string `json:",omitempty"`
 	// DomainID is the ledger entry ID of a permissioned domain that grants access to the MPT.
 	DomainID string `json:",omitempty"`
-	// MutableFlags indicates which issuance flags can be enabled, or which fields can be mutated, after creation.
-	MutableFlags uint32 `json:",omitempty"`
+	// ImmutableFlags indicates which issuance capabilities and fields can no longer change.
+	ImmutableFlags uint32 `json:",omitempty"`
 	// ReferenceHolding identifies the ledger entry that holds this issuance's reference balance.
 	ReferenceHolding types.Hash256 `json:",omitempty"`
 }
@@ -127,4 +131,9 @@ func (c *MPTokenIssuance) SetLsfMPTCanTransfer() {
 // SetLsfMPTCanClawback sets the LsfMPTCanClawback flag.
 func (c *MPTokenIssuance) SetLsfMPTCanClawback() {
 	c.Flags |= LsfMPTCanClawback
+}
+
+// SetLsfMPTCanHoldConfidentialBalance sets the confidential balance capability.
+func (c *MPTokenIssuance) SetLsfMPTCanHoldConfidentialBalance() {
+	c.Flags |= LsfMPTCanHoldConfidentialBalance
 }

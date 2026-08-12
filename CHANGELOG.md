@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed MPT ledger amount fields from `uint64` to quoted base-10 strings. Changed `MPToken.OwnerNode` and `MPTokenIssuance.OwnerNode` from `uint64` to hexadecimal strings. `MPTokenIssuance` JSON now omits absent `AssetScale`, `TransferFee`, and `MPTokenMetadata` fields.
 - Changed `Oracle.OwnerNode` and `Escrow.IssuerNode` from `uint64` to hexadecimal strings. Changed `PriceData.AssetPrice` from `uint64` to `*uint64`, use `ledger.AssetPrice` to set a value. `PriceData` now decodes `rippled` hexadecimal price strings, preserves absent and explicit zero prices, accepts the XLS-47 `Scale` range through 20, and omits `Scale` when `AssetPrice` is absent. Added the missing `Oracle.LedgerEntryType` and `Oracle.Flags` fields.
-- Renamed the six Dynamic MPT capability constants from `LsmfMPTCanMutate*` to `LsmfMPTCanEnable*`. The metadata and transfer-fee constants retain their `LsmfMPTCanMutate*` names.
+- Replaced the v0.2.0 `MPTokenIssuance.MutableFlags` model and `LsmfMPT*` constants with the rippled 3.3.0 `ImmutableFlags` model and `LsifMPT*` constants. Set bits now identify capabilities and fields that can no longer change.
 
 #### xrpl/queries/server
 
@@ -56,10 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- Renamed the six `MPTokenIssuanceCreate` capability constants and setters from `TmfMPTCanMutate*`/`SetMPTCanMutate*` to `TmfMPTCanEnable*`/`SetMPTCanEnable*`. Metadata and transfer-fee mutation names are unchanged.
-- Removed the six `TmfMPTClear*` constants and corresponding `MPTokenIssuanceSet` clear methods, Dynamic MPT capability flags can now only be enabled.
-- Changed the `MPTokenIssuanceSet` mutable-flag values to a contiguous mask: `TmfMPTSetCanLock` (`0x01`), `TmfMPTSetRequireAuth` (`0x02`), `TmfMPTSetCanEscrow` (`0x04`), `TmfMPTSetCanTrade` (`0x08`), `TmfMPTSetCanTransfer` (`0x10`), and `TmfMPTSetCanClawback` (`0x20`).
-- Removed `ErrMPTIssuanceSetMutableFlagsConflict` and `ErrMPTIssuanceSetTransferFeeWithClearCanTransfer` along with the set/clear validation model.
+- Replaced the v0.2.0 Dynamic MPT `MutableFlags` fields with rippled 3.3.0 `ImmutableFlags` fields on `MPTokenIssuanceCreate` and `MPTokenIssuanceSet`. Use `types.ImmutableFlags` and the `TifMPT*` constants and setters to make issuance capabilities or fields permanently immutable.
+- Moved `MPTokenIssuanceSet` capability enablement into transaction `Flags`. Use `TfMPTSetCanLock` (`0x04`), `TfMPTSetRequireAuth` (`0x08`), `TfMPTSetCanEscrow` (`0x10`), `TfMPTSetCanTrade` (`0x20`), `TfMPTSetCanTransfer` (`0x40`), `TfMPTSetCanClawback` (`0x80`), and `TfMPTSetCanHoldConfidentialBalance` (`0x100`). `Validate` accepts universal transaction flags and rejects unsupported bits.
+- Removed the v0.2.0 `MutableFlags` constants, set and clear methods, helper, and validation errors. The rippled 3.3.0 model permits capability flags with metadata, transfer-fee, and immutability changes, but not with lock or unlock operations. A `Holder`-only transaction is rejected as empty, it must include a lock or unlock flag.
 - Added `types.MPTAmount` for quoted base-10 MPT values and changed `MPTokenIssuanceCreate.MaximumAmount` from `*types.XRPCurrencyAmount` to `*types.MPTAmount`. When present, `MaximumAmount` must be in the range `1..2^63-1`.
 
 #### xrpl/websocket
@@ -91,9 +90,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exported the typed `MaxNativeDrops` constant for the maximum native XRP amount in drops.
 - Added the exact, immutable `Drops` type for non-negative native XRP amounts, with drops and XRP constructors, fraction-preserving arithmetic, comparison, rounding, and formatting methods. Added `ErrInvalidNativeAmount`, `ErrNegativeNativeAmount`, `ErrInvalidDecimalMultiplier`, `ErrFractionalDrops`, and `ErrDropsDivisionByZero` for validation failures.
 
+#### xrpl/flag
+
+- Added `ContainsOnly` to check that a flag value contains no bits outside an allowed mask.
+
 #### xrpl/ledger-entry-types
 
 - Added `MPTokenIssuance.ReferenceHolding`, `DirectoryNode.TakerPaysMPT`, and `DirectoryNode.TakerGetsMPT`, plus the `LsfMPTAMM` flag and `SetLsfMPTAMM` setter for AMM-owned MPT holdings.
+- Added `LsfMPTCanHoldConfidentialBalance` and `SetLsfMPTCanHoldConfidentialBalance` for the rippled 3.3.0 MPT confidential-balance capability.
 
 #### xrpl/queries
 
@@ -136,8 +140,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- Added `ErrMPTIssuanceCreateInvalidMutableFlags` and `ErrMPTIssuanceSetInvalidMutableFlags` for unsupported Dynamic MPT flag bits.
+- Added `ErrMPTIssuanceCreateInvalidImmutableFlags` and `ErrMPTIssuanceSetInvalidImmutableFlags` for unsupported Dynamic MPT immutability bits, `ErrMPTIssuanceSetInvalidFlags` for unsupported `MPTokenIssuanceSet` `Flags` bits, and transfer-fee conflict errors for confidential MPT balances.
+- Added `TfMPTCanHoldConfidentialBalance` and its create setter, plus immutability support for confidential balances, metadata, and transfer fees.
 - Added MPT amount and `Holder` support to `Clawback`, including JSON, binary encoding, signing, and validation. Validation rejects invalid issuer and holder combinations, invalid or zero amounts, and XRP amounts.
+
+#### xrpl/transaction/types
+
+- Added shared `TfFullyCanonicalSig` and `TfUniversal` transaction flag definitions, and moved the existing `TfInnerBatchTxn` definition alongside them.
 
 #### xrpl/websocket
 
@@ -152,6 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
+- Replaced the v0.2.0 Dynamic MPT codec definitions with the rippled 3.3.0 `ImmutableFlags` field and current MPT transaction and ledger flags.
 - `UInt64` serialization is now field-aware. MPT amount fields (`MaximumAmount`, `OutstandingAmount`, `MPTAmount`, and `LockedAmount`) use quoted base-10 strings, while other `UInt64` fields use hexadecimal strings.
 - Issued-currency amounts now accept tagless mainnet and testnet X-address issuers and encode the underlying AccountID. Issuers with embedded tags are rejected.
 - Expanded the embedded protocol definitions with account-set, ledger-entry, and transaction flag maps, ledger-entry and transaction format maps, and updated protocol type and transaction result mappings.
@@ -174,7 +184,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `MutableFlags` bits in addition to an explicitly zero mask. `MPTokenIssuanceSet`, `MPTokenAuthorize`, and `MPTokenIssuanceDestroy` also require their `MPTokenIssuanceID` to be an exact 192-bit hexadecimal value.
+- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `ImmutableFlags` bits and an explicitly zero mask. `MPTokenIssuanceSet`, `MPTokenAuthorize`, and `MPTokenIssuanceDestroy` also require their `MPTokenIssuanceID` to be an exact 192-bit hexadecimal value.
 - `DelegateSet` now uses a present empty `Permissions` list to delete a Delegate object. Vault and Loan transaction types are rejected as non-delegable according to XLS-75.
 - Inner Batch transaction flattening now preserves the wire-required empty `SigningPubKey`, and raw inner-transaction validation requires that explicit empty field. Explicit null Batch inner fields now fail where the wire requires absent or empty values.
 - `Batch.Validate` now requires 2 through 8 inner transactions. `ErrBatchRawTransactionsEmpty` remains a compatibility alias that matches the new count error with `errors.Is`.

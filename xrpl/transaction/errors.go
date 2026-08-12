@@ -222,24 +222,30 @@ var (
 
 	// ErrMPTIssuanceCreateMaximumAmountInvalid is returned when MaximumAmount is outside 1..2^63-1.
 	ErrMPTIssuanceCreateMaximumAmountInvalid = errors.New("mptoken issuance create: MaximumAmount must be between 1 and 9223372036854775807")
-	// ErrMPTIssuanceCreateMutableFlagsZero is returned when MutableFlags is set to zero in MPTokenIssuanceCreate.
-	ErrMPTIssuanceCreateMutableFlagsZero = errors.New("mptoken issuance create: MutableFlags cannot be zero")
-	// ErrMPTIssuanceCreateInvalidMutableFlags is returned when MutableFlags contains unsupported bits.
-	ErrMPTIssuanceCreateInvalidMutableFlags = errors.New("mptoken issuance create: MutableFlags contains unsupported flags")
+	// ErrMPTIssuanceCreateImmutableFlagsZero is returned when ImmutableFlags is set to zero in MPTokenIssuanceCreate.
+	ErrMPTIssuanceCreateImmutableFlagsZero = errors.New("mptoken issuance create: ImmutableFlags cannot be zero")
+	// ErrMPTIssuanceCreateInvalidImmutableFlags is returned when ImmutableFlags contains unsupported bits.
+	ErrMPTIssuanceCreateInvalidImmutableFlags = errors.New("mptoken issuance create: ImmutableFlags contains unsupported flags")
+	// ErrMPTIssuanceCreateTransferFeeWithConfidentialBalance is returned when a non-zero transfer fee is used with confidential balances.
+	ErrMPTIssuanceCreateTransferFeeWithConfidentialBalance = errors.New("mptoken issuance create: TransferFee cannot be non-zero when TfMPTCanHoldConfidentialBalance is set")
 	// ErrMPTIssuanceCreateDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
 	ErrMPTIssuanceCreateDomainIDInvalid = errors.New("mptoken issuance create: DomainID must be a valid 64-character hexadecimal string")
 	// ErrMPTIssuanceCreateDomainIDRequiresRequireAuth is returned when DomainID is set without enabling TfMPTRequireAuth flag.
 	ErrMPTIssuanceCreateDomainIDRequiresRequireAuth = errors.New("mptoken issuance create: DomainID requires TfMPTRequireAuth flag to be set")
-	// ErrMPTIssuanceSetEmpty is returned when no operation is specified (no Flags, Holder, or DynamicMPT fields).
-	ErrMPTIssuanceSetEmpty = errors.New("mptoken issuance set: at least one of Flags, Holder, MutableFlags, MPTokenMetadata, TransferFee, or DomainID must be set")
-	// ErrMPTIssuanceSetHolderMutuallyExclusive is returned when Holder is set together with DynamicMPT fields.
-	ErrMPTIssuanceSetHolderMutuallyExclusive = errors.New("mptoken issuance set: Holder is mutually exclusive with MutableFlags/MPTokenMetadata/TransferFee/DomainID")
-	// ErrMPTIssuanceSetFlagsMutuallyExclusive is returned when non-zero Flags are set together with DynamicMPT fields.
-	ErrMPTIssuanceSetFlagsMutuallyExclusive = errors.New("mptoken issuance set: Flags is mutually exclusive with MutableFlags/MPTokenMetadata/TransferFee")
-	// ErrMPTIssuanceSetMutableFlagsZero is returned when MutableFlags is set to zero.
-	ErrMPTIssuanceSetMutableFlagsZero = errors.New("mptoken issuance set: MutableFlags cannot be zero")
-	// ErrMPTIssuanceSetInvalidMutableFlags is returned when MutableFlags contains unsupported bits.
-	ErrMPTIssuanceSetInvalidMutableFlags = errors.New("mptoken issuance set: MutableFlags contains unsupported flags")
+	// ErrMPTIssuanceSetInvalidFlags is returned when Flags contains unsupported bits.
+	ErrMPTIssuanceSetInvalidFlags = errors.New("mptoken issuance set: Flags contains unsupported flags")
+	// ErrMPTIssuanceSetEmpty is returned when no operation is specified.
+	ErrMPTIssuanceSetEmpty = errors.New("mptoken issuance set: at least one of Flags, ImmutableFlags, MPTokenMetadata, TransferFee, or DomainID must be set")
+	// ErrMPTIssuanceSetHolderMutuallyExclusive is returned when Holder is set together with a mutation or DomainID.
+	ErrMPTIssuanceSetHolderMutuallyExclusive = errors.New("mptoken issuance set: Holder is mutually exclusive with capability flags/ImmutableFlags/MPTokenMetadata/TransferFee/DomainID")
+	// ErrMPTIssuanceSetFlagsMutuallyExclusive is returned when lock or unlock is set together with a mutation.
+	ErrMPTIssuanceSetFlagsMutuallyExclusive = errors.New("mptoken issuance set: lock or unlock is mutually exclusive with capability flags/ImmutableFlags/MPTokenMetadata/TransferFee")
+	// ErrMPTIssuanceSetImmutableFlagsZero is returned when ImmutableFlags is set to zero.
+	ErrMPTIssuanceSetImmutableFlagsZero = errors.New("mptoken issuance set: ImmutableFlags cannot be zero")
+	// ErrMPTIssuanceSetInvalidImmutableFlags is returned when ImmutableFlags contains unsupported bits.
+	ErrMPTIssuanceSetInvalidImmutableFlags = errors.New("mptoken issuance set: ImmutableFlags contains unsupported flags")
+	// ErrMPTIssuanceSetTransferFeeWithConfidentialBalance is returned when a non-zero transfer fee is enabled with confidential balances.
+	ErrMPTIssuanceSetTransferFeeWithConfidentialBalance = errors.New("mptoken issuance set: TransferFee cannot be non-zero when TfMPTSetCanHoldConfidentialBalance is set")
 	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string (and not empty).
 	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string or empty")
 

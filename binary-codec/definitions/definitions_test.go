@@ -40,6 +40,12 @@ func TestLoadDefinitions(t *testing.T) {
 		ordinal int32
 	}{
 		{
+			name:    "ImmutableFlags",
+			info:    &FieldInfo{Nth: 53, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "UInt32"},
+			header:  &FieldHeader{TypeCode: 2, FieldCode: 53},
+			ordinal: 131125,
+		},
+		{
 			name:    "ReferenceHolding",
 			info:    &FieldInfo{Nth: 39, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "Hash256"},
 			header:  &FieldHeader{TypeCode: 5, FieldCode: 39},

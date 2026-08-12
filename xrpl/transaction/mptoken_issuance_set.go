@@ -12,35 +12,31 @@ const (
 	TfMPTLock uint32 = 0x00000001
 	// TfMPTUnlock if set, indicates that all MPT balances for this asset should be unlocked.
 	TfMPTUnlock uint32 = 0x00000002
+	// TfMPTSetCanLock enables CanLock.
+	TfMPTSetCanLock uint32 = 0x00000004
+	// TfMPTSetRequireAuth enables RequireAuth.
+	TfMPTSetRequireAuth uint32 = 0x00000008
+	// TfMPTSetCanEscrow enables CanEscrow.
+	TfMPTSetCanEscrow uint32 = 0x00000010
+	// TfMPTSetCanTrade enables CanTrade.
+	TfMPTSetCanTrade uint32 = 0x00000020
+	// TfMPTSetCanTransfer enables CanTransfer.
+	TfMPTSetCanTransfer uint32 = 0x00000040
+	// TfMPTSetCanClawback enables CanClawback.
+	TfMPTSetCanClawback uint32 = 0x00000080
+	// TfMPTSetCanHoldConfidentialBalance enables confidential balances.
+	TfMPTSetCanHoldConfidentialBalance uint32 = 0x00000100
+
+	mpTokenIssuanceSetEnableFlagMask = TfMPTSetCanLock |
+		TfMPTSetRequireAuth |
+		TfMPTSetCanEscrow |
+		TfMPTSetCanTrade |
+		TfMPTSetCanTransfer |
+		TfMPTSetCanClawback |
+		TfMPTSetCanHoldConfidentialBalance
 )
 
-// MutableFlags constants for MPTokenIssuanceSet.
-// These flags enable issuance capabilities that were declared mutable at creation.
-const (
-	// TmfMPTSetCanLock enables the CanLock flag.
-	TmfMPTSetCanLock uint32 = 0x00000001
-	// TmfMPTSetRequireAuth enables the RequireAuth flag.
-	TmfMPTSetRequireAuth uint32 = 0x00000002
-	// TmfMPTSetCanEscrow enables the CanEscrow flag.
-	TmfMPTSetCanEscrow uint32 = 0x00000004
-	// TmfMPTSetCanTrade enables the CanTrade flag.
-	TmfMPTSetCanTrade uint32 = 0x00000008
-	// TmfMPTSetCanTransfer enables the CanTransfer flag.
-	TmfMPTSetCanTransfer uint32 = 0x00000010
-	// TmfMPTSetCanClawback enables the CanClawback flag.
-	TmfMPTSetCanClawback uint32 = 0x00000020
-
-	validMPTokenIssuanceSetMutableFlags = TmfMPTSetCanLock |
-		TmfMPTSetRequireAuth |
-		TmfMPTSetCanEscrow |
-		TmfMPTSetCanTrade |
-		TmfMPTSetCanTransfer |
-		TmfMPTSetCanClawback
-)
-
-// MPTokenIssuanceSet transaction is used to globally lock/unlock a MPTokenIssuance,
-// lock/unlock an individual's MPToken, mutate dynamic MPT properties
-// (MutableFlags, MPTokenMetadata, TransferFee), or update the DomainID.
+// MPTokenIssuanceSet transaction is used to lock or unlock an MPT and to update Dynamic MPT properties.
 //
 // ```json
 //
@@ -56,18 +52,17 @@ type MPTokenIssuanceSet struct {
 	BaseTx
 	// The MPTokenIssuance identifier.
 	MPTokenIssuanceID string
-	// (Optional) XRPL Address of an individual token holder balance to lock/unlock. If omitted, this transaction applies to all any accounts holding MPTs.
+	// Holder is the optional XRPL address of a token holder balance to lock or unlock.
 	Holder *types.Address
-	// (Optional) The ledger entry ID of a permissioned domain to associate with this issuance.
+	// DomainID is the optional permissioned domain to associate with this issuance.
 	// An empty string removes the domain.
 	DomainID *string `json:",omitempty"`
-	// (Optional) New metadata to replace the existing value.
+	// MPTokenMetadata is the optional new metadata. An empty string removes the metadata.
 	MPTokenMetadata *string `json:",omitempty"`
-	// (Optional) New transfer fee value between 0 and 50,000.
+	// TransferFee is the optional new transfer fee value between 0 and 50,000.
 	TransferFee *uint16 `json:",omitempty"`
-	// (Optional) Enable issuance flags that were declared mutable at creation.
-	// Once enabled, these flags cannot be disabled by MPTokenIssuanceSet.
-	MutableFlags *uint32 `json:",omitempty"`
+	// ImmutableFlags adds permanent restrictions to issuance capabilities and fields.
+	ImmutableFlags *uint32 `json:",omitempty"`
 }
 
 // TxType returns the type of the transaction (MPTokenIssuanceSet).
@@ -80,81 +75,122 @@ func (m *MPTokenIssuanceSet) Flatten() FlatTransaction {
 	flattened := m.BaseTx.Flatten()
 
 	flattened["TransactionType"] = "MPTokenIssuanceSet"
-
 	flattened["MPTokenIssuanceID"] = m.MPTokenIssuanceID
 
 	if m.Holder != nil {
 		flattened["Holder"] = m.Holder.String()
 	}
-
 	if m.DomainID != nil {
 		flattened["DomainID"] = *m.DomainID
 	}
-
 	if m.MPTokenMetadata != nil {
 		flattened["MPTokenMetadata"] = *m.MPTokenMetadata
 	}
-
 	if m.TransferFee != nil {
 		flattened["TransferFee"] = *m.TransferFee
 	}
-
-	if m.MutableFlags != nil {
-		flattened["MutableFlags"] = *m.MutableFlags
+	if m.ImmutableFlags != nil {
+		flattened["ImmutableFlags"] = *m.ImmutableFlags
 	}
 
 	return flattened
 }
 
 // SetMPTLockFlag sets the TfMPTLock flag on the transaction.
-// Indicates that all MPT balances for this asset should be locked.
 func (m *MPTokenIssuanceSet) SetMPTLockFlag() {
 	m.Flags |= TfMPTLock
 }
 
 // SetMPTUnlockFlag sets the TfMPTUnlock flag on the transaction.
-// Indicates that all MPT balances for this asset should be unlocked.
 func (m *MPTokenIssuanceSet) SetMPTUnlockFlag() {
 	m.Flags |= TfMPTUnlock
 }
 
-// setMutableFlag is a helper that initialises MutableFlags if nil and applies the given flag.
-func (m *MPTokenIssuanceSet) setMutableFlag(f uint32) {
-	if m.MutableFlags == nil {
-		mf := uint32(0)
-		m.MutableFlags = &mf
+// SetMPTCanLockFlag enables CanLock.
+func (m *MPTokenIssuanceSet) SetMPTCanLockFlag() {
+	m.Flags |= TfMPTSetCanLock
+}
+
+// SetMPTRequireAuthFlag enables RequireAuth.
+func (m *MPTokenIssuanceSet) SetMPTRequireAuthFlag() {
+	m.Flags |= TfMPTSetRequireAuth
+}
+
+// SetMPTCanEscrowFlag enables CanEscrow.
+func (m *MPTokenIssuanceSet) SetMPTCanEscrowFlag() {
+	m.Flags |= TfMPTSetCanEscrow
+}
+
+// SetMPTCanTradeFlag enables CanTrade.
+func (m *MPTokenIssuanceSet) SetMPTCanTradeFlag() {
+	m.Flags |= TfMPTSetCanTrade
+}
+
+// SetMPTCanTransferFlag enables CanTransfer.
+func (m *MPTokenIssuanceSet) SetMPTCanTransferFlag() {
+	m.Flags |= TfMPTSetCanTransfer
+}
+
+// SetMPTCanClawbackFlag enables CanClawback.
+func (m *MPTokenIssuanceSet) SetMPTCanClawbackFlag() {
+	m.Flags |= TfMPTSetCanClawback
+}
+
+// SetMPTCanHoldConfidentialBalanceFlag enables confidential balances.
+func (m *MPTokenIssuanceSet) SetMPTCanHoldConfidentialBalanceFlag() {
+	m.Flags |= TfMPTSetCanHoldConfidentialBalance
+}
+
+func (m *MPTokenIssuanceSet) setImmutableFlag(f uint32) {
+	if m.ImmutableFlags == nil {
+		m.ImmutableFlags = new(uint32)
 	}
-	*m.MutableFlags |= f
+	*m.ImmutableFlags |= f
 }
 
-// SetMPTSetCanLockMutableFlag enables the CanLock flag.
-func (m *MPTokenIssuanceSet) SetMPTSetCanLockMutableFlag() {
-	m.setMutableFlag(TmfMPTSetCanLock)
+// SetMPTCanLockImmutableFlag makes the CanLock capability immutable.
+func (m *MPTokenIssuanceSet) SetMPTCanLockImmutableFlag() {
+	m.setImmutableFlag(TifMPTCanLock)
 }
 
-// SetMPTSetRequireAuthMutableFlag enables the RequireAuth flag.
-func (m *MPTokenIssuanceSet) SetMPTSetRequireAuthMutableFlag() {
-	m.setMutableFlag(TmfMPTSetRequireAuth)
+// SetMPTRequireAuthImmutableFlag makes the RequireAuth capability immutable.
+func (m *MPTokenIssuanceSet) SetMPTRequireAuthImmutableFlag() {
+	m.setImmutableFlag(TifMPTRequireAuth)
 }
 
-// SetMPTSetCanEscrowMutableFlag enables the CanEscrow flag.
-func (m *MPTokenIssuanceSet) SetMPTSetCanEscrowMutableFlag() {
-	m.setMutableFlag(TmfMPTSetCanEscrow)
+// SetMPTCanEscrowImmutableFlag makes the CanEscrow capability immutable.
+func (m *MPTokenIssuanceSet) SetMPTCanEscrowImmutableFlag() {
+	m.setImmutableFlag(TifMPTCanEscrow)
 }
 
-// SetMPTSetCanTradeMutableFlag enables the CanTrade flag.
-func (m *MPTokenIssuanceSet) SetMPTSetCanTradeMutableFlag() {
-	m.setMutableFlag(TmfMPTSetCanTrade)
+// SetMPTCanTradeImmutableFlag makes the CanTrade capability immutable.
+func (m *MPTokenIssuanceSet) SetMPTCanTradeImmutableFlag() {
+	m.setImmutableFlag(TifMPTCanTrade)
 }
 
-// SetMPTSetCanTransferMutableFlag enables the CanTransfer flag.
-func (m *MPTokenIssuanceSet) SetMPTSetCanTransferMutableFlag() {
-	m.setMutableFlag(TmfMPTSetCanTransfer)
+// SetMPTCanTransferImmutableFlag makes the CanTransfer capability immutable.
+func (m *MPTokenIssuanceSet) SetMPTCanTransferImmutableFlag() {
+	m.setImmutableFlag(TifMPTCanTransfer)
 }
 
-// SetMPTSetCanClawbackMutableFlag enables the CanClawback flag.
-func (m *MPTokenIssuanceSet) SetMPTSetCanClawbackMutableFlag() {
-	m.setMutableFlag(TmfMPTSetCanClawback)
+// SetMPTCanClawbackImmutableFlag makes the CanClawback capability immutable.
+func (m *MPTokenIssuanceSet) SetMPTCanClawbackImmutableFlag() {
+	m.setImmutableFlag(TifMPTCanClawback)
+}
+
+// SetMPTCanHoldConfidentialBalanceImmutableFlag makes the confidential balance capability immutable.
+func (m *MPTokenIssuanceSet) SetMPTCanHoldConfidentialBalanceImmutableFlag() {
+	m.setImmutableFlag(TifMPTCanHoldConfidentialBalance)
+}
+
+// SetMPTMetadataImmutableFlag makes MPTokenMetadata immutable.
+func (m *MPTokenIssuanceSet) SetMPTMetadataImmutableFlag() {
+	m.setImmutableFlag(TifMPTMetadata)
+}
+
+// SetMPTTransferFeeImmutableFlag makes TransferFee immutable.
+func (m *MPTokenIssuanceSet) SetMPTTransferFeeImmutableFlag() {
+	m.setImmutableFlag(TifMPTTransferFee)
 }
 
 // Validate validates the MPTokenIssuanceSet transaction ensuring all fields are correct.
@@ -164,67 +200,60 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, err
 	}
 
-	// MPTokenIssuanceID is required and must be an exact UInt192 value.
 	if _, ok := decodeMPTIssuanceID(m.MPTokenIssuanceID); !ok {
 		return false, ErrInvalidMPTokenIssuanceIDSet
 	}
-
-	// If a Holder is specified, validate it as a proper XRPL address.
 	if m.Holder != nil && !addresscodec.IsValidAddress(m.Holder.String()) {
 		return false, ErrInvalidAccount
 	}
-
-	// Holder must be different from Account.
 	if m.Holder != nil && m.Account.String() == m.Holder.String() {
 		return false, ErrHolderAccountConflict
 	}
 
-	// Check flag conflict: TfMPTLock and TfMPTUnlock cannot both be enabled
+	allowedFlags := types.TfUniversal | TfMPTLock | TfMPTUnlock | mpTokenIssuanceSetEnableFlagMask
+	if !flag.ContainsOnly(m.Flags, allowedFlags) {
+		return false, ErrMPTIssuanceSetInvalidFlags
+	}
+
 	isLock := flag.Contains(m.Flags, TfMPTLock)
 	isUnlock := flag.Contains(m.Flags, TfMPTUnlock)
-
 	if isLock && isUnlock {
 		return false, ErrMPTokenIssuanceSetFlags
 	}
 
-	hasDynamicMPTFields := m.MutableFlags != nil || m.MPTokenMetadata != nil || m.TransferFee != nil
+	hasEnableFlag := m.Flags&mpTokenIssuanceSetEnableFlagMask != 0
+	isMutate := hasEnableFlag || m.ImmutableFlags != nil || m.MPTokenMetadata != nil || m.TransferFee != nil
 
-	// At least one operation must be specified (lock/unlock, holder lock/unlock, DynamicMPT mutation, or DomainID).
-	if m.Flags == 0 && m.Holder == nil && !hasDynamicMPTFields && m.DomainID == nil {
+	if m.Flags == 0 && !isMutate && m.DomainID == nil {
 		return false, ErrMPTIssuanceSetEmpty
 	}
-
-	// Holder is mutually exclusive with DynamicMPT fields and DomainID.
-	if m.Holder != nil && (hasDynamicMPTFields || m.DomainID != nil) {
+	if m.Holder != nil && (isMutate || m.DomainID != nil) {
 		return false, ErrMPTIssuanceSetHolderMutuallyExclusive
 	}
-
-	// Non-zero Flags are mutually exclusive with DynamicMPT fields.
-	if m.Flags != 0 && hasDynamicMPTFields {
+	if isMutate && (isLock || isUnlock) {
 		return false, ErrMPTIssuanceSetFlagsMutuallyExclusive
 	}
 
-	if m.MutableFlags != nil {
-		if *m.MutableFlags == 0 {
-			return false, ErrMPTIssuanceSetMutableFlagsZero
+	if m.ImmutableFlags != nil {
+		if *m.ImmutableFlags == 0 {
+			return false, ErrMPTIssuanceSetImmutableFlagsZero
 		}
-		if *m.MutableFlags&^uint32(validMPTokenIssuanceSetMutableFlags) != 0 {
-			return false, ErrMPTIssuanceSetInvalidMutableFlags
+		if *m.ImmutableFlags&^uint32(validMPTokenIssuanceImmutableFlags) != 0 {
+			return false, ErrMPTIssuanceSetInvalidImmutableFlags
 		}
 	}
 
-	// TransferFee must not exceed MaxTransferFee.
-	if m.TransferFee != nil && *m.TransferFee > MaxTransferFee {
-		return false, ErrInvalidTransferFee
+	if m.TransferFee != nil {
+		if *m.TransferFee > MaxTransferFee {
+			return false, ErrInvalidTransferFee
+		}
+		if *m.TransferFee > 0 && flag.Contains(m.Flags, TfMPTSetCanHoldConfidentialBalance) {
+			return false, ErrMPTIssuanceSetTransferFeeWithConfidentialBalance
+		}
 	}
-
-	// MPTokenMetadata: empty string is valid (removes the field per XLS-94),
-	// otherwise must be valid hex and at most 1024 bytes (2048 hex chars).
 	if m.MPTokenMetadata != nil && *m.MPTokenMetadata != "" && !ValidateHexMetadata(*m.MPTokenMetadata, 2*types.MaxMPTokenMetadataByteLength) {
 		return false, ErrInvalidMPTokenMetadata
 	}
-
-	// DomainID: empty string is valid (removes domain), otherwise must be valid 64-char hex.
 	if m.DomainID != nil && *m.DomainID != "" && !IsDomainID(*m.DomainID) {
 		return false, ErrMPTIssuanceSetDomainIDInvalid
 	}

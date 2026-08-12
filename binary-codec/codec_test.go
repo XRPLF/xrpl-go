@@ -9,6 +9,56 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDynamicMPTEncoding(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    map[string]any
+		expected string
+	}{
+		{
+			name: "MPTokenIssuanceCreate ImmutableFlags uses UInt32 field 53",
+			input: map[string]any{
+				"TransactionType": "MPTokenIssuanceCreate",
+				"Account":         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+				"ImmutableFlags":  uint32(4),
+			},
+			expected: "120036203500000004811495F14B0E44F78A264E41713C64B5F89242540EE2",
+		},
+		{
+			name: "MPTokenIssuanceSet capability uses transaction Flags",
+			input: map[string]any{
+				"TransactionType":   "MPTokenIssuanceSet",
+				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"MPTokenIssuanceID": "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+				"Flags":             uint32(8),
+			},
+			expected: "12003822000000088114D28B177E48D9A8D057E70F7E464B498367281B980115000004C463C52827307480341125DA0577DEFC38405B0E3E",
+		},
+		{
+			name: "MPTokenIssuanceSet ImmutableFlags uses UInt32 field 53",
+			input: map[string]any{
+				"TransactionType":   "MPTokenIssuanceSet",
+				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"MPTokenIssuanceID": "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+				"ImmutableFlags":    uint32(4),
+			},
+			expected: "1200382035000000048114D28B177E48D9A8D057E70F7E464B498367281B980115000004C463C52827307480341125DA0577DEFC38405B0E3E",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := Encode(tt.input)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, encoded)
+
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.Equal(t, tt.input, decoded)
+		})
+	}
+}
+
 func TestEncode(t *testing.T) {
 	tt := []struct {
 		description string

@@ -709,7 +709,7 @@
       }
     ],
     [
-      "MutableFlags",
+      "ImmutableFlags",
       {
         "isSerialized": true,
         "isSigningField": true,
@@ -3517,21 +3517,12 @@
     "MPTokenIssuance": {
       "lsfMPTCanClawback": 64,
       "lsfMPTCanEscrow": 8,
+      "lsfMPTCanHoldConfidentialBalance": 128,
       "lsfMPTCanLock": 2,
       "lsfMPTCanTrade": 16,
       "lsfMPTCanTransfer": 32,
       "lsfMPTLocked": 1,
       "lsfMPTRequireAuth": 4
-    },
-    "MPTokenIssuanceMutable": {
-      "lsmfMPTCanEnableCanClawback": 64,
-      "lsmfMPTCanEnableCanEscrow": 8,
-      "lsmfMPTCanEnableCanLock": 2,
-      "lsmfMPTCanEnableCanTrade": 16,
-      "lsmfMPTCanEnableCanTransfer": 32,
-      "lsmfMPTCanEnableRequireAuth": 4,
-      "lsmfMPTCanMutateMetadata": 65536,
-      "lsmfMPTCanMutateTransferFee": 131072
     },
     "NFTokenOffer": {
       "lsfSellNFToken": 1
@@ -4372,7 +4363,7 @@
         "optionality": 1
       },
       {
-        "name": "MutableFlags",
+        "name": "ImmutableFlags",
         "optionality": 2
       },
       {
@@ -4976,6 +4967,7 @@
     "MPTokenIssuanceCreate": {
       "tfMPTCanClawback": 64,
       "tfMPTCanEscrow": 8,
+      "tfMPTCanHoldConfidentialBalance": 128,
       "tfMPTCanLock": 2,
       "tfMPTCanTrade": 16,
       "tfMPTCanTransfer": 32,
@@ -4983,6 +4975,13 @@
     },
     "MPTokenIssuanceSet": {
       "tfMPTLock": 1,
+      "tfMPTSetCanClawback": 128,
+      "tfMPTSetCanEscrow": 16,
+      "tfMPTSetCanHoldConfidentialBalance": 256,
+      "tfMPTSetCanLock": 4,
+      "tfMPTSetCanTrade": 32,
+      "tfMPTSetCanTransfer": 64,
+      "tfMPTSetRequireAuth": 8,
       "tfMPTUnlock": 2
     },
     "NFTokenCreateOffer": {
@@ -5649,7 +5648,7 @@
         "optionality": 1
       },
       {
-        "name": "MutableFlags",
+        "name": "ImmutableFlags",
         "optionality": 1
       }
     ],
@@ -5681,7 +5680,7 @@
         "optionality": 1
       },
       {
-        "name": "MutableFlags",
+        "name": "ImmutableFlags",
         "optionality": 1
       }
     ],
@@ -6702,5 +6701,5 @@
     "Vector256": 19,
     "XChainBridge": 25
   },
-  "hash": "C685734F5FEB756693B4BB978BBB3A158A65652E71EEB2977068B0D680689213"
+  "hash": "0F2AE080CAED01060B32CCFA9B8BEA653176490D9FB3513FD3CB6CD475BE09C8"
 }

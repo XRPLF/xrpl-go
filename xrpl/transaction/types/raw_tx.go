@@ -6,11 +6,6 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 )
 
-const (
-	// TfInnerBatchTxn flag that must be set on inner transactions within a batch
-	TfInnerBatchTxn uint32 = 0x40000000
-)
-
 // RawTransaction represents the wrapper structure for a transaction within a Batch.
 //
 // The inner transaction Fee can be absent or the string "0". SigningPubKey

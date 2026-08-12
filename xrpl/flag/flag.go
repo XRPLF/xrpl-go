@@ -8,3 +8,8 @@ package flag
 func Contains(currentFlag, flag uint32) bool {
 	return flag != 0 && (currentFlag&flag) == flag
 }
+
+// ContainsOnly checks if currentFlag contains no bits outside allowedFlags.
+func ContainsOnly(currentFlag, allowedFlags uint32) bool {
+	return currentFlag&^allowedFlags == 0
+}
