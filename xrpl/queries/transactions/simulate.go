@@ -52,9 +52,9 @@ func (r *SimulateRequest) Validate() error {
 // ValidateNetworkID validates JSON input against the client's current target
 // network identity. Blob input stays opaque and is validated by the server.
 // NetworkID can be omitted because the server autofills it. When supplied in
-// JSON, it must match a known target network. A zero expected ID performs type
+// JSON, it must match a known target network. A nil expected ID performs type
 // validation only.
-func (r *SimulateRequest) ValidateNetworkID(expected uint32) error {
+func (r *SimulateRequest) ValidateNetworkID(expected *uint32) error {
 	tx, err := r.validatedTransaction()
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func (r *SimulateRequest) ValidateNetworkID(expected uint32) error {
 	if err != nil {
 		return err
 	}
-	if present && expected != 0 && actual != expected {
+	if present && expected != nil && actual != *expected {
 		return ErrMismatchedSimulateNetworkID
 	}
 	return nil

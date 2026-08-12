@@ -2,6 +2,7 @@ package transactions
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/queries/version"
@@ -125,21 +126,26 @@ func TestSimulateRequestValidateNil(t *testing.T) {
 }
 
 func TestSimulateRequestValidateNetworkID(t *testing.T) {
+	knownMainnet := uint32(0)
+	knownStandard := uint32(1)
+	knownRestricted := uint32(2048)
 	tests := []struct {
 		name     string
-		expected uint32
+		expected *uint32
 		network  any
 		omit     bool
 		blob     string
 		wantErr  error
 	}{
-		{name: "restricted JSON matching", expected: 2048, network: uint32(2048)},
-		{name: "restricted JSON matching alternate numeric representation", expected: 2048, network: json.Number("2048")},
-		{name: "restricted JSON missing is server-autofilled", expected: 2048, omit: true},
-		{name: "restricted JSON mismatch", expected: 2048, network: uint32(2049), wantErr: ErrMismatchedSimulateNetworkID},
-		{name: "identified standard JSON mismatch", expected: 1, network: uint32(2), wantErr: ErrMismatchedSimulateNetworkID},
+		{name: "restricted JSON matching", expected: &knownRestricted, network: uint32(2048)},
+		{name: "restricted JSON matching alternate numeric representation", expected: &knownRestricted, network: json.Number("2048")},
+		{name: "restricted JSON missing is server-autofilled", expected: &knownRestricted, omit: true},
+		{name: "restricted JSON mismatch", expected: &knownRestricted, network: uint32(2049), wantErr: ErrMismatchedSimulateNetworkID},
+		{name: "identified standard JSON mismatch", expected: &knownStandard, network: uint32(2), wantErr: ErrMismatchedSimulateNetworkID},
+		{name: "known Mainnet JSON matching", expected: &knownMainnet, network: uint32(0)},
+		{name: "known Mainnet JSON mismatch", expected: &knownMainnet, network: uint32(2048), wantErr: ErrMismatchedSimulateNetworkID},
 		{name: "unknown identity accepts valid explicit JSON value", network: uint32(2048)},
-		{name: "opaque blob skips local NetworkID validation", expected: 2048, blob: "E1"},
+		{name: "opaque blob skips local NetworkID validation", expected: &knownRestricted, blob: "E1"},
 	}
 
 	for _, tt := range tests {
@@ -167,7 +173,7 @@ func TestSimulateRequestValidateNetworkID(t *testing.T) {
 			require.Equal(t, tt.network, request.TxJSON["NetworkID"], "validation must preserve the caller's explicit value")
 			encoded, err := json.Marshal(request)
 			require.NoError(t, err)
-			require.Contains(t, string(encoded), `"NetworkID":2048`)
+			require.Contains(t, string(encoded), fmt.Sprintf(`"NetworkID":%v`, tt.network))
 		})
 	}
 }

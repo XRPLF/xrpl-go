@@ -231,11 +231,7 @@ func (c *Client) GetChannelVerify(req *channel.VerifyRequest) (*channel.VerifyRe
 // outcome of a later submission.
 func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error) {
 	networkID, _ := c.NetworkIdentity()
-	var expectedNetworkID uint32
-	if networkID != nil {
-		expectedNetworkID = *networkID
-	}
-	if err := req.ValidateNetworkID(expectedNetworkID); err != nil {
+	if err := req.ValidateNetworkID(networkID); err != nil {
 		return nil, err
 	}
 	res, err := c.Request(req)

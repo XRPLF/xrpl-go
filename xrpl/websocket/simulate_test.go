@@ -292,9 +292,10 @@ func TestClient_SimulateRejectsMismatchedResponseMode(t *testing.T) {
 
 func TestClient_SimulateRejectsLocally(t *testing.T) {
 	tests := []struct {
-		name    string
-		request *transactions.SimulateRequest
-		wantErr error
+		name      string
+		request   *transactions.SimulateRequest
+		networkID uint32
+		wantErr   error
 	}{
 		{
 			name:    "nil request",
@@ -305,7 +306,16 @@ func TestClient_SimulateRejectsLocally(t *testing.T) {
 			request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
 				"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "NetworkID": uint32(2049),
 			}},
-			wantErr: transactions.ErrMismatchedSimulateNetworkID,
+			networkID: 2048,
+			wantErr:   transactions.ErrMismatchedSimulateNetworkID,
+		},
+		{
+			name: "mismatched on known Mainnet",
+			request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
+				"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "NetworkID": uint32(2048),
+			}},
+			networkID: 0,
+			wantErr:   transactions.ErrMismatchedSimulateNetworkID,
 		},
 		{name: "non-hex blob", request: &transactions.SimulateRequest{TxBlob: "not-hex"}, wantErr: transactions.ErrInvalidSimulateTxBlob},
 		{name: "odd-length blob", request: &transactions.SimulateRequest{TxBlob: "ABC"}, wantErr: transactions.ErrInvalidSimulateTxBlob},
@@ -315,7 +325,7 @@ func TestClient_SimulateRejectsLocally(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// No connection: rejection must happen before the transport is used.
 			client := NewClient(*NewClientConfig())
-			setTestNetworkIdentity(client, uint32Pointer(2048), "")
+			setTestNetworkIdentity(client, uint32Pointer(tt.networkID), "")
 
 			response, err := client.Simulate(tt.request)
 			require.ErrorIs(t, err, tt.wantErr)

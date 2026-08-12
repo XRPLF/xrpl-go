@@ -231,6 +231,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `simulate` now keeps `tx_blob` opaque after hexadecimal syntax checks and delegates transaction, signature, and NetworkID validation to the server, preserving compatibility with server-specific definitions.
 - `simulate` validation now permits non-empty `SigningPubKey` values and unsigned `Signers` entries while continuing to reject non-empty transaction signatures, matching `rippled` dry-run rules.
+- `simulate` now preserves whether the client network identity is known, so a known Mainnet identity rejects an explicit nonzero transaction `NetworkID` during local validation.
 - `server_definitions` now rejects null or incomplete definition sections and accepts a hash-only response only when it matches the request hash.
 
 #### xrpl/transaction

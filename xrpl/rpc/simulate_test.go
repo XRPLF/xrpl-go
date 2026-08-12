@@ -240,6 +240,9 @@ func TestClient_SimulateRejectsLocally(t *testing.T) {
 		{name: "network ID mismatch", request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "NetworkID": uint32(2049),
 		}}, networkID: 2048, wantErr: transactions.ErrMismatchedSimulateNetworkID},
+		{name: "known Mainnet network ID mismatch", request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "NetworkID": uint32(2048),
+		}}, networkID: 0, wantErr: transactions.ErrMismatchedSimulateNetworkID},
 		{name: "non-hex blob", request: &transactions.SimulateRequest{TxBlob: "not-hex"}, networkID: 2048, wantErr: transactions.ErrInvalidSimulateTxBlob},
 		{name: "odd-length blob", request: &transactions.SimulateRequest{TxBlob: "ABC"}, networkID: 2048, wantErr: transactions.ErrInvalidSimulateTxBlob},
 	}
