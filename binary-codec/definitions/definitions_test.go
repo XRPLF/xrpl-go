@@ -1,10 +1,26 @@
 package definitions
 
 import (
+	_ "embed"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/ugorji/go/codec"
 )
+
+//go:embed definitions.json
+var definitionsDocBytes []byte
+
+type formatField struct {
+	Name        string `json:"name"`
+	Optionality int    `json:"optionality"`
+}
+
+type formatDefinitionsDoc struct {
+	LedgerEntryFormats map[string][]formatField `json:"LEDGER_ENTRY_FORMATS"`
+	TransactionFormats map[string][]formatField `json:"TRANSACTION_FORMATS"`
+	Hash               string                   `json:"hash"`
+}
 
 func TestLoadDefinitions(t *testing.T) {
 	loadDefinitions()
@@ -87,6 +103,110 @@ func TestLoadDefinitions(t *testing.T) {
 			require.Equal(t, field.info, definitions.Fields[field.name].FieldInfo)
 			require.Equal(t, field.header, definitions.Fields[field.name].FieldHeader)
 			require.Equal(t, field.ordinal, definitions.Fields[field.name].Ordinal)
+		})
+	}
+}
+
+func TestConfidentialMPTFormats(t *testing.T) {
+	var jsonHandle codec.JsonHandle
+	jsonHandle.MapKeyAsString = true
+
+	decoder := codec.NewDecoderBytes(definitionsDocBytes, &jsonHandle)
+	var document formatDefinitionsDoc
+	require.NoError(t, decoder.Decode(&document))
+	require.Empty(t, document.Hash, "the embedded definitions contain an additional protocol overlay, so a source snapshot hash would be invalid")
+
+	tests := []struct {
+		name     string
+		actual   []formatField
+		expected []formatField
+	}{
+		{
+			name:   "MPToken ledger entry",
+			actual: document.LedgerEntryFormats["MPToken"],
+			expected: []formatField{
+				{Name: "Account", Optionality: 0},
+				{Name: "MPTokenIssuanceID", Optionality: 0},
+				{Name: "MPTAmount", Optionality: 2},
+				{Name: "LockedAmount", Optionality: 1},
+				{Name: "ConfidentialBalanceInbox", Optionality: 1},
+				{Name: "ConfidentialBalanceSpending", Optionality: 1},
+				{Name: "ConfidentialBalanceVersion", Optionality: 2},
+				{Name: "IssuerEncryptedBalance", Optionality: 1},
+				{Name: "AuditorEncryptedBalance", Optionality: 1},
+				{Name: "HolderEncryptionKey", Optionality: 1},
+				{Name: "OwnerNode", Optionality: 0},
+				{Name: "PreviousTxnID", Optionality: 0},
+				{Name: "PreviousTxnLgrSeq", Optionality: 0},
+			},
+		},
+		{
+			name:   "ConfidentialMPTConvert transaction",
+			actual: document.TransactionFormats["ConfidentialMPTConvert"],
+			expected: []formatField{
+				{Name: "MPTokenIssuanceID", Optionality: 0},
+				{Name: "MPTAmount", Optionality: 0},
+				{Name: "HolderEncryptionKey", Optionality: 1},
+				{Name: "HolderEncryptedAmount", Optionality: 0},
+				{Name: "IssuerEncryptedAmount", Optionality: 0},
+				{Name: "AuditorEncryptedAmount", Optionality: 1},
+				{Name: "BlindingFactor", Optionality: 0},
+				{Name: "ZKProof", Optionality: 1},
+			},
+		},
+		{
+			name:   "ConfidentialMPTMergeInbox transaction",
+			actual: document.TransactionFormats["ConfidentialMPTMergeInbox"],
+			expected: []formatField{
+				{Name: "MPTokenIssuanceID", Optionality: 0},
+			},
+		},
+		{
+			name:   "ConfidentialMPTConvertBack transaction",
+			actual: document.TransactionFormats["ConfidentialMPTConvertBack"],
+			expected: []formatField{
+				{Name: "MPTokenIssuanceID", Optionality: 0},
+				{Name: "MPTAmount", Optionality: 0},
+				{Name: "HolderEncryptedAmount", Optionality: 0},
+				{Name: "IssuerEncryptedAmount", Optionality: 0},
+				{Name: "AuditorEncryptedAmount", Optionality: 1},
+				{Name: "BlindingFactor", Optionality: 0},
+				{Name: "ZKProof", Optionality: 0},
+				{Name: "BalanceCommitment", Optionality: 0},
+			},
+		},
+		{
+			name:   "ConfidentialMPTSend transaction",
+			actual: document.TransactionFormats["ConfidentialMPTSend"],
+			expected: []formatField{
+				{Name: "MPTokenIssuanceID", Optionality: 0},
+				{Name: "Destination", Optionality: 0},
+				{Name: "DestinationTag", Optionality: 1},
+				{Name: "SenderEncryptedAmount", Optionality: 0},
+				{Name: "DestinationEncryptedAmount", Optionality: 0},
+				{Name: "IssuerEncryptedAmount", Optionality: 0},
+				{Name: "AuditorEncryptedAmount", Optionality: 1},
+				{Name: "ZKProof", Optionality: 0},
+				{Name: "AmountCommitment", Optionality: 0},
+				{Name: "BalanceCommitment", Optionality: 0},
+				{Name: "CredentialIDs", Optionality: 1},
+			},
+		},
+		{
+			name:   "ConfidentialMPTClawback transaction",
+			actual: document.TransactionFormats["ConfidentialMPTClawback"],
+			expected: []formatField{
+				{Name: "MPTokenIssuanceID", Optionality: 0},
+				{Name: "Holder", Optionality: 0},
+				{Name: "MPTAmount", Optionality: 0},
+				{Name: "ZKProof", Optionality: 0},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.expected, test.actual)
 		})
 	}
 }
