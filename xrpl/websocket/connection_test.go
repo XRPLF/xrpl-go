@@ -878,6 +878,70 @@ func TestClient_AutomaticReconnectWinsWithoutLifecycleCancellation(t *testing.T)
 	require.NotNil(t, response)
 }
 
+func TestClient_ConnectTimeoutBoundsWebSocketHandshake(t *testing.T) {
+	const connectTimeout = 50 * time.Millisecond
+	requestStarted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		requestStarted <- struct{}{}
+		time.Sleep(time.Second)
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	client := NewClient(
+		NewClientConfig().
+			WithHost(url).
+			WithTimeout(connectTimeout).
+			WithNetworkIdentity(0, "2.0.0"),
+	)
+
+	startedAt := time.Now()
+	err = client.Connect()
+	elapsed := time.Since(startedAt)
+
+	require.Error(t, err)
+	select {
+	case <-requestStarted:
+	case <-time.After(time.Second):
+		t.Fatal("WebSocket handshake did not start")
+	}
+	require.Less(t, elapsed, 5*connectTimeout)
+	require.False(t, client.IsConnected())
+}
+
+func TestClient_AutomaticReconnectTimeoutBoundsWebSocketHandshake(t *testing.T) {
+	const connectTimeout = 50 * time.Millisecond
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		time.Sleep(time.Second)
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	client := NewClient(withReconnectDelays(
+		NewClientConfig().
+			WithHost(url).
+			WithMaxReconnects(1).
+			WithTimeout(connectTimeout).
+			WithNetworkIdentity(0, "2.0.0"),
+		time.Millisecond,
+		time.Millisecond,
+	))
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	retryCount := 0
+
+	startedAt := time.Now()
+	connected := client.reconnectWithBackoff(ctx, &retryCount, 1)
+	elapsed := time.Since(startedAt)
+
+	require.False(t, connected)
+	require.Equal(t, 1, retryCount)
+	require.Less(t, elapsed, 5*connectTimeout)
+	require.False(t, client.IsConnected())
+}
+
 func TestClient_ConnectFailureDoesNotCancelLifecycleBeforePublication(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "connection rejected", http.StatusServiceUnavailable)

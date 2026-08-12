@@ -274,7 +274,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reconnection exhaustion now unwraps the last connection or identity failure while preserving `errors.As` checks for `ErrMaxReconnectionAttemptsReached`.
 - Made connection-time network discovery atomic and leak-free. Reconnecting sockets remain private and application requests remain gated until identity checks finish. Cancellation closes in-progress connection attempts, and failed attempts cannot replace a live connection. Manual replacement connections cancel the old reader lifecycle and fail its pending requests with `ErrDisconnected` before publishing the new socket.
 - AccountDelete autofill now runs blocker checks for plain and named string Account values, including values converted from X-addresses.
-- Identity discovery now accepts out-of-order frames, replays buffered stream messages, clears temporary read deadlines after failed reads, and bounds replacement dials by the client timeout.
+- Identity discovery now accepts out-of-order frames, replays buffered stream messages, and clears temporary read deadlines after failed reads. The client timeout now bounds the whole connection handshake, covering the WebSocket dial and identity discovery in a single window, for both `Connect` and automatic reconnects.
 - Made autofill and unsigned signing reject public network identity values until successful discovery, unless `WithNetworkIdentity` supplies an explicit trusted override.
 - Autofill now normalizes named string address values, such as `types.Address`, before account checks.
 - Rejected tagged X-addresses for fields that cannot represent tags instead of silently discarding the embedded tag.

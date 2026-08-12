@@ -263,11 +263,18 @@ func (c *Client) connect(ctx context.Context, onBeforePublish func()) ([][]byte,
 	c.connectionHandshakeMu.Lock()
 	defer c.connectionHandshakeMu.Unlock()
 
-	conn, err := c.conn.beginConnect(ctx)
+	connectCtx := ctx
+	cancel := func() {}
+	if c.cfg.timeout > 0 {
+		connectCtx, cancel = context.WithTimeout(ctx, c.cfg.timeout)
+	}
+	defer cancel()
+
+	conn, err := c.conn.beginConnect(connectCtx)
 	if err != nil {
 		return nil, err
 	}
-	bufferedMessages, err := c.prepareNetworkIdentity(ctx, conn)
+	bufferedMessages, err := c.prepareNetworkIdentity(connectCtx, conn)
 	if err != nil {
 		if closeErr := c.conn.invalidateSocket(conn); closeErr != nil {
 			return nil, errors.Join(err, closeErr)
@@ -277,7 +284,7 @@ func (c *Client) connect(ctx context.Context, onBeforePublish func()) ([][]byte,
 	if onBeforePublish != nil {
 		onBeforePublish()
 	}
-	if err := c.conn.publishSocket(ctx, conn); err != nil {
+	if err := c.conn.publishSocket(connectCtx, conn); err != nil {
 		return nil, err
 	}
 	return bufferedMessages, nil

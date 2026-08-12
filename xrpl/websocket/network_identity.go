@@ -84,7 +84,12 @@ func (c *Client) discoverNetworkIdentity(
 		return clientinternal.NetworkIdentity{}, nil, err
 	}
 
-	deadline := time.Now().Add(c.cfg.timeout)
+	deadline := time.Time{}
+	if connectDeadline, ok := ctx.Deadline(); ok {
+		deadline = connectDeadline
+	} else if c.cfg.timeout > 0 {
+		deadline = time.Now().Add(c.cfg.timeout)
+	}
 	var bufferedMessages [][]byte
 	for {
 		responseBytes, err := c.conn.readMessageFrom(conn, deadline)
