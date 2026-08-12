@@ -287,6 +287,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made manual disconnect claim an in-progress reconnect socket before lifecycle cancellation so cancellation-driven invalidation cannot cause a false not-connected error.
 - Made reconnect backoff configuration immutable per client to prevent concurrent clients and reconnect tests from racing over shared delay state.
 - Preserved per-handler serialization across manual disconnects and later connections by waiting for detached handler runners before starting replacements.
+- Preserved `validated`, `domain`, and MPT issuance identifiers in typed `bookChanges` notifications.
 - Dispatched `bookChanges` notifications to the exported book-changes handler with typed decoding and no duplicate handler delivery across reconnects. Automatic reconnects do not replay subscriptions, so callers must resubscribe.
 
 ## [v0.2.0]

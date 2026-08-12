@@ -15,6 +15,12 @@ type BookUpdate struct {
 	// An identifier for the second of two currencies in the order book. This is in the same
 	// format as currency_a, except currency_b can never be XRP.
 	CurrencyB string `json:"currency_b"`
+	// The MPTokenIssuance ID for the first asset when currency_a is an MPT.
+	MPTIssuanceIDA string `json:"mpt_issuance_id_a,omitempty"`
+	// The MPTokenIssuance ID for the second asset when currency_b is an MPT.
+	MPTIssuanceIDB string `json:"mpt_issuance_id_b,omitempty"`
+	// The PermissionedDomain ledger object ID for a permissioned order book.
+	Domain string `json:"domain,omitempty"`
 	// The total amount, or volume, of the first currency (that is, currency_a) that moved as
 	// a result of trades through this order book in this ledger.
 	VolumeA any `json:"volume_a"`
@@ -47,6 +53,8 @@ type BookChangesStream struct {
 	LedgerHash common.LedgerHash `json:"ledger_hash"`
 	// The official close time of the ledger with these changes, in seconds since the Ripple Epoch.
 	LedgerTime uint64 `json:"ledger_time"`
+	// Whether the ledger with these changes is validated.
+	Validated bool `json:"validated"`
 	// List of BookUpdateObject, containing one entry for each order book that was updated in this
 	// ledger version. The array is empty if no order books were updated.
 	Changes []BookUpdate `json:"changes"`
