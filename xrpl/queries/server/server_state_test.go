@@ -1,13 +1,77 @@
 package server
 
 import (
+	"encoding/json"
 	"testing"
 
 	servertypes "github.com/Peersyst/xrpl-go/xrpl/queries/server/types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
+	"github.com/stretchr/testify/require"
 )
 
+func TestServerStateReserveIncPresence(t *testing.T) {
+	tests := []struct {
+		name     string
+		response string
+		expected uint64
+		present  bool
+	}{
+		{name: "missing", response: `{"state":{"validated_ledger":{}}}`},
+		{name: "null", response: `{"state":{"validated_ledger":{"reserve_inc":null}}}`},
+		{name: "explicit zero", response: `{"state":{"validated_ledger":{"reserve_inc":0}}}`, present: true},
+		{name: "positive", response: `{"state":{"validated_ledger":{"reserve_inc":5000000}}}`, expected: 5000000, present: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var response StateResponse
+			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
+			reserveInc := response.State.ValidatedLedger.ReserveInc
+			actual, present := uint64(0), reserveInc != nil
+			if present {
+				actual = *reserveInc
+			}
+			require.Equal(t, tt.present, present)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestServerStateClosedLedgerFeePrecisionAndPresence(t *testing.T) {
+	tests := []struct {
+		name       string
+		reserveInc string
+		expected   uint64
+		present    bool
+	}{
+		{name: "missing"},
+		{name: "null", reserveInc: `,"reserve_inc":null`},
+		{name: "explicit zero", reserveInc: `,"reserve_inc":0`, present: true},
+		{name: "positive", reserveInc: `,"reserve_inc":5000001`, expected: 5000001, present: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			responseJSON := `{"state":{"closed_ledger":{"base_fee":16777217,"reserve_base":20000001` +
+				tt.reserveInc + `}}}`
+			var response StateResponse
+			require.NoError(t, json.Unmarshal([]byte(responseJSON), &response))
+			require.Equal(t, uint64(16777217), response.State.ClosedLedger.BaseFee)
+			require.Equal(t, uint64(20000001), response.State.ClosedLedger.ReserveBase)
+
+			reserveInc := response.State.ClosedLedger.ReserveInc
+			actual, present := uint64(0), reserveInc != nil
+			if present {
+				actual = *reserveInc
+			}
+			require.Equal(t, tt.present, present)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func TestServerStateResponse(t *testing.T) {
+	reserveInc := uint64(5000000)
 	s := StateResponse{
 		State: servertypes.State{
 			BuildVersion:    "1.7.2",
@@ -57,7 +121,7 @@ func TestServerStateResponse(t *testing.T) {
 				CloseTime:   683153081,
 				Hash:        "B52AC3876412A152FE9C0442801E685D148D05448D0238587DBA256330A98FD3",
 				ReserveBase: 20000000,
-				ReserveInc:  5000000,
+				ReserveInc:  &reserveInc,
 				Seq:         65887201,
 			},
 			ValidationQuorum: 33,

@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"sync"
 
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
@@ -14,9 +15,10 @@ type networkIdentityState struct {
 }
 
 type networkIdentityDiscovery struct {
-	done     chan struct{}
-	identity clientinternal.NetworkIdentity
-	err      error
+	done                  chan struct{}
+	identity              clientinternal.NetworkIdentity
+	err                   error
+	leaderContextCanceled bool
 }
 
 type networkIdentityAttempt struct {
@@ -29,32 +31,53 @@ type networkIdentityAttempt struct {
 // ensureNetworkIdentity returns a configured identity or discovers it with
 // server_info. A caller-provided NetworkID is compared with discovery and is
 // never replaced when it matches. WithNetworkIdentity marks the initial state
-// ready and intentionally bypasses discovery. Discovery errors are returned and
-// are not cached, so a later operation can retry.
-func (c *Client) ensureNetworkIdentity() (clientinternal.NetworkIdentity, error) {
-	attempt := c.beginNetworkIdentityDiscovery()
-	if attempt.ready {
-		return clientinternal.ValidateNetworkIdentity(attempt.identity)
-	}
-	if !attempt.leader {
-		<-attempt.discovery.done
-		return attempt.discovery.identity, attempt.discovery.err
-	}
+// ready and bypasses discovery only when its build version is non-empty.
+// Discovery errors are returned and are not cached, so a later operation can
+// retry.
+func (c *Client) ensureNetworkIdentity(ctx context.Context) (clientinternal.NetworkIdentity, error) {
+	for {
+		if err := ctx.Err(); err != nil {
+			return clientinternal.NetworkIdentity{}, err
+		}
 
-	response, requestErr := c.GetServerInfo(&server.InfoRequest{})
-	resolved := attempt.identity
-	discoveryErr := requestErr
-	if requestErr == nil {
-		resolved, discoveryErr = clientinternal.ResolveNetworkIdentity(attempt.identity.NetworkID, clientinternal.NetworkIdentity{
-			NetworkID:    response.Info.NetworkID,
-			BuildVersion: response.Info.ServerVersion(),
-		})
+		attempt := c.beginNetworkIdentityDiscovery()
+		if attempt.ready {
+			return clientinternal.ValidateNetworkIdentity(attempt.identity)
+		}
+		if !attempt.leader {
+			select {
+			case <-ctx.Done():
+				return clientinternal.NetworkIdentity{}, ctx.Err()
+			case <-attempt.discovery.done:
+			}
+			if err := ctx.Err(); err != nil {
+				return clientinternal.NetworkIdentity{}, err
+			}
+			if attempt.discovery.leaderContextCanceled {
+				continue
+			}
+			return attempt.discovery.identity, attempt.discovery.err
+		}
+
+		var response server.InfoResponse
+		requestErr := c.requestResult(ctx, &server.InfoRequest{}, &response)
+		resolved := attempt.identity
+		discoveryErr := requestErr
+		if requestErr == nil {
+			resolved, discoveryErr = clientinternal.ResolveNetworkIdentity(
+				attempt.identity.NetworkID,
+				clientinternal.NetworkIdentity{
+					NetworkID:    response.Info.NetworkID,
+					BuildVersion: response.Info.ServerVersion(),
+				},
+			)
+		}
+		c.finishNetworkIdentityDiscovery(resolved, discoveryErr, ctx.Err() != nil)
+		if discoveryErr != nil {
+			return clientinternal.NetworkIdentity{}, discoveryErr
+		}
+		return resolved, nil
 	}
-	c.finishNetworkIdentityDiscovery(resolved, discoveryErr)
-	if discoveryErr != nil {
-		return clientinternal.NetworkIdentity{}, discoveryErr
-	}
-	return resolved, nil
 }
 
 // NetworkIdentity returns a thread-safe snapshot of the client network ID and
@@ -95,12 +118,17 @@ func (c *Client) beginNetworkIdentityDiscovery() networkIdentityAttempt {
 	return networkIdentityAttempt{identity: identity, discovery: discovery, leader: true}
 }
 
-func (c *Client) finishNetworkIdentityDiscovery(identity clientinternal.NetworkIdentity, discoveryErr error) {
+func (c *Client) finishNetworkIdentityDiscovery(
+	identity clientinternal.NetworkIdentity,
+	discoveryErr error,
+	leaderContextCanceled bool,
+) {
 	c.identity.mu.Lock()
 	defer c.identity.mu.Unlock()
 
 	discovery := c.identity.discovering
 	discovery.err = discoveryErr
+	discovery.leaderContextCanceled = leaderContextCanceled
 	if discoveryErr == nil {
 		c.networkID = clientinternal.CloneNetworkID(identity.NetworkID)
 		c.buildVersion = identity.BuildVersion

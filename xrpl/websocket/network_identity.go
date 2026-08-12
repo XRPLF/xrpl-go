@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"sync"
@@ -19,17 +20,20 @@ type networkIdentityState struct {
 
 // prepareNetworkIdentity returns a configured identity or performs the
 // synchronous server_info handshake used by Connect. WithNetworkIdentity marks
-// the initial state trusted and intentionally bypasses discovery. After a
-// successful discovery, a reconnect compares the new server identity with the
-// previous one and rejects a network ID change.
-func (c *Client) prepareNetworkIdentity() ([][]byte, error) {
+// the initial state trusted and bypasses discovery only when its build version
+// is non-empty. After a successful discovery, a reconnect compares the new
+// server identity with the previous one and rejects a network ID change.
+func (c *Client) prepareNetworkIdentity(
+	ctx context.Context,
+	conn websocketConnection,
+) ([][]byte, error) {
 	identity, ready, trusted := c.networkIdentitySnapshot()
 	if ready && trusted {
 		_, err := clientinternal.ValidateNetworkIdentity(identity)
 		return nil, err
 	}
 
-	discovered, bufferedMessages, err := c.discoverNetworkIdentity()
+	discovered, bufferedMessages, err := c.discoverNetworkIdentity(ctx, conn)
 	if err != nil {
 		return bufferedMessages, err
 	}
@@ -67,20 +71,23 @@ func (c *Client) storeDiscoveredNetworkIdentity(identity clientinternal.NetworkI
 	c.identity.trusted = false
 }
 
-func (c *Client) discoverNetworkIdentity() (clientinternal.NetworkIdentity, [][]byte, error) {
+func (c *Client) discoverNetworkIdentity(
+	ctx context.Context,
+	conn websocketConnection,
+) (clientinternal.NetworkIdentity, [][]byte, error) {
 	id := c.idCounter.Add(1)
 	message, err := c.formatRequest(&server.InfoRequest{}, id, nil)
 	if err != nil {
 		return clientinternal.NetworkIdentity{}, nil, err
 	}
-	if err := c.conn.WriteMessage(message); err != nil {
+	if err := c.conn.writeMessageTo(ctx, conn, message, c.cfg.timeout); err != nil {
 		return clientinternal.NetworkIdentity{}, nil, err
 	}
 
 	deadline := time.Now().Add(c.cfg.timeout)
 	var bufferedMessages [][]byte
 	for {
-		responseBytes, err := c.conn.readMessage(deadline)
+		responseBytes, err := c.conn.readMessageFrom(conn, deadline)
 		if err != nil {
 			var timeoutErr interface{ Timeout() bool }
 			if errors.As(err, &timeoutErr) && timeoutErr.Timeout() {

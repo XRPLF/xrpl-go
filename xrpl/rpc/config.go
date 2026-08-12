@@ -32,7 +32,7 @@ type Config struct {
 	URL        string
 	Headers    map[string][]string
 
-	// Retry config
+	// Reliable-submission monitoring config.
 	maxRetries int
 	retryDelay time.Duration
 
@@ -40,8 +40,8 @@ type Config struct {
 	maxResponseSize int64
 
 	// Fee config
-	maxFeeXRP  float32
-	feeCushion float32
+	maxFeeXRP  string
+	feeCushion float64
 
 	// Faucet config
 	faucetProvider common.FaucetProvider
@@ -57,20 +57,26 @@ type Config struct {
 type ConfigOpt func(c *Config)
 
 // WithHTTPClient returns a ConfigOpt that sets a custom HTTPClient.
+// Configured authorization requires an HTTPS endpoint. For *http.Client values,
+// XRPL Go rejects every authenticated HTTPS-to-HTTP redirect, including a
+// cross-host redirect where net/http would remove Authorization. Other
+// implementations control their own redirects and any credentials that they add.
 func WithHTTPClient(cl HTTPClient) ConfigOpt {
 	return func(c *Config) {
 		c.HTTPClient = cl
 	}
 }
 
-// WithMaxRetries returns a ConfigOpt that sets the maximum number of retries.
+// WithMaxRetries limits consecutive incomplete reliable-submission polling
+// rounds caused by query or transport errors. It does not limit successful
+// finality polling. The value must be positive.
 func WithMaxRetries(maxRetries int) ConfigOpt {
 	return func(c *Config) {
 		c.maxRetries = maxRetries
 	}
 }
 
-// WithRetryDelay returns a ConfigOpt that sets the delay between retry attempts.
+// WithRetryDelay sets the delay between reliable-submission polling rounds.
 func WithRetryDelay(retryDelay time.Duration) ConfigOpt {
 	return func(c *Config) {
 		c.retryDelay = retryDelay
@@ -90,15 +96,15 @@ func WithMaxResponseSize(maxResponseSize int64) ConfigOpt {
 	}
 }
 
-// WithMaxFeeXRP returns a ConfigOpt that sets the maximum fee in XRP.
-func WithMaxFeeXRP(maxFeeXRP float32) ConfigOpt {
+// WithMaxFeeXRP returns a ConfigOpt that sets the maximum fee in XRP as a decimal string.
+func WithMaxFeeXRP(maxFeeXRP string) ConfigOpt {
 	return func(c *Config) {
 		c.maxFeeXRP = maxFeeXRP
 	}
 }
 
 // WithFeeCushion returns a ConfigOpt that sets the fee cushion multiplier.
-func WithFeeCushion(feeCushion float32) ConfigOpt {
+func WithFeeCushion(feeCushion float64) ConfigOpt {
 	return func(c *Config) {
 		c.feeCushion = feeCushion
 	}
@@ -125,7 +131,7 @@ func WithNetworkIdentity(networkID uint32, buildVersion string) ConfigOpt {
 func WithTimeout(timeout time.Duration) ConfigOpt {
 	return func(c *Config) {
 		c.timeout = timeout
-		if hc, ok := c.HTTPClient.(*http.Client); ok {
+		if hc, ok := c.HTTPClient.(*http.Client); ok && hc != nil {
 			hc.Timeout = timeout
 		}
 	}
@@ -159,6 +165,10 @@ func NewClientConfig(url string, opts ...ConfigOpt) (*Config, error) {
 
 	for _, opt := range opts {
 		opt(cfg)
+	}
+
+	if _, err := validateAuthorizationTransport(cfg.URL, cfg.Headers, cfg.HTTPClient); err != nil {
+		return nil, err
 	}
 
 	clientconfig.WarnIfInsecureScheme("rpc", cfg.URL)

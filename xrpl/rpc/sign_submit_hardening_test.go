@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -323,7 +324,7 @@ func TestClientAutofillRawTransactionsRejectsNullSigningFields(t *testing.T) {
 				"RawTransactions": []map[string]any{{"RawTransaction": inner}},
 			}
 			cl := setupTestRPCClientForAutofill(t, nil)
-			require.ErrorIs(t, cl.autofillRawTransactions(&tx), tt.expectedErr)
+			require.ErrorIs(t, cl.autofillRawTransactions(context.Background(), &tx), tt.expectedErr)
 		})
 	}
 }
@@ -376,29 +377,59 @@ func TestClientAutofillMultisignedFee(t *testing.T) {
 
 func TestClientFeeParity(t *testing.T) {
 	serverInfo := `{"result":{"info":{"validated_ledger":{"base_fee_xrp":0.00001},"load_factor":1}}}`
-	reserve := `{"result":{"state":{"validated_ledger":{"reserve_inc":2000000}}}}`
+	halfDropServerInfo := `{"result":{"info":{"validated_ledger":{"base_fee_xrp":0.000001},"load_factor":10}}}`
+	highLoadServerInfo := `{"result":{"info":{"validated_ledger":{"base_fee_xrp":1},"load_factor":1000}}}`
 	tests := []struct {
-		name      string
-		txType    string
-		nSigners  uint64
-		responses []string
-		expected  string
+		name               string
+		txType             string
+		fulfillment        string
+		fulfillmentPresent bool
+		nSigners           uint64
+		cushion            float64
+		maxFeeXRP          string
+		responses          []string
+		expected           string
 	}{
-		{name: "single sign base fee", txType: "Payment", responses: []string{serverInfo}, expected: "10"},
-		{name: "one multisigner", txType: "Payment", nSigners: 1, responses: []string{serverInfo}, expected: "20"},
-		{name: "two multisigners", txType: "Payment", nSigners: 2, responses: []string{serverInfo}, expected: "30"},
-		{name: "VaultCreate owner reserve", txType: "VaultCreate", responses: []string{serverInfo, reserve}, expected: "2000000"},
+		{name: "single sign base fee", txType: "Payment", cushion: 1, responses: []string{serverInfo}, expected: "10"},
+		{name: "half drop rounds upward", txType: "Payment", cushion: 1.05, responses: []string{halfDropServerInfo}, expected: "11"},
+		{name: "maximum fee uses exact decimal", txType: "Payment", cushion: 1, maxFeeXRP: "0.123456", responses: []string{highLoadServerInfo}, expected: "123456"},
+		{name: "one multisigner", txType: "Payment", nSigners: 1, cushion: 1, responses: []string{serverInfo}, expected: "20"},
+		{name: "two multisigners", txType: "Payment", nSigners: 2, cushion: 1, responses: []string{serverInfo}, expected: "30"},
+		{name: "EscrowFinish absent fulfillment", txType: "EscrowFinish", cushion: 1, responses: []string{serverInfo}, expected: "10"},
+		{name: "EscrowFinish empty fulfillment", txType: "EscrowFinish", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "330"},
+		{name: "EscrowFinish below 16-byte fee step", txType: "EscrowFinish", fulfillment: "A0028000", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "330"},
+		{name: "EscrowFinish at 16-byte fee step", txType: "EscrowFinish", fulfillment: "00000000000000000000000000000000", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "340"},
+		{name: "VaultCreate base fee", txType: "VaultCreate", cushion: 1, responses: []string{serverInfo}, expected: "10"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := setupTestRPCClientForAutofill(t, tt.responses)
-			cl.cfg.feeCushion = 1
+			cl.cfg.feeCushion = tt.cushion
+			if tt.maxFeeXRP != "" {
+				cl.cfg.maxFeeXRP = tt.maxFeeXRP
+			}
 			tx := transaction.FlatTransaction{"TransactionType": tt.txType}
-			require.NoError(t, cl.calculateFeePerTransactionType(&tx, tt.nSigners))
+			if tt.fulfillmentPresent {
+				tx["Fulfillment"] = tt.fulfillment
+			}
+			require.NoError(t, cl.calculateFeePerTransactionType(context.Background(), &tx, tt.nSigners))
 			require.Equal(t, tt.expected, tx["Fee"])
 		})
 	}
+}
+
+func TestClientCalculateBatchFeesRejectsNestedBatch(t *testing.T) {
+	tx := transaction.FlatTransaction{
+		"RawTransactions": []map[string]any{{
+			"RawTransaction": map[string]any{
+				"TransactionType": transaction.BatchTx,
+			},
+		}},
+	}
+
+	_, err := (&Client{}).calculateBatchFees(context.Background(), &tx)
+	require.ErrorIs(t, err, transactiontypes.ErrBatchNestedTransaction)
 }
 
 func TestClientSubmitTxBlobWorkerUsesDecodedTransaction(t *testing.T) {
@@ -409,10 +440,116 @@ func TestClientSubmitTxBlobWorkerUsesDecodedTransaction(t *testing.T) {
 		"TxnSignature":    "CCDD",
 	}
 
-	response, err := cl.submitTxBlob("not-hex", tx, false)
+	response, err := cl.submitTxBlob(context.Background(), "not-hex", tx, false)
 	require.NoError(t, err)
 	require.Equal(t, "tesSUCCESS", response.EngineResult)
 	require.Len(t, *requestsSeen, 1)
+}
+
+func TestClientFeePresenceSemantics(t *testing.T) {
+	tests := []struct {
+		name        string
+		response    string
+		expected    string
+		expectedErr error
+	}{
+		{name: "missing base fee", response: `{"result":{"info":{"validated_ledger":{},"load_factor":1}}}`, expectedErr: ErrCouldNotGetBaseFeeXrp},
+		{name: "null base fee", response: `{"result":{"info":{"validated_ledger":{"base_fee_xrp":null},"load_factor":1}}}`, expectedErr: ErrCouldNotGetBaseFeeXrp},
+		{name: "explicit zero base fee", response: `{"result":{"info":{"validated_ledger":{"base_fee_xrp":0},"load_factor":1}}}`, expected: "0"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := setupTestRPCClientForAutofill(t, []string{tt.response})
+			maxFee, err := clientinternal.ParseFeeXRP(client.cfg.maxFeeXRP)
+			require.NoError(t, err)
+
+			actual, err := client.getFeeDrops(context.Background(), 1, maxFee)
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			actualXRP, err := actual.XRPString()
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actualXRP)
+		})
+	}
+}
+
+func TestClientOwnerReservePresenceSemantics(t *testing.T) {
+	tests := []struct {
+		name        string
+		response    string
+		expected    uint64
+		expectedErr error
+	}{
+		{name: "missing reserve", response: `{"result":{"state":{"validated_ledger":{}}}}`, expectedErr: ErrCouldNotFetchOwnerReserve},
+		{name: "null reserve", response: `{"result":{"state":{"validated_ledger":{"reserve_inc":null}}}}`, expectedErr: ErrCouldNotFetchOwnerReserve},
+		{name: "explicit zero reserve", response: `{"result":{"state":{"validated_ledger":{"reserve_inc":0}}}}`, expected: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := setupTestRPCClientForAutofill(t, []string{tt.response})
+			actual, err := client.fetchOwnerReserveFee(context.Background())
+			if tt.expectedErr != nil {
+				require.ErrorIs(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestClientLoanSetFeeUsesValidatedLedger(t *testing.T) {
+	const owner = "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH"
+	mockClient := &testutil.JSONRPCMockClient{}
+	requests := make([]map[string]any, 0, 2)
+	mockClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		var payload map[string]any
+		require.NoError(t, json.Unmarshal(body, &payload))
+		requests = append(requests, payload)
+		method := payload["method"].(string)
+		switch method {
+		case "ledger_entry":
+			return testutil.MockResponse(`{"result":{"node":{"Owner":"`+owner+`"}}}`, 200, mockClient)(req)
+		case "account_info":
+			return testutil.MockResponse(`{"result":{"signer_lists":[]}}`, 200, mockClient)(req)
+		default:
+			t.Fatalf("unexpected method %s", method)
+			return nil, nil
+		}
+	}
+	cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mockClient), WithNetworkIdentity(0, "1.12.0"))
+	require.NoError(t, err)
+	client := NewClient(cfg)
+
+	count, err := client.fetchCounterPartySignersCount(
+		context.Background(),
+		transaction.FlatTransaction{"LoanBrokerID": "ABC"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), count)
+	require.Len(t, requests, 2)
+	for _, request := range requests {
+		params := request["params"].([]any)[0].(map[string]any)
+		require.Equal(t, "validated", params["ledger_index"])
+	}
+}
+
+func TestClientInvalidMaximumFeeUsesPublicError(t *testing.T) {
+	cl := setupTestRPCClientForAutofill(t, []string{`{"result":{"info":{"validated_ledger":{"base_fee_xrp":0.00001},"load_factor":1}}}`})
+	cl.cfg.maxFeeXRP = "invalid"
+	tx := transaction.FlatTransaction{"TransactionType": "Payment"}
+	require.ErrorIs(
+		t,
+		cl.calculateFeePerTransactionType(context.Background(), &tx, 0),
+		ErrInvalidFeeValue,
+	)
 }
 
 func TestClientSubmitTxBlobStructuralPreflight(t *testing.T) {

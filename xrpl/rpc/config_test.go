@@ -200,14 +200,14 @@ func TestWithMaxResponseSize(t *testing.T) {
 }
 
 func TestWithMaxFeeXRP(t *testing.T) {
-	maxFee := float32(5.0)
+	maxFee := "5"
 	cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithMaxFeeXRP(maxFee))
 
-	require.InEpsilon(t, maxFee, cfg.maxFeeXRP, 0)
+	require.Equal(t, maxFee, cfg.maxFeeXRP)
 }
 
 func TestWithFeeCushion(t *testing.T) {
-	feeCushion := float32(1.5)
+	feeCushion := 1.5
 	cfg, _ := NewClientConfig("http://s1.ripple.com:51234", WithFeeCushion(feeCushion))
 
 	require.InEpsilon(t, feeCushion, cfg.feeCushion, 0)

@@ -20,14 +20,14 @@ type Info struct {
 	JQTransOverflow          string               `json:"jq_trans_overflow"`
 	LastClose                ServerClose          `json:"last_close"`
 	Load                     ServerLoad           `json:"load,omitzero"`
-	LoadFactor               uint                 `json:"load_factor"`
+	LoadFactor               float64              `json:"load_factor"` // Normalized server_info fee multiplier, can be fractional.
 	NetworkID                *uint32              `json:"network_id,omitempty"`
-	LoadFactorLocal          uint                 `json:"load_factor_local,omitempty"`
-	LoadFactorNet            uint                 `json:"load_factor_net,omitempty"`
-	LoadFactorCluster        uint                 `json:"load_factor_cluster,omitempty"`
-	LoadFactorFeeEscelation  uint                 `json:"load_factor_fee_escelation,omitempty"`
-	LoadFactorFeeQueue       uint                 `json:"load_factor_fee_queue,omitempty"`
-	LoadFactorServer         uint                 `json:"load_factor_server,omitempty"`
+	LoadFactorLocal          float64              `json:"load_factor_local,omitempty"`
+	LoadFactorNet            float64              `json:"load_factor_net,omitempty"`
+	LoadFactorCluster        float64              `json:"load_factor_cluster,omitempty"`
+	LoadFactorFeeEscalation  float64              `json:"load_factor_fee_escalation,omitempty"`
+	LoadFactorFeeQueue       float64              `json:"load_factor_fee_queue,omitempty"`
+	LoadFactorServer         float64              `json:"load_factor_server,omitempty"`
 	PeerDisconnects          string               `json:"peer_disconnects,omitempty"`
 	PeerDisconnectsResources string               `json:"peer_disconnects_resources,omitempty"`
 	NetworkLedger            string               `json:"network_ledger,omitempty"`
@@ -53,6 +53,27 @@ func (i Info) ServerVersion() string {
 		return i.BuildVersion
 	}
 	return i.RippledVersion
+}
+
+// UnmarshalJSON implements json.Unmarshaler for Info. A missing load_factor
+// uses rippled's default factor of one, while an explicit zero remains zero.
+func (i *Info) UnmarshalJSON(data []byte) error {
+	type Alias Info
+	aux := struct {
+		LoadFactor *float64 `json:"load_factor"`
+		Alias
+	}{}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	*i = Info(aux.Alias)
+	if aux.LoadFactor == nil {
+		i.LoadFactor = 1
+	} else {
+		i.LoadFactor = *aux.LoadFactor
+	}
+	return nil
 }
 
 // ServerValidatorList holds the count, expiration, and status of the server's validator list.
@@ -146,22 +167,22 @@ func (s *State) UnmarshalJSON(data []byte) error {
 // ClosedLedgerState contains metadata for a closed ledger, such as age, fees, and sequence.
 type ClosedLedgerState struct {
 	Age         uint          `json:"age"`
-	BaseFee     float32       `json:"base_fee"`
+	BaseFee     uint64        `json:"base_fee"`
 	Hash        types.Hash256 `json:"hash"`
-	ReserveBase float32       `json:"reserve_base"`
-	ReserveInc  float32       `json:"reserve_inc"`
+	ReserveBase uint64        `json:"reserve_base"`
+	ReserveInc  *uint64       `json:"reserve_inc"`
 	Seq         uint          `json:"seq"`
 }
 
 // LedgerState represents the state of a validated ledger in the server state response.
 type LedgerState struct {
-	Age         uint   `json:"age,omitempty"`
-	BaseFee     uint   `json:"base_fee"`
-	CloseTime   uint   `json:"close_time"`
-	Hash        string `json:"hash"`
-	ReserveBase uint   `json:"reserve_base"`
-	ReserveInc  uint   `json:"reserve_inc"`
-	Seq         uint   `json:"seq"`
+	Age         uint    `json:"age,omitempty"`
+	BaseFee     uint64  `json:"base_fee"`
+	CloseTime   uint    `json:"close_time"`
+	Hash        string  `json:"hash"`
+	ReserveBase uint64  `json:"reserve_base"`
+	ReserveInc  *uint64 `json:"reserve_inc"`
+	Seq         uint    `json:"seq"`
 }
 
 // CloseState describes metrics of a ledger close, including converge time and proposer count.

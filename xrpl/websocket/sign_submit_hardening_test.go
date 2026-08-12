@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -316,7 +317,7 @@ func TestClientAutofillRawTransactionsRejectsNullSigningFields(t *testing.T) {
 			}
 			cl, cleanup := setupTestClientForAutofill(t, nil)
 			defer cleanup()
-			require.ErrorIs(t, cl.autofillRawTransactions(&tx), tt.expectedErr)
+			require.ErrorIs(t, cl.autofillRawTransactions(context.Background(), &tx), tt.expectedErr)
 		})
 	}
 }
@@ -373,7 +374,7 @@ func TestClientAutofillMultisignedFee(t *testing.T) {
 			"id": 1,
 			"result": map[string]any{
 				"info": map[string]any{
-					"validated_ledger": map[string]any{"base_fee_xrp": float32(0)},
+					"validated_ledger": map[string]any{},
 				},
 			},
 		}})
@@ -394,14 +395,6 @@ func TestClientFeeParity(t *testing.T) {
 			},
 		},
 	}
-	reserve := map[string]any{
-		"id": 2,
-		"result": map[string]any{
-			"state": map[string]any{
-				"validated_ledger": map[string]any{"reserve_inc": 2000000},
-			},
-		},
-	}
 	tests := []struct {
 		name      string
 		txType    string
@@ -412,7 +405,7 @@ func TestClientFeeParity(t *testing.T) {
 		{name: "single sign base fee", txType: "Payment", responses: []map[string]any{serverInfo}, expected: "10"},
 		{name: "one multisigner", txType: "Payment", nSigners: 1, responses: []map[string]any{serverInfo}, expected: "20"},
 		{name: "two multisigners", txType: "Payment", nSigners: 2, responses: []map[string]any{serverInfo}, expected: "30"},
-		{name: "VaultCreate owner reserve", txType: "VaultCreate", responses: []map[string]any{serverInfo, reserve}, expected: "2000000"},
+		{name: "VaultCreate base fee", txType: "VaultCreate", responses: []map[string]any{serverInfo}, expected: "10"},
 	}
 
 	for _, tt := range tests {
@@ -421,10 +414,23 @@ func TestClientFeeParity(t *testing.T) {
 			defer cleanup()
 			cl.cfg.feeCushion = 1
 			tx := transaction.FlatTransaction{"TransactionType": tt.txType}
-			require.NoError(t, cl.calculateFeePerTransactionType(&tx, tt.nSigners))
+			require.NoError(t, cl.calculateFeePerTransactionType(context.Background(), &tx, tt.nSigners))
 			require.Equal(t, tt.expected, tx["Fee"])
 		})
 	}
+}
+
+func TestClientCalculateBatchFeesRejectsNestedBatch(t *testing.T) {
+	tx := transaction.FlatTransaction{
+		"RawTransactions": []map[string]any{{
+			"RawTransaction": map[string]any{
+				"TransactionType": transaction.BatchTx,
+			},
+		}},
+	}
+
+	_, err := (&Client{}).calculateBatchFees(context.Background(), &tx)
+	require.ErrorIs(t, err, transactiontypes.ErrBatchNestedTransaction)
 }
 
 func TestClientSubmitTxBlobWorkerUsesDecodedTransaction(t *testing.T) {
@@ -436,7 +442,7 @@ func TestClientSubmitTxBlobWorkerUsesDecodedTransaction(t *testing.T) {
 		"TxnSignature":    "CCDD",
 	}
 
-	response, err := cl.submitTxBlob("not-hex", tx, false)
+	response, err := cl.submitTxBlob(context.Background(), "not-hex", tx, false)
 	require.NoError(t, err)
 	require.Equal(t, "tesSUCCESS", response.EngineResult)
 	<-seen

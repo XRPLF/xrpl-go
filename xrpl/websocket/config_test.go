@@ -14,9 +14,11 @@ func TestNewClientConfig(t *testing.T) {
 	config := NewClientConfig()
 	require.Equal(t, common.DefaultMaxRetries, config.maxRetries)
 	require.Equal(t, common.DefaultRetryDelay, config.retryDelay)
+	require.Equal(t, defaultReconnectBaseDelay, config.reconnectBaseDelay)
+	require.Equal(t, defaultReconnectMaxDelay, config.reconnectMaxDelay)
 	require.Equal(t, common.DefaultHost, config.host)
 	require.InEpsilon(t, common.DefaultFeeCushion, config.feeCushion, 0)
-	require.InEpsilon(t, common.DefaultMaxFeeXRP, config.maxFeeXRP, 0)
+	require.Equal(t, common.DefaultMaxFeeXRP, config.maxFeeXRP)
 	require.Equal(t, common.DefaultTimeout, config.timeout)
 	require.Equal(t, defaultMaxResponseSize, config.maxResponseSize)
 }
@@ -43,12 +45,12 @@ func TestWithRetryDelay(t *testing.T) {
 
 func TestWithFeeCushion(t *testing.T) {
 	config := NewClientConfig().WithFeeCushion(1.5)
-	require.InEpsilon(t, float32(1.5), config.feeCushion, 0)
+	require.InEpsilon(t, 1.5, config.feeCushion, 0)
 }
 
 func TestWithMaxFeeXRP(t *testing.T) {
-	config := NewClientConfig().WithMaxFeeXRP(3.0)
-	require.InEpsilon(t, float32(3.0), config.maxFeeXRP, 0)
+	config := NewClientConfig().WithMaxFeeXRP("3")
+	require.Equal(t, "3", config.maxFeeXRP)
 }
 
 func TestWithFaucetProvider(t *testing.T) {

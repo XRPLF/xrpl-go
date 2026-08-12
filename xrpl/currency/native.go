@@ -3,45 +3,31 @@ package currency
 
 import (
 	"math/big"
-	"strconv"
 	"strings"
 )
 
 const (
-	// DropsPerXrp is the number of drops equivalent to one XRP.
-	//
-	// Deprecated: use XrpToDrops and DropsToXrp for native amount conversions.
-	// The conversion helpers use exact rational arithmetic internally instead of float64.
-	DropsPerXrp float64 = 1000000
+	// DropsPerXRP is the number of drops equivalent to one XRP.
+	// Use XrpToDrops and DropsToXrp for conversions. This constant is for reference only.
+	DropsPerXRP = 1_000_000
+	// MaxNativeDrops is the maximum native XRP amount in drops.
+	MaxNativeDrops uint64 = 100_000_000_000_000_000
 	// MaxFractionLength is the maximum allowed decimal places in an XRP value.
 	MaxFractionLength int = 6
 	// NativeCurrencySymbol is the symbol representing the native XRP currency.
 	NativeCurrencySymbol string = "XRP"
 )
 
-const (
-	dropsPerXRP = int64(1000000)
-	maxDrops    = uint64(100000000000000000)
-
-	maxNativeAmountDigits = 18
-	// maxDecimalRatInputLen bounds plain decimal input to the largest drop amount plus a decimal point and XRP fraction
-	// 18 + 1 (decimal point) + 6 (fraction length).
-	maxDecimalRatInputLen = maxNativeAmountDigits + 1 + MaxFractionLength
-	// maxDecimalRatExponent bounds scientific notation before parsing to keep conversion work proportional to native amounts
-	// 1e17.
-	maxDecimalRatExponent = maxNativeAmountDigits - 1
-)
-
 var (
-	maxDropsInt       = new(big.Int).SetUint64(maxDrops)
-	dropsPerXRPBigInt = big.NewInt(dropsPerXRP)
-	dropsPerXRPRat    = big.NewRat(dropsPerXRP, 1)
+	maxDropsInt       = new(big.Int).SetUint64(MaxNativeDrops)
+	dropsPerXRPBigInt = big.NewInt(DropsPerXRP)
+	dropsPerXRPRat    = big.NewRat(DropsPerXRP, 1)
 	bigIntOne         = big.NewInt(1)
 )
 
 // XrpToDrops converts an amount in XRP to an amount in drops.
 func XrpToDrops(value string) (string, error) {
-	xrp, ok := decimalRat(value)
+	xrp, ok := nativeAmountRat(value)
 	if !ok {
 		return "", ErrXrpToDropsInvalidValue
 	}
@@ -64,7 +50,7 @@ func XrpToDrops(value string) (string, error) {
 
 // DropsToXrp converts an amount of drops into an amount of XRP.
 func DropsToXrp(value string) (string, error) {
-	drops, ok := decimalRat(value)
+	drops, ok := nativeAmountRat(value)
 	if !ok {
 		return "", ErrDropsToXrpInvalidValue
 	}
@@ -94,41 +80,4 @@ func DropsToXrp(value string) (string, error) {
 	}
 
 	return whole.String() + "." + strings.TrimRight(fractionString, "0"), nil
-}
-
-func decimalRat(value string) (*big.Rat, bool) {
-	if len(value) > maxDecimalRatInputLen || containsInvalidChar(value) {
-		return nil, false
-	}
-
-	if i := strings.IndexAny(value, "eE"); i >= 0 {
-		exp, err := strconv.Atoi(value[i+1:])
-		if err != nil || exp < -maxDecimalRatExponent || exp > maxDecimalRatExponent {
-			return nil, false
-		}
-	}
-
-	return new(big.Rat).SetString(value)
-}
-
-func containsInvalidChar(value string) bool {
-	if value == "" {
-		return true
-	}
-
-	for i := 0; i < len(value); i++ {
-		c := value[i]
-		switch {
-		case c >= '0' && c <= '9', c == '.', c == 'e', c == 'E':
-			// always valid
-		case c == '+' || c == '-':
-			if i != 0 && value[i-1] != 'e' && value[i-1] != 'E' {
-				return true
-			}
-		default:
-			return true
-		}
-	}
-
-	return false
 }

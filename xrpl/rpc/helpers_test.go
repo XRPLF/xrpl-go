@@ -104,6 +104,27 @@ func TestCheckForError(t *testing.T) {
 			expectedResultErr: "ledgerIndexMalformed",
 		},
 		{
+			name:            "fail - object error field",
+			body:            []byte(`{"result":{"error":{"code":"txnNotFound"}}}`),
+			statusCode:      200,
+			maxResponseSize: defaultMaxResponseSize,
+			expectedErr:     ErrResponseErrorFieldIsNotAString,
+		},
+		{
+			name:            "fail - numeric error field",
+			body:            []byte(`{"result":{"error":42}}`),
+			statusCode:      200,
+			maxResponseSize: defaultMaxResponseSize,
+			expectedErr:     ErrResponseErrorFieldIsNotAString,
+		},
+		{
+			name:            "fail - null error field",
+			body:            []byte(`{"result":{"error":null}}`),
+			statusCode:      200,
+			maxResponseSize: defaultMaxResponseSize,
+			expectedErr:     ErrResponseErrorFieldIsNotAString,
+		},
+		{
 			name:              "fail - error response with error code",
 			body:              []byte(nullMethod),
 			statusCode:        400,

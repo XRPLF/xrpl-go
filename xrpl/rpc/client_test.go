@@ -687,7 +687,7 @@ func TestClientCalculateFeeForNamedTransactionType(t *testing.T) {
 	})
 	tx := transaction.FlatTransaction{"TransactionType": transaction.AccountDeleteTx}
 
-	require.NoError(t, cl.calculateFeePerTransactionType(&tx, 0))
+	require.NoError(t, cl.calculateFeePerTransactionType(context.Background(), &tx, 0))
 	require.Equal(t, "2000000", tx["Fee"])
 }
 
@@ -1288,7 +1288,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 				err = clientinternal.ApplyNetworkIDPolicy(tt.tx, identity)
 			}
 			if err == nil {
-				err = cl.autofillRawTransactions(&tt.tx)
+				err = cl.autofillRawTransactions(context.Background(), &tt.tx)
 			}
 
 			if tt.expectedErr != nil {
