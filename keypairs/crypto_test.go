@@ -45,12 +45,6 @@ func TestGetCryptoImplementationFromKey(t *testing.T) {
 			expected: crypto.SECP256K1(),
 		},
 		{
-			name:     "public - uncompressed secp256k1",
-			keyType:  publicKeyType,
-			input:    testSecpUncompressedKey,
-			expected: crypto.SECP256K1(),
-		},
-		{
 			name:     "private - ED25519",
 			keyType:  privateKeyType,
 			input:    testEdPrivateKey,
@@ -126,6 +120,12 @@ func TestGetCryptoImplementationFromKeyRejectsInvalidFormats(t *testing.T) {
 			name:        "public - unsupported prefix",
 			keyType:     publicKeyType,
 			input:       "05" + testSecpCompressedEvenKey[2:],
+			expectedErr: ErrInvalidPublicKeyFormat,
+		},
+		{
+			name:        "public - uncompressed secp256k1",
+			keyType:     publicKeyType,
+			input:       testSecpUncompressedKey,
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{

@@ -277,18 +277,13 @@ func TestDeriveClassicAddress(t *testing.T) {
 			expected: "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 		},
 		{
-			name:     "pass - derive address from uncompressed secp256k1 public key",
-			input:    testSecpUncompressedKey,
-			expected: "rH6TMqaYe6A2A7eXeih1tW228o7P6dNjKz",
+			name:        "fail - reject uncompressed secp256k1 public key",
+			input:       testSecpUncompressedKey,
+			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
 			name:        "fail - invalid compressed secp256k1 curve point",
 			input:       "02" + strings.Repeat("FF", 32),
-			expectedErr: ErrInvalidPublicKeyFormat,
-		},
-		{
-			name:        "fail - invalid uncompressed secp256k1 curve point",
-			input:       "04" + strings.Repeat("FF", 64),
 			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 		{
@@ -561,11 +556,11 @@ func TestValidate(t *testing.T) {
 			expected:    true,
 		},
 		{
-			name:        "pass - verify with uncompressed secp256k1 public key",
+			name:        "fail - reject uncompressed secp256k1 public key",
 			inputMsg:    "Hello World",
 			inputPubKey: testSecpUncompressedKey,
 			inputSig:    secpHelloWorldSignature,
-			expected:    true,
+			expectedErr: ErrInvalidPublicKeyFormat,
 		},
 	}
 

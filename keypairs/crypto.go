@@ -25,13 +25,11 @@ type keyFormat struct {
 
 // acceptedKeyFormats is the complete key-type-aware format table used for algorithm selection.
 // A noKeyPrefix entry matches keys of that length regardless of their first byte (used for
-// raw 32-byte secp256k1 private keys). The secp256k1 implementation accepts the 65-byte
-// uncompressed public form through secp256k1.ParsePubKey.
+// raw 32-byte secp256k1 private keys).
 var acceptedKeyFormats = map[keyFormat]interfaces.KeypairCryptoAlg{
 	{keyType: publicKeyType, prefix: 0xED, length: 33}: crypto.ED25519(),
 	{keyType: publicKeyType, prefix: 0x02, length: 33}: crypto.SECP256K1(),
 	{keyType: publicKeyType, prefix: 0x03, length: 33}: crypto.SECP256K1(),
-	{keyType: publicKeyType, prefix: 0x04, length: 65}: crypto.SECP256K1(),
 
 	{keyType: privateKeyType, prefix: 0xED, length: 33}:        crypto.ED25519(),
 	{keyType: privateKeyType, prefix: noKeyPrefix, length: 32}: crypto.SECP256K1(),
