@@ -204,6 +204,106 @@ func TestClient_StreamHandlersRunConcurrentlyAcrossStreams(t *testing.T) {
 	}
 }
 
+func TestClient_StreamHandlerDoesNotOverlapAfterDisconnectAndConnect(t *testing.T) {
+	var connectionCount atomic.Int32
+	upgrader := gorillaws.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	secondConnectionReady := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		connectionNumber := connectionCount.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		message := fmt.Appendf(nil, `{"type":"ledgerClosed","ledger_index":%d}`, connectionNumber)
+		if err := conn.WriteMessage(gorillaws.TextMessage, message); err != nil {
+			return
+		}
+		if connectionNumber == 2 {
+			close(secondConnectionReady)
+		}
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}))
+	defer server.Close()
+
+	url, err := testutil.ConvertHTTPToWS(server.URL)
+	require.NoError(t, err)
+	client := NewClient(
+		NewClientConfig().
+			WithHost(url).
+			WithTimeout(time.Second).
+			WithNetworkIdentity(0, "2.0.0"),
+	)
+
+	firstStarted := make(chan struct{})
+	releaseFirst := make(chan struct{})
+	secondHandled := make(chan struct{})
+	var calls atomic.Int32
+	var active atomic.Int32
+	var maxActive atomic.Int32
+	client.OnLedgerClosed(func(*streamtypes.LedgerStream) {
+		current := active.Add(1)
+		defer active.Add(-1)
+		for previous := maxActive.Load(); current > previous; previous = maxActive.Load() {
+			if maxActive.CompareAndSwap(previous, current) {
+				break
+			}
+		}
+
+		if calls.Add(1) == 1 {
+			close(firstStarted)
+			<-releaseFirst
+			return
+		}
+		close(secondHandled)
+	})
+
+	require.NoError(t, client.Connect())
+	select {
+	case <-firstStarted:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for first stream handler")
+	}
+	require.NoError(t, client.Disconnect())
+
+	connectResult := make(chan error, 1)
+	go func() {
+		connectResult <- client.Connect()
+	}()
+	select {
+	case <-secondConnectionReady:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for replacement connection")
+	}
+	select {
+	case err := <-connectResult:
+		t.Fatalf("Connect completed while the detached handler was active: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	close(releaseFirst)
+	select {
+	case err := <-connectResult:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for replacement Connect")
+	}
+	defer client.Disconnect()
+
+	select {
+	case <-secondHandled:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for replacement stream event")
+	}
+	require.Equal(t, int32(1), maxActive.Load())
+	require.Equal(t, int32(2), calls.Load())
+}
+
 func TestClient_StreamHandlerSingleDeliveryAcrossRepeatedReconnects(t *testing.T) {
 	const reconnectCount = 2
 	var connectionCount atomic.Int32

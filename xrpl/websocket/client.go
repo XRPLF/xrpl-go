@@ -110,9 +110,12 @@ type Client struct {
 	bookChangesStream  lifecycleStream[*streamtypes.BookChangesStream]
 	consensusStream    lifecycleStream[*streamtypes.ConsensusStream]
 
-	// streamHandlerStateMu protects ctx, cancel, and coordinated start/reset
-	// operations on the registered lifecycleStream runners.
+	// streamHandlerStateMu protects ctx, cancel, detachedHandlerRunners, and
+	// coordinated start/reset operations on the registered lifecycleStream runners.
 	streamHandlerStateMu sync.Mutex
+	// detachedHandlerRunners tracks canceled runners that can still be executing
+	// callbacks after Disconnect returns.
+	detachedHandlerRunners []<-chan struct{}
 	// streamHandlerResetMu serializes full lifecycle resets while old stream
 	// handler runners are waited on outside streamHandlerStateMu.
 	streamHandlerResetMu sync.Mutex
@@ -176,7 +179,9 @@ func (c *Client) resetLifecycle() context.Context {
 	c.streamHandlerStateMu.Lock()
 
 	c.cancel()
-	doneChannels := c.resetHandlerRunners()
+	doneChannels := append([]<-chan struct{}{}, c.detachedHandlerRunners...)
+	c.detachedHandlerRunners = nil
+	doneChannels = append(doneChannels, c.resetHandlerRunners()...)
 	c.streamHandlerStateMu.Unlock()
 
 	waitForHandlerRunners(doneChannels)
@@ -199,17 +204,21 @@ func (c *Client) lifecycleContext() context.Context {
 	return c.ctx
 }
 
-// cancelLifecycle cancels the current lifecycle and clears registered handler
-// runners under streamHandlerStateMu. It does not wait for runners to exit:
-// Disconnect is supported from inside a stream handler, where waiting would
-// deadlock the calling runner. Orphaned runners exit asynchronously when they
-// observe ctx.Done.
+// cancelLifecycle cancels the current lifecycle and detaches registered handler
+// runners under streamHandlerStateMu. It does not wait for runners to exit
+// because Disconnect is supported from inside a stream handler, where waiting
+// would deadlock the calling runner. Completion channels remain tracked so the
+// next lifecycle reset waits before it starts replacement runners.
 func (c *Client) cancelLifecycle() {
 	c.streamHandlerStateMu.Lock()
 	defer c.streamHandlerStateMu.Unlock()
 
 	c.cancel()
-	c.resetHandlerRunners()
+	for _, done := range c.resetHandlerRunners() {
+		if done != nil {
+			c.detachedHandlerRunners = append(c.detachedHandlerRunners, done)
+		}
+	}
 }
 
 // cancelLifecycleForReplacement fails pending requests for the old connection

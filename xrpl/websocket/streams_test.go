@@ -683,6 +683,56 @@ func TestClient_ResetLifecycleWaitsForOldStreamRunner(t *testing.T) {
 	}
 }
 
+func TestClient_ResetLifecycleWaitsForDetachedStreamRunner(t *testing.T) {
+	cl := NewClient(*NewClientConfig())
+	cl.resetLifecycle()
+
+	handlerStarted := make(chan struct{})
+	releaseHandler := make(chan struct{})
+	handlerDone := make(chan struct{})
+	cl.OnLedgerClosed(func(*streamtypes.LedgerStream) {
+		close(handlerStarted)
+		<-releaseHandler
+		close(handlerDone)
+	})
+
+	cl.reportLedgerClosed(cl.lifecycleContext(), &streamtypes.LedgerStream{})
+	select {
+	case <-handlerStarted:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for detached stream handler")
+	}
+
+	require.NoError(t, cl.Disconnect())
+
+	resetDone := make(chan struct{})
+	go func() {
+		cl.resetLifecycle()
+		cl.cancelLifecycle()
+		close(resetDone)
+	}()
+
+	select {
+	case <-resetDone:
+		t.Fatal("lifecycle reset completed before detached stream runner exited")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	close(releaseHandler)
+
+	select {
+	case <-handlerDone:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for detached stream handler to finish")
+	}
+
+	select {
+	case <-resetDone:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for lifecycle reset")
+	}
+}
+
 func TestClient_DisconnectFromStreamHandlerDoesNotDeadlock(t *testing.T) {
 	cl := NewClient(*NewClientConfig())
 	cl.resetLifecycle()
