@@ -12,12 +12,27 @@ const (
 
 // NonDelegatableTransactionsMap defines the set of transaction types that cannot be delegated.
 var NonDelegatableTransactionsMap = map[string]uint8{
-	AccountSetTx.String():    0,
-	SetRegularKeyTx.String(): 0,
-	SignerListSetTx.String(): 0,
-	DelegateSetTx.String():   0,
-	AccountDeleteTx.String(): 0,
-	BatchTx.String():         0,
+	AccountSetTx.String():              0,
+	SetRegularKeyTx.String():           0,
+	SignerListSetTx.String():           0,
+	DelegateSetTx.String():             0,
+	AccountDeleteTx.String():           0,
+	BatchTx.String():                   0,
+	VaultCreateTx.String():             0,
+	VaultSetTx.String():                0,
+	VaultDeleteTx.String():             0,
+	VaultDepositTx.String():            0,
+	VaultWithdrawTx.String():           0,
+	VaultClawbackTx.String():           0,
+	LoanBrokerSetTx.String():           0,
+	LoanBrokerDeleteTx.String():        0,
+	LoanBrokerCoverDepositTx.String():  0,
+	LoanBrokerCoverWithdrawTx.String(): 0,
+	LoanBrokerCoverClawbackTx.String(): 0,
+	LoanSetTx.String():                 0,
+	LoanDeleteTx.String():              0,
+	LoanManageTx.String():              0,
+	LoanPayTx.String():                 0,
 	// Pseudo transactions below:
 	EnableAmendmentTx.String(): 0,
 	SetFeeTx.String():          0,
@@ -74,7 +89,7 @@ func (d *DelegateSet) Flatten() FlatTransaction {
 		flattened["Authorize"] = d.Authorize.String()
 	}
 
-	if len(d.Permissions) > 0 {
+	if d.Permissions != nil {
 		flattenedPermissions := make([]any, len(d.Permissions))
 		for i, permission := range d.Permissions {
 			flattenedPermissions[i] = permission.Flatten()
@@ -101,9 +116,9 @@ func (d *DelegateSet) Validate() (bool, error) {
 		return false, ErrDelegateSetAuthorizeAccountConflict
 	}
 
-	// Validate Permissions array
-	if len(d.Permissions) == 0 {
-		return false, ErrDelegateSetPermissionMalformed // Permissions array is required
+	// A nil Permissions slice is absent. A present empty slice deletes the Delegate object.
+	if d.Permissions == nil {
+		return false, ErrDelegateSetPermissionMalformed
 	}
 
 	if len(d.Permissions) > PermissionsMaxLength {

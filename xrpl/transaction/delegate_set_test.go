@@ -62,6 +62,23 @@ func TestDelegateSet_Flatten(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - delete Delegate with empty permissions",
+			input: &DelegateSet{
+				BaseTx: BaseTx{
+					Account:         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+					TransactionType: DelegateSetTx,
+				},
+				Authorize:   "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+				Permissions: []types.Permission{},
+			},
+			expected: FlatTransaction{
+				"Account":         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+				"TransactionType": "DelegateSet",
+				"Authorize":       "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+				"Permissions":     []any{},
+			},
+		},
+		{
 			name: "pass - minimal DelegateSet",
 			input: &DelegateSet{
 				BaseTx: BaseTx{
@@ -122,6 +139,46 @@ func TestDelegateSet_ValidateRejectsBatchPermission(t *testing.T) {
 
 	require.False(t, valid)
 	require.ErrorIs(t, err, ErrDelegateSetNonDelegatableTransaction)
+}
+
+func TestDelegateSet_ValidateRejectsVaultAndLoanPermissions(t *testing.T) {
+	nonDelegable := []TxType{
+		VaultCreateTx,
+		VaultSetTx,
+		VaultDeleteTx,
+		VaultDepositTx,
+		VaultWithdrawTx,
+		VaultClawbackTx,
+		LoanBrokerSetTx,
+		LoanBrokerDeleteTx,
+		LoanBrokerCoverDepositTx,
+		LoanBrokerCoverWithdrawTx,
+		LoanBrokerCoverClawbackTx,
+		LoanSetTx,
+		LoanDeleteTx,
+		LoanManageTx,
+		LoanPayTx,
+	}
+
+	for _, txType := range nonDelegable {
+		t.Run(txType.String(), func(t *testing.T) {
+			tx := &DelegateSet{
+				BaseTx: BaseTx{
+					Account:         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+					TransactionType: DelegateSetTx,
+				},
+				Authorize: "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
+				Permissions: []types.Permission{{
+					Permission: types.PermissionValue{PermissionValue: txType.String()},
+				}},
+			}
+
+			valid, err := tx.Validate()
+
+			require.False(t, valid)
+			require.ErrorIs(t, err, ErrDelegateSetNonDelegatableTransaction)
+		})
+	}
 }
 
 func TestDelegateSet_Validate(t *testing.T) {
@@ -235,7 +292,7 @@ func TestDelegateSet_Validate(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "fail - empty Permissions array",
+			name: "pass - empty Permissions array deletes Delegate",
 			input: &DelegateSet{
 				BaseTx: BaseTx{
 					Account:         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
@@ -245,6 +302,19 @@ func TestDelegateSet_Validate(t *testing.T) {
 				},
 				Authorize:   "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
 				Permissions: []types.Permission{},
+			},
+			expected: true,
+		},
+		{
+			name: "fail - missing Permissions array",
+			input: &DelegateSet{
+				BaseTx: BaseTx{
+					Account:         "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
+					TransactionType: DelegateSetTx,
+					Fee:             types.XRPCurrencyAmount(12),
+					Sequence:        1,
+				},
+				Authorize: "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf",
 			},
 			expected: false,
 		},

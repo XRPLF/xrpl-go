@@ -174,7 +174,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `MutableFlags` bits in addition to an explicitly zero mask.
+- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `MutableFlags` bits in addition to an explicitly zero mask. `MPTokenIssuanceSet` also requires its issuance ID to be an exact 192-bit hexadecimal value.
+- `DelegateSet` now uses a present empty `Permissions` list to delete a Delegate object. Vault and Loan transaction types are rejected as non-delegable according to XLS-75.
 - Inner Batch transaction flattening now preserves the wire-required empty `SigningPubKey`, and raw inner-transaction validation requires that explicit empty field. Explicit null Batch inner fields now fail where the wire requires absent or empty values.
 - `Batch.Validate` now requires 2 through 8 inner transactions. `ErrBatchRawTransactionsEmpty` remains a compatibility alias that matches the new count error with `errors.Is`.
 

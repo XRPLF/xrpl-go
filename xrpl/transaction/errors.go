@@ -294,8 +294,8 @@ var (
 
 	// ErrDelegateSetAuthorizeAccountConflict is returned when the Authorize account matches the Account.
 	ErrDelegateSetAuthorizeAccountConflict = errors.New("authorize account cannot be the same as the Account")
-	// ErrDelegateSetPermissionMalformed is returned when the Permissions array is empty or malformed.
-	ErrDelegateSetPermissionMalformed = errors.New("permissions array is required and cannot be empty")
+	// ErrDelegateSetPermissionMalformed is returned when the Permissions array is absent.
+	ErrDelegateSetPermissionMalformed = errors.New("permissions array is required")
 	// ErrDelegateSetPermissionsMaxLength is returned when the Permissions array exceeds the maximum length.
 	ErrDelegateSetPermissionsMaxLength = errors.New("permissions array cannot exceed maximum length")
 	// ErrDelegateSetEmptyPermissionValue is returned when a permission value is empty or undefined.
