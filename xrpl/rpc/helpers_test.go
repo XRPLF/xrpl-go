@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/amm"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	utility "github.com/Peersyst/xrpl-go/xrpl/queries/utility"
 	jsoniter "github.com/json-iterator/go"
@@ -38,6 +39,21 @@ func TestCreateRequest(t *testing.T) {
 		// assert json equal
 		assert.Equal(t, string(expectedRequestBytes), string(byteRequest))
 	})
+	t.Run("Create account-only AMM request without empty assets", func(t *testing.T) {
+		req := &amm.InfoRequest{
+			AMMAccount: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
+		}
+
+		byteRequest, err := createRequest(req)
+
+		require.NoError(t, err)
+		const expected = `{"method":"amm_info","params":[{"api_version":2,"amm_account":"rE54zDvgnghAoPopCgvtiqWNq3dU5y836S"}]}`
+		assert.JSONEq(t, expected, string(byteRequest))
+		if string(byteRequest) != expected {
+			t.Fatalf("unexpected exact RPC body: %s", byteRequest)
+		}
+	})
+
 	t.Run("Create request - no parameters with using pointer declaration", func(t *testing.T) {
 		req := &utility.RandomRequest{} // params sent in as zero value struct
 

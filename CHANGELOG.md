@@ -253,6 +253,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rejected nil custom HTTP clients during configuration and request-time revalidation with `ErrNilHTTPClient` instead of allowing request-time panics.
 - Redacted bare authorization credentials and percent-encoded URL passwords from authorized RPC request errors.
 - Authorized RPC redirects now reject an HTTPS-to-HTTP downgrade before invoking the caller's `CheckRedirect`, so a callback never observes `Authorization` on a plaintext target.
+- Account-only `amm_info` requests now omit empty `asset` and `asset2` selectors from the RPC payload.
 - Corrected fee precision and rounding with shared exact rational arithmetic, including fractional base fees and load factors, rippled-compatible integer `EscrowFinish` fulfillment scaling, final whole-drop ceiling, validated-ledger `LoanSet` signer data, and presence-aware zero base and owner-reserve fees.
 - Made submit options nil-safe without enabling autofill by default. Forced `fail_hard` for `AccountDelete`. Used the normal network fee for `VaultCreate` instead of the incremental owner reserve. The standard `maxFeeXRP` cap now applies. Normalized Payment `DeliverMax` to wire `Amount`. Prevented autofill and submission failures from changing caller-owned maps.
 - `AutofillMultisigned` now preserves a supplied `Fee`, when absent, it calculates the fee once with the signer count.

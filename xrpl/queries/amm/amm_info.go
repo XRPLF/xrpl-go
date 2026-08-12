@@ -31,6 +31,35 @@ type InfoRequest struct {
 	LedgerIndex common.LedgerSpecifier `json:"ledger_index,omitempty"`
 }
 
+// MarshalJSON omits zero asset selectors for both the standard JSON encoder and
+// the jsoniter encoder used by the RPC transport.
+func (i InfoRequest) MarshalJSON() ([]byte, error) {
+	type infoRequestWire struct {
+		common.BaseRequest
+		Asset       *ledger.Asset          `json:"asset,omitempty"`
+		Asset2      *ledger.Asset          `json:"asset2,omitempty"`
+		AMMAccount  types.Address          `json:"amm_account,omitempty"`
+		Account     types.Address          `json:"account,omitempty"`
+		LedgerHash  common.LedgerHash      `json:"ledger_hash,omitempty"`
+		LedgerIndex common.LedgerSpecifier `json:"ledger_index,omitempty"`
+	}
+
+	wire := infoRequestWire{
+		BaseRequest: i.BaseRequest,
+		AMMAccount:  i.AMMAccount,
+		Account:     i.Account,
+		LedgerHash:  i.LedgerHash,
+		LedgerIndex: i.LedgerIndex,
+	}
+	if i.Asset != (ledger.Asset{}) {
+		wire.Asset = &i.Asset
+	}
+	if i.Asset2 != (ledger.Asset{}) {
+		wire.Asset2 = &i.Asset2
+	}
+	return json.Marshal(wire)
+}
+
 // Method returns the JSON-RPC method name for InfoRequest.
 func (*InfoRequest) Method() string {
 	return "amm_info"
