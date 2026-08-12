@@ -334,18 +334,20 @@ func TestClientAutofillMultisignedFee(t *testing.T) {
 	}
 	tests := []struct {
 		name      string
+		txType    transaction.TxType
 		fee       any
 		responses []map[string]any
 		expected  string
 	}{
-		{name: "preserves supplied fee", fee: "99", expected: "99"},
-		{name: "calculates missing fee once", responses: []map[string]any{serverInfo}, expected: "30"},
+		{name: "preserves supplied fee", txType: transaction.PaymentTx, fee: "99", expected: "99"},
+		{name: "calculates missing fee once", txType: transaction.PaymentTx, responses: []map[string]any{serverInfo}, expected: "30"},
+		{name: "confidential multiplier and signers", txType: transaction.ConfidentialMPTSendTx, responses: []map[string]any{serverInfo}, expected: "120"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tx := transaction.FlatTransaction{
-				"TransactionType":    "Payment",
+				"TransactionType":    tt.txType,
 				"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"Sequence":           uint32(1),
 				"LastLedgerSequence": uint32(20),
@@ -405,6 +407,8 @@ func TestClientFeeParity(t *testing.T) {
 		{name: "single sign base fee", txType: "Payment", responses: []map[string]any{serverInfo}, expected: "10"},
 		{name: "one multisigner", txType: "Payment", nSigners: 1, responses: []map[string]any{serverInfo}, expected: "20"},
 		{name: "two multisigners", txType: "Payment", nSigners: 2, responses: []map[string]any{serverInfo}, expected: "30"},
+		{name: "confidential MPT base fee", txType: transaction.ConfidentialMPTSendTx.String(), responses: []map[string]any{serverInfo}, expected: "100"},
+		{name: "confidential MPT multisigners", txType: transaction.ConfidentialMPTConvertTx.String(), nSigners: 2, responses: []map[string]any{serverInfo}, expected: "120"},
 		{name: "VaultCreate base fee", txType: "VaultCreate", responses: []map[string]any{serverInfo}, expected: "10"},
 	}
 
@@ -418,6 +422,38 @@ func TestClientFeeParity(t *testing.T) {
 			require.Equal(t, tt.expected, tx["Fee"])
 		})
 	}
+}
+
+func TestClientCalculateBatchFeesIncludesConfidentialMultiplier(t *testing.T) {
+	serverInfo := map[string]any{
+		"id": 1,
+		"result": map[string]any{
+			"info": map[string]any{
+				"validated_ledger": map[string]any{"base_fee_xrp": float32(0.00001)},
+				"load_factor":      float32(1),
+			},
+		},
+	}
+	tx := transaction.FlatTransaction{
+		"TransactionType": transaction.BatchTx,
+		"RawTransactions": []map[string]any{
+			{"RawTransaction": map[string]any{"TransactionType": transaction.ConfidentialMPTSendTx}},
+			{"RawTransaction": map[string]any{"TransactionType": transaction.PaymentTx}},
+		},
+	}
+	serverInfo2 := clientinternal.CloneTransaction(serverInfo)
+	serverInfo2["id"] = 2
+	serverInfo3 := clientinternal.CloneTransaction(serverInfo)
+	serverInfo3["id"] = 3
+	cl, cleanup := setupTestClient(t, []map[string]any{serverInfo, serverInfo2, serverInfo3})
+	defer cleanup()
+	cl.cfg.feeCushion = 1
+
+	require.NoError(t, cl.calculateFeePerTransactionType(context.Background(), &tx, 0))
+	require.Equal(t, "130", tx["Fee"])
+	rawTransactions := tx["RawTransactions"].([]map[string]any)
+	require.Equal(t, "0", rawTransactions[0]["RawTransaction"].(map[string]any)["Fee"])
+	require.Equal(t, "0", rawTransactions[1]["RawTransaction"].(map[string]any)["Fee"])
 }
 
 func TestClientCalculateBatchFeesRejectsNestedBatch(t *testing.T) {

@@ -838,7 +838,7 @@ func (c *Client) getFeeDrops(
 
 // calculateFeePerTransactionType calculates the fee for a transaction,
 // including special costs for EscrowFinish, owner-reserve transactions, Batch,
-// LoanSet, and multisigning.
+// confidential MPT transactions, LoanSet, and multisigning.
 func (c *Client) calculateFeePerTransactionType(
 	ctx context.Context,
 	tx *transaction.FlatTransaction,
@@ -856,6 +856,9 @@ func (c *Client) calculateFeePerTransactionType(
 	baseFee := netFee
 
 	transactionType := tx.TxType()
+	if transaction.IsConfidentialMPTTransactionType(transactionType) {
+		baseFee = netFee.Mul(transaction.ConfidentialMPTFeeMultiplier)
+	}
 	isSpecialTxCost := transactionType == transaction.AccountDeleteTx ||
 		transactionType == transaction.AMMCreateTx
 

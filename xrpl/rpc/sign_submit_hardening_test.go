@@ -333,18 +333,20 @@ func TestClientAutofillMultisignedFee(t *testing.T) {
 	serverInfo := `{"result":{"info":{"validated_ledger":{"base_fee_xrp":0.00001},"load_factor":1}}}`
 	tests := []struct {
 		name      string
+		txType    transaction.TxType
 		fee       any
 		responses []string
 		expected  string
 	}{
-		{name: "preserves supplied fee", fee: "99", expected: "99"},
-		{name: "calculates missing fee once", responses: []string{serverInfo}, expected: "30"},
+		{name: "preserves supplied fee", txType: transaction.PaymentTx, fee: "99", expected: "99"},
+		{name: "calculates missing fee once", txType: transaction.PaymentTx, responses: []string{serverInfo}, expected: "30"},
+		{name: "confidential multiplier and signers", txType: transaction.ConfidentialMPTSendTx, responses: []string{serverInfo}, expected: "120"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tx := transaction.FlatTransaction{
-				"TransactionType":    "Payment",
+				"TransactionType":    tt.txType,
 				"Account":            "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH",
 				"Sequence":           uint32(1),
 				"LastLedgerSequence": uint32(20),
@@ -395,6 +397,8 @@ func TestClientFeeParity(t *testing.T) {
 		{name: "maximum fee uses exact decimal", txType: "Payment", cushion: 1, maxFeeXRP: "0.123456", responses: []string{highLoadServerInfo}, expected: "123456"},
 		{name: "one multisigner", txType: "Payment", nSigners: 1, cushion: 1, responses: []string{serverInfo}, expected: "20"},
 		{name: "two multisigners", txType: "Payment", nSigners: 2, cushion: 1, responses: []string{serverInfo}, expected: "30"},
+		{name: "confidential MPT base fee", txType: transaction.ConfidentialMPTSendTx.String(), cushion: 1, responses: []string{serverInfo}, expected: "100"},
+		{name: "confidential MPT multisigners", txType: transaction.ConfidentialMPTConvertTx.String(), nSigners: 2, cushion: 1, responses: []string{serverInfo}, expected: "120"},
 		{name: "EscrowFinish absent fulfillment", txType: "EscrowFinish", cushion: 1, responses: []string{serverInfo}, expected: "10"},
 		{name: "EscrowFinish empty fulfillment", txType: "EscrowFinish", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "330"},
 		{name: "EscrowFinish below 16-byte fee step", txType: "EscrowFinish", fulfillment: "A0028000", fulfillmentPresent: true, cushion: 1, responses: []string{serverInfo}, expected: "330"},
@@ -417,6 +421,25 @@ func TestClientFeeParity(t *testing.T) {
 			require.Equal(t, tt.expected, tx["Fee"])
 		})
 	}
+}
+
+func TestClientCalculateBatchFeesIncludesConfidentialMultiplier(t *testing.T) {
+	const serverInfo = `{"result":{"info":{"validated_ledger":{"base_fee_xrp":0.00001},"load_factor":1}}}`
+	tx := transaction.FlatTransaction{
+		"TransactionType": transaction.BatchTx,
+		"RawTransactions": []map[string]any{
+			{"RawTransaction": map[string]any{"TransactionType": transaction.ConfidentialMPTSendTx}},
+			{"RawTransaction": map[string]any{"TransactionType": transaction.PaymentTx}},
+		},
+	}
+	cl := setupTestRPCClientForAutofill(t, []string{serverInfo, serverInfo, serverInfo})
+	cl.cfg.feeCushion = 1
+
+	require.NoError(t, cl.calculateFeePerTransactionType(context.Background(), &tx, 0))
+	require.Equal(t, "130", tx["Fee"])
+	rawTransactions := tx["RawTransactions"].([]map[string]any)
+	require.Equal(t, "0", rawTransactions[0]["RawTransaction"].(map[string]any)["Fee"])
+	require.Equal(t, "0", rawTransactions[1]["RawTransaction"].(map[string]any)["Fee"])
 }
 
 func TestClientCalculateBatchFeesRejectsNestedBatch(t *testing.T) {
