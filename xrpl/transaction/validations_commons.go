@@ -1,7 +1,10 @@
 package transaction
 
 import (
+	"encoding/hex"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -15,6 +18,14 @@ func decodeAddressAccountID(address types.Address) (accountID []byte, hasTag boo
 
 	accountID, _, hasTag, _, err = addresscodec.DecodeXAddress(address.String())
 	return accountID, hasTag, err
+}
+
+func decodeMPTIssuanceID(issuanceID string) ([]byte, bool) {
+	idBytes, err := hex.DecodeString(issuanceID)
+	if err != nil || len(idBytes) != bctypes.MPTIssuanceIDByteLength {
+		return nil, false
+	}
+	return idBytes, true
 }
 
 // ValidateOptionalField validates an optional field in the transaction map.

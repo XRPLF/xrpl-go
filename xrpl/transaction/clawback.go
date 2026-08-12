@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -115,8 +114,8 @@ func (c *Clawback) Validate() (bool, error) {
 			return false, ErrClawbackInvalidAmount
 		}
 
-		issuanceIDBytes, err := hex.DecodeString(amount.MPTIssuanceID)
-		if err != nil || len(issuanceIDBytes) != bctypes.MPTIssuanceIDByteLength {
+		issuanceIDBytes, ok := decodeMPTIssuanceID(amount.MPTIssuanceID)
+		if !ok {
 			return false, ErrClawbackInvalidAmount
 		}
 		// The issuer AccountID occupies the trailing AccountAddressLength bytes of the issuance ID.

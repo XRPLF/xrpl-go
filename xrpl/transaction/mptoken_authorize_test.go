@@ -27,12 +27,12 @@ func TestMPTokenAuthorize_Flatten(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: MPTokenAuthorizeTx,
 				},
-				MPTokenIssuanceID: "1234",
+				MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 			},
 			expected: `{
 				"Account": "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 				"TransactionType": "MPTokenAuthorize",
-				"MPTokenIssuanceID": "1234"
+				"MPTokenIssuanceID": "000004C463C52827307480341125DA0577DEFC38405B0E3E"
 			}`,
 		},
 		{
@@ -42,13 +42,13 @@ func TestMPTokenAuthorize_Flatten(t *testing.T) {
 					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
 					TransactionType: MPTokenAuthorizeTx,
 				},
-				MPTokenIssuanceID: "1234",
+				MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 				Holder:            &holder,
 			},
 			expected: `{
 				"Account": "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2", 
 				"TransactionType": "MPTokenAuthorize",
-				"MPTokenIssuanceID": "1234",
+				"MPTokenIssuanceID": "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 				"Holder": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
 			}`,
 		},
@@ -100,13 +100,26 @@ func TestMPTokenAuthorize_Validate(t *testing.T) {
 			errMessage: ErrInvalidMPTokenIssuanceIDAuthorize,
 		},
 		{
-			name: "fail - holder account conflict",
+			name: "fail - wrong length MPTokenIssuanceID",
 			tx: &MPTokenAuthorize{
 				BaseTx: BaseTx{
 					Account:         accountHolder,
 					TransactionType: MPTokenAuthorizeTx,
 				},
 				MPTokenIssuanceID: "1234",
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidMPTokenIssuanceIDAuthorize,
+		},
+		{
+			name: "fail - holder account conflict",
+			tx: &MPTokenAuthorize{
+				BaseTx: BaseTx{
+					Account:         accountHolder,
+					TransactionType: MPTokenAuthorizeTx,
+				},
+				MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 				Holder:            types.Holder(accountHolder),
 			},
 			wantValid:  false,
@@ -120,7 +133,7 @@ func TestMPTokenAuthorize_Validate(t *testing.T) {
 					Account:         accountHolder,
 					TransactionType: MPTokenAuthorizeTx,
 				},
-				MPTokenIssuanceID: "1234",
+				MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 			},
 			wantValid: true,
 			wantErr:   false,
@@ -132,7 +145,7 @@ func TestMPTokenAuthorize_Validate(t *testing.T) {
 					Account:         accountHolder,
 					TransactionType: MPTokenAuthorizeTx,
 				},
-				MPTokenIssuanceID: "1234",
+				MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 				Holder:            types.Holder(holder),
 			},
 			wantValid: true,

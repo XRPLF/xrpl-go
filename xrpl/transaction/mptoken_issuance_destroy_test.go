@@ -25,13 +25,13 @@ func TestMPTokenIssuanceDestroy_Flatten(t *testing.T) {
 					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:     types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 			},
 			expected: FlatTransaction{
 				"Account":           "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee":               "12",
 				"TransactionType":   "MPTokenIssuanceDestroy",
-				"MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				"MPTokenIssuanceID": "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 			},
 		},
 	}
@@ -58,7 +58,7 @@ func TestMPTokenIssuanceDestroy_Validate(t *testing.T) {
 					TransactionType: MPTokenIssuanceDestroyTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 			},
 			wantErr: nil,
 		},
@@ -83,6 +83,18 @@ func TestMPTokenIssuanceDestroy_Validate(t *testing.T) {
 					Fee:             types.XRPCurrencyAmount(12),
 				},
 				MPTokenIssuanceID: "not-a-hex-value!",
+			},
+			wantErr: ErrInvalidMPTokenIssuanceIDDestroy,
+		},
+		{
+			name: "fail - wrong length MPTokenIssuanceID",
+			tx: &MPTokenIssuanceDestroy{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceDestroyTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				MPTokenIssuanceID: "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
 			},
 			wantErr: ErrInvalidMPTokenIssuanceIDDestroy,
 		},

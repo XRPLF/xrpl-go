@@ -1,10 +1,7 @@
 package transaction
 
 import (
-	"encoding/hex"
-
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -168,8 +165,7 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 	}
 
 	// MPTokenIssuanceID is required and must be an exact UInt192 value.
-	issuanceID, err := hex.DecodeString(m.MPTokenIssuanceID)
-	if err != nil || len(issuanceID) != bctypes.MPTIssuanceIDByteLength {
+	if _, ok := decodeMPTIssuanceID(m.MPTokenIssuanceID); !ok {
 		return false, ErrInvalidMPTokenIssuanceIDSet
 	}
 

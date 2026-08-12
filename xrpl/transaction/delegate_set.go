@@ -71,6 +71,7 @@ type DelegateSet struct {
 	// The authorized account.
 	Authorize types.Address `json:"Authorize"`
 	// The transaction permissions that the account has been granted.
+	// A present empty list deletes the Delegate object.
 	Permissions []types.Permission `json:"Permissions"`
 }
 
