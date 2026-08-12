@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/ledger-entry-types
 
-- Changed MPT ledger amount fields from `uint64` to quoted base-10 strings. Changed `MPToken.OwnerNode` and `MPTokenIssuance.OwnerNode` from `uint64` to hexadecimal strings.
+- Changed MPT ledger amount fields from `uint64` to quoted base-10 strings. Changed `MPToken.OwnerNode` and `MPTokenIssuance.OwnerNode` from `uint64` to hexadecimal strings. `MPTokenIssuance` JSON now omits absent `AssetScale`, `TransferFee`, and `MPTokenMetadata` fields.
 - Changed `Oracle.OwnerNode` and `Escrow.IssuerNode` from `uint64` to hexadecimal strings. Changed `PriceData.AssetPrice` from `uint64` to `*uint64`, use `ledger.AssetPrice` to set a value. `PriceData` now decodes `rippled` hexadecimal price strings, preserves absent and explicit zero prices, and omits `Scale` when `AssetPrice` is absent. Added the missing `Oracle.LedgerEntryType` and `Oracle.Flags` fields.
 - Renamed the six Dynamic MPT capability constants from `LsmfMPTCanMutate*` to `LsmfMPTCanEnable*`. The metadata and transfer-fee constants retain their `LsmfMPTCanMutate*` names.
 

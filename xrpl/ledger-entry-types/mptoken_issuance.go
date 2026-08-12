@@ -58,7 +58,7 @@ type MPTokenIssuance struct {
 	// More formally, the asset scale is a non-negative integer (0, 1, 2, …) such that one standard unit equals 10^(-scale) of a corresponding fractional unit.
 	// For example, if a US Dollar Stablecoin has an asset scale of 2, then 1 unit of that MPT would equal 0.01 US Dollars.
 	// This indicates to how many decimal places the MPT can be subdivided. The default is 0, meaning that the MPT cannot be divided into smaller than 1 unit.
-	AssetScale uint8
+	AssetScale uint8 `json:",omitempty"`
 	// The maximum number of MPTs that can exist at one time, represented as an unsigned integer string. If omitted, the maximum is currently limited to 2^63-1.
 	MaximumAmount string `json:",omitempty"`
 	// The total amount of MPTs of this issuance currently in circulation, represented as an unsigned integer string. This value increases when the issuer sends MPTs to a non-issuer, and decreases whenever the issuer receives MPTs.
@@ -67,9 +67,9 @@ type MPTokenIssuance struct {
 	// Valid values for this field are between 0 and 50,000 inclusive. A value of 1 is equivalent to 1/10 of a basis point or 0.001%, allowing transfer rates between 0% and 50%.
 	// A TransferFee of 50,000 corresponds to 50%. The default value for this field is 0. Any decimals in the transfer fee are rounded down.
 	// The fee can be rounded down to zero if the payment is small. Issuers should make sure that their MPT's AssetScale is large enough.
-	TransferFee uint16
+	TransferFee uint16 `json:",omitempty"`
 	// Arbitrary metadata about this issuance, in hex format. The limit for this field is 1024 bytes.
-	MPTokenMetadata string
+	MPTokenMetadata string `json:",omitempty"`
 	// A hexadecimal hint indicating which page of the owner directory links to this entry, in case the directory consists of multiple pages.
 	OwnerNode string
 	// The identifying hash of the transaction that most recently modified this entry.

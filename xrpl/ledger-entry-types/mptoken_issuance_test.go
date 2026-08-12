@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -64,6 +65,30 @@ func TestMPTokenIssuanceMutableFlagValues(t *testing.T) {
 	require.Equal(t, uint32(0x00000040), LsmfMPTCanEnableCanClawback)
 	require.Equal(t, uint32(0x00010000), LsmfMPTCanMutateMetadata)
 	require.Equal(t, uint32(0x00020000), LsmfMPTCanMutateTransferFee)
+}
+
+func TestMPTokenIssuance_OmitsAbsentOptionalFields(t *testing.T) {
+	raw := `{
+		"LedgerEntryType": "MPTokenIssuance",
+		"Flags": 0,
+		"Issuer": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+		"OutstandingAmount": "0",
+		"OwnerNode": "0",
+		"PreviousTxnID": "8089451B193AAD110ACED3D62BE79BB523658545E6EE8B7BB0BE573FED9BCBFB",
+		"PreviousTxnLgrSeq": 234644,
+		"Sequence": 1
+	}`
+
+	var issuance MPTokenIssuance
+	require.NoError(t, json.Unmarshal([]byte(raw), &issuance))
+
+	encoded, err := json.Marshal(&issuance)
+	require.NoError(t, err)
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(encoded, &fields))
+	require.NotContains(t, fields, "AssetScale")
+	require.NotContains(t, fields, "TransferFee")
+	require.NotContains(t, fields, "MPTokenMetadata")
 }
 
 func TestMPTokenIssuanceSerialization(t *testing.T) {
