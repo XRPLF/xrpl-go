@@ -108,6 +108,32 @@ The `ledger` subpackage provides the following queries requests:
 | `ClosedRequest`  | [ledger_closed](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_closed)   | ✅         | ✅         |
 | `CurrentRequest` | [ledger_current](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_current) | ✅         | ✅         |
 | `DataRequest`    | [ledger_data](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_data)       | ✅         | ✅         |
+| `EntryRequest`   | [ledger_entry](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_entry)   | ✅         | ✅         |
+
+#### `ledger_entry` selectors
+
+`EntryRequest` requires exactly one top-level selector. Most ledger object types accept either a direct ledger-entry index or a typed object selector. The response keeps validated JSON and binary forms separate:
+
+```go
+request := ledger.EntryRequest{
+ AccountRoot: types.Address(account),
+ LedgerIndex: common.Validated,
+}
+
+response, err := client.GetLedgerEntry(&request)
+if err != nil {
+ return err
+}
+
+if response.Node != nil {
+ // Validated JSON ledger object.
+}
+if response.NodeBinary != "" {
+ // Binary ledger object.
+}
+```
+
+Clio deleted-entry responses can also populate `DeletedLedgerIndex` and `LedgerHash`. Validation rejects requests with zero or multiple top-level selectors and invalid object selector forms.
 
 #### Usage
 
@@ -117,30 +143,55 @@ To use the `ledger` package, you need to import it in your project:
 import "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 ```
 
-### transaction
+### transactions
 
-The `transaction` package contains methods to interact with XRPL transactions. These methods allow you to:
+The `transactions` package contains methods to interact with XRPL transactions. These methods allow you to:
 
 - Submit ledger transactions.
 - Query ledger transactions.
 
 The available methods correspond to the [Transaction Methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods) in the XRPL API.
 
-The `transaction` subpackage provides the following queries requests:
+The `transactions` subpackage provides the following query requests:
 
-| Request                    | Method name                                                                                                                          | V1 support | V1 support |
+| Request                    | Method name                                                                                                                          | V1 support | V2 support |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ---------- |
 | `SubmitRequest`            | [submit](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/submit)                         | ✅         | ✅         |
 | `SubmitMultisignedRequest` | [submit_multisigned](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/submit_multisigned) | ✅         | ✅         |
 | `EntryRequest`             | [transaction_entry](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/transaction_entry)   | ✅         | ✅         |
 | `TxRequest`                | [tx](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/tx)                                 | ✅         | ✅         |
+| `SimulateRequest`          | [simulate](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/simulate)                     | ❌         | ✅         |
+
+#### Simulate
+
+`SimulateRequest` performs an XLS-69 dry run against the current open-ledger state. Supply exactly one of `TxJSON` or `TxBlob`. Set `Binary` to request hexadecimal transaction and metadata blobs instead of decoded objects.
+
+```go
+request := transactions.SimulateRequest{
+ TxJSON: transaction.FlatTransaction{
+  "TransactionType": "Payment",
+  "Account":         account,
+  "Destination":     destination,
+  "Amount":          "1000000",
+ },
+}
+
+response, err := client.Simulate(&request)
+if err != nil {
+ return err
+}
+
+fmt.Println(response.EngineResult, response.Applied)
+```
+
+JSON input supports server autofill and client NetworkID checks. It may contain a non-empty `SigningPubKey` or unsigned `Signers` entries, but it must not contain transaction signatures. Blob input is checked for hexadecimal syntax and stays opaque so the server can validate it with its own definitions. A simulated result is not a submission guarantee because open-ledger state can change.
 
 #### Usage
 
-To use the `transaction` package, you need to import it in your project:
+To use the `transactions` package, import it as follows:
 
 ```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/transaction"
+import transactions "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 ```
 
 ### path, nft and oracle
@@ -258,11 +309,31 @@ The `server` subpackage provides the following queries requests:
 | `FeeRequest`        | [fee](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/fee)                   | ✅         | ✅         |
 | `ManifestRequest`   | [manifest](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/manifest)         | ✅         | ✅         |
 | `InfoRequest`       | [server_info](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_info)   | ✅         | ✅         |
-| `StateRequest`      | [server_state](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_state) | ✅         | ✅         |
+| `StateRequest`       | [server_state](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_state)             | ✅         | ✅         |
+| `DefinitionsRequest` | [server_definitions](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_definitions) | ❌         | ✅         |
+
+#### Server definitions
+
+`DefinitionsRequest` retrieves the protocol definitions used by the server. Its optional `Hash` requests a hash-only response when the server definition hash is unchanged.
+
+```go
+response, err := client.GetServerDefinitions(&server.DefinitionsRequest{
+ Hash: cachedHash,
+})
+if err != nil {
+ return err
+}
+
+if len(response.Fields) == 0 {
+ // The hash matched and the definitions are unchanged.
+}
+```
+
+A full `DefinitionsResponse` contains the five core sections. Servers that implement the enhanced XLS-97 form can also return transaction and ledger formats and flag maps. Response validation rejects incomplete section groups and mismatched hash-only responses.
 
 #### Usage
 
-To use the `server` package, you need to import it in your project:
+To use the `server` package, import it as follows:
 
 ```go
 import "github.com/Peersyst/xrpl-go/xrpl/queries/server"

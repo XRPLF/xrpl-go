@@ -80,6 +80,71 @@ These are the transaction types available in the XRPL:
 - [XChainCreateClaimID](https://xrpl.org/docs/references/protocol/transactions/types/xchaincreateclaimid)
 - [XChainModifyBridge](https://xrpl.org/docs/references/protocol/transactions/types/xchainmodifybridge)
 
+## Dynamic MPT
+
+Use `ImmutableFlags` to make issuance capabilities or fields permanently immutable. Capability enablement on `MPTokenIssuanceSet` uses the normal transaction `Flags` field.
+
+### Create an issuance
+
+`MaximumAmount` is a quoted base-10 `types.MPTAmount` from `1` through `2^63-1`.
+
+```go
+maximumAmount := types.MPTAmount(1000000)
+immutableFlags := types.ImmutableFlags(
+ transaction.TifMPTCanLock |
+  transaction.TifMPTMetadata,
+)
+
+create := transaction.MPTokenIssuanceCreate{
+ BaseTx: transaction.BaseTx{
+  Account: types.Address(issuer),
+ },
+ MaximumAmount: &maximumAmount,
+ ImmutableFlags: immutableFlags,
+}
+
+create.SetMPTCanLockFlag()
+```
+
+`TfMPTCanHoldConfidentialBalance` enables confidential balances. A non-zero transfer fee cannot be combined with that capability.
+
+### Update an issuance
+
+Use `TfMPTSet*` flags or the matching setters to enable a capability. Use `ImmutableFlags` only to prevent later changes.
+
+```go
+set := transaction.MPTokenIssuanceSet{
+ BaseTx: transaction.BaseTx{
+  Account: types.Address(issuer),
+ },
+ MPTokenIssuanceID: issuanceID,
+}
+
+set.SetMPTRequireAuthFlag()
+set.SetMPTRequireAuthImmutableFlag()
+```
+
+Lock and unlock operations use `TfMPTLock` and `TfMPTUnlock`. A `Holder`-only transaction is a no-op and fails validation. Pair `Holder` with one of these flags. Lock and unlock operations cannot include capability, metadata, transfer-fee, or immutability mutations.
+
+### Claw back MPT balances
+
+`Clawback` accepts an MPT amount and requires the target `Holder`. The transaction `Account` must match the issuer encoded in the MPT issuance ID.
+
+```go
+clawback := transaction.Clawback{
+ BaseTx: transaction.BaseTx{
+  Account: types.Address(issuer),
+ },
+ Amount: types.MPTCurrencyAmount{
+  MPTIssuanceID: issuanceID,
+  Value:          "25",
+ },
+ Holder: types.Address(holder),
+}
+```
+
+The `Holder` must be omitted for an issued-currency clawback. Tagged holder X-addresses are rejected.
+
 ## MPTokenMetadata
 
 The `MPTokenMetadata` type provides functionality to encode, decode, and validate metadata for Multi-Purpose Tokens (MPTs) as per the [XLS-89 standard](https://xls.xrpl.org/xls/XLS-0089-multi-purpose-token-metadata-schema.html). This metadata includes information about the token such as ticker, name, description, icon, asset classification, and related URIs.

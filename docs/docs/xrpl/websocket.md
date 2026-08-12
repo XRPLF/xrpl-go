@@ -105,6 +105,8 @@ networkID, buildVersion := client.NetworkIdentity()
 empty build version leaves the identity incomplete, so the client performs
 discovery. Use trusted deployment configuration for both values.
 
+Each automatic or explicit reconnect repeats identity discovery unless a trusted identity is configured. A reconnect rejects a server network ID that differs from the previously discovered network ID.
+
 ```go
 func (wc ClientConfig) WithNetworkIdentity(networkID uint32, buildVersion string) ClientConfig
 ```
@@ -140,11 +142,11 @@ defer client.Disconnect()
 
 err := client.Connect()
 if err != nil {
-    // ...
+ // ...
 }
 
 if !client.IsConnected() {
-    // ...
+ // ...
 }
 ```
 
@@ -164,7 +166,7 @@ func (c *Client) Request(reqParams interfaces.Request) (*ClientResponse, error)
 
 The `Autofill` method is used to autofill fields in a flat transaction. This method adds dynamic fields such as `LastLedgerSequence` and `Fee`, and it applies the network `NetworkID` policy. It returns an error if the transaction is not valid or an internal request fails. The `AutofillMultisigned` method provides the same behavior for multisigned transactions.
 
-Both methods support `Batch` transactions and fill the inner `RawTransactions` and the outer `Batch` transaction. They convert X-addresses in `Account`, `Destination`, `Authorize`, `Unauthorize`, `Owner`, and `RegularKey` to classic addresses. Embedded tags in `Account` and `Destination` populate `SourceTag` and `DestinationTag`. A conflicting explicit tag returns `ErrMismatchedTag`.
+Both methods support `Batch` transactions and fill the inner `RawTransactions` and the outer `Batch` transaction. They convert X-addresses in `Account`, `Destination`, `Authorize`, `Unauthorize`, `Owner`, `RegularKey`, `Delegate`, `NFTokenMinter`, `Subject`, `Issuer`, and `Holder` to classic addresses. Embedded tags in `Account` and `Destination` populate `SourceTag` and `DestinationTag`. A conflicting explicit tag returns `ErrMismatchedTag`.
 
 ```go
 func (c *Client) Autofill(tx *transaction.FlatTransaction) error
@@ -204,9 +206,35 @@ The client verifies that each validated-ledger response is marked as validated a
 
 A WebSocket write or write-deadline failure invalidates and closes the failed socket. The active client read loop can then reconnect before a later request.
 
+### Simulate
+
+`Simulate` runs an XLS-69 dry run against the current open-ledger state. It accepts validated JSON transaction input or an opaque hexadecimal blob and returns either decoded or binary transaction and metadata output. A simulation does not guarantee the result of a later submission.
+
+```go
+func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error)
+```
+
+### Server definitions
+
+`GetServerDefinitions` retrieves the server protocol definitions. Set `DefinitionsRequest.Hash` to a cached hash to allow a hash-only unchanged response.
+
+```go
+func (c *Client) GetServerDefinitions(req *server.DefinitionsRequest) (*server.DefinitionsResponse, error)
+```
+
+## Stream handlers
+
+Register one handler for each stream with the corresponding `OnXxx` method. A later registration atomically replaces the previous handler for that stream. An event already queued for delivery can still use the old handler.
+
+A handler is serialized with itself, including across manual disconnect and later reconnect lifecycles. Different stream handlers can run concurrently. Unbuffered delivery applies backpressure within each stream. Do not call `Connect` synchronously from a stream or error handler.
+
+The client dispatches typed `bookChanges` notifications through the book-changes handler. Typed updates preserve `validated`, `domain`, `mpt_issuance_id_a`, and `mpt_issuance_id_b` values.
+
+Automatic reconnect does not replay subscriptions. Subscribe again after a reconnect.
+
 ## Queries
 
-The `websocket` package provides query wrappers that allows you to send client [`queries`](/docs/xrpl/queries) to the server.
+The `websocket` package provides query wrappers that allow you to send client [`queries`](/docs/xrpl/queries) to the server.
 
 ## Examples
 

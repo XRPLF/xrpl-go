@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.3.0]
 
 ### BREAKING CHANGES
 
@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/hash
 
-- `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Multisigned transactions require an explicit empty top-level `SigningPubKey`. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`. Consensus-generated `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions remain hashable without account signatures.
+- `SignTx` and `SignTxBlob` now reject partial, empty, malformed, or mixed single-sign/multisign structures. Multisigned transactions require an explicit empty top-level `SigningPubKey`. Inner Batch transactions remain hashable only in their canonical unsigned shape with an explicit empty `SigningPubKey` and no `TxnSignature` or `Signers`. Consensus-generated `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions remain hashable without account signatures. Deprecated `ErrMissingSignature` is now an alias of `ErrNonSignedTransaction`, so `errors.Is` matches either name.
 
 #### xrpl/common
 
@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DeliverMax` normalization is Payment-only. Other transaction types do not rewrite this field.
 - Removed `ErrTransactionNotFound`. Reliable submission now treats exact `txnNotFound` responses as a pending state until validation, expiry, finality transport failure, or context cancellation.
 
+#### xrpl/testutil
+
+- Added `NetworkIdentity`, `GetServerDefinitions`, and `Simulate` to the integration `Client` interface. External implementations and generated mocks of this test interface must implement these methods.
+
 #### xrpl/transaction
 
 - Replaced the v0.2.0 Dynamic MPT `MutableFlags` fields with rippled 3.3.0 `ImmutableFlags` fields on `MPTokenIssuanceCreate` and `MPTokenIssuanceSet`. Use `types.ImmutableFlags` and the `TifMPT*` constants and setters to make issuance capabilities or fields permanently immutable.
@@ -66,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed `ClientConfig.WithFeeCushion` and `DefaultFeeCushion` from `float32` to `float64`, changed `ClientConfig.WithMaxFeeXRP` and `DefaultMaxFeeXRP` from `float32` to decimal strings. Fee configuration now preserves binary64 inputs and exact decimal caps.
 - Replaced the public client `NetworkID` field with the mutex-guarded `NetworkIdentity()` snapshot accessor, which returns `(*uint32, string)` for the network ID and build version. A nil network ID means discovery has not completed. An omitted `server_info.network_id` resolves to rippled's default network ID `0`. Use `ClientConfig.WithNetworkIdentity(networkID, buildVersion)` with a non-empty build version to bypass discovery with trusted deployment values. An empty build version leaves the identity incomplete, so the client performs discovery.
 - Changed `Client.Connect` to request `server_info` before it starts the background reader. A request, response, or identity failure now fails `Connect` and closes the new connection. An omitted `network_id` resolves to rippled's default network ID `0`.
+- `Client.Connect` no longer replaces an active or in-progress connection and now returns `ErrAlreadyConnected`.
 - Added the exported `Err` field to `ErrMaxReconnectionAttemptsReached`. Unkeyed literals such as `ErrMaxReconnectionAttemptsReached{3}` no longer compile. Use keyed literals such as `ErrMaxReconnectionAttemptsReached{Attempts: 3}`.
 - Submit preflight now requires a complete single-sign or multisign structure, including an explicit empty top-level `SigningPubKey` for multisigned transactions. Partial signing fields now return `ErrInvalidSignedTransaction`. `SubmitMultisigned` returns `ErrTransactionNotMultisigned` for another signing form, `ErrSignerDataIsEmpty` remains as a deprecated compatibility alias.
 - `DeliverMax` normalization is Payment-only. Other transaction types do not rewrite this field.
@@ -101,10 +106,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/queries
 
-- Added query field coverage for account lines (`ignore_default`, `limit`), AMM info (`account`, frozen flags, auction `time_interval`), NFT offer pagination (`limit`/`marker`), vault current-ledger metadata, and v1 account NFT ledger metadata, with protocol-accurate default and v1 JSON fixtures including the AMM expired-slot interval sentinel.
+- Added query field coverage for account lines (`ignore_default` request and `limit` response), AMM info (`account`, frozen flags, auction `time_interval`), NFT offer pagination (`limit`/`marker`), vault current-ledger metadata, and v1 account NFT ledger metadata, with protocol-accurate default and v1 JSON fixtures including the AMM expired-slot interval sentinel.
 - Expanded typed `ledger_entry` selector support with exactly-one top-level request validation, Clio deleted-entry metadata, and distinct validated JSON (`node`) and binary (`node_binary`) responses across RPC and WebSocket transports.
 - Added typed `server_definitions` support for validated full, legacy, and hash-only protocol definitions. Validation rejects null or incomplete core sections, requires all five enhanced sections to appear together, and requires hash-only responses to match the request hash. RPC and WebSocket integration tests cover full and hash-only response forms.
 - Added XLS-69 `simulate` dry runs to the RPC and WebSocket clients, with JSON and binary responses and validated JSON or opaque hexadecimal blob requests. JSON requests support server-autofilled NetworkID values, validate supplied NetworkID values, permit non-empty `SigningPubKey` values and unsigned `Signers` entries, and reject non-empty transaction signatures. Blob requests check hexadecimal syntax and delegate transaction, signature, and NetworkID validation to the server. Responses must match the requested binary mode. Integration tests cover JSON and binary simulations.
+- Added `ErrInvalidEntryRequest`, `ErrInvalidEntrySelector`, `ErrInvalidBridgeSelector`, and `ErrInvalidEntryResponse` for typed `ledger_entry` validation failures.
 
 #### xrpl/queries/amm
 
@@ -126,7 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/rpc
 
 - Added `WithNetworkIdentity` for trusted network identity configuration.
-- Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, and `ErrAccountIDTagNotAllowed` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
+- Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, and `ErrAccountIDTagNotAllowed` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, `ErrNetworkIDOverrideMismatch`, `ErrNetworkIDUnavailable`, and `ErrBuildVersionUnavailable` for network identity errors.
+- Added `ErrNilTransaction` for nil autofill or submission inputs and `ErrLastLedgerSequenceFieldMustBeAbsent` for invalid Batch inner transactions.
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, RegularKey, Delegate, NFTokenMinter, Subject, Issuer, and Holder fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`, and tagged X-addresses in fields without a tag counterpart return `ErrAccountIDTagNotAllowed`.
 - Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext` with caller cancellation across transaction preparation, submission, and finality monitoring, plus reliable-submission error sentinels for malformed preliminary results, ledger expiry, repeated monitoring transport failure, and invalid polling intervals.
 - Added `ErrInvalidMaxRetries` and `ErrInvalidLastLedgerSequence` for non-positive retry limits and zero ledger boundaries.
@@ -150,8 +157,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
-- Added `ClientConfig.WithNetworkIdentity` for trusted network identity configuration, `NetworkIdentity` for concurrency-safe identity access, and `ErrAlreadyConnected` for attempts to replace a live connection.
-- Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, `ErrMismatchedTag`, and `ErrAccountIDTagNotAllowed` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, and `ErrNetworkIDOverrideMismatch` for network identity errors.
+- Added `ClientConfig.WithNetworkIdentity` for trusted network identity configuration and `NetworkIdentity` for concurrency-safe identity access.
+- Added `ErrAddressFieldIsNotAString`, `ErrTagFieldIsNotAUint32`, `ErrInvalidAddress`, `ErrMismatchedTag`, and `ErrAccountIDTagNotAllowed` for address autofill errors, and `ErrNetworkIDFieldUnexpected`, `ErrInvalidBuildVersion`, `ErrNetworkIDOverrideMismatch`, `ErrNetworkIDUnavailable`, and `ErrBuildVersionUnavailable` for network identity errors.
+- Added `ErrNilTransaction` for nil autofill or submission inputs and `ErrLastLedgerSequenceFieldMustBeAbsent` for invalid Batch inner transactions.
 - Added X-address autofill for Account, Destination, Authorize, Unauthorize, Owner, RegularKey, Delegate, NFTokenMinter, Subject, Issuer, and Holder fields in outer and Batch inner transactions. Embedded Account and Destination tags, including tag `0`, populate the matching tag field. Conflicting explicit tags return `ErrMismatchedTag`, and tagged X-addresses in fields without a tag counterpart return `ErrAccountIDTagNotAllowed`.
 - Added `SubmitTxAndWaitContext` and `SubmitTxBlobAndWaitContext` with caller cancellation across transaction preparation, submission, and finality monitoring, plus reliable-submission error sentinels for malformed preliminary results, ledger expiry, repeated monitoring transport failure, and invalid polling intervals.
 - Added `ErrInvalidMaxRetries` and `ErrInvalidLastLedgerSequence` for non-positive retry limits and zero ledger boundaries.
@@ -165,6 +173,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `UInt64` serialization is now field-aware. MPT amount fields (`MaximumAmount`, `OutstandingAmount`, `MPTAmount`, and `LockedAmount`) use quoted base-10 strings, while other `UInt64` fields use hexadecimal strings.
 - Issued-currency amounts now accept tagless mainnet and testnet X-address issuers and encode the underlying AccountID. Issuers with embedded tags are rejected.
 - Expanded the embedded protocol definitions with account-set, ledger-entry, and transaction flag maps, ledger-entry and transaction format maps, and updated protocol type and transaction result mappings.
+- Added `types.RawFieldValueOverrides` and `STObject.FromJSONWithRawFieldValueOverrides` for controlled raw field-value serialization.
 
 #### dependencies
 
@@ -184,7 +193,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `ImmutableFlags` bits and an explicitly zero mask. `MPTokenIssuanceSet`, `MPTokenAuthorize`, and `MPTokenIssuanceDestroy` also require their `MPTokenIssuanceID` to be an exact 192-bit hexadecimal value.
+- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` validation now rejects unsupported `ImmutableFlags` bits and an explicitly zero mask. `MPTokenIssuanceSet` rejects holder-only no-op transactions, so `Holder` must be paired with a lock or unlock flag. `MPTokenIssuanceSet`, `MPTokenAuthorize`, and `MPTokenIssuanceDestroy` also require their `MPTokenIssuanceID` to be an exact 192-bit hexadecimal value.
 - `DelegateSet` now uses a present empty `Permissions` list to delete a Delegate object. Vault and Loan transaction types are rejected as non-delegable according to XLS-75.
 - Inner Batch transaction flattening now preserves the wire-required empty `SigningPubKey`, and raw inner-transaction validation requires that explicit empty field. Explicit null Batch inner fields now fail where the wire requires absent or empty values.
 - `Batch.Validate` now requires 2 through 8 inner transactions. `ErrBatchRawTransactionsEmpty` remains a compatibility alias that matches the new count error with `errors.Is`.
@@ -223,7 +232,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Preserved recovered binary codec error identity during transaction blob decoding so callers can use `errors.Is` and `errors.As`, while converting non-error panic values to ordinary errors.
 - Centralized Batch inner traversal and validation for RPC and WebSocket autofill, and removed the duplicate NetworkID policy application.
-- Shared DeliverMax conflict, signed-Batch count, and non-multisigned transaction error identities across both public clients.
+- Shared DeliverMax conflict, signed-Batch count, non-multisigned transaction, Batch structure, and NetworkID validation error identities across both public clients. `errors.Is` can match corresponding shared sentinels from either client package.
 - Normalized the Batch transaction count error text to the Go error-string convention while preserving sentinel identity.
 
 #### xrpl/hash
@@ -612,7 +621,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/queries/server/types
 
-- `State.ValidatorListExpires` remains a `string`; a custom `UnmarshalJSON` on `State` now accepts both a JSON string and a JSON number for that field, converting the number to its string representation. This fixes a crash when rippled returns `0` for `validator_list_expires` over WebSocket.
+- `State.ValidatorListExpires` remains a `string`. A custom `UnmarshalJSON` on `State` now accepts both a JSON string and a JSON number for that field, converting the number to its string representation. This fixes a crash when rippled returns `0` for `validator_list_expires` over WebSocket.
 
 #### xrpl/ledger-entry-types
 

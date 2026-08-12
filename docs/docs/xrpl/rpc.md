@@ -18,7 +18,7 @@ In order to create a new `Client`, you can use the `NewClient` function:
 ```go
 cfg, err := rpc.NewClientConfig("<url>")
 if err != nil {
-	// ...
+ // ...
 }
 client := rpc.NewClient(cfg)
 ```
@@ -118,11 +118,11 @@ So, for example, if you want to set a custom `FaucetProvider` and `FeeCushion`, 
 
 ```go
 cfg, err := rpc.NewClientConfig("https://s.altnet.rippletest.net:51234/",
-	rpc.WithFaucetProvider(faucet.NewTestnetFaucetProvider()),
-	rpc.WithFeeCushion(1.5),
+ rpc.WithFaucetProvider(faucet.NewTestnetFaucetProvider()),
+ rpc.WithFeeCushion(1.5),
 )
 if err != nil {
-	// ...
+ // ...
 }
 client := rpc.NewClient(cfg)
 ```
@@ -144,7 +144,7 @@ func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error)
 
 The `Autofill` method is used to autofill fields in a flat transaction. This method adds dynamic fields such as `LastLedgerSequence` and `Fee`, and it applies the network `NetworkID` policy. It returns an error if the transaction is not valid or an internal request fails. The `AutofillMultisigned` method provides the same behavior for multisigned transactions.
 
-Both methods support `Batch` transactions and fill the inner `RawTransactions` and the outer `Batch` transaction. They convert X-addresses in `Account`, `Destination`, `Authorize`, `Unauthorize`, `Owner`, and `RegularKey` to classic addresses. Embedded tags in `Account` and `Destination` populate `SourceTag` and `DestinationTag`. A conflicting explicit tag returns `ErrMismatchedTag`.
+Both methods support `Batch` transactions and fill the inner `RawTransactions` and the outer `Batch` transaction. They convert X-addresses in `Account`, `Destination`, `Authorize`, `Unauthorize`, `Owner`, `RegularKey`, `Delegate`, `NFTokenMinter`, `Subject`, `Issuer`, and `Holder` to classic addresses. Embedded tags in `Account` and `Destination` populate `SourceTag` and `DestinationTag`. A conflicting explicit tag returns `ErrMismatchedTag`.
 
 ```go
 func (c *Client) Autofill(tx *transaction.FlatTransaction) error
@@ -181,6 +181,22 @@ func (c *Client) SubmitTxBlobAndWaitContext(ctx context.Context, txBlob string, 
 Every validated transaction response returns with a nil error, including validated `tec` results. Inspect `TxResponse.Meta.TransactionResult` to determine the validated engine result. `ErrTransactionExpired` reports the preliminary engine result and ledger expiry details. `ErrFinalityTransport` reports repeated query or transport failure and wraps the last failure. Context-aware methods propagate caller cancellation through transaction preparation queries, submission, and finality monitoring, and return `ctx.Err()` directly on cancellation or deadline.
 
 The client verifies that each validated-ledger response is marked as validated and contains a ledger index. A negative polling interval returns `ErrInvalidPollInterval` before submission. A zero or negative maximum retry value returns `ErrInvalidMaxRetries` before submission. A zero `LastLedgerSequence` returns `ErrInvalidLastLedgerSequence` before submission.
+
+### Simulate
+
+`Simulate` runs an XLS-69 dry run against the current open-ledger state. It accepts validated JSON transaction input or an opaque hexadecimal blob and returns either decoded or binary transaction and metadata output. A simulation does not guarantee the result of a later submission.
+
+```go
+func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error)
+```
+
+### Server definitions
+
+`GetServerDefinitions` retrieves the server protocol definitions. Set `DefinitionsRequest.Hash` to a cached hash to allow a hash-only unchanged response.
+
+```go
+func (c *Client) GetServerDefinitions(req *server.DefinitionsRequest) (*server.DefinitionsResponse, error)
+```
 
 ## Queries
 

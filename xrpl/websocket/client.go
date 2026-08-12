@@ -1,9 +1,8 @@
 // Package websocket provides a client for connecting to an XRPL WebSocket server.
 //
-// A Client discovers network identity on every explicit Connect unless a
-// trusted identity was configured. Automatic background reconnects keep the
-// current discovered identity without another discovery request. Explicit
-// reconnects reject a change from the previous discovered network ID.
+// A Client discovers network identity on every connection unless a trusted
+// identity was configured. Explicit and automatic reconnects reject a change
+// from the previous discovered network ID.
 package websocket
 
 import (

@@ -35,6 +35,20 @@ The `ledger-entry-types` package contains types and functions to handle ledger o
 - [`XChainOwnedClaimID`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/xchainownedclaimid)
 - [`XChainOwnedCreateAccountClaimID`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/xchainownedcreateaccountclaimid)
 
+## MPT and Oracle values
+
+MPT ledger amount fields use quoted base-10 strings. This includes `MPToken.MPTAmount`, `MPToken.LockedAmount`, and the `MaximumAmount`, `OutstandingAmount`, and `LockedAmount` fields on `MPTokenIssuance`. `OwnerNode` fields are hexadecimal strings.
+
+`MPTokenIssuance.ImmutableFlags` contains permanent restrictions and uses the `LsifMPT*` constants.
+
+```go
+if issuance.ImmutableFlags&ledger.LsifMPTMetadata != 0 {
+ // Metadata can no longer change.
+}
+```
+
+`PriceData.AssetPrice` is a pointer so absent and explicit zero prices stay distinct. Oracle prices accept the XLS-47 `Scale` range from `0` through `20`. When `AssetPrice` is absent, JSON output omits `Scale`.
+
 ## Usage
 
 To import the package, you can use the following code:

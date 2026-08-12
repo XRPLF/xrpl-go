@@ -118,7 +118,7 @@ Derives a keypair (private and public keys) from a seed. If the `validator` para
 func DeriveClassicAddress(pubKey string) (string, error)
 ```
 
-After deriving a keypair, you can derive the classic address from the public key. The result is a base58 encoded address, which starts with the character `r`. If you're interested in X-Address derivation, the `address-codec` package contains functions to encode and decode X-Addresses from and to classic addresses.
+After deriving a keypair, you can derive the classic address from the public key. The result is a base58 encoded address, which starts with the character `r`. XRPL account APIs accept Ed25519 public keys and compressed secp256k1 public keys only. Uncompressed 65-byte secp256k1 public keys and invalid compressed curve points return `ErrInvalidPublicKeyFormat`. If you're interested in X-Address derivation, the `address-codec` package contains functions to encode and decode X-Addresses from and to classic addresses.
 
 #### DeriveNodeAddress
 
@@ -136,7 +136,7 @@ Derives a node address from a public key. The result is a base58-encoded address
 func Sign(msg, privKey string) (string, error)
 ```
 
-Signs the provided message with the provided private key. To be able to sign a message, the private key must be a valid keypair and the message must be hex-encoded. The result is a hexadecimal string that represents the signature of the message. To verify the signature, you can use the `Validate` function.
+Signs the provided message with the provided private key. The private key and message must be hexadecimal. secp256k1 signing accepts raw and `00`-prefixed private keys and rejects zero or out-of-range scalars. Invalid key formats return `ErrInvalidPrivateKeyFormat`, which also matches `ErrInvalidCryptoImplementation` through `errors.Is`. The result is a hexadecimal signature that you can verify with `Validate`.
 
 #### Validate
 
@@ -144,7 +144,7 @@ Signs the provided message with the provided private key. To be able to sign a m
 func Validate(msg, pubKey, sig string) (bool, error)
 ```
 
-Verifies a signature of a message. To be able to verify a signature, the public key must be valid, and the message and the signature must be hex-encoded. The result is a boolean value that indicates if the signature is valid or not.
+Verifies a signature of a message. The public key, message, and signature must be hexadecimal. Ed25519 and compressed secp256k1 account public keys are supported. secp256k1 verification rejects high-S signatures that are not fully canonical for XRPL. Invalid public key formats return `ErrInvalidPublicKeyFormat`, which also matches `ErrInvalidCryptoImplementation` through `errors.Is`.
 
 ## Guides
 
