@@ -488,6 +488,7 @@ func TestMPTUInt64FieldsUseDecimalJSON(t *testing.T) {
 		{field: "OutstandingAmount", header: "3019"},
 		{field: "MPTAmount", header: "301A"},
 		{field: "LockedAmount", header: "301D"},
+		{field: "ConfidentialOutstandingAmount", header: "3020"},
 	}
 
 	for _, tt := range tests {
@@ -499,6 +500,52 @@ func TestMPTUInt64FieldsUseDecimalJSON(t *testing.T) {
 			decoded, err := Decode(encoded)
 			require.NoError(t, err)
 			require.Equal(t, "10000", decoded[tt.field])
+		})
+	}
+}
+
+func TestConfidentialMPTWireFields(t *testing.T) {
+	const (
+		blindingFactor    = "000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F"
+		amountCommitment  = "021111111111111111111111111111111111111111111111111111111111111111"
+		balanceCommitment = "032222222222222222222222222222222222222222222222222222222222222222"
+	)
+
+	tests := []struct {
+		name     string
+		field    string
+		value    string
+		expected string
+	}{
+		{
+			name:     "BlindingFactor is a fixed Hash256 field 40",
+			field:    "BlindingFactor",
+			value:    blindingFactor,
+			expected: "5028" + blindingFactor,
+		},
+		{
+			name:     "AmountCommitment is a variable-length Blob field 45",
+			field:    "AmountCommitment",
+			value:    amountCommitment,
+			expected: "702D21" + amountCommitment,
+		},
+		{
+			name:     "BalanceCommitment is a variable-length Blob field 46",
+			field:    "BalanceCommitment",
+			value:    balanceCommitment,
+			expected: "702E21" + balanceCommitment,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := Encode(map[string]any{tt.field: tt.value})
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, encoded)
+
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.Equal(t, tt.value, decoded[tt.field])
 		})
 	}
 }

@@ -63,6 +63,24 @@ func TestLoadDefinitions(t *testing.T) {
 			header:  &FieldHeader{TypeCode: 21, FieldCode: 4},
 			ordinal: 1376260,
 		},
+		{
+			name:    "BlindingFactor",
+			info:    &FieldInfo{Nth: 40, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "Hash256"},
+			header:  &FieldHeader{TypeCode: 5, FieldCode: 40},
+			ordinal: 327720,
+		},
+		{
+			name:    "AmountCommitment",
+			info:    &FieldInfo{Nth: 45, IsVLEncoded: true, IsSerialized: true, IsSigningField: true, Type: "Blob"},
+			header:  &FieldHeader{TypeCode: 7, FieldCode: 45},
+			ordinal: 458797,
+		},
+		{
+			name:    "BalanceCommitment",
+			info:    &FieldInfo{Nth: 46, IsVLEncoded: true, IsSerialized: true, IsSigningField: true, Type: "Blob"},
+			header:  &FieldHeader{TypeCode: 7, FieldCode: 46},
+			ordinal: 458798,
+		},
 	}
 	for _, field := range mptFields {
 		t.Run(field.name, func(t *testing.T) {
