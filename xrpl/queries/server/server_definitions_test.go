@@ -60,6 +60,32 @@ func TestDefinitionsRequest(t *testing.T) {
 	}
 }
 
+func TestDefinitionTypesMarshalIncompleteValues(t *testing.T) {
+	t.Run("definition field", func(t *testing.T) {
+		field := DefinitionField{}
+		require.ErrorIs(t, field.Validate(), ErrInvalidDefinitionField)
+
+		encoded, err := json.Marshal(field)
+		require.NoError(t, err)
+		require.JSONEq(t, `["", {
+			"nth": 0,
+			"isVLEncoded": false,
+			"isSerialized": false,
+			"isSigningField": false,
+			"type": ""
+		}]`, string(encoded))
+	})
+
+	t.Run("definitions response", func(t *testing.T) {
+		response := DefinitionsResponse{}
+		require.ErrorIs(t, response.Validate(), ErrInvalidDefinitionsHash)
+
+		encoded, err := json.Marshal(response)
+		require.NoError(t, err)
+		require.JSONEq(t, `{"hash":""}`, string(encoded))
+	})
+}
+
 func TestDefinitionsResponseFullJSON(t *testing.T) {
 	got := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
 
@@ -89,58 +115,72 @@ func TestDefinitionsResponseLegacyJSON(t *testing.T) {
 	requireDefinitionsResponseJSONRoundTrip(t, got)
 }
 
-func TestDefinitionsResponseRejectsPartialEnhancedSections(t *testing.T) {
+func TestDefinitionsResponseAcceptsIndependentEnhancedSections(t *testing.T) {
+	clearEnhancedSections := func(r *DefinitionsResponse) {
+		r.LedgerEntryFormats = nil
+		r.TransactionFormats = nil
+		r.LedgerEntryFlags = nil
+		r.TransactionFlags = nil
+		r.AccountSetFlags = nil
+	}
 	sections := []struct {
-		name  string
-		clear func(*DefinitionsResponse)
-		empty func(*DefinitionsResponse)
+		name string
+		keep func(*DefinitionsResponse)
 	}{
 		{
-			name:  "ledger entry formats",
-			clear: func(r *DefinitionsResponse) { r.LedgerEntryFormats = nil },
-			empty: func(r *DefinitionsResponse) { r.LedgerEntryFormats = map[string][]DefinitionFormatField{} },
+			name: "ledger entry formats",
+			keep: func(r *DefinitionsResponse) {
+				value := r.LedgerEntryFormats
+				clearEnhancedSections(r)
+				r.LedgerEntryFormats = value
+			},
 		},
 		{
-			name:  "transaction formats",
-			clear: func(r *DefinitionsResponse) { r.TransactionFormats = nil },
-			empty: func(r *DefinitionsResponse) { r.TransactionFormats = map[string][]DefinitionFormatField{} },
+			name: "transaction formats",
+			keep: func(r *DefinitionsResponse) {
+				value := r.TransactionFormats
+				clearEnhancedSections(r)
+				r.TransactionFormats = value
+			},
 		},
 		{
-			name:  "ledger entry flags",
-			clear: func(r *DefinitionsResponse) { r.LedgerEntryFlags = nil },
-			empty: func(r *DefinitionsResponse) { r.LedgerEntryFlags = map[string]map[string]uint32{} },
+			name: "ledger entry flags",
+			keep: func(r *DefinitionsResponse) {
+				value := r.LedgerEntryFlags
+				clearEnhancedSections(r)
+				r.LedgerEntryFlags = value
+			},
 		},
 		{
-			name:  "transaction flags",
-			clear: func(r *DefinitionsResponse) { r.TransactionFlags = nil },
-			empty: func(r *DefinitionsResponse) { r.TransactionFlags = map[string]map[string]uint32{} },
+			name: "transaction flags",
+			keep: func(r *DefinitionsResponse) {
+				value := r.TransactionFlags
+				clearEnhancedSections(r)
+				r.TransactionFlags = value
+			},
 		},
 		{
-			name:  "account set flags",
-			clear: func(r *DefinitionsResponse) { r.AccountSetFlags = nil },
-			empty: func(r *DefinitionsResponse) { r.AccountSetFlags = map[string]uint32{} },
+			name: "account set flags",
+			keep: func(r *DefinitionsResponse) {
+				value := r.AccountSetFlags
+				clearEnhancedSections(r)
+				r.AccountSetFlags = value
+			},
 		},
 	}
 
 	for _, section := range sections {
-		t.Run("missing "+section.name, func(t *testing.T) {
+		t.Run(section.name, func(t *testing.T) {
 			response := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
-			section.clear(&response)
-			require.ErrorIs(t, response.Validate(), ErrInvalidDefinitionsResponse)
-		})
-		t.Run("only "+section.name, func(t *testing.T) {
-			response := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
-			for _, other := range sections {
-				if other.name != section.name {
-					other.clear(&response)
-				}
-			}
-			require.ErrorIs(t, response.Validate(), ErrInvalidDefinitionsResponse)
-		})
-		t.Run("empty "+section.name, func(t *testing.T) {
-			response := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
-			section.empty(&response)
-			require.ErrorIs(t, response.Validate(), ErrInvalidDefinitionsResponse)
+			section.keep(&response)
+			require.NoError(t, response.Validate())
+
+			encoded, err := json.Marshal(response)
+			require.NoError(t, err)
+
+			var decoded DefinitionsResponse
+			require.NoError(t, json.Unmarshal(encoded, &decoded))
+			require.Equal(t, response, decoded)
 		})
 	}
 }

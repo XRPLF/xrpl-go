@@ -176,15 +176,6 @@ func (r SimulateResponse) ValidateForRequest(req *SimulateRequest) error {
 	return nil
 }
 
-// MarshalJSON validates and encodes a JSON or binary simulate response.
-func (r SimulateResponse) MarshalJSON() ([]byte, error) {
-	if err := r.Validate(); err != nil {
-		return nil, err
-	}
-	type simulateResponseAlias SimulateResponse
-	return json.Marshal(simulateResponseAlias(r))
-}
-
 // UnmarshalJSON decodes and validates a JSON or binary simulate response.
 func (r *SimulateResponse) UnmarshalJSON(data []byte) error {
 	var fields map[string]json.RawMessage

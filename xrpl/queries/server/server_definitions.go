@@ -92,9 +92,6 @@ type DefinitionField struct {
 
 // MarshalJSON encodes a DefinitionField as its two-element wire tuple.
 func (f DefinitionField) MarshalJSON() ([]byte, error) {
-	if err := f.Validate(); err != nil {
-		return nil, err
-	}
 	return json.Marshal([2]any{f.Name, f.Info})
 }
 
@@ -173,8 +170,8 @@ func (f DefinitionFormatField) Validate() error {
 // DefinitionsResponse is the response returned by server_definitions.
 // Hash is always present. The five core definition sections are present together
 // in a full response and omitted together in a hash-only unchanged response.
-// Format and flag maps were added later by XLS-97 and remain optional so responses
-// from servers predating those additions can still be decoded.
+// Format and flag maps were added later by XLS-97 and are independently optional
+// so legacy and partial enhanced responses can still be decoded.
 //
 // These fields are wire DTOs and are independent from binary-codec's embedded
 // definitions and singleton state.
@@ -231,10 +228,6 @@ func (r DefinitionsResponse) Validate() error {
 		len(r.TransactionTypes) == 0 || len(r.TransactionResults) == 0 {
 		return ErrInvalidDefinitionsResponse
 	}
-	if err := r.validateEnhancedSections(); err != nil {
-		return err
-	}
-
 	for _, field := range r.Fields {
 		if err := field.Validate(); err != nil {
 			return fmt.Errorf("%w: %w", ErrInvalidDefinitionsResponse, err)
@@ -244,33 +237,6 @@ func (r DefinitionsResponse) Validate() error {
 		return err
 	}
 	return validateFormatSection("TRANSACTION_FORMATS", r.TransactionFormats)
-}
-
-func (r DefinitionsResponse) validateEnhancedSections() error {
-	sections := [...]struct {
-		present  bool
-		nonEmpty bool
-	}{
-		{present: r.LedgerEntryFormats != nil, nonEmpty: len(r.LedgerEntryFormats) > 0},
-		{present: r.TransactionFormats != nil, nonEmpty: len(r.TransactionFormats) > 0},
-		{present: r.LedgerEntryFlags != nil, nonEmpty: len(r.LedgerEntryFlags) > 0},
-		{present: r.TransactionFlags != nil, nonEmpty: len(r.TransactionFlags) > 0},
-		{present: r.AccountSetFlags != nil, nonEmpty: len(r.AccountSetFlags) > 0},
-	}
-	present := 0
-	for _, section := range sections {
-		if !section.present {
-			continue
-		}
-		present++
-		if !section.nonEmpty {
-			return fmt.Errorf("%w: enhanced sections must not be empty", ErrInvalidDefinitionsResponse)
-		}
-	}
-	if present != 0 && present != len(sections) {
-		return fmt.Errorf("%w: enhanced sections must be all present or all absent", ErrInvalidDefinitionsResponse)
-	}
-	return nil
 }
 
 func validateFormatSection(section string, formats map[string][]DefinitionFormatField) error {
@@ -285,15 +251,6 @@ func validateFormatSection(section string, formats map[string][]DefinitionFormat
 		}
 	}
 	return nil
-}
-
-// MarshalJSON validates and encodes a full or hash-only definitions response.
-func (r DefinitionsResponse) MarshalJSON() ([]byte, error) {
-	if err := r.Validate(); err != nil {
-		return nil, err
-	}
-	type definitionsResponseAlias DefinitionsResponse
-	return json.Marshal(definitionsResponseAlias(r))
 }
 
 // UnmarshalJSON decodes and validates a full or hash-only definitions response.

@@ -178,6 +178,35 @@ func TestSimulateRequestValidateNetworkID(t *testing.T) {
 	}
 }
 
+func TestSimulateResponseMarshalIncompleteValue(t *testing.T) {
+	type auditRecord struct {
+		RequestID string           `json:"request_id"`
+		Operator  string           `json:"operator"`
+		Response  SimulateResponse `json:"response"`
+	}
+
+	response := SimulateResponse{}
+	require.ErrorIs(t, response.Validate(), ErrInvalidSimulateResponse)
+
+	encoded, err := json.Marshal(auditRecord{
+		RequestID: "request-1",
+		Operator:  "alice",
+		Response:  response,
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"request_id":"request-1",
+		"operator":"alice",
+		"response":{
+			"applied":false,
+			"engine_result":"",
+			"engine_result_code":0,
+			"engine_result_message":"",
+			"ledger_index":0
+		}
+	}`, string(encoded))
+}
+
 func TestSimulateResponseJSONVariants(t *testing.T) {
 	const jsonSuccess = `{
 		"applied": false,
