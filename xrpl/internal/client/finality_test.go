@@ -329,26 +329,53 @@ func TestWaitForFinalityMatrix(t *testing.T) {
 }
 
 func TestWaitForFinalityReturnsContextCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
 	const lastLedger = uint32(20)
 
-	response, err := WaitForFinality(
-		ctx,
-		FinalityConfig{LastLedgerSequence: lastLedger, MaxAttempts: 2},
-		FinalityHooks[finalityTestResponse]{
-			LookupTransaction: func(context.Context) (TransactionStatus[finalityTestResponse], error) {
-				return TransactionStatus[finalityTestResponse]{}, nil
-			},
-			GetValidatedLedger: func(context.Context) (uint32, error) {
-				cancel()
-				return lastLedger, nil
-			},
+	tests := []struct {
+		name            string
+		validatedLedger uint32
+		cancelDuring    string
+	}{
+		{
+			name:            "validated ledger lookup",
+			validatedLedger: lastLedger,
+			cancelDuring:    "ledger",
 		},
-	)
+		{
+			name:            "final transaction lookup after expiry boundary",
+			validatedLedger: lastLedger + 1,
+			cancelDuring:    "transaction",
+		},
+	}
 
-	require.Nil(t, response)
-	require.ErrorIs(t, err, context.Canceled)
-	require.NotErrorIs(t, err, ErrTransactionExpired)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+
+			response, err := WaitForFinality(
+				ctx,
+				FinalityConfig{LastLedgerSequence: lastLedger, MaxAttempts: 2},
+				FinalityHooks[finalityTestResponse]{
+					LookupTransaction: func(context.Context) (TransactionStatus[finalityTestResponse], error) {
+						if tt.cancelDuring == "transaction" {
+							cancel()
+						}
+						return TransactionStatus[finalityTestResponse]{}, nil
+					},
+					GetValidatedLedger: func(context.Context) (uint32, error) {
+						if tt.cancelDuring == "ledger" {
+							cancel()
+						}
+						return tt.validatedLedger, nil
+					},
+				},
+			)
+
+			require.Nil(t, response)
+			require.ErrorIs(t, err, context.Canceled)
+			require.NotErrorIs(t, err, ErrTransactionExpired)
+		})
+	}
 }
 
 func TestWaitForFinalityRejectsNegativePollInterval(t *testing.T) {

@@ -173,6 +173,9 @@ func WaitForFinality[T any](
 			}
 			continue
 		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 
 		if status.Found && status.Validated {
 			if status.Response == nil {
