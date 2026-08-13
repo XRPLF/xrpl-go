@@ -19,6 +19,7 @@ GOLANGCI_LINT_VERSION = v2.11.3
 XRPLD_IMAGE ?= rippleci/xrpld:develop
 XRPLD_CONFIG ?= /etc/xrpld/xrpld.cfg
 LOCALNET_CONTAINER ?= xrpld_standalone
+LOCALNET_LEDGER_INTERVAL ?= 0.1
 
 ################################################################################
 ############################### LINTING ########################################
@@ -75,16 +76,16 @@ run-localnet: run-localnet-linux/amd64
 
 run-localnet-linux/amd64:
 	@echo "Running localnet..."
-	@docker run --rm -d --platform linux/amd64 -p 5005:5005 -p 6006:6006 --name $(LOCALNET_CONTAINER) --volume $(PWD)/.ci-config/xrpld.cfg:$(XRPLD_CONFIG):ro --entrypoint bash $(XRPLD_IMAGE) -c 'mkdir -p /var/lib/xrpld/db/ && xrpld --conf $(XRPLD_CONFIG) -a --start & sleep 5 && while true; do xrpld --conf $(XRPLD_CONFIG) ledger_accept; sleep 1; done'
+	@docker run --rm -d --platform linux/amd64 -p 5005:5005 -p 6006:6006 --name $(LOCALNET_CONTAINER) --volume $(PWD)/.ci-config/xrpld.cfg:$(XRPLD_CONFIG):ro --entrypoint bash $(XRPLD_IMAGE) -c 'mkdir -p /var/lib/xrpld/db/ && xrpld --conf $(XRPLD_CONFIG) -a --start & while true; do xrpld --conf $(XRPLD_CONFIG) ledger_accept; sleep $(LOCALNET_LEDGER_INTERVAL); done'
 	@echo "Localnet running!"
 
 run-localnet-linux/arm64:
 	@echo "Running localnet..."
-	@docker run --rm -d --platform linux/arm64 -p 5005:5005 -p 6006:6006 --name $(LOCALNET_CONTAINER) --volume $(PWD)/.ci-config/xrpld.cfg:$(XRPLD_CONFIG):ro --entrypoint bash $(XRPLD_IMAGE) -c 'mkdir -p /var/lib/xrpld/db/ && xrpld --conf $(XRPLD_CONFIG) -a --start & sleep 5 && while true; do xrpld --conf $(XRPLD_CONFIG) ledger_accept; sleep 1; done'
+	@docker run --rm -d --platform linux/arm64 -p 5005:5005 -p 6006:6006 --name $(LOCALNET_CONTAINER) --volume $(PWD)/.ci-config/xrpld.cfg:$(XRPLD_CONFIG):ro --entrypoint bash $(XRPLD_IMAGE) -c 'mkdir -p /var/lib/xrpld/db/ && xrpld --conf $(XRPLD_CONFIG) -a --start & while true; do xrpld --conf $(XRPLD_CONFIG) ledger_accept; sleep $(LOCALNET_LEDGER_INTERVAL); done'
 	@echo "Localnet running!"
 
 stop-localnet:
-	@docker stop $(LOCALNET_CONTAINER) >/dev/null 2>&1 || true
+	@docker rm --force $(LOCALNET_CONTAINER) >/dev/null 2>&1 || true
 
 integration-localnet:
 	@./scripts/localnet-integration.sh
@@ -92,7 +93,7 @@ integration-localnet:
 test-integration-localnet:
 	@echo "Running Go tests for integration package..."
 	@go clean -testcache
-	@INTEGRATION=localnet $(GOTEST) -p 1 $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+	@INTEGRATION=localnet $(GOTEST) -tags integration_localnet -p 1 $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 test-integration-devnet:
