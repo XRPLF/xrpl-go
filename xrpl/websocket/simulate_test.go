@@ -301,6 +301,14 @@ func TestClient_SimulateRejectsLocally(t *testing.T) {
 			name:    "nil request",
 			wantErr: transactions.ErrInvalidSimulateRequest,
 		},
+		{name: "both inputs", request: &transactions.SimulateRequest{
+			TxJSON: transaction.FlatTransaction{"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
+			TxBlob: websocketSimulateTxBlob,
+		}, wantErr: transactions.ErrInvalidSimulateRequest},
+		{name: "neither input", request: &transactions.SimulateRequest{}, wantErr: transactions.ErrInvalidSimulateRequest},
+		{name: "signed JSON", request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TxnSignature": "DEADBEEF",
+		}}, wantErr: transactions.ErrSignedSimulateTransaction},
 		{
 			name: "mismatched on restricted network",
 			request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{

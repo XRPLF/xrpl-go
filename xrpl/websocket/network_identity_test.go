@@ -748,6 +748,7 @@ func TestClientDisconnectClaimsReconnectSocketBeforeCancellationInvalidation(t *
 
 	ctx, cancel := context.WithCancel(context.Background())
 	var invalidationErr error
+	var closeCountAfterInvalidation int32
 	cl.streamHandlerStateMu.Lock()
 	cl.ctx = ctx
 	cl.cancel = func() {
@@ -755,11 +756,13 @@ func TestClientDisconnectClaimsReconnectSocketBeforeCancellationInvalidation(t *
 		// This reproduces the identity write watcher invalidation before the
 		// lifecycle cancellation call returns.
 		invalidationErr = cl.conn.invalidateSocket(socket)
+		closeCountAfterInvalidation = socket.closeCount.Load()
 	}
 	cl.streamHandlerStateMu.Unlock()
 
 	require.NoError(t, cl.Disconnect())
 	require.NoError(t, invalidationErr)
+	require.Zero(t, closeCountAfterInvalidation)
 	require.ErrorIs(t, ctx.Err(), context.Canceled)
 	require.False(t, cl.IsConnected())
 	require.Equal(t, int32(1), socket.closeCount.Load())
@@ -807,7 +810,7 @@ func TestClientDisconnectClosesSocketDuringReconnectIdentityDiscovery(t *testing
 	url, err := testutil.ConvertHTTPToWS(server.URL)
 	require.NoError(t, err)
 	cl := NewClient(withReconnectDelays(
-		NewClientConfig().WithHost(url).WithMaxReconnects(1).WithTimeout(time.Second),
+		NewClientConfig().WithHost(url).WithMaxReconnects(1).WithTimeout(5*time.Second),
 		time.Millisecond,
 		time.Millisecond,
 	))

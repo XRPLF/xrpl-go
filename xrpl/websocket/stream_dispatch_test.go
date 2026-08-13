@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -242,7 +243,7 @@ func TestClient_StreamHandlerDoesNotOverlapAfterDisconnectAndConnect(t *testing.
 			}
 		}
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	url, err := testutil.ConvertHTTPToWS(server.URL)
 	require.NoError(t, err)
@@ -252,9 +253,17 @@ func TestClient_StreamHandlerDoesNotOverlapAfterDisconnectAndConnect(t *testing.
 			WithTimeout(time.Second).
 			WithNetworkIdentity(0, "2.0.0"),
 	)
+	t.Cleanup(func() {
+		_ = client.Disconnect()
+	})
 
 	firstStarted := make(chan struct{})
 	releaseFirst := make(chan struct{})
+	var releaseFirstOnce sync.Once
+	releaseFirstHandler := func() {
+		releaseFirstOnce.Do(func() { close(releaseFirst) })
+	}
+	t.Cleanup(releaseFirstHandler)
 	secondHandled := make(chan struct{})
 	var calls atomic.Int32
 	var active atomic.Int32
@@ -299,15 +308,13 @@ func TestClient_StreamHandlerDoesNotOverlapAfterDisconnectAndConnect(t *testing.
 	case <-time.After(50 * time.Millisecond):
 	}
 
-	close(releaseFirst)
+	releaseFirstHandler()
 	select {
 	case err := <-connectResult:
 		require.NoError(t, err)
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for replacement Connect")
 	}
-	defer client.Disconnect()
-
 	select {
 	case <-secondHandled:
 	case <-time.After(time.Second):
