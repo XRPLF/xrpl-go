@@ -134,7 +134,7 @@ func TestCheckForError(t *testing.T) {
 			expectedErr:     ErrResponseErrorFieldIsNotAString,
 		},
 		{
-			name:            "fail - null error field",
+			name:            "fail - null error field is malformed",
 			body:            []byte(`{"result":{"error":null}}`),
 			statusCode:      200,
 			maxResponseSize: defaultMaxResponseSize,

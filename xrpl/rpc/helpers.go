@@ -103,7 +103,8 @@ func checkForError(res *http.Response, maxResponseSize int64) (Response, error) 
 		return jr, err
 	}
 
-	// result will have 'error' if error response
+	// A present error field must be a string. Treat null and other values as
+	// malformed responses instead of accepting proxy-modified success payloads.
 	if errorValue, ok := jr.Result["error"]; ok {
 		errorString, ok := errorValue.(string)
 		if !ok {

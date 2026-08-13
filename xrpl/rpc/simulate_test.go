@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
@@ -159,10 +160,13 @@ func TestClient_Simulate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := testutil.JSONRPCMockClient{}
 			mockClient.DoFunc = testutil.MockResponse(tt.mockResponse, 200, &mockClient)
-			config, err := NewClientConfig("http://testnode/", WithHTTPClient(&mockClient))
+			config, err := NewClientConfig(
+				"http://testnode/",
+				WithHTTPClient(&mockClient),
+				WithNetworkIdentity(tt.networkID, "1.12.0"),
+			)
 			require.NoError(t, err)
 			client := NewClient(config)
-			setTestNetworkIdentity(client, uint32Pointer(tt.networkID), "")
 
 			response, err := client.Simulate(tt.request)
 			if tt.expectedErrText != "" {
@@ -178,6 +182,37 @@ func TestClient_Simulate(t *testing.T) {
 			require.JSONEq(t, tt.expectedRequest, string(requestBody))
 		})
 	}
+}
+
+func TestClient_SimulateDiscoversNetworkIdentity(t *testing.T) {
+	mockClient := testutil.JSONRPCMockClient{}
+	methods := make([]string, 0, 1)
+	mockClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		var request struct {
+			Method string `json:"method"`
+		}
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&request))
+		methods = append(methods, request.Method)
+		return testutil.MockResponse(
+			`{"result":{"info":{"network_id":2048,"build_version":"1.12.0"}}}`,
+			http.StatusOK,
+			&mockClient,
+		)(req)
+	}
+	config, err := NewClientConfig("http://testnode/", WithHTTPClient(&mockClient))
+	require.NoError(t, err)
+	client := NewClient(config)
+	request := &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
+		"TransactionType": "Payment",
+		"Account":         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+		"NetworkID":       uint32(2049),
+	}}
+
+	response, err := client.Simulate(request)
+
+	require.ErrorIs(t, err, transactions.ErrMismatchedSimulateNetworkID)
+	require.Nil(t, response)
+	require.Equal(t, []string{"server_info"}, methods)
 }
 
 func TestClient_SimulateRejectsMismatchedResponseMode(t *testing.T) {
@@ -251,19 +286,26 @@ func TestClient_SimulateRejectsLocally(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			called := false
 			mockClient := testutil.JSONRPCMockClient{}
-			mockClient.DoFunc = func(*http.Request) (*http.Response, error) {
+			mockClient.DoFunc = func(req *http.Request) (*http.Response, error) {
 				called = true
-				return nil, nil
+				return testutil.MockResponse(
+					`{"result":{"status":"success"}}`,
+					http.StatusOK,
+					&mockClient,
+				)(req)
 			}
-			config, err := NewClientConfig("http://testnode/", WithHTTPClient(&mockClient))
+			config, err := NewClientConfig(
+				"http://testnode/",
+				WithHTTPClient(&mockClient),
+				WithNetworkIdentity(tt.networkID, "1.12.0"),
+			)
 			require.NoError(t, err)
 			client := NewClient(config)
-			setTestNetworkIdentity(client, uint32Pointer(tt.networkID), "")
 
 			response, err := client.Simulate(tt.request)
+			require.False(t, called, "locally invalid requests must not reach the transport")
 			require.ErrorIs(t, err, tt.wantErr)
 			require.Nil(t, response)
-			require.False(t, called, "locally invalid requests must not reach the transport")
 		})
 	}
 }

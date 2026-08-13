@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"context"
+
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/amm"
@@ -228,9 +230,17 @@ func (c *Client) GetChannelVerify(req *channel.VerifyRequest) (*channel.VerifyRe
 // to the network. Results reflect current ledger state and do not guarantee the
 // outcome of a later submission.
 func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error) {
-	networkID, _ := c.NetworkIdentity()
-	if err := req.ValidateNetworkID(networkID); err != nil {
+	if err := req.ValidateNetworkID(nil); err != nil {
 		return nil, err
+	}
+	if _, hasNetworkID := req.TxJSON["NetworkID"]; hasNetworkID {
+		identity, err := c.ensureNetworkIdentity(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		if err := req.ValidateNetworkID(identity.NetworkID); err != nil {
+			return nil, err
+		}
 	}
 	res, err := c.Request(req)
 	if err != nil {

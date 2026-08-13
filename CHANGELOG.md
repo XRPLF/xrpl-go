@@ -119,7 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added query field coverage for account lines (`ignore_default` request and `limit` response), AMM info (`account`, frozen flags, auction `time_interval`), NFT offer pagination (`limit`/`marker`), vault current-ledger metadata, and v1 account NFT ledger metadata, with protocol-accurate default and v1 JSON fixtures including the AMM expired-slot interval sentinel.
 - Expanded typed `ledger_entry` selector support with Clio deleted-entry metadata and distinct validated JSON (`node`) and binary (`node_binary`) responses across RPC and WebSocket transports.
 - Added typed `server_definitions` support for validated full, legacy, and hash-only protocol definitions. Validation rejects null or incomplete core sections, requires all five enhanced sections to appear together, and requires hash-only responses to match the request hash. RPC and WebSocket integration tests cover full and hash-only response forms.
-- Added XLS-69 `simulate` dry runs to the RPC and WebSocket clients, with JSON and binary responses and validated JSON or opaque hexadecimal blob requests. JSON requests support server-autofilled NetworkID values, validate supplied NetworkID values, permit non-empty `SigningPubKey` values and unsigned `Signers` entries, and reject non-empty transaction signatures. Blob requests check hexadecimal syntax and delegate transaction, signature, and NetworkID validation to the server. Responses must match the requested binary mode. Integration tests cover JSON and binary simulations.
+- Added XLS-69 `simulate` dry runs to the RPC and WebSocket clients, with JSON and binary responses and validated JSON or opaque hexadecimal blob requests. JSON requests support server-autofilled NetworkID values and validate supplied NetworkID values against the client target network, with RPC identity discovery when needed. They permit non-empty `SigningPubKey` values and unsigned `Signers` entries, and reject non-empty transaction signatures. Blob requests check hexadecimal syntax and delegate transaction, signature, and NetworkID validation to the server. Responses must match the requested binary mode. Integration tests cover JSON and binary simulations.
 - Added `ErrInvalidEntryRequest`, `ErrInvalidEntrySelector`, `ErrInvalidBridgeSelector`, and `ErrInvalidEntryResponse` for typed `ledger_entry` validation failures.
 
 #### xrpl/queries/amm
@@ -256,10 +256,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - secp256k1 signing now rejects zero and out-of-range private scalars instead of reducing them modulo the curve order.
 - secp256k1 verification now rejects malleable high-S signatures that do not meet XRPL's fully canonical signature requirement.
 - `DeriveClassicAddress` now verifies that compressed secp256k1 public keys encode valid curve points before address hashing.
-
-#### xrpl/queries
-
-- `simulate` now preserves whether the client network identity is known, so a known Mainnet identity rejects an explicit nonzero transaction `NetworkID` during local validation.
 
 #### xrpl/transaction
 

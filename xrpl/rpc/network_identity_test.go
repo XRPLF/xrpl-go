@@ -263,8 +263,9 @@ func TestClientEnsureNetworkIdentityFollowerCancellation(t *testing.T) {
 	release := func() { releaseRequestOnce.Do(func() { close(releaseRequest) }) }
 	t.Cleanup(release)
 	mockClient.DoFunc = func(req *http.Request) (*http.Response, error) {
-		requestCount.Add(1)
-		close(requestStarted)
+		if requestCount.Add(1) == 1 {
+			close(requestStarted)
+		}
 		<-releaseRequest
 		return testutil.MockResponse(
 			`{"result":{"info":{"network_id":21337,"build_version":"1.12.0"}}}`,
@@ -442,19 +443,19 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			expectedRequests: 2,
 		},
 		{
-			name:             "matching override is preserved",
+			name:             "matching override is accepted",
 			response:         `{"result":{"info":{"network_id":21337,"build_version":"1.12.0"}}}`,
 			override:         uint32Pointer(21337),
 			buildOverride:    "1.10.0",
 			expectedID:       uint32Pointer(21337),
 			expectedBuild:    "1.12.0",
 			expectedRequests: 1,
-			preserveOverride: true,
 		},
 		{
 			name:             "mismatching override fails without erasing override",
 			response:         `{"result":{"info":{"network_id":21338,"build_version":"1.12.0"}}}`,
 			override:         uint32Pointer(21337),
+			buildOverride:    "1.10.0",
 			expectedErr:      ErrNetworkIDOverrideMismatch,
 			expectedRequests: 1,
 			preserveOverride: true,
@@ -500,6 +501,7 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			}
 			options := []ConfigOpt{WithHTTPClient(mockClient)}
 			if tt.configuredIdentity {
+				require.NotNil(t, tt.override, "configured identity requires an override")
 				options = append(options, WithNetworkIdentity(*tt.override, tt.buildOverride))
 			}
 			cfg, err := NewClientConfig("http://localhost/", options...)
@@ -531,6 +533,7 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			if tt.preserveOverride {
 				require.NotNil(t, storedNetworkID)
 				require.Equal(t, *tt.override, *storedNetworkID)
+				require.Equal(t, tt.buildOverride, storedBuildVersion)
 			}
 			if tt.expectedErr == nil {
 				require.Equal(t, tt.expectedBuild, storedBuildVersion)
@@ -567,8 +570,9 @@ func TestClientEnsureNetworkIdentityCoalescesConcurrentDiscovery(t *testing.T) {
 	release := func() { releaseResponseOnce.Do(func() { close(releaseResponse) }) }
 	t.Cleanup(release)
 	mockClient.DoFunc = func(req *http.Request) (*http.Response, error) {
-		requestCount.Add(1)
-		close(requestStarted)
+		if requestCount.Add(1) == 1 {
+			close(requestStarted)
+		}
 		<-releaseResponse
 		return testutil.MockResponse(
 			`{"result":{"info":{"network_id":21337,"build_version":"1.12.0"}}}`,
