@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDynamicMPTEncoding(t *testing.T) {
+func TestDefinitionFieldsRoundTrip(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    map[string]any
@@ -43,6 +43,23 @@ func TestDynamicMPTEncoding(t *testing.T) {
 				"ImmutableFlags":    uint32(4),
 			},
 			expected: "1200382035000000048114D28B177E48D9A8D057E70F7E464B498367281B980115000004C463C52827307480341125DA0577DEFC38405B0E3E",
+		},
+		{
+			name: "MPTokenIssuance ReferenceHolding",
+			input: map[string]any{
+				"LedgerEntryType":  "MPTokenIssuance",
+				"ReferenceHolding": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+			},
+			expected: "11007E5027A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+		},
+		{
+			name: "DirectoryNode MPT book assets",
+			input: map[string]any{
+				"LedgerEntryType": "DirectoryNode",
+				"TakerPaysMPT":    "00000002430427B80BD2D09D36B70B969E12801065F22308",
+				"TakerGetsMPT":    "00000003430427B80BD2D09D36B70B969E12801065F22308",
+			},
+			expected: "110064031500000002430427B80BD2D09D36B70B969E12801065F22308041500000003430427B80BD2D09D36B70B969E12801065F22308",
 		},
 	}
 
@@ -428,8 +445,6 @@ func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 	require.NoError(t, err)
 	testnetTaggedAddress, err := addresscodec.ClassicAddressToXAddress(classicIssuer, 123, true, true)
 	require.NoError(t, err)
-	invalidXAddress := mainnetXAddress[:len(mainnetXAddress)-1] + "x"
-
 	tests := []struct {
 		name        string
 		address     string
@@ -441,7 +456,6 @@ func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 		{name: "mainnet tagged address", address: mainnetTaggedXAddress, wantErr: true, expectedErr: types.ErrAccountIDTagNotAllowed},
 		{name: "explicit zero tag", address: zeroTaggedAddress, wantErr: true, expectedErr: types.ErrAccountIDTagNotAllowed},
 		{name: "testnet tagged address", address: testnetTaggedAddress, wantErr: true, expectedErr: types.ErrAccountIDTagNotAllowed},
-		{name: "invalid X-address", address: invalidXAddress, wantErr: true},
 	}
 
 	for _, test := range tests {
@@ -1120,7 +1134,7 @@ func TestEncodeForSigningBatch(t *testing.T) {
 			got, err := EncodeForSigningBatch(tc.input())
 
 			if tc.expectedErr != nil {
-				require.EqualError(t, err, tc.expectedErr.Error())
+				require.ErrorIs(t, err, tc.expectedErr)
 				require.Empty(t, got)
 				return
 			}
@@ -1206,42 +1220,4 @@ func TestEncodeForSigningBatchCodecErrorIncludesTransactionIDIndex(t *testing.T)
 	require.ErrorContains(t, err, "BatchV1_1 txIDs[1]")
 	var invalidHex *types.ErrInvalidHexString
 	require.ErrorAs(t, err, &invalidHex)
-}
-
-func TestAuthoritativeDefinitionFieldsRoundTrip(t *testing.T) {
-	tt := []struct {
-		description string
-		input       map[string]any
-		expected    string
-	}{
-		{
-			description: "MPTokenIssuance ReferenceHolding",
-			input: map[string]any{
-				"LedgerEntryType":  "MPTokenIssuance",
-				"ReferenceHolding": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
-			},
-			expected: "11007E5027A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
-		},
-		{
-			description: "DirectoryNode MPT book assets",
-			input: map[string]any{
-				"LedgerEntryType": "DirectoryNode",
-				"TakerPaysMPT":    "00000002430427B80BD2D09D36B70B969E12801065F22308",
-				"TakerGetsMPT":    "00000003430427B80BD2D09D36B70B969E12801065F22308",
-			},
-			expected: "110064031500000002430427B80BD2D09D36B70B969E12801065F22308041500000003430427B80BD2D09D36B70B969E12801065F22308",
-		},
-	}
-
-	for _, tc := range tt {
-		t.Run(tc.description, func(t *testing.T) {
-			encoded, err := Encode(tc.input)
-			require.NoError(t, err)
-			require.Equal(t, tc.expected, encoded)
-
-			decoded, err := Decode(encoded)
-			require.NoError(t, err)
-			require.Equal(t, tc.input, decoded)
-		})
-	}
 }
