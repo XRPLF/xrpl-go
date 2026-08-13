@@ -14,31 +14,15 @@ This guide covers the source and behavior changes that are most likely to affect
 
 The protocol type definitions named `UInt384` and `UInt512` are now `Hash384` and `Hash512`. The obsolete `tecHOOK_REJECTED` and `tecNO_DELEGATE_PERMISSION` transaction result mappings were removed. Update code that reads these definition names or result mappings directly.
 
-## Binary codec amount values
+## Binary codec quality values
 
-The binary codec no longer accepts `float64` amount values because they can lose precision. Use strings, `json.Number`, or exact amount types. If an application decodes transaction JSON into `map[string]any`, enable `UseNumber`:
-
-```go
-decoder := json.NewDecoder(reader)
-decoder.UseNumber()
-
-var tx map[string]any
-if err := decoder.Decode(&tx); err != nil {
- return err
-}
-```
-
-For native XRP amounts, a drops string is also valid:
-
-```go
-tx["Amount"] = "1000000"
-```
+`EncodeQuality` now normalizes nonzero values to a 16-digit mantissa and accepts only normalized exponents from `-96` through `80`. Some extreme values that v0.2.0 accepted, such as `1e-85`, now return `ErrInvalidQuality`.
 
 ## Exact XRP amounts and fees
 
 The old `binary-codec/types.MaxDrops` and `currency.DropsPerXrp` values were removed. Use `currency.MaxNativeDrops` and `currency.DropsPerXRP`.
 
-The new `currency.Drops` type keeps native XRP calculations exact. It supports construction from drops or XRP strings, exact arithmetic, comparison, rounding, and formatting:
+The new `currency.Drops` type keeps native XRP calculations exact. It supports construction from drops or XRP strings, exact arithmetic, comparison, rounding, and formatting. `DropsFromString`, `DropsFromUint64`, and `DropsFromXRP` do not enforce `MaxNativeDrops`. Validate the final whole-drop value against `currency.MaxNativeDrops` before protocol encoding or submission:
 
 ```go
 fee, err := currency.DropsFromXRP("0.000012")
@@ -66,6 +50,12 @@ cfg := websocket.NewClientConfig().
 ```
 
 `common.DefaultFeeCushion` and `websocket.DefaultFeeCushion` are now `float64`. `common.DefaultMaxFeeXRP` and `websocket.DefaultMaxFeeXRP` are decimal strings.
+
+## Key formats and crypto errors
+
+`keypairs.DeriveClassicAddress` now accepts only Ed25519 and compressed secp256k1 public keys. Uncompressed secp256k1 and other unsupported public-key encodings return `ErrInvalidPublicKeyFormat`.
+
+`SECP256K1CryptoAlgorithm.Sign` now returns `crypto.ErrInvalidPrivateKey` directly for malformed hexadecimal private keys. It no longer wraps the hexadecimal decode error. Ed25519 signing continues to preserve its wrapped decode error.
 
 ## Network identity
 
@@ -123,7 +113,7 @@ RPC and WebSocket submit helpers apply the same checks before submission. `Submi
 
 ## Reliable submission
 
-`SubmitTxAndWait` and `SubmitTxBlobAndWait` now use validated-ledger finality. They require a positive `LastLedgerSequence` and reject non-positive retry limits or negative polling intervals before submission.
+`SubmitTxAndWait` and `SubmitTxBlobAndWait` now use validated-ledger finality. They require a positive `LastLedgerSequence` and reject non-positive retry limits or negative polling intervals before submission. `WithMaxRetries` now limits consecutive incomplete rounds caused by query or transport failures. Successful pending rounds do not consume this limit.
 
 An exact `txnNotFound` response is treated as inconclusive until validation, expiry, repeated transport failure, or cancellation. The removed `ErrTransactionNotFound` sentinel is no longer part of the RPC or WebSocket API.
 
@@ -191,8 +181,8 @@ MPT ledger amounts are now quoted base-10 strings. `MPToken.OwnerNode` and `MPTo
 Several response fields changed to preserve protocol precision and field presence:
 
 - `server/types.Info.NetworkID` changed from `uint` to `*uint32`.
-- Server load-factor fields changed from `uint` to `float64`.
-- `LoadFactorFeeEscelation` was renamed to `LoadFactorFeeEscalation`.
+- The normalized load-factor fields on `server/types.Info` changed from `uint` to `float64`.
+- `server/types.Info.LoadFactorFeeEscelation` was renamed to `server/types.Info.LoadFactorFeeEscalation`. These changes do not apply to `server/types.State`, whose load-factor fields remain `uint`.
 - `ClosedLedger.BaseFeeXRP` changed from `float32` to `*float64`.
 - `ClosedLedgerState.BaseFee` and `ReserveBase` changed from `float32` to `uint64`.
 - `ClosedLedgerState.ReserveInc` changed from `float32` to `*uint64`.
@@ -239,7 +229,9 @@ payload, err := binarycodec.EncodeForSigningBatch(map[string]any{
 })
 ```
 
-For a ticketed Batch, `effectiveSequence` is the ticket sequence. `batchAccount` and `signerAccount` are optional payload fields for Batch signers and nested multisigners.
+For a ticketed Batch, `effectiveSequence` is the ticket sequence. `batchAccount` binds an outer Batch signer. `signerAccount` binds a nested multisigner and is valid only when `batchAccount` is also present.
+
+The public `wallet/types.BatchSignable` struct now includes `Account`, `Sequence`, `BatchAccount`, and `SignerAccount`. Its `Equals` method now compares the outer account and effective sequence in addition to flags and transaction IDs. The new constructor sentinels are `ErrAccountFieldIsNotAString`, `ErrSequenceFieldIsNotAnUint32`, `ErrTicketSequenceFieldIsNotAnUint32`, `ErrBatchSequenceAndTicket`, and `ErrBatchSequenceNotSet`. Old unkeyed struct literals no longer compile. Old keyed literals that omit `Account` or `Sequence` compile but cannot create a valid `BatchV1_1` payload.
 
 `wallet.SignMultiBatch` requires the outer `Account` and exactly one nonzero `Sequence` or `TicketSequence` before signing. Create all Batch signature fragments again after the upgrade. Do not combine fragments created by v0.2.0 with fragments created by v0.3.0.
 
@@ -266,6 +258,8 @@ Custom `HTTPClient` implementations are supported for HTTPS endpoints, but they 
 ## Integration test clients
 
 The `xrpl/testutil/integration.Client` interface adds `NetworkIdentity`, `GetServerDefinitions`, and `Simulate`. External test clients and generated mocks that implement this interface must add these methods.
+
+`NewRunner` now replaces zero `WalletCount` and `MaxRetries` values with defaults and modifies those fields in the supplied `RunnerConfig`. `WithWallets(0)` and `WithMaxRetries(0)` no longer preserve explicit zero values.
 
 ## DelegateSet
 
