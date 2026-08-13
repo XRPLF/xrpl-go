@@ -47,7 +47,7 @@ if issuance.ImmutableFlags&ledger.LsifMPTMetadata != 0 {
 }
 ```
 
-`PriceData.AssetPrice` is a pointer so absent and explicit zero prices stay distinct. Oracle prices accept the XLS-47 `Scale` range from `0` through `20`. When `AssetPrice` is absent, JSON output omits `Scale`.
+`PriceData.AssetPrice` is a pointer so absent and explicit zero prices stay distinct. Oracle prices accept the XLS-47 `Scale` range from `0` through `20`. `Flatten` omits `Scale` when `AssetPrice` is absent, and `Validate` rejects a nonzero `Scale` without a price.
 
 ## Usage
 

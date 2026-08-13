@@ -21,10 +21,10 @@ import "github.com/Peersyst/xrpl-go/xrpl/hash"
 ### SignTxBlob
 
 ```go
-func SignTxBlob(txBlob string) ([]byte, error)
+func SignTxBlob(txBlob string) (string, error)
 ```
 
-Hashes a signed transaction blob and returns the transaction hash or an error if the blob is invalid.
+Hashes a signed transaction blob and returns the transaction hash as an uppercase hexadecimal string, or an error if the blob is invalid.
 
 The transaction must use one complete signing form. A single-signed transaction requires `SigningPubKey` and `TxnSignature`. A multisigned transaction requires `Signers` and an explicitly empty top-level `SigningPubKey`. Partial, empty, or mixed signing structures return an error.
 

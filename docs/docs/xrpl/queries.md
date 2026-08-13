@@ -51,7 +51,7 @@ The account subpackage provides the following queries requests:
 
 | Request                  | Method name                                                                                                                      | V1 support | V2 support |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `ChannelRequest`         | [account_channels](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_channels)     | ✅         | ✅         |
+| `ChannelsRequest`        | [account_channels](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_channels)     | ✅         | ✅         |
 | `CurrenciesRequest`      | [account_currencies](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_currencies) | ✅         | ✅         |
 | `GatewayBalancesRequest` | [gateway_balances](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/gateway_balances)     | ❌         | ✅         |
 | `InfoRequest`            | [account_info](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_info)             | ✅         | ✅         |
@@ -108,7 +108,7 @@ The `ledger` subpackage provides the following queries requests:
 | `ClosedRequest`  | [ledger_closed](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_closed)   | ✅         | ✅         |
 | `CurrentRequest` | [ledger_current](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_current) | ✅         | ✅         |
 | `DataRequest`    | [ledger_data](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_data)       | ✅         | ✅         |
-| `EntryRequest`   | [ledger_entry](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_entry)   | ✅         | ✅         |
+| `EntryRequest`   | [ledger_entry](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_entry)     | ❌         | ✅         |
 
 #### `ledger_entry` selectors
 
@@ -302,14 +302,14 @@ The available methods correspond to the [Server Info Methods](https://xrpl.org/d
 
 The `server` subpackage provides the following queries requests:
 
-| Request             | Method name                                                                                                              | V1 support | V2 support |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------- | ---------- |
-| `FeatureAllRequest` | [feature_all](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/feature_all)   | ✅         | ✅         |
-| `FeatureOneRequest` | [feature](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/feature)           | ✅         | ✅         |
-| `FeeRequest`        | [fee](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/fee)                   | ✅         | ✅         |
-| `ManifestRequest`   | [manifest](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/manifest)         | ✅         | ✅         |
-| `InfoRequest`       | [server_info](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_info)   | ✅         | ✅         |
-| `StateRequest`       | [server_state](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_state)             | ✅         | ✅         |
+| Request              | Method name                                                                                                                  | V1 support | V2 support |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
+| `FeatureAllRequest`  | [feature](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/feature)                 | ❌         | ✅         |
+| `FeatureOneRequest`  | [feature](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/feature)                 | ❌         | ✅         |
+| `FeeRequest`         | [fee](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/fee)                         | ❌         | ✅         |
+| `ManifestRequest`    | [manifest](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/manifest)               | ❌         | ✅         |
+| `InfoRequest`        | [server_info](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_info)         | ❌         | ✅         |
+| `StateRequest`       | [server_state](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_state)       | ❌         | ✅         |
 | `DefinitionsRequest` | [server_definitions](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_definitions) | ❌         | ✅         |
 
 #### Server definitions

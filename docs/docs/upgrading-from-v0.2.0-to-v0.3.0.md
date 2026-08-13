@@ -14,6 +14,26 @@ This guide covers the source and behavior changes that are most likely to affect
 
 The protocol type definitions named `UInt384` and `UInt512` are now `Hash384` and `Hash512`. The obsolete `tecHOOK_REJECTED` and `tecNO_DELEGATE_PERMISSION` transaction result mappings were removed. Update code that reads these definition names or result mappings directly.
 
+## Binary codec amount values
+
+The binary codec no longer accepts `float64` amount values because they can lose precision. Use strings, `json.Number`, or exact amount types. If an application decodes transaction JSON into `map[string]any`, enable `UseNumber`:
+
+```go
+decoder := json.NewDecoder(reader)
+decoder.UseNumber()
+
+var tx map[string]any
+if err := decoder.Decode(&tx); err != nil {
+ return err
+}
+```
+
+For native XRP amounts, a drops string is also valid:
+
+```go
+tx["Amount"] = "1000000"
+```
+
 ## Exact XRP amounts and fees
 
 The old `binary-codec/types.MaxDrops` and `currency.DropsPerXrp` values were removed. Use `currency.MaxNativeDrops` and `currency.DropsPerXRP`.
@@ -72,6 +92,8 @@ wsCfg := websocket.NewClientConfig().
 ```
 
 A non-empty build version is required for a complete override. An empty build version makes the client perform discovery.
+
+`websocket.Client.Connect` now requests `server_info` before it starts the background reader. Standard rippled and Clio servers support this request. A custom server, proxy, or test double must return `server_info`, or the client must use `WithNetworkIdentity` with trusted values.
 
 Network identity policy applies to outer transactions and Batch inner transactions. Public network IDs from `0` through `1024` must omit the transaction `NetworkID`. IDs above `1024` require the exact `NetworkID` on rippled `1.11.0` or later.
 
@@ -185,16 +207,41 @@ Check pointer fields before dereferencing them. A nil value means that the respo
 The following ledger model changes can require application updates:
 
 - `Escrow.IssuerNode` and `Oracle.OwnerNode` are hexadecimal strings instead of `uint64`.
-- `PriceData.AssetPrice` is `*uint64`, so absent and explicit zero values are distinct.
+- `PriceData.AssetPrice` is `*uint64`, so absent and explicit zero values are distinct. Use `ledger.AssetPrice(value)` to create the pointer.
 - Oracle `Scale` values through `20` are valid.
 - `Oracle` now includes `LedgerEntryType` and `Flags`.
 - `MPToken.MPTAmount`, `MPToken.LockedAmount`, and MPT issuance amount fields are quoted base-10 strings.
+
+For example:
+
+```go
+priceData := ledger.PriceData{
+ BaseAsset:  "XRP",
+ QuoteAsset: "USD",
+ AssetPrice: ledger.AssetPrice(740),
+}
+```
 
 ## Batch transactions
 
 A Batch transaction now requires from 2 through 8 inner transactions. `ErrBatchRawTransactionsEmpty` remains a compatibility alias for `ErrBatchRawTransactionsCount`.
 
 Inner transaction maps must contain an explicitly empty `SigningPubKey`. `TxnSignature`, `Signers`, and `LastLedgerSequence` must be absent. Null values do not replace required omission or an empty string.
+
+Batch signing now uses the `BatchV1_1` payload. Code that calls `binarycodec.EncodeForSigningBatch` directly must add the outer account and effective sequence:
+
+```go
+payload, err := binarycodec.EncodeForSigningBatch(map[string]any{
+ "account":  outerAccount,
+ "sequence": effectiveSequence,
+ "flags":    uint32(flags),
+ "txIDs":    txIDs,
+})
+```
+
+For a ticketed Batch, `effectiveSequence` is the ticket sequence. `batchAccount` and `signerAccount` are optional payload fields for Batch signers and nested multisigners.
+
+`wallet.SignMultiBatch` requires the outer `Account` and exactly one nonzero `Sequence` or `TicketSequence` before signing. Create all Batch signature fragments again after the upgrade. Do not combine fragments created by v0.2.0 with fragments created by v0.3.0.
 
 ## WebSocket lifecycle
 
@@ -226,7 +273,16 @@ A present empty `DelegateSet.Permissions` list now deletes the Delegate object. 
 
 ## Error sentinels
 
-Several errors are new or changed in `v0.3.0`:
+Several errors are new or changed in `v0.3.0`.
+
+Update references to these removed errors:
+
+- Replace `binarycodec.ErrBatchTxIDNotString` with `binarycodec.ErrBatchTxIDsNotArray`.
+- Replace `transaction.ErrMPTIssuanceCreateMutableFlagsZero` with `transaction.ErrMPTIssuanceCreateImmutableFlagsZero`.
+- Replace `transaction.ErrMPTIssuanceSetMutableFlagsZero` with `transaction.ErrMPTIssuanceSetImmutableFlagsZero`.
+- Remove checks for `transaction.ErrMPTIssuanceSetMutableFlagsConflict` and `transaction.ErrMPTIssuanceSetTransferFeeWithClearCanTransfer`. The old set and clear mutable-flag model no longer exists.
+
+The following errors are new or have new behavior:
 
 - `ErrInvalidPrivateKeyFormat` and `ErrInvalidPublicKeyFormat` report key format failures and preserve `ErrInvalidCryptoImplementation` matching.
 - `ErrInvalidFeeValue` and `ErrFeeHasTooManyDecimals` report invalid fee configuration.
