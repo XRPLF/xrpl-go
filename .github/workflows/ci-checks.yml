@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: ["**"]
+    types: [opened, synchronize, reopened, edited]
   schedule:
     # Weekly scan to catch newly disclosed CVEs in dependencies.
     # 09:00 UTC Mondays = 10:00 CET (winter) / 11:00 CEST (summer).
@@ -21,7 +22,7 @@ concurrency:
 jobs:
   lint:
     name: Lint
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'edited')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,6 +40,7 @@ jobs:
 
   govulncheck:
     name: Govulncheck
+    if: github.event_name != 'pull_request' || github.event.action != 'edited'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -78,6 +80,8 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           MODULE_PATH: github.com/Peersyst/xrpl-go
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
 
@@ -103,21 +107,4 @@ jobs:
           apidiff -m "$base_api" "$head_api" > "$api_changes"
           apidiff -m -incompatible "$base_api" "$head_api" > "$incompatible_changes"
 
-          {
-            echo "## Exported API changes"
-            if [[ -s "$api_changes" ]]; then
-              echo '```text'
-              cat "$api_changes"
-              echo '```'
-            else
-              echo "No exported API changes."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          if [[ ! -s "$incompatible_changes" ]]; then
-            exit 0
-          fi
-
-          cat "$incompatible_changes"
-          echo "Incompatible exported API changes are not allowed." >&2
-          exit 1
+          scripts/report-api-compatibility.sh "$api_changes" "$incompatible_changes"
