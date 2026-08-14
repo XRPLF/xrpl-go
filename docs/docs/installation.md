@@ -28,7 +28,7 @@ By running this command, the latest version of the `xrpl-go` package will be dow
 
 ## Import and start using the SDK
 
-Once you have the package downloaded, you can import any `xrpl-go` package in your project and start working with it. 
+Once you have the package downloaded, you can import any `xrpl-go` package in your project and start working with it.
 The following example shows how to import the `xrpl` package and create a new WebSocket client to connect to the XRPL testnet chain:
 
 ```go
@@ -58,7 +58,7 @@ func main() {
 
 ## Next steps
 
-Now that you have the `xrpl-go` package downloaded and imported in your project, you can start interacting with the XRP Ledger. 
+Now that you have the `xrpl-go` package downloaded and imported in your project, you can start interacting with the XRP Ledger.
 
 To learn more about the `xrpl-go` packages, you can find the documentation for each package:
 

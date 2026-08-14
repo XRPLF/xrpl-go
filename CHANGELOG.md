@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+#### dependencies
+
+- Raised the minimum Go version from 1.25.12 to 1.25.13 to fix the `net/url` quadratic path-resolution vulnerability (GO-2026-6218).
+
 ## [v0.3.0]
 
 ### BREAKING CHANGES
@@ -19,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### dependencies
 
-- Raised the minimum Go version from 1.24.3 to 1.25.13 to include upstream standard-library security fixes.
+- Raised the minimum Go version from 1.24.3 to 1.25.12 to include upstream standard-library security fixes.
 
 #### keypairs
 

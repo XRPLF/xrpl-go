@@ -8,7 +8,7 @@ This guide covers the source and behavior changes that are most likely to affect
 
 ## Go version
 
-`v0.3.0` requires Go `1.25.13` or later.
+`v0.3.0` requires Go `1.25.12` or later.
 
 ## Binary codec definitions
 
