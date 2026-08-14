@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Docs
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Docusaurus
+    name: Build Documentation
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,7 +35,7 @@ jobs:
           path: docs/build
 
   deploy:
-    name: Deploy to GitHub Pages
+    name: Deploy GitHub Pages
     needs: build
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
