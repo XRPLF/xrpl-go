@@ -2283,9 +2283,9 @@
       {
         "isSerialized": true,
         "isSigningField": true,
-        "isVLEncoded": true,
-        "nth": 45,
-        "type": "Blob"
+        "isVLEncoded": false,
+        "nth": 40,
+        "type": "Hash256"
       }
     ],
     [
@@ -2294,7 +2294,7 @@
         "isSerialized": true,
         "isSigningField": true,
         "isVLEncoded": true,
-        "nth": 46,
+        "nth": 45,
         "type": "Blob"
       }
     ],
@@ -2304,7 +2304,7 @@
         "isSerialized": true,
         "isSigningField": true,
         "isVLEncoded": true,
-        "nth": 47,
+        "nth": 46,
         "type": "Blob"
       }
     ],
@@ -4481,6 +4481,30 @@
         "optionality": 1
       },
       {
+        "name": "ConfidentialBalanceInbox",
+        "optionality": 1
+      },
+      {
+        "name": "ConfidentialBalanceSpending",
+        "optionality": 1
+      },
+      {
+        "name": "ConfidentialBalanceVersion",
+        "optionality": 2
+      },
+      {
+        "name": "IssuerEncryptedBalance",
+        "optionality": 1
+      },
+      {
+        "name": "AuditorEncryptedBalance",
+        "optionality": 1
+      },
+      {
+        "name": "HolderEncryptionKey",
+        "optionality": 1
+      },
+      {
         "name": "OwnerNode",
         "optionality": 0
       },
@@ -4549,6 +4573,18 @@
       {
         "name": "ReferenceHolding",
         "optionality": 1
+      },
+      {
+        "name": "IssuerEncryptionKey",
+        "optionality": 1
+      },
+      {
+        "name": "AuditorEncryptionKey",
+        "optionality": 1
+      },
+      {
+        "name": "ConfidentialOutstandingAmount",
+        "optionality": 2
       }
     ],
     "NFTokenOffer": [
@@ -5463,6 +5499,144 @@
         "optionality": 1
       }
     ],
+    "ConfidentialMPTClawback": [
+      {
+        "name": "MPTokenIssuanceID",
+        "optionality": 0
+      },
+      {
+        "name": "Holder",
+        "optionality": 0
+      },
+      {
+        "name": "MPTAmount",
+        "optionality": 0
+      },
+      {
+        "name": "ZKProof",
+        "optionality": 0
+      }
+    ],
+    "ConfidentialMPTConvert": [
+      {
+        "name": "MPTokenIssuanceID",
+        "optionality": 0
+      },
+      {
+        "name": "MPTAmount",
+        "optionality": 0
+      },
+      {
+        "name": "HolderEncryptionKey",
+        "optionality": 1
+      },
+      {
+        "name": "HolderEncryptedAmount",
+        "optionality": 0
+      },
+      {
+        "name": "IssuerEncryptedAmount",
+        "optionality": 0
+      },
+      {
+        "name": "AuditorEncryptedAmount",
+        "optionality": 1
+      },
+      {
+        "name": "BlindingFactor",
+        "optionality": 0
+      },
+      {
+        "name": "ZKProof",
+        "optionality": 1
+      }
+    ],
+    "ConfidentialMPTConvertBack": [
+      {
+        "name": "MPTokenIssuanceID",
+        "optionality": 0
+      },
+      {
+        "name": "MPTAmount",
+        "optionality": 0
+      },
+      {
+        "name": "HolderEncryptedAmount",
+        "optionality": 0
+      },
+      {
+        "name": "IssuerEncryptedAmount",
+        "optionality": 0
+      },
+      {
+        "name": "AuditorEncryptedAmount",
+        "optionality": 1
+      },
+      {
+        "name": "BlindingFactor",
+        "optionality": 0
+      },
+      {
+        "name": "ZKProof",
+        "optionality": 0
+      },
+      {
+        "name": "BalanceCommitment",
+        "optionality": 0
+      }
+    ],
+    "ConfidentialMPTMergeInbox": [
+      {
+        "name": "MPTokenIssuanceID",
+        "optionality": 0
+      }
+    ],
+    "ConfidentialMPTSend": [
+      {
+        "name": "MPTokenIssuanceID",
+        "optionality": 0
+      },
+      {
+        "name": "Destination",
+        "optionality": 0
+      },
+      {
+        "name": "DestinationTag",
+        "optionality": 1
+      },
+      {
+        "name": "SenderEncryptedAmount",
+        "optionality": 0
+      },
+      {
+        "name": "DestinationEncryptedAmount",
+        "optionality": 0
+      },
+      {
+        "name": "IssuerEncryptedAmount",
+        "optionality": 0
+      },
+      {
+        "name": "AuditorEncryptedAmount",
+        "optionality": 1
+      },
+      {
+        "name": "ZKProof",
+        "optionality": 0
+      },
+      {
+        "name": "AmountCommitment",
+        "optionality": 0
+      },
+      {
+        "name": "BalanceCommitment",
+        "optionality": 0
+      },
+      {
+        "name": "CredentialIDs",
+        "optionality": 1
+      }
+    ],
     "CredentialAccept": [
       {
         "name": "Issuer",
@@ -5861,6 +6035,14 @@
       },
       {
         "name": "ImmutableFlags",
+        "optionality": 1
+      },
+      {
+        "name": "IssuerEncryptionKey",
+        "optionality": 1
+      },
+      {
+        "name": "AuditorEncryptionKey",
         "optionality": 1
       }
     ],
@@ -6890,6 +7072,5 @@
     "Validation": 10003,
     "Vector256": 19,
     "XChainBridge": 25
-  },
-  "hash": "0F2AE080CAED01060B32CCFA9B8BEA653176490D9FB3513FD3CB6CD475BE09C8"
+  }
 }
