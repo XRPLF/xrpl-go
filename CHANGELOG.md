@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### dependencies
 
-- Raised the minimum Go version from 1.24.3 to 1.25.12 to include upstream standard-library security fixes.
+- Raised the minimum Go version from 1.24.3 to 1.25.13 to include upstream standard-library security fixes.
 
 #### keypairs
 
