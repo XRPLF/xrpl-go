@@ -38,7 +38,7 @@ func createAMMPool(t *testing.T, runner *integration.Runner, client integration.
 		SetFlag: transaction.AsfDefaultRipple,
 	}
 	flatAccountSetTx := accountSetTx.Flatten()
-	_, err := runner.TestTransaction(&flatAccountSetTx, issuerWallet, "tesSUCCESS", nil)
+	_, err := runner.TestSuccessfulTransactionAndWait(&flatAccountSetTx, issuerWallet, nil)
 	require.NoError(t, err)
 
 	if enableClawback {
@@ -49,7 +49,7 @@ func createAMMPool(t *testing.T, runner *integration.Runner, client integration.
 			SetFlag: transaction.AsfAllowTrustLineClawback,
 		}
 		flatClawbackTx := clawbackTx.Flatten()
-		_, err = runner.TestTransaction(&flatClawbackTx, issuerWallet, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatClawbackTx, issuerWallet, nil)
 		require.NoError(t, err)
 	}
 
@@ -65,7 +65,7 @@ func createAMMPool(t *testing.T, runner *integration.Runner, client integration.
 	}
 	trustSetTx.SetClearNoRippleFlag()
 	flatTrustSetTx := trustSetTx.Flatten()
-	_, err = runner.TestTransaction(&flatTrustSetTx, lpWallet, "tesSUCCESS", nil)
+	_, err = runner.TestSuccessfulTransactionAndWait(&flatTrustSetTx, lpWallet, nil)
 	require.NoError(t, err)
 
 	paymentTx := &transaction.Payment{
@@ -80,7 +80,7 @@ func createAMMPool(t *testing.T, runner *integration.Runner, client integration.
 		},
 	}
 	flatPaymentTx := paymentTx.Flatten()
-	_, err = runner.TestTransaction(&flatPaymentTx, issuerWallet, "tesSUCCESS", nil)
+	_, err = runner.TestSuccessfulTransactionAndWait(&flatPaymentTx, issuerWallet, nil)
 	require.NoError(t, err)
 
 	ammCreateTx := &transaction.AMMCreate{
@@ -92,7 +92,7 @@ func createAMMPool(t *testing.T, runner *integration.Runner, client integration.
 		TradingFee: 12,
 	}
 	flatAMMCreateTx := ammCreateTx.Flatten()
-	_, err = runner.TestTransaction(&flatAMMCreateTx, lpWallet, "tesSUCCESS", nil)
+	_, err = runner.TestSuccessfulTransactionAndWait(&flatAMMCreateTx, lpWallet, nil)
 	require.NoError(t, err)
 
 	return &ammPool{
