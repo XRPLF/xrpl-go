@@ -20,11 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      INTEGRATION_TEST_REPORT: localnet-test-results.json
       LOCALNET_CONTAINER: xrpld_standalone
       XRPLD_IMAGE: rippleci/xrpld@sha256:62099871128ee3083af2fa71418ebf95790c4a7d1f5271d0375059ab6b70b4a8 # rippleci/xrpld:3.3.0
       KEEP_LOCALNET: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -38,13 +41,20 @@ jobs:
         if: always()
         run: docker logs "$LOCALNET_CONTAINER" > localnet.log 2>&1 || true
 
-      - name: Upload failure logs
-        if: failure()
+      - name: Add localnet test summary
+        if: always()
+        run: make test-report-summary TEST_REPORT="$INTEGRATION_TEST_REPORT" TEST_REPORT_TITLE="Localnet integration test report" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload localnet test reports
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: localnet-integration-failure-logs
-          path: localnet.log
-          if-no-files-found: ignore
+          name: localnet-integration-reports
+          path: |
+            localnet-test-results.json
+            localnet.log
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Stop localnet
         if: always()

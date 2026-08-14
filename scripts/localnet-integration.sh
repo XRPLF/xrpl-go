@@ -60,4 +60,8 @@ echo "Waiting for localnet RPC at $RPC_URL..."
 wait_for_localnet
 
 echo "Running localnet integration tests..."
-make test-integration-localnet
+if [ -n "${INTEGRATION_TEST_REPORT:-}" ]; then
+	make test-integration-localnet-ci
+else
+	make test-integration-localnet
+fi

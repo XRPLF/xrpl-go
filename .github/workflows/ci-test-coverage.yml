@@ -1,0 +1,56 @@
+name: Unit Tests and Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests and Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run unit tests and generate coverage
+        run: make coverage-unit-ci
+
+      - name: Check unit test coverage
+        uses: vladopajic/go-test-coverage@f94bcf0d6b9fa5fb8b783830b22648f6c17475e2 # v2.19.0
+        with:
+          config: ./.testcoverage.yml
+          profile: coverage.out
+          local-prefix: github.com/Peersyst/xrpl-go
+          threshold-file: 0
+          threshold-package: 0
+          threshold-total: 0
+
+      - name: Add unit test summary
+        if: always()
+        run: make test-report-summary TEST_REPORT=unit-test-results.json TEST_REPORT_TITLE="Unit test report" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unit-test-reports
+          path: |
+            unit-test-results.json
+            coverage.out
+            coverage.html
+          if-no-files-found: warn
+          retention-days: 14

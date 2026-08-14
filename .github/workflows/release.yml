@@ -1,36 +1,88 @@
 name: Release
+
 on:
   workflow_dispatch:
     inputs:
-      commit_branch:
-        description: The branch or the commit sha to push tag to
-        required: true
       tag:
-        description: The tag of the release
+        description: Use vX.Y.Z for stable, or add a suffix such as -rc1, -beta1, or -b1 for prerelease
         required: true
-      is_pre_release:
-        description: Is this a pre-release?
-        type: boolean
-        required: true
+        type: string
+
 permissions:
   contents: read
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    runs-on: ubuntu-latest
     name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
-      contents: write # to create the git tag and publish the GitHub release
+      contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.event.inputs.commit_branch }}
-          fetch-depth: 0
-          fetch-tags: true
-      - name: Publish the Release
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
-        with:
-          tag_name: ${{ github.event.inputs.tag }}
-          prerelease: ${{ github.event.inputs.is_pre_release }}
-          target_commitish: ${{ github.event.inputs.commit_branch }}
+      - name: Validate release tag
+        id: release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          semver_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+)(\.[0-9A-Za-z-]+)*)?$'
+          if [[ ! "$RELEASE_TAG" =~ $semver_pattern ]]; then
+            echo "Release tag must use vX.Y.Z or vX.Y.Z-prerelease format: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Create release notes from changelog
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          awk -v heading="## [$RELEASE_TAG]" '
+            $0 == heading { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+            END { if (!found) exit 2 }
+          ' CHANGELOG.md > release-notes.md
+
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "CHANGELOG.md has no release notes under ## [$RELEASE_TAG]" >&2
+            exit 1
+          fi
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ steps.release.outputs.prerelease }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          release_arguments=(
+            "$RELEASE_TAG"
+            --target "$TARGET_SHA"
+            --title "$RELEASE_TAG"
+            --notes-file release-notes.md
+          )
+          if [[ "$PRERELEASE" == "true" ]]; then
+            release_arguments+=(--prerelease)
+          fi
+
+          gh release create "${release_arguments[@]}"

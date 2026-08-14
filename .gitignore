@@ -50,8 +50,10 @@ debug
 *.tmp
 *.temp
 
-# Coverage report
+# CI test and coverage reports
 coverage.html
+/localnet-test-results.json
+/unit-test-results.json
 
 # Multi-review skill output (per-run subdirectories)
 /reviews/
