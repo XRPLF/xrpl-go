@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: ["**"]
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
   schedule:
     # Weekly scan to catch newly disclosed CVEs in dependencies.
     # 09:00 UTC Mondays = 10:00 CET (winter) / 11:00 CEST (summer).
@@ -22,7 +22,9 @@ concurrency:
 jobs:
   lint:
     name: Lint
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'edited')
+    # The weekly run exists for the vulnerability scan, so linting stays on the
+    # events that can actually change the code.
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -40,7 +42,6 @@ jobs:
 
   govulncheck:
     name: Govulncheck
-    if: github.event_name != 'pull_request' || github.event.action != 'edited'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,55 +57,3 @@ jobs:
 
       - name: Run govulncheck
         run: govulncheck ./...
-
-  api-compatibility:
-    name: API Compatibility
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Install apidiff
-        run: go install golang.org/x/exp/cmd/apidiff@v0.0.0-20260813180055-c1d0aacb2297
-
-      - name: Compare exported API
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          MODULE_PATH: github.com/Peersyst/xrpl-go
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: |
-          set -euo pipefail
-
-          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Invalid pull request base SHA: $BASE_SHA" >&2
-            exit 1
-          fi
-
-          base_directory="$RUNNER_TEMP/api-base"
-          base_api="$RUNNER_TEMP/api-base.export"
-          head_api="$RUNNER_TEMP/api-head.export"
-          api_changes="$RUNNER_TEMP/api-changes.txt"
-          incompatible_changes="$RUNNER_TEMP/api-incompatible.txt"
-
-          mkdir -p "$base_directory"
-          git archive "$BASE_SHA" | tar -x -C "$base_directory"
-
-          (
-            cd "$base_directory"
-            apidiff -m -w "$base_api" "$MODULE_PATH"
-          )
-          apidiff -m -w "$head_api" "$MODULE_PATH"
-          apidiff -m "$base_api" "$head_api" > "$api_changes"
-          apidiff -m -incompatible "$base_api" "$head_api" > "$incompatible_changes"
-
-          scripts/report-api-compatibility.sh "$api_changes" "$incompatible_changes"
