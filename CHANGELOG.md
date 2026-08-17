@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - Added confidential-transfer flags and encryption-key fields to MPT issuance transaction and ledger-entry models.
-- Added confidential balance fields to `MPToken`, five confidential MPT transaction models, and supporting amount, encryption-key, hex-blob, blinding-factor, and proof validation helpers.
+- Added confidential balance fields to `MPToken`, five confidential MPT transaction models, and supporting amount, encryption-key, hex-blob, blinding-factor, and proof validation helpers. RPC and WebSocket autofill apply the required 10x base fee to confidential MPT transactions, including inner Batch transactions, plus the normal per-signer surcharge.
 
 #### xrpl/hash
 
@@ -52,9 +52,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Raised the minimum Go version from 1.25.12 to 1.25.13 to fix the `net/url` quadratic path-resolution vulnerability (GO-2026-6218).
 
+#### xrpl/rpc
+
+- Autofill no longer underpays transactions whose fee is a multiple of the base fee. The multiplier now applies to the exact load-adjusted network fee and the total is rounded once, instead of rounding the network fee to whole drops first.
+
 #### xrpl/transaction
 
 - Corrected confidential transaction key encoding and proof-size validation.
+
+#### xrpl/websocket
+
+- Autofill no longer underpays transactions whose fee is a multiple of the base fee. The multiplier now applies to the exact load-adjusted network fee and the total is rounded once, instead of rounding the network fee to whole drops first.
 
 ## [v0.3.0]
 

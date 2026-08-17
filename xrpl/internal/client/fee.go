@@ -7,11 +7,33 @@ import (
 	"strconv"
 
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 )
 
-// NetworkFeeDrops calculates the load-adjusted and capped network fee. Inputs
-// use binary64 precision, the cap is applied before rounding, and the result is
-// rounded half-up to a whole number of drops.
+const confidentialFeeMultiplier uint64 = 10
+
+// ConfidentialFeeMultiplier returns the fixed base-fee multiplier for a
+// confidential MPT transaction, or one for all other transaction types.
+// rippled charges one base fee for the transaction itself plus an extra
+// multiplier of nine, so the combined factor is ten.
+func ConfidentialFeeMultiplier(txType transaction.TxType) uint64 {
+	switch txType { //nolint:exhaustive // Only confidential transaction types use this fixed multiplier.
+	case transaction.ConfidentialMPTClawbackTx,
+		transaction.ConfidentialMPTConvertTx,
+		transaction.ConfidentialMPTConvertBackTx,
+		transaction.ConfidentialMPTMergeInboxTx,
+		transaction.ConfidentialMPTSendTx:
+		return confidentialFeeMultiplier
+	default:
+		return 1
+	}
+}
+
+// NetworkFeeDrops calculates the exact load-adjusted and capped network fee for
+// one base fee. Inputs use binary64 precision and the result keeps any
+// fractional drop, because rippled scales a transaction's whole base fee for
+// load in one step. Callers multiply by the transaction's base-fee factor and
+// round once, so a fractional drop is never amplified by that factor.
 func NetworkFeeDrops(baseFeeXRP, loadFactor, cushion float64, maxFee currency.Drops) (currency.Drops, error) {
 	baseFeeText, err := decimalFromFloat64(baseFeeXRP)
 	if err != nil {
@@ -44,7 +66,7 @@ func NetworkFeeDrops(baseFeeXRP, loadFactor, cushion float64, maxFee currency.Dr
 		return currency.Drops{}, fmt.Errorf("%w: fee cushion", ErrInvalidFeeValue)
 	}
 
-	return fee.Min(maxFee).RoundHalfUp(), nil
+	return fee.Min(maxFee), nil
 }
 
 // ParseFeeXRP creates an exact drops value from an XRP fee string while
