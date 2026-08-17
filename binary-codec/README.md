@@ -32,7 +32,20 @@ The codec is split into three sub-packages, each with a distinct responsibility:
 
 ### `definitions/`
 
-The schema registry for the entire codec. At startup it embeds and parses `definitions.json` — the authoritative XRPL protocol document — into a singleton `Definitions` struct. Everything the serializer and parser need to know about a field lives here:
+The schema registry for the entire codec. At startup it embeds and parses `definitions.json`, the authoritative XRPL protocol document, into a singleton `Definitions` struct.
+
+The embedded copy is a verbatim snapshot of the `server_definitions` response of a xrpld node. Its top-level `hash` identifies that snapshot. Refresh it with the maintainer target instead of editing entries by hand, so the document keeps matching the network:
+
+```bash
+make update-definitions                                     # mainnet
+make update-definitions NODE_URL=http://127.0.0.1:5005/     # localnet
+```
+
+The target re-fetches `server_definitions`, unwraps the JSON-RPC `result` envelope, drops the request-scoped `status` key, and rewrites the file with sorted keys and two-space indentation, so re-running it against an unchanged node produces no diff. It also reports the version of the node it fetched from, so the snapshot can be traced back to a build.
+
+The response covers everything the node's build can parse, not what its network has activated. Field and type definitions therefore land in the codec ahead of mainnet activation.
+
+Everything the serializer and parser need to know about a field lives here:
 
 - **`Types`** — maps type names (e.g. `"UInt32"`, `"Amount"`) to their numeric type codes.
 - **`Fields`** — maps field names (e.g. `"Fee"`, `"Destination"`) to a `FieldInstance`, which contains:

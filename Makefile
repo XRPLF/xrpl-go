@@ -4,6 +4,7 @@
 .PHONY: test-integration-localnet test-integration-localnet-ci test-integration-devnet test-integration-testnet
 .PHONY: coverage-unit coverage-unit-ci test-report-summary benchmark
 .PHONY: test-confidential update-mpt-crypto
+.PHONY: update-definitions
 
 UNIT_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential) ./xrpl/testutil/integration/...
 EXCLUDED_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential)
@@ -159,3 +160,12 @@ test-confidential:
 
 update-mpt-crypto:
 	@bash confidential/deps/update.sh
+
+################################################################################
+######################### PROTOCOL DEFINITIONS #################################
+################################################################################
+
+# Refreshes binary-codec/definitions/definitions.json from a node's
+# server_definitions response. Override the node with NODE_URL=<url>.
+update-definitions:
+	@bash scripts/update-definitions.sh $(if $(NODE_URL),--node "$(NODE_URL)")
