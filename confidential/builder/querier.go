@@ -43,8 +43,12 @@ func (s issuanceState) canTransfer() bool {
 
 // getSequence fetches the account sequence number.
 func getSequence(q LedgerQuerier, addr string) (uint32, error) {
+	decoded, err := decodeBuilderAddress(addr)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %w", ErrInvalidAccount, err)
+	}
 	resp, err := q.GetAccountInfo(&account.InfoRequest{
-		Account: types.Address(addr),
+		Account: types.Address(decoded.Classic),
 	})
 	if err != nil {
 		return 0, fmt.Errorf("%w: %w", ErrLedgerQuery, err)
@@ -173,7 +177,14 @@ func readMPToken(q LedgerQuerier, issuanceID, holder string) (map[string]any, er
 
 // mpTokenIndex computes the ledger entry index for an MPToken.
 func mpTokenIndex(issuanceID, holder string) (string, error) {
-	index, err := xrplhash.MPToken(issuanceID, holder)
+	// The address reaching here is an Account, a Destination, or a Holder depending on the
+	// caller, so the error names no field. Each builder validates its own address fields
+	// first, which is where a malformed one is reported against the field it came from.
+	decoded, err := decodeBuilderAddress(holder)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalidAddress, err)
+	}
+	index, err := xrplhash.MPToken(issuanceID, decoded.Classic)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidIssuanceID, err)
 	}

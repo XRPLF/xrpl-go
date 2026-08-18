@@ -68,9 +68,20 @@ func IsSigner(signerData types.SignerData) (bool, error) {
 		return false, ErrSignerShouldHaveThreeFields
 	}
 
-	validAccount := strings.TrimSpace(signerData.Account.String()) != "" && addresscodec.IsValidAddress(signerData.Account.String())
-	if !validAccount {
+	accountID, hasTag, err := decodeAddressAccountID(signerData.Account)
+	if err != nil {
 		return false, ErrSignerAccountShouldBeString
+	}
+	// A Signer names an account that must produce a signature, and no keypair can produce
+	// ACCOUNT_ZERO, so the entry can never be satisfied.
+	if addresscodec.IsZeroAccountID(accountID) {
+		return false, ErrSignerAccountZero
+	}
+	// Signer.Account has no companion tag field. The binary codec routes an embedded tag by
+	// field name alone, so a tagged X-address nested here is written as a SourceTag inside
+	// the Signer object rather than rejected, which is why preflight has to reject it.
+	if hasTag {
+		return false, ErrSignerAccountTagNotAllowed
 	}
 
 	if strings.TrimSpace(signerData.TxnSignature) == "" {

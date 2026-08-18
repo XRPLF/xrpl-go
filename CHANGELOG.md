@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### address-codec
+
+- Added `DecodeAddress()`, which resolves a classic address or an X-address to the `AccountID` both forms encode, along with the classic spelling, whether an X-address carried a tag, and whether it was encoded for a test network. It is the decoding counterpart to `IsValidAddress()`, which already accepts either form, and lets callers compare accounts by decoded `AccountID` so a classic address and its X-address form are recognized as the same account. Adds `IsZeroAccountID()`, which reports ACCOUNT_ZERO only for a 20-byte identifier and false for any other length.
+
 #### binary-codec
 
 - Synced the embedded `definitions.json` with the rippled 3.3.0 protocol definitions.
@@ -19,14 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added CGo bindings and vendored native libraries for XRPLF `mpt-crypto`, with a `!cgo` fallback and maintainer tooling for dependency updates.
 - Added hex-string APIs for ElGamal encryption, Pedersen commitments, context hashes, and zero-knowledge proof generation and verification.
+- Proof context hashes bind the decoded AccountID, so a proof matches whether the caller supplied a classic address or its X-address form.
 - Added `test-confidential` and `update-mpt-crypto` Makefile targets and an automated dependency-update workflow.
 
 #### confidential/builder
 
 - Added online `Build*` and offline `Prepare*` helpers for confidential MPT send, convert, convert-back, clawback, and inbox-merge transactions. See the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders) for the full parameter and error reference.
-- Builder parameters are validated before any ledger query or proof work: addresses must be classic, the issuance issuer is rejected from holder roles and from a send destination, private keys must be usable secp256k1 scalars, and amounts are bounded by the protocol maximum.
+- Builder parameters are validated before any ledger query or proof work: addresses may be classic or X-addresses and are normalized to their classic form for ledger lookups and keylet computation, ACCOUNT_ZERO is rejected because it can never sign, the issuance issuer is rejected from holder roles and from a send destination, private keys must be usable secp256k1 scalars, and amounts are bounded by the protocol maximum.
 - `Build*` helpers preflight the issuance capabilities the network enforces, so a doomed transaction never costs a fee and a sequence. Adds `ErrConfidentialDisabled`, `ErrTransferDisabled`, `ErrTransferFeeSet`, `ErrIssuanceNotFound`, `ErrKeyMismatch`, and `ErrAmountExceedsOutstanding`.
 - `BuildSendParams` carries an optional `DestinationTag`, and `CredentialIDs` are validated before use, reported through `ErrInvalidCredentialIDs`, which wraps `transaction.ErrInvalidCredentialIDs` so a caller matching the builder error set does not have to import `xrpl/transaction`.
+- A tagged X-address is accepted only where the transaction has a companion tag field. `Destination` accepts one unless an explicit `DestinationTag` is also set, and `Holder` rejects one because `ConfidentialMPTClawback` has no tag field to carry it. Both wrap the field sentinel around the `xrpl/transaction` condition sentinel (`ErrAccountIDTagNotAllowed`, `ErrDuplicateXAddressTag`), so `errors.Is` matches the field and the condition, and the builder shares one condition identity with the encoder.
+- `ErrInvalidAccount`, `ErrInvalidDestination`, and `ErrInvalidHolder` wrap the reason the address was rejected, so the `address-codec` decode failure or `transaction.ErrZeroAccountID` stays matchable with `errors.Is`. Adds `ErrInvalidAddress` for the keylet helper, which resolves an MPToken for an `Account`, a `Destination`, or a `Holder` depending on the caller and so names no field.
 - `BuildClawback` derives the clawback amount by decrypting the holder's `IssuerEncryptedBalance`, bounded by `BalanceRange` and capped at the issuance `ConfidentialOutstandingAmount`. `Amount` moved from `BuildClawbackParams` to `ClawbackParams`, so it is supplied only on the offline `PrepareClawback` path.
 - `BuildConvert` reports a missing holder `MPToken` as `ErrMPTokenNotFound` rather than treating it as a first-time opt-in, matching `ConfidentialMPTConvert`, which debits the entry and so requires it to exist. A failed read reports `ErrLedgerQuery`, so a transport error can no longer be mistaken for first-time state.
 - Proof-bearing `Prepare*` helpers reject a zero `Sequence` with `ErrMissingSequence`, because each proof binds the sequence and a later autofill would invalidate it. `PrepareMergeInbox` and a repeat `PrepareConvert` carry no proof and still accept a zero `Sequence`.
@@ -49,10 +56,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl
 
+- Added `ErrZeroAccountID`, `ErrAccountZero`, `ErrDelegateZero`, `ErrDelegateTagNotAllowed`, `ErrSignerAccountZero`, and `ErrSignerAccountTagNotAllowed` for the address conditions `BaseTx.Validate()` now reports. Each is a fixed sentinel that names its field and wraps its condition, so `errors.Is` matches either one and a direct comparison against the returned value still works.
+- Added `ErrAccountIDTagNotAllowed` and `ErrDuplicateXAddressTag`, which alias the `binary-codec/types` sentinels so preflight and encoding report one error identity for these conditions. `ErrClawbackHolderTagNotAllowed` and `ErrConfidentialClawbackHolderTagNotAllowed` now wrap `ErrAccountIDTagNotAllowed` for the same reason, which appends the wrapped reason to their message text.
 - Added confidential-transfer flags and encryption-key fields to MPT issuance transaction and ledger-entry models.
 - Added confidential balance fields to `MPToken`, five confidential MPT transaction models, and supporting amount, encryption-key, blinding-factor, hex-blob, ciphertext, commitment, and proof validation helpers.
 - RPC and WebSocket autofill apply the required 10x base fee to confidential MPT transactions, including inner `Batch` transactions, plus the normal per-signer surcharge.
-- Added `IsMPTokenIssuer()` to report whether an address is the issuer encoded in an MPT issuance ID. Confidential MPT self-send and self-clawback checks compare decoded `AccountID` values, so an X-address naming the submitting account is rejected; a `Holder` X-address carrying a tag is rejected because `ConfidentialMPTClawback` has no tag field to hold it; and an `Account` X-address tag combined with an explicit `SourceTag` is rejected before encoding rather than during it.
+- Added `IsMPTokenIssuer()` to report whether an address is the issuer encoded in an MPT issuance ID. Confidential MPT self-send and self-clawback checks compare decoded `AccountID` values, so an X-address naming the submitting account is rejected; a `Holder` X-address carrying a tag is rejected because `ConfidentialMPTClawback` has no tag field to hold it; a `Destination` or `Holder` naming ACCOUNT_ZERO is rejected because it can never hold the MPToken, with the field sentinel wrapping `ErrZeroAccountID`; and an `Account` X-address tag combined with an explicit `SourceTag` is rejected before encoding rather than during it.
 - `ConfidentialMPTSend` now carries an optional `DestinationTag`, matching rippled's transaction format, and rejects it when the `Destination` X-address already embeds a tag.
 - `ConfidentialMPTConvert` is now listed as non-delegatable, matching the protocol, so `DelegateSet` no longer accepts a permission the network rejects.
 
@@ -61,6 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `MPToken()` and `MPTokenIssuance()` helpers for computing MPT ledger-entry keylet indexes.
 
 ### Changed
+
+#### xrpl/transaction
+
+- `BaseTx.Validate()` rejects an `Account` or `Delegate` that decodes to ACCOUNT_ZERO, and a `Delegate` given as a tagged X-address, which has no companion tag field to carry the tag. Both already failed later, on encode or on the ledger, and now fail in preflight. Consensus-generated pseudo-transactions (`EnableAmendment`, `SetFee`, `UNLModify`) are exempt from the ACCOUNT_ZERO rule, because the binary codec requires their `Account` to be ACCOUNT_ZERO. An `Account` pairing a tagged X-address with an explicit `SourceTag` is deliberately still accepted, because client autofill rewrites the address to its classic form and carries the tag across. `Clawback` and the confidential MPT transactions, which resolve the tag themselves, continue to reject it.
 
 #### xrpl/rpc
 
@@ -92,6 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Corrected confidential transaction key encoding and proof-size validation.
+- A `Signers` entry given as a tagged X-address is now rejected with `ErrSignerAccountTagNotAllowed`. The binary codec routes an embedded tag by field name alone, so such an entry previously encoded without error into a `Signer` object carrying a `SourceTag` the transaction format does not define. A `Signers` entry naming ACCOUNT_ZERO is rejected with `ErrSignerAccountZero`, because no keypair can produce it and the entry can never be signed.
+- `BaseTx.Validate()` compares `Delegate` to `Account` by decoded `AccountID`, so the same account named once as a classic address and once as an X-address is now recognized as a conflict instead of passing preflight and failing on the ledger.
 
 #### xrpl/websocket
 

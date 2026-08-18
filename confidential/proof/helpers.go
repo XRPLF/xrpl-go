@@ -9,14 +9,14 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 )
 
-// decodeAddress decodes a classic XRPL address to a 20-byte account ID.
+// decodeAddress decodes a classic address or X-address to a 20-byte account ID.
 func decodeAddress(address string) ([mptsizes.AccountIDSize]byte, error) {
 	var id [mptsizes.AccountIDSize]byte
-	_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(address)
+	decoded, err := addresscodec.DecodeAddress(address)
 	if err != nil {
 		return id, fmt.Errorf("%w: %w", ErrInvalidAddress, err)
 	}
-	copy(id[:], accountID)
+	copy(id[:], decoded.AccountID[:])
 	return id, nil
 }
 

@@ -46,6 +46,7 @@ func TestConvertBaseValidation(t *testing.T) {
 	}{
 		{name: "fail - missing account", base: BuildConvertParams{IssuanceID: testIssuanceID, Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrMissingAccount},
 		{name: "fail - invalid account", base: BuildConvertParams{Account: "notanaddress", IssuanceID: testIssuanceID, Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidAccount},
+		{name: "fail - ACCOUNT_ZERO account", base: BuildConvertParams{Account: zeroClassicAccount, IssuanceID: testIssuanceID}, wantErr: ErrInvalidAccount},
 		{name: "fail - missing issuance ID", base: BuildConvertParams{Account: testAccount, Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrMissingIssuanceID},
 		{name: "fail - invalid issuance ID (not hex)", base: BuildConvertParams{Account: testAccount, IssuanceID: strings.Repeat("GG", 24), Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},
 		{name: "fail - invalid issuance ID (wrong length)", base: BuildConvertParams{Account: testAccount, IssuanceID: "aabb", Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},

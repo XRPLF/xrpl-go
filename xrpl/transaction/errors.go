@@ -3,6 +3,8 @@ package transaction
 import (
 	"errors"
 	"fmt"
+
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 )
 
 var (
@@ -16,10 +18,32 @@ var (
 	ErrInvalidFlagsValue = errors.New("invalid Flags: must be a non-negative integer that fits in uint32 ([0, 4294967295])")
 	// ErrInvalidAccount is returned when the Account field does not meet XRPL address standards.
 	ErrInvalidAccount = errors.New("invalid xrpl address for Account")
+	// ErrZeroAccountID is wrapped by the field-specific error when an address decodes to
+	// ACCOUNT_ZERO. The address is well-formed in either form, but no keypair can produce
+	// it, so the account it names can never sign.
+	ErrZeroAccountID = errors.New("address decodes to ACCOUNT_ZERO")
+	// ErrAccountZero is returned when Account decodes to ACCOUNT_ZERO. It wraps both
+	// ErrInvalidAccount and ErrZeroAccountID so a caller can match the field or the condition.
+	ErrAccountZero = fmt.Errorf("%w: %w", ErrInvalidAccount, ErrZeroAccountID)
 	// ErrInvalidDelegate is returned when the Delegate field does not meet XRPL address standards.
 	ErrInvalidDelegate = errors.New("invalid xrpl address for Delegate")
+	// ErrDelegateZero is returned when Delegate decodes to ACCOUNT_ZERO. It wraps both
+	// ErrInvalidDelegate and ErrZeroAccountID so a caller can match the field or the condition.
+	ErrDelegateZero = fmt.Errorf("%w: %w", ErrInvalidDelegate, ErrZeroAccountID)
+	// ErrDelegateTagNotAllowed is returned when Delegate is an X-address with an embedded
+	// tag. Delegate has no companion tag field to carry it. It wraps ErrInvalidDelegate and
+	// ErrAccountIDTagNotAllowed so a caller can match the field or the condition.
+	ErrDelegateTagNotAllowed = fmt.Errorf("%w: %w", ErrInvalidDelegate, ErrAccountIDTagNotAllowed)
 	// ErrDelegateAccountConflict is returned when the Delegate matches the Account.
 	ErrDelegateAccountConflict = errors.New("addresses for Account and Delegate cannot be the same")
+	// ErrAccountIDTagNotAllowed is returned when a tagged X-address is used in a field
+	// that has no companion tag field to carry the tag. It aliases the binary-codec
+	// sentinel so preflight and encoding report one error identity for this condition.
+	ErrAccountIDTagNotAllowed = bctypes.ErrAccountIDTagNotAllowed
+	// ErrDuplicateXAddressTag is returned when an X-address carries a tag and the matching
+	// explicit tag field is also present. It aliases the binary-codec sentinel so preflight
+	// and encoding report one error identity for this condition.
+	ErrDuplicateXAddressTag = bctypes.ErrDuplicateXAddressTag
 	// ErrInvalidCheckID is returned when the CheckID is not a valid 64-character hexadecimal string.
 	ErrInvalidCheckID = errors.New("invalid CheckID, must be a valid 64-character hexadecimal string")
 	// ErrInvalidCredentialIDs is returned when the CredentialIDs field is empty or not a valid hexadecimal string array.
@@ -114,6 +138,13 @@ var (
 	ErrSignerShouldHaveThreeFields = errors.New("signers: Signer should have 3 fields: Account, TxnSignature, SigningPubKey")
 	// ErrSignerAccountShouldBeString is returned when the Account field in a Signer is not a valid string.
 	ErrSignerAccountShouldBeString = errors.New("signers: Account should be a string")
+	// ErrSignerAccountZero is returned when the Account field in a Signer decodes to
+	// ACCOUNT_ZERO. It wraps ErrZeroAccountID so a caller can match the field or the condition.
+	ErrSignerAccountZero = fmt.Errorf("signers: Account cannot be ACCOUNT_ZERO: %w", ErrZeroAccountID)
+	// ErrSignerAccountTagNotAllowed is returned when the Account field in a Signer is an
+	// X-address with an embedded tag. It wraps ErrAccountIDTagNotAllowed so a caller can
+	// match the field or the condition.
+	ErrSignerAccountTagNotAllowed = fmt.Errorf("signers: Account X-address cannot contain a tag: %w", ErrAccountIDTagNotAllowed)
 	// ErrSignerTxnSignatureShouldBeNonEmpty is returned when TxnSignature in a Signer is empty.
 	ErrSignerTxnSignatureShouldBeNonEmpty = errors.New("signers: TxnSignature should be a non-empty string")
 	// ErrSignerSigningPubKeyShouldBeNonEmpty is returned when SigningPubKey in a Signer is empty.
@@ -337,7 +368,8 @@ var (
 	// ErrClawbackInvalidHolder is returned when Holder is not a valid XRPL address.
 	ErrClawbackInvalidHolder = errors.New("clawback: invalid Holder")
 	// ErrClawbackHolderTagNotAllowed is returned when Holder is an X-address with an embedded tag.
-	ErrClawbackHolderTagNotAllowed = errors.New("clawback: Holder X-address cannot contain a tag")
+	// It wraps ErrAccountIDTagNotAllowed so a caller can match the field or the condition.
+	ErrClawbackHolderTagNotAllowed = fmt.Errorf("clawback: Holder X-address cannot contain a tag: %w", ErrAccountIDTagNotAllowed)
 	// ErrClawbackSameAccount is returned when an IOU clawback issuer targets itself as the holder.
 	ErrClawbackSameAccount = errors.New("clawback: Account and Amount.issuer cannot be the same")
 	// ErrClawbackSameHolder is returned when an MPT clawback issuer targets itself as the holder.
@@ -595,7 +627,8 @@ var (
 	// ErrConfidentialClawbackSelfClawback is returned when the Holder is the same as the Account on a confidential MPT clawback.
 	ErrConfidentialClawbackSelfClawback = errors.New("confidential MPT clawback: Holder cannot be the same as Account")
 	// ErrConfidentialClawbackHolderTagNotAllowed is returned when Holder is an X-address with an embedded tag.
-	ErrConfidentialClawbackHolderTagNotAllowed = errors.New("confidential MPT clawback: Holder X-address cannot contain a tag")
+	// It wraps ErrAccountIDTagNotAllowed so a caller can match the field or the condition.
+	ErrConfidentialClawbackHolderTagNotAllowed = fmt.Errorf("confidential MPT clawback: Holder X-address cannot contain a tag: %w", ErrAccountIDTagNotAllowed)
 	// ErrConfidentialClawbackInvalidAmount is returned when MPTAmount is outside the valid non-zero protocol range.
 	ErrConfidentialClawbackInvalidAmount = errors.New("confidential MPT clawback: MPTAmount must be between 1 and 9223372036854775807")
 	// ErrConfidentialClawbackBadProof is returned when ZKProof does not match the required clawback proof length.

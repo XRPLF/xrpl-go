@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -100,4 +102,45 @@ func TestValidateConfidentialMPTBaseRejectsUndecodableAccount(t *testing.T) {
 
 	require.ErrorIs(t, err, ErrInvalidAccount)
 	require.Nil(t, accountID)
+}
+
+// TestConfidentialMPTRejectsDuplicateAccountTag pins that every confidential MPT
+// transaction rejects an Account pairing a tagged X-address with an explicit SourceTag.
+// BaseTx.Validate deliberately allows the pairing, because client autofill resolves it,
+// so each of these models has to reach validateConfidentialMPTBase for the rule to apply.
+func TestConfidentialMPTRejectsDuplicateAccountTag(t *testing.T) {
+	taggedAccount, err := addresscodec.ClassicAddressToXAddress(testAddrAccount, 42, true, false)
+	require.NoError(t, err)
+
+	base := func(txType TxType) BaseTx {
+		return BaseTx{
+			Account:         types.Address(taggedAccount),
+			TransactionType: txType,
+			Fee:             types.XRPCurrencyAmount(10),
+			SourceTag:       7,
+		}
+	}
+
+	type validator interface{ Validate() (bool, error) }
+
+	testcases := []struct {
+		name string
+		tx   validator
+	}{
+		{name: "convert", tx: &ConfidentialMPTConvert{BaseTx: base(ConfidentialMPTConvertTx)}},
+		{name: "convert back", tx: &ConfidentialMPTConvertBack{BaseTx: base(ConfidentialMPTConvertBackTx)}},
+		{name: "send", tx: &ConfidentialMPTSend{BaseTx: base(ConfidentialMPTSendTx)}},
+		{name: "clawback", tx: &ConfidentialMPTClawback{BaseTx: base(ConfidentialMPTClawbackTx)}},
+		{name: "merge inbox", tx: &ConfidentialMPTMergeInbox{BaseTx: base(ConfidentialMPTMergeInboxTx)}},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			valid, err := tc.tx.Validate()
+			require.False(t, valid)
+			// The pairing must surface before any transaction-specific field error,
+			// so the model never does proof or issuance work on a doubled tag.
+			require.ErrorIs(t, err, ErrDuplicateXAddressTag)
+		})
+	}
 }

@@ -1,19 +1,18 @@
 // Package builder provides transaction builders for confidential MPT operations.
 //
-// Every address these builders accept must be a classic r-address. Unlike the transaction
-// models, which the binary codec converts on encode, the builders feed addresses straight
-// into xrplhash.MPToken and the proof layer, both of which decode classic addresses only.
-// An X-address would surface much later as an unrelated error, so it is rejected up front.
+// These builders accept an address in either form. xrplhash.MPToken and the account
+// query decode classic addresses only, so an address is normalized to its classic
+// spelling before it reaches them. The proof layer resolves either form itself and binds
+// the decoded AccountID. The self-send and self-clawback guards likewise compare decoded
+// AccountIDs rather than the strings the caller supplied.
 //
-// Classic encoding is canonical, so equal accounts always produce equal strings once both
-// sides pass that check, which is what lets the self-send and self-clawback guards compare
-// addresses with ==.
+// A tagged X-address is accepted only where the transaction has a companion tag field to
+// carry the tag, and rejected there when it would duplicate an explicit tag.
 package builder
 
 import (
 	"fmt"
 
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -149,16 +148,22 @@ func validateClawbackBase(p BuildClawbackParams) error {
 	if p.Account == "" {
 		return ErrMissingAccount
 	}
-	if !addresscodec.IsValidClassicAddress(p.Account) {
-		return ErrInvalidAccount
+	account, err := decodeBuilderAddress(p.Account)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidAccount, err)
 	}
 	if p.Holder == "" {
 		return ErrMissingHolder
 	}
-	if !addresscodec.IsValidClassicAddress(p.Holder) {
-		return ErrInvalidHolder
+	holder, err := decodeBuilderAddress(p.Holder)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidHolder, err)
 	}
-	if p.Account == p.Holder {
+	// Holder has no companion tag field, so a tagged X-address cannot be used.
+	if holder.HasTag {
+		return fmt.Errorf("%w: %w", ErrInvalidHolder, transaction.ErrAccountIDTagNotAllowed)
+	}
+	if account.AccountID == holder.AccountID {
 		return ErrSelfClawback
 	}
 	if p.IssuanceID == "" {

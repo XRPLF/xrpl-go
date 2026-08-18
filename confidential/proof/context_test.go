@@ -5,6 +5,7 @@ package proof_test
 import (
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
 	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 	"github.com/stretchr/testify/require"
@@ -137,6 +138,56 @@ func TestClawbackContextHash(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Len(t, hash, mptsizes.HashOutputSize*2)
+		})
+	}
+}
+
+// TestContextHashesUseAccountIdentity covers proof binding, which must use the decoded
+// AccountID so a classic address and its X-address form produce the same context hash.
+func TestContextHashesUseAccountIdentity(t *testing.T) {
+	taggedAccount, err := addresscodec.ClassicAddressToXAddress(testAccount, 1, true, false)
+	require.NoError(t, err)
+	taggedDest, err := addresscodec.ClassicAddressToXAddress(testDest, 2, true, false)
+	require.NoError(t, err)
+	taggedHolder, err := addresscodec.ClassicAddressToXAddress(testHolder, 3, true, false)
+	require.NoError(t, err)
+
+	testcases := []struct {
+		name    string
+		classic func() (string, error)
+		tagged  func() (string, error)
+	}{
+		{
+			name:    "convert",
+			classic: func() (string, error) { return proof.ConvertContextHash(testAccount, testIssuanceID, 1) },
+			tagged:  func() (string, error) { return proof.ConvertContextHash(taggedAccount, testIssuanceID, 1) },
+		},
+		{
+			name:    "convert back",
+			classic: func() (string, error) { return proof.ConvertBackContextHash(testAccount, testIssuanceID, 1, 7) },
+			tagged:  func() (string, error) { return proof.ConvertBackContextHash(taggedAccount, testIssuanceID, 1, 7) },
+		},
+		{
+			name:    "send",
+			classic: func() (string, error) { return proof.SendContextHash(testAccount, testIssuanceID, 1, testDest, 7) },
+			tagged:  func() (string, error) { return proof.SendContextHash(taggedAccount, testIssuanceID, 1, taggedDest, 7) },
+		},
+		{
+			name:    "clawback",
+			classic: func() (string, error) { return proof.ClawbackContextHash(testAccount, testIssuanceID, 1, testHolder) },
+			tagged: func() (string, error) {
+				return proof.ClawbackContextHash(taggedAccount, testIssuanceID, 1, taggedHolder)
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			classic, err := tc.classic()
+			require.NoError(t, err)
+			tagged, err := tc.tagged()
+			require.NoError(t, err)
+			require.Equal(t, classic, tagged)
 		})
 	}
 }

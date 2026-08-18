@@ -59,7 +59,7 @@ Use this package if you want fine-grained control over proof generation or verif
 - Top-level proof helpers mirror the confidential transaction families: `GenerateConvertProof`, `GenerateConvertBackProof`, `GenerateSendProof`, `GenerateClawbackProof`.
 - Verification helpers let you validate proofs before submission or in tests.
 
-All APIs in this layer operate on hex strings and classic XRPL addresses, which makes them suitable for transaction assembly.
+All APIs in this layer operate on hex strings and XRPL addresses in either form, which makes them suitable for transaction assembly. Context hashes bind the decoded AccountID, so a classic address and its X-address form produce the same hash.
 
 Every `Generate*Proof` helper verifies the proof it just produced before returning it, because the native
 generator reports no error for a mismatched amount or key pair. That check costs one verification per

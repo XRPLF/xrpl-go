@@ -1,6 +1,10 @@
 package transaction
 
-import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+import (
+	"fmt"
+
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+)
 
 // ConfidentialMPTClawback requires the ConfidentialTransfer amendment.
 // It burns a holder's entire confidential MPT balance and reduces
@@ -71,7 +75,7 @@ func (tx *ConfidentialMPTClawback) Validate() (bool, error) {
 
 	_, sameAccount, holderHasTag, err := decodeCounterparty(accountID, tx.Holder)
 	if err != nil {
-		return false, ErrConfidentialClawbackInvalidHolder
+		return false, fmt.Errorf("%w: %w", ErrConfidentialClawbackInvalidHolder, err)
 	}
 	if sameAccount {
 		return false, ErrConfidentialClawbackSelfClawback

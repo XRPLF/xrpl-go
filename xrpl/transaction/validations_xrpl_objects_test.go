@@ -3,6 +3,7 @@ package transaction
 import (
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -10,10 +11,19 @@ import (
 )
 
 func TestIsSigner(t *testing.T) {
+	// taggedSigner is an X-address carrying a tag. Signer.Account has no companion tag
+	// field, and the binary codec routes an embedded tag by field name, so an unrejected
+	// one is written as a SourceTag inside the Signer object instead of failing the encode.
+	taggedSigner, err := addresscodec.ClassicAddressToXAddress("r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW", 42, true, false)
+	require.NoError(t, err)
+	taglessSigner, err := addresscodec.ClassicAddressToXAddress("r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW", 0, false, false)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name     string
 		input    types.SignerData
 		expected bool
+		wantErr  error
 	}{
 		{
 			name: "pass - valid Signer object",
@@ -23,6 +33,35 @@ func TestIsSigner(t *testing.T) {
 				SigningPubKey: "abcdef0123456789",
 			},
 			expected: true,
+		},
+		{
+			name: "pass - untagged X-address account",
+			input: types.SignerData{
+				Account:       types.Address(taglessSigner),
+				TxnSignature:  "0123456789abcdef",
+				SigningPubKey: "abcdef0123456789",
+			},
+			expected: true,
+		},
+		{
+			name: "fail - tagged X-address account",
+			input: types.SignerData{
+				Account:       types.Address(taggedSigner),
+				TxnSignature:  "0123456789abcdef",
+				SigningPubKey: "abcdef0123456789",
+			},
+			expected: false,
+			wantErr:  ErrSignerAccountTagNotAllowed,
+		},
+		{
+			name: "fail - ACCOUNT_ZERO account",
+			input: types.SignerData{
+				Account:       "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				TxnSignature:  "0123456789abcdef",
+				SigningPubKey: "abcdef0123456789",
+			},
+			expected: false,
+			wantErr:  ErrSignerAccountZero,
 		},
 		{
 			name: "fail - Signer object with missing fields",
@@ -77,8 +116,10 @@ func TestIsSigner(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if ok, err := IsSigner(tt.input); ok != tt.expected {
-				t.Errorf("Expected IsSigner to return %v, but got %v with error: %v", tt.expected, ok, err)
+			ok, err := IsSigner(tt.input)
+			require.Equal(t, tt.expected, ok)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
 			}
 		})
 	}

@@ -1,9 +1,30 @@
 package builder
 
 import (
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
+
+// decodeBuilderAddress decodes an address field and rejects what a builder can never
+// use: input that is neither address form, and ACCOUNT_ZERO, which decodes cleanly but
+// can never sign a transaction nor hold an MPToken. Callers read the tag state and
+// compare accounts from the result.
+//
+// The returned error names the reason. Callers wrap it in their field-specific sentinel,
+// so a user can match the field with errors.Is and still read why the address failed.
+// ACCOUNT_ZERO reports transaction.ErrZeroAccountID, the condition BaseTx.Validate also
+// reports, so a builder and a preflight stay matchable as one condition.
+func decodeBuilderAddress(address string) (addresscodec.DecodedAddress, error) {
+	decoded, err := addresscodec.DecodeAddress(address)
+	if err != nil {
+		return addresscodec.DecodedAddress{}, err
+	}
+	if addresscodec.IsZeroAccountID(decoded.AccountID[:]) {
+		return addresscodec.DecodedAddress{}, transaction.ErrZeroAccountID
+	}
+	return decoded, nil
+}
 
 // validateHolderRole validates an issuance ID submitted by a holder. XLS-96 forbids the
 // issuer from converting, sending, merging, or converting back its own issuance, so the

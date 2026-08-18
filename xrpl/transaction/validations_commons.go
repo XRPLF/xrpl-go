@@ -11,13 +11,11 @@ import (
 // decodeAddressAccountID returns the AccountID represented by a classic or
 // X-address and reports whether the X-address carries a tag.
 func decodeAddressAccountID(address types.Address) (accountID []byte, hasTag bool, err error) {
-	_, accountID, err = addresscodec.DecodeClassicAddressToAccountID(address.String())
-	if err == nil {
-		return accountID, false, nil
+	decoded, err := addresscodec.DecodeAddress(address.String())
+	if err != nil {
+		return nil, false, err
 	}
-
-	accountID, _, hasTag, _, err = addresscodec.DecodeXAddress(address.String())
-	return accountID, hasTag, err
+	return decoded.AccountID[:], decoded.HasTag, nil
 }
 
 func decodeMPTIssuanceID(issuanceID string) ([]byte, bool) {

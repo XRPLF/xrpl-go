@@ -165,6 +165,23 @@ func TestConfidentialMPTClawback_Validate(t *testing.T) {
 			wantErr: ErrConfidentialClawbackInvalidHolder,
 		},
 		{
+			// ACCOUNT_ZERO decodes cleanly in either form but can never hold the MPToken
+			// a clawback targets, so the field sentinel names it and the cause survives.
+			name: "fail - ACCOUNT_ZERO Holder",
+			tx: &ConfidentialMPTClawback{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: ConfidentialMPTClawbackTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				Holder:            testAddrZero,
+				MPTokenIssuanceID: "00000001D28B177E48D9A8D057E70F7E464B498367281B98",
+				MPTAmount:         types.MPTPlainAmount(1000),
+				ZKProof:           testClawbackProof,
+			},
+			wantErr: ErrZeroAccountID,
+		},
+		{
 			name: "fail - Holder same as Account",
 			tx: &ConfidentialMPTClawback{
 				BaseTx: BaseTx{

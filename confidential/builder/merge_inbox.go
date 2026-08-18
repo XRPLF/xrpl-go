@@ -1,7 +1,8 @@
 package builder
 
 import (
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"fmt"
+
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -61,8 +62,8 @@ func validateMergeInboxBase(p BuildMergeInboxParams) error {
 	if p.Account == "" {
 		return ErrMissingAccount
 	}
-	if !addresscodec.IsValidClassicAddress(p.Account) {
-		return ErrInvalidAccount
+	if _, err := decodeBuilderAddress(p.Account); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidAccount, err)
 	}
 	if p.IssuanceID == "" {
 		return ErrMissingIssuanceID

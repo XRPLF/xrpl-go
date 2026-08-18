@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/confidential/commitment"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
@@ -251,16 +250,23 @@ func validateSendBase(p BuildSendParams) error {
 	if p.Account == "" {
 		return ErrMissingAccount
 	}
-	if !addresscodec.IsValidClassicAddress(p.Account) {
-		return ErrInvalidAccount
+	account, err := decodeBuilderAddress(p.Account)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidAccount, err)
 	}
 	if p.Destination == "" {
 		return ErrMissingDestination
 	}
-	if !addresscodec.IsValidClassicAddress(p.Destination) {
-		return ErrInvalidDestination
+	destination, err := decodeBuilderAddress(p.Destination)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidDestination, err)
 	}
-	if p.Account == p.Destination {
+	// Destination has a DestinationTag companion field, so a tagged X-address is
+	// allowed as long as it does not duplicate an explicit DestinationTag.
+	if destination.HasTag && p.DestinationTag != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidDestination, transaction.ErrDuplicateXAddressTag)
+	}
+	if account.AccountID == destination.AccountID {
 		return ErrSelfSend
 	}
 	if p.IssuanceID == "" {

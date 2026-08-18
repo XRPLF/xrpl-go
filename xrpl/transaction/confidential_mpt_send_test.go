@@ -197,6 +197,10 @@ func TestConfidentialMPTSend_Validate(t *testing.T) {
 		{name: "empty issuance ID", mutate: func(tx *ConfidentialMPTSend) { tx.MPTokenIssuanceID = "" }, wantErr: ErrConfidentialMPTInvalidIssuanceID},
 		{name: "invalid destination", mutate: func(tx *ConfidentialMPTSend) { tx.Destination = "invalidAddress" }, wantErr: ErrConfidentialSendInvalidDestination},
 		{name: "destination same as account", mutate: func(tx *ConfidentialMPTSend) { tx.Destination = tx.Account }, wantErr: ErrConfidentialSendSelfSend},
+		// ACCOUNT_ZERO decodes cleanly in either form but can never hold the MPToken a
+		// destination must hold, so the field sentinel names it and the cause survives.
+		{name: "ACCOUNT_ZERO destination", mutate: func(tx *ConfidentialMPTSend) { tx.Destination = testAddrZero }, wantErr: ErrConfidentialSendInvalidDestination},
+		{name: "ACCOUNT_ZERO destination reports its cause", mutate: func(tx *ConfidentialMPTSend) { tx.Destination = testAddrZero }, wantErr: ErrZeroAccountID},
 		{name: "destination X-address of account", mutate: func(tx *ConfidentialMPTSend) { tx.Destination = types.Address(testXAddressAccount) }, wantErr: ErrConfidentialSendSelfSend},
 		{name: "tagged X-address account with SourceTag", mutate: func(tx *ConfidentialMPTSend) {
 			tx.Account = types.Address(testXAddressTaggedAccount)

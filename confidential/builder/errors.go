@@ -43,6 +43,12 @@ var (
 	ErrTransferFeeSet           = errors.New("builder: issuance with a transfer fee cannot send confidentially")
 	ErrAmountExceedsOutstanding = errors.New("builder: amount exceeds the issuance confidential outstanding amount")
 
+	// ErrInvalidAddress names an address that failed to decode where the field it came
+	// from is not known. The query helpers use it because they resolve an MPToken for an
+	// Account, a Destination, or a Holder depending on the caller, so naming any one of
+	// those would be wrong for the others.
+	ErrInvalidAddress = errors.New("builder: invalid address")
+
 	ErrInvalidAccount     = errors.New("builder: invalid account address")
 	ErrInvalidDestination = errors.New("builder: invalid destination address")
 	ErrInvalidHolder      = errors.New("builder: invalid holder address")

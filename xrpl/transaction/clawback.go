@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -90,7 +89,7 @@ func (c *Clawback) Validate() (bool, error) {
 		return false, ErrInvalidAccount
 	}
 	if accountHasTag && c.SourceTag != 0 {
-		return false, bctypes.ErrDuplicateXAddressTag
+		return false, ErrDuplicateXAddressTag
 	}
 
 	switch amount := c.Amount.(type) {

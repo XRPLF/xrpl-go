@@ -2,8 +2,8 @@ package transaction
 
 import (
 	"bytes"
+	"fmt"
 
-	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -131,13 +131,13 @@ func (tx *ConfidentialMPTSend) Validate() (bool, error) {
 
 	destinationID, sameAccount, destHasTag, err := decodeCounterparty(accountID, tx.Destination)
 	if err != nil {
-		return false, ErrConfidentialSendInvalidDestination
+		return false, fmt.Errorf("%w: %w", ErrConfidentialSendInvalidDestination, err)
 	}
 	if sameAccount {
 		return false, ErrConfidentialSendSelfSend
 	}
 	if destHasTag && tx.DestinationTag != nil {
-		return false, bctypes.ErrDuplicateXAddressTag
+		return false, ErrDuplicateXAddressTag
 	}
 	if bytes.Equal(issuerID, destinationID) {
 		return false, ErrConfidentialSendDestinationIsIssuer

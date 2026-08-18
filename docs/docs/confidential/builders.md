@@ -196,6 +196,25 @@ _, err = client.SubmitTx(signed, nil)
 return err
 ```
 
+## Address forms
+
+Every address field accepts either a classic address or an X-address. The builder resolves
+both to the same account, so `Account` given as `rHb9…` and as its X-address form name the
+same account for the self-send and self-clawback checks. Addresses are normalized to their
+classic spelling before they reach the ledger queries and keylet computation, and the proof
+layer binds the decoded account ID, so the address form never changes a proof.
+
+A tagged X-address is accepted only where the transaction has a companion tag field:
+
+- `Account` has `SourceTag`, so a tagged X-address is allowed.
+- `Destination` has `DestinationTag`, so a tagged X-address is allowed unless you also set
+  `BuildSendParams.DestinationTag`, which would name the tag twice.
+- `Holder` has no tag field, because `ConfidentialMPTClawback` defines none, so a tagged
+  X-address is rejected.
+
+ACCOUNT_ZERO is rejected in every address field. It decodes cleanly in either form, but no
+keypair can produce it, so it can never sign a transaction nor hold an `MPToken`.
+
 ## Common failure cases
 
 Most builder errors are explicit and map to missing ledger state or invalid inputs:
@@ -211,6 +230,20 @@ Most builder errors are explicit and map to missing ledger state or invalid inpu
   array. It wraps `transaction.ErrInvalidCredentialIDs`, so `errors.Is` matches either sentinel.
 - `elgamal.ErrInvalidAmountRange`: `BalanceRange` is inverted or its upper bound is `math.MaxUint64`.
 - `ErrCryptoFailed`: a cryptographic primitive failed, or the current balance falls outside `BalanceRange`.
+
+Address fields report the field that failed and wrap the reason:
+
+- `ErrInvalidAccount`, `ErrInvalidDestination`, `ErrInvalidHolder`: the address is neither a
+  classic address nor an X-address, or it decodes to ACCOUNT_ZERO. Match
+  `transaction.ErrZeroAccountID` with `errors.Is` to tell the two apart.
+- `ErrInvalidHolder` wrapping `transaction.ErrAccountIDTagNotAllowed`: a tagged X-address was
+  used in `Holder`, which has no companion tag field.
+- `ErrInvalidDestination` wrapping `transaction.ErrDuplicateXAddressTag`: `Destination` is a
+  tagged X-address and `DestinationTag` is also set.
+- `ErrInvalidAddress`: an address failed to decode inside the MPToken keylet helper, which
+  serves `Account`, `Destination`, and `Holder` alike and so names no field. The builders
+  validate their address fields first, so this reports against the field only in code that
+  calls the helper directly.
 
 The issuance capability checks mirror the conditions the network enforces:
 

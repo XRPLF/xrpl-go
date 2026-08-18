@@ -25,16 +25,26 @@ const (
 	testIssuerIssuanceID = "000004C4B5F762798A53D543A014CAF8B297CFF8F2F937E8"
 	testAccount          = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
 	testDestination      = "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP"
+	// zeroClassicAccount is ACCOUNT_ZERO, which decodes cleanly in either address form
+	// but can never sign, so every builder account field rejects it.
+	zeroClassicAccount = "rrrrrrrrrrrrrrrrrrrrrhoLvTp"
 )
 
-// xAddressOf returns the mainnet X-address encoding of a classic address. Tests use it to
-// pin that the builder rejects X-addresses outright, because the xrplhash and proof code it
-// feeds decodes classic addresses only.
+// taggedXAddressOf returns the mainnet X-address encoding of a classic address with an
+// embedded tag. Tests use it to pin where a tag has a companion field to land in and
+// where it does not.
+func taggedXAddressOf(t *testing.T, classic string, tag uint32) string {
+	t.Helper()
+	x, err := addresscodec.ClassicAddressToXAddress(classic, tag, true, false)
+	require.NoError(t, err)
+	return x
+}
+
+// xAddressOf returns the untagged mainnet X-address encoding of a classic address. Tests
+// use it to pin that the builder treats the two spellings as the same account.
 func xAddressOf(t *testing.T, classic string) string {
 	t.Helper()
-	_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(classic)
-	require.NoError(t, err)
-	x, err := addresscodec.EncodeXAddress(accountID, 0, false, false)
+	x, err := addresscodec.ClassicAddressToXAddress(classic, 0, false, false)
 	require.NoError(t, err)
 	return x
 }
@@ -56,10 +66,14 @@ type mockQuerier struct {
 	entryErrs  map[string]error
 	// queryCalls counts ledger requests so tests can assert failures occur before unnecessary ledger access.
 	queryCalls int
+	// lastAccountReq records the last account_info request so a test can assert which
+	// address form reached the ledger.
+	lastAccountReq *account.InfoRequest
 }
 
-func (m *mockQuerier) GetAccountInfo(_ *account.InfoRequest) (*account.InfoResponse, error) {
+func (m *mockQuerier) GetAccountInfo(req *account.InfoRequest) (*account.InfoResponse, error) {
 	m.queryCalls++
+	m.lastAccountReq = req
 	if m.accountErr != nil {
 		return nil, m.accountErr
 	}

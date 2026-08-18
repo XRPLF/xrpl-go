@@ -22,6 +22,8 @@ func TestSendBaseValidation(t *testing.T) {
 	kp, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
 
+	explicitTag := uint32(0)
+
 	cases := []struct {
 		name    string
 		base    BuildSendParams
@@ -32,8 +34,6 @@ func TestSendBaseValidation(t *testing.T) {
 		{name: "fail - missing destination", base: BuildSendParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrMissingDestination},
 		{name: "fail - invalid destination", base: BuildSendParams{Account: testAccount, Destination: "notanaddress", IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidDestination},
 		{name: "fail - self send", base: BuildSendParams{Account: testAccount, Destination: testAccount, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrSelfSend},
-		{name: "fail - X-address destination", base: BuildSendParams{Account: testAccount, Destination: xAddressOf(t, testDestination), IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidDestination},
-		{name: "fail - X-address account", base: BuildSendParams{Account: xAddressOf(t, testAccount), Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidAccount},
 		{name: "fail - destination is the issuance issuer", base: BuildSendParams{Account: testDestination, Destination: testAccount, IssuanceID: testIssuerIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrDestinationIsIssuer},
 		{name: "fail - account is the issuance issuer", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrIssuerNotAllowed},
 		{name: "fail - zero amount", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 0, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrZeroAmount},
@@ -48,6 +48,10 @@ func TestSendBaseValidation(t *testing.T) {
 		{name: "fail - missing sender pub key", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex}, wantErr: ErrMissingSenderKey},
 		{name: "fail - invalid sender pub key (not hex)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: strings.Repeat("ZZ", 33)}, wantErr: ErrInvalidPubKey},
 		{name: "fail - invalid sender pub key (wrong length)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: "aabb"}, wantErr: ErrInvalidPubKey},
+		{name: "fail - ACCOUNT_ZERO account", base: BuildSendParams{Account: zeroClassicAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidAccount},
+		{name: "fail - ACCOUNT_ZERO destination", base: BuildSendParams{Account: testAccount, Destination: xAddressOf(t, zeroClassicAccount), IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidDestination},
+		{name: "fail - self send across address forms", base: BuildSendParams{Account: testAccount, Destination: xAddressOf(t, testAccount), IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrSelfSend},
+		{name: "fail - destination tag duplicated by tagged X-address", base: BuildSendParams{Account: testAccount, Destination: taggedXAddressOf(t, testDestination, 42), DestinationTag: &explicitTag, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: transaction.ErrDuplicateXAddressTag},
 		{name: "fail - invalid credential ID", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex, CredentialIDs: []string{"ZZ"}}, wantErr: ErrInvalidCredentialIDs},
 	}
 
