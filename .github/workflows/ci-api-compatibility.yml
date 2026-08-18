@@ -48,21 +48,51 @@ jobs:
             exit 1
           fi
 
-          base_directory="$RUNNER_TEMP/api-base"
+          # Compatibility is measured against the newest stable release rather
+          # than against the base commit, because only an API that users can
+          # already import can be broken. Exported API that the base branch
+          # gained after that release has never shipped, so reshaping it is not
+          # a breaking change. Prerelease tags are skipped, matching the stable
+          # tag format that the release workflow accepts.
+          baseline_ref=$(
+            git tag --merged "$BASE_SHA" --sort=-v:refname |
+              grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' |
+              head -n 1
+          ) || true
+
+          if [[ -z "$baseline_ref" ]]; then
+            baseline_ref=$BASE_SHA
+            echo "::notice title=No release to compare against::No stable release tag is reachable from the base branch, so the base commit is used as the baseline."
+          fi
+
+          export_api() {
+            local ref=$1 destination=$2 worktree
+            worktree=$(mktemp -d "$RUNNER_TEMP/api-tree-XXXXXX")
+            git archive "$ref" | tar -x -C "$worktree"
+            (
+              cd "$worktree"
+              apidiff -m -w "$destination" "$MODULE_PATH"
+            )
+          }
+
+          baseline_api="$RUNNER_TEMP/api-baseline.export"
           base_api="$RUNNER_TEMP/api-base.export"
           head_api="$RUNNER_TEMP/api-head.export"
           api_changes="$RUNNER_TEMP/api-changes.txt"
+          baseline_to_base="$RUNNER_TEMP/api-baseline-to-base.txt"
+          baseline_to_head="$RUNNER_TEMP/api-baseline-to-head.txt"
           incompatible_changes="$RUNNER_TEMP/api-incompatible.txt"
 
-          mkdir -p "$base_directory"
-          git archive "$BASE_SHA" | tar -x -C "$base_directory"
-
-          (
-            cd "$base_directory"
-            apidiff -m -w "$base_api" "$MODULE_PATH"
-          )
+          export_api "$baseline_ref" "$baseline_api"
+          export_api "$BASE_SHA" "$base_api"
           apidiff -m -w "$head_api" "$MODULE_PATH"
-          apidiff -m "$base_api" "$head_api" > "$api_changes"
-          apidiff -m -incompatible "$base_api" "$head_api" > "$incompatible_changes"
 
-          scripts/report-api-compatibility.sh "$api_changes" "$incompatible_changes"
+          apidiff -m "$base_api" "$head_api" > "$api_changes"
+          apidiff -m -incompatible "$baseline_api" "$base_api" | sort > "$baseline_to_base"
+          apidiff -m -incompatible "$baseline_api" "$head_api" | sort > "$baseline_to_head"
+
+          # Breakage that the base branch already carries was acknowledged when
+          # it merged, so report only what this pull request adds on top of it.
+          comm -23 "$baseline_to_head" "$baseline_to_base" > "$incompatible_changes"
+
+          BASELINE_REF=$baseline_ref scripts/report-api-compatibility.sh "$api_changes" "$incompatible_changes"

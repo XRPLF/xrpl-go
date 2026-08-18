@@ -20,8 +20,15 @@ if [[ -z "${GITHUB_STEP_SUMMARY:-}" ]]; then
 	exit 2
 fi
 
+if [[ -z "${BASELINE_REF:-}" ]]; then
+	echo "BASELINE_REF is not set." >&2
+	exit 2
+fi
+
 {
 	echo "## Exported API changes"
+	echo "What this pull request changes relative to the base branch."
+	echo
 	if [[ -s "$api_changes_file" ]]; then
 		echo '```text'
 		cat "$api_changes_file"
@@ -31,6 +38,8 @@ fi
 	fi
 	echo
 	echo "## Compatibility result"
+	echo "Measured against \`$BASELINE_REF\`. Exported API added after that point has never been released, so changing it is not breaking."
+	echo
 } >>"$GITHUB_STEP_SUMMARY"
 
 if [[ ! -s "$incompatible_changes_file" ]]; then
