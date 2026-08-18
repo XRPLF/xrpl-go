@@ -10,6 +10,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 )
 
 // Keypair holds a hex-encoded ElGamal keypair.
@@ -60,11 +61,11 @@ func GenerateBlindingFactor() (string, error) {
 // pubkeyHex: 66 hex chars (33 bytes), bfHex: 64 hex chars (32 bytes).
 // Returns 132 hex chars (66-byte ciphertext).
 func Encrypt(amount uint64, pubkeyHex, bfHex string) (string, error) {
-	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
+	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptsizes.PubKeySize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidKey, err)
 	}
-	bfBytes, err := hexutil.DecodeFixedHex(bfHex, mptcrypto.BlindingFactorSize)
+	bfBytes, err := hexutil.DecodeFixedHex(bfHex, mptsizes.BlindingFactorSize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
 	}
@@ -87,11 +88,11 @@ func Decrypt(ciphertextHex, privateKeyHex string, amountRange AmountRange) (uint
 		return 0, err
 	}
 
-	ctBytes, err := hexutil.DecodeFixedHex(ciphertextHex, mptcrypto.CiphertextSize)
+	ctBytes, err := hexutil.DecodeFixedHex(ciphertextHex, mptsizes.CiphertextSize)
 	if err != nil {
 		return 0, fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
-	privBytes, err := hexutil.DecodeFixedHex(privateKeyHex, mptcrypto.PrivKeySize)
+	privBytes, err := hexutil.DecodeFixedHex(privateKeyHex, mptsizes.PrivKeySize)
 	if err != nil {
 		return 0, fmt.Errorf("%w: %w", ErrInvalidKey, err)
 	}

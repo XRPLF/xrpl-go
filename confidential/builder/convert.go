@@ -30,26 +30,28 @@ type ConvertParams struct {
 	FirstTime     bool   // If true, registers key + generates Schnorr proof
 }
 
-// validateConvertBase validates common Convert fields.
-// Note: Amount == 0 is valid per XLS-96 Section 7 (zero-amount convert is the opt-in mechanism
-// for registering a holder's encryption key without converting any tokens).
+// validateConvertBase validates common Convert fields. A zero Amount is valid here.
+// See validateAmountUpperBound.
 func validateConvertBase(p BuildConvertParams) error {
 	if p.Account == "" {
 		return ErrMissingAccount
 	}
-	if !addresscodec.IsValidAddress(p.Account) {
+	if !addresscodec.IsValidClassicAddress(p.Account) {
 		return ErrInvalidAccount
 	}
 	if p.IssuanceID == "" {
 		return ErrMissingIssuanceID
 	}
-	if !transaction.IsMPTIssuanceID(p.IssuanceID) {
-		return ErrInvalidIssuanceID
+	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
+		return err
+	}
+	if err := validateAmountUpperBound(p.Amount); err != nil {
+		return err
 	}
 	if p.HolderPrivKey == "" {
 		return ErrMissingHolderKey
 	}
-	if !transaction.IsValidPrivKey(p.HolderPrivKey) {
+	if !isValidPrivKey(p.HolderPrivKey) {
 		return ErrInvalidPrivKey
 	}
 	if p.HolderPubKey == "" {

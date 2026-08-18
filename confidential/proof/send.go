@@ -6,17 +6,18 @@ import (
 
 	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 )
 
 // GenerateSendProof generates the full proof (equality + linkage + range) for a ConfidentialMPTSend transaction.
 // Returns a fixed-size proof string (946 bytes, 1892 hex chars).
 // The C API limits participants to 255 (uint8); XRPL uses at most 4 (sender, dest, issuer, auditor).
 func GenerateSendProof(privkeyHex string, pubkeyHex string, amount uint64, participants []Participant, txBFHex, ctxHashHex string, amountParams, balanceParams Params) (string, error) {
-	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
+	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptsizes.PrivKeySize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKey, err)
 	}
-	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
+	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptsizes.PubKeySize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
@@ -24,11 +25,11 @@ func GenerateSendProof(privkeyHex string, pubkeyHex string, amount uint64, parti
 	if err != nil {
 		return "", err
 	}
-	bfBytes, err := hexutil.DecodeFixedHex(txBFHex, mptcrypto.BlindingFactorSize)
+	bfBytes, err := hexutil.DecodeFixedHex(txBFHex, mptsizes.BlindingFactorSize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
 	}
-	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
+	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptsizes.HashOutputSize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidContextHash, err)
 	}
@@ -56,7 +57,7 @@ func GenerateSendProof(privkeyHex string, pubkeyHex string, amount uint64, parti
 // VerifySendProof verifies the full proof for a ConfidentialMPTSend transaction.
 // The C API limits participants to 255 (uint8); XRPL uses at most 4 (sender, dest, issuer, auditor).
 func VerifySendProof(proofHex string, participants []Participant, senderCtHex, amountCommitHex, balanceCommitHex, ctxHashHex string) error {
-	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.SendProofSize)
+	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptsizes.SendProofSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
@@ -64,19 +65,19 @@ func VerifySendProof(proofHex string, participants []Participant, senderCtHex, a
 	if err != nil {
 		return err
 	}
-	senderCtBytes, err := hexutil.DecodeFixedHex(senderCtHex, mptcrypto.CiphertextSize)
+	senderCtBytes, err := hexutil.DecodeFixedHex(senderCtHex, mptsizes.CiphertextSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
-	amountCommitBytes, err := hexutil.DecodeFixedHex(amountCommitHex, mptcrypto.CommitmentSize)
+	amountCommitBytes, err := hexutil.DecodeFixedHex(amountCommitHex, mptsizes.CommitmentSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
-	balanceCommitBytes, err := hexutil.DecodeFixedHex(balanceCommitHex, mptcrypto.CommitmentSize)
+	balanceCommitBytes, err := hexutil.DecodeFixedHex(balanceCommitHex, mptsizes.CommitmentSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
-	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
+	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptsizes.HashOutputSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidContextHash, err)
 	}

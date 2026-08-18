@@ -192,6 +192,16 @@ func (MPTPlainAmount) Kind() CurrencyKind {
 	return MPT
 }
 
+// IsZero reports whether the amount is zero.
+func (a MPTPlainAmount) IsZero() bool {
+	return a == 0
+}
+
+// IsValid reports whether the amount is within the protocol MPT range.
+func (a MPTPlainAmount) IsValid() bool {
+	return a <= MPTPlainAmount(MaxMPTAmount)
+}
+
 // Flatten returns the MPT amount as a decimal string.
 func (a MPTPlainAmount) Flatten() any {
 	return a.String()

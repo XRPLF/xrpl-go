@@ -8,12 +8,13 @@ import (
 
 	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 )
 
 // Create computes a Pedersen commitment for the given amount and blinding factor.
 // bfHex must be 64 hex chars (32 bytes). Returns 66 hex chars (33-byte compressed point).
 func Create(amount uint64, bfHex string) (string, error) {
-	bfBytes, err := hexutil.DecodeFixedHex(bfHex, mptcrypto.BlindingFactorSize)
+	bfBytes, err := hexutil.DecodeFixedHex(bfHex, mptsizes.BlindingFactorSize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
 	}

@@ -6,20 +6,21 @@ import (
 
 	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 )
 
 // GenerateConvertBackProof generates a compact sigma + range proof for a ConfidentialMPTConvertBack transaction.
 // Returns hex-encoded proof string (1632 hex chars = 816 bytes).
 func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, params Params) (string, error) {
-	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptcrypto.PrivKeySize)
+	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptsizes.PrivKeySize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidPrivKey, err)
 	}
-	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
+	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptsizes.PubKeySize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
-	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
+	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptsizes.HashOutputSize)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrInvalidContextHash, err)
 	}
@@ -41,28 +42,28 @@ func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount u
 
 // VerifyConvertBackProof verifies a linkage + range proof for a ConfidentialMPTConvertBack transaction.
 func VerifyConvertBackProof(proofHex, pubkeyHex, ciphertextHex, balanceCommitHex string, amount uint64, ctxHashHex string) error {
-	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.ConvertBackProofSize)
+	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptsizes.ConvertBackProofSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
-	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptcrypto.PubKeySize)
+	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptsizes.PubKeySize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
-	ctBytes, err := hexutil.DecodeFixedHex(ciphertextHex, mptcrypto.CiphertextSize)
+	ctBytes, err := hexutil.DecodeFixedHex(ciphertextHex, mptsizes.CiphertextSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
-	commitBytes, err := hexutil.DecodeFixedHex(balanceCommitHex, mptcrypto.CommitmentSize)
+	commitBytes, err := hexutil.DecodeFixedHex(balanceCommitHex, mptsizes.CommitmentSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
-	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
+	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptsizes.HashOutputSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidContextHash, err)
 	}
 
-	var proof [mptcrypto.ConvertBackProofSize]byte
+	var proof [mptsizes.ConvertBackProofSize]byte
 	copy(proof[:], proofBytes)
 	pub := mptcrypto.PublicKey(pubBytes)
 	ct := mptcrypto.Ciphertext(ctBytes)

@@ -158,6 +158,7 @@ func TestDelegateSet_ValidateRejectsVaultAndLoanPermissions(t *testing.T) {
 		LoanDeleteTx,
 		LoanManageTx,
 		LoanPayTx,
+		ConfidentialMPTConvertTx,
 	}
 
 	for _, txType := range nonDelegable {

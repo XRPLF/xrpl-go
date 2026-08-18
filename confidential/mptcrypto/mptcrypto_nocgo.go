@@ -2,6 +2,8 @@
 
 package mptcrypto
 
+import "github.com/Peersyst/xrpl-go/pkg/mptsizes"
+
 // region ElGamal
 
 // GenerateKeypair creates a new secp256k1 ElGamal keypair.
@@ -32,22 +34,22 @@ func DecryptAmount(ciphertext Ciphertext, privateKey PrivateKey, rangeLow, range
 // region Context hashes
 
 // ConvertContextHash computes the context hash for a ConfidentialMPTConvert transaction.
-func ConvertContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq uint32) (hash ContextHash, err error) {
+func ConvertContextHash(account [mptsizes.AccountIDSize]byte, iss [mptsizes.IssuanceIDSize]byte, seq uint32) (hash ContextHash, err error) {
 	return hash, ErrCgoRequired
 }
 
 // ConvertBackContextHash computes the context hash for a ConfidentialMPTConvertBack transaction.
-func ConvertBackContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq, ver uint32) (hash ContextHash, err error) {
+func ConvertBackContextHash(account [mptsizes.AccountIDSize]byte, iss [mptsizes.IssuanceIDSize]byte, seq, ver uint32) (hash ContextHash, err error) {
 	return hash, ErrCgoRequired
 }
 
 // SendContextHash computes the context hash for a ConfidentialMPTSend transaction.
-func SendContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq uint32, dest [AccountIDSize]byte, ver uint32) (hash ContextHash, err error) {
+func SendContextHash(account [mptsizes.AccountIDSize]byte, iss [mptsizes.IssuanceIDSize]byte, seq uint32, dest [mptsizes.AccountIDSize]byte, ver uint32) (hash ContextHash, err error) {
 	return hash, ErrCgoRequired
 }
 
 // ClawbackContextHash computes the context hash for a ConfidentialMPTClawback transaction.
-func ClawbackContextHash(account [AccountIDSize]byte, iss [IssuanceIDSize]byte, seq uint32, holder [AccountIDSize]byte) (hash ContextHash, err error) {
+func ClawbackContextHash(account [mptsizes.AccountIDSize]byte, iss [mptsizes.IssuanceIDSize]byte, seq uint32, holder [mptsizes.AccountIDSize]byte) (hash ContextHash, err error) {
 	return hash, ErrCgoRequired
 }
 
@@ -65,19 +67,19 @@ func PedersenCommitment(amount uint64, bf BlindingFactor) (commitment Commitment
 // region Proof generation
 
 // GenerateConvertProof generates a Schnorr proof of knowledge for a ConfidentialMPTConvert transaction.
-func GenerateConvertProof(pubkey PublicKey, privkey PrivateKey, ctxHash ContextHash) (proof [SchnorrProofSize]byte, err error) {
+func GenerateConvertProof(pubkey PublicKey, privkey PrivateKey, ctxHash ContextHash) (proof [mptsizes.SchnorrProofSize]byte, err error) {
 	return proof, ErrCgoRequired
 }
 
 // GenerateConvertBackProof generates a compact AND-composed sigma proof over the balance
 // witness, followed by a single Bulletproof range proof over the remainder commitment,
 // for a ConfidentialMPTConvertBack transaction.
-func GenerateConvertBackProof(privkey PrivateKey, pubkey PublicKey, ctxHash ContextHash, amount uint64, params PedersenProofParams) (proof [ConvertBackProofSize]byte, err error) {
+func GenerateConvertBackProof(privkey PrivateKey, pubkey PublicKey, ctxHash ContextHash, amount uint64, params PedersenProofParams) (proof [mptsizes.ConvertBackProofSize]byte, err error) {
 	return proof, ErrCgoRequired
 }
 
 // GenerateClawbackProof generates an equality proof for a ConfidentialMPTClawback transaction.
-func GenerateClawbackProof(privkey PrivateKey, pubkey PublicKey, ctxHash ContextHash, amount uint64, ciphertext Ciphertext) (proof [CompactClawbackProofSize]byte, err error) {
+func GenerateClawbackProof(privkey PrivateKey, pubkey PublicKey, ctxHash ContextHash, amount uint64, ciphertext Ciphertext) (proof [mptsizes.CompactClawbackProofSize]byte, err error) {
 	return proof, ErrCgoRequired
 }
 
@@ -92,14 +94,14 @@ func GenerateSendProof(privkey PrivateKey, pubkey PublicKey, amount uint64, part
 // region Proof verification (top-level)
 
 // VerifyConvertProof verifies a Schnorr proof for a ConfidentialMPTConvert transaction.
-func VerifyConvertProof(proof [SchnorrProofSize]byte, pubkey PublicKey, ctxHash ContextHash) error {
+func VerifyConvertProof(proof [mptsizes.SchnorrProofSize]byte, pubkey PublicKey, ctxHash ContextHash) error {
 	return ErrCgoRequired
 }
 
 // VerifyConvertBackProof verifies a linkage + range proof for a ConfidentialMPTConvertBack transaction.
 // balanceCommit must be the original balance commitment, not the remainder after subtraction,
 // the C library internally subtracts the transparent amount before checking the range proof.
-func VerifyConvertBackProof(proof [ConvertBackProofSize]byte, pubkey PublicKey, ciphertext Ciphertext, balanceCommit Commitment, amount uint64, ctxHash ContextHash) error {
+func VerifyConvertBackProof(proof [mptsizes.ConvertBackProofSize]byte, pubkey PublicKey, ciphertext Ciphertext, balanceCommit Commitment, amount uint64, ctxHash ContextHash) error {
 	return ErrCgoRequired
 }
 
@@ -109,7 +111,7 @@ func VerifySendProof(proof []byte, participants []Participant, senderCt Cipherte
 }
 
 // VerifyClawbackProof verifies an equality proof for a ConfidentialMPTClawback transaction.
-func VerifyClawbackProof(proof [CompactClawbackProofSize]byte, amount uint64, pubkey PublicKey, ciphertext Ciphertext, ctxHash ContextHash) error {
+func VerifyClawbackProof(proof [mptsizes.CompactClawbackProofSize]byte, amount uint64, pubkey PublicKey, ciphertext Ciphertext, ctxHash ContextHash) error {
 	return ErrCgoRequired
 }
 
@@ -124,7 +126,7 @@ func VerifyRevealedAmount(amount uint64, bf BlindingFactor, holder, issuer Parti
 }
 
 // VerifySendRangeProof verifies that the transfer amount and remaining balance are within [0, 2^64-1].
-func VerifySendRangeProof(proof [DoubleBulletproofSize]byte, amountCommit, balanceCommitment Commitment, ctxHash ContextHash) error {
+func VerifySendRangeProof(proof [mptsizes.DoubleBulletproofSize]byte, amountCommit, balanceCommitment Commitment, ctxHash ContextHash) error {
 	return ErrCgoRequired
 }
 

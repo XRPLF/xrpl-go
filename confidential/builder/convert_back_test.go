@@ -3,6 +3,7 @@
 package builder
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -28,6 +29,8 @@ func TestConvertBackBaseValidation(t *testing.T) {
 		{name: "fail - invalid issuance ID (not hex)", base: BuildConvertBackParams{Account: testAccount, IssuanceID: strings.Repeat("GG", 24), Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},
 		{name: "fail - invalid issuance ID (wrong length)", base: BuildConvertBackParams{Account: testAccount, IssuanceID: "aabb", Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},
 		{name: "fail - zero amount", base: BuildConvertBackParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 0, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrZeroAmount},
+		{name: "fail - account is the issuance issuer", base: BuildConvertBackParams{Account: testAccount, IssuanceID: testIssuerIssuanceID, Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrIssuerNotAllowed},
+		{name: "fail - amount above protocol maximum", base: BuildConvertBackParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: math.MaxUint64, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrAmountTooLarge},
 		{name: "fail - missing holder priv key", base: BuildConvertBackParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 1, HolderPubKey: kp.PubKeyHex}, wantErr: ErrMissingHolderKey},
 		{name: "fail - invalid holder priv key (not hex)", base: BuildConvertBackParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 1, HolderPrivKey: strings.Repeat("ZZ", 32), HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidPrivKey},
 		{name: "fail - invalid holder priv key (wrong length)", base: BuildConvertBackParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 1, HolderPrivKey: "aabb", HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidPrivKey},

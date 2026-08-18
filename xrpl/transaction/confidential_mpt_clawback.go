@@ -1,22 +1,20 @@
 package transaction
 
-import (
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
-)
+import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 
-// ConfidentialMPTClawback allows the issuer to reclaim a holder's entire confidential
-// MPT balance. Unlike regular clawback, the issuer must provide a ZK equality proof
-// demonstrating knowledge of the encrypted balance since balances are not visible.
-// Can only be submitted by the issuer, and only if TfMPTCanClawback was enabled at issuance.
+// ConfidentialMPTClawback requires the ConfidentialTransfer amendment.
+// It burns a holder's entire confidential MPT balance and reduces
+// outstanding supply. The issuer must provide a ZK equality proof demonstrating knowledge
+// of the encrypted balance since balances are not visible. Account must be the issuer, but
+// an authorized Delegate can submit the transaction. The issuance must have LsfMPTCanClawback enabled.
 //
 // ```json
 //
 //	{
 //	    "TransactionType": "ConfidentialMPTClawback",
-//	    "Fee": "10",
+//	    "Account": "r...",
 //	    "Holder": "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
-//	    "MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+//	    "MPTokenIssuanceID": "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 //	    "MPTAmount": "1000",
 //	    "ZKProof": "AABB..."
 //	}
@@ -31,8 +29,7 @@ type ConfidentialMPTClawback struct {
 	// MPTAmount is the amount of MPT to clawback from the holder's confidential balance.
 	// Must be greater than 0.
 	MPTAmount types.MPTPlainAmount
-	// ZKProof is a zero-knowledge proof proving the holder has sufficient confidential
-	// balance for the clawback and that the operation is valid.
+	// ZKProof proves that MPTAmount equals the holder balance encrypted for the issuer.
 	ZKProof string
 }
 
@@ -64,24 +61,31 @@ func (tx *ConfidentialMPTClawback) Validate() (bool, error) {
 	if err != nil || !ok {
 		return false, err
 	}
-
-	if tx.MPTokenIssuanceID == "" {
-		return false, ErrConfidentialMPTInvalidIssuanceID
+	accountID, err := validateConfidentialMPTBase(&tx.BaseTx)
+	if err != nil {
+		return false, err
+	}
+	if err := validateConfidentialMPTIssuer(tx.MPTokenIssuanceID, accountID); err != nil {
+		return false, err
 	}
 
-	if !addresscodec.IsValidAddress(tx.Holder.String()) {
+	_, sameAccount, holderHasTag, err := decodeCounterparty(accountID, tx.Holder)
+	if err != nil {
 		return false, ErrConfidentialClawbackInvalidHolder
 	}
-
-	if tx.Holder.String() == tx.Account.String() {
+	if sameAccount {
 		return false, ErrConfidentialClawbackSelfClawback
 	}
+	// ConfidentialMPTClawback has no HolderTag field, so an embedded tag has nowhere to go.
+	if holderHasTag {
+		return false, ErrConfidentialClawbackHolderTagNotAllowed
+	}
 
-	if tx.MPTAmount == 0 {
+	if tx.MPTAmount.IsZero() || !tx.MPTAmount.IsValid() {
 		return false, ErrConfidentialClawbackInvalidAmount
 	}
 
-	if !IsValidFixedHexBlob(tx.ZKProof, ClawbackProofLen) {
+	if !IsValidClawbackProof(tx.ZKProof) {
 		return false, ErrConfidentialClawbackBadProof
 	}
 

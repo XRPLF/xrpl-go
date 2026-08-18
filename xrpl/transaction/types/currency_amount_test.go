@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -267,6 +268,28 @@ func TestUnmarshalCurrencyAmount_MPT(t *testing.T) {
 			} else {
 				require.Error(t, err)
 			}
+		})
+	}
+}
+
+func TestMPTPlainAmount_IsZeroAndIsValid(t *testing.T) {
+	tests := []struct {
+		name    string
+		amount  MPTPlainAmount
+		isZero  bool
+		isValid bool
+	}{
+		{name: "zero", amount: 0, isZero: true, isValid: true},
+		{name: "one", amount: 1, isValid: true},
+		{name: "maximum", amount: MPTPlainAmount(MaxMPTAmount), isValid: true},
+		{name: "above maximum", amount: MPTPlainAmount(MaxMPTAmount) + 1},
+		{name: "max uint64", amount: math.MaxUint64},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.isZero, test.amount.IsZero())
+			require.Equal(t, test.isValid, test.amount.IsValid())
 		})
 	}
 }

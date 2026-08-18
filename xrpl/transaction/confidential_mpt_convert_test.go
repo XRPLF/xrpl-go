@@ -4,27 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
-
-// Test helper: 66-char hex string (33-byte compressed key).
-var testCompressedKey = strings.Repeat("AB", 33)
-
-// Test helper: 128-char hex string (64-byte Schnorr proof).
-var testSchnorrProof = strings.Repeat("CD", 64)
-
-// Test helper: 64-char hex string (32-byte blinding factor).
-var testBlindingFactor = strings.Repeat("EF", 32)
-
-// Test helper: 132-char hex string (66-byte ElGamal ciphertext).
-var testCiphertext = strings.Repeat("A1", 66)
-
-// Test helper: alternate 132-char hex string (66-byte ElGamal ciphertext).
-var testCiphertext2 = strings.Repeat("B2", 66)
-
-// Test helper: third 132-char hex string (66-byte ElGamal ciphertext).
-var testCiphertext3 = strings.Repeat("C3", 66)
 
 func TestConfidentialMPTConvert_TxType(t *testing.T) {
 	tx := &ConfidentialMPTConvert{}
@@ -44,7 +27,7 @@ func TestConfidentialMPTConvert_Flatten(t *testing.T) {
 					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:     types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
@@ -54,7 +37,7 @@ func TestConfidentialMPTConvert_Flatten(t *testing.T) {
 				"Account":               "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee":                   "12",
 				"TransactionType":       "ConfidentialMPTConvert",
-				"MPTokenIssuanceID":     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				"MPTokenIssuanceID":     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				"MPTAmount":             "1000",
 				"HolderEncryptedAmount": testCiphertext,
 				"IssuerEncryptedAmount": testCiphertext2,
@@ -68,9 +51,9 @@ func TestConfidentialMPTConvert_Flatten(t *testing.T) {
 					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:     types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:              types.MPTPlainAmount(500),
-				HolderEncryptionKey:    types.EncryptionKey(testCompressedKey),
+				HolderEncryptionKey:    types.EncryptionKey(testCompressedPoint1),
 				HolderEncryptedAmount:  testCiphertext,
 				IssuerEncryptedAmount:  testCiphertext2,
 				AuditorEncryptedAmount: types.HexBlob(testCiphertext3),
@@ -81,9 +64,9 @@ func TestConfidentialMPTConvert_Flatten(t *testing.T) {
 				"Account":                "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee":                    "12",
 				"TransactionType":        "ConfidentialMPTConvert",
-				"MPTokenIssuanceID":      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				"MPTokenIssuanceID":      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				"MPTAmount":              "500",
-				"HolderEncryptionKey":    testCompressedKey,
+				"HolderEncryptionKey":    testCompressedPoint1,
 				"HolderEncryptedAmount":  testCiphertext,
 				"IssuerEncryptedAmount":  testCiphertext2,
 				"AuditorEncryptedAmount": testCiphertext3,
@@ -101,6 +84,38 @@ func TestConfidentialMPTConvert_Flatten(t *testing.T) {
 	}
 }
 
+func TestConfidentialMPTConvert_BinaryRoundTrip(t *testing.T) {
+	const (
+		prefix = "1200552400000001301A00000000000000645028ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB70242102ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB702540"
+		suffix = "70264202ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB03CDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD70274202ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB03CDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD702B4202ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB03CDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD81145B812C9D57731E27A2DA8B1830195F88EF32A3B60115000004C463C52827307480341125DA0577DEFC38405B0E3E"
+	)
+	point := "02" + strings.Repeat("AB", 32)
+	ciphertext := point + "03" + strings.Repeat("CD", 32)
+	tx := &ConfidentialMPTConvert{
+		BaseTx: BaseTx{
+			Account:         "r9LqNeG6qHxjeUocjvVki2XR35weJ9mZgQ",
+			TransactionType: ConfidentialMPTConvertTx,
+			Sequence:        1,
+		},
+		MPTokenIssuanceID:      "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+		MPTAmount:              100,
+		HolderEncryptionKey:    types.EncryptionKey(point),
+		HolderEncryptedAmount:  ciphertext,
+		IssuerEncryptedAmount:  ciphertext,
+		AuditorEncryptedAmount: types.HexBlob(ciphertext),
+		BlindingFactor:         strings.Repeat("AB", 32),
+		ZKProof:                types.HexBlob(strings.Repeat("AB", SchnorrProofLen/2)),
+	}
+	expected := prefix + strings.Repeat("AB", SchnorrProofLen/2) + suffix
+
+	encoded, err := binarycodec.Encode(tx.Flatten())
+	require.NoError(t, err)
+	require.Equal(t, expected, encoded)
+	decoded, err := binarycodec.Decode(encoded)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any(tx.Flatten()), decoded)
+}
+
 func TestConfidentialMPTConvert_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -115,7 +130,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
@@ -131,9 +146,9 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptionKey:   types.EncryptionKey(testCompressedKey),
+				HolderEncryptionKey:   types.EncryptionKey(testCompressedPoint1),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
 				BlindingFactor:        testBlindingFactor,
@@ -149,7 +164,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:              types.MPTPlainAmount(1000),
 				HolderEncryptedAmount:  testCiphertext,
 				IssuerEncryptedAmount:  testCiphertext2,
@@ -182,9 +197,9 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptionKey:   types.EncryptionKey(testCompressedKey),
+				HolderEncryptionKey:   types.EncryptionKey(testCompressedPoint1),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
 				BlindingFactor:        testBlindingFactor,
@@ -199,7 +214,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
@@ -216,7 +231,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptionKey:   types.HexBlob("AABB"),
 				HolderEncryptedAmount: testCiphertext,
@@ -224,7 +239,25 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 				BlindingFactor:        testBlindingFactor,
 				ZKProof:               types.HexBlob(testSchnorrProof),
 			},
-			wantErr: ErrConfidentialConvertInvalidKeyLength,
+			wantErr: ErrConfidentialConvertInvalidEncryptionKey,
+		},
+		{
+			name: "fail - encryption key is not on curve",
+			tx: &ConfidentialMPTConvert{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: ConfidentialMPTConvertTx,
+					Fee:             types.XRPCurrencyAmount(12),
+				},
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
+				MPTAmount:             types.MPTPlainAmount(1000),
+				HolderEncryptionKey:   types.EncryptionKey("02" + strings.Repeat("00", 32)),
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				ZKProof:               types.HexBlob(testSchnorrProof),
+			},
+			wantErr: ErrConfidentialConvertInvalidEncryptionKey,
 		},
 		{
 			name: "fail - invalid proof length",
@@ -234,13 +267,27 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptionKey:   types.EncryptionKey(testCompressedKey),
+				HolderEncryptionKey:   types.EncryptionKey(testCompressedPoint1),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
 				BlindingFactor:        testBlindingFactor,
 				ZKProof:               types.HexBlob("AABB"),
+			},
+			wantErr: ErrConfidentialConvertInvalidProofLength,
+		},
+		{
+			name: "fail - invalid proof hex",
+			tx: &ConfidentialMPTConvert{
+				BaseTx:                BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: ConfidentialMPTConvertTx, Fee: types.XRPCurrencyAmount(12)},
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
+				MPTAmount:             types.MPTPlainAmount(1000),
+				HolderEncryptionKey:   types.EncryptionKey(testCompressedPoint1),
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				ZKProof:               types.HexBlob(strings.Repeat("AA", 63) + "ZZ"),
 			},
 			wantErr: ErrConfidentialConvertInvalidProofLength,
 		},
@@ -252,11 +299,23 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: testCiphertext2,
 				BlindingFactor:        "tooshort",
+			},
+			wantErr: ErrConfidentialConvertInvalidBlindingFactor,
+		},
+		{
+			name: "fail - invalid blinding factor hex",
+			tx: &ConfidentialMPTConvert{
+				BaseTx:                BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: ConfidentialMPTConvertTx, Fee: types.XRPCurrencyAmount(12)},
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
+				MPTAmount:             types.MPTPlainAmount(1000),
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        strings.Repeat("AA", 31) + "ZZ",
 			},
 			wantErr: ErrConfidentialConvertInvalidBlindingFactor,
 		},
@@ -268,7 +327,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: "",
 				IssuerEncryptedAmount: testCiphertext2,
@@ -284,7 +343,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:              types.MPTPlainAmount(1000),
 				HolderEncryptedAmount:  testCiphertext,
 				IssuerEncryptedAmount:  testCiphertext2,
@@ -301,7 +360,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: "",
@@ -317,7 +376,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: "AABB",
 				IssuerEncryptedAmount: testCiphertext2,
@@ -333,7 +392,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: "AABB",
@@ -349,7 +408,7 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:              types.MPTPlainAmount(1000),
 				HolderEncryptedAmount:  testCiphertext,
 				IssuerEncryptedAmount:  testCiphertext2,
@@ -362,10 +421,12 @@ func TestConfidentialMPTConvert_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.tx.Validate()
+			valid, err := tt.tx.Validate()
 			if tt.wantErr != nil {
-				require.EqualError(t, err, tt.wantErr.Error())
+				require.False(t, valid)
+				require.ErrorIs(t, err, tt.wantErr)
 			} else {
+				require.True(t, valid)
 				require.NoError(t, err)
 			}
 		})

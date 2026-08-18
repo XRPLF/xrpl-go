@@ -3,19 +3,48 @@ package builder
 import (
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	xrplhash "github.com/Peersyst/xrpl-go/xrpl/hash"
 	ledgerentries "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	testIssuanceID  = "000004C463C52827307480341E3CB23A0710CC839EB58A0A"
-	testAccount     = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
-	testDestination = "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP"
+	// testIssuanceID is issued by an account other than testAccount, so holder-submitted
+	// transactions (convert, send, convert back, merge inbox) accept it.
+	testIssuanceID = "000004C463C52827307480341E3CB23A0710CC839EB58A0A"
+	// testIssuerIssuanceID embeds testAccount as the issuer. ConfidentialMPTClawback is
+	// issuer-submitted, so it requires an issuance ID that testAccount itself issued.
+	testIssuerIssuanceID = "000004C4B5F762798A53D543A014CAF8B297CFF8F2F937E8"
+	testAccount          = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+	testDestination      = "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP"
 )
+
+// xAddressOf returns the mainnet X-address encoding of a classic address. Tests use it to
+// pin that the builder rejects X-addresses outright, because the xrplhash and proof code it
+// feeds decodes classic addresses only.
+func xAddressOf(t *testing.T, classic string) string {
+	t.Helper()
+	_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(classic)
+	require.NoError(t, err)
+	x, err := addresscodec.EncodeXAddress(accountID, 0, false, false)
+	require.NoError(t, err)
+	return x
+}
+
+// TestFixtureIssuanceIDs pins the issuer relationship the other suites depend on. Without
+// it, changing testAccount would surface as an opaque role error in unrelated tests.
+func TestFixtureIssuanceIDs(t *testing.T) {
+	require.True(t, transaction.IsMPTokenIssuer(testIssuerIssuanceID, types.Address(testAccount)),
+		"testIssuerIssuanceID must embed testAccount as its issuer")
+	require.False(t, transaction.IsMPTokenIssuer(testIssuanceID, types.Address(testAccount)),
+		"testIssuanceID must be issued by an account other than testAccount")
+}
 
 // mockQuerier implements LedgerQuerier for testing.
 type mockQuerier struct {

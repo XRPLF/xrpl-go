@@ -3,6 +3,7 @@ package transaction
 import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 
 // ConfidentialMPTConvert converts public MPT balance into confidential (encrypted) balance.
+// It requires the ConfidentialTransfer amendment.
 // The amount being converted is specified in cleartext, but the resulting balance is encrypted
 // using EC-ElGamal encryption. On first use, the holder registers their ElGamal encryption key
 // by providing HolderEncryptionKey and ZKProof (Schnorr proof of knowledge).
@@ -13,8 +14,8 @@ import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 //
 //	{
 //	    "TransactionType": "ConfidentialMPTConvert",
-//	    "Fee": "10",
-//	    "MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+//	    "Account": "r...",
+//	    "MPTokenIssuanceID": "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 //	    "MPTAmount": "1000",
 //	    "HolderEncryptedAmount": "AABB...",
 //	    "IssuerEncryptedAmount": "CCDD...",
@@ -38,7 +39,7 @@ type ConfidentialMPTConvert struct {
 	// IssuerEncryptedAmount is the encrypted amount for the issuer's tracking purposes.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	IssuerEncryptedAmount string
-	// AuditorEncryptedAmount is the encrypted amount for the auditor (if configured). (Optional)
+	// AuditorEncryptedAmount is required when the issuance has an AuditorEncryptionKey set. (Optional)
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	AuditorEncryptedAmount *string `json:",omitempty"`
 	// BlindingFactor is the 32-byte scalar value used to encrypt the amount.
@@ -91,9 +92,15 @@ func (tx *ConfidentialMPTConvert) Validate() (bool, error) {
 	if err != nil || !ok {
 		return false, err
 	}
-
-	if tx.MPTokenIssuanceID == "" {
-		return false, ErrConfidentialMPTInvalidIssuanceID
+	accountID, err := validateConfidentialMPTBase(&tx.BaseTx)
+	if err != nil {
+		return false, err
+	}
+	if _, err := validateConfidentialMPTHolder(tx.MPTokenIssuanceID, accountID); err != nil {
+		return false, err
+	}
+	if !tx.MPTAmount.IsValid() {
+		return false, ErrConfidentialMPTInvalidAmount
 	}
 
 	// HolderEncryptionKey and ZKProof must both be present or both absent.
@@ -104,7 +111,7 @@ func (tx *ConfidentialMPTConvert) Validate() (bool, error) {
 	}
 
 	if hasKey && !IsValidCompressedEncryptionKey(*tx.HolderEncryptionKey) {
-		return false, ErrConfidentialConvertInvalidKeyLength
+		return false, ErrConfidentialConvertInvalidEncryptionKey
 	}
 
 	if hasProof && !IsValidSchnorrProof(*tx.ZKProof) {

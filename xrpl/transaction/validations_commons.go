@@ -28,6 +28,17 @@ func decodeMPTIssuanceID(issuanceID string) ([]byte, bool) {
 	return idBytes, true
 }
 
+// mptIssuerAccountID returns the issuer AccountID encoded in the trailing bytes of
+// issuanceID. It reports false when issuanceID is not a well-formed MPT issuance ID.
+func mptIssuerAccountID(issuanceID string) ([]byte, bool) {
+	issuanceIDBytes, ok := decodeMPTIssuanceID(issuanceID)
+	if !ok {
+		return nil, false
+	}
+
+	return issuanceIDBytes[len(issuanceIDBytes)-addresscodec.AccountAddressLength:], true
+}
+
 // ValidateOptionalField validates an optional field in the transaction map.
 func ValidateOptionalField(tx FlatTransaction, paramName string, checkValidity func(any) bool) error {
 	// Check if the field is present in the transaction map.

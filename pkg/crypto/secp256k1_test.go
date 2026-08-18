@@ -2,11 +2,41 @@ package crypto
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/stretchr/testify/require"
 )
+
+func TestIsCompressedSECP256K1Point(t *testing.T) {
+	// generatorPoint is the secp256k1 generator G in compressed form.
+	const generatorPoint = "0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798"
+
+	tests := []struct {
+		name  string
+		value string
+		valid bool
+	}{
+		{name: "pass - valid even-y point", value: generatorPoint, valid: true},
+		{name: "pass - valid odd-y point", value: "03" + generatorPoint[2:], valid: true},
+		{name: "pass - lowercase hex", value: strings.ToLower(generatorPoint), valid: true},
+		{name: "pass - mixed case hex", value: "02" + strings.ToLower(generatorPoint[2:34]) + generatorPoint[34:], valid: true},
+		{name: "fail - uncompressed encoding of a valid point", value: "0479BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8"},
+		{name: "fail - off curve", value: "02" + strings.Repeat("00", 32)},
+		{name: "fail - x >= field prime", value: "02" + strings.Repeat("FF", 32)},
+		{name: "fail - invalid hex", value: "02" + strings.Repeat("ZZ", 32)},
+		{name: "fail - too short", value: "02"},
+		{name: "fail - too long", value: generatorPoint + "00"},
+		{name: "fail - empty", value: ""},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.valid, IsCompressedSECP256K1Point(test.value))
+		})
+	}
+}
 
 func TestSecp256k1_Prefix(t *testing.T) {
 	require.Equal(t, secp256K1Prefix, SECP256K1().Prefix())

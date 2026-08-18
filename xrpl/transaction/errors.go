@@ -252,8 +252,8 @@ var (
 	ErrMPTIssuanceSetKeyConflict = errors.New("mptoken issuance set: encryption keys cannot be set together with Holder")
 	// ErrMPTIssuanceSetAuditorRequiresIssuerKey is returned when AuditorEncryptionKey is set without IssuerEncryptionKey.
 	ErrMPTIssuanceSetAuditorRequiresIssuerKey = errors.New("mptoken issuance set: AuditorEncryptionKey requires IssuerEncryptionKey to be set")
-	// ErrMPTIssuanceSetInvalidKeyLength is returned when an encryption key has an invalid length or format.
-	ErrMPTIssuanceSetInvalidKeyLength = errors.New("mptoken issuance set: encryption key must be 66 hex characters (33-byte compressed EC point)")
+	// ErrMPTIssuanceSetInvalidEncryptionKey is returned when an encryption key is not a valid compressed secp256k1 point.
+	ErrMPTIssuanceSetInvalidEncryptionKey = errors.New("mptoken issuance set: encryption key must be a valid 33-byte compressed secp256k1 point")
 
 	// escrow
 
@@ -578,45 +578,60 @@ var (
 
 	// confidential mpt
 
-	// ErrConfidentialMPTInvalidIssuanceID is returned when MPTokenIssuanceID is empty on a confidential MPT transaction.
-	ErrConfidentialMPTInvalidIssuanceID = errors.New("confidential MPT: MPTokenIssuanceID must not be empty")
+	// ErrConfidentialMPTInvalidIssuanceID is returned when MPTokenIssuanceID is not an exact 24-byte hexadecimal value.
+	ErrConfidentialMPTInvalidIssuanceID = errors.New("confidential MPT: MPTokenIssuanceID must be exactly 48 hex characters")
+	// ErrConfidentialMPTInvalidFlags is returned when a confidential MPT transaction sets transaction-specific flags.
+	// XLS-96 defines no transaction-specific flags for these transaction types.
+	ErrConfidentialMPTInvalidFlags = errors.New("confidential MPT: unsupported transaction flags")
+	// ErrConfidentialMPTInvalidAmount is returned when MPTAmount exceeds the protocol maximum.
+	ErrConfidentialMPTInvalidAmount = errors.New("confidential MPT: MPTAmount must not exceed 9223372036854775807")
+	// ErrConfidentialMPTIssuerNotAllowed is returned when the issuance issuer occupies a holder role.
+	// XLS-96 forbids the issuer from holding a confidential balance of its own issuance.
+	ErrConfidentialMPTIssuerNotAllowed = errors.New("confidential MPT: account cannot be the issuance issuer")
+	// ErrConfidentialMPTIssuerRequired is returned when an issuer-only confidential MPT transaction is submitted by another account.
+	ErrConfidentialMPTIssuerRequired = errors.New("confidential MPT: Account must be the issuance issuer")
 	// ErrConfidentialClawbackInvalidHolder is returned when the Holder address is invalid on a confidential MPT clawback.
 	ErrConfidentialClawbackInvalidHolder = errors.New("confidential MPT clawback: invalid Holder address")
 	// ErrConfidentialClawbackSelfClawback is returned when the Holder is the same as the Account on a confidential MPT clawback.
 	ErrConfidentialClawbackSelfClawback = errors.New("confidential MPT clawback: Holder cannot be the same as Account")
-	// ErrConfidentialClawbackInvalidAmount is returned when MPTAmount is not greater than 0 on a confidential MPT clawback.
-	ErrConfidentialClawbackInvalidAmount = errors.New("confidential MPT clawback: MPTAmount must be greater than 0")
+	// ErrConfidentialClawbackHolderTagNotAllowed is returned when Holder is an X-address with an embedded tag.
+	ErrConfidentialClawbackHolderTagNotAllowed = errors.New("confidential MPT clawback: Holder X-address cannot contain a tag")
+	// ErrConfidentialClawbackInvalidAmount is returned when MPTAmount is outside the valid non-zero protocol range.
+	ErrConfidentialClawbackInvalidAmount = errors.New("confidential MPT clawback: MPTAmount must be between 1 and 9223372036854775807")
 	// ErrConfidentialClawbackBadProof is returned when ZKProof does not match the required clawback proof length.
 	ErrConfidentialClawbackBadProof = errors.New("confidential MPT clawback: ZKProof must be 128 hex characters (64-byte compact clawback proof)")
 
 	// ErrConfidentialConvertKeyProofMismatch is returned when HolderEncryptionKey and ZKProof are not both present or both absent.
 	ErrConfidentialConvertKeyProofMismatch = errors.New("confidential MPT convert: HolderEncryptionKey and ZKProof must both be present or both absent")
-	// ErrConfidentialConvertInvalidKeyLength is returned when HolderEncryptionKey is not 66 hex characters.
-	ErrConfidentialConvertInvalidKeyLength = errors.New("confidential MPT convert: HolderEncryptionKey must be 66 hex characters (33-byte compressed key)")
+	// ErrConfidentialConvertInvalidEncryptionKey is returned when HolderEncryptionKey is not a valid compressed secp256k1 point.
+	ErrConfidentialConvertInvalidEncryptionKey = errors.New("confidential MPT convert: HolderEncryptionKey must be a valid 33-byte compressed secp256k1 point")
 	// ErrConfidentialConvertInvalidProofLength is returned when ZKProof is not 128 hex characters.
 	ErrConfidentialConvertInvalidProofLength = errors.New("confidential MPT convert: ZKProof must be 128 hex characters (64-byte Schnorr PoK)")
 	// ErrConfidentialConvertInvalidBlindingFactor is returned when BlindingFactor is not 64 hex characters.
 	ErrConfidentialConvertInvalidBlindingFactor = errors.New("confidential MPT convert: BlindingFactor must be 64 hex characters (32 bytes)")
 	// ErrConfidentialConvertInvalidCiphertext is returned when a convert ciphertext is not valid.
-	ErrConfidentialConvertInvalidCiphertext = errors.New("confidential MPT convert: HolderEncryptedAmount, IssuerEncryptedAmount, and AuditorEncryptedAmount must be 132 hex characters (66-byte ElGamal ciphertext)")
-	// ErrConfidentialConvertBackInvalidAmount is returned when MPTAmount is not greater than 0 on a convert back.
-	ErrConfidentialConvertBackInvalidAmount = errors.New("confidential MPT convert back: MPTAmount must be greater than 0")
+	ErrConfidentialConvertInvalidCiphertext = errors.New("confidential MPT convert: encrypted amounts must be valid 66-byte ElGamal ciphertexts with two compressed secp256k1 points")
+	// ErrConfidentialConvertBackInvalidAmount is returned when MPTAmount is outside the valid non-zero protocol range.
+	ErrConfidentialConvertBackInvalidAmount = errors.New("confidential MPT convert back: MPTAmount must be between 1 and 9223372036854775807")
 	// ErrConfidentialConvertBackInvalidBlindingFactor is returned when BlindingFactor is not 64 hex characters on a convert back.
 	ErrConfidentialConvertBackInvalidBlindingFactor = errors.New("confidential MPT convert back: BlindingFactor must be 64 hex characters (32 bytes)")
 	// ErrConfidentialConvertBackInvalidCiphertext is returned when a ciphertext field is not valid on a convert back.
-	ErrConfidentialConvertBackInvalidCiphertext = errors.New("confidential MPT convert back: HolderEncryptedAmount, IssuerEncryptedAmount, and AuditorEncryptedAmount must be 132 hex characters (66-byte ElGamal ciphertext)")
+	ErrConfidentialConvertBackInvalidCiphertext = errors.New("confidential MPT convert back: encrypted amounts must be valid 66-byte ElGamal ciphertexts with two compressed secp256k1 points")
 	// ErrConfidentialConvertBackInvalidCommitment is returned when BalanceCommitment is not valid on a convert back.
-	ErrConfidentialConvertBackInvalidCommitment = errors.New("confidential MPT convert back: BalanceCommitment must be 66 hex characters (33-byte Pedersen commitment)")
+	ErrConfidentialConvertBackInvalidCommitment = errors.New("confidential MPT convert back: BalanceCommitment must be a valid 33-byte compressed secp256k1 point")
 	// ErrConfidentialConvertBackInvalidProof is returned when ZKProof does not match the required convert-back proof length.
 	ErrConfidentialConvertBackInvalidProof = errors.New("confidential MPT convert back: ZKProof must be 1632 hex characters (816-byte proof bundle)")
 	// ErrConfidentialSendInvalidDestination is returned when the Destination address is invalid.
 	ErrConfidentialSendInvalidDestination = errors.New("confidential MPT send: invalid Destination address")
 	// ErrConfidentialSendSelfSend is returned when Destination is the same as Account.
 	ErrConfidentialSendSelfSend = errors.New("confidential MPT send: Destination cannot be the same as Account")
+	// ErrConfidentialSendDestinationIsIssuer is returned when Destination is the issuance issuer.
+	// XLS-96 forbids the issuer from holding a confidential balance of its own issuance.
+	ErrConfidentialSendDestinationIsIssuer = errors.New("confidential MPT send: Destination cannot be the issuance issuer")
 	// ErrConfidentialSendInvalidCiphertext is returned when a send ciphertext is not valid.
-	ErrConfidentialSendInvalidCiphertext = errors.New("confidential MPT send: SenderEncryptedAmount, DestinationEncryptedAmount, IssuerEncryptedAmount, and AuditorEncryptedAmount must be 132 hex characters (66-byte ElGamal ciphertext)")
+	ErrConfidentialSendInvalidCiphertext = errors.New("confidential MPT send: encrypted amounts must be valid 66-byte ElGamal ciphertexts with two compressed secp256k1 points")
 	// ErrConfidentialSendInvalidCommitment is returned when a send commitment is not valid.
-	ErrConfidentialSendInvalidCommitment = errors.New("confidential MPT send: BalanceCommitment and AmountCommitment must be 66 hex characters (33-byte Pedersen commitment)")
+	ErrConfidentialSendInvalidCommitment = errors.New("confidential MPT send: commitments must be valid 33-byte compressed secp256k1 points")
 	// ErrConfidentialSendInvalidProof is returned when ZKProof does not match the required send proof length.
 	ErrConfidentialSendInvalidProof = errors.New("confidential MPT send: ZKProof must be 1892 hex characters (946-byte proof bundle)")
 )

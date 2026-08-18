@@ -3,49 +3,32 @@
 // Pedersen commitments, and context hash computation.
 package mptcrypto
 
-import "math"
+import (
+	"math"
 
-// Size constants (bytes), matching mpt_utility.h defines.
-const (
-	PrivKeySize        = 32
-	PubKeySize         = 33
-	BlindingFactorSize = 32
-	CiphertextSize     = 66 // two compressed EC points (C1 || C2)
-
-	AccountIDSize  = 20
-	IssuanceIDSize = 24
-	HashOutputSize = 32 // kMPT_HALF_SHA_SIZE -- output size of context hash functions
-	CommitmentSize = 33 // compressed Pedersen commitment point
-
-	SchnorrProofSize            = 64
-	SingleBulletproofSize       = 688
-	DoubleBulletproofSize       = 754
-	CompactClawbackProofSize    = 64
-	CompactConvertBackProofSize = 128
-	CompactSendProofSize        = 192
-	ConvertBackProofSize        = CompactConvertBackProofSize + SingleBulletproofSize
-	SendProofSize               = CompactSendProofSize + DoubleBulletproofSize
-
-	MaxParticipants = math.MaxUint8 // C API uses uint8_t for participant count
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 )
 
+// MaxParticipants is the ceiling the C API imposes on a Confidential Send.
+const MaxParticipants = math.MaxUint8 // C API uses uint8_t for participant count
+
 // PrivateKey is a fixed-size ElGamal private key.
-type PrivateKey [PrivKeySize]byte
+type PrivateKey [mptsizes.PrivKeySize]byte
 
 // PublicKey is a fixed-size compressed ElGamal public key.
-type PublicKey [PubKeySize]byte
+type PublicKey [mptsizes.PubKeySize]byte
 
 // BlindingFactor is a fixed-size scalar used for encryption and commitments.
-type BlindingFactor [BlindingFactorSize]byte
+type BlindingFactor [mptsizes.BlindingFactorSize]byte
 
 // Ciphertext is a fixed-size ElGamal ciphertext.
-type Ciphertext [CiphertextSize]byte
+type Ciphertext [mptsizes.CiphertextSize]byte
 
 // Commitment is a fixed-size compressed Pedersen commitment.
-type Commitment [CommitmentSize]byte
+type Commitment [mptsizes.CommitmentSize]byte
 
 // ContextHash binds a proof to its transaction context.
-type ContextHash [HashOutputSize]byte
+type ContextHash [mptsizes.HashOutputSize]byte
 
 // Participant represents a party in a Confidential Send transaction.
 type Participant struct {

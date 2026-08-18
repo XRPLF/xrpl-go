@@ -3,6 +3,7 @@
 package builder
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -29,6 +30,11 @@ func TestSendBaseValidation(t *testing.T) {
 		{name: "fail - missing destination", base: BuildSendParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrMissingDestination},
 		{name: "fail - invalid destination", base: BuildSendParams{Account: testAccount, Destination: "notanaddress", IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidDestination},
 		{name: "fail - self send", base: BuildSendParams{Account: testAccount, Destination: testAccount, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrSelfSend},
+		{name: "fail - X-address destination", base: BuildSendParams{Account: testAccount, Destination: xAddressOf(t, testDestination), IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidDestination},
+		{name: "fail - X-address account", base: BuildSendParams{Account: xAddressOf(t, testAccount), Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidAccount},
+		{name: "fail - destination is the issuance issuer", base: BuildSendParams{Account: testDestination, Destination: testAccount, IssuanceID: testIssuerIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrDestinationIsIssuer},
+		{name: "fail - account is the issuance issuer", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrIssuerNotAllowed},
+		{name: "fail - amount above protocol maximum", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: math.MaxUint64, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrAmountTooLarge},
 		{name: "fail - missing issuance ID", base: BuildSendParams{Account: testAccount, Destination: testDestination, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrMissingIssuanceID},
 		{name: "fail - invalid issuance ID (not hex)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: strings.Repeat("GG", 24), Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},
 		{name: "fail - invalid issuance ID (wrong length)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: "aabb", Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},

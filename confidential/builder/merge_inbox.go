@@ -23,14 +23,14 @@ func validateMergeInboxBase(p BuildMergeInboxParams) error {
 	if p.Account == "" {
 		return ErrMissingAccount
 	}
-	if !addresscodec.IsValidAddress(p.Account) {
+	if !addresscodec.IsValidClassicAddress(p.Account) {
 		return ErrInvalidAccount
 	}
 	if p.IssuanceID == "" {
 		return ErrMissingIssuanceID
 	}
-	if !transaction.IsMPTIssuanceID(p.IssuanceID) {
-		return ErrInvalidIssuanceID
+	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
+		return err
 	}
 	return nil
 }

@@ -3,6 +3,7 @@
 package builder
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -29,6 +30,8 @@ func TestConvertBaseValidation(t *testing.T) {
 		{name: "fail - missing issuance ID", base: BuildConvertParams{Account: testAccount, Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrMissingIssuanceID},
 		{name: "fail - invalid issuance ID (not hex)", base: BuildConvertParams{Account: testAccount, IssuanceID: strings.Repeat("GG", 24), Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},
 		{name: "fail - invalid issuance ID (wrong length)", base: BuildConvertParams{Account: testAccount, IssuanceID: "aabb", Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},
+		{name: "fail - account is the issuance issuer", base: BuildConvertParams{Account: testAccount, IssuanceID: testIssuerIssuanceID, Amount: 1, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrIssuerNotAllowed},
+		{name: "fail - amount above protocol maximum", base: BuildConvertParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: math.MaxUint64, HolderPrivKey: kp.PrivKeyHex, HolderPubKey: kp.PubKeyHex}, wantErr: ErrAmountTooLarge},
 		{name: "fail - missing holder priv key", base: BuildConvertParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 1, HolderPubKey: kp.PubKeyHex}, wantErr: ErrMissingHolderKey},
 		{name: "fail - invalid holder priv key (not hex)", base: BuildConvertParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 1, HolderPrivKey: strings.Repeat("ZZ", 32), HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidPrivKey},
 		{name: "fail - invalid holder priv key (wrong length)", base: BuildConvertParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 1, HolderPrivKey: "aabb", HolderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidPrivKey},
@@ -58,42 +61,55 @@ func TestConvertBaseValidation(t *testing.T) {
 }
 
 func TestPrepareConvert_PassFirstTime(t *testing.T) {
-	holderKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
-	issuerKP, err := elgamal.GenerateKeypair()
-	require.NoError(t, err)
+	tests := []struct {
+		name   string
+		amount uint64
+	}{
+		{name: "non-zero amount", amount: 1000},
+		{name: "zero amount registers the key", amount: 0},
+	}
 
-	result, err := PrepareConvert(ConvertParams{
-		BuildConvertParams: BuildConvertParams{
-			Account:       testAccount,
-			IssuanceID:    testIssuanceID,
-			Amount:        1000,
-			HolderPrivKey: holderKP.PrivKeyHex,
-			HolderPubKey:  holderKP.PubKeyHex,
-		},
-		IssuerPubKey: issuerKP.PubKeyHex,
-		Sequence:     1,
-		FirstTime:    true,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Equal(t, transaction.ConfidentialMPTConvertTx, result.TxType())
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			holderKP, err := elgamal.GenerateKeypair()
+			require.NoError(t, err)
+			issuerKP, err := elgamal.GenerateKeypair()
+			require.NoError(t, err)
 
-	// First time: key and proof must be set.
-	require.NotNil(t, result.HolderEncryptionKey)
-	require.Equal(t, holderKP.PubKeyHex, *result.HolderEncryptionKey)
-	require.NotNil(t, result.ZKProof)
+			result, err := PrepareConvert(ConvertParams{
+				BuildConvertParams: BuildConvertParams{
+					Account:       testAccount,
+					IssuanceID:    testIssuanceID,
+					Amount:        test.amount,
+					HolderPrivKey: holderKP.PrivKeyHex,
+					HolderPubKey:  holderKP.PubKeyHex,
+				},
+				IssuerPubKey: issuerKP.PubKeyHex,
+				Sequence:     1,
+				FirstTime:    true,
+			})
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			require.Equal(t, transaction.ConfidentialMPTConvertTx, result.TxType())
+			require.EqualValues(t, test.amount, result.MPTAmount)
 
-	// Verify the Schnorr proof cryptographically.
-	ctxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, uint32(1))
-	require.NoError(t, err)
-	err = proof.VerifyConvertProof(*result.ZKProof, holderKP.PubKeyHex, ctxHash)
-	require.NoError(t, err)
+			// First time: key and proof must be set.
+			require.NotNil(t, result.HolderEncryptionKey)
+			require.Equal(t, holderKP.PubKeyHex, *result.HolderEncryptionKey)
+			require.NotNil(t, result.ZKProof)
 
-	// Transaction must validate.
-	ok, err := result.Validate()
-	require.NoError(t, err)
-	require.True(t, ok)
+			// Verify the Schnorr proof cryptographically.
+			ctxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, uint32(1))
+			require.NoError(t, err)
+			err = proof.VerifyConvertProof(*result.ZKProof, holderKP.PubKeyHex, ctxHash)
+			require.NoError(t, err)
+
+			// Transaction must validate.
+			ok, err := result.Validate()
+			require.NoError(t, err)
+			require.True(t, ok)
+		})
+	}
 }
 
 func TestPrepareConvert_PassNotFirstTime(t *testing.T) {

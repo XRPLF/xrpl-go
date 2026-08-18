@@ -8,12 +8,13 @@ import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 	"github.com/stretchr/testify/require"
 )
 
 // testAccountID returns a deterministic 20-byte account ID for testing.
-func testAccountID(seed byte) [mptcrypto.AccountIDSize]byte {
-	var id [mptcrypto.AccountIDSize]byte
+func testAccountID(seed byte) [mptsizes.AccountIDSize]byte {
+	var id [mptsizes.AccountIDSize]byte
 	for i := range id {
 		id[i] = seed + byte(i)
 	}
@@ -21,8 +22,8 @@ func testAccountID(seed byte) [mptcrypto.AccountIDSize]byte {
 }
 
 // testIssuanceID returns a deterministic 24-byte issuance ID for testing.
-func testIssuanceID() [mptcrypto.IssuanceIDSize]byte {
-	var id [mptcrypto.IssuanceIDSize]byte
+func testIssuanceID() [mptsizes.IssuanceIDSize]byte {
+	var id [mptsizes.IssuanceIDSize]byte
 	for i := range id {
 		id[i] = byte(i + 0x10)
 	}
@@ -221,7 +222,7 @@ func TestConvertProofRoundtrip(t *testing.T) {
 
 	proof, err := mptcrypto.GenerateConvertProof(pub, priv, ctxHash)
 	require.NoError(t, err)
-	require.NotEqual(t, [mptcrypto.SchnorrProofSize]byte{}, proof)
+	require.NotEqual(t, [mptsizes.SchnorrProofSize]byte{}, proof)
 
 	tests := []struct {
 		name    string
@@ -273,7 +274,7 @@ func TestConvertBackProofRoundtrip(t *testing.T) {
 	proof, err := mptcrypto.GenerateConvertBackProof(priv, pub, ctxHash, convertBackAmount, balanceParams)
 	require.NoError(t, err)
 
-	require.NotEqual(t, [mptcrypto.ConvertBackProofSize]byte{}, proof)
+	require.NotEqual(t, [mptsizes.ConvertBackProofSize]byte{}, proof)
 	err = mptcrypto.VerifyConvertBackProof(proof, pub, ct, totalCommit, convertBackAmount, ctxHash)
 	require.NoError(t, err)
 }
@@ -295,7 +296,7 @@ func TestClawbackProofRoundtrip(t *testing.T) {
 	proof, err := mptcrypto.GenerateClawbackProof(priv, pub, ctxHash, amount, ct)
 	require.NoError(t, err)
 
-	require.NotEqual(t, [mptcrypto.CompactClawbackProofSize]byte{}, proof)
+	require.NotEqual(t, [mptsizes.CompactClawbackProofSize]byte{}, proof)
 	err = mptcrypto.VerifyClawbackProof(proof, amount, pub, ct, ctxHash)
 	require.NoError(t, err)
 }
@@ -383,14 +384,14 @@ func TestSendProofRoundtrip(t *testing.T) {
 }
 
 func TestVerifySendProofRejectsShortProof(t *testing.T) {
-	shortProof := make([]byte, mptcrypto.SendProofSize-1)
+	shortProof := make([]byte, mptsizes.SendProofSize-1)
 
 	var senderCT mptcrypto.Ciphertext
 	var amountCommit, balanceCommit mptcrypto.Commitment
 	var ctxHash mptcrypto.ContextHash
 
 	err := mptcrypto.VerifySendProof(shortProof, nil, senderCT, amountCommit, balanceCommit, ctxHash)
-	require.EqualError(t, err, fmt.Sprintf("mptcrypto: proof must be %d bytes, got %d", mptcrypto.SendProofSize, len(shortProof)))
+	require.EqualError(t, err, fmt.Sprintf("mptcrypto: proof must be %d bytes, got %d", mptsizes.SendProofSize, len(shortProof)))
 }
 
 // endregion

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
-	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -136,7 +136,7 @@ func TestVerifySendRangeProofRoundtrip(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	rangeProofHex := proofHex[mptcrypto.CompactSendProofSize*2:]
+	rangeProofHex := proofHex[mptsizes.CompactSendProofSize*2:]
 
 	err = proof.VerifySendRangeProof(rangeProofHex, amountCommitHex, balanceCommitHex, ctxHash)
 	require.NoError(t, err)

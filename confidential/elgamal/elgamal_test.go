@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
-	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,10 +17,10 @@ func TestGenerateKeypair(t *testing.T) {
 	require.NoError(t, err)
 
 	// privkey: 64 hex chars (32 bytes)
-	require.Len(t, kp.PrivKeyHex, mptcrypto.PrivKeySize*2)
+	require.Len(t, kp.PrivKeyHex, mptsizes.PrivKeySize*2)
 
 	// pubkey: 66 hex chars (33 bytes)
-	require.Len(t, kp.PubKeyHex, mptcrypto.PubKeySize*2)
+	require.Len(t, kp.PubKeyHex, mptsizes.PubKeySize*2)
 
 	// compressed pubkey starts with "02" or "03"
 	prefix := kp.PubKeyHex[:2]
@@ -32,7 +32,7 @@ func TestGenerateBlindingFactor(t *testing.T) {
 	require.NoError(t, err)
 
 	// 64 hex chars (32 bytes)
-	require.Len(t, bf, mptcrypto.BlindingFactorSize*2)
+	require.Len(t, bf, mptsizes.BlindingFactorSize*2)
 
 	// not all zeros
 	allZeros := true
@@ -66,7 +66,7 @@ func TestEncryptDecryptRoundtrip(t *testing.T) {
 
 			ct, err := elgamal.Encrypt(tt.amount, kp.PubKeyHex, bf)
 			require.NoError(t, err)
-			require.Len(t, ct, mptcrypto.CiphertextSize*2)
+			require.Len(t, ct, mptsizes.CiphertextSize*2)
 
 			got, err := elgamal.Decrypt(ct, kp.PrivKeyHex, tt.amountRange)
 			require.NoError(t, err)
@@ -190,7 +190,7 @@ func TestInvalidHexInputs(t *testing.T) {
 		{
 			name: "fail - decrypt short ciphertext",
 			fn: func() error {
-				_, err := elgamal.Decrypt(strings.Repeat("00", mptcrypto.CiphertextSize-1), kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 1})
+				_, err := elgamal.Decrypt(strings.Repeat("00", mptsizes.CiphertextSize-1), kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 1})
 				return err
 			},
 			wantErr: elgamal.ErrInvalidCiphertext,
@@ -198,7 +198,7 @@ func TestInvalidHexInputs(t *testing.T) {
 		{
 			name: "fail - decrypt long ciphertext",
 			fn: func() error {
-				_, err := elgamal.Decrypt(strings.Repeat("00", mptcrypto.CiphertextSize+1), kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 1})
+				_, err := elgamal.Decrypt(strings.Repeat("00", mptsizes.CiphertextSize+1), kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 1})
 				return err
 			},
 			wantErr: elgamal.ErrInvalidCiphertext,
@@ -214,7 +214,7 @@ func TestInvalidHexInputs(t *testing.T) {
 		{
 			name: "fail - decrypt short privkey",
 			fn: func() error {
-				_, err := elgamal.Decrypt(ciphertext, strings.Repeat("00", mptcrypto.PrivKeySize-1), elgamal.AmountRange{Low: 0, High: 1})
+				_, err := elgamal.Decrypt(ciphertext, strings.Repeat("00", mptsizes.PrivKeySize-1), elgamal.AmountRange{Low: 0, High: 1})
 				return err
 			},
 			wantErr: elgamal.ErrInvalidKey,
@@ -222,7 +222,7 @@ func TestInvalidHexInputs(t *testing.T) {
 		{
 			name: "fail - decrypt long privkey",
 			fn: func() error {
-				_, err := elgamal.Decrypt(ciphertext, strings.Repeat("00", mptcrypto.PrivKeySize+1), elgamal.AmountRange{Low: 0, High: 1})
+				_, err := elgamal.Decrypt(ciphertext, strings.Repeat("00", mptsizes.PrivKeySize+1), elgamal.AmountRange{Low: 0, High: 1})
 				return err
 			},
 			wantErr: elgamal.ErrInvalidKey,

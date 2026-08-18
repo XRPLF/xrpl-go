@@ -6,11 +6,12 @@ import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 )
 
 // decodeAddress decodes a classic XRPL address to a 20-byte account ID.
-func decodeAddress(address string) ([mptcrypto.AccountIDSize]byte, error) {
-	var id [mptcrypto.AccountIDSize]byte
+func decodeAddress(address string) ([mptsizes.AccountIDSize]byte, error) {
+	var id [mptsizes.AccountIDSize]byte
 	_, accountID, err := addresscodec.DecodeClassicAddressToAccountID(address)
 	if err != nil {
 		return id, fmt.Errorf("%w: %w", ErrInvalidAddress, err)
@@ -20,9 +21,9 @@ func decodeAddress(address string) ([mptcrypto.AccountIDSize]byte, error) {
 }
 
 // decodeIssuanceID decodes a 48-char hex issuance ID to a 24-byte array.
-func decodeIssuanceID(issHex string) ([mptcrypto.IssuanceIDSize]byte, error) {
-	var id [mptcrypto.IssuanceIDSize]byte
-	b, err := hexutil.DecodeFixedHex(issHex, mptcrypto.IssuanceIDSize)
+func decodeIssuanceID(issHex string) ([mptsizes.IssuanceIDSize]byte, error) {
+	var id [mptsizes.IssuanceIDSize]byte
+	b, err := hexutil.DecodeFixedHex(issHex, mptsizes.IssuanceIDSize)
 	if err != nil {
 		return id, fmt.Errorf("%w: %w", ErrInvalidIssuanceID, err)
 	}
@@ -33,11 +34,11 @@ func decodeIssuanceID(issHex string) ([mptcrypto.IssuanceIDSize]byte, error) {
 // decodeParticipant converts a Participant to a mptcrypto.Participant.
 func decodeParticipant(hp Participant) (mptcrypto.Participant, error) {
 	var p mptcrypto.Participant
-	pubBytes, err := hexutil.DecodeFixedHex(hp.PubKeyHex, mptcrypto.PubKeySize)
+	pubBytes, err := hexutil.DecodeFixedHex(hp.PubKeyHex, mptsizes.PubKeySize)
 	if err != nil {
 		return p, fmt.Errorf("%w: %w", ErrInvalidPubKey, err)
 	}
-	ctBytes, err := hexutil.DecodeFixedHex(hp.CiphertextHex, mptcrypto.CiphertextSize)
+	ctBytes, err := hexutil.DecodeFixedHex(hp.CiphertextHex, mptsizes.CiphertextSize)
 	if err != nil {
 		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
@@ -65,15 +66,15 @@ func decodeParticipants(hps []Participant) ([]mptcrypto.Participant, error) {
 // decodeProofParams converts a Params to a mptcrypto.PedersenProofParams.
 func decodeProofParams(hp Params) (mptcrypto.PedersenProofParams, error) {
 	var p mptcrypto.PedersenProofParams
-	commitBytes, err := hexutil.DecodeFixedHex(hp.CommitmentHex, mptcrypto.CommitmentSize)
+	commitBytes, err := hexutil.DecodeFixedHex(hp.CommitmentHex, mptsizes.CommitmentSize)
 	if err != nil {
 		return p, fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
-	ctBytes, err := hexutil.DecodeFixedHex(hp.CiphertextHex, mptcrypto.CiphertextSize)
+	ctBytes, err := hexutil.DecodeFixedHex(hp.CiphertextHex, mptsizes.CiphertextSize)
 	if err != nil {
 		return p, fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
 	}
-	bfBytes, err := hexutil.DecodeFixedHex(hp.BlindingFactorHex, mptcrypto.BlindingFactorSize)
+	bfBytes, err := hexutil.DecodeFixedHex(hp.BlindingFactorHex, mptsizes.BlindingFactorSize)
 	if err != nil {
 		return p, fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
 	}

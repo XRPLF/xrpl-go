@@ -1,4 +1,13 @@
 // Package builder provides transaction builders for confidential MPT operations.
+//
+// Every address these builders accept must be a classic r-address. Unlike the transaction
+// models, which the binary codec converts on encode, the builders feed addresses straight
+// into xrplhash.MPToken and the proof layer, both of which decode classic addresses only.
+// An X-address would surface much later as an unrelated error, so it is rejected up front.
+//
+// Classic encoding is canonical, so equal accounts always produce equal strings once both
+// sides pass that check, which is what lets the self-send and self-clawback guards compare
+// addresses with ==.
 package builder
 
 import (
@@ -32,13 +41,13 @@ func validateClawbackBase(p BuildClawbackParams) error {
 	if p.Account == "" {
 		return ErrMissingAccount
 	}
-	if !addresscodec.IsValidAddress(p.Account) {
+	if !addresscodec.IsValidClassicAddress(p.Account) {
 		return ErrInvalidAccount
 	}
 	if p.Holder == "" {
 		return ErrMissingHolder
 	}
-	if !addresscodec.IsValidAddress(p.Holder) {
+	if !addresscodec.IsValidClassicAddress(p.Holder) {
 		return ErrInvalidHolder
 	}
 	if p.Account == p.Holder {
@@ -47,16 +56,16 @@ func validateClawbackBase(p BuildClawbackParams) error {
 	if p.IssuanceID == "" {
 		return ErrMissingIssuanceID
 	}
-	if !transaction.IsMPTIssuanceID(p.IssuanceID) {
-		return ErrInvalidIssuanceID
+	if err := validateIssuerRole(p.IssuanceID, p.Account); err != nil {
+		return err
 	}
-	if p.Amount == 0 {
-		return ErrZeroAmount
+	if err := validateAmount(p.Amount); err != nil {
+		return err
 	}
 	if p.IssuerPrivKey == "" {
 		return ErrMissingIssuerKey
 	}
-	if !transaction.IsValidPrivKey(p.IssuerPrivKey) {
+	if !isValidPrivKey(p.IssuerPrivKey) {
 		return ErrInvalidPrivKey
 	}
 	return nil

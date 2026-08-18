@@ -20,6 +20,7 @@ func TestMergeInboxBaseValidation(t *testing.T) {
 		{name: "fail - missing issuance ID", base: BuildMergeInboxParams{Account: testAccount}, wantErr: ErrMissingIssuanceID},
 		{name: "fail - invalid issuance ID (not hex)", base: BuildMergeInboxParams{Account: testAccount, IssuanceID: strings.Repeat("GG", 24)}, wantErr: ErrInvalidIssuanceID},
 		{name: "fail - invalid issuance ID (wrong length)", base: BuildMergeInboxParams{Account: testAccount, IssuanceID: "aabb"}, wantErr: ErrInvalidIssuanceID},
+		{name: "fail - account is the issuance issuer", base: BuildMergeInboxParams{Account: testAccount, IssuanceID: testIssuerIssuanceID}, wantErr: ErrIssuerNotAllowed},
 	}
 
 	t.Run("fail - validation PrepareMergeInbox", func(t *testing.T) {

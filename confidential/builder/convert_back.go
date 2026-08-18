@@ -39,22 +39,22 @@ func validateConvertBackBase(p BuildConvertBackParams) error {
 	if p.Account == "" {
 		return ErrMissingAccount
 	}
-	if !addresscodec.IsValidAddress(p.Account) {
+	if !addresscodec.IsValidClassicAddress(p.Account) {
 		return ErrInvalidAccount
 	}
 	if p.IssuanceID == "" {
 		return ErrMissingIssuanceID
 	}
-	if !transaction.IsMPTIssuanceID(p.IssuanceID) {
-		return ErrInvalidIssuanceID
+	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
+		return err
 	}
-	if p.Amount == 0 {
-		return ErrZeroAmount
+	if err := validateAmount(p.Amount); err != nil {
+		return err
 	}
 	if p.HolderPrivKey == "" {
 		return ErrMissingHolderKey
 	}
-	if !transaction.IsValidPrivKey(p.HolderPrivKey) {
+	if !isValidPrivKey(p.HolderPrivKey) {
 		return ErrInvalidPrivKey
 	}
 	if p.HolderPubKey == "" {

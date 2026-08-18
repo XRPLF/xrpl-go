@@ -4,6 +4,7 @@ package builder
 
 import (
 	"errors"
+	"math"
 	"strings"
 	"testing"
 
@@ -25,18 +26,22 @@ func TestClawbackBaseValidation(t *testing.T) {
 		base    BuildClawbackParams
 		wantErr error
 	}{
-		{name: "fail - missing account", base: BuildClawbackParams{Holder: testDestination, IssuanceID: testIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrMissingAccount},
-		{name: "fail - invalid account", base: BuildClawbackParams{Account: "notanaddress", Holder: testDestination, IssuanceID: testIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrInvalidAccount},
-		{name: "fail - missing holder", base: BuildClawbackParams{Account: testAccount, IssuanceID: testIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrMissingHolder},
-		{name: "fail - invalid holder", base: BuildClawbackParams{Account: testAccount, Holder: "notanaddress", IssuanceID: testIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrInvalidHolder},
-		{name: "fail - self clawback", base: BuildClawbackParams{Account: testAccount, Holder: testAccount, IssuanceID: testIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrSelfClawback},
+		{name: "fail - missing account", base: BuildClawbackParams{Holder: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrMissingAccount},
+		{name: "fail - invalid account", base: BuildClawbackParams{Account: "notanaddress", Holder: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrInvalidAccount},
+		{name: "fail - missing holder", base: BuildClawbackParams{Account: testAccount, IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrMissingHolder},
+		{name: "fail - invalid holder", base: BuildClawbackParams{Account: testAccount, Holder: "notanaddress", IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrInvalidHolder},
+		{name: "fail - self clawback", base: BuildClawbackParams{Account: testAccount, Holder: testAccount, IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrSelfClawback},
+		{name: "fail - X-address holder", base: BuildClawbackParams{Account: testAccount, Holder: xAddressOf(t, testDestination), IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrInvalidHolder},
+		{name: "fail - X-address account", base: BuildClawbackParams{Account: xAddressOf(t, testAccount), Holder: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrInvalidAccount},
+		{name: "fail - account is not the issuance issuer", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrNotIssuer},
+		{name: "fail - amount above protocol maximum", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuerIssuanceID, Amount: math.MaxUint64, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrAmountTooLarge},
 		{name: "fail - missing issuance ID", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrMissingIssuanceID},
 		{name: "fail - invalid issuance ID (not hex)", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: "ZZZZ", Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrInvalidIssuanceID},
 		{name: "fail - invalid issuance ID (wrong length)", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: "aabb", Amount: 1, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrInvalidIssuanceID},
-		{name: "fail - zero amount", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuanceID, Amount: 0, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrZeroAmount},
-		{name: "fail - missing issuer priv key", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuanceID, Amount: 1}, wantErr: ErrMissingIssuerKey},
-		{name: "fail - invalid issuer priv key (not hex)", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuanceID, Amount: 1, IssuerPrivKey: "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"}, wantErr: ErrInvalidPrivKey},
-		{name: "fail - invalid issuer priv key (wrong length)", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuanceID, Amount: 1, IssuerPrivKey: "aabb"}, wantErr: ErrInvalidPrivKey},
+		{name: "fail - zero amount", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 0, IssuerPrivKey: kp.PrivKeyHex}, wantErr: ErrZeroAmount},
+		{name: "fail - missing issuer priv key", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1}, wantErr: ErrMissingIssuerKey},
+		{name: "fail - invalid issuer priv key (not hex)", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"}, wantErr: ErrInvalidPrivKey},
+		{name: "fail - invalid issuer priv key (wrong length)", base: BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: "aabb"}, wantErr: ErrInvalidPrivKey},
 	}
 
 	// Valid ciphertext (132 hex chars) needed to pass PrepareClawback's own validation.
@@ -76,7 +81,7 @@ func TestPrepareClawback_Pass(t *testing.T) {
 		BuildClawbackParams: BuildClawbackParams{
 			Account:       testAccount,
 			Holder:        testDestination,
-			IssuanceID:    testIssuanceID,
+			IssuanceID:    testIssuerIssuanceID,
 			Amount:        amount,
 			IssuerPrivKey: issuerKP.PrivKeyHex,
 		},
@@ -89,7 +94,7 @@ func TestPrepareClawback_Pass(t *testing.T) {
 	require.Equal(t, transaction.ConfidentialMPTClawbackTx, result.TxType())
 	require.NotEmpty(t, result.ZKProof)
 
-	ctxHash, err := proof.ClawbackContextHash(testAccount, testIssuanceID, uint32(1), testDestination)
+	ctxHash, err := proof.ClawbackContextHash(testAccount, testIssuerIssuanceID, uint32(1), testDestination)
 	require.NoError(t, err)
 	err = proof.VerifyClawbackProof(result.ZKProof, amount, issuerKP.PubKeyHex, issuerCt, ctxHash)
 	require.NoError(t, err)
@@ -103,7 +108,7 @@ func TestPrepareClawback_FailValidation(t *testing.T) {
 	kp, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
 
-	base := BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}
+	base := BuildClawbackParams{Account: testAccount, Holder: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1, IssuerPrivKey: kp.PrivKeyHex}
 	validCiphertext := strings.Repeat("ab", 66)
 
 	tests := []struct {
@@ -130,15 +135,15 @@ func TestBuildClawback_FailLedgerQueries(t *testing.T) {
 	issuerKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
 
-	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuerIssuanceID)
 	require.NoError(t, err)
-	mptokenIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+	mptokenIndex, err := xrplhash.MPToken(testIssuerIssuanceID, testDestination)
 	require.NoError(t, err)
 
 	validParams := BuildClawbackParams{
 		Account:       testAccount,
 		Holder:        testDestination,
-		IssuanceID:    testIssuanceID,
+		IssuanceID:    testIssuerIssuanceID,
 		Amount:        100,
 		IssuerPrivKey: issuerKP.PrivKeyHex,
 	}
@@ -200,9 +205,9 @@ func TestBuildClawback_Pass(t *testing.T) {
 	issuerCt, err := elgamal.Encrypt(clawbackAmount, issuerKP.PubKeyHex, bf)
 	require.NoError(t, err)
 
-	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuerIssuanceID)
 	require.NoError(t, err)
-	mptokenIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+	mptokenIndex, err := xrplhash.MPToken(testIssuerIssuanceID, testDestination)
 	require.NoError(t, err)
 
 	q := &mockQuerier{
@@ -216,7 +221,7 @@ func TestBuildClawback_Pass(t *testing.T) {
 	result, err := BuildClawback(q, BuildClawbackParams{
 		Account:       testAccount,
 		Holder:        testDestination,
-		IssuanceID:    testIssuanceID,
+		IssuanceID:    testIssuerIssuanceID,
 		Amount:        clawbackAmount,
 		IssuerPrivKey: issuerKP.PrivKeyHex,
 	})

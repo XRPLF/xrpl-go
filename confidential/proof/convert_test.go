@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
-	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +22,7 @@ func TestGenerateAndVerifyConvertProof(t *testing.T) {
 
 	proofHex, err := proof.GenerateConvertProof(kp.PubKeyHex, kp.PrivKeyHex, ctxHash)
 	require.NoError(t, err)
-	require.Len(t, proofHex, mptcrypto.SchnorrProofSize*2)
+	require.Len(t, proofHex, mptsizes.SchnorrProofSize*2)
 
 	tests := []struct {
 		name    string

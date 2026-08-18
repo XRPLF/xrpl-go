@@ -1,21 +1,22 @@
 package transaction
 
-// ConfidentialMPTMergeInbox merges the holder's confidential inbox balance (CB_IN)
+// ConfidentialMPTMergeInbox requires the ConfidentialTransfer amendment.
+// It merges the holder's confidential inbox balance (CB_IN)
 // into their main confidential spending balance (CB_S).
 //
 // When confidential MPT is sent to a holder, it accumulates in their
 // "inbox" balance. This transaction allows the holder to merge those
 // incoming funds into their main "spending" balance so they can use them.
 //
-// This transaction is permissionless and requires no cryptographic proof because
-// the holder is simply consolidating their own balances.
+// This transaction requires holder authorization but no cryptographic proof because
+// the holder is consolidating their own balances.
 //
 // ```json
 //
 //	{
 //	    "TransactionType": "ConfidentialMPTMergeInbox",
-//	    "Fee": "10",
-//	    "MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000"
+//	    "Account": "r...",
+//	    "MPTokenIssuanceID": "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8"
 //	}
 //
 // ```
@@ -47,9 +48,12 @@ func (tx *ConfidentialMPTMergeInbox) Validate() (bool, error) {
 	if err != nil || !ok {
 		return false, err
 	}
-
-	if tx.MPTokenIssuanceID == "" {
-		return false, ErrConfidentialMPTInvalidIssuanceID
+	accountID, err := validateConfidentialMPTBase(&tx.BaseTx)
+	if err != nil {
+		return false, err
+	}
+	if _, err := validateConfidentialMPTHolder(tx.MPTokenIssuanceID, accountID); err != nil {
+		return false, err
 	}
 
 	return true, nil

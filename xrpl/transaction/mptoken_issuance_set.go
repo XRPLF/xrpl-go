@@ -276,10 +276,10 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTIssuanceSetAuditorRequiresIssuerKey
 	}
 	if m.IssuerEncryptionKey != nil && !IsValidCompressedEncryptionKey(*m.IssuerEncryptionKey) {
-		return false, ErrMPTIssuanceSetInvalidKeyLength
+		return false, ErrMPTIssuanceSetInvalidEncryptionKey
 	}
 	if m.AuditorEncryptionKey != nil && !IsValidCompressedEncryptionKey(*m.AuditorEncryptionKey) {
-		return false, ErrMPTIssuanceSetInvalidKeyLength
+		return false, ErrMPTIssuanceSetInvalidEncryptionKey
 	}
 
 	return true, nil

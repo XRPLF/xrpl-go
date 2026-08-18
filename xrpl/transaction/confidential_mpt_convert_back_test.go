@@ -4,19 +4,13 @@ import (
 	"strings"
 	"testing"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
 
-// Test helpers for ConfidentialMPTConvertBack.
-var (
-	testConvertBackCiphertext1 = strings.Repeat("A1", 66)
-	testConvertBackCiphertext2 = strings.Repeat("B2", 66)
-	testConvertBackCiphertext3 = strings.Repeat("C3", 66)
-	testConvertBackCommitment  = strings.Repeat("D4", 33)
-	testConvertBackBF          = strings.Repeat("EF", 32)
-	testConvertBackProof       = strings.Repeat("12", ConvertBackProofLen/2)
-)
+// testConvertBackProof is a well-formed ConvertBack proof bundle of the required length.
+var testConvertBackProof = strings.Repeat("12", ConvertBackProofLen/2)
 
 func TestConfidentialMPTConvertBack_TxType(t *testing.T) {
 	tx := &ConfidentialMPTConvertBack{}
@@ -36,24 +30,24 @@ func TestConfidentialMPTConvertBack_Flatten(t *testing.T) {
 					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:     types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               testConvertBackProof,
 			},
 			expected: FlatTransaction{
 				"Account":               "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee":                   "12",
 				"TransactionType":       "ConfidentialMPTConvertBack",
-				"MPTokenIssuanceID":     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				"MPTokenIssuanceID":     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				"MPTAmount":             "1000",
-				"HolderEncryptedAmount": testConvertBackCiphertext1,
-				"IssuerEncryptedAmount": testConvertBackCiphertext2,
-				"BlindingFactor":        testConvertBackBF,
-				"BalanceCommitment":     testConvertBackCommitment,
+				"HolderEncryptedAmount": testCiphertext,
+				"IssuerEncryptedAmount": testCiphertext2,
+				"BlindingFactor":        testBlindingFactor,
+				"BalanceCommitment":     testCompressedPoint2,
 				"ZKProof":               testConvertBackProof,
 			},
 		},
@@ -64,26 +58,26 @@ func TestConfidentialMPTConvertBack_Flatten(t *testing.T) {
 					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					Fee:     types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:              types.MPTPlainAmount(500),
-				HolderEncryptedAmount:  testConvertBackCiphertext1,
-				IssuerEncryptedAmount:  testConvertBackCiphertext2,
-				BlindingFactor:         testConvertBackBF,
-				AuditorEncryptedAmount: types.HexBlob(testConvertBackCiphertext3),
-				BalanceCommitment:      testConvertBackCommitment,
+				HolderEncryptedAmount:  testCiphertext,
+				IssuerEncryptedAmount:  testCiphertext2,
+				BlindingFactor:         testBlindingFactor,
+				AuditorEncryptedAmount: types.HexBlob(testCiphertext3),
+				BalanceCommitment:      testCompressedPoint2,
 				ZKProof:                testConvertBackProof,
 			},
 			expected: FlatTransaction{
 				"Account":                "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Fee":                    "12",
 				"TransactionType":        "ConfidentialMPTConvertBack",
-				"MPTokenIssuanceID":      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				"MPTokenIssuanceID":      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				"MPTAmount":              "500",
-				"HolderEncryptedAmount":  testConvertBackCiphertext1,
-				"IssuerEncryptedAmount":  testConvertBackCiphertext2,
-				"BlindingFactor":         testConvertBackBF,
-				"AuditorEncryptedAmount": testConvertBackCiphertext3,
-				"BalanceCommitment":      testConvertBackCommitment,
+				"HolderEncryptedAmount":  testCiphertext,
+				"IssuerEncryptedAmount":  testCiphertext2,
+				"BlindingFactor":         testBlindingFactor,
+				"AuditorEncryptedAmount": testCiphertext3,
+				"BalanceCommitment":      testCompressedPoint2,
 				"ZKProof":                testConvertBackProof,
 			},
 		},
@@ -95,6 +89,38 @@ func TestConfidentialMPTConvertBack_Flatten(t *testing.T) {
 			require.Equal(t, tt.expected, flattened)
 		})
 	}
+}
+
+func TestConfidentialMPTConvertBack_BinaryRoundTrip(t *testing.T) {
+	const (
+		prefix = "1200572400000002301A00000000000000FA5028ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB7025C36F"
+		suffix = "70264202ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB03CDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD70274202ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB03CDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD702B4202ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB03CDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCDCD702E2102ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB81145B812C9D57731E27A2DA8B1830195F88EF32A3B60115000004C463C52827307480341125DA0577DEFC38405B0E3E"
+	)
+	point := "02" + strings.Repeat("AB", 32)
+	ciphertext := point + "03" + strings.Repeat("CD", 32)
+	tx := &ConfidentialMPTConvertBack{
+		BaseTx: BaseTx{
+			Account:         "r9LqNeG6qHxjeUocjvVki2XR35weJ9mZgQ",
+			TransactionType: ConfidentialMPTConvertBackTx,
+			Sequence:        2,
+		},
+		MPTokenIssuanceID:      "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+		MPTAmount:              250,
+		HolderEncryptedAmount:  ciphertext,
+		IssuerEncryptedAmount:  ciphertext,
+		AuditorEncryptedAmount: types.HexBlob(ciphertext),
+		BlindingFactor:         strings.Repeat("AB", 32),
+		ZKProof:                strings.Repeat("AB", ConvertBackProofLen/2),
+		BalanceCommitment:      point,
+	}
+	expected := prefix + strings.Repeat("AB", ConvertBackProofLen/2) + suffix
+
+	encoded, err := binarycodec.Encode(tx.Flatten())
+	require.NoError(t, err)
+	require.Equal(t, expected, encoded)
+	decoded, err := binarycodec.Decode(encoded)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any(tx.Flatten()), decoded)
 }
 
 func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
@@ -111,12 +137,12 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               testConvertBackProof,
 			},
 			wantErr: nil,
@@ -129,13 +155,13 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:              types.MPTPlainAmount(1000),
-				HolderEncryptedAmount:  testConvertBackCiphertext1,
-				IssuerEncryptedAmount:  testConvertBackCiphertext2,
-				AuditorEncryptedAmount: types.HexBlob(testConvertBackCiphertext3),
-				BlindingFactor:         testConvertBackBF,
-				BalanceCommitment:      testConvertBackCommitment,
+				HolderEncryptedAmount:  testCiphertext,
+				IssuerEncryptedAmount:  testCiphertext2,
+				AuditorEncryptedAmount: types.HexBlob(testCiphertext3),
+				BlindingFactor:         testBlindingFactor,
+				BalanceCommitment:      testCompressedPoint2,
 				ZKProof:                testConvertBackProof,
 			},
 			wantErr: nil,
@@ -150,10 +176,10 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 				},
 				MPTokenIssuanceID:     "",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               testConvertBackProof,
 			},
 			wantErr: ErrConfidentialMPTInvalidIssuanceID,
@@ -166,12 +192,12 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(0),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               testConvertBackProof,
 			},
 			wantErr: ErrConfidentialConvertBackInvalidAmount,
@@ -184,12 +210,26 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
 				BlindingFactor:        "short",
-				BalanceCommitment:     testConvertBackCommitment,
+				BalanceCommitment:     testCompressedPoint2,
+				ZKProof:               testConvertBackProof,
+			},
+			wantErr: ErrConfidentialConvertBackInvalidBlindingFactor,
+		},
+		{
+			name: "fail - invalid blinding factor hex",
+			tx: &ConfidentialMPTConvertBack{
+				BaseTx:                BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: ConfidentialMPTConvertBackTx, Fee: types.XRPCurrencyAmount(12)},
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
+				MPTAmount:             types.MPTPlainAmount(1000),
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        strings.Repeat("AA", 31) + "ZZ",
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               testConvertBackProof,
 			},
 			wantErr: ErrConfidentialConvertBackInvalidBlindingFactor,
@@ -202,12 +242,12 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: "",
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               testConvertBackProof,
 			},
 			wantErr: ErrConfidentialConvertBackInvalidCiphertext,
@@ -220,12 +260,12 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
+				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: "",
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               testConvertBackProof,
 			},
 			wantErr: ErrConfidentialConvertBackInvalidCiphertext,
@@ -238,13 +278,27 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               strings.Repeat("AA", 10),
+			},
+			wantErr: ErrConfidentialConvertBackInvalidProof,
+		},
+		{
+			name: "fail - invalid ZKProof hex",
+			tx: &ConfidentialMPTConvertBack{
+				BaseTx:                BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: ConfidentialMPTConvertBackTx, Fee: types.XRPCurrencyAmount(12)},
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
+				MPTAmount:             types.MPTPlainAmount(1000),
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
+				ZKProof:               strings.Repeat("AA", ConvertBackProofLen/2-1) + "ZZ",
 			},
 			wantErr: ErrConfidentialConvertBackInvalidProof,
 		},
@@ -256,12 +310,12 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               "",
 			},
 			wantErr: ErrConfidentialConvertBackInvalidProof,
@@ -274,13 +328,13 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:              types.MPTPlainAmount(1000),
-				HolderEncryptedAmount:  testConvertBackCiphertext1,
-				IssuerEncryptedAmount:  testConvertBackCiphertext2,
-				BlindingFactor:         testConvertBackBF,
+				HolderEncryptedAmount:  testCiphertext,
+				IssuerEncryptedAmount:  testCiphertext2,
+				BlindingFactor:         testBlindingFactor,
 				AuditorEncryptedAmount: types.HexBlob("not-hex!"),
-				BalanceCommitment:      testConvertBackCommitment,
+				BalanceCommitment:      testCompressedPoint2,
 				ZKProof:                testConvertBackProof,
 			},
 			wantErr: ErrConfidentialConvertBackInvalidCiphertext,
@@ -293,11 +347,11 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
 				BalanceCommitment:     "",
 				ZKProof:               testConvertBackProof,
 			},
@@ -311,12 +365,12 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
 				HolderEncryptedAmount: "AABB",
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               testConvertBackProof,
 			},
 			wantErr: ErrConfidentialConvertBackInvalidCiphertext,
@@ -329,12 +383,12 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
+				HolderEncryptedAmount: testCiphertext,
 				IssuerEncryptedAmount: "CCDD",
-				BlindingFactor:        testConvertBackBF,
-				BalanceCommitment:     testConvertBackCommitment,
+				BlindingFactor:        testBlindingFactor,
+				BalanceCommitment:     testCompressedPoint2,
 				ZKProof:               testConvertBackProof,
 			},
 			wantErr: ErrConfidentialConvertBackInvalidCiphertext,
@@ -347,13 +401,13 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:      "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:      "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:              types.MPTPlainAmount(1000),
-				HolderEncryptedAmount:  testConvertBackCiphertext1,
-				IssuerEncryptedAmount:  testConvertBackCiphertext2,
-				BlindingFactor:         testConvertBackBF,
+				HolderEncryptedAmount:  testCiphertext,
+				IssuerEncryptedAmount:  testCiphertext2,
+				BlindingFactor:         testBlindingFactor,
 				AuditorEncryptedAmount: types.HexBlob("AABB"),
-				BalanceCommitment:      testConvertBackCommitment,
+				BalanceCommitment:      testCompressedPoint2,
 				ZKProof:                testConvertBackProof,
 			},
 			wantErr: ErrConfidentialConvertBackInvalidCiphertext,
@@ -366,11 +420,11 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 					TransactionType: ConfidentialMPTConvertBackTx,
 					Fee:             types.XRPCurrencyAmount(12),
 				},
-				MPTokenIssuanceID:     "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+				MPTokenIssuanceID:     "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 				MPTAmount:             types.MPTPlainAmount(1000),
-				HolderEncryptedAmount: testConvertBackCiphertext1,
-				IssuerEncryptedAmount: testConvertBackCiphertext2,
-				BlindingFactor:        testConvertBackBF,
+				HolderEncryptedAmount: testCiphertext,
+				IssuerEncryptedAmount: testCiphertext2,
+				BlindingFactor:        testBlindingFactor,
 				BalanceCommitment:     "EEFF",
 				ZKProof:               testConvertBackProof,
 			},
@@ -380,10 +434,12 @@ func TestConfidentialMPTConvertBack_Validate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.tx.Validate()
+			valid, err := tt.tx.Validate()
 			if tt.wantErr != nil {
-				require.EqualError(t, err, tt.wantErr.Error())
+				require.False(t, valid)
+				require.ErrorIs(t, err, tt.wantErr)
 			} else {
+				require.True(t, valid)
 				require.NoError(t, err)
 			}
 		})

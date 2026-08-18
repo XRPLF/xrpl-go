@@ -5,8 +5,8 @@ package proof_test
 import (
 	"testing"
 
-	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,7 +32,7 @@ func TestConvertContextHash(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Len(t, hash, mptcrypto.HashOutputSize*2)
+			require.Len(t, hash, mptsizes.HashOutputSize*2)
 		})
 	}
 }
@@ -69,7 +69,7 @@ func TestConvertBackContextHash(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Len(t, hash, mptcrypto.HashOutputSize*2)
+			require.Len(t, hash, mptsizes.HashOutputSize*2)
 		})
 	}
 }
@@ -98,7 +98,7 @@ func TestSendContextHash(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Len(t, hash, mptcrypto.HashOutputSize*2)
+			require.Len(t, hash, mptsizes.HashOutputSize*2)
 		})
 	}
 }
@@ -125,7 +125,7 @@ func TestClawbackContextHash(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Len(t, hash, mptcrypto.HashOutputSize*2)
+			require.Len(t, hash, mptsizes.HashOutputSize*2)
 		})
 	}
 }

@@ -1,13 +1,16 @@
 package transaction
 
 import (
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"bytes"
+
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
 // ConfidentialMPTSend sends confidential MPT from one account to another
 // without revealing the transfer amount publicly. The transferred amount is
 // credited to the receiver's inbox balance (CB_IN).
+// It requires the ConfidentialTransfer amendment.
 //
 // The amount is encrypted for the sender, destination, issuer, and optionally
 // an auditor. A zero-knowledge proof verifies that the sender has sufficient
@@ -17,8 +20,8 @@ import (
 //
 //	{
 //	    "TransactionType": "ConfidentialMPTSend",
-//	    "Fee": "10",
-//	    "MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+//	    "Account": "r...",
+//	    "MPTokenIssuanceID": "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 //	    "Destination": "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
 //	    "SenderEncryptedAmount": "AABB...",
 //	    "DestinationEncryptedAmount": "CCDD...",
@@ -35,6 +38,8 @@ type ConfidentialMPTSend struct {
 	MPTokenIssuanceID string
 	// Destination is the account receiving the confidential MPT.
 	Destination types.Address
+	// DestinationTag identifies a hosted-account destination. (Optional)
+	DestinationTag *uint32 `json:",omitempty"`
 	// SenderEncryptedAmount is the encrypted transfer amount for the sender.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	SenderEncryptedAmount string
@@ -44,7 +49,7 @@ type ConfidentialMPTSend struct {
 	// IssuerEncryptedAmount is the encrypted transfer amount for the issuer's tracking purposes.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	IssuerEncryptedAmount string
-	// AuditorEncryptedAmount is the encrypted amount for the auditor (if configured). (Optional)
+	// AuditorEncryptedAmount is required when the issuance has an AuditorEncryptionKey set. (Optional)
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	AuditorEncryptedAmount *string `json:",omitempty"`
 	// ZKProof is a zero-knowledge proof proving the sender has sufficient balance
@@ -53,9 +58,10 @@ type ConfidentialMPTSend struct {
 	// AmountCommitment is the Pedersen commitment to the transfer amount.
 	// Required for proof verification.
 	AmountCommitment string
-	// BalanceCommitment is the Pedersen commitment to the sender's remaining balance after transfer.
+	// BalanceCommitment is the Pedersen commitment to the sender's current confidential spending balance.
 	BalanceCommitment string
 	// CredentialIDs is a set of Credential IDs that may be required for authorized transfers. (Optional)
+	// This field also requires the Credentials amendment.
 	CredentialIDs types.CredentialIDs `json:",omitempty"`
 }
 
@@ -73,6 +79,10 @@ func (tx *ConfidentialMPTSend) Flatten() FlatTransaction {
 	flattened["MPTokenIssuanceID"] = tx.MPTokenIssuanceID
 
 	flattened["Destination"] = tx.Destination.String()
+
+	if tx.DestinationTag != nil {
+		flattened["DestinationTag"] = *tx.DestinationTag
+	}
 
 	flattened["SenderEncryptedAmount"] = tx.SenderEncryptedAmount
 
@@ -103,17 +113,27 @@ func (tx *ConfidentialMPTSend) Validate() (bool, error) {
 	if err != nil || !ok {
 		return false, err
 	}
-
-	if tx.MPTokenIssuanceID == "" {
-		return false, ErrConfidentialMPTInvalidIssuanceID
+	accountID, err := validateConfidentialMPTBase(&tx.BaseTx)
+	if err != nil {
+		return false, err
+	}
+	issuerID, err := validateConfidentialMPTHolder(tx.MPTokenIssuanceID, accountID)
+	if err != nil {
+		return false, err
 	}
 
-	if !addresscodec.IsValidAddress(tx.Destination.String()) {
+	destinationID, sameAccount, destHasTag, err := decodeCounterparty(accountID, tx.Destination)
+	if err != nil {
 		return false, ErrConfidentialSendInvalidDestination
 	}
-
-	if tx.Destination.String() == tx.Account.String() {
+	if sameAccount {
 		return false, ErrConfidentialSendSelfSend
+	}
+	if destHasTag && tx.DestinationTag != nil {
+		return false, bctypes.ErrDuplicateXAddressTag
+	}
+	if bytes.Equal(issuerID, destinationID) {
+		return false, ErrConfidentialSendDestinationIsIssuer
 	}
 
 	if !IsValidCiphertext(tx.SenderEncryptedAmount) || !IsValidCiphertext(tx.DestinationEncryptedAmount) ||
@@ -129,7 +149,7 @@ func (tx *ConfidentialMPTSend) Validate() (bool, error) {
 		return false, ErrConfidentialSendInvalidCommitment
 	}
 
-	if !IsValidFixedHexBlob(tx.ZKProof, SendProofLen) {
+	if !IsValidSendProof(tx.ZKProof) {
 		return false, ErrConfidentialSendInvalidProof
 	}
 

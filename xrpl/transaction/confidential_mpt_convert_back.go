@@ -4,14 +4,15 @@ import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 
 // ConfidentialMPTConvertBack converts confidential (encrypted) MPT balance back into
 // public MPT balance. This requires a zero-knowledge proof (ZKProof) to verify that
-// the holder has sufficient confidential balance without revealing the actual amounts.
+// the holder has sufficient confidential balance without revealing the holder's current balance.
+// It requires the ConfidentialTransfer amendment.
 //
 // ```json
 //
 //	{
 //	    "TransactionType": "ConfidentialMPTConvertBack",
-//	    "Fee": "10",
-//	    "MPTokenIssuanceID": "00070C4495F14B0E44F78A264E41713C64B5F89242540EE255534400000000000000",
+//	    "Account": "r...",
+//	    "MPTokenIssuanceID": "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8",
 //	    "MPTAmount": "1000",
 //	    "HolderEncryptedAmount": "AABB...",
 //	    "IssuerEncryptedAmount": "CCDD...",
@@ -37,10 +38,10 @@ type ConfidentialMPTConvertBack struct {
 	// BlindingFactor is the 32-byte scalar value used to encrypt the amount.
 	// Used by validators to verify the ciphertexts match the plaintext MPTAmount.
 	BlindingFactor string
-	// AuditorEncryptedAmount is the encrypted amount for the auditor (if configured). (Optional)
-	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
+	// AuditorEncryptedAmount is required when the issuance has an AuditorEncryptionKey set. (Optional)
+	// It is 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	AuditorEncryptedAmount *string `json:",omitempty"`
-	// BalanceCommitment is the Pedersen commitment to the holder's remaining balance after conversion.
+	// BalanceCommitment is the Pedersen commitment to the holder's current confidential spending balance.
 	// Required for balance verification.
 	BalanceCommitment string
 	// ZKProof is a zero-knowledge proof proving the holder has sufficient confidential
@@ -86,12 +87,15 @@ func (tx *ConfidentialMPTConvertBack) Validate() (bool, error) {
 	if err != nil || !ok {
 		return false, err
 	}
-
-	if tx.MPTokenIssuanceID == "" {
-		return false, ErrConfidentialMPTInvalidIssuanceID
+	accountID, err := validateConfidentialMPTBase(&tx.BaseTx)
+	if err != nil {
+		return false, err
+	}
+	if _, err := validateConfidentialMPTHolder(tx.MPTokenIssuanceID, accountID); err != nil {
+		return false, err
 	}
 
-	if tx.MPTAmount == 0 {
+	if tx.MPTAmount.IsZero() || !tx.MPTAmount.IsValid() {
 		return false, ErrConfidentialConvertBackInvalidAmount
 	}
 
@@ -111,7 +115,7 @@ func (tx *ConfidentialMPTConvertBack) Validate() (bool, error) {
 		return false, ErrConfidentialConvertBackInvalidCommitment
 	}
 
-	if !IsValidFixedHexBlob(tx.ZKProof, ConvertBackProofLen) {
+	if !IsValidConvertBackProof(tx.ZKProof) {
 		return false, ErrConfidentialConvertBackInvalidProof
 	}
 

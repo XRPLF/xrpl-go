@@ -9,7 +9,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/confidential/commitment"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
-	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,7 +31,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := commitment.Create(tt.amount, bf)
 			require.NoError(t, err)
-			require.Len(t, c, mptcrypto.CommitmentSize*2)
+			require.Len(t, c, mptsizes.CommitmentSize*2)
 
 			prefix := c[:2]
 			require.Contains(t, []string{"02", "03"}, prefix, "commitment prefix: got %q", prefix)

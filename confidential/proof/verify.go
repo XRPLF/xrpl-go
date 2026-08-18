@@ -5,12 +5,13 @@ import (
 
 	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
+	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 )
 
 // VerifyRevealedAmount verifies that a revealed amount and blinding factor are consistent
 // with the participants' ciphertexts. auditor may be nil.
 func VerifyRevealedAmount(amount uint64, bfHex string, holder, issuer Participant, auditor *Participant) error {
-	bfBytes, err := hexutil.DecodeFixedHex(bfHex, mptcrypto.BlindingFactorSize)
+	bfBytes, err := hexutil.DecodeFixedHex(bfHex, mptsizes.BlindingFactorSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidBlindingFactor, err)
 	}
@@ -43,24 +44,24 @@ func VerifyRevealedAmount(amount uint64, bfHex string, holder, issuer Participan
 // VerifySendRangeProof verifies that the transfer amount and remaining balance are within [0, 2^64-1].
 // balanceCommitHex must be the sender's original balance commitment, the C library derives the remainder internally.
 func VerifySendRangeProof(proofHex, amountCommitHex, balanceCommitHex, ctxHashHex string) error {
-	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptcrypto.DoubleBulletproofSize)
+	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptsizes.DoubleBulletproofSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidProof, err)
 	}
-	amountCommitBytes, err := hexutil.DecodeFixedHex(amountCommitHex, mptcrypto.CommitmentSize)
+	amountCommitBytes, err := hexutil.DecodeFixedHex(amountCommitHex, mptsizes.CommitmentSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
-	balanceCommitBytes, err := hexutil.DecodeFixedHex(balanceCommitHex, mptcrypto.CommitmentSize)
+	balanceCommitBytes, err := hexutil.DecodeFixedHex(balanceCommitHex, mptsizes.CommitmentSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCommitment, err)
 	}
-	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptcrypto.HashOutputSize)
+	hashBytes, err := hexutil.DecodeFixedHex(ctxHashHex, mptsizes.HashOutputSize)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidContextHash, err)
 	}
 
-	var proof [mptcrypto.DoubleBulletproofSize]byte
+	var proof [mptsizes.DoubleBulletproofSize]byte
 	copy(proof[:], proofBytes)
 	amountCommit := mptcrypto.Commitment(amountCommitBytes)
 	balanceCommit := mptcrypto.Commitment(balanceCommitBytes)

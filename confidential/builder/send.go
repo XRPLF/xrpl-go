@@ -42,13 +42,13 @@ func validateSendBase(p BuildSendParams) error {
 	if p.Account == "" {
 		return ErrMissingAccount
 	}
-	if !addresscodec.IsValidAddress(p.Account) {
+	if !addresscodec.IsValidClassicAddress(p.Account) {
 		return ErrInvalidAccount
 	}
 	if p.Destination == "" {
 		return ErrMissingDestination
 	}
-	if !addresscodec.IsValidAddress(p.Destination) {
+	if !addresscodec.IsValidClassicAddress(p.Destination) {
 		return ErrInvalidDestination
 	}
 	if p.Account == p.Destination {
@@ -57,16 +57,19 @@ func validateSendBase(p BuildSendParams) error {
 	if p.IssuanceID == "" {
 		return ErrMissingIssuanceID
 	}
-	if !transaction.IsMPTIssuanceID(p.IssuanceID) {
-		return ErrInvalidIssuanceID
+	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
+		return err
 	}
-	if p.Amount == 0 {
-		return ErrZeroAmount
+	if err := validateDestinationNotIssuer(p.IssuanceID, p.Destination); err != nil {
+		return err
+	}
+	if err := validateAmount(p.Amount); err != nil {
+		return err
 	}
 	if p.SenderPrivKey == "" {
 		return ErrMissingSenderKey
 	}
-	if !transaction.IsValidPrivKey(p.SenderPrivKey) {
+	if !isValidPrivKey(p.SenderPrivKey) {
 		return ErrInvalidPrivKey
 	}
 	if p.SenderPubKey == "" {

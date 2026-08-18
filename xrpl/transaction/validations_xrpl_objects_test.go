@@ -941,3 +941,30 @@ func TestIsHex256(t *testing.T) {
 		})
 	}
 }
+
+func TestIsMPTokenIssuer(t *testing.T) {
+	// The trailing 20 bytes of a well-formed issuance ID are the issuer AccountID.
+	const (
+		issuanceID = "00000001B5F762798A53D543A014CAF8B297CFF8F2F937E8"
+		issuer     = types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh")
+		nonIssuer  = types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD")
+	)
+
+	tests := []struct {
+		name       string
+		issuanceID string
+		address    types.Address
+		want       bool
+	}{
+		{name: "issuer matches", issuanceID: issuanceID, address: issuer, want: true},
+		{name: "other account does not match", issuanceID: issuanceID, address: nonIssuer},
+		{name: "invalid issuance ID", issuanceID: "ABCD", address: issuer},
+		{name: "invalid address", issuanceID: issuanceID, address: types.Address("not-an-address")},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.want, IsMPTokenIssuer(test.issuanceID, test.address))
+		})
+	}
+}
