@@ -1,6 +1,8 @@
 package builder
 
 import (
+	"errors"
+	"strconv"
 	"testing"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -51,6 +53,7 @@ type mockQuerier struct {
 	accountSeq uint32
 	accountErr error // when set, GetAccountInfo returns this error
 	entries    map[string]ledgerentries.FlatLedgerObject
+	entryErrs  map[string]error
 	// queryCalls counts ledger requests so tests can assert failures occur before unnecessary ledger access.
 	queryCalls int
 }
@@ -67,17 +70,24 @@ func (m *mockQuerier) GetAccountInfo(_ *account.InfoRequest) (*account.InfoRespo
 
 func (m *mockQuerier) GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse, error) {
 	m.queryCalls++
+	if err := m.entryErrs[req.Index]; err != nil {
+		return nil, err
+	}
 	node, ok := m.entries[req.Index]
 	if !ok {
-		return nil, ErrMPTokenNotFound
+		// Mirror rippled, which reports a missing ledger entry as exactly "entryNotFound".
+		return nil, errors.New(ledgerEntryNotFound)
 	}
 	return &ledger.EntryResponse{Node: node}, nil
 }
 
-// buildIssuanceEntry builds a mock MPTokenIssuance flat entry.
+// buildIssuanceEntry builds a mock MPTokenIssuance flat entry that is fully enabled for
+// confidential transfers. Tests that exercise a capability check mutate the returned entry.
 func buildIssuanceEntry(issuerKey, auditorKey string) ledgerentries.FlatLedgerObject {
 	entry := ledgerentries.FlatLedgerObject{
-		"IssuerEncryptionKey": issuerKey,
+		"IssuerEncryptionKey":           issuerKey,
+		"Flags":                         float64(ledgerentries.LsfMPTCanHoldConfidentialBalance | ledgerentries.LsfMPTCanTransfer),
+		"ConfidentialOutstandingAmount": strconv.FormatUint(uint64(types.MaxMPTAmount), 10),
 	}
 	if auditorKey != "" {
 		entry["AuditorEncryptionKey"] = auditorKey

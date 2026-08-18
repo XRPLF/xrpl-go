@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"errors"
 	"fmt"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -16,69 +17,28 @@ import (
 // and CurrentBalance are auto-resolved from the ledger. Balance is decrypted using SenderPrivKey
 // within BalanceRange's inclusive bounds.
 type BuildSendParams struct {
-	Account       string
-	Destination   string
-	IssuanceID    string
-	Amount        uint64
-	SenderPrivKey string              // 64 hex chars, also used to decrypt balance from ledger
-	SenderPubKey  string              // 66 hex chars (compressed)
-	BalanceRange  elgamal.AmountRange // Inclusive balance decryption bounds
-	CredentialIDs []string            // Optional
+	Account        string
+	Destination    string
+	DestinationTag *uint32
+	IssuanceID     string
+	Amount         uint64
+	SenderPrivKey  string              // Non-zero secp256k1 scalar below the curve order, also used to decrypt balance from ledger
+	SenderPubKey   string              // Valid 33-byte compressed secp256k1 point
+	BalanceRange   elgamal.AmountRange // Inclusive balance decryption bounds
+	CredentialIDs  []string            // Optional
 }
 
-// SendParams holds inputs for PrepareSend.
+// SendParams holds inputs for PrepareSend. BalanceRange is used only by
+// BuildSend and has no effect when the caller supplies CurrentBalance directly.
 type SendParams struct {
 	BuildSendParams
 	ReceiverPubKey   string // 66 hex chars (receiver's registered encryption key)
 	IssuerPubKey     string // 66 hex chars
 	AuditorPubKey    string // 66 hex chars, empty if no auditor
-	Sequence         uint32
+	Sequence         uint32 // Final transaction sequence bound into the proof. It must not change after preparation.
 	BalanceVersion   uint32 // From MPToken.ConfidentialBalanceVersion
 	CurrentBalance   uint64 // Sender's known plaintext spending balance
 	CurrentBalanceCt string // 132 hex chars, current ConfidentialBalanceSpending ciphertext
-}
-
-func validateSendBase(p BuildSendParams) error {
-	if p.Account == "" {
-		return ErrMissingAccount
-	}
-	if !addresscodec.IsValidClassicAddress(p.Account) {
-		return ErrInvalidAccount
-	}
-	if p.Destination == "" {
-		return ErrMissingDestination
-	}
-	if !addresscodec.IsValidClassicAddress(p.Destination) {
-		return ErrInvalidDestination
-	}
-	if p.Account == p.Destination {
-		return ErrSelfSend
-	}
-	if p.IssuanceID == "" {
-		return ErrMissingIssuanceID
-	}
-	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
-		return err
-	}
-	if err := validateDestinationNotIssuer(p.IssuanceID, p.Destination); err != nil {
-		return err
-	}
-	if err := validateAmount(p.Amount); err != nil {
-		return err
-	}
-	if p.SenderPrivKey == "" {
-		return ErrMissingSenderKey
-	}
-	if !isValidPrivKey(p.SenderPrivKey) {
-		return ErrInvalidPrivKey
-	}
-	if p.SenderPubKey == "" {
-		return ErrMissingSenderKey
-	}
-	if !transaction.IsValidCompressedEncryptionKey(p.SenderPubKey) {
-		return fmt.Errorf("sender pub key: %w", ErrInvalidPubKey)
-	}
-	return nil
 }
 
 // BuildSend queries ledger state, decrypts the sender's balance, and builds
@@ -96,9 +56,15 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 		return nil, err
 	}
 
-	issuerKey, auditorKey, err := getIssuanceKeys(q, p.IssuanceID)
+	issuance, err := getIssuance(q, p.IssuanceID)
 	if err != nil {
 		return nil, err
+	}
+	if !issuance.canTransfer() {
+		return nil, ErrTransferDisabled
+	}
+	if issuance.transferFee > 0 {
+		return nil, ErrTransferFeeSet
 	}
 
 	senderLedgerKey, senderBalanceCt, balanceVersion, err := getMPTokenState(q, p.IssuanceID, p.Account)
@@ -106,9 +72,13 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 		return nil, err
 	}
 
+	if senderLedgerKey == "" || senderBalanceCt == "" {
+		return nil, ErrMissingSenderState
+	}
+
 	// Validate sender pubkey matches ledger.
-	if senderLedgerKey != "" && senderLedgerKey != p.SenderPubKey {
-		return nil, fmt.Errorf("%w: sender pubkey does not match ledger", ErrCryptoFailed)
+	if !sameEncryptionKey(senderLedgerKey, p.SenderPubKey) {
+		return nil, fmt.Errorf("%w: sender key", ErrKeyMismatch)
 	}
 
 	currentBalance, err := elgamal.Decrypt(senderBalanceCt, p.SenderPrivKey, p.BalanceRange)
@@ -116,9 +86,12 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 		return nil, fmt.Errorf("%w: failed to decrypt balance: %w", ErrCryptoFailed, err)
 	}
 
-	receiverKey, _, _, err := getMPTokenState(q, p.IssuanceID, p.Destination)
+	receiverKey, err := getMPTokenHolderKey(q, p.IssuanceID, p.Destination)
 	if err != nil {
-		return nil, ErrReceiverNotOptedIn
+		if errors.Is(err, ErrMPTokenNotFound) {
+			return nil, fmt.Errorf("%w: %w", ErrReceiverNotOptedIn, err)
+		}
+		return nil, err
 	}
 	if receiverKey == "" {
 		return nil, ErrReceiverNotOptedIn
@@ -127,8 +100,8 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 	return PrepareSend(SendParams{
 		BuildSendParams:  p,
 		ReceiverPubKey:   receiverKey,
-		IssuerPubKey:     issuerKey,
-		AuditorPubKey:    auditorKey,
+		IssuerPubKey:     issuance.issuerKey,
+		AuditorPubKey:    issuance.auditorKey,
 		Sequence:         seq,
 		BalanceVersion:   balanceVersion,
 		CurrentBalance:   currentBalance,
@@ -172,6 +145,9 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 	}
 	if p.Amount > p.CurrentBalance {
 		return nil, ErrInsufficientBalance
+	}
+	if p.Sequence == 0 {
+		return nil, ErrMissingSequence
 	}
 
 	amountBF, err := elgamal.GenerateBlindingFactor()
@@ -231,12 +207,6 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 		})
 	}
 
-	amountParams := proof.Params{
-		CommitmentHex:     amountCommit,
-		Amount:            p.Amount,
-		CiphertextHex:     senderCt,
-		BlindingFactorHex: amountBF,
-	}
 	balanceParams := proof.Params{
 		CommitmentHex:     balanceCommit,
 		Amount:            p.CurrentBalance,
@@ -244,7 +214,7 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 		BlindingFactorHex: balanceBF,
 	}
 
-	proofHex, err := proof.GenerateSendProof(p.SenderPrivKey, p.SenderPubKey, p.Amount, participants, amountBF, ctxHash, amountParams, balanceParams)
+	proofHex, err := proof.GenerateSendProof(p.SenderPrivKey, p.SenderPubKey, p.Amount, participants, amountBF, ctxHash, amountCommit, balanceParams)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 	}
@@ -257,6 +227,7 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 		},
 		MPTokenIssuanceID:          p.IssuanceID,
 		Destination:                types.Address(p.Destination),
+		DestinationTag:             p.DestinationTag,
 		SenderEncryptedAmount:      senderCt,
 		DestinationEncryptedAmount: destCt,
 		IssuerEncryptedAmount:      issuerCt,
@@ -274,4 +245,50 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 	}
 
 	return tx, nil
+}
+
+func validateSendBase(p BuildSendParams) error {
+	if p.Account == "" {
+		return ErrMissingAccount
+	}
+	if !addresscodec.IsValidClassicAddress(p.Account) {
+		return ErrInvalidAccount
+	}
+	if p.Destination == "" {
+		return ErrMissingDestination
+	}
+	if !addresscodec.IsValidClassicAddress(p.Destination) {
+		return ErrInvalidDestination
+	}
+	if p.Account == p.Destination {
+		return ErrSelfSend
+	}
+	if p.IssuanceID == "" {
+		return ErrMissingIssuanceID
+	}
+	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
+		return err
+	}
+	if err := validateDestinationNotIssuer(p.IssuanceID, p.Destination); err != nil {
+		return err
+	}
+	if err := validateAmount(p.Amount); err != nil {
+		return err
+	}
+	if p.SenderPrivKey == "" {
+		return ErrMissingSenderKey
+	}
+	if !isValidPrivateKey(p.SenderPrivKey) {
+		return ErrInvalidPrivKey
+	}
+	if p.SenderPubKey == "" {
+		return ErrMissingSenderKey
+	}
+	if !transaction.IsValidCompressedEncryptionKey(p.SenderPubKey) {
+		return fmt.Errorf("sender pub key: %w", ErrInvalidPubKey)
+	}
+	if len(p.CredentialIDs) > 0 && !types.CredentialIDs(p.CredentialIDs).IsValid() {
+		return transaction.ErrInvalidCredentialIDs
+	}
+	return nil
 }

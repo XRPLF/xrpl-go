@@ -10,6 +10,10 @@ import (
 )
 
 // GenerateConvertBackProof generates a compact sigma + range proof for a ConfidentialMPTConvertBack transaction.
+// The key pair is the holder's ElGamal key pair, ctxHashHex is the context from
+// ConvertBackContextHash, and params describes the holder's current spending balance. The generated
+// proof is verified before it is returned, because the native generator accepts mismatched inputs
+// without reporting an error.
 // Returns hex-encoded proof string (1632 hex chars = 816 bytes).
 func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, params Params) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptsizes.PrivKeySize)
@@ -33,11 +37,14 @@ func GenerateConvertBackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount u
 	pub := mptcrypto.PublicKey(pubBytes)
 	hash := mptcrypto.ContextHash(hashBytes)
 
-	proof, err := mptcrypto.GenerateConvertBackProof(priv, pub, hash, amount, pp)
+	generatedProof, err := mptcrypto.GenerateConvertBackProof(priv, pub, hash, amount, pp)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrProofGenerationFailed, err)
 	}
-	return hex.EncodeToString(proof[:]), nil
+	if err := mptcrypto.VerifyConvertBackProof(generatedProof, pub, pp.Ciphertext, pp.Commitment, amount, hash); err != nil {
+		return "", fmt.Errorf("%w: generated proof verification failed: %w", ErrProofGenerationFailed, err)
+	}
+	return hex.EncodeToString(generatedProof[:]), nil
 }
 
 // VerifyConvertBackProof verifies a linkage + range proof for a ConfidentialMPTConvertBack transaction.

@@ -19,8 +19,8 @@ type BuildConvertBackParams struct {
 	Account       string
 	IssuanceID    string
 	Amount        uint64
-	HolderPrivKey string              // 64 hex chars, also used to decrypt balance from ledger
-	HolderPubKey  string              // 66 hex chars (compressed)
+	HolderPrivKey string              // Non-zero secp256k1 scalar below the curve order, also used to decrypt balance from ledger
+	HolderPubKey  string              // Valid 33-byte compressed secp256k1 point
 	BalanceRange  elgamal.AmountRange // Inclusive balance decryption bounds
 }
 
@@ -29,41 +29,10 @@ type ConvertBackParams struct {
 	BuildConvertBackParams
 	IssuerPubKey     string // 66 hex chars
 	AuditorPubKey    string // 66 hex chars, empty if no auditor
-	Sequence         uint32
+	Sequence         uint32 // Final transaction sequence bound into the proof. It must not change after preparation.
 	BalanceVersion   uint32
 	CurrentBalance   uint64 // Current spending balance (plaintext)
 	CurrentBalanceCt string // 132 hex chars, current ConfidentialBalanceSpending ciphertext
-}
-
-func validateConvertBackBase(p BuildConvertBackParams) error {
-	if p.Account == "" {
-		return ErrMissingAccount
-	}
-	if !addresscodec.IsValidClassicAddress(p.Account) {
-		return ErrInvalidAccount
-	}
-	if p.IssuanceID == "" {
-		return ErrMissingIssuanceID
-	}
-	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
-		return err
-	}
-	if err := validateAmount(p.Amount); err != nil {
-		return err
-	}
-	if p.HolderPrivKey == "" {
-		return ErrMissingHolderKey
-	}
-	if !isValidPrivKey(p.HolderPrivKey) {
-		return ErrInvalidPrivKey
-	}
-	if p.HolderPubKey == "" {
-		return ErrMissingHolderKey
-	}
-	if !transaction.IsValidCompressedEncryptionKey(p.HolderPubKey) {
-		return fmt.Errorf("holder pub key: %w", ErrInvalidPubKey)
-	}
-	return nil
 }
 
 // BuildConvertBack queries ledger state, decrypts the holder's balance, and builds
@@ -81,7 +50,7 @@ func BuildConvertBack(q LedgerQuerier, p BuildConvertBackParams) (*transaction.C
 		return nil, err
 	}
 
-	issuerKey, auditorKey, err := getIssuanceKeys(q, p.IssuanceID)
+	issuance, err := getIssuance(q, p.IssuanceID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,8 +60,12 @@ func BuildConvertBack(q LedgerQuerier, p BuildConvertBackParams) (*transaction.C
 		return nil, err
 	}
 
-	if holderLedgerKey != "" && holderLedgerKey != p.HolderPubKey {
-		return nil, fmt.Errorf("%w: holder pubkey does not match ledger", ErrCryptoFailed)
+	if holderLedgerKey == "" || balanceCt == "" {
+		return nil, ErrMissingSenderState
+	}
+
+	if !sameEncryptionKey(holderLedgerKey, p.HolderPubKey) {
+		return nil, fmt.Errorf("%w: holder key", ErrKeyMismatch)
 	}
 
 	currentBalance, err := elgamal.Decrypt(balanceCt, p.HolderPrivKey, p.BalanceRange)
@@ -102,8 +75,8 @@ func BuildConvertBack(q LedgerQuerier, p BuildConvertBackParams) (*transaction.C
 
 	return PrepareConvertBack(ConvertBackParams{
 		BuildConvertBackParams: p,
-		IssuerPubKey:           issuerKey,
-		AuditorPubKey:          auditorKey,
+		IssuerPubKey:           issuance.issuerKey,
+		AuditorPubKey:          issuance.auditorKey,
 		Sequence:               seq,
 		BalanceVersion:         balanceVersion,
 		CurrentBalance:         currentBalance,
@@ -141,6 +114,9 @@ func PrepareConvertBack(p ConvertBackParams) (*transaction.ConfidentialMPTConver
 	}
 	if p.Amount > p.CurrentBalance {
 		return nil, ErrInsufficientBalance
+	}
+	if p.Sequence == 0 {
+		return nil, ErrMissingSequence
 	}
 
 	bf, err := elgamal.GenerateBlindingFactor()
@@ -216,4 +192,35 @@ func PrepareConvertBack(p ConvertBackParams) (*transaction.ConfidentialMPTConver
 	}
 
 	return tx, nil
+}
+
+func validateConvertBackBase(p BuildConvertBackParams) error {
+	if p.Account == "" {
+		return ErrMissingAccount
+	}
+	if !addresscodec.IsValidClassicAddress(p.Account) {
+		return ErrInvalidAccount
+	}
+	if p.IssuanceID == "" {
+		return ErrMissingIssuanceID
+	}
+	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
+		return err
+	}
+	if err := validateAmount(p.Amount); err != nil {
+		return err
+	}
+	if p.HolderPrivKey == "" {
+		return ErrMissingHolderKey
+	}
+	if !isValidPrivateKey(p.HolderPrivKey) {
+		return ErrInvalidPrivKey
+	}
+	if p.HolderPubKey == "" {
+		return ErrMissingHolderKey
+	}
+	if !transaction.IsValidCompressedEncryptionKey(p.HolderPubKey) {
+		return fmt.Errorf("holder pub key: %w", ErrInvalidPubKey)
+	}
+	return nil
 }

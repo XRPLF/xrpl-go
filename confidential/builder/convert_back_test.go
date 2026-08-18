@@ -9,11 +9,13 @@ import (
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
+	xrplhash "github.com/Peersyst/xrpl-go/xrpl/hash"
+	ledgerentries "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/stretchr/testify/require"
 )
 
-// TestConvertBackBaseValidation verifies all validateConvertBackBase branches through both entry points.
+// TestConvertBackBaseValidation verifies shared malformed-input validation through both entry points.
 func TestConvertBackBaseValidation(t *testing.T) {
 	kp, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
@@ -79,6 +81,8 @@ func TestPrepareConvertBack_Pass(t *testing.T) {
 	require.NoError(t, err)
 	issuerKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
+	auditorKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
 
 	// Simulate existing balance state.
 	balanceBF, err := elgamal.GenerateBlindingFactor()
@@ -95,6 +99,7 @@ func TestPrepareConvertBack_Pass(t *testing.T) {
 			HolderPubKey:  holderKP.PubKeyHex,
 		},
 		IssuerPubKey:     issuerKP.PubKeyHex,
+		AuditorPubKey:    auditorKP.PubKeyHex,
 		Sequence:         1,
 		BalanceVersion:   0,
 		CurrentBalance:   currentBalance,
@@ -103,6 +108,17 @@ func TestPrepareConvertBack_Pass(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, transaction.ConfidentialMPTConvertBackTx, result.TxType())
+	require.NotNil(t, result.AuditorEncryptedAmount)
+
+	expectedHolderCt, err := elgamal.Encrypt(withdrawAmount, holderKP.PubKeyHex, result.BlindingFactor)
+	require.NoError(t, err)
+	require.Equal(t, expectedHolderCt, result.HolderEncryptedAmount)
+	expectedIssuerCt, err := elgamal.Encrypt(withdrawAmount, issuerKP.PubKeyHex, result.BlindingFactor)
+	require.NoError(t, err)
+	require.Equal(t, expectedIssuerCt, result.IssuerEncryptedAmount)
+	expectedAuditorCt, err := elgamal.Encrypt(withdrawAmount, auditorKP.PubKeyHex, result.BlindingFactor)
+	require.NoError(t, err)
+	require.Equal(t, expectedAuditorCt, *result.AuditorEncryptedAmount)
 
 	// Verify the linkage + range proof cryptographically.
 	ctxHash, err := proof.ConvertBackContextHash(testAccount, testIssuanceID, uint32(1), uint32(0))
@@ -113,6 +129,80 @@ func TestPrepareConvertBack_Pass(t *testing.T) {
 	ok, err := result.Validate()
 	require.NoError(t, err)
 	require.True(t, ok)
+}
+
+func TestPrepareConvertBack_MaxAmount(t *testing.T) {
+	const maxAmount = uint64(math.MaxInt64)
+
+	holderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	balanceBF, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	balanceCt, err := elgamal.Encrypt(maxAmount, holderKP.PubKeyHex, balanceBF)
+	require.NoError(t, err)
+
+	result, err := PrepareConvertBack(ConvertBackParams{
+		BuildConvertBackParams: BuildConvertBackParams{
+			Account:       testAccount,
+			IssuanceID:    testIssuanceID,
+			Amount:        maxAmount,
+			HolderPrivKey: holderKP.PrivKeyHex,
+			HolderPubKey:  holderKP.PubKeyHex,
+		},
+		IssuerPubKey:     issuerKP.PubKeyHex,
+		Sequence:         1,
+		CurrentBalance:   maxAmount,
+		CurrentBalanceCt: balanceCt,
+	})
+	require.NoError(t, err)
+	require.Len(t, result.ZKProof, transaction.ConvertBackProofLen)
+
+	ctxHash, err := proof.ConvertBackContextHash(testAccount, testIssuanceID, 1, 0)
+	require.NoError(t, err)
+	require.NoError(t, proof.VerifyConvertBackProof(
+		result.ZKProof,
+		holderKP.PubKeyHex,
+		balanceCt,
+		result.BalanceCommitment,
+		maxAmount,
+		ctxHash,
+	))
+	valid, err := result.Validate()
+	require.NoError(t, err)
+	require.True(t, valid)
+}
+
+func TestPrepareConvertBack_MismatchedPrivateKey(t *testing.T) {
+	const currentBalance uint64 = 100
+
+	holderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	differentKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	balanceBF, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	balanceCt, err := elgamal.Encrypt(currentBalance, holderKP.PubKeyHex, balanceBF)
+	require.NoError(t, err)
+
+	_, err = PrepareConvertBack(ConvertBackParams{
+		BuildConvertBackParams: BuildConvertBackParams{
+			Account:       testAccount,
+			IssuanceID:    testIssuanceID,
+			Amount:        1,
+			HolderPrivKey: differentKP.PrivKeyHex,
+			HolderPubKey:  holderKP.PubKeyHex,
+		},
+		IssuerPubKey:     issuerKP.PubKeyHex,
+		Sequence:         1,
+		CurrentBalance:   currentBalance,
+		CurrentBalanceCt: balanceCt,
+	})
+	require.ErrorIs(t, err, ErrCryptoFailed)
+	require.ErrorIs(t, err, proof.ErrProofGenerationFailed)
 }
 
 func TestPrepareConvertBack_FailInsufficientBalance(t *testing.T) {
@@ -163,9 +253,10 @@ func TestPrepareConvertBack_FailValidation(t *testing.T) {
 		{name: "fail - invalid issuer pub key (wrong length)", params: ConvertBackParams{BuildConvertBackParams: base, IssuerPubKey: "aabb", CurrentBalance: 100, CurrentBalanceCt: ct}, wantErr: ErrInvalidPubKey},
 		{name: "fail - invalid auditor pub key (not hex)", params: ConvertBackParams{BuildConvertBackParams: base, IssuerPubKey: issKP.PubKeyHex, AuditorPubKey: strings.Repeat("ZZ", 33), CurrentBalance: 100, CurrentBalanceCt: ct}, wantErr: ErrInvalidPubKey},
 		{name: "fail - invalid auditor pub key (wrong length)", params: ConvertBackParams{BuildConvertBackParams: base, IssuerPubKey: issKP.PubKeyHex, AuditorPubKey: "aabb", CurrentBalance: 100, CurrentBalanceCt: ct}, wantErr: ErrInvalidPubKey},
-		{name: "fail - missing sender state", params: ConvertBackParams{BuildConvertBackParams: base, IssuerPubKey: issKP.PubKeyHex, CurrentBalance: 100}, wantErr: ErrMissingSenderState},
+		{name: "fail - missing balance state", params: ConvertBackParams{BuildConvertBackParams: base, IssuerPubKey: issKP.PubKeyHex, CurrentBalance: 100}, wantErr: ErrMissingSenderState},
 		{name: "fail - invalid ciphertext (not hex)", params: ConvertBackParams{BuildConvertBackParams: base, IssuerPubKey: issKP.PubKeyHex, CurrentBalance: 100, CurrentBalanceCt: strings.Repeat("ZZ", 66)}, wantErr: ErrInvalidCiphertext},
 		{name: "fail - invalid ciphertext (wrong length)", params: ConvertBackParams{BuildConvertBackParams: base, IssuerPubKey: issKP.PubKeyHex, CurrentBalance: 100, CurrentBalanceCt: "aabb"}, wantErr: ErrInvalidCiphertext},
+		{name: "fail - missing final sequence", params: ConvertBackParams{BuildConvertBackParams: base, IssuerPubKey: issKP.PubKeyHex, CurrentBalance: 100, CurrentBalanceCt: ct}, wantErr: ErrMissingSequence},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -190,6 +281,9 @@ func TestBuildConvertBack_BalanceRange(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			holderKP, q := newBalanceLedgerFixture(t, 3, 1, currentBalance)
+			holderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+			require.NoError(t, err)
+			q.entries[holderMPTIndex]["HolderEncryptionKey"] = strings.ToUpper(holderKP.PubKeyHex)
 			result, err := BuildConvertBack(q, BuildConvertBackParams{
 				Account:       testAccount,
 				IssuanceID:    testIssuanceID,
@@ -206,8 +300,62 @@ func TestBuildConvertBack_BalanceRange(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, uint32(3), result.Sequence)
+
+			balanceCiphertext, ok := q.entries[holderMPTIndex]["ConfidentialBalanceSpending"].(string)
+			require.True(t, ok)
+			contextHash, err := proof.ConvertBackContextHash(testAccount, testIssuanceID, result.Sequence, 1)
+			require.NoError(t, err)
+			require.NoError(t, proof.VerifyConvertBackProof(result.ZKProof, holderKP.PubKeyHex, balanceCiphertext, result.BalanceCommitment, 100, contextHash))
 		})
 	}
+}
+
+func TestBuildConvertBackRejectsMismatchedHolderKey(t *testing.T) {
+	const currentBalance uint64 = 1000
+
+	_, q := newBalanceLedgerFixture(t, 3, 1, currentBalance)
+	differentKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	_, err = BuildConvertBack(q, BuildConvertBackParams{
+		Account:       testAccount,
+		IssuanceID:    testIssuanceID,
+		Amount:        100,
+		HolderPrivKey: differentKP.PrivKeyHex,
+		HolderPubKey:  differentKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+	})
+	require.ErrorIs(t, err, ErrKeyMismatch)
+	require.ErrorContains(t, err, "holder key")
+}
+
+func TestBuildConvertBackRejectsMissingHolderState(t *testing.T) {
+	holderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	mptokenIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
+
+	q := &mockQuerier{
+		accountSeq: 5,
+		entries: map[string]ledgerentries.FlatLedgerObject{
+			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
+			mptokenIndex:  buildMPTokenEntry("", "", 0, ""),
+		},
+	}
+
+	_, err = BuildConvertBack(q, BuildConvertBackParams{
+		Account:       testAccount,
+		IssuanceID:    testIssuanceID,
+		Amount:        100,
+		HolderPrivKey: holderKP.PrivKeyHex,
+		HolderPubKey:  holderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: 0, High: 1000},
+	})
+	require.ErrorIs(t, err, ErrMissingSenderState)
+	require.NotErrorIs(t, err, ErrCryptoFailed)
 }
 
 func TestBuildConvertBack_InvalidRangeBeforeLedgerQueries(t *testing.T) {

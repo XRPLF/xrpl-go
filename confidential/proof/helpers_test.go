@@ -15,3 +15,13 @@ const (
 func zeroHex(n int) string {
 	return strings.Repeat("00", n)
 }
+
+// changedHex returns value with its first hex digit altered, so callers can pin that a
+// well-formed but different input is rejected rather than a malformed one.
+func changedHex(value string) string {
+	first := byte('0')
+	if value[0] == first {
+		first = '1'
+	}
+	return string(first) + value[1:]
+}

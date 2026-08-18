@@ -19,22 +19,6 @@ type MergeInboxParams struct {
 	Sequence uint32
 }
 
-func validateMergeInboxBase(p BuildMergeInboxParams) error {
-	if p.Account == "" {
-		return ErrMissingAccount
-	}
-	if !addresscodec.IsValidClassicAddress(p.Account) {
-		return ErrInvalidAccount
-	}
-	if p.IssuanceID == "" {
-		return ErrMissingIssuanceID
-	}
-	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
-		return err
-	}
-	return nil
-}
-
 // BuildMergeInbox queries ledger state and builds a ConfidentialMPTMergeInbox transaction.
 func BuildMergeInbox(q LedgerQuerier, p BuildMergeInboxParams) (*transaction.ConfidentialMPTMergeInbox, error) {
 	if err := validateMergeInboxBase(p); err != nil {
@@ -53,7 +37,9 @@ func BuildMergeInbox(q LedgerQuerier, p BuildMergeInboxParams) (*transaction.Con
 }
 
 // PrepareMergeInbox builds a ConfidentialMPTMergeInbox transaction.
-// No cryptographic operations needed; this is a permissionless inbox-to-spending balance merge.
+// No cryptographic operations are needed. The holder authorizes this inbox-to-spending balance merge.
+// Unlike the proof-bearing helpers, no proof binds the sequence here, so a zero Sequence is
+// accepted and may be left to a later autofill.
 func PrepareMergeInbox(p MergeInboxParams) (*transaction.ConfidentialMPTMergeInbox, error) {
 	if err := validateMergeInboxBase(p.BuildMergeInboxParams); err != nil {
 		return nil, err
@@ -69,4 +55,20 @@ func PrepareMergeInbox(p MergeInboxParams) (*transaction.ConfidentialMPTMergeInb
 	}
 
 	return tx, nil
+}
+
+func validateMergeInboxBase(p BuildMergeInboxParams) error {
+	if p.Account == "" {
+		return ErrMissingAccount
+	}
+	if !addresscodec.IsValidClassicAddress(p.Account) {
+		return ErrInvalidAccount
+	}
+	if p.IssuanceID == "" {
+		return ErrMissingIssuanceID
+	}
+	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
+		return err
+	}
+	return nil
 }

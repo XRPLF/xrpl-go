@@ -1,21 +1,9 @@
 package builder
 
 import (
-	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
-
-// privKeyLen is the hex-encoded length of a private key scalar. Derived from the byte
-// length the proof and elgamal decoders enforce, so the two cannot drift.
-const privKeyLen = 2 * mptsizes.PrivKeySize
-
-// isValidPrivKey checks if the given hex string is a valid 32-byte private key scalar (64 hex chars).
-// Private keys are builder inputs only. They are never carried by a transaction.
-func isValidPrivKey(key string) bool {
-	return len(key) == privKeyLen && typecheck.IsHex(key)
-}
 
 // validateHolderRole validates an issuance ID submitted by a holder. XLS-96 forbids the
 // issuer from converting, sending, merging, or converting back its own issuance, so the

@@ -11,7 +11,8 @@ import (
 )
 
 // ConvertContextHash computes the context hash for a ConfidentialMPTConvert transaction.
-// account is a classic XRPL address, issuanceIDHex is 48 hex chars (24 bytes).
+// account is a classic XRPL address. The issuance ID is 48 hex chars (24 bytes).
+// seq is the transaction sequence number or ticket number.
 // Returns 64 hex chars (32 bytes).
 func ConvertContextHash(account string, issuanceIDHex string, seq uint32) (string, error) {
 	accID, err := decodeAddress(account)
@@ -31,7 +32,8 @@ func ConvertContextHash(account string, issuanceIDHex string, seq uint32) (strin
 }
 
 // ConvertBackContextHash computes the context hash for a ConfidentialMPTConvertBack transaction.
-// account is a classic XRPL address, issuanceIDHex is 48 hex chars (24 bytes).
+// account is a classic XRPL address. The issuance ID is 48 hex chars (24 bytes).
+// seq is the transaction sequence number or ticket number. version is the holder's confidential balance version.
 // Returns 64 hex chars (32 bytes).
 func ConvertBackContextHash(account string, issuanceIDHex string, seq, version uint32) (string, error) {
 	accID, err := decodeAddress(account)
@@ -51,7 +53,8 @@ func ConvertBackContextHash(account string, issuanceIDHex string, seq, version u
 }
 
 // SendContextHash computes the context hash for a ConfidentialMPTSend transaction.
-// account and dest are classic XRPL addresses, issuanceIDHex is 48 hex chars (24 bytes).
+// account and dest are classic XRPL addresses. The issuance ID is 48 hex chars (24 bytes).
+// seq is the transaction sequence number or ticket number. version is the sender's confidential balance version.
 // Returns 64 hex chars (32 bytes).
 func SendContextHash(account string, issuanceIDHex string, seq uint32, dest string, version uint32) (string, error) {
 	accID, err := decodeAddress(account)
@@ -75,7 +78,8 @@ func SendContextHash(account string, issuanceIDHex string, seq uint32, dest stri
 }
 
 // ClawbackContextHash computes the context hash for a ConfidentialMPTClawback transaction.
-// account and holder are classic XRPL addresses, issuanceIDHex is 48 hex chars (24 bytes).
+// account and holder are classic XRPL addresses. The issuance ID is 48 hex chars (24 bytes).
+// seq is the transaction sequence number or ticket number.
 // Returns 64 hex chars (32 bytes).
 func ClawbackContextHash(account string, issuanceIDHex string, seq uint32, holder string) (string, error) {
 	accID, err := decodeAddress(account)

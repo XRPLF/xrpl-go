@@ -18,7 +18,12 @@ title: Unreleased
 
 #### confidential/builder
 
-- Added online `Build*` and offline `Prepare*` helpers for confidential MPT send, convert, convert-back, clawback, and inbox-merge transactions. Parameter validation mirrors the transaction models: the issuance issuer is rejected from holder roles and from a send destination, required for clawback, and amounts are bounded by the protocol maximum, so an invalid request fails before any ledger query or proof generation. These helpers require classic addresses, because the keylet and proof paths they feed decode classic addresses only.
+- Added online `Build*` and offline `Prepare*` helpers for confidential MPT send, convert, convert-back, clawback, and inbox-merge transactions. See the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders) for the full parameter and error reference.
+- Builder parameters are validated before any ledger query or proof work: addresses must be classic, the issuance issuer is rejected from holder roles and from a send destination, private keys must be usable secp256k1 scalars, and amounts are bounded by the protocol maximum.
+- `Build*` helpers preflight the issuance capabilities the network enforces, so a doomed transaction never costs a fee and a sequence. Adds `ErrConfidentialDisabled`, `ErrTransferDisabled`, `ErrTransferFeeSet`, `ErrIssuanceNotFound`, and `ErrKeyMismatch`.
+- `BuildSendParams` carries an optional `DestinationTag`, and `CredentialIDs` are validated before use.
+- `BuildClawback` derives the clawback amount by decrypting the holder's `IssuerEncryptedBalance`, bounded by `BalanceRange` and capped at the issuance `ConfidentialOutstandingAmount`. `Amount` moved from `BuildClawbackParams` to `ClawbackParams`, so it is supplied only on the offline `PrepareClawback` path.
+- Proof-bearing `Prepare*` helpers reject a zero `Sequence` with `ErrMissingSequence`, because each proof binds the sequence and a later autofill would invalidate it. `PrepareMergeInbox` and a repeat `PrepareConvert` carry no proof and still accept a zero `Sequence`.
 
 #### docs
 
@@ -39,7 +44,7 @@ title: Unreleased
 #### xrpl
 
 - Added confidential-transfer flags and encryption-key fields to MPT issuance transaction and ledger-entry models.
-- Added confidential balance fields to `MPToken`, five confidential MPT transaction models, and supporting amount, encryption-key, blinding-factor, ciphertext, commitment, and proof validation helpers.
+- Added confidential balance fields to `MPToken`, five confidential MPT transaction models, and supporting amount, encryption-key, blinding-factor, ciphertext, commitment, and proof validation helpers. RPC and WebSocket autofill apply the required 10x base fee to confidential MPT transactions, including inner Batch transactions, plus the normal per-signer surcharge.
 - Added `IsMPTokenIssuer()` to report whether an address is the issuer encoded in an MPT issuance ID. Confidential MPT self-send and self-clawback checks compare decoded AccountIDs, so an X-address naming the submitting account is rejected; a `Holder` X-address carrying a tag is rejected because `ConfidentialMPTClawback` has no tag field to hold it; and an `Account` X-address tag combined with an explicit `SourceTag` is rejected before encoding rather than during it. `ConfidentialMPTSend` carries an optional `DestinationTag`, matching rippled's transaction format, and rejects it when the `Destination` X-address already embeds a tag. `ConfidentialMPTConvert` is now listed as non-delegatable, matching the protocol, so `DelegateSet` no longer accepts a permission the network rejects.
 
 #### xrpl/hash
@@ -48,6 +53,23 @@ title: Unreleased
 
 ### Fixed
 
+#### confidential
+
+- Tightened participant and fixed-size proof validation before invoking the native verifier, and aligned proof helper naming with the current `mpt-crypto` contract. Send proofs require exactly the sender, destination, and issuer, followed by the optional auditor, and any other count is rejected with `ErrInvalidParticipantCount`.
+- Every `Generate*Proof` helper now verifies its own output before returning it. The native generator reports no error for a mismatched amount or key pair, so a bad proof previously surfaced only when the network rejected the transaction.
+
 #### dependencies
 
 - Raised the minimum Go version from 1.25.12 to 1.25.13 to fix the `net/url` quadratic path-resolution vulnerability (GO-2026-6218).
+
+#### xrpl/rpc
+
+- Autofill no longer underpays transactions whose fee is a multiple of the base fee. The multiplier now applies to the exact load-adjusted network fee and the total is rounded once, instead of rounding the network fee to whole drops first.
+
+#### xrpl/transaction
+
+- Corrected confidential transaction key encoding and proof-size validation.
+
+#### xrpl/websocket
+
+- Autofill no longer underpays transactions whose fee is a multiple of the base fee. The multiplier now applies to the exact load-adjusted network fee and the total is rounded once, instead of rounding the network fee to whole drops first.

@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMergeInboxBaseValidation verifies all validateMergeInboxBase branches through both entry points.
+// TestMergeInboxBaseValidation verifies shared malformed-input validation through both entry points.
 func TestMergeInboxBaseValidation(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -20,6 +21,7 @@ func TestMergeInboxBaseValidation(t *testing.T) {
 		{name: "fail - missing issuance ID", base: BuildMergeInboxParams{Account: testAccount}, wantErr: ErrMissingIssuanceID},
 		{name: "fail - invalid issuance ID (not hex)", base: BuildMergeInboxParams{Account: testAccount, IssuanceID: strings.Repeat("GG", 24)}, wantErr: ErrInvalidIssuanceID},
 		{name: "fail - invalid issuance ID (wrong length)", base: BuildMergeInboxParams{Account: testAccount, IssuanceID: "aabb"}, wantErr: ErrInvalidIssuanceID},
+		{name: "fail - account is an X-address", base: BuildMergeInboxParams{Account: xAddressOf(t, testAccount), IssuanceID: testIssuanceID}, wantErr: ErrInvalidAccount},
 		{name: "fail - account is the issuance issuer", base: BuildMergeInboxParams{Account: testAccount, IssuanceID: testIssuerIssuanceID}, wantErr: ErrIssuerNotAllowed},
 	}
 
@@ -33,11 +35,12 @@ func TestMergeInboxBaseValidation(t *testing.T) {
 	})
 
 	t.Run("fail - validation BuildMergeInbox", func(t *testing.T) {
-		q := &mockQuerier{}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
+				q := &mockQuerier{}
 				_, err := BuildMergeInbox(q, tc.base)
 				require.ErrorIs(t, err, tc.wantErr)
+				require.Zero(t, q.queryCalls)
 			})
 		}
 	})
@@ -71,4 +74,16 @@ func TestBuildMergeInbox_Pass(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, uint32(42), result.Sequence)
+}
+
+func TestBuildMergeInboxPreservesAccountQueryError(t *testing.T) {
+	cause := errors.New("account_info unavailable")
+	q := &mockQuerier{accountErr: cause}
+
+	_, err := BuildMergeInbox(q, BuildMergeInboxParams{
+		Account:    testAccount,
+		IssuanceID: testIssuanceID,
+	})
+	require.ErrorIs(t, err, ErrLedgerQuery)
+	require.ErrorIs(t, err, cause)
 }

@@ -37,14 +37,25 @@ func TestConvertContextHash(t *testing.T) {
 	}
 }
 
-func TestConvertContextHashDeterministic(t *testing.T) {
-	h1, err := proof.ConvertContextHash(testAccount, testIssuanceID, 1)
-	require.NoError(t, err)
+func TestContextHashReferenceVectors(t *testing.T) {
+	tests := []struct {
+		name     string
+		generate func() (string, error)
+		want     string
+	}{
+		{name: "convert", generate: func() (string, error) { return proof.ConvertContextHash(testAccount, testIssuanceID, 1) }, want: "977ec1bd2ba79215c4f4b90a6fb1ee5e4fb819b96a3800c5b15251d12d4359bd"},
+		{name: "convert back", generate: func() (string, error) { return proof.ConvertBackContextHash(testAccount, testIssuanceID, 1, 7) }, want: "cb8e464e73b66c92a508f3a834f174a85b8e39aab466a0caa04a5fb75b4a2cbd"},
+		{name: "send", generate: func() (string, error) { return proof.SendContextHash(testAccount, testIssuanceID, 1, testDest, 7) }, want: "6470c7add7960234c584572d7cb6423e807c01feceea69d905c8d8218b3503d9"},
+		{name: "clawback", generate: func() (string, error) { return proof.ClawbackContextHash(testAccount, testIssuanceID, 1, testHolder) }, want: "e2ef94a2a2ed1386fd8df453be61f282b0a51a843c498749916d2456bd58b1a1"},
+	}
 
-	h2, err := proof.ConvertContextHash(testAccount, testIssuanceID, 1)
-	require.NoError(t, err)
-
-	require.Equal(t, h1, h2, "same inputs should produce the same hash")
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := test.generate()
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
+		})
+	}
 }
 
 func TestConvertBackContextHash(t *testing.T) {

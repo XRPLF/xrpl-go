@@ -19,31 +19,43 @@ func TestGenerateAndVerifyConvertProof(t *testing.T) {
 
 	ctxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, 1)
 	require.NoError(t, err)
+	wrongCtxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, 2)
+	require.NoError(t, err)
 
 	proofHex, err := proof.GenerateConvertProof(kp.PubKeyHex, kp.PrivKeyHex, ctxHash)
 	require.NoError(t, err)
 	require.Len(t, proofHex, mptsizes.SchnorrProofSize*2)
 
 	tests := []struct {
-		name    string
-		pubKey  string
-		wantErr error
+		name        string
+		proofHex    string
+		pubKey      string
+		contextHash string
+		wantErr     error
 	}{
-		{name: "pass - correct key", pubKey: kp.PubKeyHex},
-		{name: "fail - wrong key", pubKey: wrongKP.PubKeyHex, wantErr: proof.ErrProofVerificationFailed},
+		{name: "pass - correct statement", proofHex: proofHex, pubKey: kp.PubKeyHex, contextHash: ctxHash},
+		{name: "fail - changed proof", proofHex: changedHex(proofHex), pubKey: kp.PubKeyHex, contextHash: ctxHash, wantErr: proof.ErrProofVerificationFailed},
+		{name: "fail - wrong key", proofHex: proofHex, pubKey: wrongKP.PubKeyHex, contextHash: ctxHash, wantErr: proof.ErrProofVerificationFailed},
+		{name: "fail - wrong context", proofHex: proofHex, pubKey: kp.PubKeyHex, contextHash: wrongCtxHash, wantErr: proof.ErrProofVerificationFailed},
+		{name: "fail - malformed key", proofHex: proofHex, pubKey: "bad", contextHash: ctxHash, wantErr: proof.ErrInvalidPubKey},
+		{name: "fail - malformed context", proofHex: proofHex, pubKey: kp.PubKeyHex, contextHash: "bad", wantErr: proof.ErrInvalidContextHash},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := proof.VerifyConvertProof(proofHex, tt.pubKey, ctxHash)
+			err := proof.VerifyConvertProof(tt.proofHex, tt.pubKey, tt.contextHash)
 			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }
 
 func TestConvertProofInvalidInputs(t *testing.T) {
-	kp, _ := elgamal.GenerateKeypair()
-	ctxHash, _ := proof.ConvertContextHash(testAccount, testIssuanceID, 1)
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	otherKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	ctxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, 1)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name    string
@@ -73,6 +85,14 @@ func TestConvertProofInvalidInputs(t *testing.T) {
 				return err
 			},
 			wantErr: proof.ErrInvalidContextHash,
+		},
+		{
+			name: "fail - generate mismatched keypair",
+			fn: func() error {
+				_, err := proof.GenerateConvertProof(kp.PubKeyHex, otherKP.PrivKeyHex, ctxHash)
+				return err
+			},
+			wantErr: proof.ErrProofGenerationFailed,
 		},
 		{
 			name: "fail - verify bad proof",

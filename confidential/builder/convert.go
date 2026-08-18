@@ -1,7 +1,6 @@
 package builder
 
 import (
-	"errors"
 	"fmt"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -17,8 +16,8 @@ type BuildConvertParams struct {
 	Account       string
 	IssuanceID    string
 	Amount        uint64
-	HolderPrivKey string // 64 hex chars
-	HolderPubKey  string // 66 hex chars (compressed)
+	HolderPrivKey string // Non-zero secp256k1 scalar below the curve order. Required only for first-time key registration.
+	HolderPubKey  string // Valid 33-byte compressed secp256k1 point
 }
 
 // ConvertParams holds inputs for PrepareConvert.
@@ -26,41 +25,10 @@ type ConvertParams struct {
 	BuildConvertParams
 	IssuerPubKey  string // 66 hex chars (from MPTokenIssuance.IssuerEncryptionKey)
 	AuditorPubKey string // 66 hex chars, empty if no auditor
-	Sequence      uint32 // Account sequence number
-	FirstTime     bool   // If true, registers key + generates Schnorr proof
-}
-
-// validateConvertBase validates common Convert fields. A zero Amount is valid here.
-// See validateAmountUpperBound.
-func validateConvertBase(p BuildConvertParams) error {
-	if p.Account == "" {
-		return ErrMissingAccount
-	}
-	if !addresscodec.IsValidClassicAddress(p.Account) {
-		return ErrInvalidAccount
-	}
-	if p.IssuanceID == "" {
-		return ErrMissingIssuanceID
-	}
-	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
-		return err
-	}
-	if err := validateAmountUpperBound(p.Amount); err != nil {
-		return err
-	}
-	if p.HolderPrivKey == "" {
-		return ErrMissingHolderKey
-	}
-	if !isValidPrivKey(p.HolderPrivKey) {
-		return ErrInvalidPrivKey
-	}
-	if p.HolderPubKey == "" {
-		return ErrMissingHolderKey
-	}
-	if !transaction.IsValidCompressedEncryptionKey(p.HolderPubKey) {
-		return fmt.Errorf("holder pub key: %w", ErrInvalidPubKey)
-	}
-	return nil
+	// Sequence is bound into the first-time proof and must not change after preparation.
+	// A repeat convert carries no proof, so it may be left zero for a later autofill.
+	Sequence  uint32
+	FirstTime bool // If true, registers key + generates Schnorr proof
 }
 
 // BuildConvert queries ledger state and builds a ConfidentialMPTConvert transaction.
@@ -74,25 +42,25 @@ func BuildConvert(q LedgerQuerier, p BuildConvertParams) (*transaction.Confident
 		return nil, err
 	}
 
-	issuerKey, auditorKey, err := getIssuanceKeys(q, p.IssuanceID)
+	issuance, err := getIssuance(q, p.IssuanceID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Determine if this is a first-time convert by checking if the MPToken exists
-	// and has a HolderEncryptionKey registered.
-	firstTime := true
-	holderKey, _, _, err := getMPTokenState(q, p.IssuanceID, p.Account)
-	if err == nil && holderKey != "" {
-		firstTime = false
-	} else if err != nil && !errors.Is(err, ErrMPTokenNotFound) {
+	// A holder without a registered encryption key uses the first-time proof form.
+	holderKey, err := getMPTokenHolderKey(q, p.IssuanceID, p.Account)
+	if err != nil {
 		return nil, err
+	}
+	firstTime := holderKey == ""
+	if !firstTime && !sameEncryptionKey(holderKey, p.HolderPubKey) {
+		return nil, fmt.Errorf("%w: holder key", ErrKeyMismatch)
 	}
 
 	return PrepareConvert(ConvertParams{
 		BuildConvertParams: p,
-		IssuerPubKey:       issuerKey,
-		AuditorPubKey:      auditorKey,
+		IssuerPubKey:       issuance.issuerKey,
+		AuditorPubKey:      issuance.auditorKey,
 		Sequence:           seq,
 		FirstTime:          firstTime,
 	})
@@ -117,6 +85,19 @@ func PrepareConvert(p ConvertParams) (*transaction.ConfidentialMPTConvert, error
 	}
 	if p.AuditorPubKey != "" && !transaction.IsValidCompressedEncryptionKey(p.AuditorPubKey) {
 		return nil, fmt.Errorf("auditor pub key: %w", ErrInvalidPubKey)
+	}
+	// Only the first-time form carries a proof, and only that proof binds the sequence.
+	// A repeat convert is free to leave Sequence to a later autofill.
+	if p.FirstTime {
+		if p.HolderPrivKey == "" {
+			return nil, ErrMissingHolderKey
+		}
+		if !isValidPrivateKey(p.HolderPrivKey) {
+			return nil, ErrInvalidPrivKey
+		}
+		if p.Sequence == 0 {
+			return nil, ErrMissingSequence
+		}
 	}
 
 	bf, err := elgamal.GenerateBlindingFactor()
@@ -172,4 +153,34 @@ func PrepareConvert(p ConvertParams) (*transaction.ConfidentialMPTConvert, error
 	}
 
 	return tx, nil
+}
+
+// validateConvertBase validates common Convert fields. A zero Amount is valid here.
+// See validateAmountUpperBound.
+func validateConvertBase(p BuildConvertParams) error {
+	if p.Account == "" {
+		return ErrMissingAccount
+	}
+	if !addresscodec.IsValidClassicAddress(p.Account) {
+		return ErrInvalidAccount
+	}
+	if p.IssuanceID == "" {
+		return ErrMissingIssuanceID
+	}
+	if err := validateHolderRole(p.IssuanceID, p.Account); err != nil {
+		return err
+	}
+	if err := validateAmountUpperBound(p.Amount); err != nil {
+		return err
+	}
+	if p.HolderPrivKey != "" && !isValidPrivateKey(p.HolderPrivKey) {
+		return ErrInvalidPrivKey
+	}
+	if p.HolderPubKey == "" {
+		return ErrMissingHolderKey
+	}
+	if !transaction.IsValidCompressedEncryptionKey(p.HolderPubKey) {
+		return fmt.Errorf("holder pub key: %w", ErrInvalidPubKey)
+	}
+	return nil
 }

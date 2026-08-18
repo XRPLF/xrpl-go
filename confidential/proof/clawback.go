@@ -10,6 +10,10 @@ import (
 )
 
 // GenerateClawbackProof generates a compact sigma proof for a ConfidentialMPTClawback transaction.
+// The key pair is the issuance issuer's ElGamal key pair. ciphertextHex is the holder MPToken's
+// IssuerEncryptedBalance, amount is that holder's complete confidential balance, and ctxHashHex is
+// the context from ClawbackContextHash. The generated proof is verified before it is returned,
+// because the native generator accepts a mismatched amount or key pair without reporting an error.
 // Returns 128 hex chars (64-byte proof).
 func GenerateClawbackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint64, ciphertextHex string) (string, error) {
 	privBytes, err := hexutil.DecodeFixedHex(privkeyHex, mptsizes.PrivKeySize)
@@ -34,14 +38,20 @@ func GenerateClawbackProof(privkeyHex, pubkeyHex, ctxHashHex string, amount uint
 	hash := mptcrypto.ContextHash(hashBytes)
 	ct := mptcrypto.Ciphertext(ctBytes)
 
-	proof, err := mptcrypto.GenerateClawbackProof(priv, pub, hash, amount, ct)
+	generatedProof, err := mptcrypto.GenerateClawbackProof(priv, pub, hash, amount, ct)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrProofGenerationFailed, err)
 	}
-	return hex.EncodeToString(proof[:]), nil
+	if err := mptcrypto.VerifyClawbackProof(generatedProof, amount, pub, ct, hash); err != nil {
+		return "", fmt.Errorf("%w: generated proof verification failed: %w", ErrProofGenerationFailed, err)
+	}
+	return hex.EncodeToString(generatedProof[:]), nil
 }
 
 // VerifyClawbackProof verifies an equality proof for a ConfidentialMPTClawback transaction.
+// pubkeyHex is the issuance issuer's ElGamal public key. ciphertextHex is the holder MPToken's
+// IssuerEncryptedBalance, amount is that holder's complete confidential balance, and ctxHashHex is
+// the context from ClawbackContextHash.
 func VerifyClawbackProof(proofHex string, amount uint64, pubkeyHex, ciphertextHex, ctxHashHex string) error {
 	proofBytes, err := hexutil.DecodeFixedHex(proofHex, mptsizes.CompactClawbackProofSize)
 	if err != nil {

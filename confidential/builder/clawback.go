@@ -14,66 +14,41 @@ import (
 	"fmt"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
 // BuildClawbackParams holds minimal inputs for BuildClawback.
-// Sequence, IssuerPubKey, and IssuerCiphertext are auto-resolved from the ledger.
+// Sequence, IssuerPubKey, IssuerCiphertext, and Amount are auto-resolved from the ledger.
 type BuildClawbackParams struct {
 	Account       string // Issuer
 	Holder        string
 	IssuanceID    string
-	Amount        uint64
-	IssuerPrivKey string // 64 hex chars
+	IssuerPrivKey string              // Non-zero secp256k1 scalar below the curve order, also used to decrypt the holder balance
+	BalanceRange  elgamal.AmountRange // Inclusive bounds for decrypting the holder's balance
 }
 
-// ClawbackParams holds inputs for PrepareClawback.
+// ClawbackParams holds inputs for PrepareClawback. BalanceRange is used only by
+// BuildClawback and has no effect when the caller supplies Amount directly.
 type ClawbackParams struct {
 	BuildClawbackParams
-	IssuerPubKey     string // 66 hex chars (from MPTokenIssuance.IssuerEncryptionKey)
-	IssuerCiphertext string // 132 hex chars, IssuerEncryptedBalance from holder's MPToken
-	Sequence         uint32
+	Amount           uint64 // The holder's complete confidential balance, which a clawback removes in full
+	IssuerPubKey     string // Valid 33-byte compressed secp256k1 point from MPTokenIssuance.IssuerEncryptionKey
+	IssuerCiphertext string // Two valid compressed secp256k1 points from the holder MPToken's IssuerEncryptedBalance
+	Sequence         uint32 // Final transaction sequence bound into the proof. It must not change after preparation.
 }
 
-func validateClawbackBase(p BuildClawbackParams) error {
-	if p.Account == "" {
-		return ErrMissingAccount
-	}
-	if !addresscodec.IsValidClassicAddress(p.Account) {
-		return ErrInvalidAccount
-	}
-	if p.Holder == "" {
-		return ErrMissingHolder
-	}
-	if !addresscodec.IsValidClassicAddress(p.Holder) {
-		return ErrInvalidHolder
-	}
-	if p.Account == p.Holder {
-		return ErrSelfClawback
-	}
-	if p.IssuanceID == "" {
-		return ErrMissingIssuanceID
-	}
-	if err := validateIssuerRole(p.IssuanceID, p.Account); err != nil {
-		return err
-	}
-	if err := validateAmount(p.Amount); err != nil {
-		return err
-	}
-	if p.IssuerPrivKey == "" {
-		return ErrMissingIssuerKey
-	}
-	if !isValidPrivKey(p.IssuerPrivKey) {
-		return ErrInvalidPrivKey
-	}
-	return nil
-}
-
-// BuildClawback queries ledger state and builds a ConfidentialMPTClawback transaction.
+// BuildClawback queries ledger state, decrypts the holder's balance, and builds a
+// ConfidentialMPTClawback transaction. The amount is the holder's complete balance,
+// decrypted from IssuerEncryptedBalance within BalanceRange's inclusive bounds, capped
+// at the issuance's ConfidentialOutstandingAmount.
 func BuildClawback(q LedgerQuerier, p BuildClawbackParams) (*transaction.ConfidentialMPTClawback, error) {
 	if err := validateClawbackBase(p); err != nil {
+		return nil, err
+	}
+	if err := p.BalanceRange.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -82,7 +57,7 @@ func BuildClawback(q LedgerQuerier, p BuildClawbackParams) (*transaction.Confide
 		return nil, err
 	}
 
-	issuerKey, _, err := getIssuanceKeys(q, p.IssuanceID)
+	issuance, err := getIssuance(q, p.IssuanceID)
 	if err != nil {
 		return nil, err
 	}
@@ -92,9 +67,26 @@ func BuildClawback(q LedgerQuerier, p BuildClawbackParams) (*transaction.Confide
 		return nil, err
 	}
 
+	// The confidential supply bounds every holder's balance, and a clawback above it fails
+	// with tecINSUFFICIENT_FUNDS, so it is both a preflight check and a ceiling that keeps
+	// the decryption search from scanning further than the balance can possibly reach.
+	searchRange := p.BalanceRange
+	if searchRange.Low > issuance.confidentialOutstanding {
+		return nil, ErrAmountExceedsOutstanding
+	}
+	if searchRange.High > issuance.confidentialOutstanding {
+		searchRange.High = issuance.confidentialOutstanding
+	}
+
+	amount, err := elgamal.Decrypt(issuerCt, p.IssuerPrivKey, searchRange)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to decrypt holder balance: %w", ErrCryptoFailed, err)
+	}
+
 	return PrepareClawback(ClawbackParams{
 		BuildClawbackParams: p,
-		IssuerPubKey:        issuerKey,
+		Amount:              amount,
+		IssuerPubKey:        issuance.issuerKey,
 		IssuerCiphertext:    issuerCt,
 		Sequence:            seq,
 	})
@@ -109,6 +101,9 @@ func PrepareClawback(p ClawbackParams) (*transaction.ConfidentialMPTClawback, er
 	if err := validateClawbackBase(p.BuildClawbackParams); err != nil {
 		return nil, err
 	}
+	if err := validateAmount(p.Amount); err != nil {
+		return nil, err
+	}
 	if p.IssuerPubKey == "" {
 		return nil, ErrMissingIssuerKey
 	}
@@ -120,6 +115,9 @@ func PrepareClawback(p ClawbackParams) (*transaction.ConfidentialMPTClawback, er
 	}
 	if !transaction.IsValidCiphertext(p.IssuerCiphertext) {
 		return nil, ErrInvalidCiphertext
+	}
+	if p.Sequence == 0 {
+		return nil, ErrMissingSequence
 	}
 
 	ctxHash, err := proof.ClawbackContextHash(p.Account, p.IssuanceID, p.Sequence, p.Holder)
@@ -145,4 +143,35 @@ func PrepareClawback(p ClawbackParams) (*transaction.ConfidentialMPTClawback, er
 	}
 
 	return tx, nil
+}
+
+func validateClawbackBase(p BuildClawbackParams) error {
+	if p.Account == "" {
+		return ErrMissingAccount
+	}
+	if !addresscodec.IsValidClassicAddress(p.Account) {
+		return ErrInvalidAccount
+	}
+	if p.Holder == "" {
+		return ErrMissingHolder
+	}
+	if !addresscodec.IsValidClassicAddress(p.Holder) {
+		return ErrInvalidHolder
+	}
+	if p.Account == p.Holder {
+		return ErrSelfClawback
+	}
+	if p.IssuanceID == "" {
+		return ErrMissingIssuanceID
+	}
+	if err := validateIssuerRole(p.IssuanceID, p.Account); err != nil {
+		return err
+	}
+	if p.IssuerPrivKey == "" {
+		return ErrMissingIssuerKey
+	}
+	if !isValidPrivateKey(p.IssuerPrivKey) {
+		return ErrInvalidPrivKey
+	}
+	return nil
 }

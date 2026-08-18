@@ -10,7 +10,9 @@ import (
 )
 
 // GenerateConvertProof generates a Schnorr proof of knowledge for a ConfidentialMPTConvert transaction.
-// pubkeyHex: 66 hex chars, privkeyHex: 64 hex chars, ctxHashHex: 64 hex chars.
+// The key pair is the holder's ElGamal key pair, and ctxHashHex is the context from
+// ConvertContextHash. The generated proof is verified before it is returned, because the native
+// generator accepts a mismatched key pair without reporting an error.
 // Returns 128 hex chars (64-byte proof).
 func GenerateConvertProof(pubkeyHex, privkeyHex, ctxHashHex string) (string, error) {
 	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptsizes.PubKeySize)
@@ -30,11 +32,14 @@ func GenerateConvertProof(pubkeyHex, privkeyHex, ctxHashHex string) (string, err
 	priv := mptcrypto.PrivateKey(privBytes)
 	hash := mptcrypto.ContextHash(hashBytes)
 
-	proof, err := mptcrypto.GenerateConvertProof(pub, priv, hash)
+	generatedProof, err := mptcrypto.GenerateConvertProof(pub, priv, hash)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrProofGenerationFailed, err)
 	}
-	return hex.EncodeToString(proof[:]), nil
+	if err := mptcrypto.VerifyConvertProof(generatedProof, pub, hash); err != nil {
+		return "", fmt.Errorf("%w: generated proof verification failed: %w", ErrProofGenerationFailed, err)
+	}
+	return hex.EncodeToString(generatedProof[:]), nil
 }
 
 // VerifyConvertProof verifies a Schnorr proof for a ConfidentialMPTConvert transaction.

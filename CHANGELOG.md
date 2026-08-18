@@ -23,7 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### confidential/builder
 
-- Added online `Build*` and offline `Prepare*` helpers for confidential MPT send, convert, convert-back, clawback, and inbox-merge transactions. Parameter validation mirrors the transaction models: the issuance issuer is rejected from holder roles and from a send destination, required for clawback, and amounts are bounded by the protocol maximum, so an invalid request fails before any ledger query or proof generation. These helpers require classic addresses, because the keylet and proof paths they feed decode classic addresses only.
+- Added online `Build*` and offline `Prepare*` helpers for confidential MPT send, convert, convert-back, clawback, and inbox-merge transactions. See the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders) for the full parameter and error reference.
+- Builder parameters are validated before any ledger query or proof work: addresses must be classic, the issuance issuer is rejected from holder roles and from a send destination, private keys must be usable secp256k1 scalars, and amounts are bounded by the protocol maximum.
+- `Build*` helpers preflight the issuance capabilities the network enforces, so a doomed transaction never costs a fee and a sequence. Adds `ErrConfidentialDisabled`, `ErrTransferDisabled`, `ErrTransferFeeSet`, `ErrIssuanceNotFound`, and `ErrKeyMismatch`.
+- `BuildSendParams` carries an optional `DestinationTag`, and `CredentialIDs` are validated before use.
+- `BuildClawback` derives the clawback amount by decrypting the holder's `IssuerEncryptedBalance`, bounded by `BalanceRange` and capped at the issuance `ConfidentialOutstandingAmount`. `Amount` moved from `BuildClawbackParams` to `ClawbackParams`, so it is supplied only on the offline `PrepareClawback` path.
+- Proof-bearing `Prepare*` helpers reject a zero `Sequence` with `ErrMissingSequence`, because each proof binds the sequence and a later autofill would invalidate it. `PrepareMergeInbox` and a repeat `PrepareConvert` carry no proof and still accept a zero `Sequence`.
 
 #### docs
 
@@ -72,7 +77,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### confidential
 
-- Tightened participant and fixed-size proof validation before invoking the native verifier, and aligned proof helper naming with the current `mpt-crypto` contract.
+- Tightened participant and fixed-size proof validation before invoking the native verifier, and aligned proof helper naming with the current `mpt-crypto` contract. Send proofs require exactly the sender, destination, and issuer, followed by the optional auditor, and any other count is rejected with `ErrInvalidParticipantCount`.
+- Every `Generate*Proof` helper now verifies its own output before returning it. The native generator reports no error for a mismatched amount or key pair, so a bad proof previously surfaced only when the network rejected the transaction.
 
 #### dependencies
 

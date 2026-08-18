@@ -3,6 +3,7 @@
 package builder
 
 import (
+	"errors"
 	"math"
 	"strings"
 	"testing"
@@ -12,10 +13,11 @@ import (
 	xrplhash "github.com/Peersyst/xrpl-go/xrpl/hash"
 	ledgerentries "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
 
-// TestSendBaseValidation verifies all validateSendBase branches through both entry points.
+// TestSendBaseValidation verifies shared malformed-input validation through both entry points.
 func TestSendBaseValidation(t *testing.T) {
 	kp, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
@@ -34,17 +36,19 @@ func TestSendBaseValidation(t *testing.T) {
 		{name: "fail - X-address account", base: BuildSendParams{Account: xAddressOf(t, testAccount), Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidAccount},
 		{name: "fail - destination is the issuance issuer", base: BuildSendParams{Account: testDestination, Destination: testAccount, IssuanceID: testIssuerIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrDestinationIsIssuer},
 		{name: "fail - account is the issuance issuer", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuerIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrIssuerNotAllowed},
+		{name: "fail - zero amount", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 0, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrZeroAmount},
 		{name: "fail - amount above protocol maximum", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: math.MaxUint64, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrAmountTooLarge},
 		{name: "fail - missing issuance ID", base: BuildSendParams{Account: testAccount, Destination: testDestination, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrMissingIssuanceID},
 		{name: "fail - invalid issuance ID (not hex)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: strings.Repeat("GG", 24), Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},
 		{name: "fail - invalid issuance ID (wrong length)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: "aabb", Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidIssuanceID},
-		{name: "fail - zero amount", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 0, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrZeroAmount},
+		{name: "fail - amount above protocol maximum (boundary)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: uint64(math.MaxInt64) + 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrAmountTooLarge},
 		{name: "fail - missing sender priv key", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPubKey: kp.PubKeyHex}, wantErr: ErrMissingSenderKey},
 		{name: "fail - invalid sender priv key (not hex)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: strings.Repeat("ZZ", 32), SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidPrivKey},
 		{name: "fail - invalid sender priv key (wrong length)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: "aabb", SenderPubKey: kp.PubKeyHex}, wantErr: ErrInvalidPrivKey},
 		{name: "fail - missing sender pub key", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex}, wantErr: ErrMissingSenderKey},
 		{name: "fail - invalid sender pub key (not hex)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: strings.Repeat("ZZ", 33)}, wantErr: ErrInvalidPubKey},
 		{name: "fail - invalid sender pub key (wrong length)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: "aabb"}, wantErr: ErrInvalidPubKey},
+		{name: "fail - invalid credential ID", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex, CredentialIDs: []string{"ZZ"}}, wantErr: transaction.ErrInvalidCredentialIDs},
 	}
 
 	t.Run("fail - validation PrepareSend", func(t *testing.T) {
@@ -141,6 +145,53 @@ func TestPrepareSend_Pass(t *testing.T) {
 	require.True(t, ok)
 }
 
+// TestPrepareSend_MaximumAmount pins that the protocol maximum is accepted and that the
+// proof it produces still verifies. A zero amount is rejected by validateAmount, so the
+// lower bound is covered by the validation table instead.
+func TestPrepareSend_MaximumAmount(t *testing.T) {
+	const amount = uint64(math.MaxInt64)
+
+	senderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	receiverKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	balanceBF, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	balanceCiphertext, err := elgamal.Encrypt(amount, senderKP.PubKeyHex, balanceBF)
+	require.NoError(t, err)
+
+	result, err := PrepareSend(SendParams{
+		BuildSendParams: BuildSendParams{
+			Account:       testAccount,
+			Destination:   testDestination,
+			IssuanceID:    testIssuanceID,
+			Amount:        amount,
+			SenderPrivKey: senderKP.PrivKeyHex,
+			SenderPubKey:  senderKP.PubKeyHex,
+		},
+		ReceiverPubKey:   receiverKP.PubKeyHex,
+		IssuerPubKey:     issuerKP.PubKeyHex,
+		Sequence:         1,
+		CurrentBalance:   amount,
+		CurrentBalanceCt: balanceCiphertext,
+	})
+	require.NoError(t, err)
+
+	contextHash, err := proof.SendContextHash(testAccount, testIssuanceID, result.Sequence, testDestination, 0)
+	require.NoError(t, err)
+	participants := []proof.Participant{
+		{PubKeyHex: senderKP.PubKeyHex, CiphertextHex: result.SenderEncryptedAmount},
+		{PubKeyHex: receiverKP.PubKeyHex, CiphertextHex: result.DestinationEncryptedAmount},
+		{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: result.IssuerEncryptedAmount},
+	}
+	require.NoError(t, proof.VerifySendProof(result.ZKProof, participants, balanceCiphertext, result.AmountCommitment, result.BalanceCommitment, contextHash))
+	valid, err := result.Validate()
+	require.NoError(t, err)
+	require.True(t, valid)
+}
+
 func TestPrepareSend_PassWithAuditor(t *testing.T) {
 	senderKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
@@ -176,6 +227,16 @@ func TestPrepareSend_PassWithAuditor(t *testing.T) {
 	require.NotNil(t, result.AuditorEncryptedAmount)
 	require.Len(t, *result.AuditorEncryptedAmount, 132)
 
+	ctxHash, err := proof.SendContextHash(testAccount, testIssuanceID, result.Sequence, testDestination, 0)
+	require.NoError(t, err)
+	participants := []proof.Participant{
+		{PubKeyHex: senderKP.PubKeyHex, CiphertextHex: result.SenderEncryptedAmount},
+		{PubKeyHex: receiverKP.PubKeyHex, CiphertextHex: result.DestinationEncryptedAmount},
+		{PubKeyHex: issuerKP.PubKeyHex, CiphertextHex: result.IssuerEncryptedAmount},
+		{PubKeyHex: auditorKP.PubKeyHex, CiphertextHex: *result.AuditorEncryptedAmount},
+	}
+	require.NoError(t, proof.VerifySendProof(result.ZKProof, participants, balanceCt, result.AmountCommitment, result.BalanceCommitment, ctxHash))
+
 	ok, err := result.Validate()
 	require.NoError(t, err)
 	require.True(t, ok)
@@ -194,7 +255,7 @@ func TestPrepareSend_PassWithCredentialIDs(t *testing.T) {
 	balanceCt, err := elgamal.Encrypt(1000, senderKP.PubKeyHex, balanceBF)
 	require.NoError(t, err)
 
-	credIDs := []string{"A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2", "B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3D4E5F6A1B2C3"}
+	credIDs := []string{strings.Repeat("A1", 32), strings.Repeat("B2", 32)}
 	result, err := PrepareSend(SendParams{
 		BuildSendParams: BuildSendParams{
 			Account:       testAccount,
@@ -254,9 +315,20 @@ func TestPrepareSend_FailValidation(t *testing.T) {
 		{name: "fail - invalid issuer pub key (wrong length)", params: SendParams{BuildSendParams: validBase, ReceiverPubKey: rkp.PubKeyHex, IssuerPubKey: "aabb", CurrentBalanceCt: validCt, CurrentBalance: 100}, wantErr: ErrInvalidPubKey},
 		{name: "fail - invalid auditor pub key (not hex)", params: SendParams{BuildSendParams: validBase, ReceiverPubKey: rkp.PubKeyHex, IssuerPubKey: ikp.PubKeyHex, AuditorPubKey: strings.Repeat("ZZ", 33), CurrentBalanceCt: validCt, CurrentBalance: 100}, wantErr: ErrInvalidPubKey},
 		{name: "fail - invalid auditor pub key (wrong length)", params: SendParams{BuildSendParams: validBase, ReceiverPubKey: rkp.PubKeyHex, IssuerPubKey: ikp.PubKeyHex, AuditorPubKey: "aabb", CurrentBalanceCt: validCt, CurrentBalance: 100}, wantErr: ErrInvalidPubKey},
-		{name: "fail - missing sender state", params: SendParams{BuildSendParams: validBase, ReceiverPubKey: rkp.PubKeyHex, IssuerPubKey: ikp.PubKeyHex}, wantErr: ErrMissingSenderState},
+		{name: "fail - missing balance state", params: SendParams{BuildSendParams: validBase, ReceiverPubKey: rkp.PubKeyHex, IssuerPubKey: ikp.PubKeyHex}, wantErr: ErrMissingSenderState},
 		{name: "fail - invalid ciphertext (not hex)", params: SendParams{BuildSendParams: validBase, ReceiverPubKey: rkp.PubKeyHex, IssuerPubKey: ikp.PubKeyHex, CurrentBalanceCt: strings.Repeat("ZZ", 66), CurrentBalance: 100}, wantErr: ErrInvalidCiphertext},
 		{name: "fail - invalid ciphertext (wrong length)", params: SendParams{BuildSendParams: validBase, ReceiverPubKey: rkp.PubKeyHex, IssuerPubKey: ikp.PubKeyHex, CurrentBalanceCt: "aabb", CurrentBalance: 100}, wantErr: ErrInvalidCiphertext},
+		{
+			name: "fail - missing final sequence",
+			params: SendParams{
+				BuildSendParams:  validBase,
+				ReceiverPubKey:   rkp.PubKeyHex,
+				IssuerPubKey:     ikp.PubKeyHex,
+				CurrentBalance:   100,
+				CurrentBalanceCt: validCt,
+			},
+			wantErr: ErrMissingSequence,
+		},
 		{
 			name: "fail - insufficient balance",
 			params: SendParams{
@@ -277,16 +349,113 @@ func TestPrepareSend_FailValidation(t *testing.T) {
 	}
 }
 
+func TestPrepareSendRejectsMismatchedSenderKey(t *testing.T) {
+	senderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	otherKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	receiverKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	balanceBF, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	balanceCiphertext, err := elgamal.Encrypt(1000, senderKP.PubKeyHex, balanceBF)
+	require.NoError(t, err)
+
+	_, err = PrepareSend(SendParams{
+		BuildSendParams: BuildSendParams{
+			Account:       testAccount,
+			Destination:   testDestination,
+			IssuanceID:    testIssuanceID,
+			Amount:        100,
+			SenderPrivKey: otherKP.PrivKeyHex,
+			SenderPubKey:  senderKP.PubKeyHex,
+		},
+		ReceiverPubKey:   receiverKP.PubKeyHex,
+		IssuerPubKey:     issuerKP.PubKeyHex,
+		Sequence:         1,
+		CurrentBalance:   1000,
+		CurrentBalanceCt: balanceCiphertext,
+	})
+	require.ErrorIs(t, err, ErrCryptoFailed)
+	require.ErrorIs(t, err, proof.ErrProofGenerationFailed)
+}
+
 func TestBuildSend_Pass(t *testing.T) {
 	const currentBalance uint64 = 1000
 	const sendAmount uint64 = 300
 
 	senderKP, q := newBalanceLedgerFixture(t, 8, 2, currentBalance)
+	senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
+	q.entries[senderMPTIndex]["HolderEncryptionKey"] = strings.ToUpper(senderKP.PubKeyHex)
 	receiverKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
 	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
 	require.NoError(t, err)
 	q.entries[receiverMPTIndex] = buildMPTokenEntry(receiverKP.PubKeyHex, "", 0, "")
+
+	result, err := BuildSend(q, BuildSendParams{
+		Account:        testAccount,
+		Destination:    testDestination,
+		DestinationTag: types.DestinationTag(0),
+		IssuanceID:     testIssuanceID,
+		Amount:         sendAmount,
+		SenderPrivKey:  senderKP.PrivKeyHex,
+		SenderPubKey:   senderKP.PubKeyHex,
+		BalanceRange:   elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, uint32(8), result.Sequence)
+	require.NotNil(t, result.DestinationTag)
+	require.Zero(t, *result.DestinationTag)
+
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	issuerKey, ok := q.entries[issuanceIndex]["IssuerEncryptionKey"].(string)
+	require.True(t, ok)
+	balanceCiphertext, ok := q.entries[senderMPTIndex]["ConfidentialBalanceSpending"].(string)
+	require.True(t, ok)
+	contextHash, err := proof.SendContextHash(testAccount, testIssuanceID, result.Sequence, testDestination, 2)
+	require.NoError(t, err)
+	participants := []proof.Participant{
+		{PubKeyHex: senderKP.PubKeyHex, CiphertextHex: result.SenderEncryptedAmount},
+		{PubKeyHex: receiverKP.PubKeyHex, CiphertextHex: result.DestinationEncryptedAmount},
+		{PubKeyHex: issuerKey, CiphertextHex: result.IssuerEncryptedAmount},
+	}
+	require.NoError(t, proof.VerifySendProof(result.ZKProof, participants, balanceCiphertext, result.AmountCommitment, result.BalanceCommitment, contextHash))
+
+	valid, err := result.Validate()
+	require.NoError(t, err)
+	require.True(t, valid)
+}
+
+func TestBuildSend_PassWithAuditor(t *testing.T) {
+	const currentBalance uint64 = 1000
+	const sendAmount uint64 = 300
+
+	senderKP, q := newBalanceLedgerFixture(t, 8, 2, currentBalance)
+	senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
+	q.entries[senderMPTIndex]["HolderEncryptionKey"] = senderKP.PubKeyHex
+	balanceCiphertext, ok := q.entries[senderMPTIndex]["ConfidentialBalanceSpending"].(string)
+	require.True(t, ok)
+
+	receiverKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+	require.NoError(t, err)
+	q.entries[receiverMPTIndex] = buildMPTokenEntry(receiverKP.PubKeyHex, "", 0, "")
+
+	auditorKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	q.entries[issuanceIndex]["AuditorEncryptionKey"] = auditorKP.PubKeyHex
+	issuerKey, ok := q.entries[issuanceIndex]["IssuerEncryptionKey"].(string)
+	require.True(t, ok)
 
 	result, err := BuildSend(q, BuildSendParams{
 		Account:       testAccount,
@@ -298,9 +467,73 @@ func TestBuildSend_Pass(t *testing.T) {
 		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
 	})
 	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Equal(t, uint32(8), result.Sequence)
-	require.NotEmpty(t, result.ZKProof)
+	require.NotNil(t, result.AuditorEncryptedAmount)
+	require.Len(t, *result.AuditorEncryptedAmount, 132)
+
+	contextHash, err := proof.SendContextHash(testAccount, testIssuanceID, result.Sequence, testDestination, 2)
+	require.NoError(t, err)
+	participants := []proof.Participant{
+		{PubKeyHex: senderKP.PubKeyHex, CiphertextHex: result.SenderEncryptedAmount},
+		{PubKeyHex: receiverKP.PubKeyHex, CiphertextHex: result.DestinationEncryptedAmount},
+		{PubKeyHex: issuerKey, CiphertextHex: result.IssuerEncryptedAmount},
+		{PubKeyHex: auditorKP.PubKeyHex, CiphertextHex: *result.AuditorEncryptedAmount},
+	}
+	require.NoError(t, proof.VerifySendProof(result.ZKProof, participants, balanceCiphertext, result.AmountCommitment, result.BalanceCommitment, contextHash))
+	valid, err := result.Validate()
+	require.NoError(t, err)
+	require.True(t, valid)
+}
+
+func TestBuildSendRejectsMismatchedSenderKey(t *testing.T) {
+	const currentBalance uint64 = 1000
+
+	_, q := newBalanceLedgerFixture(t, 8, 2, currentBalance)
+	differentKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	_, err = BuildSend(q, BuildSendParams{
+		Account:       testAccount,
+		Destination:   testDestination,
+		IssuanceID:    testIssuanceID,
+		Amount:        300,
+		SenderPrivKey: differentKP.PrivKeyHex,
+		SenderPubKey:  differentKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+	})
+	require.ErrorIs(t, err, ErrKeyMismatch)
+	require.ErrorContains(t, err, "sender key")
+}
+
+func TestBuildSendRejectsMissingSenderLedgerState(t *testing.T) {
+	const currentBalance uint64 = 1000
+
+	tests := []struct {
+		name        string
+		removeField string
+	}{
+		{name: "missing holder encryption key", removeField: "HolderEncryptionKey"},
+		{name: "missing spending ciphertext", removeField: "ConfidentialBalanceSpending"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			senderKP, q := newBalanceLedgerFixture(t, 8, 2, currentBalance)
+			senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+			require.NoError(t, err)
+			q.entries[senderMPTIndex]["HolderEncryptionKey"] = senderKP.PubKeyHex
+			delete(q.entries[senderMPTIndex], test.removeField)
+
+			_, err = BuildSend(q, BuildSendParams{
+				Account:       testAccount,
+				Destination:   testDestination,
+				IssuanceID:    testIssuanceID,
+				Amount:        100,
+				SenderPrivKey: senderKP.PrivKeyHex,
+				SenderPubKey:  senderKP.PubKeyHex,
+				BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+			})
+			require.ErrorIs(t, err, ErrMissingSenderState)
+		})
+	}
 }
 
 func TestBuildSend_FailBalanceOutsideRange(t *testing.T) {
@@ -339,6 +572,50 @@ func TestBuildSend_InvalidRangeBeforeLedgerQueries(t *testing.T) {
 	require.Zero(t, q.queryCalls, "invalid ranges must fail before ledger queries")
 }
 
+func TestBuildSendPreservesReceiverQueryError(t *testing.T) {
+	const currentBalance uint64 = 1000
+
+	senderKP, q := newBalanceLedgerFixture(t, 8, 2, currentBalance)
+	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+	require.NoError(t, err)
+	transportErr := errors.New("transport failed")
+	q.entryErrs = map[string]error{receiverMPTIndex: transportErr}
+
+	_, err = BuildSend(q, BuildSendParams{
+		Account:       testAccount,
+		Destination:   testDestination,
+		IssuanceID:    testIssuanceID,
+		Amount:        100,
+		SenderPrivKey: senderKP.PrivKeyHex,
+		SenderPubKey:  senderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+	})
+	require.ErrorIs(t, err, ErrLedgerQuery)
+	require.ErrorIs(t, err, transportErr)
+	require.NotErrorIs(t, err, ErrReceiverNotOptedIn)
+}
+
+func TestBuildSend_FailReceiverWithoutEncryptionKey(t *testing.T) {
+	const currentBalance uint64 = 1000
+
+	senderKP, q := newBalanceLedgerFixture(t, 1, 0, currentBalance)
+	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+	require.NoError(t, err)
+	q.entries[receiverMPTIndex] = buildMPTokenEntry("", "", 0, "")
+
+	_, err = BuildSend(q, BuildSendParams{
+		Account:       testAccount,
+		Destination:   testDestination,
+		IssuanceID:    testIssuanceID,
+		Amount:        100,
+		SenderPrivKey: senderKP.PrivKeyHex,
+		SenderPubKey:  senderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+	})
+	require.ErrorIs(t, err, ErrReceiverNotOptedIn)
+	require.NotErrorIs(t, err, ErrMPTokenNotFound)
+}
+
 func TestBuildSend_FailReceiverNotOptedIn(t *testing.T) {
 	senderKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
@@ -356,6 +633,9 @@ func TestBuildSend_FailReceiverNotOptedIn(t *testing.T) {
 	require.NoError(t, err)
 	senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
 	require.NoError(t, err)
+	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+	require.NoError(t, err)
+	entryNotFoundErr := errors.New(ledgerEntryNotFound)
 
 	q := &mockQuerier{
 		accountSeq: 1,
@@ -363,6 +643,7 @@ func TestBuildSend_FailReceiverNotOptedIn(t *testing.T) {
 			issuanceIndex:  buildIssuanceEntry(issuerKP.PubKeyHex, ""),
 			senderMPTIndex: buildMPTokenEntry(senderKP.PubKeyHex, senderBalanceCt, 0, ""),
 		},
+		entryErrs: map[string]error{receiverMPTIndex: entryNotFoundErr},
 	}
 
 	_, err = BuildSend(q, BuildSendParams{
@@ -375,4 +656,56 @@ func TestBuildSend_FailReceiverNotOptedIn(t *testing.T) {
 		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
 	})
 	require.ErrorIs(t, err, ErrReceiverNotOptedIn)
+	require.ErrorIs(t, err, ErrMPTokenNotFound)
+	require.ErrorIs(t, err, entryNotFoundErr)
+}
+
+// TestBuildSendRejectsIssuanceWithoutTransferCapability pins the two issuance capabilities
+// rippled checks before a confidential send, so a doomed transaction never costs a fee.
+func TestBuildSendRejectsIssuanceWithoutTransferCapability(t *testing.T) {
+	const currentBalance uint64 = 1000
+
+	tests := []struct {
+		name    string
+		mutate  func(ledgerentries.FlatLedgerObject)
+		wantErr error
+	}{
+		{
+			name: "transfers disabled",
+			mutate: func(e ledgerentries.FlatLedgerObject) {
+				e["Flags"] = float64(ledgerentries.LsfMPTCanHoldConfidentialBalance)
+			},
+			wantErr: ErrTransferDisabled,
+		},
+		{
+			name:    "confidential balances disabled",
+			mutate:  func(e ledgerentries.FlatLedgerObject) { e["Flags"] = float64(ledgerentries.LsfMPTCanTransfer) },
+			wantErr: ErrConfidentialDisabled,
+		},
+		{
+			name:    "transfer fee set",
+			mutate:  func(e ledgerentries.FlatLedgerObject) { e["TransferFee"] = float64(100) },
+			wantErr: ErrTransferFeeSet,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			senderKP, q := newBalanceLedgerFixture(t, 8, 2, currentBalance)
+			issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+			require.NoError(t, err)
+			test.mutate(q.entries[issuanceIndex])
+
+			_, err = BuildSend(q, BuildSendParams{
+				Account:       testAccount,
+				Destination:   testDestination,
+				IssuanceID:    testIssuanceID,
+				Amount:        100,
+				SenderPrivKey: senderKP.PrivKeyHex,
+				SenderPubKey:  senderKP.PubKeyHex,
+				BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+			})
+			require.ErrorIs(t, err, test.wantErr)
+		})
+	}
 }
