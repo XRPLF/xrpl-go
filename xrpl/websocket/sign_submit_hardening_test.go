@@ -489,7 +489,8 @@ func TestClientCalculateBatchFeesIncludesConfidentialMultiplier(t *testing.T) {
 			{"RawTransaction": map[string]any{"TransactionType": transaction.PaymentTx}},
 		},
 	}
-	responses := make([]map[string]any, 3)
+	// One fee fetch answers the Batch and both inner transactions.
+	responses := make([]map[string]any, 1)
 	for i := range responses {
 		responses[i] = clientinternal.CloneTransaction(serverInfo)
 		responses[i]["id"] = i + 1

@@ -5,36 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 )
-
-func TestConfidentialFeeMultiplier(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		txType   transaction.TxType
-		expected uint64
-	}{
-		{name: "Clawback", txType: transaction.ConfidentialMPTClawbackTx, expected: 10},
-		{name: "Convert", txType: transaction.ConfidentialMPTConvertTx, expected: 10},
-		{name: "ConvertBack", txType: transaction.ConfidentialMPTConvertBackTx, expected: 10},
-		{name: "MergeInbox", txType: transaction.ConfidentialMPTMergeInboxTx, expected: 10},
-		{name: "Send", txType: transaction.ConfidentialMPTSendTx, expected: 10},
-		{name: "ordinary transaction", txType: transaction.PaymentTx, expected: 1},
-		{name: "special variable-fee transaction", txType: transaction.BatchTx, expected: 1},
-		{name: "pseudo-transaction", txType: transaction.EnableAmendmentTx, expected: 1},
-		{name: "unknown transaction", txType: transaction.TxType("FutureTransaction"), expected: 1},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, test.expected, ConfidentialFeeMultiplier(test.txType))
-		})
-	}
-}
 
 func TestNetworkFeeDrops(t *testing.T) {
 	t.Parallel()
@@ -112,6 +83,7 @@ func TestNetworkFeeDropsFractionalBaseFee(t *testing.T) {
 // TestNetworkFeeDropsKeepsFractionalDrops pins the contract callers rely on:
 // the network fee keeps its fractional drop so a base-fee factor multiplies the
 // exact value. Rounding first would scale the rounding error by the factor.
+// CalculateFee owns the rounding, and TestCalculateFee pins the drops it pays.
 func TestNetworkFeeDropsKeepsFractionalDrops(t *testing.T) {
 	t.Parallel()
 
@@ -123,25 +95,9 @@ func TestNetworkFeeDropsKeepsFractionalDrops(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, netFee.IsWhole())
 
-	tests := []struct {
-		name     string
-		factor   uint64
-		expected string
-	}{
-		{name: "single signed ordinary transaction", factor: 1, expected: "13"},
-		{name: "ordinary transaction with two signers", factor: 3, expected: "38"},
-		{name: "single signed confidential transaction", factor: 10, expected: "124"},
-		{name: "confidential transaction with two signers", factor: 12, expected: "149"},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			actual, err := netFee.Mul(test.factor).Ceil().WholeString()
-			require.NoError(t, err)
-			require.Equal(t, test.expected, actual)
-		})
-	}
+	tenthDrops, err := netFee.Mul(10).WholeString()
+	require.NoError(t, err)
+	require.Equal(t, "124", tenthDrops)
 }
 
 func TestNetworkFeeDropsRejectsInvalidValues(t *testing.T) {

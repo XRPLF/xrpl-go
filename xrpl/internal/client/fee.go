@@ -7,27 +7,7 @@ import (
 	"strconv"
 
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
-	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 )
-
-const confidentialFeeMultiplier uint64 = 10
-
-// ConfidentialFeeMultiplier returns the fixed base-fee multiplier for a
-// confidential MPT transaction, or one for all other transaction types.
-// rippled charges one base fee for the transaction itself plus an extra
-// multiplier of nine, so the combined factor is ten.
-func ConfidentialFeeMultiplier(txType transaction.TxType) uint64 {
-	switch txType { //nolint:exhaustive // Only confidential transaction types use this fixed multiplier.
-	case transaction.ConfidentialMPTClawbackTx,
-		transaction.ConfidentialMPTConvertTx,
-		transaction.ConfidentialMPTConvertBackTx,
-		transaction.ConfidentialMPTMergeInboxTx,
-		transaction.ConfidentialMPTSendTx:
-		return confidentialFeeMultiplier
-	default:
-		return 1
-	}
-}
 
 // NetworkFeeDrops calculates the exact load-adjusted and capped network fee for
 // one base fee. Inputs use binary64 precision and the result keeps any

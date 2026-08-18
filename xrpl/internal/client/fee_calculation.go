@@ -12,6 +12,11 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
+// confidentialFeeMultiplier is the base-fee factor of a confidential MPT
+// transaction. rippled charges one base fee for the transaction itself plus an
+// extra multiplier of nine, so the combined factor is ten.
+const confidentialFeeMultiplier uint64 = 10
+
 // Request is the minimal request contract the fee queries need. Its method set
 // is the union of the RPC and WebSocket client request interfaces, so a value of
 // this type is assignable to either client's request parameter.
@@ -51,18 +56,50 @@ func CalculateFee(
 		return currency.Drops{}, err
 	}
 
-	netFee, err := NetworkFeeDropsFor(ctx, request, settings.Cushion, maxFee)
+	// The network fee cannot change while one transaction is priced, so fetch it
+	// once and reuse it for every inner Batch transaction.
+	netFee, err := networkFeeDropsFor(ctx, request, settings.Cushion, maxFee)
 	if err != nil {
 		return currency.Drops{}, err
 	}
 
+	totalFee, err := calculateFeeExact(ctx, request, tx, nSigners, netFee, maxFee)
+	if err != nil {
+		return currency.Drops{}, err
+	}
+
+	// Round half-up once, at the end. rippled sums every base fee a transaction
+	// owes, inner Batch transactions included, and scales that total for load in
+	// one step, so this is the only rounding the fee sees and no factor can
+	// scale a rounding error.
+	totalFee = totalFee.RoundHalfUp()
+
+	fee, err := totalFee.WholeString()
+	if err != nil {
+		return currency.Drops{}, err
+	}
+	(*tx)["Fee"] = fee
+	return totalFee, nil
+}
+
+// calculateFeeExact returns the fee a transaction owes for the given network
+// fee, keeping any fractional drop and leaving the Fee field untouched, so a
+// Batch sums its inner fees at full precision and only the caller rounds.
+func calculateFeeExact(
+	ctx context.Context,
+	request RequestResultFunc,
+	tx *transaction.FlatTransaction,
+	nSigners uint64,
+	netFee currency.Drops,
+	maxFee currency.Drops,
+) (currency.Drops, error) {
 	// baseFeeFactor counts the network base fees this transaction costs, and
 	// extraFee holds the costs that are not a multiple of the network fee.
 	// rippled sums the same factor, one base fee per signer included, and scales
 	// the total for load in one step, so the factor multiplies the exact network
 	// fee and the result is rounded only once.
 	transactionType := tx.TxType()
-	baseFeeFactor := ConfidentialFeeMultiplier(transactionType) + nSigners
+	baseFeeFactor := confidentialFeeFactor(transactionType) + nSigners
 	var extraFee currency.Drops
 	isSpecialTxCost := transactionType == transaction.AccountDeleteTx ||
 		transactionType == transaction.AMMCreateTx
@@ -74,21 +111,21 @@ func CalculateFee(
 			baseFeeFactor = 33 + uint64(fulfillmentBytesSize)/16 + nSigners
 		}
 	case transaction.AccountDeleteTx, transaction.AMMCreateTx:
-		reserveFee, reserveErr := OwnerReserveFee(ctx, request)
+		reserveFee, reserveErr := ownerReserveFee(ctx, request)
 		if reserveErr != nil {
 			return currency.Drops{}, reserveErr
 		}
 		baseFeeFactor = nSigners
 		extraFee = currency.DropsFromUint64(reserveFee)
 	case transaction.BatchTx:
-		rawTxFees, batchErr := BatchFees(ctx, request, tx, settings)
+		rawTxFees, batchErr := batchFees(ctx, request, tx, netFee, maxFee)
 		if batchErr != nil {
 			return currency.Drops{}, batchErr
 		}
 		baseFeeFactor = 2 + nSigners
 		extraFee = rawTxFees
 	case transaction.LoanSetTx:
-		counterPartySignersCount, signerErr := CounterPartySignersCount(ctx, request, *tx)
+		counterPartySignersCount, signerErr := counterPartySignersCount(ctx, request, *tx)
 		if signerErr != nil {
 			return currency.Drops{}, signerErr
 		}
@@ -99,24 +136,13 @@ func CalculateFee(
 	if !isSpecialTxCost {
 		totalFee = totalFee.Min(maxFee)
 	}
-	// Round half-up once, at the end. rippled requires the load-scaled base fee
-	// truncated to whole drops, and rounding half-up never falls below that, so
-	// this pays the same whole drops as rounding each base fee individually
-	// without letting the factor scale a rounding error.
-	totalFee = totalFee.RoundHalfUp()
-
-	fee, err := totalFee.WholeString()
-	if err != nil {
-		return currency.Drops{}, err
-	}
-	(*tx)["Fee"] = fee
 	return totalFee, nil
 }
 
-// NetworkFeeDropsFor calculates the exact current network fee for one base fee.
+// networkFeeDropsFor calculates the exact current network fee for one base fee.
 // The result keeps any fractional drop so callers can apply the transaction's
 // base-fee factor before rounding.
-func NetworkFeeDropsFor(
+func networkFeeDropsFor(
 	ctx context.Context,
 	request RequestResultFunc,
 	cushion float64,
@@ -140,9 +166,24 @@ func NetworkFeeDropsFor(
 	)
 }
 
-// OwnerReserveFee fetches the owner reserve increment charged by transactions
+// confidentialFeeFactor returns the base-fee factor of a confidential MPT
+// transaction, or one for all other transaction types.
+func confidentialFeeFactor(txType transaction.TxType) uint64 {
+	switch txType { //nolint:exhaustive // Only confidential transaction types use this fixed multiplier.
+	case transaction.ConfidentialMPTClawbackTx,
+		transaction.ConfidentialMPTConvertTx,
+		transaction.ConfidentialMPTConvertBackTx,
+		transaction.ConfidentialMPTMergeInboxTx,
+		transaction.ConfidentialMPTSendTx:
+		return confidentialFeeMultiplier
+	default:
+		return 1
+	}
+}
+
+// ownerReserveFee fetches the owner reserve increment charged by transactions
 // that consume one reserve.
-func OwnerReserveFee(ctx context.Context, request RequestResultFunc) (uint64, error) {
+func ownerReserveFee(ctx context.Context, request RequestResultFunc) (uint64, error) {
 	var response server.StateResponse
 	if err := request(ctx, &server.StateRequest{}, &response); err != nil {
 		return 0, err
@@ -156,13 +197,16 @@ func OwnerReserveFee(ctx context.Context, request RequestResultFunc) (uint64, er
 	return *reserveInc, nil
 }
 
-// BatchFees calculates the total fees for all inner transactions in a Batch and
-// zeroes each inner Fee, which a Batch requires.
-func BatchFees(
+// batchFees calculates the exact total fees for all inner transactions in a
+// Batch and zeroes each inner Fee, which a Batch requires. The total keeps any
+// fractional drop, because rippled sums the inner base fees into the Batch fee
+// and scales that sum for load once.
+func batchFees(
 	ctx context.Context,
 	request RequestResultFunc,
 	tx *transaction.FlatTransaction,
-	settings FeeSettings,
+	netFee currency.Drops,
+	maxFee currency.Drops,
 ) (currency.Drops, error) {
 	var totalFees currency.Drops
 
@@ -181,7 +225,7 @@ func BatchFees(
 		if innerTxFlat.TxType() == transaction.BatchTx {
 			return currency.Drops{}, types.ErrBatchNestedTransaction
 		}
-		innerFee, err := CalculateFee(ctx, request, &innerTxFlat, 0, settings)
+		innerFee, err := calculateFeeExact(ctx, request, &innerTxFlat, 0, netFee, maxFee)
 		if err != nil {
 			return currency.Drops{}, err
 		}
@@ -193,9 +237,9 @@ func BatchFees(
 	return totalFees, nil
 }
 
-// CounterPartySignersCount resolves how many signers the LoanSet counterparty
+// counterPartySignersCount resolves how many signers the LoanSet counterparty
 // uses, which sets the counterparty share of the transaction fee.
-func CounterPartySignersCount(
+func counterPartySignersCount(
 	ctx context.Context,
 	request RequestResultFunc,
 	tx transaction.FlatTransaction,

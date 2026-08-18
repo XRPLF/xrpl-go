@@ -886,33 +886,9 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 				},
 			},
 			serverMessages: []map[string]any{
-				// Outer Batch fee fetch
+				// One fee fetch, reused for the Batch and every inner transaction.
 				{
 					"id": 1,
-					"result": map[string]any{
-						"info": map[string]any{
-							"validated_ledger": map[string]any{
-								"base_fee_xrp": float32(0.00001),
-							},
-							"load_factor": float32(1),
-						},
-					},
-				},
-				// Inner Payment fee fetch
-				{
-					"id": 2,
-					"result": map[string]any{
-						"info": map[string]any{
-							"validated_ledger": map[string]any{
-								"base_fee_xrp": float32(0.00001),
-							},
-							"load_factor": float32(1),
-						},
-					},
-				},
-				// Inner OfferCreate fee fetch
-				{
-					"id": 3,
 					"result": map[string]any{
 						"info": map[string]any{
 							"validated_ledger": map[string]any{
@@ -961,33 +937,9 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 				},
 			},
 			serverMessages: []map[string]any{
-				// Outer Batch fee fetch
+				// One fee fetch, reused for the Batch and every inner transaction.
 				{
 					"id": 1,
-					"result": map[string]any{
-						"info": map[string]any{
-							"validated_ledger": map[string]any{
-								"base_fee_xrp": float32(0.00001),
-							},
-							"load_factor": float32(1),
-						},
-					},
-				},
-				// Inner Payment fee fetch
-				{
-					"id": 2,
-					"result": map[string]any{
-						"info": map[string]any{
-							"validated_ledger": map[string]any{
-								"base_fee_xrp": float32(0.00001),
-							},
-							"load_factor": float32(1),
-						},
-					},
-				},
-				// Inner OfferCreate fee fetch
-				{
-					"id": 3,
 					"result": map[string]any{
 						"info": map[string]any{
 							"validated_ledger": map[string]any{

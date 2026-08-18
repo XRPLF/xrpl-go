@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### docs
 
-- Added confidential MPT documentation covering the CGo requirement, package layout, transaction types, and high-level builders.
+- Added confidential MPT documentation covering the CGo requirement, package layout, transaction types, transaction cost, and high-level builders.
 
 #### pkg/hexutil
 
@@ -36,11 +36,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl
 
 - Added confidential-transfer flags and encryption-key fields to MPT issuance transaction and ledger-entry models.
-- Added confidential balance fields to `MPToken`, five confidential MPT transaction models, and supporting amount, encryption-key, hex-blob, blinding-factor, and proof validation helpers. RPC and WebSocket autofill apply the required 10x base fee to confidential MPT transactions, including inner Batch transactions, plus the normal per-signer surcharge.
+- Added confidential balance fields to `MPToken`, five confidential MPT transaction models, and supporting amount, encryption-key, hex-blob, blinding-factor, and proof validation helpers.
+- RPC and WebSocket autofill apply the required 10x base fee to confidential MPT transactions, including inner `Batch` transactions, plus the normal per-signer surcharge.
 
 #### xrpl/hash
 
 - Added `MPToken()` and `MPTokenIssuance()` helpers for computing MPT ledger-entry keylet indexes.
+
+### Changed
+
+#### xrpl/rpc
+
+- `ErrRawTransactionsFieldMissing`, `ErrRawTransactionFieldMissing`, `ErrCouldNotGetBaseFeeXrp`, `ErrCouldNotFetchOwnerReserve`, `ErrLoanBrokerIDRequired`, and `ErrCouldNotFetchLoanBrokerOwner` now share one value with their `xrpl/websocket` counterparts, so `errors.Is` matches an error raised by either client.
+- Deprecated `ErrFeeFieldMissing`, `ErrCounterpartyRequired`, and `ErrFailedToParseFee`. Fee calculation no longer returns them and they will be removed in a future version.
+- Autofill fetches the network fee once per transaction instead of once per inner `Batch` transaction, so an eight-transaction `Batch` issues one `server_info` request instead of nine.
+
+#### xrpl/websocket
+
+- `ErrRawTransactionsFieldMissing`, `ErrRawTransactionFieldMissing`, `ErrCouldNotGetBaseFeeXrp`, `ErrCouldNotFetchOwnerReserve`, `ErrLoanBrokerIDRequired`, and `ErrCouldNotFetchLoanBrokerOwner` now share one value with their `xrpl/rpc` counterparts, so `errors.Is` matches an error raised by either client.
+- Deprecated `ErrFeeFieldMissing`, `ErrCounterpartyRequired`, and `ErrFailedToParseFee`. Fee calculation no longer returns them and they will be removed in a future version.
+- Autofill fetches the network fee once per transaction instead of once per inner `Batch` transaction, so an eight-transaction `Batch` issues one `server_info` request instead of nine.
 
 ### Fixed
 
@@ -54,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
-- Autofill no longer underpays transactions whose fee is a multiple of the base fee. The multiplier now applies to the exact load-adjusted network fee and the total is rounded once, instead of rounding the network fee to whole drops first.
+- Autofill no longer underpays transactions whose fee is a multiple of the base fee. The multiplier now applies to the exact load-adjusted network fee and the total is rounded once, instead of rounding the network fee to whole drops first. A `Batch` sums its inner fees at the same exact precision, so a fractional drop is no longer discarded per inner transaction.
 
 #### xrpl/transaction
 
@@ -62,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
-- Autofill no longer underpays transactions whose fee is a multiple of the base fee. The multiplier now applies to the exact load-adjusted network fee and the total is rounded once, instead of rounding the network fee to whole drops first.
+- Autofill no longer underpays transactions whose fee is a multiple of the base fee. The multiplier now applies to the exact load-adjusted network fee and the total is rounded once, instead of rounding the network fee to whole drops first. A `Batch` sums its inner fees at the same exact precision, so a fractional drop is no longer discarded per inner transaction.
 
 ## [v0.3.0]
 

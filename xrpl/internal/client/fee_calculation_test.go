@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	ledgertypes "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
@@ -348,6 +349,32 @@ func TestCalculateFeeBatch(t *testing.T) {
 	}
 }
 
+// TestCalculateFeeBatchSumsInnerFeesExactly pins that the Batch total sums the
+// exact inner fees and rounds once. Rounding every inner fee first discards its
+// fractional drop, which the inner count then multiplies into a shortfall.
+func TestCalculateFeeBatchSumsInnerFeesExactly(t *testing.T) {
+	t.Parallel()
+
+	rawTransactions := make([]map[string]any, 0, 8)
+	for range 8 {
+		rawTransactions = append(rawTransactions, map[string]any{
+			"RawTransaction": map[string]any{"TransactionType": transaction.PaymentTx},
+		})
+	}
+	tx := transaction.FlatTransaction{
+		"TransactionType": transaction.BatchTx,
+		"RawTransactions": rawTransactions,
+	}
+	// A ten drop base fee under this load factor is 10.4 drops per base fee.
+	data := feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1.04}
+	settings := FeeSettings{Cushion: 1, MaxFeeXRP: defaultTestMaxFeeXRP}
+
+	_, err := CalculateFee(context.Background(), data.requestFunc(t), &tx, 0, settings)
+	require.NoError(t, err)
+	// Ten base fees: two for the Batch itself and one per inner transaction.
+	require.Equal(t, "104", tx["Fee"])
+}
+
 func TestCalculateFeeRejectsIncompleteData(t *testing.T) {
 	t.Parallel()
 
@@ -492,7 +519,7 @@ func TestNetworkFeeDropsFor(t *testing.T) {
 			maxFee, err := ParseFeeXRP(cmp.Or(test.maxFeeXRP, defaultTestMaxFeeXRP))
 			require.NoError(t, err)
 
-			actual, err := NetworkFeeDropsFor(context.Background(), data.requestFunc(t), test.cushion, maxFee)
+			actual, err := networkFeeDropsFor(context.Background(), data.requestFunc(t), test.cushion, maxFee)
 			if test.expectedErr != nil {
 				require.ErrorIs(t, err, test.expectedErr)
 				return
@@ -515,7 +542,7 @@ func TestNetworkFeeDropsForKeepsFractionalDrops(t *testing.T) {
 	maxFee, err := ParseFeeXRP(defaultTestMaxFeeXRP)
 	require.NoError(t, err)
 
-	netFee, err := NetworkFeeDropsFor(context.Background(), data.requestFunc(t), 1, maxFee)
+	netFee, err := networkFeeDropsFor(context.Background(), data.requestFunc(t), 1, maxFee)
 	require.NoError(t, err)
 	require.False(t, netFee.IsWhole())
 
@@ -523,6 +550,33 @@ func TestNetworkFeeDropsForKeepsFractionalDrops(t *testing.T) {
 	tenthDrops, err := netFee.Mul(10).WholeString()
 	require.NoError(t, err)
 	require.Equal(t, "124", tenthDrops)
+}
+
+func TestConfidentialFeeFactor(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		txType   transaction.TxType
+		expected uint64
+	}{
+		{name: "Clawback", txType: transaction.ConfidentialMPTClawbackTx, expected: 10},
+		{name: "Convert", txType: transaction.ConfidentialMPTConvertTx, expected: 10},
+		{name: "ConvertBack", txType: transaction.ConfidentialMPTConvertBackTx, expected: 10},
+		{name: "MergeInbox", txType: transaction.ConfidentialMPTMergeInboxTx, expected: 10},
+		{name: "Send", txType: transaction.ConfidentialMPTSendTx, expected: 10},
+		{name: "ordinary transaction", txType: transaction.PaymentTx, expected: 1},
+		{name: "special variable-fee transaction", txType: transaction.BatchTx, expected: 1},
+		{name: "pseudo-transaction", txType: transaction.EnableAmendmentTx, expected: 1},
+		{name: "unknown transaction", txType: transaction.TxType("FutureTransaction"), expected: 1},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, test.expected, confidentialFeeFactor(test.txType))
+		})
+	}
 }
 
 func TestOwnerReserveFee(t *testing.T) {
@@ -544,7 +598,7 @@ func TestOwnerReserveFee(t *testing.T) {
 			t.Parallel()
 			data := feeLedger{reserveInc: test.reserveInc}
 
-			actual, err := OwnerReserveFee(context.Background(), data.requestFunc(t))
+			actual, err := ownerReserveFee(context.Background(), data.requestFunc(t))
 			if test.expectedErr != nil {
 				require.ErrorIs(t, err, test.expectedErr)
 				return
@@ -620,7 +674,7 @@ func TestCounterPartySignersCount(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := CounterPartySignersCount(context.Background(), test.ledger.requestFunc(t), test.tx)
+			actual, err := counterPartySignersCount(context.Background(), test.ledger.requestFunc(t), test.tx)
 			require.NoError(t, err)
 			require.Equal(t, test.expectedCount, actual)
 			require.Equal(t, test.expectedAccount, test.ledger.signerListAccount)
@@ -663,7 +717,7 @@ func TestCounterPartySignersCountRejectsMissingBrokerData(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := CounterPartySignersCount(context.Background(), test.ledger.requestFunc(t), test.tx)
+			_, err := counterPartySignersCount(context.Background(), test.ledger.requestFunc(t), test.tx)
 			require.ErrorIs(t, err, test.expectedErr)
 		})
 	}
@@ -703,13 +757,13 @@ func TestBatchFeesRejectsMalformedBatch(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			// Every case fails before issuing a request, so the transport is
-			// never reached.
+			// Every case fails before issuing a request, so neither the
+			// transport nor the fee values are reached.
 			request := func(context.Context, Request, any) error {
 				t.Fatal("unexpected request")
 				return nil
 			}
-			_, err := BatchFees(context.Background(), request, &test.tx, FeeSettings{})
+			_, err := batchFees(context.Background(), request, &test.tx, currency.Drops{}, currency.Drops{})
 			require.ErrorIs(t, err, test.expectedErr)
 		})
 	}

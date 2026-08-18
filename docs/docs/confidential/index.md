@@ -76,6 +76,12 @@ Related XRPL types were extended as well:
 - `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` support confidential-transfer flags and issuer/auditor encryption keys.
 - `MPToken` and `MPTokenIssuance` ledger-entry types expose confidential balance and encryption-key fields.
 
+### Transaction cost
+
+Confidential MPT transactions cost ten network base fees, not one. rippled charges one base fee for the transaction itself plus an extra multiplier of nine. Multisigning adds the usual one base fee per signer on top, and the same multiplier applies to a confidential transaction nested inside a `Batch`.
+
+RPC and WebSocket autofill apply the multiplier for you, but only when the transaction has no `Fee` field. A hand-set `Fee` is submitted unchanged, so a value sized for an ordinary transaction underpays and the submission fails with `telINSUF_FEE_P`.
+
 ## When to use builders
 
 Use [`builders`](/docs/confidential/builders) when you want the SDK to:

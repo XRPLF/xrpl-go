@@ -439,11 +439,12 @@ func TestClientCalculateBatchFeesIncludesConfidentialMultiplier(t *testing.T) {
 			{"RawTransaction": map[string]any{"TransactionType": transaction.PaymentTx}},
 		},
 	}
-	cl, requestCount := setupTestRPCClientForAutofillWithRequestCount(t, []string{serverInfo, serverInfo, serverInfo})
+	cl, requestCount := setupTestRPCClientForAutofillWithRequestCount(t, []string{serverInfo})
 	cl.cfg.feeCushion = 1
 
 	require.NoError(t, cl.calculateFeePerTransactionType(context.Background(), &tx, 0))
-	require.Equal(t, 3, requestCount())
+	// One server_info answers the Batch and both inner transactions.
+	require.Equal(t, 1, requestCount())
 	require.Equal(t, "130", tx["Fee"])
 	rawTransactions := tx["RawTransactions"].([]map[string]any)
 	require.Equal(t, "0", rawTransactions[0]["RawTransaction"].(map[string]any)["Fee"])
