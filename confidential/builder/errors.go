@@ -19,7 +19,7 @@ var (
 	ErrMissingHolder       = errors.New("builder: holder is required")
 	ErrMissingSenderState  = errors.New("builder: current confidential balance state is required")
 	ErrMissingCiphertext   = errors.New("builder: issuer ciphertext is required")
-	ErrMissingSequence     = errors.New("builder: a final transaction sequence is required")
+	ErrMissingSequence     = errors.New("builder: a final transaction sequence or ticket sequence is required")
 	ErrSelfSend            = errors.New("builder: sender and destination cannot be the same")
 	ErrSelfClawback        = errors.New("builder: issuer and holder cannot be the same")
 	ErrZeroAmount          = errors.New("builder: amount must be greater than zero")
@@ -37,6 +37,8 @@ var (
 	ErrIssuanceNotFound    = errors.New("builder: MPTokenIssuance ledger entry not found")
 	ErrCryptoFailed        = errors.New("builder: cryptographic operation failed")
 	ErrKeyMismatch         = errors.New("builder: public key does not match the key registered on the ledger")
+	ErrConflictingNonce    = errors.New("builder: sequence and ticket sequence cannot both be set")
+	ErrDelegateNotAllowed  = errors.New("builder: transaction type cannot be delegated")
 
 	// Issuance capability errors mirror the preclaim conditions the confidential MPT
 	// transactors enforce, so a doomed transaction never costs a fee and a sequence.

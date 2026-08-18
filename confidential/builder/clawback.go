@@ -8,6 +8,24 @@
 //
 // A tagged X-address is accepted only where the transaction has a companion tag field to
 // carry the tag, and rejected there when it would duplicate an explicit tag.
+//
+// # Tickets
+//
+// Every builder accepts a TicketSequence. xrpld hashes the sequence proxy into every
+// confidential context hash, so a proof commits to the ticket the transaction spends rather
+// than to an account sequence, and the Ticket is spent from the transaction Account's own
+// account root, never the Delegate's.
+//
+// One case a Ticket cannot rescue, and no builder can detect: ConfidentialMPTSend and
+// ConfidentialMPTConvertBack commit their proofs to the submitter's own
+// ConfidentialBalanceVersion, which a send, a convert-back, a merge-inbox, or a clawback
+// against that holder bumps. Of several such transactions built against a single reading of
+// one MPToken, the first to land bumps the version and the rest fail with tecBAD_PROOF, each
+// paying a fee and destroying its Ticket. The collision is per MPToken, so transactions on
+// different issuances never collide, and a builder cannot see what else the account has in
+// flight. Submit them one at a time on that issuance and wait for validation, and reserve the
+// Ticket for the transactions that can run in parallel: clawbacks against different holders,
+// merges and converts across different issuances, and anything a repeat convert covers.
 package builder
 
 import (
@@ -20,8 +38,10 @@ import (
 )
 
 // BuildClawbackParams holds minimal inputs for BuildClawback.
-// Sequence, IssuerPubKey, IssuerCiphertext, and Amount are auto-resolved from the ledger.
+// The sequence in TxOptions, IssuerPubKey, IssuerCiphertext, and Amount are auto-resolved
+// from the ledger.
 type BuildClawbackParams struct {
+	TxOptions
 	Account       string // Issuer
 	Holder        string
 	IssuanceID    string
@@ -36,7 +56,6 @@ type ClawbackParams struct {
 	Amount           uint64 // The holder's complete confidential balance, which a clawback removes in full
 	IssuerPubKey     string // Valid 33-byte compressed secp256k1 point from MPTokenIssuance.IssuerEncryptionKey
 	IssuerCiphertext string // Two valid compressed secp256k1 points from the holder MPToken's IssuerEncryptedBalance
-	Sequence         uint32 // Final transaction sequence bound into the proof. It must not change after preparation.
 }
 
 // BuildClawback queries ledger state, decrypts the holder's balance, and builds a
@@ -51,10 +70,11 @@ func BuildClawback(q LedgerQuerier, p BuildClawbackParams) (*transaction.Confide
 		return nil, err
 	}
 
-	seq, snapshot, err := beginBuild(q, p.Account)
+	resolved, snapshot, err := resolveTxOptions(q, p.Account, p.TxOptions, transaction.ConfidentialMPTClawbackTx)
 	if err != nil {
 		return nil, err
 	}
+	p.TxOptions = resolved
 
 	issuance, err := getProvableIssuance(snapshot, p.IssuanceID)
 	if err != nil {
@@ -94,7 +114,6 @@ func BuildClawback(q LedgerQuerier, p BuildClawbackParams) (*transaction.Confide
 		Amount:              amount,
 		IssuerPubKey:        issuance.issuerKey,
 		IssuerCiphertext:    issuerCt,
-		Sequence:            seq,
 	})
 }
 
@@ -122,11 +141,12 @@ func PrepareClawback(p ClawbackParams) (*transaction.ConfidentialMPTClawback, er
 	if !transaction.IsValidCiphertext(p.IssuerCiphertext) {
 		return nil, ErrInvalidCiphertext
 	}
-	if p.Sequence == 0 {
-		return nil, ErrMissingSequence
+	proofSequence, err := p.validateForProof(p.Account, transaction.ConfidentialMPTClawbackTx)
+	if err != nil {
+		return nil, err
 	}
 
-	ctxHash, err := proof.ClawbackContextHash(p.Account, p.IssuanceID, p.Sequence, p.Holder)
+	ctxHash, err := proof.ClawbackContextHash(p.Account, p.IssuanceID, proofSequence, p.Holder)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 	}
@@ -137,11 +157,7 @@ func PrepareClawback(p ClawbackParams) (*transaction.ConfidentialMPTClawback, er
 	}
 
 	tx := &transaction.ConfidentialMPTClawback{
-		BaseTx: transaction.BaseTx{
-			Account:         types.Address(p.Account),
-			TransactionType: transaction.ConfidentialMPTClawbackTx,
-			Sequence:        p.Sequence,
-		},
+		BaseTx:            baseTx(p.Account, transaction.ConfidentialMPTClawbackTx, p.TxOptions),
 		MPTokenIssuanceID: p.IssuanceID,
 		Holder:            types.Address(p.Holder),
 		MPTAmount:         types.MPTPlainAmount(p.Amount),

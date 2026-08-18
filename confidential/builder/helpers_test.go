@@ -26,6 +26,9 @@ const (
 	testIssuerIssuanceID = "000004C4B5F762798A53D543A014CAF8B297CFF8F2F937E8"
 	testAccount          = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
 	testDestination      = "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP"
+	// testDelegate is a third account, distinct from testAccount and testDestination, so a
+	// delegated build never conflicts with the transaction account or the counterparty.
+	testDelegate = "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
 	// zeroClassicAccount is ACCOUNT_ZERO, which decodes cleanly in either address form
 	// but can never sign, so every builder account field rejects it.
 	zeroClassicAccount = "rrrrrrrrrrrrrrrrrrrrrhoLvTp"

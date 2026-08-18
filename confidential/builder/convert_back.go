@@ -11,10 +11,11 @@ import (
 )
 
 // BuildConvertBackParams holds minimal inputs for BuildConvertBack.
-// Sequence, IssuerPubKey, AuditorPubKey, BalanceVersion, CurrentBalanceCt,
+// The sequence in TxOptions, IssuerPubKey, AuditorPubKey, BalanceVersion, CurrentBalanceCt,
 // and CurrentBalance are auto-resolved from the ledger. Balance is decrypted using HolderPrivKey
 // within BalanceRange's inclusive bounds.
 type BuildConvertBackParams struct {
+	TxOptions
 	Account       string
 	IssuanceID    string
 	Amount        uint64
@@ -28,7 +29,6 @@ type ConvertBackParams struct {
 	BuildConvertBackParams
 	IssuerPubKey     string // 66 hex chars
 	AuditorPubKey    string // 66 hex chars, empty if no auditor
-	Sequence         uint32 // Final transaction sequence bound into the proof. It must not change after preparation.
 	BalanceVersion   uint32
 	CurrentBalance   uint64 // Current spending balance (plaintext)
 	CurrentBalanceCt string // 132 hex chars, current ConfidentialBalanceSpending ciphertext
@@ -44,10 +44,11 @@ func BuildConvertBack(q LedgerQuerier, p BuildConvertBackParams) (*transaction.C
 		return nil, err
 	}
 
-	seq, snapshot, err := beginBuild(q, p.Account)
+	resolved, snapshot, err := resolveTxOptions(q, p.Account, p.TxOptions, transaction.ConfidentialMPTConvertBackTx)
 	if err != nil {
 		return nil, err
 	}
+	p.TxOptions = resolved
 
 	issuance, err := getProvableIssuance(snapshot, p.IssuanceID)
 	if err != nil {
@@ -78,7 +79,6 @@ func BuildConvertBack(q LedgerQuerier, p BuildConvertBackParams) (*transaction.C
 		BuildConvertBackParams: p,
 		IssuerPubKey:           issuance.issuerKey,
 		AuditorPubKey:          issuance.auditorKey,
-		Sequence:               seq,
 		BalanceVersion:         holder.balanceVersion,
 		CurrentBalance:         currentBalance,
 		CurrentBalanceCt:       holder.balanceCt,
@@ -116,8 +116,9 @@ func PrepareConvertBack(p ConvertBackParams) (*transaction.ConfidentialMPTConver
 	if p.Amount > p.CurrentBalance {
 		return nil, ErrInsufficientBalance
 	}
-	if p.Sequence == 0 {
-		return nil, ErrMissingSequence
+	proofSequence, err := p.validateForProof(p.Account, transaction.ConfidentialMPTConvertBackTx)
+	if err != nil {
+		return nil, err
 	}
 
 	bf, err := elgamal.GenerateBlindingFactor()
@@ -156,7 +157,7 @@ func PrepareConvertBack(p ConvertBackParams) (*transaction.ConfidentialMPTConver
 		return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 	}
 
-	ctxHash, err := proof.ConvertBackContextHash(p.Account, p.IssuanceID, p.Sequence, p.BalanceVersion)
+	ctxHash, err := proof.ConvertBackContextHash(p.Account, p.IssuanceID, proofSequence, p.BalanceVersion)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 	}
@@ -174,11 +175,7 @@ func PrepareConvertBack(p ConvertBackParams) (*transaction.ConfidentialMPTConver
 	}
 
 	tx := &transaction.ConfidentialMPTConvertBack{
-		BaseTx: transaction.BaseTx{
-			Account:         types.Address(p.Account),
-			TransactionType: transaction.ConfidentialMPTConvertBackTx,
-			Sequence:        p.Sequence,
-		},
+		BaseTx:                baseTx(p.Account, transaction.ConfidentialMPTConvertBackTx, p.TxOptions),
 		MPTokenIssuanceID:     p.IssuanceID,
 		MPTAmount:             types.MPTPlainAmount(p.Amount),
 		HolderEncryptedAmount: holderCt,

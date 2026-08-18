@@ -12,6 +12,8 @@ import (
 	"github.com/Peersyst/xrpl-go/confidential/proof"
 	xrplhash "github.com/Peersyst/xrpl-go/xrpl/hash"
 	ledgerentries "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
@@ -112,6 +114,7 @@ func TestPrepareSend_Pass(t *testing.T) {
 
 	result, err := PrepareSend(SendParams{
 		BuildSendParams: BuildSendParams{
+			TxOptions:     TxOptions{Sequence: 11, Delegate: testDelegate},
 			Account:       testAccount,
 			Destination:   testDestination,
 			IssuanceID:    testIssuanceID,
@@ -121,7 +124,6 @@ func TestPrepareSend_Pass(t *testing.T) {
 		},
 		ReceiverPubKey:   receiverKP.PubKeyHex,
 		IssuerPubKey:     issuerKP.PubKeyHex,
-		Sequence:         1,
 		BalanceVersion:   0,
 		CurrentBalance:   currentBalance,
 		CurrentBalanceCt: balanceCt,
@@ -129,6 +131,7 @@ func TestPrepareSend_Pass(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, transaction.ConfidentialMPTSendTx, result.TxType())
+	requireSequenceOptions(t, result.BaseTx, 11, testDelegate)
 
 	// Transaction fields.
 	require.Len(t, result.SenderEncryptedAmount, 132)
@@ -139,8 +142,9 @@ func TestPrepareSend_Pass(t *testing.T) {
 	require.Len(t, result.AmountCommitment, 66)
 	require.Len(t, result.BalanceCommitment, 66)
 
-	// Verify the composite proof cryptographically.
-	ctxHash, err := proof.SendContextHash(testAccount, testIssuanceID, uint32(1), testDestination, uint32(0))
+	// Verify the composite proof cryptographically. It commits to the account sequence the
+	// transaction spends.
+	ctxHash, err := proof.SendContextHash(testAccount, testIssuanceID, uint32(11), testDestination, uint32(0))
 	require.NoError(t, err)
 
 	participants := []proof.Participant{
@@ -175,6 +179,7 @@ func TestPrepareSend_MaximumAmount(t *testing.T) {
 
 	result, err := PrepareSend(SendParams{
 		BuildSendParams: BuildSendParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			Destination:   testDestination,
 			IssuanceID:    testIssuanceID,
@@ -184,7 +189,6 @@ func TestPrepareSend_MaximumAmount(t *testing.T) {
 		},
 		ReceiverPubKey:   receiverKP.PubKeyHex,
 		IssuerPubKey:     issuerKP.PubKeyHex,
-		Sequence:         1,
 		CurrentBalance:   amount,
 		CurrentBalanceCt: balanceCiphertext,
 	})
@@ -220,6 +224,7 @@ func TestPrepareSend_PassWithAuditor(t *testing.T) {
 
 	result, err := PrepareSend(SendParams{
 		BuildSendParams: BuildSendParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			Destination:   testDestination,
 			IssuanceID:    testIssuanceID,
@@ -230,7 +235,6 @@ func TestPrepareSend_PassWithAuditor(t *testing.T) {
 		ReceiverPubKey:   receiverKP.PubKeyHex,
 		IssuerPubKey:     issuerKP.PubKeyHex,
 		AuditorPubKey:    auditorKP.PubKeyHex,
-		Sequence:         1,
 		CurrentBalance:   1000,
 		CurrentBalanceCt: balanceCt,
 	})
@@ -269,6 +273,7 @@ func TestPrepareSend_PassWithCredentialIDs(t *testing.T) {
 	credIDs := []string{strings.Repeat("A1", 32), strings.Repeat("B2", 32)}
 	result, err := PrepareSend(SendParams{
 		BuildSendParams: BuildSendParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			Destination:   testDestination,
 			IssuanceID:    testIssuanceID,
@@ -279,7 +284,6 @@ func TestPrepareSend_PassWithCredentialIDs(t *testing.T) {
 		},
 		ReceiverPubKey:   receiverKP.PubKeyHex,
 		IssuerPubKey:     issuerKP.PubKeyHex,
-		Sequence:         1,
 		CurrentBalance:   1000,
 		CurrentBalanceCt: balanceCt,
 	})
@@ -376,6 +380,7 @@ func TestPrepareSendRejectsMismatchedSenderKey(t *testing.T) {
 
 	_, err = PrepareSend(SendParams{
 		BuildSendParams: BuildSendParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			Destination:   testDestination,
 			IssuanceID:    testIssuanceID,
@@ -385,7 +390,6 @@ func TestPrepareSendRejectsMismatchedSenderKey(t *testing.T) {
 		},
 		ReceiverPubKey:   receiverKP.PubKeyHex,
 		IssuerPubKey:     issuerKP.PubKeyHex,
-		Sequence:         1,
 		CurrentBalance:   1000,
 		CurrentBalanceCt: balanceCiphertext,
 	})
@@ -430,6 +434,81 @@ func TestBuildSend_Pass(t *testing.T) {
 	balanceCiphertext, ok := q.entries[senderMPTIndex]["ConfidentialBalanceSpending"].(string)
 	require.True(t, ok)
 	contextHash, err := proof.SendContextHash(testAccount, testIssuanceID, result.Sequence, testDestination, 2)
+	require.NoError(t, err)
+	participants := []proof.Participant{
+		{PubKeyHex: senderKP.PubKeyHex, CiphertextHex: result.SenderEncryptedAmount},
+		{PubKeyHex: receiverKP.PubKeyHex, CiphertextHex: result.DestinationEncryptedAmount},
+		{PubKeyHex: issuerKey, CiphertextHex: result.IssuerEncryptedAmount},
+	}
+	require.NoError(t, proof.VerifySendProof(result.ZKProof, participants, balanceCiphertext, result.AmountCommitment, result.BalanceCommitment, contextHash))
+
+	valid, err := result.Validate()
+	require.NoError(t, err)
+	require.True(t, valid)
+}
+
+// TestBuildSendSequenceSelectsLedgerOnFirstEntryRead pins the one path where a proof-bearing
+// build selects its validated ledger from an entry read rather than from account_info. A
+// caller-supplied Sequence skips the account query, so the snapshot starts unbound, the first
+// entry read asks for the latest validated ledger, and every later validated read is pinned to
+// the hash it adopted. requireCurrentBalanceVersion then compares the open ledger against that
+// adopted index, which before this path always came from account_info.
+func TestBuildSendSequenceSelectsLedgerOnFirstEntryRead(t *testing.T) {
+	const currentBalance uint64 = 1000
+	const sendAmount uint64 = 300
+	const sequence uint32 = 21
+
+	senderKP, q := newBalanceLedgerFixture(t, 0, 2, currentBalance)
+	q.accountErr = errors.New("the account sequence must not be read")
+	receiverKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+	require.NoError(t, err)
+	q.entries[receiverMPTIndex] = buildMPTokenEntry(receivable(receiverKP.PubKeyHex))
+
+	result, err := BuildSend(q, BuildSendParams{
+		TxOptions:     TxOptions{Sequence: sequence, Delegate: testDelegate},
+		Account:       testAccount,
+		Destination:   testDestination,
+		IssuanceID:    testIssuanceID,
+		Amount:        sendAmount,
+		SenderPrivKey: senderKP.PrivKeyHex,
+		SenderPubKey:  senderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+	})
+	require.NoError(t, err)
+	requireSequenceOptions(t, result.BaseTx, sequence, testDelegate)
+	require.Empty(t, q.accountRequests)
+
+	// The open-ledger staleness read deliberately sits outside the snapshot, so only the
+	// validated reads carry the pinned ledger. The first of those selects it.
+	var validated []ledger.EntryRequest
+	var current int
+	for _, req := range q.entryRequests {
+		if req.LedgerIndex == common.Current {
+			current++
+			continue
+		}
+		validated = append(validated, req)
+	}
+	require.Equal(t, 1, current, "the balance version is read from the open ledger exactly once")
+	require.Len(t, validated, 3, "issuance, sender MPToken, and receiver MPToken")
+	require.Equal(t, common.LedgerSpecifier(common.Validated), validated[0].LedgerIndex)
+	require.Empty(t, validated[0].LedgerHash)
+	for _, req := range validated[1:] {
+		require.Nil(t, req.LedgerIndex)
+		require.Equal(t, mockLedgerHash, req.LedgerHash)
+	}
+
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
+	issuerKey, ok := q.entries[issuanceIndex]["IssuerEncryptionKey"].(string)
+	require.True(t, ok)
+	balanceCiphertext, ok := q.entries[senderMPTIndex]["ConfidentialBalanceSpending"].(string)
+	require.True(t, ok)
+	contextHash, err := proof.SendContextHash(testAccount, testIssuanceID, sequence, testDestination, 2)
 	require.NoError(t, err)
 	participants := []proof.Participant{
 		{PubKeyHex: senderKP.PubKeyHex, CiphertextHex: result.SenderEncryptedAmount},

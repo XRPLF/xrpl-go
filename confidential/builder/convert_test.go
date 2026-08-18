@@ -97,6 +97,7 @@ func TestPrepareConvert_PassFirstTime(t *testing.T) {
 
 			result, err := PrepareConvert(ConvertParams{
 				BuildConvertParams: BuildConvertParams{
+					TxOptions:     TxOptions{TicketSequence: 11},
 					Account:       testAccount,
 					IssuanceID:    testIssuanceID,
 					Amount:        test.amount,
@@ -104,21 +105,22 @@ func TestPrepareConvert_PassFirstTime(t *testing.T) {
 					HolderPubKey:  holderKP.PubKeyHex,
 				},
 				IssuerPubKey: issuerKP.PubKeyHex,
-				Sequence:     1,
 				FirstTime:    true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, result)
 			require.Equal(t, transaction.ConfidentialMPTConvertTx, result.TxType())
 			require.EqualValues(t, test.amount, result.MPTAmount)
+			requireTicketOptions(t, result.BaseTx, 11, "")
 
 			// First time: key and proof must be set.
 			require.NotNil(t, result.HolderEncryptionKey)
 			require.Equal(t, holderKP.PubKeyHex, *result.HolderEncryptionKey)
 			require.NotNil(t, result.ZKProof)
 
-			// Verify the Schnorr proof cryptographically.
-			ctxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, uint32(1))
+			// Verify the Schnorr proof cryptographically. It commits to the ticket sequence,
+			// the sequence proxy the transaction spends.
+			ctxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, uint32(11))
 			require.NoError(t, err)
 			err = proof.VerifyConvertProof(*result.ZKProof, holderKP.PubKeyHex, ctxHash)
 			require.NoError(t, err)
@@ -141,13 +143,13 @@ func TestPrepareConvert_PassNotFirstTime(t *testing.T) {
 
 	result, err := PrepareConvert(ConvertParams{
 		BuildConvertParams: BuildConvertParams{
+			TxOptions:    TxOptions{Sequence: 2},
 			Account:      testAccount,
 			IssuanceID:   testIssuanceID,
 			Amount:       500,
 			HolderPubKey: holderKP.PubKeyHex,
 		},
 		IssuerPubKey: issuerKP.PubKeyHex,
-		Sequence:     2,
 		FirstTime:    false,
 	})
 	require.NoError(t, err)
@@ -170,6 +172,7 @@ func TestPrepareConvert_PassWithAuditor(t *testing.T) {
 
 	result, err := PrepareConvert(ConvertParams{
 		BuildConvertParams: BuildConvertParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			IssuanceID:    testIssuanceID,
 			Amount:        100,
@@ -178,7 +181,6 @@ func TestPrepareConvert_PassWithAuditor(t *testing.T) {
 		},
 		IssuerPubKey:  issuerKP.PubKeyHex,
 		AuditorPubKey: auditorKP.PubKeyHex,
-		Sequence:      1,
 		FirstTime:     false,
 	})
 	require.NoError(t, err)
@@ -236,6 +238,7 @@ func TestPrepareConvert_FailValidation(t *testing.T) {
 			name: "fail - mismatched holder keypair",
 			params: ConvertParams{
 				BuildConvertParams: BuildConvertParams{
+					TxOptions:     TxOptions{Sequence: 1},
 					Account:       testAccount,
 					IssuanceID:    testIssuanceID,
 					Amount:        1,
@@ -243,7 +246,6 @@ func TestPrepareConvert_FailValidation(t *testing.T) {
 					HolderPubKey:  kp.PubKeyHex,
 				},
 				IssuerPubKey: kp.PubKeyHex,
-				Sequence:     1,
 				FirstTime:    true,
 			},
 			wantErr: ErrCryptoFailed,
@@ -521,6 +523,64 @@ func TestBuildConvert_PassWithAuditor(t *testing.T) {
 	require.NotNil(t, result)
 	require.NotNil(t, result.AuditorEncryptedAmount)
 	requireConvertCiphertexts(t, result, 100, holderKP.PubKeyHex, issuerKP.PubKeyHex, auditorKP.PubKeyHex)
+}
+
+// TestBuildConvertTicketBindsProofAndSkipsSequenceLookup pins the online first-time path with a
+// caller-supplied ticket: no account query runs, and the Schnorr proof commits to the ticket
+// sequence rather than to an account sequence the builder never read.
+func TestBuildConvertTicketBindsProofAndSkipsSequenceLookup(t *testing.T) {
+	holderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	mptokenIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
+
+	q := &mockQuerier{
+		accountErr: errors.New("the account sequence must not be read"),
+		entries: map[string]ledgerentries.FlatLedgerObject{
+			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
+			mptokenIndex:  buildMPTokenEntry(holdingPublicly(1000)),
+		},
+	}
+
+	result, err := BuildConvert(q, BuildConvertParams{
+		TxOptions:     TxOptions{TicketSequence: 5},
+		Account:       testAccount,
+		IssuanceID:    testIssuanceID,
+		Amount:        1000,
+		HolderPrivKey: holderKP.PrivKeyHex,
+		HolderPubKey:  holderKP.PubKeyHex,
+	})
+	require.NoError(t, err)
+	requireTicketOptions(t, result.BaseTx, 5, "")
+	require.Empty(t, q.accountRequests)
+
+	ctxHash, err := proof.ConvertContextHash(testAccount, testIssuanceID, 5)
+	require.NoError(t, err)
+	require.NoError(t, proof.VerifyConvertProof(*result.ZKProof, holderKP.PubKeyHex, ctxHash))
+}
+
+// TestBuildConvertRejectsDelegate pins that the non-delegable rule is reached before any ledger
+// read, so a delegate xrpld would reject never costs a query.
+func TestBuildConvertRejectsDelegate(t *testing.T) {
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	q := &mockQuerier{accountSeq: 5}
+
+	_, err = BuildConvert(q, BuildConvertParams{
+		TxOptions:    TxOptions{Sequence: 1, Delegate: testDelegate},
+		Account:      testAccount,
+		IssuanceID:   testIssuanceID,
+		Amount:       1,
+		HolderPubKey: kp.PubKeyHex,
+	})
+
+	require.ErrorIs(t, err, ErrDelegateNotAllowed)
+	require.Zero(t, q.queryCalls)
 }
 
 // TestPrepareConvertAllowsZeroSequenceOnRepeatForm pins that only the first-time form demands

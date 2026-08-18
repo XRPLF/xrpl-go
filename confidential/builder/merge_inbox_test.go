@@ -51,10 +51,10 @@ func TestMergeInboxBaseValidation(t *testing.T) {
 func TestPrepareMergeInbox_Pass(t *testing.T) {
 	result, err := PrepareMergeInbox(MergeInboxParams{
 		BuildMergeInboxParams: BuildMergeInboxParams{
+			TxOptions:  TxOptions{Sequence: 42},
 			Account:    testAccount,
 			IssuanceID: testIssuanceID,
 		},
-		Sequence: 42,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)

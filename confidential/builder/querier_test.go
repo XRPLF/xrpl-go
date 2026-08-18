@@ -203,6 +203,32 @@ func TestReadCurrentEntryRejectsInvalidResponse(t *testing.T) {
 	}
 }
 
+// TestReadEntryRejectsInvalidResponseOnUnboundSnapshot covers the guards only an unbound snapshot
+// reaches. A build the caller gave a nonce runs no account query, so nothing selected a ledger
+// before this read and the response itself is the only thing saying which ledger the state came
+// from. A bound snapshot rejects these through the index it already holds, so the table above
+// never exercises them.
+func TestReadEntryRejectsInvalidResponseOnUnboundSnapshot(t *testing.T) {
+	const objectIndex = "ABCDEF"
+	validNode := ledgerentries.FlatLedgerObject{"LedgerEntryType": "MPToken"}
+	tests := []struct {
+		name     string
+		response *ledger.EntryResponse
+	}{
+		{name: "unvalidated", response: &ledger.EntryResponse{Index: objectIndex, LedgerHash: mockLedgerHash, LedgerIndex: mockLedgerIndex, Node: validNode}},
+		{name: "zero ledger index", response: &ledger.EntryResponse{Index: objectIndex, LedgerHash: mockLedgerHash, Node: validNode, Validated: true}},
+		{name: "missing ledger hash", response: &ledger.EntryResponse{Index: objectIndex, LedgerIndex: mockLedgerIndex, Node: validNode, Validated: true}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot := &ledgerSnapshot{q: stubEntry(test.response)}
+			_, err := snapshot.readEntry(objectIndex)
+			require.ErrorIs(t, err, ErrInvalidLedgerState)
+		})
+	}
+}
+
 // TestReadCurrentEntryAcceptsUnvalidatedResponse pins that the open-ledger read does not
 // inherit the snapshot's ledger checks. The open ledger is never validated and reports a
 // different index, which is the whole reason this read exists.
@@ -223,9 +249,43 @@ func TestReadCurrentEntryAcceptsUnvalidatedResponse(t *testing.T) {
 	require.Equal(t, objectIndex, resp.Index)
 }
 
-// TestReadEntryRejectsUnselectedSnapshot pins that a snapshot with no ledger selected reads
-// nothing, so a builder that skipped beginBuild cannot silently read the current ledger.
-func TestReadEntryRejectsUnselectedSnapshot(t *testing.T) {
+// TestUnboundSnapshotBindsOnFirstRead pins how a build that skipped the account query selects its
+// ledger. The first read asks for the latest validated ledger and adopts the index and hash
+// reported, and every later read is pinned to that hash, so a ledger closing mid-build cannot mix
+// state from two ledgers into one proof.
+func TestUnboundSnapshotBindsOnFirstRead(t *testing.T) {
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	holderIndex, err := mpTokenIndex(testIssuanceID, testAccount)
+	require.NoError(t, err)
+	q := &mockQuerier{
+		entries: map[string]ledgerentries.FlatLedgerObject{
+			issuanceIndex: buildIssuanceEntry("issuer-key", ""),
+			holderIndex:   buildMPTokenEntry(mptokenFields{holderKey: "holder-key"}),
+		},
+	}
+
+	snapshot := &ledgerSnapshot{q: q}
+	_, err = getProvableIssuance(snapshot, testIssuanceID)
+	require.NoError(t, err)
+	_, err = getMPTokenConvertState(snapshot, issuanceState{}, testIssuanceID, testAccount)
+	require.NoError(t, err)
+
+	require.Empty(t, q.accountRequests, "a caller-supplied nonce keeps the build off the account query")
+	require.Len(t, q.entryRequests, 2)
+	require.Equal(t, common.LedgerSpecifier(common.Validated), q.entryRequests[0].LedgerIndex)
+	require.Empty(t, q.entryRequests[0].LedgerHash)
+	require.Nil(t, q.entryRequests[1].LedgerIndex)
+	require.Equal(t, mockLedgerHash, q.entryRequests[1].LedgerHash)
+	require.Equal(t, mockLedgerIndex, snapshot.index)
+	require.Equal(t, mockLedgerHash, snapshot.hash)
+}
+
+// TestReadEntryRejectsQuerierlessSnapshot pins that a snapshot holding no querier reads
+// nothing. A snapshot with no ledger selected is allowed, because a build the caller gave a
+// nonce runs no account query and lets the first entry read select the ledger, but one that
+// never adopted a querier has no endpoint to read through.
+func TestReadEntryRejectsQuerierlessSnapshot(t *testing.T) {
 	_, err := (&ledgerSnapshot{}).readEntry("ABCDEF")
 	require.ErrorIs(t, err, ErrInvalidLedgerState)
 }

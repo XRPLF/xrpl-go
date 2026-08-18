@@ -167,14 +167,99 @@ Choose `Build*` when you have access to a live ledger connection and want the SD
 
 Choose `Prepare*` when you already have those values and want deterministic, offline transaction assembly.
 
-Each proof commits to the transaction sequence, so a `Prepare*` helper that emits a proof rejects a
-zero `Sequence` with `ErrMissingSequence` rather than produce a proof a later autofill would
-invalidate. The two proof-free forms are exempt: `PrepareMergeInbox`, and `PrepareConvert` for a
-holder whose encryption key is already registered. Both accept a zero `Sequence` and can be autofilled.
+Each proof commits to the nonce the transaction spends, so a `Prepare*` helper that emits a proof
+rejects options carrying neither `Sequence` nor `TicketSequence` with `ErrMissingSequence` rather
+than produce a proof a later autofill would invalidate. The two proof-free forms are exempt:
+`PrepareMergeInbox`, and `PrepareConvert` for a holder whose encryption key is already registered.
+Both accept a zero nonce and can be autofilled.
 
 `Build*` also preflights what the network enforces, so a transaction it would reject never costs
 a fee and a sequence: the issuance capabilities, and the ledger state each transactor requires
 of the accounts it touches.
+
+## Transaction options
+
+Every `Build*Params` embeds `TxOptions`, which carries the fields that are about the transaction
+rather than the confidential operation: which nonce authorizes it, and who submits it.
+
+```go
+type TxOptions struct {
+    Sequence       uint32
+    TicketSequence uint32
+    Delegate       string
+}
+```
+
+Set either `Sequence` or `TicketSequence`, never both: XRPL requires `Sequence` to be 0 whenever a
+transaction spends a Ticket, so setting both returns `ErrConflictingNonce`.
+
+Every helper accepts a `TicketSequence`. xrpld hashes the sequence proxy into every confidential
+context hash, and the sequence proxy is the ticket whenever the transaction spends one, so a proof
+built here commits to the ticket sequence rather than to an account sequence. That covers a
+first-time `PrepareConvert`, `PrepareClawback`, `PrepareSend`, and `PrepareConvertBack`.
+
+There is one case a Ticket cannot rescue, and no builder can detect it, so it is documented rather
+than refused. `ConfidentialMPTSend` and `ConfidentialMPTConvertBack` commit their proofs to the
+submitter's own `ConfidentialBalanceVersion`, which a send, a convert-back, a merge-inbox, or a
+clawback against that holder bumps. Of several such transactions built against a single reading of
+one `MPToken`, the first to land bumps the version and the rest fail with `tecBAD_PROOF`, each
+paying a fee and destroying its Ticket. Submit them one at a time on that issuance and wait for
+validation.
+
+The collision is per `MPToken`, because the version lives on the `(issuance, holder)` entry, so
+plenty still runs in parallel on Tickets:
+
+- Clawbacks against different holders. `PrepareClawback` binds the target holder's
+  `IssuerEncryptedBalance` rather than any state of the submitting issuer, so they bind disjoint
+  entries. Two against the same holder are redundant, because a clawback removes that holder's
+  balance in full.
+- Converts. A convert credits the inbox rather than the spending balance, so it never bumps the
+  version, and a repeat convert carries no proof at all.
+- Merges and sends across different issuances, which never touch the same `MPToken`.
+
+A merge carries no proof, so nothing of its own can go stale, but it bumps the version regardless.
+A ticketed merge can therefore land out of order and invalidate a pending send or convert-back on
+the same issuance, so land a merge and wait for validation before preparing either.
+
+A `Build*` helper reads the account sequence only when both are zero, so supplying either one keeps
+the build off the account query entirely:
+
+```go
+tx, err := builder.BuildMergeInbox(client, builder.BuildMergeInboxParams{
+    TxOptions: builder.TxOptions{
+        TicketSequence: ticketSequence,
+        Delegate:       delegateAddress,
+    },
+    Account:    holderAddress,
+    IssuanceID: issuanceID,
+})
+```
+
+The Ticket is spent from the transaction `Account`'s account root, so it must be one that account
+created with `TicketCreate`. Only the `Account`'s sequence is consumed, never the `Delegate`'s, so
+a Ticket the delegate owns is rejected on-ledger with `tefNO_TICKET`.
+
+`Delegate` names the account submitting on the transaction account's behalf, per XLS-75. It is
+rejected when it is not a valid address, decodes to ACCOUNT_ZERO, carries an X-address tag, or
+names the transaction account itself, and the sentinels are the ones `BaseTx.Validate` reports.
+`ConfidentialMPTConvert` is marked non-delegable by xrpld, so `BuildConvert` and `PrepareConvert`
+reject any delegate with `ErrDelegateNotAllowed`.
+
+Each `Prepare*Params` reads the options from its embedded `Build*Params`, so a composite literal
+sets them there:
+
+```go
+params := builder.MergeInboxParams{
+    BuildMergeInboxParams: builder.BuildMergeInboxParams{
+        TxOptions:  builder.TxOptions{Sequence: sequence},
+        Account:    holderAddress,
+        IssuanceID: issuanceID,
+    },
+}
+```
+
+The promoted selectors, such as `params.Sequence` and `params.Delegate`, stay available after
+construction and reach that same value.
 
 ## Typical flow
 
@@ -238,7 +323,11 @@ Most builder errors are explicit and map to missing ledger state or invalid inpu
 - `ErrIssuanceNotFound`: the `MPTokenIssuance` ledger entry does not exist.
 - `ErrInsufficientBalance`: the requested confidential send or convert-back amount exceeds the
   decrypted balance, or a convert amount exceeds the holder's public `MPTAmount`.
-- `ErrMissingSequence`: a proof-bearing `Prepare*` helper was given a zero `Sequence`.
+- `ErrMissingSequence`: a proof-bearing `Prepare*` helper was given neither a `Sequence` nor a
+  `TicketSequence`.
+- `ErrConflictingNonce`: both `Sequence` and `TicketSequence` were set.
+- `ErrDelegateNotAllowed`: a `Delegate` was set on a type `NonDelegatableTransactionsMap` lists,
+  which among the confidential types is `ConfidentialMPTConvert`.
 - `ErrKeyMismatch`: the supplied public key differs from the one registered on the ledger.
 - `ErrInvalidCredentialIDs`: `BuildSendParams.CredentialIDs` is not a valid hexadecimal string
   array. It wraps `transaction.ErrInvalidCredentialIDs`, so `errors.Is` matches either sentinel.

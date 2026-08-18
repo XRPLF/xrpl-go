@@ -38,6 +38,14 @@ type LedgerQuerier interface {
 // ledgerSnapshot pins one build to a single validated ledger, and owns the querier it was
 // selected against so the two cannot drift apart. beginBuild selects the index and the first
 // read binds the snapshot to the hash the server reports for it.
+//
+// A snapshot the caller's own nonce left unbound is selected by its first read instead, which
+// carries an invariant this type cannot enforce: that first read must be one whose failure
+// aborts the build. Every builder reads the issuance first, and a missing issuance aborts, so
+// the snapshot always binds before a second read. A read that tolerated a missing entry as
+// state rather than aborting would leave an unbound snapshot unbound and let the next read
+// select a fresh ledger, mixing an absence observed in one ledger with state from another.
+// No read does today, and such a read must never come first.
 type ledgerSnapshot struct {
 	q     LedgerQuerier
 	index common.LedgerIndex
@@ -48,16 +56,23 @@ type ledgerSnapshot struct {
 // through a snapshot rather than through the querier: an unbound snapshot requests its
 // index and adopts the hash the server reports, and every later read requests that hash,
 // so a ledger closing mid-build cannot mix state from two ledgers into one proof.
+//
+// A snapshot with no index yet is selected by this read alone. A build the caller gave a
+// nonce runs no account query, so nothing chose a ledger before the first entry is read:
+// that read asks for the latest validated ledger and adopts the index and hash reported.
 func (s *ledgerSnapshot) readEntry(index string) (*ledger.EntryResponse, error) {
-	if s == nil || s.index == 0 {
+	if s == nil || s.q == nil {
 		return nil, fmt.Errorf("%w: validated ledger snapshot is missing", ErrInvalidLedgerState)
 	}
 
 	req := &ledger.EntryRequest{Index: index}
-	if s.hash == "" {
-		req.LedgerIndex = s.index
-	} else {
+	switch {
+	case s.hash != "":
 		req.LedgerHash = s.hash
+	case s.index != 0:
+		req.LedgerIndex = s.index
+	default:
+		req.LedgerIndex = common.Validated
 	}
 	resp, err := s.q.GetLedgerEntry(req)
 	if err != nil {
@@ -66,13 +81,17 @@ func (s *ledgerSnapshot) readEntry(index string) (*ledger.EntryResponse, error) 
 	if err := requireEntryNode(resp, index); err != nil {
 		return nil, err
 	}
-	if !resp.Validated || resp.LedgerIndex != s.index || resp.LedgerHash == "" {
+	if !resp.Validated || resp.LedgerIndex == 0 || resp.LedgerHash == "" {
+		return nil, fmt.Errorf("%w: ledger_entry did not return a validated ledger", ErrInvalidLedgerState)
+	}
+	if s.index != 0 && resp.LedgerIndex != s.index {
 		return nil, fmt.Errorf("%w: ledger_entry did not return validated ledger %s", ErrInvalidLedgerState, s.index.Ledger())
 	}
 	if _, err := hexutil.DecodeFixedHex(string(resp.LedgerHash), 32); err != nil {
 		return nil, fmt.Errorf("%w: malformed ledger hash: %w", ErrInvalidLedgerState, err)
 	}
 	if s.hash == "" {
+		s.index = resp.LedgerIndex
 		s.hash = resp.LedgerHash
 	} else if !strings.EqualFold(string(resp.LedgerHash), string(s.hash)) {
 		return nil, fmt.Errorf("%w: ledger_entry returned hash %q for selected hash %q", ErrInvalidLedgerState, resp.LedgerHash, s.hash)

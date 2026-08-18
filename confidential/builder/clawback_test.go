@@ -86,6 +86,7 @@ func TestPrepareClawback_Pass(t *testing.T) {
 
 	result, err := PrepareClawback(ClawbackParams{
 		BuildClawbackParams: BuildClawbackParams{
+			TxOptions:     TxOptions{Sequence: 11, Delegate: testDelegate},
 			Account:       testAccount,
 			Holder:        testDestination,
 			IssuanceID:    testIssuerIssuanceID,
@@ -94,14 +95,15 @@ func TestPrepareClawback_Pass(t *testing.T) {
 		Amount:           amount,
 		IssuerPubKey:     issuerKP.PubKeyHex,
 		IssuerCiphertext: issuerCt,
-		Sequence:         1,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, transaction.ConfidentialMPTClawbackTx, result.TxType())
 	require.NotEmpty(t, result.ZKProof)
+	requireSequenceOptions(t, result.BaseTx, 11, testDelegate)
 
-	ctxHash, err := proof.ClawbackContextHash(testAccount, testIssuerIssuanceID, uint32(1), testDestination)
+	// The proof commits to the account sequence the transaction spends.
+	ctxHash, err := proof.ClawbackContextHash(testAccount, testIssuerIssuanceID, uint32(11), testDestination)
 	require.NoError(t, err)
 	err = proof.VerifyClawbackProof(result.ZKProof, amount, issuerKP.PubKeyHex, issuerCt, ctxHash)
 	require.NoError(t, err)
@@ -122,6 +124,7 @@ func TestPrepareClawback_RejectsAmountCiphertextMismatch(t *testing.T) {
 
 	_, err = PrepareClawback(ClawbackParams{
 		BuildClawbackParams: BuildClawbackParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			Holder:        testDestination,
 			IssuanceID:    testIssuerIssuanceID,
@@ -130,7 +133,6 @@ func TestPrepareClawback_RejectsAmountCiphertextMismatch(t *testing.T) {
 		Amount:           encryptedAmount - 1,
 		IssuerPubKey:     issuerKP.PubKeyHex,
 		IssuerCiphertext: issuerCiphertext,
-		Sequence:         1,
 	})
 	require.ErrorIs(t, err, ErrCryptoFailed)
 	require.ErrorIs(t, err, proof.ErrProofGenerationFailed)
@@ -147,6 +149,7 @@ func TestPrepareClawback_MaximumAmount(t *testing.T) {
 
 	result, err := PrepareClawback(ClawbackParams{
 		BuildClawbackParams: BuildClawbackParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			Holder:        testDestination,
 			IssuanceID:    testIssuerIssuanceID,
@@ -155,7 +158,6 @@ func TestPrepareClawback_MaximumAmount(t *testing.T) {
 		Amount:           amount,
 		IssuerPubKey:     issuerKP.PubKeyHex,
 		IssuerCiphertext: issuerCiphertext,
-		Sequence:         1,
 	})
 	require.NoError(t, err)
 
@@ -362,6 +364,55 @@ func TestBuildClawback_Pass(t *testing.T) {
 	require.Equal(t, uint32(10), result.Sequence)
 
 	contextHash, err := proof.ClawbackContextHash(testAccount, testIssuerIssuanceID, result.Sequence, testDestination)
+	require.NoError(t, err)
+	require.NoError(t, proof.VerifyClawbackProof(result.ZKProof, clawbackAmount, issuerKP.PubKeyHex, issuerCt, contextHash))
+
+	valid, err := result.Validate()
+	require.NoError(t, err)
+	require.True(t, valid)
+}
+
+// TestBuildClawbackTicketBindsProofAndSkipsSequenceLookup pins that the clawback accepts a
+// Ticket. Its proof binds the target holder's IssuerEncryptedBalance rather than any state of
+// the submitting issuer, so clawbacks against different holders bind disjoint MPToken entries
+// and batch safely on Tickets. xrpld hashes the sequence proxy, so the proof must commit to the
+// ticket sequence, and no account query may run.
+func TestBuildClawbackTicketBindsProofAndSkipsSequenceLookup(t *testing.T) {
+	const clawbackAmount uint64 = 500
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	bf, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	issuerCt, err := elgamal.Encrypt(clawbackAmount, issuerKP.PubKeyHex, bf)
+	require.NoError(t, err)
+
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuerIssuanceID)
+	require.NoError(t, err)
+	mptokenIndex, err := xrplhash.MPToken(testIssuerIssuanceID, testDestination)
+	require.NoError(t, err)
+
+	q := &mockQuerier{
+		accountErr: errors.New("the account sequence must not be read"),
+		entries: map[string]ledgerentries.FlatLedgerObject{
+			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
+			mptokenIndex:  buildMPTokenEntry(clawable(issuerCt)),
+		},
+	}
+
+	result, err := BuildClawback(q, BuildClawbackParams{
+		TxOptions:     TxOptions{TicketSequence: 7, Delegate: testDelegate},
+		Account:       testAccount,
+		Holder:        testDestination,
+		IssuanceID:    testIssuerIssuanceID,
+		IssuerPrivKey: issuerKP.PrivKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: 0, High: clawbackAmount},
+	})
+	require.NoError(t, err)
+	requireTicketOptions(t, result.BaseTx, 7, testDelegate)
+	require.Empty(t, q.accountRequests)
+
+	contextHash, err := proof.ClawbackContextHash(testAccount, testIssuerIssuanceID, 7, testDestination)
 	require.NoError(t, err)
 	require.NoError(t, proof.VerifyClawbackProof(result.ZKProof, clawbackAmount, issuerKP.PubKeyHex, issuerCt, contextHash))
 

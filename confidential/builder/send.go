@@ -12,10 +12,11 @@ import (
 )
 
 // BuildSendParams holds minimal inputs for BuildSend.
-// Sequence, ReceiverPubKey, IssuerPubKey, AuditorPubKey, BalanceVersion, CurrentBalanceCt,
-// and CurrentBalance are auto-resolved from the ledger. Balance is decrypted using SenderPrivKey
-// within BalanceRange's inclusive bounds.
+// The sequence in TxOptions, ReceiverPubKey, IssuerPubKey, AuditorPubKey, BalanceVersion,
+// CurrentBalanceCt, and CurrentBalance are auto-resolved from the ledger. Balance is
+// decrypted using SenderPrivKey within BalanceRange's inclusive bounds.
 type BuildSendParams struct {
+	TxOptions
 	Account        string
 	Destination    string
 	DestinationTag *uint32
@@ -34,7 +35,6 @@ type SendParams struct {
 	ReceiverPubKey   string // 66 hex chars (receiver's registered encryption key)
 	IssuerPubKey     string // 66 hex chars
 	AuditorPubKey    string // 66 hex chars, empty if no auditor
-	Sequence         uint32 // Final transaction sequence bound into the proof. It must not change after preparation.
 	BalanceVersion   uint32 // From MPToken.ConfidentialBalanceVersion
 	CurrentBalance   uint64 // Sender's known plaintext spending balance
 	CurrentBalanceCt string // 132 hex chars, current ConfidentialBalanceSpending ciphertext
@@ -50,10 +50,11 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 		return nil, err
 	}
 
-	seq, snapshot, err := beginBuild(q, p.Account)
+	resolved, snapshot, err := resolveTxOptions(q, p.Account, p.TxOptions, transaction.ConfidentialMPTSendTx)
 	if err != nil {
 		return nil, err
 	}
+	p.TxOptions = resolved
 
 	issuance, err := getProvableIssuance(snapshot, p.IssuanceID)
 	if err != nil {
@@ -94,7 +95,6 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 		ReceiverPubKey:   receiverKey,
 		IssuerPubKey:     issuance.issuerKey,
 		AuditorPubKey:    issuance.auditorKey,
-		Sequence:         seq,
 		BalanceVersion:   sender.balanceVersion,
 		CurrentBalance:   currentBalance,
 		CurrentBalanceCt: sender.balanceCt,
@@ -138,8 +138,9 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 	if p.Amount > p.CurrentBalance {
 		return nil, ErrInsufficientBalance
 	}
-	if p.Sequence == 0 {
-		return nil, ErrMissingSequence
+	proofSequence, err := p.validateForProof(p.Account, transaction.ConfidentialMPTSendTx)
+	if err != nil {
+		return nil, err
 	}
 
 	amountBF, err := elgamal.GenerateBlindingFactor()
@@ -182,7 +183,7 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 		return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 	}
 
-	ctxHash, err := proof.SendContextHash(p.Account, p.IssuanceID, p.Sequence, p.Destination, p.BalanceVersion)
+	ctxHash, err := proof.SendContextHash(p.Account, p.IssuanceID, proofSequence, p.Destination, p.BalanceVersion)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 	}
@@ -212,11 +213,7 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 	}
 
 	tx := &transaction.ConfidentialMPTSend{
-		BaseTx: transaction.BaseTx{
-			Account:         types.Address(p.Account),
-			TransactionType: transaction.ConfidentialMPTSendTx,
-			Sequence:        p.Sequence,
-		},
+		BaseTx:                     baseTx(p.Account, transaction.ConfidentialMPTSendTx, p.TxOptions),
 		MPTokenIssuanceID:          p.IssuanceID,
 		Destination:                types.Address(p.Destination),
 		DestinationTag:             p.DestinationTag,

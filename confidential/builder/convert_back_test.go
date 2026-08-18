@@ -93,6 +93,7 @@ func TestPrepareConvertBack_Pass(t *testing.T) {
 
 	result, err := PrepareConvertBack(ConvertBackParams{
 		BuildConvertBackParams: BuildConvertBackParams{
+			TxOptions:     TxOptions{Sequence: 11, Delegate: testDelegate},
 			Account:       testAccount,
 			IssuanceID:    testIssuanceID,
 			Amount:        withdrawAmount,
@@ -101,7 +102,6 @@ func TestPrepareConvertBack_Pass(t *testing.T) {
 		},
 		IssuerPubKey:     issuerKP.PubKeyHex,
 		AuditorPubKey:    auditorKP.PubKeyHex,
-		Sequence:         1,
 		BalanceVersion:   0,
 		CurrentBalance:   currentBalance,
 		CurrentBalanceCt: balanceCt,
@@ -109,6 +109,7 @@ func TestPrepareConvertBack_Pass(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, transaction.ConfidentialMPTConvertBackTx, result.TxType())
+	requireSequenceOptions(t, result.BaseTx, 11, testDelegate)
 	require.NotNil(t, result.AuditorEncryptedAmount)
 
 	expectedHolderCt, err := elgamal.Encrypt(withdrawAmount, holderKP.PubKeyHex, result.BlindingFactor)
@@ -122,7 +123,7 @@ func TestPrepareConvertBack_Pass(t *testing.T) {
 	require.Equal(t, expectedAuditorCt, *result.AuditorEncryptedAmount)
 
 	// Verify the linkage + range proof cryptographically.
-	ctxHash, err := proof.ConvertBackContextHash(testAccount, testIssuanceID, uint32(1), uint32(0))
+	ctxHash, err := proof.ConvertBackContextHash(testAccount, testIssuanceID, uint32(11), uint32(0))
 	require.NoError(t, err)
 	err = proof.VerifyConvertBackProof(result.ZKProof, holderKP.PubKeyHex, balanceCt, result.BalanceCommitment, withdrawAmount, ctxHash)
 	require.NoError(t, err)
@@ -146,6 +147,7 @@ func TestPrepareConvertBack_MaxAmount(t *testing.T) {
 
 	result, err := PrepareConvertBack(ConvertBackParams{
 		BuildConvertBackParams: BuildConvertBackParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			IssuanceID:    testIssuanceID,
 			Amount:        maxAmount,
@@ -153,7 +155,6 @@ func TestPrepareConvertBack_MaxAmount(t *testing.T) {
 			HolderPubKey:  holderKP.PubKeyHex,
 		},
 		IssuerPubKey:     issuerKP.PubKeyHex,
-		Sequence:         1,
 		CurrentBalance:   maxAmount,
 		CurrentBalanceCt: balanceCt,
 	})
@@ -191,6 +192,7 @@ func TestPrepareConvertBack_MismatchedPrivateKey(t *testing.T) {
 
 	_, err = PrepareConvertBack(ConvertBackParams{
 		BuildConvertBackParams: BuildConvertBackParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			IssuanceID:    testIssuanceID,
 			Amount:        1,
@@ -198,7 +200,6 @@ func TestPrepareConvertBack_MismatchedPrivateKey(t *testing.T) {
 			HolderPubKey:  holderKP.PubKeyHex,
 		},
 		IssuerPubKey:     issuerKP.PubKeyHex,
-		Sequence:         1,
 		CurrentBalance:   currentBalance,
 		CurrentBalanceCt: balanceCt,
 	})
@@ -218,6 +219,7 @@ func TestPrepareConvertBack_FailInsufficientBalance(t *testing.T) {
 
 	_, err = PrepareConvertBack(ConvertBackParams{
 		BuildConvertBackParams: BuildConvertBackParams{
+			TxOptions:     TxOptions{Sequence: 1},
 			Account:       testAccount,
 			IssuanceID:    testIssuanceID,
 			Amount:        200, // More than CurrentBalance (100)
@@ -225,7 +227,6 @@ func TestPrepareConvertBack_FailInsufficientBalance(t *testing.T) {
 			HolderPubKey:  kp.PubKeyHex,
 		},
 		IssuerPubKey:     issKP.PubKeyHex,
-		Sequence:         1,
 		CurrentBalance:   100,
 		CurrentBalanceCt: ct,
 	})

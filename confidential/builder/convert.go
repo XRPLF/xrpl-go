@@ -10,8 +10,10 @@ import (
 )
 
 // BuildConvertParams holds minimal inputs for BuildConvert.
-// Sequence, IssuerPubKey, AuditorPubKey, and FirstTime are auto-resolved from the ledger.
+// The sequence in TxOptions, IssuerPubKey, AuditorPubKey, and FirstTime are auto-resolved
+// from the ledger.
 type BuildConvertParams struct {
+	TxOptions
 	Account       string
 	IssuanceID    string
 	Amount        uint64
@@ -24,10 +26,7 @@ type ConvertParams struct {
 	BuildConvertParams
 	IssuerPubKey  string // 66 hex chars (from MPTokenIssuance.IssuerEncryptionKey)
 	AuditorPubKey string // 66 hex chars, empty if no auditor
-	// Sequence is bound into the first-time proof and must not change after preparation.
-	// A repeat convert carries no proof, so it may be left zero for a later autofill.
-	Sequence  uint32
-	FirstTime bool // If true, registers key + generates Schnorr proof
+	FirstTime     bool   // If true, registers key + generates Schnorr proof
 }
 
 // BuildConvert queries ledger state and builds a ConfidentialMPTConvert transaction.
@@ -36,10 +35,11 @@ func BuildConvert(q LedgerQuerier, p BuildConvertParams) (*transaction.Confident
 		return nil, err
 	}
 
-	seq, snapshot, err := beginBuild(q, p.Account)
+	resolved, snapshot, err := resolveTxOptions(q, p.Account, p.TxOptions, transaction.ConfidentialMPTConvertTx)
 	if err != nil {
 		return nil, err
 	}
+	p.TxOptions = resolved
 
 	issuance, err := getProvableIssuance(snapshot, p.IssuanceID)
 	if err != nil {
@@ -69,7 +69,6 @@ func BuildConvert(q LedgerQuerier, p BuildConvertParams) (*transaction.Confident
 		BuildConvertParams: p,
 		IssuerPubKey:       issuance.issuerKey,
 		AuditorPubKey:      issuance.auditorKey,
-		Sequence:           seq,
 		FirstTime:          firstTime,
 	})
 }
@@ -94,8 +93,14 @@ func PrepareConvert(p ConvertParams) (*transaction.ConfidentialMPTConvert, error
 	if p.AuditorPubKey != "" && !transaction.IsValidCompressedEncryptionKey(p.AuditorPubKey) {
 		return nil, fmt.Errorf("auditor pub key: %w", ErrInvalidPubKey)
 	}
-	// Only the first-time form carries a proof, and only that proof binds the sequence.
-	// A repeat convert is free to leave Sequence to a later autofill.
+	// ConfidentialMPTConvert is the one confidential MPT type xrpld marks non-delegable,
+	// which validate reads off the transaction type rather than being told.
+	if err := p.validate(p.Account, transaction.ConfidentialMPTConvertTx); err != nil {
+		return nil, err
+	}
+	// Only the first-time form carries a proof, and only that proof binds the nonce.
+	// A repeat convert is free to leave the nonce to a later autofill.
+	var proofSequence uint32
 	if p.FirstTime {
 		if p.HolderPrivKey == "" {
 			return nil, ErrMissingHolderKey
@@ -103,8 +108,9 @@ func PrepareConvert(p ConvertParams) (*transaction.ConfidentialMPTConvert, error
 		if !isValidPrivateKey(p.HolderPrivKey) {
 			return nil, ErrInvalidPrivKey
 		}
-		if p.Sequence == 0 {
-			return nil, ErrMissingSequence
+		var err error
+		if proofSequence, err = p.proofSequence(); err != nil {
+			return nil, err
 		}
 	}
 
@@ -124,11 +130,7 @@ func PrepareConvert(p ConvertParams) (*transaction.ConfidentialMPTConvert, error
 	}
 
 	tx := &transaction.ConfidentialMPTConvert{
-		BaseTx: transaction.BaseTx{
-			Account:         types.Address(p.Account),
-			TransactionType: transaction.ConfidentialMPTConvertTx,
-			Sequence:        p.Sequence,
-		},
+		BaseTx:                baseTx(p.Account, transaction.ConfidentialMPTConvertTx, p.TxOptions),
 		MPTokenIssuanceID:     p.IssuanceID,
 		MPTAmount:             types.MPTPlainAmount(p.Amount),
 		HolderEncryptedAmount: holderCt,
@@ -146,7 +148,7 @@ func PrepareConvert(p ConvertParams) (*transaction.ConfidentialMPTConvert, error
 
 	// First-time key registration: decompress key + generate Schnorr proof.
 	if p.FirstTime {
-		ctxHash, err := proof.ConvertContextHash(p.Account, p.IssuanceID, p.Sequence)
+		ctxHash, err := proof.ConvertContextHash(p.Account, p.IssuanceID, proofSequence)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrCryptoFailed, err)
 		}
