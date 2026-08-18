@@ -24,7 +24,7 @@ type BuildSendParams struct {
 	SenderPrivKey  string              // Non-zero secp256k1 scalar below the curve order, also used to decrypt balance from ledger
 	SenderPubKey   string              // Valid 33-byte compressed secp256k1 point
 	BalanceRange   elgamal.AmountRange // Inclusive balance decryption bounds
-	CredentialIDs  []string            // Optional
+	CredentialIDs  types.CredentialIDs // Optional
 }
 
 // SendParams holds inputs for PrepareSend. BalanceRange is used only by
@@ -50,12 +50,12 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 		return nil, err
 	}
 
-	seq, err := getSequence(q, p.Account)
+	seq, snapshot, err := beginBuild(q, p.Account)
 	if err != nil {
 		return nil, err
 	}
 
-	issuance, err := getIssuance(q, p.IssuanceID)
+	issuance, err := getProvableIssuance(snapshot, p.IssuanceID)
 	if err != nil {
 		return nil, err
 	}
@@ -66,34 +66,27 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 		return nil, ErrTransferFeeSet
 	}
 
-	senderLedgerKey, senderBalanceCt, balanceVersion, err := getMPTokenState(q, p.IssuanceID, p.Account)
+	sender, err := getMPTokenState(snapshot, issuance, p.IssuanceID, p.Account)
 	if err != nil {
-		return nil, err
-	}
-
-	if senderLedgerKey == "" || senderBalanceCt == "" {
-		return nil, ErrMissingSenderState
+		return nil, nameParty(err, "sender")
 	}
 
 	// Validate sender pubkey matches ledger.
-	if !sameEncryptionKey(senderLedgerKey, p.SenderPubKey) {
+	if !sameEncryptionKey(sender.holderKey, p.SenderPubKey) {
 		return nil, fmt.Errorf("%w: sender key", ErrKeyMismatch)
 	}
 
-	currentBalance, err := elgamal.Decrypt(senderBalanceCt, p.SenderPrivKey, p.BalanceRange)
+	currentBalance, err := elgamal.Decrypt(sender.balanceCt, p.SenderPrivKey, p.BalanceRange)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decrypt balance: %w", ErrCryptoFailed, err)
 	}
 
-	receiverKey, err := getMPTokenHolderKey(q, p.IssuanceID, p.Destination)
+	receiverKey, err := getMPTokenReceiverState(snapshot, issuance, p.IssuanceID, p.Destination)
 	if err != nil {
 		if errors.Is(err, ErrMPTokenNotFound) {
 			return nil, fmt.Errorf("%w: %w", ErrReceiverNotOptedIn, err)
 		}
-		return nil, err
-	}
-	if receiverKey == "" {
-		return nil, ErrReceiverNotOptedIn
+		return nil, nameParty(err, "destination")
 	}
 
 	return PrepareSend(SendParams{
@@ -102,9 +95,9 @@ func BuildSend(q LedgerQuerier, p BuildSendParams) (*transaction.ConfidentialMPT
 		IssuerPubKey:     issuance.issuerKey,
 		AuditorPubKey:    issuance.auditorKey,
 		Sequence:         seq,
-		BalanceVersion:   balanceVersion,
+		BalanceVersion:   sender.balanceVersion,
 		CurrentBalance:   currentBalance,
-		CurrentBalanceCt: senderBalanceCt,
+		CurrentBalanceCt: sender.balanceCt,
 	})
 }
 
@@ -243,6 +236,9 @@ func PrepareSend(p SendParams) (*transaction.ConfidentialMPTSend, error) {
 		tx.CredentialIDs = p.CredentialIDs
 	}
 
+	if err := validatePreparedTransaction(tx); err != nil {
+		return nil, err
+	}
 	return tx, nil
 }
 
@@ -293,7 +289,7 @@ func validateSendBase(p BuildSendParams) error {
 	if !transaction.IsValidCompressedEncryptionKey(p.SenderPubKey) {
 		return fmt.Errorf("sender pub key: %w", ErrInvalidPubKey)
 	}
-	if len(p.CredentialIDs) > 0 && !types.CredentialIDs(p.CredentialIDs).IsValid() {
+	if len(p.CredentialIDs) > 0 && !p.CredentialIDs.IsValid() {
 		return ErrInvalidCredentialIDs
 	}
 	return nil

@@ -283,7 +283,7 @@ func TestBuildConvert_PassFirstTime(t *testing.T) {
 				accountSeq: 5,
 				entries: map[string]ledgerentries.FlatLedgerObject{
 					issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-					mptokenIndex:  buildMPTokenEntry("", "", 0, ""),
+					mptokenIndex:  buildMPTokenEntry(holdingPublicly(test.amount)),
 				},
 			}
 
@@ -342,6 +342,60 @@ func TestBuildConvertRejectsMissingMPToken(t *testing.T) {
 	require.ErrorIs(t, err, ErrMPTokenNotFound)
 }
 
+// TestBuildConvertChecksPublicBalance pins the public-balance preflight.
+// ConfidentialMPTConvert debits sfMPTAmount and rejects a convert it cannot fund with
+// tecINSUFFICIENT_FUNDS, so the builder decides it from the MPToken it already read. A
+// zero-amount convert funds nothing, which is what keeps the opt-in path open to a holder
+// with no public balance at all.
+func TestBuildConvertChecksPublicBalance(t *testing.T) {
+	tests := []struct {
+		name         string
+		publicAmount uint64
+		amount       uint64
+		wantErr      error
+	}{
+		{name: "converts less than it holds", publicAmount: 1000, amount: 400},
+		{name: "converts exactly what it holds", publicAmount: 1000, amount: 1000},
+		{name: "converts more than it holds", publicAmount: 1000, amount: 1001, wantErr: ErrInsufficientBalance},
+		{name: "holds nothing", amount: 1, wantErr: ErrInsufficientBalance},
+		{name: "zero-amount opt-in while holding nothing", amount: 0},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			holderKP, err := elgamal.GenerateKeypair()
+			require.NoError(t, err)
+			issuerKP, err := elgamal.GenerateKeypair()
+			require.NoError(t, err)
+			issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+			require.NoError(t, err)
+			mptokenIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+			require.NoError(t, err)
+
+			q := &mockQuerier{
+				accountSeq: 5,
+				entries: map[string]ledgerentries.FlatLedgerObject{
+					issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
+					mptokenIndex:  buildMPTokenEntry(holdingPublicly(test.publicAmount)),
+				},
+			}
+
+			_, err = BuildConvert(q, BuildConvertParams{
+				Account:       testAccount,
+				IssuanceID:    testIssuanceID,
+				Amount:        test.amount,
+				HolderPrivKey: holderKP.PrivKeyHex,
+				HolderPubKey:  holderKP.PubKeyHex,
+			})
+			if test.wantErr != nil {
+				require.ErrorIs(t, err, test.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestBuildConvertRejectsMalformedHolderPrivKeyBeforeLedgerQueries(t *testing.T) {
 	holderKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
@@ -378,7 +432,7 @@ func TestBuildConvert_PassNotFirstTime(t *testing.T) {
 		accountSeq: 7,
 		entries: map[string]ledgerentries.FlatLedgerObject{
 			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-			mptokenIndex:  buildMPTokenEntry(strings.ToUpper(holderKP.PubKeyHex), balanceCt, 0, ""),
+			mptokenIndex:  buildMPTokenEntry(mptokenFields{holderKey: strings.ToUpper(holderKP.PubKeyHex), balanceCt: balanceCt, publicAmount: 200}),
 		},
 	}
 
@@ -452,7 +506,7 @@ func TestBuildConvert_PassWithAuditor(t *testing.T) {
 		accountSeq: 3,
 		entries: map[string]ledgerentries.FlatLedgerObject{
 			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, auditorKP.PubKeyHex),
-			mptokenIndex:  buildMPTokenEntry("", "", 0, ""),
+			mptokenIndex:  buildMPTokenEntry(holdingPublicly(100)),
 		},
 	}
 

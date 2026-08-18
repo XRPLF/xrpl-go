@@ -51,17 +51,20 @@ func BuildClawback(q LedgerQuerier, p BuildClawbackParams) (*transaction.Confide
 		return nil, err
 	}
 
-	seq, err := getSequence(q, p.Account)
+	seq, snapshot, err := beginBuild(q, p.Account)
 	if err != nil {
 		return nil, err
 	}
 
-	issuance, err := getIssuance(q, p.IssuanceID)
+	issuance, err := getProvableIssuance(snapshot, p.IssuanceID)
 	if err != nil {
 		return nil, err
 	}
+	if !issuance.canClawback() {
+		return nil, ErrClawbackDisabled
+	}
 
-	issuerCt, err := getIssuerCiphertext(q, p.IssuanceID, p.Holder)
+	issuerCt, err := getIssuerCiphertext(snapshot, p.IssuanceID, p.Holder)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +74,11 @@ func BuildClawback(q LedgerQuerier, p BuildClawbackParams) (*transaction.Confide
 	// the decryption search from scanning further than the balance can possibly reach.
 	searchRange := p.BalanceRange
 	if searchRange.Low > issuance.confidentialOutstanding {
-		return nil, ErrAmountExceedsOutstanding
+		// The range cannot contain the holder's balance, which is a problem with the bounds
+		// the caller supplied rather than the protocol bound ErrAmountExceedsOutstanding
+		// reports, so it is not that sentinel.
+		return nil, fmt.Errorf("%w: BalanceRange.Low %d exceeds the issuance confidential outstanding amount %d",
+			elgamal.ErrInvalidAmountRange, searchRange.Low, issuance.confidentialOutstanding)
 	}
 	if searchRange.High > issuance.confidentialOutstanding {
 		searchRange.High = issuance.confidentialOutstanding
@@ -141,6 +148,9 @@ func PrepareClawback(p ClawbackParams) (*transaction.ConfidentialMPTClawback, er
 		ZKProof:           proofHex,
 	}
 
+	if err := validatePreparedTransaction(tx); err != nil {
+		return nil, err
+	}
 	return tx, nil
 }
 

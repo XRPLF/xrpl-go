@@ -343,7 +343,7 @@ func TestBuildConvertBackRejectsMissingHolderState(t *testing.T) {
 		accountSeq: 5,
 		entries: map[string]ledgerentries.FlatLedgerObject{
 			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-			mptokenIndex:  buildMPTokenEntry("", "", 0, ""),
+			mptokenIndex:  buildMPTokenEntry(mptokenFields{}),
 		},
 	}
 
@@ -357,6 +357,38 @@ func TestBuildConvertBackRejectsMissingHolderState(t *testing.T) {
 	})
 	require.ErrorIs(t, err, ErrMissingSenderState)
 	require.NotErrorIs(t, err, ErrCryptoFailed)
+}
+
+// TestBuildConvertBackRejectsAmountAboveOutstanding pins the supply check. rippled fails a
+// convert back above ConfidentialOutstandingAmount with tecINSUFFICIENT_FUNDS, and the
+// issuance is already in hand, so the holder's MPToken is never read.
+func TestBuildConvertBackRejectsAmountAboveOutstanding(t *testing.T) {
+	holderKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuerKP, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+
+	issuance := buildIssuanceEntry(issuerKP.PubKeyHex, "")
+	issuance["ConfidentialOutstandingAmount"] = "99"
+	q := &mockQuerier{
+		accountSeq: 5,
+		entries: map[string]ledgerentries.FlatLedgerObject{
+			issuanceIndex: issuance,
+		},
+	}
+
+	_, err = BuildConvertBack(q, BuildConvertBackParams{
+		Account:       testAccount,
+		IssuanceID:    testIssuanceID,
+		Amount:        100,
+		HolderPrivKey: holderKP.PrivKeyHex,
+		HolderPubKey:  holderKP.PubKeyHex,
+		BalanceRange:  elgamal.AmountRange{Low: 0, High: 1000},
+	})
+	require.ErrorIs(t, err, ErrAmountExceedsOutstanding)
+	require.NotErrorIs(t, err, ErrMPTokenNotFound)
 }
 
 func TestBuildConvertBack_InvalidRangeBeforeLedgerQueries(t *testing.T) {

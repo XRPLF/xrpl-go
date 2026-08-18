@@ -44,30 +44,32 @@ func BuildConvertBack(q LedgerQuerier, p BuildConvertBackParams) (*transaction.C
 		return nil, err
 	}
 
-	seq, err := getSequence(q, p.Account)
+	seq, snapshot, err := beginBuild(q, p.Account)
 	if err != nil {
 		return nil, err
 	}
 
-	issuance, err := getIssuance(q, p.IssuanceID)
+	issuance, err := getProvableIssuance(snapshot, p.IssuanceID)
 	if err != nil {
 		return nil, err
 	}
 
-	holderLedgerKey, balanceCt, balanceVersion, err := getMPTokenState(q, p.IssuanceID, p.Account)
+	// Converting back more than the confidential supply fails with tecINSUFFICIENT_FUNDS,
+	// and the issuance is already in hand, so reject it before reading the holder's MPToken.
+	if p.Amount > issuance.confidentialOutstanding {
+		return nil, ErrAmountExceedsOutstanding
+	}
+
+	holder, err := getMPTokenState(snapshot, issuance, p.IssuanceID, p.Account)
 	if err != nil {
 		return nil, err
 	}
 
-	if holderLedgerKey == "" || balanceCt == "" {
-		return nil, ErrMissingSenderState
-	}
-
-	if !sameEncryptionKey(holderLedgerKey, p.HolderPubKey) {
+	if !sameEncryptionKey(holder.holderKey, p.HolderPubKey) {
 		return nil, fmt.Errorf("%w: holder key", ErrKeyMismatch)
 	}
 
-	currentBalance, err := elgamal.Decrypt(balanceCt, p.HolderPrivKey, p.BalanceRange)
+	currentBalance, err := elgamal.Decrypt(holder.balanceCt, p.HolderPrivKey, p.BalanceRange)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decrypt balance: %w", ErrCryptoFailed, err)
 	}
@@ -77,9 +79,9 @@ func BuildConvertBack(q LedgerQuerier, p BuildConvertBackParams) (*transaction.C
 		IssuerPubKey:           issuance.issuerKey,
 		AuditorPubKey:          issuance.auditorKey,
 		Sequence:               seq,
-		BalanceVersion:         balanceVersion,
+		BalanceVersion:         holder.balanceVersion,
 		CurrentBalance:         currentBalance,
-		CurrentBalanceCt:       balanceCt,
+		CurrentBalanceCt:       holder.balanceCt,
 	})
 }
 
@@ -190,6 +192,9 @@ func PrepareConvertBack(p ConvertBackParams) (*transaction.ConfidentialMPTConver
 		tx.AuditorEncryptedAmount = &auditorCt
 	}
 
+	if err := validatePreparedTransaction(tx); err != nil {
+		return nil, err
+	}
 	return tx, nil
 }
 

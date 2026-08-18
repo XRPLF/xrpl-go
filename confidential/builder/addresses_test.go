@@ -73,15 +73,18 @@ func TestQueryAddressNormalization(t *testing.T) {
 
 	t.Run("the account query receives the classic form", func(t *testing.T) {
 		q := &mockQuerier{accountSeq: 7}
-		seq, err := getSequence(q, taggedXAddressOf(t, testAccount, 42))
+		seq, _, err := beginBuild(q, taggedXAddressOf(t, testAccount, 42))
 		require.NoError(t, err)
 		require.Equal(t, uint32(7), seq)
-		require.Equal(t, types.Address(testAccount), q.lastAccountReq.Account)
+		require.NotEmpty(t, q.accountRequests)
+		for _, req := range q.accountRequests {
+			require.Equal(t, types.Address(testAccount), req.Account)
+		}
 	})
 
 	t.Run("a malformed address fails before any ledger query", func(t *testing.T) {
 		q := &mockQuerier{}
-		_, err := getSequence(q, "notanaddress")
+		_, _, err := beginBuild(q, "notanaddress")
 		require.ErrorIs(t, err, ErrInvalidAccount)
 		require.NotErrorIs(t, err, ErrLedgerQuery)
 		require.Zero(t, q.queryCalls)

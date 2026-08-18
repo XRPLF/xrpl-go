@@ -61,7 +61,10 @@ Use these for `ConfidentialMPTSend`.
 - Encrypts the transfer amount for sender, destination, issuer, and optional auditor.
 - Builds both Pedersen commitments and the composite send proof.
 
-This path requires the destination holder to already have a registered `HolderEncryptionKey`.
+This path requires the destination holder to already be initialized to receive: a registered
+`HolderEncryptionKey`, a `ConfidentialBalanceInbox`, and the mirror balances the issuance
+implies. A destination missing any of them, or with no `MPToken` at all, reports
+`ErrReceiverNotOptedIn`.
 
 `DestinationTag` and `CredentialIDs` are optional and forwarded to the transaction unchanged. Set `DestinationTag` when the destination is a hosted account, and `CredentialIDs` when the destination sits behind a permissioned domain.
 
@@ -139,7 +142,11 @@ tx, err := builder.BuildClawback(client, builder.BuildClawbackParams{
 
 Use these for `ConfidentialMPTMergeInbox`.
 
-- Only needs the account, issuance ID, and sequence.
+- Resolves the account sequence.
+- Reads the `MPTokenIssuance` to confirm it allows confidential balances and is not locked.
+- Reads the holder `MPToken` to confirm it carries both confidential balances and the holder
+  encryption key, and that the holder is neither locked nor unauthorized.
+- Does not require `IssuerEncryptionKey`, which `ConfidentialMPTMergeInbox` never reads.
 - Performs no cryptographic work.
 - Lets a holder move confidential inbox balance into spending balance.
 
@@ -165,8 +172,9 @@ zero `Sequence` with `ErrMissingSequence` rather than produce a proof a later au
 invalidate. The two proof-free forms are exempt: `PrepareMergeInbox`, and `PrepareConvert` for a
 holder whose encryption key is already registered. Both accept a zero `Sequence` and can be autofilled.
 
-`Build*` also preflights the issuance capabilities the protocol requires, so a transaction the
-network would reject never costs a fee and a sequence.
+`Build*` also preflights what the network enforces, so a transaction it would reject never costs
+a fee and a sequence: the issuance capabilities, and the ledger state each transactor requires
+of the accounts it touches.
 
 ## Typical flow
 
@@ -220,15 +228,29 @@ keypair can produce it, so it can never sign a transaction nor hold an `MPToken`
 Most builder errors are explicit and map to missing ledger state or invalid inputs:
 
 - `ErrEncryptionKeyNotSet`: the issuance does not yet have the issuer encryption key configured.
-- `ErrReceiverNotOptedIn`: the destination holder has no registered `HolderEncryptionKey`.
+- `ErrReceiverNotOptedIn`: the destination holder is not initialized to receive. It has no
+  `MPToken`, no registered `HolderEncryptionKey`, no `ConfidentialBalanceInbox`, or is missing
+  a mirror balance the issuance implies.
 - `ErrMPTokenNotFound`: the account does not yet have the expected `MPToken` ledger entry.
+- `ErrMissingSenderState`: an `MPToken` exists but lacks confidential state the transaction
+  needs, such as a spending balance, a mirror balance, or the holder encryption key. A
+  clawback reports a holder that never opted in this way too.
 - `ErrIssuanceNotFound`: the `MPTokenIssuance` ledger entry does not exist.
-- `ErrInsufficientBalance`: the requested confidential send or convert-back amount exceeds the decrypted balance.
+- `ErrInsufficientBalance`: the requested confidential send or convert-back amount exceeds the
+  decrypted balance, or a convert amount exceeds the holder's public `MPTAmount`.
 - `ErrMissingSequence`: a proof-bearing `Prepare*` helper was given a zero `Sequence`.
 - `ErrKeyMismatch`: the supplied public key differs from the one registered on the ledger.
 - `ErrInvalidCredentialIDs`: `BuildSendParams.CredentialIDs` is not a valid hexadecimal string
   array. It wraps `transaction.ErrInvalidCredentialIDs`, so `errors.Is` matches either sentinel.
-- `elgamal.ErrInvalidAmountRange`: `BalanceRange` is inverted or its upper bound is `math.MaxUint64`.
+- `ErrStaleBalanceVersion`: a confidential transaction of the holder's own is still in flight and
+  has already moved `ConfidentialBalanceVersion`, so a proof built against the validated ledger
+  would be rejected. Rebuild once it validates.
+- `ErrInvalidLedgerState`: a ledger response was missing, malformed, or did not come from the
+  validated ledger the build selected.
+- `ErrInvalidTransaction`: the assembled transaction failed its own `Validate()`.
+- `elgamal.ErrInvalidAmountRange`: `BalanceRange` is inverted, its upper bound is
+  `math.MaxUint64`, or a clawback's `BalanceRange.Low` is above the issuance
+  `ConfidentialOutstandingAmount`, which puts every possible balance outside the range.
 - `ErrCryptoFailed`: a cryptographic primitive failed, or the current balance falls outside `BalanceRange`.
 
 Address fields report the field that failed and wrap the reason:
@@ -250,4 +272,14 @@ The issuance capability checks mirror the conditions the network enforces:
 - `ErrConfidentialDisabled`: the issuance does not have `lsfMPTCanHoldConfidentialBalance` set.
 - `ErrTransferDisabled`: a confidential send needs `lsfMPTCanTransfer`, which the issuance does not have.
 - `ErrTransferFeeSet`: the issuance charges a transfer fee, which confidential sends forbid.
-- `ErrAmountExceedsOutstanding`: `BalanceRange.Low` is above the issuance `ConfidentialOutstandingAmount`.
+- `ErrClawbackDisabled`: a clawback needs `lsfMPTCanClawback`, which the issuance does not have.
+- `ErrIssuanceLocked`: the issuance has `lsfMPTLocked`, so every balance of it is locked.
+- `ErrHolderLocked`: the holder's `MPToken` has `lsfMPTLocked`. A clawback is exempt, because
+  an issuer must be able to claw back from a holder it has locked. A send checks both
+  participants and prefixes the error with `sender` or `destination` to name the side that
+  blocked it.
+- `ErrHolderNotAuthorized`: the issuance has `lsfMPTRequireAuth` and the holder's `MPToken`
+  lacks `lsfMPTAuthorized`. A send names the participant the same way `ErrHolderLocked` does. An issuance that authorizes through a permissioned domain is left
+  to the network, because the credentials that path accepts are not read here.
+- `ErrAmountExceedsOutstanding`: a convert-back `Amount` exceeds the issuance
+  `ConfidentialOutstandingAmount`.

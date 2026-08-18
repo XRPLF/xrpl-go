@@ -26,8 +26,19 @@ func BuildMergeInbox(q LedgerQuerier, p BuildMergeInboxParams) (*transaction.Con
 		return nil, err
 	}
 
-	seq, err := getSequence(q, p.Account)
+	seq, snapshot, err := beginBuild(q, p.Account)
 	if err != nil {
+		return nil, err
+	}
+
+	// The merge carries no proof and encrypts nothing to the issuer, so the ledger reads
+	// exist purely to preflight a missing or non-confidential issuance,
+	// and an MPToken that was never initialized for confidential balances.
+	issuance, err := readIssuance(snapshot, p.IssuanceID)
+	if err != nil {
+		return nil, err
+	}
+	if err := getMPTokenMergeState(snapshot, issuance, p.IssuanceID, p.Account); err != nil {
 		return nil, err
 	}
 
@@ -55,6 +66,9 @@ func PrepareMergeInbox(p MergeInboxParams) (*transaction.ConfidentialMPTMergeInb
 		MPTokenIssuanceID: p.IssuanceID,
 	}
 
+	if err := validatePreparedTransaction(tx); err != nil {
+		return nil, err
+	}
 	return tx, nil
 }
 

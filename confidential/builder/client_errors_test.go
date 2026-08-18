@@ -50,22 +50,24 @@ func TestGetMPTokenStateClassifiesRPCEntryNotFound(t *testing.T) {
 	require.NoError(t, err)
 	client := rpc.NewClient(config)
 
-	_, _, _, err = getMPTokenState(client, testIssuanceID, testAccount)
+	_, err = getMPTokenState(snapshotFor(client), issuanceState{}, testIssuanceID, testAccount)
 	require.ErrorIs(t, err, ErrMPTokenNotFound)
 	require.NotErrorIs(t, err, ErrLedgerQuery)
 	require.Empty(t, transport.responses)
 }
 
 func TestGetMPTokenStateRejectsRPCNullBalanceVersion(t *testing.T) {
+	index, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
 	transport := &queuedRPCTransport{responses: []string{
-		`{"result":{"node":{"ConfidentialBalanceVersion":null}}}`,
+		fmt.Sprintf(`{"result":{"index":"%s","ledger_hash":"%s","ledger_index":%d,"node":{"LedgerEntryType":"MPToken","HolderEncryptionKey":"key","ConfidentialBalanceSpending":"ciphertext","IssuerEncryptedBalance":"mirror","ConfidentialBalanceVersion":null},"validated":true}}`, index, mockLedgerHash, mockLedgerIndex),
 	}}
 	config, err := rpc.NewClientConfig("http://testnode/", rpc.WithHTTPClient(transport))
 	require.NoError(t, err)
 	client := rpc.NewClient(config)
 
-	_, _, _, err = getMPTokenState(client, testIssuanceID, testAccount)
-	require.ErrorIs(t, err, ErrLedgerQuery)
+	_, err = getMPTokenState(snapshotFor(client), issuanceState{}, testIssuanceID, testAccount)
+	require.ErrorIs(t, err, ErrInvalidLedgerState)
 	require.Empty(t, transport.responses)
 }
 
@@ -107,7 +109,7 @@ func TestGetMPTokenStateClassifiesWebsocketEntryNotFound(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			q := &mockQuerier{entryErrs: map[string]error{index: tt.queryErr}}
 
-			_, _, _, err := getMPTokenState(q, testIssuanceID, testAccount)
+			_, err := getMPTokenState(snapshotFor(q), issuanceState{}, testIssuanceID, testAccount)
 			require.ErrorIs(t, err, tt.wantErr)
 			require.NotErrorIs(t, err, tt.notErr)
 		})

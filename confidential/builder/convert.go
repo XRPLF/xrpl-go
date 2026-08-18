@@ -36,23 +36,32 @@ func BuildConvert(q LedgerQuerier, p BuildConvertParams) (*transaction.Confident
 		return nil, err
 	}
 
-	seq, err := getSequence(q, p.Account)
+	seq, snapshot, err := beginBuild(q, p.Account)
 	if err != nil {
 		return nil, err
 	}
 
-	issuance, err := getIssuance(q, p.IssuanceID)
+	issuance, err := getProvableIssuance(snapshot, p.IssuanceID)
 	if err != nil {
 		return nil, err
+	}
+
+	holder, err := getMPTokenConvertState(snapshot, issuance, p.IssuanceID, p.Account)
+	if err != nil {
+		return nil, err
+	}
+
+	// The convert moves public MPT into a confidential balance, so the holder must already
+	// hold the amount publicly. ConfidentialMPTConvert rejects a convert it cannot fund with
+	// tecINSUFFICIENT_FUNDS. A zero-amount convert funds nothing, which is what makes it the
+	// opt-in path for a holder with no balance yet.
+	if p.Amount > holder.publicAmount {
+		return nil, ErrInsufficientBalance
 	}
 
 	// A holder without a registered encryption key uses the first-time proof form.
-	holderKey, err := getMPTokenHolderKey(q, p.IssuanceID, p.Account)
-	if err != nil {
-		return nil, err
-	}
-	firstTime := holderKey == ""
-	if !firstTime && !sameEncryptionKey(holderKey, p.HolderPubKey) {
+	firstTime := holder.holderKey == ""
+	if !firstTime && !sameEncryptionKey(holder.holderKey, p.HolderPubKey) {
 		return nil, fmt.Errorf("%w: holder key", ErrKeyMismatch)
 	}
 
@@ -151,6 +160,9 @@ func PrepareConvert(p ConvertParams) (*transaction.ConfidentialMPTConvert, error
 		tx.ZKProof = &proofHex
 	}
 
+	if err := validatePreparedTransaction(tx); err != nil {
+		return nil, err
+	}
 	return tx, nil
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/confidential/proof"
+	xrplhash "github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/stretchr/testify/require"
 )
@@ -33,12 +34,32 @@ func TestBuildSendUsesRPCDecodedBalanceVersion(t *testing.T) {
 	require.NoError(t, err)
 	balanceCiphertext, err := elgamal.Encrypt(currentBalance, senderKP.PubKeyHex, balanceBF)
 	require.NoError(t, err)
+	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+	require.NoError(t, err)
+	senderIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+	require.NoError(t, err)
+	receiverIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+	require.NoError(t, err)
 
+	entryResponse := func(index, node string) string {
+		return fmt.Sprintf(`{"result":{"index":"%s","ledger_hash":"%s","ledger_index":%d,"node":%s,"validated":true}}`, index, mockLedgerHash, mockLedgerIndex, node)
+	}
+	// rippled identifies an open ledger by ledger_current_index alone, and the balance
+	// version is only compared when that index leads the pinned validated ledger.
+	openEntryResponse := func(index, node string) string {
+		return fmt.Sprintf(`{"result":{"index":"%s","ledger_current_index":%d,"node":%s}}`, index, mockOpenLedgerIndex, node)
+	}
+	accountResponse := fmt.Sprintf(`{"result":{"account_data":{"Sequence":%d},"ledger_index":%d,"validated":true}}`, sequence, mockLedgerIndex)
 	transport := &queuedRPCTransport{responses: []string{
-		fmt.Sprintf(`{"result":{"account_data":{"Sequence":%d}}}`, sequence),
-		fmt.Sprintf(`{"result":{"node":{"IssuerEncryptionKey":"%s","Flags":%d,"ConfidentialOutstandingAmount":"1000000"}}}`, issuerKP.PubKeyHex, confidentialIssuanceFlags),
-		fmt.Sprintf(`{"result":{"node":{"HolderEncryptionKey":"%s","ConfidentialBalanceSpending":"%s","ConfidentialBalanceVersion":%d}}}`, senderKP.PubKeyHex, balanceCiphertext, balanceVersion),
-		fmt.Sprintf(`{"result":{"node":{"HolderEncryptionKey":"%s"}}}`, receiverKP.PubKeyHex),
+		// One account_info selects the validated ledger, the next reads the open sequence.
+		accountResponse,
+		accountResponse,
+		entryResponse(issuanceIndex, fmt.Sprintf(`{"LedgerEntryType":"MPTokenIssuance","IssuerEncryptionKey":"%s","Flags":%d,"ConfidentialOutstandingAmount":"1000000"}`, issuerKP.PubKeyHex, confidentialIssuanceFlags)),
+		entryResponse(senderIndex, fmt.Sprintf(`{"LedgerEntryType":"MPToken","HolderEncryptionKey":"%s","ConfidentialBalanceSpending":"%s","ConfidentialBalanceVersion":%d,"IssuerEncryptedBalance":"%s"}`, senderKP.PubKeyHex, balanceCiphertext, balanceVersion, testIssuerMirrorCt)),
+		// The open-ledger reread of the sender MPToken reports the same version, so the
+		// balance the proof consumes is not superseded by a transaction still in flight.
+		openEntryResponse(senderIndex, fmt.Sprintf(`{"LedgerEntryType":"MPToken","HolderEncryptionKey":"%s","ConfidentialBalanceSpending":"%s","ConfidentialBalanceVersion":%d,"IssuerEncryptedBalance":"%s"}`, senderKP.PubKeyHex, balanceCiphertext, balanceVersion, testIssuerMirrorCt)),
+		entryResponse(receiverIndex, fmt.Sprintf(`{"LedgerEntryType":"MPToken","HolderEncryptionKey":"%s","ConfidentialBalanceInbox":"%s","IssuerEncryptedBalance":"%s"}`, receiverKP.PubKeyHex, testInboxCt, testIssuerMirrorCt)),
 	}}
 	config, err := rpc.NewClientConfig("http://testnode/", rpc.WithHTTPClient(transport))
 	require.NoError(t, err)

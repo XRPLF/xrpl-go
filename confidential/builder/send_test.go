@@ -405,7 +405,7 @@ func TestBuildSend_Pass(t *testing.T) {
 	require.NoError(t, err)
 	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
 	require.NoError(t, err)
-	q.entries[receiverMPTIndex] = buildMPTokenEntry(receiverKP.PubKeyHex, "", 0, "")
+	q.entries[receiverMPTIndex] = buildMPTokenEntry(receivable(receiverKP.PubKeyHex))
 
 	result, err := BuildSend(q, BuildSendParams{
 		Account:        testAccount,
@@ -451,6 +451,7 @@ func TestBuildSend_PassWithAuditor(t *testing.T) {
 	senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
 	require.NoError(t, err)
 	q.entries[senderMPTIndex]["HolderEncryptionKey"] = senderKP.PubKeyHex
+	withAuditorMirror(q.entries[senderMPTIndex])
 	balanceCiphertext, ok := q.entries[senderMPTIndex]["ConfidentialBalanceSpending"].(string)
 	require.True(t, ok)
 
@@ -458,7 +459,7 @@ func TestBuildSend_PassWithAuditor(t *testing.T) {
 	require.NoError(t, err)
 	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
 	require.NoError(t, err)
-	q.entries[receiverMPTIndex] = buildMPTokenEntry(receiverKP.PubKeyHex, "", 0, "")
+	q.entries[receiverMPTIndex] = withAuditorMirror(buildMPTokenEntry(receivable(receiverKP.PubKeyHex)))
 
 	auditorKP, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
@@ -523,6 +524,7 @@ func TestBuildSendRejectsMissingSenderLedgerState(t *testing.T) {
 	}{
 		{name: "missing holder encryption key", removeField: "HolderEncryptionKey"},
 		{name: "missing spending ciphertext", removeField: "ConfidentialBalanceSpending"},
+		{name: "missing issuer mirror balance", removeField: "IssuerEncryptedBalance"},
 	}
 
 	for _, test := range tests {
@@ -606,25 +608,101 @@ func TestBuildSendPreservesReceiverQueryError(t *testing.T) {
 	require.NotErrorIs(t, err, ErrReceiverNotOptedIn)
 }
 
-func TestBuildSend_FailReceiverWithoutEncryptionKey(t *testing.T) {
+// TestBuildSend_FailReceiverNotInitialized covers each field ConfidentialMPTSend requires on
+// the destination's MPToken. An entry that exists but lacks any of them is not opted in, so
+// the error must stay distinct from a missing entry.
+func TestBuildSend_FailReceiverNotInitialized(t *testing.T) {
 	const currentBalance uint64 = 1000
 
-	senderKP, q := newBalanceLedgerFixture(t, 1, 0, currentBalance)
-	receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
-	require.NoError(t, err)
-	q.entries[receiverMPTIndex] = buildMPTokenEntry("", "", 0, "")
+	tests := []struct {
+		name        string
+		removeField string
+	}{
+		{name: "missing holder encryption key", removeField: "HolderEncryptionKey"},
+		{name: "missing inbox balance", removeField: "ConfidentialBalanceInbox"},
+		{name: "missing issuer mirror balance", removeField: "IssuerEncryptedBalance"},
+	}
 
-	_, err = BuildSend(q, BuildSendParams{
-		Account:       testAccount,
-		Destination:   testDestination,
-		IssuanceID:    testIssuanceID,
-		Amount:        100,
-		SenderPrivKey: senderKP.PrivKeyHex,
-		SenderPubKey:  senderKP.PubKeyHex,
-		BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
-	})
-	require.ErrorIs(t, err, ErrReceiverNotOptedIn)
-	require.NotErrorIs(t, err, ErrMPTokenNotFound)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			senderKP, q := newBalanceLedgerFixture(t, 1, 0, currentBalance)
+			receiverKP, err := elgamal.GenerateKeypair()
+			require.NoError(t, err)
+			receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+			require.NoError(t, err)
+
+			receiver := buildMPTokenEntry(receivable(receiverKP.PubKeyHex))
+			delete(receiver, test.removeField)
+			q.entries[receiverMPTIndex] = receiver
+
+			_, err = BuildSend(q, BuildSendParams{
+				Account:       testAccount,
+				Destination:   testDestination,
+				IssuanceID:    testIssuanceID,
+				Amount:        100,
+				SenderPrivKey: senderKP.PrivKeyHex,
+				SenderPubKey:  senderKP.PubKeyHex,
+				BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+			})
+			require.ErrorIs(t, err, ErrReceiverNotOptedIn)
+			require.NotErrorIs(t, err, ErrMPTokenNotFound)
+		})
+	}
+}
+
+// TestBuildSendRequiresAuditorMirrors pins XLS-96 8.4: once an issuance registers an auditor
+// key, the send updates the auditor mirror of both participants, so a holder that opted in
+// before the auditor existed must be rejected before a proof is generated rather than after.
+func TestBuildSendRequiresAuditorMirrors(t *testing.T) {
+	const currentBalance uint64 = 1000
+
+	tests := []struct {
+		name        string
+		breakSender bool
+		wantErr     error
+	}{
+		{name: "sender missing auditor mirror", breakSender: true, wantErr: ErrMissingSenderState},
+		{name: "receiver missing auditor mirror", wantErr: ErrReceiverNotOptedIn},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			senderKP, q := newBalanceLedgerFixture(t, 1, 0, currentBalance)
+			receiverKP, err := elgamal.GenerateKeypair()
+			require.NoError(t, err)
+			senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+			require.NoError(t, err)
+			receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+			require.NoError(t, err)
+			issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+			require.NoError(t, err)
+
+			// Both participants start with the mirror the auditing issuance requires, so the
+			// only difference between the cases is which one loses it.
+			q.entries[issuanceIndex]["AuditorEncryptionKey"] = receiverKP.PubKeyHex
+			withAuditorMirror(q.entries[senderMPTIndex])
+			q.entries[receiverMPTIndex] = withAuditorMirror(buildMPTokenEntry(receivable(receiverKP.PubKeyHex)))
+
+			broken := receiverMPTIndex
+			if test.breakSender {
+				broken = senderMPTIndex
+			}
+			delete(q.entries[broken], "AuditorEncryptedBalance")
+
+			_, err = BuildSend(q, BuildSendParams{
+				Account:       testAccount,
+				Destination:   testDestination,
+				IssuanceID:    testIssuanceID,
+				Amount:        100,
+				SenderPrivKey: senderKP.PrivKeyHex,
+				SenderPubKey:  senderKP.PubKeyHex,
+				BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+			})
+			require.ErrorIs(t, err, test.wantErr)
+			require.ErrorIs(t, err, ErrInvalidLedgerState)
+			require.ErrorContains(t, err, "AuditorEncryptedBalance")
+		})
+	}
 }
 
 func TestBuildSend_FailReceiverNotOptedIn(t *testing.T) {
@@ -652,7 +730,7 @@ func TestBuildSend_FailReceiverNotOptedIn(t *testing.T) {
 		accountSeq: 1,
 		entries: map[string]ledgerentries.FlatLedgerObject{
 			issuanceIndex:  buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-			senderMPTIndex: buildMPTokenEntry(senderKP.PubKeyHex, senderBalanceCt, 0, ""),
+			senderMPTIndex: buildMPTokenEntry(spendable(senderKP.PubKeyHex, senderBalanceCt, 0)),
 		},
 		entryErrs: map[string]error{receiverMPTIndex: entryNotFoundErr},
 	}
@@ -717,6 +795,72 @@ func TestBuildSendRejectsIssuanceWithoutTransferCapability(t *testing.T) {
 				BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
 			})
 			require.ErrorIs(t, err, test.wantErr)
+		})
+	}
+}
+
+// TestBuildSendRejectsLockedOrUnauthorizedParticipants pins the wiring of the lock and auth
+// preflight through a real build. ConfidentialMPTSend runs checkFrozen and requireAuth for the
+// sender and the destination alike, so either side can doom the transaction, and the error
+// names the side that did. A locked issuance names neither, because it belongs to the
+// issuance rather than to a participant.
+func TestBuildSendRejectsLockedOrUnauthorizedParticipants(t *testing.T) {
+	const currentBalance uint64 = 1000
+
+	tests := []struct {
+		name          string
+		issuanceFlags uint32
+		senderFlags   uint32
+		receiverFlags uint32
+		wantErr       error
+		wantParty     string
+	}{
+		{name: "issuance locked", issuanceFlags: ledgerentries.LsfMPTLocked, wantErr: ErrIssuanceLocked},
+		{name: "sender locked", senderFlags: ledgerentries.LsfMPTLocked, wantErr: ErrHolderLocked, wantParty: "sender"},
+		{name: "destination locked", receiverFlags: ledgerentries.LsfMPTLocked, wantErr: ErrHolderLocked, wantParty: "destination"},
+		{name: "auth required and neither side authorized", issuanceFlags: ledgerentries.LsfMPTRequireAuth, wantErr: ErrHolderNotAuthorized, wantParty: "sender"},
+		{name: "auth required and only the sender authorized", issuanceFlags: ledgerentries.LsfMPTRequireAuth, senderFlags: ledgerentries.LsfMPTAuthorized, wantErr: ErrHolderNotAuthorized, wantParty: "destination"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			senderKP, q := newBalanceLedgerFixture(t, 1, 0, currentBalance)
+			receiverKP, err := elgamal.GenerateKeypair()
+			require.NoError(t, err)
+			senderMPTIndex, err := xrplhash.MPToken(testIssuanceID, testAccount)
+			require.NoError(t, err)
+			receiverMPTIndex, err := xrplhash.MPToken(testIssuanceID, testDestination)
+			require.NoError(t, err)
+			issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
+			require.NoError(t, err)
+
+			q.entries[receiverMPTIndex] = buildMPTokenEntry(receivable(receiverKP.PubKeyHex))
+			if test.issuanceFlags != 0 {
+				q.entries[issuanceIndex]["Flags"] = float64(confidentialIssuanceFlags | test.issuanceFlags)
+			}
+			if test.senderFlags != 0 {
+				q.entries[senderMPTIndex]["Flags"] = float64(test.senderFlags)
+			}
+			if test.receiverFlags != 0 {
+				q.entries[receiverMPTIndex]["Flags"] = float64(test.receiverFlags)
+			}
+
+			_, err = BuildSend(q, BuildSendParams{
+				Account:       testAccount,
+				Destination:   testDestination,
+				IssuanceID:    testIssuanceID,
+				Amount:        100,
+				SenderPrivKey: senderKP.PrivKeyHex,
+				SenderPubKey:  senderKP.PubKeyHex,
+				BalanceRange:  elgamal.AmountRange{Low: currentBalance, High: currentBalance},
+			})
+			require.ErrorIs(t, err, test.wantErr)
+			if test.wantParty != "" {
+				require.ErrorContains(t, err, test.wantParty+": ")
+				return
+			}
+			require.NotContains(t, err.Error(), "sender: ")
+			require.NotContains(t, err.Error(), "destination: ")
 		})
 	}
 }

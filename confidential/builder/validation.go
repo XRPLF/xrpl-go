@@ -1,6 +1,8 @@
 package builder
 
 import (
+	"fmt"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -80,6 +82,25 @@ func validateAmount(amount uint64) error {
 func validateAmountUpperBound(amount uint64) error {
 	if !types.MPTPlainAmount(amount).IsValid() {
 		return ErrAmountTooLarge
+	}
+	return nil
+}
+
+type txValidator interface {
+	Validate() (bool, error)
+}
+
+// validatePreparedTransaction runs a prepared transaction through its own Validate so a
+// field the builder assembled wrongly is reported here instead of at submission. Both
+// failure signals are honored, because txValidator is satisfied by any transaction type
+// and a rejection reported through the bool alone would otherwise pass unnoticed.
+func validatePreparedTransaction(tx txValidator) error {
+	ok, err := tx.Validate()
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidTransaction, err)
+	}
+	if !ok {
+		return ErrInvalidTransaction
 	}
 	return nil
 }

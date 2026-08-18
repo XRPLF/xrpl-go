@@ -29,6 +29,8 @@ var (
 	ErrNotIssuer           = errors.New("builder: account must be the issuance issuer")
 	ErrInsufficientBalance = errors.New("builder: amount exceeds current balance")
 	ErrLedgerQuery         = errors.New("builder: ledger query failed")
+	ErrInvalidLedgerState  = errors.New("builder: ledger state is missing or malformed")
+	ErrStaleBalanceVersion = errors.New("builder: confidential balance changed after the selected validated ledger")
 	ErrEncryptionKeyNotSet = errors.New("builder: encryption key not registered on issuance")
 	ErrReceiverNotOptedIn  = errors.New("builder: receiver has no encryption key registered")
 	ErrMPTokenNotFound     = errors.New("builder: MPToken ledger entry not found")
@@ -41,6 +43,10 @@ var (
 	ErrConfidentialDisabled     = errors.New("builder: issuance does not allow confidential balances")
 	ErrTransferDisabled         = errors.New("builder: issuance does not allow transfers")
 	ErrTransferFeeSet           = errors.New("builder: issuance with a transfer fee cannot send confidentially")
+	ErrClawbackDisabled         = errors.New("builder: issuance does not allow clawback")
+	ErrIssuanceLocked           = errors.New("builder: issuance is locked")
+	ErrHolderLocked             = errors.New("builder: holder MPToken is locked")
+	ErrHolderNotAuthorized      = errors.New("builder: holder is not authorized to hold the issuance")
 	ErrAmountExceedsOutstanding = errors.New("builder: amount exceeds the issuance confidential outstanding amount")
 
 	// ErrInvalidAddress names an address that failed to decode where the field it came
@@ -56,6 +62,7 @@ var (
 	ErrInvalidPrivKey     = errors.New("builder: private key must be a non-zero secp256k1 scalar")
 	ErrInvalidPubKey      = errors.New("builder: public key must be a valid 33-byte compressed secp256k1 point")
 	ErrInvalidCiphertext  = errors.New("builder: ciphertext must contain two valid compressed secp256k1 points")
+	ErrInvalidTransaction = errors.New("builder: prepared transaction is invalid")
 
 	// ErrInvalidCredentialIDs wraps the transaction sentinel the shared CredentialIDs
 	// validator raises, so a caller matching the builder error set does not have to import

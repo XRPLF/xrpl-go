@@ -225,7 +225,7 @@ func TestBuildClawback_FailLedgerQueries(t *testing.T) {
 		cause   error
 	}{
 		{
-			name:    "fail - getSequence error",
+			name:    "fail - beginBuild error",
 			querier: &mockQuerier{accountErr: sequenceErr},
 			wantErr: ErrLedgerQuery,
 			cause:   sequenceErr,
@@ -238,14 +238,22 @@ func TestBuildClawback_FailLedgerQueries(t *testing.T) {
 		{
 			name: "fail - confidential balances not enabled",
 			querier: &mockQuerier{accountSeq: 1, entries: map[string]ledgerentries.FlatLedgerObject{
-				issuanceIndex: {}, // entry exists but carries no capability flags
+				issuanceIndex: {"LedgerEntryType": "MPTokenIssuance"}, // entry exists but carries no capability flags
 			}},
 			wantErr: ErrConfidentialDisabled,
 		},
 		{
+			name: "fail - clawback not enabled",
+			querier: &mockQuerier{accountSeq: 1, entries: map[string]ledgerentries.FlatLedgerObject{
+				issuanceIndex: withIssuanceFlags(buildIssuanceEntry(issuerKP.PubKeyHex, ""),
+					ledgerentries.LsfMPTCanHoldConfidentialBalance),
+			}},
+			wantErr: ErrClawbackDisabled,
+		},
+		{
 			name: "fail - issuer encryption key not set",
 			querier: &mockQuerier{accountSeq: 1, entries: map[string]ledgerentries.FlatLedgerObject{
-				issuanceIndex: buildIssuanceEntry("", ""),
+				issuanceIndex: buildIssuanceEntry("", ""), // entry exists but no IssuerEncryptionKey
 			}},
 			wantErr: ErrEncryptionKeyNotSet,
 		},
@@ -297,9 +305,9 @@ func TestBuildClawback_FailLedgerQueries(t *testing.T) {
 			name: "fail - IssuerEncryptedBalance missing",
 			querier: &mockQuerier{accountSeq: 1, entries: map[string]ledgerentries.FlatLedgerObject{
 				issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-				mptokenIndex:  buildMPTokenEntry("", "", 0, ""), // no IssuerEncryptedBalance
+				mptokenIndex:  buildMPTokenEntry(mptokenFields{holderKey: testHolderKey}), // no IssuerEncryptedBalance
 			}},
-			wantErr: ErrLedgerQuery,
+			wantErr: ErrInvalidLedgerState,
 		},
 	}
 	for _, tt := range tests {
@@ -332,7 +340,7 @@ func TestBuildClawback_Pass(t *testing.T) {
 		accountSeq: 10,
 		entries: map[string]ledgerentries.FlatLedgerObject{
 			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-			mptokenIndex:  buildMPTokenEntry("", "", 0, issuerCt),
+			mptokenIndex:  buildMPTokenEntry(clawable(issuerCt)),
 		},
 	}
 
@@ -384,7 +392,7 @@ func TestBuildClawbackDerivesAmountFromLedger(t *testing.T) {
 		accountSeq: 4,
 		entries: map[string]ledgerentries.FlatLedgerObject{
 			issuanceIndex: buildIssuanceEntry(issuerKP.PubKeyHex, ""),
-			mptokenIndex:  buildMPTokenEntry("", "", 0, issuerCt),
+			mptokenIndex:  buildMPTokenEntry(clawable(issuerCt)),
 		},
 	}
 
@@ -453,10 +461,13 @@ func TestBuildClawbackBoundsSearchByOutstandingAmount(t *testing.T) {
 			wantErr:     ErrCryptoFailed,
 		},
 		{
+			// A range that starts above the confidential supply cannot contain any holder
+			// balance, which is a problem with the bounds the caller supplied rather than the
+			// protocol bound ErrAmountExceedsOutstanding reports.
 			name:        "range starts above the outstanding amount",
 			outstanding: "100",
 			low:         200,
-			wantErr:     ErrAmountExceedsOutstanding,
+			wantErr:     elgamal.ErrInvalidAmountRange,
 		},
 	}
 
@@ -468,7 +479,7 @@ func TestBuildClawbackBoundsSearchByOutstandingAmount(t *testing.T) {
 				accountSeq: 10,
 				entries: map[string]ledgerentries.FlatLedgerObject{
 					issuanceIndex: issuance,
-					mptokenIndex:  buildMPTokenEntry("", "", 0, issuerCt),
+					mptokenIndex:  buildMPTokenEntry(clawable(issuerCt)),
 				},
 			}
 
