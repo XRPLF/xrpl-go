@@ -109,7 +109,8 @@ func IsValidClawbackProof(proof string) bool {
 }
 
 // IsValidCompressedEncryptionKey reports whether key is a 33-byte compressed secp256k1
-// point encoded as 66 hexadecimal characters.
+// point encoded as 66 hexadecimal characters and lying on the secp256k1 curve. A key that
+// is well formed but off the curve is rejected.
 // Used for HolderEncryptionKey, IssuerEncryptionKey, and AuditorEncryptionKey per XLS-96.
 func IsValidCompressedEncryptionKey(key string) bool {
 	return crypto.IsCompressedSECP256K1Point(key)

@@ -39,7 +39,10 @@ type ConfidentialMPTConvert struct {
 	// IssuerEncryptedAmount is the encrypted amount for the issuer's tracking purposes.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	IssuerEncryptedAmount string
-	// AuditorEncryptedAmount is required when the issuance has an AuditorEncryptionKey set. (Optional)
+	// AuditorEncryptedAmount is the encrypted amount for the issuance's auditor. (Optional)
+	// It is required if and only if the issuance has an AuditorEncryptionKey set. Omitting it
+	// for an issuance that has one, supplying it for an issuance that has none, or encrypting
+	// it under any key other than the issuance's auditor key all fail with tecNO_PERMISSION.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	AuditorEncryptedAmount *string `json:",omitempty"`
 	// BlindingFactor is the 32-byte scalar value used to encrypt the amount.

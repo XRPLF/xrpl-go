@@ -38,7 +38,10 @@ type ConfidentialMPTConvertBack struct {
 	// BlindingFactor is the 32-byte scalar value used to encrypt the amount.
 	// Used by validators to verify the ciphertexts match the plaintext MPTAmount.
 	BlindingFactor string
-	// AuditorEncryptedAmount is required when the issuance has an AuditorEncryptionKey set. (Optional)
+	// AuditorEncryptedAmount is the encrypted amount for the issuance's auditor. (Optional)
+	// It is required if and only if the issuance has an AuditorEncryptionKey set. Omitting it
+	// for an issuance that has one, supplying it for an issuance that has none, or encrypting
+	// it under any key other than the issuance's auditor key all fail with tecNO_PERMISSION.
 	// It is 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	AuditorEncryptedAmount *string `json:",omitempty"`
 	// BalanceCommitment is the Pedersen commitment to the holder's current confidential spending balance.

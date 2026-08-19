@@ -39,6 +39,10 @@ type ConfidentialMPTSend struct {
 	// Destination is the account receiving the confidential MPT.
 	Destination types.Address
 	// DestinationTag identifies a hosted-account destination. (Optional)
+	// XLS-96 does not spell this field out. It comes from the generic transaction fields
+	// rippled declares for ConfidentialMPTSend in transactions.macro, and it carries the
+	// protocol-wide destination-tag semantics. A destination with lsfRequireDestTag set
+	// rejects a transaction that omits it with tecDST_TAG_NEEDED.
 	DestinationTag *uint32 `json:",omitempty"`
 	// SenderEncryptedAmount is the encrypted transfer amount for the sender.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
@@ -49,7 +53,10 @@ type ConfidentialMPTSend struct {
 	// IssuerEncryptedAmount is the encrypted transfer amount for the issuer's tracking purposes.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	IssuerEncryptedAmount string
-	// AuditorEncryptedAmount is required when the issuance has an AuditorEncryptionKey set. (Optional)
+	// AuditorEncryptedAmount is the encrypted amount for the issuance's auditor. (Optional)
+	// It is required if and only if the issuance has an AuditorEncryptionKey set. Omitting it
+	// for an issuance that has one, supplying it for an issuance that has none, or encrypting
+	// it under any key other than the issuance's auditor key all fail with tecNO_PERMISSION.
 	// 66 bytes (two 33-byte compressed EC points), hex-encoded.
 	AuditorEncryptedAmount *string `json:",omitempty"`
 	// ZKProof is a zero-knowledge proof proving the sender has sufficient balance

@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### pkg/mptsizes
 
-- Added `mptsizes`, a CGo-free package holding the XLS-96 confidential MPT wire sizes that the vendored `mpt-crypto` headers define. The transaction models and the CGo bindings both derive their lengths from it, so a proof-format bump cannot leave the two disagreeing.
+- Added `mptsizes`, a CGo-free package holding the XLS-96 confidential MPT wire sizes that the vendored `mpt-crypto` headers define. The transaction models and the CGo bindings both derive their lengths from it, so a proof-format bump cannot leave the two disagreeing. `confidential/mptcrypto` pins every constant to the `mpt-crypto` define it mirrors with a compile-time assertion, so a vendored header that changes a size fails the build instead of letting C write past a Go buffer.
 
 #### xrpl
 
