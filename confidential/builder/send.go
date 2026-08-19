@@ -288,7 +288,7 @@ func validateSendBase(p BuildSendParams) error {
 		return fmt.Errorf("sender pub key: %w", ErrInvalidPubKey)
 	}
 	if len(p.CredentialIDs) > 0 && !types.CredentialIDs(p.CredentialIDs).IsValid() {
-		return transaction.ErrInvalidCredentialIDs
+		return ErrInvalidCredentialIDs
 	}
 	return nil
 }

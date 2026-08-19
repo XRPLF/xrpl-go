@@ -1,6 +1,11 @@
 package builder
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/Peersyst/xrpl-go/xrpl/transaction"
+)
 
 // Builder validation errors.
 var (
@@ -45,4 +50,9 @@ var (
 	ErrInvalidPrivKey     = errors.New("builder: private key must be a non-zero secp256k1 scalar")
 	ErrInvalidPubKey      = errors.New("builder: public key must be a valid 33-byte compressed secp256k1 point")
 	ErrInvalidCiphertext  = errors.New("builder: ciphertext must contain two valid compressed secp256k1 points")
+
+	// ErrInvalidCredentialIDs wraps the transaction sentinel the shared CredentialIDs
+	// validator raises, so a caller matching the builder error set does not have to import
+	// xrpl/transaction for this one case while errors.Is still matches either sentinel.
+	ErrInvalidCredentialIDs = fmt.Errorf("builder: %w", transaction.ErrInvalidCredentialIDs)
 )

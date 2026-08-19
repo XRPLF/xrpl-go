@@ -61,6 +61,12 @@ Use this package if you want fine-grained control over proof generation or verif
 
 All APIs in this layer operate on hex strings and classic XRPL addresses, which makes them suitable for transaction assembly.
 
+Every `Generate*Proof` helper verifies the proof it just produced before returning it, because the native
+generator reports no error for a mismatched amount or key pair. That check costs one verification per
+generation, measured at roughly 35% added wall time for a send proof. Callers that batch proof generation
+should budget for it. The `Build*` and `Prepare*` helpers inherit the same cost, since they generate
+through these functions.
+
 ## Confidential transaction types
 
 The `xrpl/transaction` package now includes five confidential MPT transaction types:

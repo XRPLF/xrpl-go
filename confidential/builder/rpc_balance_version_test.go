@@ -4,9 +4,6 @@ package builder
 
 import (
 	"fmt"
-	"io"
-	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
@@ -15,53 +12,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type queuedRPCTransport struct {
-	responses []string
-}
-
-func (t *queuedRPCTransport) Do(*http.Request) (*http.Response, error) {
-	if len(t.responses) == 0 {
-		return nil, fmt.Errorf("unexpected RPC request")
-	}
-	response := t.responses[0]
-	t.responses = t.responses[1:]
-	return &http.Response{
-		StatusCode: http.StatusOK,
-		Body:       io.NopCloser(strings.NewReader(response)),
-		Header:     make(http.Header),
-	}, nil
-}
-
-// TestGetMPTokenStateClassifiesRPCEntryNotFound pins the classification against a real
-// rpc.Client rather than a hand-built error, because ErrReceiverNotOptedIn depends on the
-// node's "entryNotFound" reaching the builder as exactly that string.
-func TestGetMPTokenStateClassifiesRPCEntryNotFound(t *testing.T) {
-	transport := &queuedRPCTransport{responses: []string{
-		`{"result":{"error":"entryNotFound"}}`,
-	}}
-	config, err := rpc.NewClientConfig("http://testnode/", rpc.WithHTTPClient(transport))
-	require.NoError(t, err)
-	client := rpc.NewClient(config)
-
-	_, _, _, err = getMPTokenState(client, testIssuanceID, testAccount)
-	require.ErrorIs(t, err, ErrMPTokenNotFound)
-	require.NotErrorIs(t, err, ErrLedgerQuery)
-	require.Empty(t, transport.responses)
-}
-
-func TestGetMPTokenStateRejectsRPCNullBalanceVersion(t *testing.T) {
-	transport := &queuedRPCTransport{responses: []string{
-		`{"result":{"node":{"ConfidentialBalanceVersion":null}}}`,
-	}}
-	config, err := rpc.NewClientConfig("http://testnode/", rpc.WithHTTPClient(transport))
-	require.NoError(t, err)
-	client := rpc.NewClient(config)
-
-	_, _, _, err = getMPTokenState(client, testIssuanceID, testAccount)
-	require.ErrorIs(t, err, ErrLedgerQuery)
-	require.Empty(t, transport.responses)
-}
-
+// TestBuildSendUsesRPCDecodedBalanceVersion needs the native prover, so it carries the CGo
+// tag. The error-classification tests that share queuedRPCTransport do not, and live in
+// client_errors_test.go so a CGO_ENABLED=0 run still covers them.
 func TestBuildSendUsesRPCDecodedBalanceVersion(t *testing.T) {
 	const (
 		sequence       uint32 = 8

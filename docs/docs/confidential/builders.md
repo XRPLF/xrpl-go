@@ -36,6 +36,11 @@ Use these for `ConfidentialMPTConvert`.
 
 `Amount == 0` is allowed here because zero-amount convert is the opt-in path for registering a holder key.
 
+First-time detection reads the holder's `MPToken`, which `ConfidentialMPTConvert` debits, so the entry
+must already exist. A holder that has not authorized the issuance gets `ErrMPTokenNotFound` instead of
+being treated as a first-time opt-in, and a failed read reports `ErrLedgerQuery` rather than silently
+taking the first-time path.
+
 ```go
 tx, err := builder.BuildConvert(client, builder.BuildConvertParams{
     Account:       holderAddress,
@@ -57,6 +62,8 @@ Use these for `ConfidentialMPTSend`.
 - Builds both Pedersen commitments and the composite send proof.
 
 This path requires the destination holder to already have a registered `HolderEncryptionKey`.
+
+`DestinationTag` and `CredentialIDs` are optional and forwarded to the transaction unchanged. Set `DestinationTag` when the destination is a hosted account, and `CredentialIDs` when the destination sits behind a permissioned domain.
 
 ```go
 tx, err := builder.BuildSend(client, builder.BuildSendParams{
@@ -200,6 +207,8 @@ Most builder errors are explicit and map to missing ledger state or invalid inpu
 - `ErrInsufficientBalance`: the requested confidential send or convert-back amount exceeds the decrypted balance.
 - `ErrMissingSequence`: a proof-bearing `Prepare*` helper was given a zero `Sequence`.
 - `ErrKeyMismatch`: the supplied public key differs from the one registered on the ledger.
+- `ErrInvalidCredentialIDs`: `BuildSendParams.CredentialIDs` is not a valid hexadecimal string
+  array. It wraps `transaction.ErrInvalidCredentialIDs`, so `errors.Is` matches either sentinel.
 - `elgamal.ErrInvalidAmountRange`: `BalanceRange` is inverted or its upper bound is `math.MaxUint64`.
 - `ErrCryptoFailed`: a cryptographic primitive failed, or the current balance falls outside `BalanceRange`.
 

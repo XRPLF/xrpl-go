@@ -48,7 +48,7 @@ func TestSendBaseValidation(t *testing.T) {
 		{name: "fail - missing sender pub key", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex}, wantErr: ErrMissingSenderKey},
 		{name: "fail - invalid sender pub key (not hex)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: strings.Repeat("ZZ", 33)}, wantErr: ErrInvalidPubKey},
 		{name: "fail - invalid sender pub key (wrong length)", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: "aabb"}, wantErr: ErrInvalidPubKey},
-		{name: "fail - invalid credential ID", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex, CredentialIDs: []string{"ZZ"}}, wantErr: transaction.ErrInvalidCredentialIDs},
+		{name: "fail - invalid credential ID", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex, CredentialIDs: []string{"ZZ"}}, wantErr: ErrInvalidCredentialIDs},
 	}
 
 	t.Run("fail - validation PrepareSend", func(t *testing.T) {
@@ -80,6 +80,13 @@ func TestSendBaseValidation(t *testing.T) {
 			})
 		}
 	})
+}
+
+// TestInvalidCredentialIDsMatchesBothSentinels pins that the builder sentinel wraps the
+// transaction one, so existing callers matching transaction.ErrInvalidCredentialIDs keep
+// working while new callers can stay within the builder error set.
+func TestInvalidCredentialIDsMatchesBothSentinels(t *testing.T) {
+	require.ErrorIs(t, ErrInvalidCredentialIDs, transaction.ErrInvalidCredentialIDs)
 }
 
 func TestPrepareSend_Pass(t *testing.T) {
