@@ -21,6 +21,7 @@ const (
 	optionsFunding        uint64 = 40
 	optionsSend           uint64 = 12
 	optionsDestinationTag uint32 = 42
+	optionsDelegatedSend  uint64 = 5
 )
 
 // createTicket creates one Ticket and returns the sequence it reserved.
@@ -165,6 +166,31 @@ func testIntegrationConfidentialMPTTransactionOptions(t *testing.T, client confi
 
 	assertMirrorBalances(t, client, holder.GetAddress(), config, optionsFunding-optionsSend)
 	assertMirrorBalances(t, client, delegate.GetAddress(), config, optionsSend)
+
+	// The merge above delegates a transaction that carries no proof. A send does carry one,
+	// and its context has to bind the holder in Account rather than the delegate that signs
+	// and pays. Only the network can tell those apart, and it reports the difference as
+	// tecBAD_PROOF, so the assertion that matters is that this applies at all. Granting the
+	// permission again replaces the merge grant, which is spent by now.
+	authorizeDelegate(t, runner, holder, delegate, transaction.ConfidentialMPTSendTx)
+	delegatedSend, err := builder.BuildSend(client, builder.BuildSendParams{
+		TxOptions:     builder.TxOptions{Delegate: delegate.GetAddress().String()},
+		Account:       holder.GetAddress().String(),
+		Destination:   delegate.GetAddress().String(),
+		IssuanceID:    issuanceID,
+		Amount:        optionsDelegatedSend,
+		SenderPrivKey: holderKey.PrivKeyHex,
+		SenderPubKey:  holderKey.PubKeyHex,
+		BalanceRange:  exactRange(optionsFunding - optionsSend),
+	})
+	require.NoError(t, err)
+	require.Equal(t, delegate.GetAddress(), delegatedSend.Delegate)
+	delegatedResponse := submitAndWait(t, runner, delegatedSend.Flatten(), delegate)
+	require.Equal(t, delegate.GetAddress().String(), delegatedResponse.TxJSON["Delegate"])
+	require.Equal(t, holder.GetAddress().String(), delegatedResponse.TxJSON["Account"])
+
+	assertMirrorBalances(t, client, holder.GetAddress(), config, optionsFunding-optionsSend-optionsDelegatedSend)
+	assertMirrorBalances(t, client, delegate.GetAddress(), config, optionsSend+optionsDelegatedSend)
 
 	// The two nonces are mutually exclusive, and rippled marks ConfidentialMPTConvert
 	// non-delegable. Both are rejected before any ledger query or proof work.

@@ -59,7 +59,7 @@ coverage.html
 /unit-test-results.json
 
 # Multi-review skill output (per-run subdirectories)
-/reviews/
+reviews/
 
 # PR template skill output
-/PR/
+PR/

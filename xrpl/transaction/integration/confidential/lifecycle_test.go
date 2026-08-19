@@ -21,7 +21,7 @@ const (
 	lifecycleFirstConvert   uint64 = 60
 	lifecycleSecondConvert  uint64 = 5
 	lifecycleSend           uint64 = 20
-	lifecycleConvertBack    uint64 = 5
+	lifecycleConvertBack    uint64 = 3
 	lifecycleDestinationTag uint32 = 7
 )
 
@@ -64,6 +64,9 @@ func testIntegrationConfidentialMPTLifecycle(t *testing.T, client confidentialCl
 	require.NotNil(t, firstConvert.AuditorEncryptedAmount)
 	submitAndWait(t, runner, firstConvert.Flatten(), sender)
 	assertMirrorBalances(t, client, sender.GetAddress(), config, lifecycleFirstConvert)
+	// A convert credits the inbox, not the spending balance. The mirrors above sum the two,
+	// so only this distinguishes a correct credit from one posted straight to spending.
+	assertSplitBalances(t, client, sender.GetAddress(), senderKey.PrivKeyHex, lifecycleFirstConvert, 0, 0)
 
 	// Every later conversion reuses the registered key, so it sends neither the key nor
 	// the registration proof again.
@@ -139,6 +142,9 @@ func testIntegrationConfidentialMPTLifecycle(t *testing.T, client confidentialCl
 	const senderConfidentialBalance = senderBalanceBeforeSend - lifecycleSend
 	assertMirrorBalances(t, client, sender.GetAddress(), config, senderConfidentialBalance)
 	assertMirrorBalances(t, client, receiver.GetAddress(), config, lifecycleSend)
+	// A send credits the destination's inbox and leaves the destination's version alone:
+	// only the sender's version advances, so a receiver never invalidates its own proofs.
+	assertSplitBalances(t, client, receiver.GetAddress(), receiverKey.PrivKeyHex, lifecycleSend, 0, 0)
 
 	mergeReceiver, err := builder.BuildMergeInbox(client, builder.BuildMergeInboxParams{
 		Account:    receiver.GetAddress().String(),
@@ -180,15 +186,15 @@ func testIntegrationConfidentialMPTLifecycle(t *testing.T, client confidentialCl
 	require.Equal(t, senderPublicBalance, parseMPTAmount(t, senderToken.MPTAmount))
 	// The merge and the send each rewrote the spending balance, and nothing else did.
 	require.Equal(t, uint32(2), senderToken.ConfidentialBalanceVersion)
-	require.Equal(t, senderConfidentialBalance, decryptBalance(t, senderToken.ConfidentialBalanceSpending, senderKey.PrivKeyHex, senderConfidentialBalance))
-	require.Equal(t, uint64(0), decryptBalance(t, senderToken.ConfidentialBalanceInbox, senderKey.PrivKeyHex, 0))
+	require.Equal(t, senderConfidentialBalance, decryptBalance(t, senderToken.ConfidentialBalanceSpending, senderKey.PrivKeyHex))
+	require.Equal(t, uint64(0), decryptBalance(t, senderToken.ConfidentialBalanceInbox, senderKey.PrivKeyHex))
 
 	receiverToken := getMPToken(t, client, receiver.GetAddress())
 	require.Equal(t, lifecycleConvertBack, parseMPTAmount(t, receiverToken.MPTAmount))
 	// The merge and the convert back each rewrote the spending balance.
 	require.Equal(t, uint32(2), receiverToken.ConfidentialBalanceVersion)
-	require.Equal(t, receiverConfidentialBalance, decryptBalance(t, receiverToken.ConfidentialBalanceSpending, receiverKey.PrivKeyHex, receiverConfidentialBalance))
-	require.Equal(t, uint64(0), decryptBalance(t, receiverToken.ConfidentialBalanceInbox, receiverKey.PrivKeyHex, 0))
+	require.Equal(t, receiverConfidentialBalance, decryptBalance(t, receiverToken.ConfidentialBalanceSpending, receiverKey.PrivKeyHex))
+	require.Equal(t, uint64(0), decryptBalance(t, receiverToken.ConfidentialBalanceInbox, receiverKey.PrivKeyHex))
 
 	issuance := getIssuance(t, client, issuer.GetAddress())
 	require.True(t, strings.EqualFold(config.issuerKey.PubKeyHex, issuance.IssuerEncryptionKey))

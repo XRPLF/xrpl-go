@@ -9,13 +9,14 @@ import (
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	clawbackFunding    uint64 = 30
-	clawbackConfidence uint64 = 20
+	clawbackFunding      uint64 = 30
+	clawbackConfidential uint64 = 20
 )
 
 // testIntegrationConfidentialMPTClawback checks that an issuer can remove a holder's
@@ -31,7 +32,9 @@ func testIntegrationConfidentialMPTClawback(t *testing.T, client confidentialCli
 	holder := runner.GetWallet(1)
 
 	auditorKey := generateKey(t)
-	config := issuanceConfig{issuerKey: generateKey(t), auditorKey: &auditorKey, canClawback: true}
+	// canLock is what makes the section 11.1 lock-then-clawback flow below possible: an
+	// issuance created without it rejects the lock with tecNO_PERMISSION.
+	config := issuanceConfig{issuerKey: generateKey(t), auditorKey: &auditorKey, canClawback: true, canLock: true}
 	holderKey := generateKey(t)
 
 	issuanceID := createIssuance(t, runner, client, issuer, config)
@@ -41,7 +44,7 @@ func testIntegrationConfidentialMPTClawback(t *testing.T, client confidentialCli
 	convert, err := builder.BuildConvert(client, builder.BuildConvertParams{
 		Account:       holder.GetAddress().String(),
 		IssuanceID:    issuanceID,
-		Amount:        clawbackConfidence,
+		Amount:        clawbackConfidential,
 		HolderPrivKey: holderKey.PrivKeyHex,
 		HolderPubKey:  holderKey.PubKeyHex,
 	})
@@ -55,11 +58,33 @@ func testIntegrationConfidentialMPTClawback(t *testing.T, client confidentialCli
 	require.NoError(t, err)
 	submitAndWait(t, runner, merge.Flatten(), holder)
 
-	const publicRemainder = clawbackFunding - clawbackConfidence
+	const publicRemainder = clawbackFunding - clawbackConfidential
 	before := getMPToken(t, client, holder.GetAddress())
 	require.Equal(t, publicRemainder, parseMPTAmount(t, before.MPTAmount))
-	require.Equal(t, clawbackConfidence, decryptBalance(t, before.ConfidentialBalanceSpending, holderKey.PrivKeyHex, clawbackConfidence))
-	assertMirrorBalances(t, client, holder.GetAddress(), config, clawbackConfidence)
+	require.Equal(t, clawbackConfidential, decryptBalance(t, before.ConfidentialBalanceSpending, holderKey.PrivKeyHex))
+	assertMirrorBalances(t, client, holder.GetAddress(), config, clawbackConfidential)
+
+	// XLS-96 section 11.1 recommends locking a holder before clawing back, so the two have
+	// to coexist. rippled makes the asymmetry explicit: ConfidentialMPTSend::preclaim calls
+	// checkFrozen for both parties, ConfidentialMPTClawback::preclaim calls it for neither,
+	// and the builder mirrors that by reading the issuer ciphertext without the holder
+	// preflight every other builder runs.
+	holderAddress := holder.GetAddress()
+	lock := transaction.MPTokenIssuanceSet{
+		BaseTx:            transaction.BaseTx{Account: issuer.GetAddress()},
+		MPTokenIssuanceID: issuanceID,
+		Holder:            &holderAddress,
+	}
+	lock.SetMPTLockFlag()
+	submitAndWait(t, runner, lock.Flatten(), issuer)
+
+	// Everything else the holder could do is now blocked, and the builder says so before
+	// spending a fee on it.
+	_, err = builder.BuildMergeInbox(client, builder.BuildMergeInboxParams{
+		Account:    holder.GetAddress().String(),
+		IssuanceID: issuanceID,
+	})
+	require.ErrorIs(t, err, builder.ErrHolderLocked)
 
 	// The issuer supplies no amount: the builder reads the issuer mirror and claws back
 	// whatever the holder actually holds.
@@ -68,7 +93,7 @@ func testIntegrationConfidentialMPTClawback(t *testing.T, client confidentialCli
 		Holder:        holder.GetAddress().String(),
 		IssuanceID:    issuanceID,
 		IssuerPrivKey: config.issuerKey.PrivKeyHex,
-		BalanceRange:  exactRange(clawbackConfidence),
+		BalanceRange:  exactRange(clawbackConfidential),
 	})
 	require.NoError(t, err)
 	submitAndWait(t, runner, clawback.Flatten(), issuer)
@@ -77,8 +102,8 @@ func testIntegrationConfidentialMPTClawback(t *testing.T, client confidentialCli
 	require.Equal(t, before.ConfidentialBalanceVersion+1, after.ConfidentialBalanceVersion)
 	// A clawback takes the confidential balance only, so the public balance is untouched.
 	require.Equal(t, publicRemainder, parseMPTAmount(t, after.MPTAmount))
-	require.Equal(t, uint64(0), decryptBalance(t, after.ConfidentialBalanceSpending, holderKey.PrivKeyHex, 0))
-	require.Equal(t, uint64(0), decryptBalance(t, after.ConfidentialBalanceInbox, holderKey.PrivKeyHex, 0))
+	require.Equal(t, uint64(0), decryptBalance(t, after.ConfidentialBalanceSpending, holderKey.PrivKeyHex))
+	require.Equal(t, uint64(0), decryptBalance(t, after.ConfidentialBalanceInbox, holderKey.PrivKeyHex))
 	assertMirrorBalances(t, client, holder.GetAddress(), config, 0)
 
 	issuance := getIssuance(t, client, issuer.GetAddress())
@@ -87,7 +112,7 @@ func testIntegrationConfidentialMPTClawback(t *testing.T, client confidentialCli
 	require.Empty(t, issuance.ConfidentialOutstandingAmount)
 	require.Equal(
 		t,
-		ledger.LsfMPTRequireAuth|ledger.LsfMPTCanTransfer|ledger.LsfMPTCanClawback|ledger.LsfMPTCanHoldConfidentialBalance,
+		ledger.LsfMPTRequireAuth|ledger.LsfMPTCanLock|ledger.LsfMPTCanTransfer|ledger.LsfMPTCanClawback|ledger.LsfMPTCanHoldConfidentialBalance,
 		issuance.Flags,
 	)
 

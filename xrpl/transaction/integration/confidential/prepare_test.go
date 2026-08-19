@@ -146,7 +146,7 @@ func testIntegrationConfidentialMPTPrepareLifecycle(t *testing.T, client confide
 		IssuerPubKey:     issuance.IssuerEncryptionKey,
 		AuditorPubKey:    issuance.AuditorEncryptionKey,
 		BalanceVersion:   senderToken.ConfidentialBalanceVersion,
-		CurrentBalance:   decryptBalance(t, senderToken.ConfidentialBalanceSpending, senderKey.PrivKeyHex, senderBalanceBeforeSend),
+		CurrentBalance:   decryptBalance(t, senderToken.ConfidentialBalanceSpending, senderKey.PrivKeyHex),
 		CurrentBalanceCt: senderToken.ConfidentialBalanceSpending,
 	})
 	require.NoError(t, err)
@@ -179,7 +179,7 @@ func testIntegrationConfidentialMPTPrepareLifecycle(t *testing.T, client confide
 		IssuerPubKey:     issuance.IssuerEncryptionKey,
 		AuditorPubKey:    issuance.AuditorEncryptionKey,
 		BalanceVersion:   receiverToken.ConfidentialBalanceVersion,
-		CurrentBalance:   decryptBalance(t, receiverToken.ConfidentialBalanceSpending, receiverKey.PrivKeyHex, prepareSend),
+		CurrentBalance:   decryptBalance(t, receiverToken.ConfidentialBalanceSpending, receiverKey.PrivKeyHex),
 		CurrentBalanceCt: receiverToken.ConfidentialBalanceSpending,
 	})
 	require.NoError(t, err)
@@ -190,11 +190,11 @@ func testIntegrationConfidentialMPTPrepareLifecycle(t *testing.T, client confide
 
 	finalSender := getMPToken(t, client, sender.GetAddress())
 	require.Equal(t, prepareFunding-senderBalanceBeforeSend, parseMPTAmount(t, finalSender.MPTAmount))
-	require.Equal(t, senderConfidentialBalance, decryptBalance(t, finalSender.ConfidentialBalanceSpending, senderKey.PrivKeyHex, senderConfidentialBalance))
+	require.Equal(t, senderConfidentialBalance, decryptBalance(t, finalSender.ConfidentialBalanceSpending, senderKey.PrivKeyHex))
 
 	finalReceiver := getMPToken(t, client, receiver.GetAddress())
 	require.Equal(t, prepareConvertBack, parseMPTAmount(t, finalReceiver.MPTAmount))
-	require.Equal(t, receiverConfidentialBalance, decryptBalance(t, finalReceiver.ConfidentialBalanceSpending, receiverKey.PrivKeyHex, receiverConfidentialBalance))
+	require.Equal(t, receiverConfidentialBalance, decryptBalance(t, finalReceiver.ConfidentialBalanceSpending, receiverKey.PrivKeyHex))
 
 	finalIssuance := getIssuance(t, client, issuer.GetAddress())
 	require.Equal(t, prepareFunding, parseMPTAmount(t, finalIssuance.OutstandingAmount))
@@ -265,7 +265,7 @@ func testIntegrationConfidentialMPTPrepareClawback(t *testing.T, client confiden
 			IssuanceID:    issuanceID,
 			IssuerPrivKey: config.issuerKey.PrivKeyHex,
 		},
-		Amount:           decryptBalance(t, before.IssuerEncryptedBalance, config.issuerKey.PrivKeyHex, prepareClawbackConvert),
+		Amount:           decryptBalance(t, before.IssuerEncryptedBalance, config.issuerKey.PrivKeyHex),
 		IssuerPubKey:     issuance.IssuerEncryptionKey,
 		IssuerCiphertext: before.IssuerEncryptedBalance,
 	})
@@ -275,7 +275,7 @@ func testIntegrationConfidentialMPTPrepareClawback(t *testing.T, client confiden
 	after := getMPToken(t, client, holder.GetAddress())
 	require.Equal(t, before.ConfidentialBalanceVersion+1, after.ConfidentialBalanceVersion)
 	require.Equal(t, prepareClawbackFunding-prepareClawbackConvert, parseMPTAmount(t, after.MPTAmount))
-	require.Equal(t, uint64(0), decryptBalance(t, after.ConfidentialBalanceSpending, holderKey.PrivKeyHex, 0))
+	require.Equal(t, uint64(0), decryptBalance(t, after.ConfidentialBalanceSpending, holderKey.PrivKeyHex))
 	assertMirrorBalances(t, client, holder.GetAddress(), config, 0)
 	require.Empty(t, getIssuance(t, client, issuer.GetAddress()).ConfidentialOutstandingAmount)
 }

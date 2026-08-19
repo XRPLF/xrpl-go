@@ -39,6 +39,16 @@ type issuanceConfig struct {
 	issuerKey   elgamal.Keypair
 	auditorKey  *elgamal.Keypair
 	canClawback bool
+	canLock     bool
+	// permissionless drops LsfMPTRequireAuth, so holders need no MPTokenAuthorize round trip
+	// from the issuer. The builder's holder preflight branches on that flag, and every other
+	// scenario here takes only the authorized branch.
+	permissionless bool
+	// postCreationEnable takes the second route XLS-96 section 6.3.2 defines: the issuance is
+	// created without the confidential capability, and a later MPTokenIssuanceSet turns it on
+	// with a different flag while registering the keys in the same transaction. Section
+	// 12.4.2.3 accepts those keys only because that flag is being enabled alongside them.
+	postCreationEnable bool
 }
 
 func generateKey(t *testing.T) elgamal.Keypair {
@@ -66,11 +76,18 @@ func createIssuance(
 		BaseTx:        transaction.BaseTx{Account: issuer.GetAddress()},
 		MaximumAmount: &maximumAmount,
 	}
-	create.SetMPTRequireAuthFlag()
+	if !config.permissionless {
+		create.SetMPTRequireAuthFlag()
+	}
 	create.SetMPTCanTransferFlag()
-	create.SetMPTCanHoldConfidentialBalanceFlag()
+	if !config.postCreationEnable {
+		create.SetMPTCanHoldConfidentialBalanceFlag()
+	}
 	if config.canClawback {
 		create.SetMPTCanClawbackFlag()
+	}
+	if config.canLock {
+		create.SetMPTCanLockFlag()
 	}
 	submitAndWait(t, runner, create.Flatten(), issuer)
 
@@ -84,14 +101,18 @@ func createIssuance(
 	if config.auditorKey != nil {
 		setKeys.AuditorEncryptionKey = &config.auditorKey.PubKeyHex
 	}
+	if config.postCreationEnable {
+		setKeys.SetMPTCanHoldConfidentialBalanceFlag()
+	}
 	submitAndWait(t, runner, setKeys.Flatten(), issuer)
 
 	return issuanceID
 }
 
-// authorizeHolder completes the two-sided authorization LsfMPTRequireAuth demands: the
-// holder opts in, then the issuer approves that holder.
-func authorizeHolder(t *testing.T, runner *integration.Runner, issuer, holder *wallet.Wallet, issuanceID string) {
+// optInHolder creates the holder's MPToken. Every holder needs one before it can receive,
+// whether or not the issuance requires authorization, so this is the half of authorization
+// that a permissionless issuance still demands.
+func optInHolder(t *testing.T, runner *integration.Runner, holder *wallet.Wallet, issuanceID string) {
 	t.Helper()
 
 	holderAuthorize := transaction.MPTokenAuthorize{
@@ -99,6 +120,14 @@ func authorizeHolder(t *testing.T, runner *integration.Runner, issuer, holder *w
 		MPTokenIssuanceID: issuanceID,
 	}
 	submitAndWait(t, runner, holderAuthorize.Flatten(), holder)
+}
+
+// authorizeHolder completes the two-sided authorization LsfMPTRequireAuth demands: the
+// holder opts in, then the issuer approves that holder.
+func authorizeHolder(t *testing.T, runner *integration.Runner, issuer, holder *wallet.Wallet, issuanceID string) {
+	t.Helper()
+
+	optInHolder(t, runner, holder, issuanceID)
 
 	holderAddress := holder.GetAddress()
 	issuerAuthorize := transaction.MPTokenAuthorize{
@@ -188,7 +217,7 @@ func accountSequence(t *testing.T, client confidentialClient, address types.Addr
 func getIssuanceID(t *testing.T, client confidentialClient, issuer types.Address) string {
 	t.Helper()
 
-	objects, err := client.GetAccountObjects(&account.ObjectsRequest{Account: issuer, Type: account.MPTIssuanceObject})
+	objects, err := client.GetAccountObjects(&account.ObjectsRequest{Account: issuer, Type: account.MPTIssuanceObject, LedgerIndex: common.Validated})
 	require.NoError(t, err)
 	require.Len(t, objects.AccountObjects, 1)
 
@@ -200,7 +229,7 @@ func getIssuanceID(t *testing.T, client confidentialClient, issuer types.Address
 func getMPToken(t *testing.T, client confidentialClient, holder types.Address) ledger.MPToken {
 	t.Helper()
 
-	objects, err := client.GetAccountObjects(&account.ObjectsRequest{Account: holder, Type: account.MPTokenObject})
+	objects, err := client.GetAccountObjects(&account.ObjectsRequest{Account: holder, Type: account.MPTokenObject, LedgerIndex: common.Validated})
 	require.NoError(t, err)
 	require.Len(t, objects.AccountObjects, 1)
 	return integration.DecodeLedgerObject[ledger.MPToken](t, objects.AccountObjects[0])
@@ -209,7 +238,7 @@ func getMPToken(t *testing.T, client confidentialClient, holder types.Address) l
 func getIssuance(t *testing.T, client confidentialClient, issuer types.Address) ledger.MPTokenIssuance {
 	t.Helper()
 
-	objects, err := client.GetAccountObjects(&account.ObjectsRequest{Account: issuer, Type: account.MPTIssuanceObject})
+	objects, err := client.GetAccountObjects(&account.ObjectsRequest{Account: issuer, Type: account.MPTIssuanceObject, LedgerIndex: common.Validated})
 	require.NoError(t, err)
 	require.Len(t, objects.AccountObjects, 1)
 	return integration.DecodeLedgerObject[ledger.MPTokenIssuance](t, objects.AccountObjects[0])
@@ -228,24 +257,48 @@ func assertMirrorBalances(
 	t.Helper()
 
 	token := getMPToken(t, client, holder)
-	require.Equal(t, amount, decryptBalance(t, token.IssuerEncryptedBalance, config.issuerKey.PrivKeyHex, amount))
+	require.Equal(t, amount, decryptBalance(t, token.IssuerEncryptedBalance, config.issuerKey.PrivKeyHex))
 	if config.auditorKey == nil {
 		require.Empty(t, token.AuditorEncryptedBalance)
 		return
 	}
-	require.Equal(t, amount, decryptBalance(t, token.AuditorEncryptedBalance, config.auditorKey.PrivKeyHex, amount))
+	require.Equal(t, amount, decryptBalance(t, token.AuditorEncryptedBalance, config.auditorKey.PrivKeyHex))
 }
 
-// exactRange bounds a decryption search to a single candidate. Every amount a scenario
-// moves is known in advance, so the search never has to scan.
+// assertSplitBalances checks the inbox/spending split XLS-96 defines in section 5.2, which
+// the issuer and auditor mirrors cannot see: a mirror holds inbox + spending, so a credit
+// posted to the wrong side of the split leaves it unchanged. Merging is the only thing that
+// moves value from one side to the other, so the split is what makes a merge observable.
+func assertSplitBalances(
+	t *testing.T,
+	client confidentialClient,
+	holder types.Address,
+	privateKey string,
+	inbox, spending uint64,
+	version uint32,
+) {
+	t.Helper()
+
+	token := getMPToken(t, client, holder)
+	require.Equal(t, inbox, decryptBalance(t, token.ConfidentialBalanceInbox, privateKey))
+	require.Equal(t, spending, decryptBalance(t, token.ConfidentialBalanceSpending, privateKey))
+	require.Equal(t, version, token.ConfidentialBalanceVersion)
+}
+
+// exactRange bounds a decryption search to a single candidate. It is for the BalanceRange
+// a builder decrypts its own spending balance with, where the amount is known in advance.
 func exactRange(amount uint64) elgamal.AmountRange {
 	return elgamal.AmountRange{Low: amount, High: amount}
 }
 
-func decryptBalance(t *testing.T, ciphertext, privateKey string, amount uint64) uint64 {
+// decryptBalance searches every amount an issuance here can hold rather than the one the
+// caller expects, so the returned value is evidence rather than an echo of the expectation.
+// A wrong balance then fails on the comparison, naming both numbers, instead of surfacing
+// as an opaque decryption error.
+func decryptBalance(t *testing.T, ciphertext, privateKey string) uint64 {
 	t.Helper()
 
-	decrypted, err := elgamal.Decrypt(ciphertext, privateKey, exactRange(amount))
+	decrypted, err := elgamal.Decrypt(ciphertext, privateKey, elgamal.AmountRange{Low: 0, High: uint64(issuanceMaximumAmount)})
 	require.NoError(t, err)
 	return decrypted
 }

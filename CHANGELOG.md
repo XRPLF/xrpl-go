@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added hex-string APIs for ElGamal encryption, Pedersen commitments, context hashes, and zero-knowledge proof generation and verification.
 - Proof context hashes bind the decoded AccountID, so a proof matches whether the caller supplied a classic address or its X-address form.
 - Added `test-confidential` and `update-mpt-crypto` Makefile targets and an automated dependency-update workflow.
+- Added `test-integration-confidential-localnet` and `test-integration-confidential-devnet` Makefile targets for the XLS-96 confidential MPT integration suite, which is excluded from the standard integration targets because it requires CGo.
 
 #### confidential/builder
 

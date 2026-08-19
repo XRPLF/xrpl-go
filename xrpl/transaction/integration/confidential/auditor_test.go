@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/builder"
+	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
@@ -32,13 +33,18 @@ func testIntegrationConfidentialMPTWithoutAuditor(t *testing.T, client confident
 	sender := runner.GetWallet(1)
 	receiver := runner.GetWallet(2)
 
-	config := issuanceConfig{issuerKey: generateKey(t)}
+	// This scenario also carries the two configurations no other one does: the post-creation
+	// route to confidentiality, where one MPTokenIssuanceSet both enables it and registers
+	// the issuer key, and a permissionless issuance, where holders need no authorization.
+	config := issuanceConfig{issuerKey: generateKey(t), postCreationEnable: true, permissionless: true}
 	senderKey := generateKey(t)
 	receiverKey := generateKey(t)
 
 	issuanceID := createIssuance(t, runner, client, issuer, config)
-	authorizeHolder(t, runner, issuer, sender, issuanceID)
-	authorizeHolder(t, runner, issuer, receiver, issuanceID)
+	// A permissionless issuance still needs each holder to create its own MPToken, it just
+	// does not need the issuer to approve it afterwards.
+	optInHolder(t, runner, sender, issuanceID)
+	optInHolder(t, runner, receiver, issuanceID)
 	fundHolder(t, runner, issuer, sender, issuanceID, auditorlessFunding)
 
 	convert, err := builder.BuildConvert(client, builder.BuildConvertParams{
@@ -85,7 +91,14 @@ func testIntegrationConfidentialMPTWithoutAuditor(t *testing.T, client confident
 
 	assertMirrorBalances(t, client, sender.GetAddress(), config, auditorlessFunding-auditorlessSend)
 	assertMirrorBalances(t, client, receiver.GetAddress(), config, auditorlessSend)
-	require.Empty(t, getIssuance(t, client, issuer.GetAddress()).AuditorEncryptionKey)
+	issuance := getIssuance(t, client, issuer.GetAddress())
+	require.Empty(t, issuance.AuditorEncryptionKey)
+	require.NotEmpty(t, issuance.IssuerEncryptionKey)
+	require.Equal(
+		t,
+		ledger.LsfMPTCanTransfer|ledger.LsfMPTCanHoldConfidentialBalance,
+		issuance.Flags,
+	)
 
 	// Resubmitting the same proof under a new sequence breaks the binding between the
 	// proof and the transaction that carries it, and only the network can catch that.
