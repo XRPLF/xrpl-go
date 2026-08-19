@@ -2,6 +2,7 @@
 .PHONY: test-all test-binary-codec test-address-codec test-keypairs test-xrpl test-ci
 .PHONY: run-localnet run-localnet-linux/amd64 run-localnet-linux/arm64 stop-localnet integration-localnet
 .PHONY: test-integration-localnet test-integration-localnet-ci test-integration-devnet test-integration-testnet
+.PHONY: test-integration-confidential-localnet test-integration-confidential-devnet
 .PHONY: coverage-unit coverage-unit-ci test-report-summary benchmark
 .PHONY: test-confidential update-mpt-crypto
 .PHONY: update-definitions
@@ -9,10 +10,12 @@
 UNIT_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential) ./xrpl/testutil/integration/...
 EXCLUDED_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential)
 
-INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration/...
+INTEGRATION_TEST_PACKAGES = $(shell go list ./xrpl/transaction/integration/... | grep -v /confidential)
+CONFIDENTIAL_INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration/confidential/...
 
 PARALLEL_TESTS = 4
 TEST_TIMEOUT = 5m
+CONFIDENTIAL_TEST_TIMEOUT ?= 60m
 UNIT_TEST_REPORT ?= unit-test-results.json
 INTEGRATION_TEST_REPORT ?= localnet-test-results.json
 COVERAGE_PROFILE ?= coverage.out
@@ -121,6 +124,20 @@ test-integration-testnet:
 	@echo "Running Go tests for integration package..."
 	@go clean -testcache
 	@env INTEGRATION=testnet $(GOTEST) $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+	@echo "Tests complete!"
+
+# The confidential MPT integration tests are kept out of the targets above because they
+# link CGo and run roughly an order of magnitude longer.
+test-integration-confidential-localnet:
+	@echo "Running confidential MPT integration tests on localnet (CGo required)..."
+	@go clean -testcache
+	@env INTEGRATION=localnet CGO_ENABLED=1 $(GOTEST) -tags integration_localnet -p 1 $(CONFIDENTIAL_INTEGRATION_TEST_PACKAGES) -timeout $(CONFIDENTIAL_TEST_TIMEOUT) -v
+	@echo "Tests complete!"
+
+test-integration-confidential-devnet:
+	@echo "Running confidential MPT integration tests on devnet (CGo required)..."
+	@go clean -testcache
+	@env INTEGRATION=devnet CGO_ENABLED=1 $(GOTEST) -p 1 $(CONFIDENTIAL_INTEGRATION_TEST_PACKAGES) -timeout $(CONFIDENTIAL_TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 coverage-unit:
