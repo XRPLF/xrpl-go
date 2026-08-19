@@ -10,7 +10,14 @@
 UNIT_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential) ./xrpl/testutil/integration/...
 EXCLUDED_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential)
 
+# Devnet and testnet leave the confidential suite out because it funds a fresh set of
+# accounts per scenario through a shared faucet and takes an order of magnitude longer
+# there. It has its own devnet target for the occasions that are worth the wait.
 INTEGRATION_TEST_PACKAGES = $(shell go list ./xrpl/transaction/integration/... | grep -v /confidential)
+# Localnet closes ledgers on demand and funds from the genesis account, so it runs the
+# whole suite, confidential included. That is the run CI makes on every change, and it
+# is what keeps the CGo transaction path covered end to end.
+LOCALNET_INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration/...
 CONFIDENTIAL_INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration/confidential/...
 
 PARALLEL_TESTS = 4
@@ -102,16 +109,18 @@ stop-localnet:
 integration-localnet:
 	@./scripts/localnet-integration.sh
 
+# CGO_ENABLED is explicit on both localnet targets because the confidential scenarios
+# are compiled out rather than failed when it is off, which would drop them silently.
 test-integration-localnet:
 	@echo "Running Go tests for integration package..."
 	@go clean -testcache
-	@env INTEGRATION=localnet $(GOTEST) -tags integration_localnet -p 1 $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+	@env INTEGRATION=localnet CGO_ENABLED=1 $(GOTEST) -tags integration_localnet -p 1 $(LOCALNET_INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 test-integration-localnet-ci:
 	@echo "Running Go localnet integration tests with structured output..."
 	@go clean -testcache
-	@env INTEGRATION=localnet go test -json -tags integration_localnet -p 1 -timeout $(TEST_TIMEOUT) $(INTEGRATION_TEST_PACKAGES) > "$(INTEGRATION_TEST_REPORT)" || { cat "$(INTEGRATION_TEST_REPORT)"; false; }
+	@env INTEGRATION=localnet CGO_ENABLED=1 go test -json -tags integration_localnet -p 1 -timeout $(TEST_TIMEOUT) $(LOCALNET_INTEGRATION_TEST_PACKAGES) > "$(INTEGRATION_TEST_REPORT)" || { cat "$(INTEGRATION_TEST_REPORT)"; false; }
 	@cat "$(INTEGRATION_TEST_REPORT)"
 
 test-integration-devnet:

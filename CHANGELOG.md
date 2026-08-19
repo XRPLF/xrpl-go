@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Proof context hashes bind the decoded AccountID, so a proof matches whether the caller supplied a classic address or its X-address form.
 - Added `test-confidential` and `update-mpt-crypto` Makefile targets and an automated dependency-update workflow.
 - Added `test-integration-confidential-localnet` and `test-integration-confidential-devnet` Makefile targets for the XLS-96 confidential MPT integration suite, which is excluded from the standard integration targets because it requires CGo.
+- Added a CGo matrix workflow that runs the unit suites, the confidential ones included, on every platform the CGo build tags accept: linux and darwin on amd64 and arm64. The vendored `mpt-crypto` bundle ships one set of static archives per platform, so a refresh that links cleanly on one can fail on the rest. It is filtered to the paths that can change that answer, so an ordinary change still costs a single ubuntu run.
+- The localnet integration run covers the confidential MPT suite alongside every other transaction type, with `CGO_ENABLED` set explicitly so the scenarios are never silently compiled out. Devnet and testnet keep it separate, because funding a fresh set of accounts per scenario through a shared faucet is an order of magnitude slower there.
 
 #### confidential/builder
 
