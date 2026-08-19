@@ -3,8 +3,9 @@ package proof
 import "errors"
 
 var (
-	// ErrInvalidAddress is returned when a classic XRPL address cannot be decoded.
-	ErrInvalidAddress = errors.New("proof: invalid classic address")
+	// ErrInvalidAddress is returned when an XRPL address is neither a classic address
+	// nor an X-address.
+	ErrInvalidAddress = errors.New("proof: invalid address")
 	// ErrInvalidIssuanceID is returned when an issuance ID is not 48 hex characters (24 bytes).
 	ErrInvalidIssuanceID = errors.New("proof: invalid issuance ID")
 	// ErrInvalidContextHash is returned when a context hash has an unexpected byte length.
