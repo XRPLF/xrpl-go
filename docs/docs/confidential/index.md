@@ -33,7 +33,7 @@ Use this package when you need raw confidential amount encryption helpers.
 
 - `GenerateKeypair()` creates a confidential holder, issuer, or auditor keypair.
 - `GenerateBlindingFactor()` creates the shared randomness used across ciphertexts and commitments.
-- `Encrypt()` encrypts a `uint64` amount to a compressed secp256k1 public key.
+- `Encrypt(amount, pubKeyHex, bfHex)` encrypts a `uint64` amount to a compressed secp256k1 public key under a given blinding factor. Reusing one blinding factor across the ciphertexts of a single transaction is what lets a proof tie them together.
 - `Decrypt(ciphertextHex, privateKeyHex, amountRange)` decrypts a confidential balance ciphertext with the matching private key by searching an inclusive `AmountRange`.
 
 Decryption requires bounds that contain the plaintext amount and satisfy `Low <= High < math.MaxUint64`. Search cost grows linearly with the interval size, so use the narrowest practical range:
@@ -79,7 +79,7 @@ The `xrpl/transaction` package now includes five confidential MPT transaction ty
 
 Related XRPL types were extended as well:
 
-- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` support confidential-transfer flags and issuer/auditor encryption keys.
+- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` carry the confidential-transfer capability flags. `MPTokenIssuanceSet` also carries `IssuerEncryptionKey` and the optional `AuditorEncryptionKey`, which is where an issuance registers its keys.
 - `MPToken` and `MPTokenIssuance` ledger-entry types expose confidential balance and encryption-key fields.
 
 ### Transaction cost
@@ -98,3 +98,12 @@ Use [`builders`](/docs/confidential/builders) when you want the SDK to:
 - return a ready-to-sign `xrpl/transaction` struct.
 
 Drop down to `elgamal`, `commitment`, and `proof` when you need custom transaction assembly, explicit control over proof inputs, or standalone verification in tests.
+
+## Examples
+
+`examples/confidential` in the repository holds three runnable programs:
+
+- `offline`: assembles an opt-in and an inbox merge from explicit inputs, without connecting, signing, or submitting. Use it to see what the `Prepare*` helpers produce.
+- `rpc` and `ws`: run a full lifecycle against devnet over each transport. They create a confidential-capable issuance, register the issuer key, opt two holders in, then convert, merge, send, convert back, and claw back, printing the decrypted balances at each step.
+
+Both online examples need a CGo-enabled build and fund their own wallets from the devnet faucet.

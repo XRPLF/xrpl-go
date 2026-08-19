@@ -177,6 +177,12 @@ Both accept a zero nonce and can be autofilled.
 a fee and a sequence: the issuance capabilities, and the ledger state each transactor requires
 of the accounts it touches.
 
+Some conditions the network enforces are left to it. A destination that requires a destination
+tag (`tecDST_TAG_NEEDED`), a destination behind deposit authorization (`tecNO_PERMISSION`), and
+an issuance that authorizes through a permissioned domain all depend on account state or
+credentials the builder does not read. Preflight covers the issuance capabilities and the
+confidential state each transactor requires, not the destination's own access policy.
+
 ## Transaction options
 
 Every `Build*Params` embeds `TxOptions`, which carries the fields that are about the transaction
@@ -263,7 +269,7 @@ construction and reach that same value.
 
 ## Typical flow
 
-1. Enable confidential transfers on the issuance with `MPTokenIssuanceCreate` or `MPTokenIssuanceSet`, including `IssuerEncryptionKey` and optionally `AuditorEncryptionKey`.
+1. Enable confidential transfers on the issuance with `MPTokenIssuanceCreate` or `MPTokenIssuanceSet`, then register `IssuerEncryptionKey` and optionally `AuditorEncryptionKey` with an `MPTokenIssuanceSet`. Only the set transaction carries the keys, so an issuance created with the capability still needs a second transaction to become usable.
 2. Generate a holder keypair with `confidential/elgamal.GenerateKeypair()`.
 3. Opt the holder in with `BuildConvert` or `PrepareConvert`, optionally with `Amount: 0` for key registration only.
 4. Use `BuildSend` for confidential transfers between opted-in holders.

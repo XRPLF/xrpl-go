@@ -22,14 +22,14 @@ These are the transaction types available in the XRPL:
 - [CheckCash](https://xrpl.org/docs/references/protocol/transactions/types/checkcash)
 - [CheckCreate](https://xrpl.org/docs/references/protocol/transactions/types/checkcreate)
 - [Clawback](https://xrpl.org/docs/references/protocol/transactions/types/clawback)
-- [CredentialAccept](https://xrpl.org/docs/references/protocol/transactions/types/credentialaccept)
-- [CredentialCreate](https://xrpl.org/docs/references/protocol/transactions/types/credentialcreate)
-- [CredentialDelete](https://xrpl.org/docs/references/protocol/transactions/types/credentialdelete)
 - `ConfidentialMPTClawback`
 - `ConfidentialMPTConvert`
 - `ConfidentialMPTConvertBack`
 - `ConfidentialMPTMergeInbox`
 - `ConfidentialMPTSend`
+- [CredentialAccept](https://xrpl.org/docs/references/protocol/transactions/types/credentialaccept)
+- [CredentialCreate](https://xrpl.org/docs/references/protocol/transactions/types/credentialcreate)
+- [CredentialDelete](https://xrpl.org/docs/references/protocol/transactions/types/credentialdelete)
 - [DelegateSet](https://xrpl.org/docs/references/protocol/transactions/types/delegateset)
 - [DepositPreauth](https://xrpl.org/docs/references/protocol/transactions/types/depositpreauth)
 - [DIDDelete](https://xrpl.org/docs/references/protocol/transactions/types/diddelete)
@@ -111,7 +111,7 @@ create := transaction.MPTokenIssuanceCreate{
 create.SetMPTCanLockFlag()
 ```
 
-`TfMPTCanHoldConfidentialBalance` enables confidential balances. A non-zero transfer fee cannot be combined with that capability.
+`TfMPTCanHoldConfidentialBalance` enables confidential balances. A non-zero transfer fee cannot be combined with that capability. See the [confidential guide](/docs/confidential) for the XLS-96 workflow this capability unlocks.
 
 ### Update an issuance
 
@@ -130,6 +130,22 @@ set.SetMPTRequireAuthImmutableFlag()
 ```
 
 Lock and unlock operations use `TfMPTLock` and `TfMPTUnlock`. A `Holder`-only transaction is a no-op and fails validation. Pair `Holder` with one of these flags. Lock and unlock operations cannot include capability, metadata, transfer-fee, or immutability mutations.
+
+`IssuerEncryptionKey` and `AuditorEncryptionKey` register the ElGamal public keys XLS-96 confidential transfers need. Both are 33-byte compressed secp256k1 points, hex-encoded. `MPTokenIssuanceCreate` does not carry them, so an issuance enables the capability at creation and registers the keys with a later `MPTokenIssuanceSet`.
+
+```go
+issuerKey := issuerKeypair.PubKeyHex
+
+set := transaction.MPTokenIssuanceSet{
+ BaseTx: transaction.BaseTx{
+  Account: types.Address(issuer),
+ },
+ MPTokenIssuanceID:   issuanceID,
+ IssuerEncryptionKey: &issuerKey,
+}
+```
+
+`AuditorEncryptionKey` requires `IssuerEncryptionKey` in the same transaction, and neither can be combined with `Holder`.
 
 ### Claw back MPT balances
 
