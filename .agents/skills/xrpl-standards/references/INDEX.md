@@ -24,8 +24,9 @@
 | 61 | CrossCurrency NFTokenAcceptOffer | Stagnant | `references/tokens/xls-0061.md` |
 | 87 | Token Pre-Authorization | Stagnant | `references/tokens/xls-0087.md` |
 | 89 | Multi-Purpose Token Metadata Schema | Final | `references/tokens/xls-0089.md` |
-| 94 | Dynamic Multi-Purpose Tokens | Draft | `references/tokens/xls-0094.md` |
-| 96 | Confidential Transfers for Multi-Purpose Tokens | Draft | `references/tokens/xls-0096.md` |
+| 94 | Dynamic Multi-Purpose Tokens | Final | `references/tokens/xls-0094.md` |
+| 96 | Confidential Transfers for Multi-Purpose Tokens | Final | `references/tokens/xls-0096.md` |
+| 99 | ElGamal Key Rotation for Confidential MPTs | Draft | `references/tokens/xls-0099.md` |
 
 ## defi
 | XLS | Title | Status | File |
