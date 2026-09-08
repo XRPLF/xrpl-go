@@ -26,6 +26,7 @@
 | 89 | Multi-Purpose Token Metadata Schema | Final | `references/tokens/xls-0089.md` |
 | 94 | Dynamic Multi-Purpose Tokens | Final | `references/tokens/xls-0094.md` |
 | 96 | Confidential Transfers for Multi-Purpose Tokens | Final | `references/tokens/xls-0096.md` |
+| 99 | ElGamal Key Rotation for Confidential MPTs | Draft | `references/tokens/xls-0099.md` |
 
 ## defi
 | XLS | Title | Status | File |
@@ -117,8 +118,3 @@
 | 3 | Sharing and deeplinking signed transactions | Stagnant | `references/ecosystem/xls-0003.md` |
 | 4 | Trustline Add URI | Stagnant | `references/ecosystem/xls-0004.md` |
 | 6 | Standard for Visual Account Icons | Final | `references/ecosystem/xls-0006.md` |
-
-## UNCLASSIFIED
-| XLS | Title | Status | File |
-| ----- | ------- | -------- | ------ |
-| 99 | ElGamal Key Rotation for Confidential MPTs | Draft | `references/UNCLASSIFIED/xls-0099.md` |

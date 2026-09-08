@@ -5,7 +5,7 @@ description: "Reference for any XRPL Standard (XLS-N) when implementing or revie
 
 # XRPL Standards
 
-Raw specification files for all 78 XRPL Standards (XLS-1 through XLS-102), organized by topic. Read the relevant file to get the full spec — field definitions, transaction formats, ledger objects, failure conditions, invariants, and RPC changes.
+Raw specification files for all 79 XRPL Standards (XLS-1 through XLS-102), organized by topic. Read the relevant file to get the full spec — field definitions, transaction formats, ledger objects, failure conditions, invariants, and RPC changes.
 
 ## How to Use
 
@@ -57,8 +57,9 @@ bash <skill-dir>/scripts/fetch-xls.sh <number>
 | 61 | Cross-Currency NFTokenAcceptOffer | Stagnant | `references/tokens/xls-0061.md` |
 | 87 | Token Pre-Authorization — issuer approval by account, credential, or domain | Stagnant | `references/tokens/xls-0087.md` |
 | 89 | MPT Metadata Schema | Final | `references/tokens/xls-0089.md` |
-| 94 | Dynamic MPT — mutable MPToken fields | Draft | `references/tokens/xls-0094.md` |
-| 96 | Confidential MPT — `ConfidentialMPTConvert/Send/MergeInbox/ConvertBack/Clawback` | Draft | `references/tokens/xls-0096.md` |
+| 94 | Dynamic MPT — mutable MPToken fields | Final | `references/tokens/xls-0094.md` |
+| 96 | Confidential MPT — `ConfidentialMPTConvert/Send/MergeInbox/ConvertBack/Clawback` | Final | `references/tokens/xls-0096.md` |
+| 99 | ElGamal Key Rotation for Confidential MPTs — issuer, auditor, and holder key rotation and recovery | Draft | `references/tokens/xls-0099.md` |
 | 10 | Non-Transferable Token standard | Stagnant | `references/tokens/xls-0010.md` |
 | 16 | NFT Metadata v1 | Stagnant | `references/tokens/xls-0016.md` |
 | 24 | NFT Metadata v2 | Final | `references/tokens/xls-0024.md` |
