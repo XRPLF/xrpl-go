@@ -94,13 +94,14 @@ jobs:
               [ -s "confidential/deps/libs/$platform/$archive" ] || BUNDLE_COMPLETE=false
             done
           done
-          for header in mpt_protocol.h secp256k1_mpt.h secp256k1.h utility/mpt_utility.h; do
+          for header in bsgs_dlp.h mpt_protocol.h secp256k1_mpt.h secp256k1.h utility/mpt_utility.h; do
             [ -s "confidential/deps/include/$header" ] || BUNDLE_COMPLETE=false
           done
           if [ "$BUNDLE_COMPLETE" = true ] && ! cc \
             -Iconfidential/deps/include \
             -Iconfidential/deps/include/utility \
             -x c -fsyntax-only - >/dev/null 2>&1 <<'EOF'; then
+          #include "bsgs_dlp.h"
           #include "mpt_utility.h"
           int main(void) { return 0; }
           EOF
@@ -242,6 +243,7 @@ jobs:
             -Iconfidential/deps/include \
             -Iconfidential/deps/include/utility \
             -x c -fsyntax-only - <<'EOF'
+          #include "bsgs_dlp.h"
           #include "mpt_utility.h"
           int main(void) { return 0; }
           EOF
@@ -343,7 +345,7 @@ jobs:
 
           mkdir -p "$merge_dir/include"
           cp -R "$header_source/." "$merge_dir/include/"
-          for header in mpt_protocol.h secp256k1_mpt.h secp256k1.h utility/mpt_utility.h; do
+          for header in bsgs_dlp.h mpt_protocol.h secp256k1_mpt.h secp256k1.h utility/mpt_utility.h; do
             if [ ! -s "$merge_dir/include/$header" ]; then
               echo "::error::Merged artifact is missing public header $header"
               exit 1

@@ -8,7 +8,7 @@
 #
 # Usage:
 #   bash confidential/deps/update.sh                        # fetch latest, current platform
-#   bash confidential/deps/update.sh --version 0.2.0-rc1    # fetch specific version
+#   bash confidential/deps/update.sh --version 1.0.5        # fetch specific version
 #   bash confidential/deps/update.sh --platform linux-arm64 # target specific platform
 #   bash confidential/deps/update.sh --lockfile conan.lock  # use a pre-resolved Conan graph
 #   bash confidential/deps/update.sh --force                # ignore VERSION file, re-fetch
@@ -196,6 +196,7 @@ bundle_is_complete() {
 		"$LIBS_DIR/libmpt-crypto.a" \
 		"$LIBS_DIR/libsecp256k1.a" \
 		"$LIBS_DIR/libcrypto.a" \
+		"$INCLUDE_DIR/bsgs_dlp.h" \
 		"$INCLUDE_DIR/mpt_protocol.h" \
 		"$INCLUDE_DIR/secp256k1_mpt.h" \
 		"$INCLUDE_DIR/secp256k1.h" \
@@ -342,10 +343,11 @@ cp "$MPT_LIB" "$SECP256K1_LIB" "$CRYPTO_LIB" "$STAGE_LIBS/"
 merge_include_tree "$MPT_PACKAGE_ROOT" "mpt-crypto"
 merge_include_tree "$SECP256K1_PACKAGE_ROOT" "secp256k1"
 
-# Resolve the downstream header closure from the same root and include paths
-# used by the CGO preamble. -MM excludes system headers and fails if a package
-# header references an unavailable dependency.
+# Resolve dependencies of the public headers shipped in the bundle.
+# -MM excludes system headers and fails if a package header references an
+# unavailable dependency.
 cat >"$HEADER_PROBE" <<'EOF'
+#include "bsgs_dlp.h"
 #include "mpt_utility.h"
 EOF
 cc \
@@ -405,6 +407,7 @@ for required in \
 	"$STAGE_LIBS/libmpt-crypto.a" \
 	"$STAGE_LIBS/libsecp256k1.a" \
 	"$STAGE_LIBS/libcrypto.a" \
+	"$STAGE_INCLUDE/bsgs_dlp.h" \
 	"$STAGE_INCLUDE/mpt_protocol.h" \
 	"$STAGE_INCLUDE/secp256k1_mpt.h" \
 	"$STAGE_INCLUDE/secp256k1.h" \
