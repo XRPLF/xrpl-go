@@ -5,6 +5,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	querycommon "github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -14,21 +15,21 @@ import (
 )
 
 func integrationTestVaultClawback(t *testing.T, client integration.Client) {
-	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 3})
-	err := runner.Setup()
-	require.NoError(t, err)
-	defer runner.Teardown()
-
-	issuer := runner.GetWallet(0)
-	vaultOwner := runner.GetWallet(1)
-	holder := runner.GetWallet(2)
 	t.Run("pass - vault clawback test", func(t *testing.T) {
+		runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 3})
+		err := runner.Setup()
+		require.NoError(t, err)
+		defer runner.Teardown()
+
+		issuer := runner.GetWallet(0)
+		vaultOwner := runner.GetWallet(1)
+		holder := runner.GetWallet(2)
 		issuerAccountSetDefaultRippleTx := &transaction.AccountSet{
 			BaseTx: transaction.BaseTx{Account: issuer.GetAddress()},
 		}
 		issuerAccountSetDefaultRippleTx.SetFlag = transaction.AsfDefaultRipple
 		flatIssuerAccountSetDefaultRippleTx := issuerAccountSetDefaultRippleTx.Flatten()
-		_, err = runner.TestTransaction(&flatIssuerAccountSetDefaultRippleTx, issuer, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatIssuerAccountSetDefaultRippleTx, issuer, nil)
 		require.NoError(t, err)
 
 		issuerAccountSetAllowTrustLineClawbackTx := &transaction.AccountSet{
@@ -36,7 +37,7 @@ func integrationTestVaultClawback(t *testing.T, client integration.Client) {
 		}
 		issuerAccountSetAllowTrustLineClawbackTx.SetFlag = transaction.AsfAllowTrustLineClawback
 		flatIssuerAccountSetAllowTrustLineClawbackTx := issuerAccountSetAllowTrustLineClawbackTx.Flatten()
-		_, err = runner.TestTransaction(&flatIssuerAccountSetAllowTrustLineClawbackTx, issuer, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatIssuerAccountSetAllowTrustLineClawbackTx, issuer, nil)
 		require.NoError(t, err)
 
 		setTrustLineTx := &transaction.TrustSet{
@@ -48,7 +49,7 @@ func integrationTestVaultClawback(t *testing.T, client integration.Client) {
 			},
 		}
 		flatSetTrustLineTx := setTrustLineTx.Flatten()
-		_, err = runner.TestTransaction(&flatSetTrustLineTx, holder, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatSetTrustLineTx, holder, nil)
 		require.NoError(t, err)
 
 		paymentTx := &transaction.Payment{
@@ -57,7 +58,7 @@ func integrationTestVaultClawback(t *testing.T, client integration.Client) {
 			Amount:      types.IssuedCurrencyAmount{Currency: "USD", Issuer: issuer.GetAddress(), Value: "100"},
 		}
 		flatPaymentTx := paymentTx.Flatten()
-		_, err = runner.TestTransaction(&flatPaymentTx, issuer, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatPaymentTx, issuer, nil)
 		require.NoError(t, err)
 
 		vaultCreateTx := &transaction.VaultCreate{
@@ -65,14 +66,16 @@ func integrationTestVaultClawback(t *testing.T, client integration.Client) {
 			Asset:  ledger.Asset{Currency: "USD", Issuer: issuer.GetAddress()},
 		}
 		flatVaultCreateTx := vaultCreateTx.Flatten()
-		_, err = runner.TestTransaction(&flatVaultCreateTx, vaultOwner, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatVaultCreateTx, vaultOwner, nil)
 		require.NoError(t, err)
 
 		vaultObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
-			Account: vaultOwner.GetAddress(),
-			Type:    account.VaultObject,
+			Account:     vaultOwner.GetAddress(),
+			Type:        account.VaultObject,
+			LedgerIndex: querycommon.Validated,
 		})
 		require.NoError(t, err)
+		require.True(t, vaultObjects.Validated)
 		require.Len(t, vaultObjects.AccountObjects, 1)
 
 		vaultID := types.Hash256(vaultObjects.AccountObjects[0]["index"].(string))
@@ -82,7 +85,7 @@ func integrationTestVaultClawback(t *testing.T, client integration.Client) {
 			Amount:  types.IssuedCurrencyAmount{Currency: "USD", Issuer: issuer.GetAddress(), Value: "10"},
 		}
 		flatVaultDepositTx := vaultDepositTx.Flatten()
-		_, err = runner.TestTransaction(&flatVaultDepositTx, holder, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatVaultDepositTx, holder, nil)
 		require.NoError(t, err)
 
 		vaultClawbackTx := &transaction.VaultClawback{
@@ -92,14 +95,17 @@ func integrationTestVaultClawback(t *testing.T, client integration.Client) {
 			Amount:  types.IssuedCurrencyAmount{Currency: "USD", Issuer: issuer.GetAddress(), Value: "10"},
 		}
 		flatVaultClawbackTx := vaultClawbackTx.Flatten()
-		_, err = runner.TestTransaction(&flatVaultClawbackTx, issuer, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatVaultClawbackTx, issuer, nil)
 		require.NoError(t, err)
 
 		vaultObjects, err = client.GetAccountObjects(&account.ObjectsRequest{
-			Account: vaultOwner.GetAddress(),
-			Type:    account.VaultObject,
+			Account:     vaultOwner.GetAddress(),
+			Type:        account.VaultObject,
+			LedgerIndex: querycommon.Validated,
 		})
 		require.NoError(t, err)
+		require.True(t, vaultObjects.Validated)
+		require.Len(t, vaultObjects.AccountObjects, 1)
 		require.NotContains(t, vaultObjects.AccountObjects[0], "AssetsTotal")
 	})
 }
