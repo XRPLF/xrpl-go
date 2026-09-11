@@ -141,7 +141,7 @@ func TestDelegateSet_ValidateRejectsBatchPermission(t *testing.T) {
 	require.ErrorIs(t, err, ErrDelegateSetNonDelegatableTransaction)
 }
 
-func TestDelegateSet_ValidateRejectsVaultAndLoanPermissions(t *testing.T) {
+func TestDelegateSet_ValidateRejectsNonDelegatablePermissions(t *testing.T) {
 	nonDelegable := []TxType{
 		VaultCreateTx,
 		VaultSetTx,
@@ -158,6 +158,7 @@ func TestDelegateSet_ValidateRejectsVaultAndLoanPermissions(t *testing.T) {
 		LoanDeleteTx,
 		LoanManageTx,
 		LoanPayTx,
+		ConfidentialMPTConvertTx,
 	}
 
 	for _, txType := range nonDelegable {

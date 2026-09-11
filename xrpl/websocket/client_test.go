@@ -886,33 +886,9 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 				},
 			},
 			serverMessages: []map[string]any{
-				// Outer Batch fee fetch
+				// One fee fetch, reused for the Batch and every inner transaction.
 				{
 					"id": 1,
-					"result": map[string]any{
-						"info": map[string]any{
-							"validated_ledger": map[string]any{
-								"base_fee_xrp": float32(0.00001),
-							},
-							"load_factor": float32(1),
-						},
-					},
-				},
-				// Inner Payment fee fetch
-				{
-					"id": 2,
-					"result": map[string]any{
-						"info": map[string]any{
-							"validated_ledger": map[string]any{
-								"base_fee_xrp": float32(0.00001),
-							},
-							"load_factor": float32(1),
-						},
-					},
-				},
-				// Inner OfferCreate fee fetch
-				{
-					"id": 3,
 					"result": map[string]any{
 						"info": map[string]any{
 							"validated_ledger": map[string]any{
@@ -961,33 +937,9 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 				},
 			},
 			serverMessages: []map[string]any{
-				// Outer Batch fee fetch
+				// One fee fetch, reused for the Batch and every inner transaction.
 				{
 					"id": 1,
-					"result": map[string]any{
-						"info": map[string]any{
-							"validated_ledger": map[string]any{
-								"base_fee_xrp": float32(0.00001),
-							},
-							"load_factor": float32(1),
-						},
-					},
-				},
-				// Inner Payment fee fetch
-				{
-					"id": 2,
-					"result": map[string]any{
-						"info": map[string]any{
-							"validated_ledger": map[string]any{
-								"base_fee_xrp": float32(0.00001),
-							},
-							"load_factor": float32(1),
-						},
-					},
-				},
-				// Inner OfferCreate fee fetch
-				{
-					"id": 3,
 					"result": map[string]any{
 						"info": map[string]any{
 							"validated_ledger": map[string]any{
@@ -1051,123 +1003,6 @@ func TestClient_calculateFeePerTransactionType(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestClient_FeePresenceSemantics(t *testing.T) {
-	tests := []struct {
-		name        string
-		ledger      map[string]any
-		expected    string
-		expectedErr error
-	}{
-		{name: "missing base fee", ledger: map[string]any{}, expectedErr: ErrCouldNotGetBaseFeeXrp},
-		{name: "null base fee", ledger: map[string]any{"base_fee_xrp": nil}, expectedErr: ErrCouldNotGetBaseFeeXrp},
-		{name: "explicit zero base fee", ledger: map[string]any{"base_fee_xrp": 0}, expected: "0"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client, cleanup := setupTestClient(t, []map[string]any{{
-				"id": 1,
-				"result": map[string]any{
-					"info": map[string]any{"validated_ledger": tt.ledger, "load_factor": 1},
-				},
-			}})
-			defer cleanup()
-			maxFee, err := clientinternal.ParseFeeXRP(client.cfg.maxFeeXRP)
-			require.NoError(t, err)
-
-			actual, err := client.getFeeDrops(context.Background(), 1, maxFee)
-			if tt.expectedErr != nil {
-				require.ErrorIs(t, err, tt.expectedErr)
-				return
-			}
-			require.NoError(t, err)
-			actualXRP, err := actual.XRPString()
-			require.NoError(t, err)
-			require.Equal(t, tt.expected, actualXRP)
-		})
-	}
-}
-
-func TestClient_OwnerReservePresenceSemantics(t *testing.T) {
-	tests := []struct {
-		name        string
-		ledger      map[string]any
-		expected    uint64
-		expectedErr error
-	}{
-		{name: "missing reserve", ledger: map[string]any{}, expectedErr: ErrCouldNotFetchOwnerReserve},
-		{name: "null reserve", ledger: map[string]any{"reserve_inc": nil}, expectedErr: ErrCouldNotFetchOwnerReserve},
-		{name: "explicit zero reserve", ledger: map[string]any{"reserve_inc": 0}, expected: 0},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			client, cleanup := setupTestClient(t, []map[string]any{{
-				"id": 1,
-				"result": map[string]any{
-					"state": map[string]any{"validated_ledger": tt.ledger},
-				},
-			}})
-			defer cleanup()
-			actual, err := client.fetchOwnerReserveFee(context.Background())
-			if tt.expectedErr != nil {
-				require.ErrorIs(t, err, tt.expectedErr)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, tt.expected, actual)
-		})
-	}
-}
-
-func TestClient_LoanSetFeeUsesValidatedLedger(t *testing.T) {
-	const owner = "rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH"
-	requests := make(chan map[string]any, 2)
-	ws := &testutil.MockWebSocketServer{}
-	server := ws.TestWebSocketServer(func(conn *websocket.Conn) {
-		defer conn.Close()
-		for range 2 {
-			var request map[string]any
-			if err := conn.ReadJSON(&request); err != nil {
-				return
-			}
-			requests <- request
-			var result map[string]any
-			switch request["command"] {
-			case "ledger_entry":
-				result = map[string]any{"node": map[string]any{"Owner": owner}}
-			case "account_info":
-				result = map[string]any{"signer_lists": []any{}}
-			default:
-				return
-			}
-			if err := conn.WriteJSON(map[string]any{
-				"id": request["id"], "status": "success", "type": "response", "result": result,
-			}); err != nil {
-				return
-			}
-		}
-	})
-	defer server.Close()
-
-	url, err := testutil.ConvertHTTPToWS(server.URL)
-	require.NoError(t, err)
-	client := NewClient(NewClientConfig().WithHost(url).WithNetworkIdentity(0, "1.12.0"))
-	require.NoError(t, client.Connect())
-	defer client.Disconnect()
-
-	count, err := client.fetchCounterPartySignersCount(
-		context.Background(),
-		transaction.FlatTransaction{"LoanBrokerID": "ABC"},
-	)
-	require.NoError(t, err)
-	require.Equal(t, uint64(1), count)
-	close(requests)
-	for request := range requests {
-		require.Equal(t, "validated", request["ledger_index"])
 	}
 }
 

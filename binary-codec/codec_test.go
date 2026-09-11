@@ -53,6 +53,36 @@ func TestDefinitionFieldsRoundTrip(t *testing.T) {
 			expected: "11007E5027A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
 		},
 		{
+			name: "ConfidentialMPTConvert BlindingFactor uses Hash256 field 40",
+			input: map[string]any{
+				"TransactionType": "ConfidentialMPTConvert",
+				"Account":         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+				"MPTAmount":       "100",
+				"BlindingFactor":  "1E617B6FA885D8F2C1F22AFED8053BAACDEFEEEA4813EEDA30B6DF517851A509",
+			},
+			expected: "120055301A000000000000006450281E617B6FA885D8F2C1F22AFED8053BAACDEFEEEA4813EEDA30B6DF517851A509811495F14B0E44F78A264E41713C64B5F89242540EE2",
+		},
+		{
+			name: "ConfidentialMPTSend commitments use Blob fields 45 and 46",
+			input: map[string]any{
+				"TransactionType":   "ConfidentialMPTSend",
+				"Account":           "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+				"AmountCommitment":  "02E65F6CAA5D1F1910EB95345B222D906874BE7A6E75B1AD7CCF52C6A767089BFA",
+				"BalanceCommitment": "03596B2A176A8255A62FE5718A054A6B3E318B122F3F2FD783D551E0F17F628BB6",
+			},
+			expected: "120058702D2102E65F6CAA5D1F1910EB95345B222D906874BE7A6E75B1AD7CCF52C6A767089BFA702E2103596B2A176A8255A62FE5718A054A6B3E318B122F3F2FD783D551E0F17F628BB6811495F14B0E44F78A264E41713C64B5F89242540EE2",
+		},
+		{
+			name: "MPTokenIssuance confidential encryption keys and outstanding amount",
+			input: map[string]any{
+				"LedgerEntryType":               "MPTokenIssuance",
+				"ConfidentialOutstandingAmount": "100",
+				"IssuerEncryptionKey":           "0287729B8FC5820EA0264CCB119D831913CF186E3B575B23B277127FDBD5F15897",
+				"AuditorEncryptionKey":          "0351E792649D0108D02C7138ED2C77548276C563646CC250A28D6A312D8D78F3D2",
+			},
+			expected: "11007E302000000000000000647023210287729B8FC5820EA0264CCB119D831913CF186E3B575B23B277127FDBD5F15897702C210351E792649D0108D02C7138ED2C77548276C563646CC250A28D6A312D8D78F3D2",
+		},
+		{
 			name: "DirectoryNode MPT book assets",
 			input: map[string]any{
 				"LedgerEntryType": "DirectoryNode",
@@ -488,6 +518,7 @@ func TestMPTUInt64FieldsUseDecimalJSON(t *testing.T) {
 		{field: "OutstandingAmount", header: "3019"},
 		{field: "MPTAmount", header: "301A"},
 		{field: "LockedAmount", header: "301D"},
+		{field: "ConfidentialOutstandingAmount", header: "3020"},
 	}
 
 	for _, tt := range tests {

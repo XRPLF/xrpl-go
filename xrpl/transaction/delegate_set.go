@@ -33,6 +33,9 @@ var NonDelegatableTransactionsMap = map[string]uint8{
 	LoanDeleteTx.String():              0,
 	LoanManageTx.String():              0,
 	LoanPayTx.String():                 0,
+	// rippled marks ConfidentialMPTConvert Delegation::NotDelegable in transactions.macro.
+	// The other four confidential MPT types are Delegable. XLS-96 does not specify delegability.
+	ConfidentialMPTConvertTx.String(): 0,
 	// Pseudo transactions below:
 	EnableAmendmentTx.String(): 0,
 	SetFeeTx.String():          0,

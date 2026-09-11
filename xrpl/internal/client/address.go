@@ -119,6 +119,10 @@ func collectAddressChange(tx transactionMap, addressField, tagField string, chan
 		tag:          tag,
 		hasTag:       hasTag,
 	}
+	// A tag equal to the one embedded in the address is accepted, because the commit
+	// stage rewrites the address to its classic form and carries the tag across, leaving
+	// nothing for the encoder to reject. Only a tag that disagrees with the embedded one
+	// is a conflict, because no rewrite can satisfy both.
 	if change.hasTag {
 		explicit, explicitPresent := tx[tagField]
 		if explicitPresent && explicit != nil {

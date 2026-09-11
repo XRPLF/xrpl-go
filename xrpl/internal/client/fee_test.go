@@ -37,7 +37,7 @@ func TestNetworkFeeDrops(t *testing.T) {
 
 			actual, err := NetworkFeeDrops(test.baseFeeXRP, test.loadFactor, test.cushion, maxFee)
 			require.NoError(t, err)
-			actualXRP, err := actual.XRPString()
+			actualXRP, err := actual.RoundHalfUp().XRPString()
 			require.NoError(t, err)
 			require.Equal(t, test.expected, actualXRP)
 		})
@@ -69,15 +69,35 @@ func TestNetworkFeeDropsFractionalBaseFee(t *testing.T) {
 			actual, err := NetworkFeeDrops(test.baseFeeXRP, test.loadFactor, 1, maxFee)
 			require.NoError(t, err)
 
-			actualXRP, err := actual.XRPString()
+			actualXRP, err := actual.RoundHalfUp().XRPString()
 			require.NoError(t, err)
 			require.Equal(t, test.expectedXRP, actualXRP)
 
-			actualDrops, err := actual.WholeString()
+			actualDrops, err := actual.RoundHalfUp().WholeString()
 			require.NoError(t, err)
 			require.Equal(t, test.expectedDrops, actualDrops)
 		})
 	}
+}
+
+// TestNetworkFeeDropsKeepsFractionalDrops pins the contract callers rely on:
+// the network fee keeps its fractional drop so a base-fee factor multiplies the
+// exact value. Rounding first would scale the rounding error by the factor.
+// CalculateFee owns the rounding, and TestCalculateFee pins the drops it pays.
+func TestNetworkFeeDropsKeepsFractionalDrops(t *testing.T) {
+	t.Parallel()
+
+	maxFee, err := ParseFeeXRP("2")
+	require.NoError(t, err)
+
+	// A ten drop base fee under a fractional load factor is 12.4 drops.
+	netFee, err := NetworkFeeDrops(0.00001, 1.24, 1, maxFee)
+	require.NoError(t, err)
+	require.False(t, netFee.IsWhole())
+
+	tenthDrops, err := netFee.Mul(10).WholeString()
+	require.NoError(t, err)
+	require.Equal(t, "124", tenthDrops)
 }
 
 func TestNetworkFeeDropsRejectsInvalidValues(t *testing.T) {

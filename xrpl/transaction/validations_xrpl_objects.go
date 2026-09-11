@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
@@ -25,6 +26,8 @@ const (
 	StandardCurrencyCodeLen = 3
 	// Hex256Length is the number of characters in a 256-bit hexadecimal value.
 	Hex256Length = 64
+	// MPTIssuanceIDLength is the hex-encoded length of an MPT issuance ID (48 hex chars).
+	MPTIssuanceIDLength = 2 * bctypes.MPTIssuanceIDByteLength
 )
 
 // *************************
@@ -65,9 +68,20 @@ func IsSigner(signerData types.SignerData) (bool, error) {
 		return false, ErrSignerShouldHaveThreeFields
 	}
 
-	validAccount := strings.TrimSpace(signerData.Account.String()) != "" && addresscodec.IsValidAddress(signerData.Account.String())
-	if !validAccount {
+	accountID, hasTag, err := decodeAddressAccountID(signerData.Account)
+	if err != nil {
 		return false, ErrSignerAccountShouldBeString
+	}
+	// A Signer names an account that must produce a signature, and no keypair can produce
+	// ACCOUNT_ZERO, so the entry can never be satisfied.
+	if addresscodec.IsZeroAccountID(accountID) {
+		return false, ErrSignerAccountZero
+	}
+	// Signer.Account has no companion tag field. The binary codec routes an embedded tag by
+	// field name alone, so a tagged X-address nested here is written as a SourceTag inside
+	// the Signer object rather than rejected, which is why preflight has to reject it.
+	if hasTag {
+		return false, ErrSignerAccountTagNotAllowed
 	}
 
 	if strings.TrimSpace(signerData.TxnSignature) == "" {
@@ -277,15 +291,40 @@ func IsDomainID(id string) bool {
 	return IsHex256(id)
 }
 
-// IsHex256 checks if the input is a 256-bit value encoded as hexadecimal.
-func IsHex256(input string) bool {
-	return len(input) == Hex256Length && typecheck.IsHex(input)
-}
-
 // IsLedgerEntryID checks if the input is a valid ledger entry id.
 // A valid ledger entry id is a 256-bit value encoded as hexadecimal.
 func IsLedgerEntryID(input string) bool {
 	return IsHex256(input)
+}
+
+// IsHex256 checks if the input is a 256-bit value encoded as hexadecimal.
+func IsHex256(input string) bool {
+	return isValidFixedHexBlob(input, Hex256Length)
+}
+
+// IsMPTIssuanceID checks if the given hex string is a valid 24-byte MPT issuance ID (48 hex chars).
+func IsMPTIssuanceID(id string) bool {
+	return isValidFixedHexBlob(id, MPTIssuanceIDLength)
+}
+
+// IsMPTokenIssuer reports whether address is the issuer encoded in the trailing
+// AccountID of issuanceID.
+//
+// A malformed issuanceID or address also reports false, so a caller that rejects on a
+// true result must check IsMPTIssuanceID first. Without that, a malformed ID reads as
+// "not the issuer" and slips through the rejection.
+func IsMPTokenIssuer(issuanceID string, address types.Address) bool {
+	issuerID, ok := mptIssuerAccountID(issuanceID)
+	if !ok {
+		return false
+	}
+
+	accountID, _, err := decodeAddressAccountID(address)
+	if err != nil {
+		return false
+	}
+
+	return bytes.Equal(issuerID, accountID)
 }
 
 // ValidateHexMetadata validates input is non-empty hex string of up to a certain length.
@@ -302,4 +341,9 @@ func IsTokenAmount(amount types.CurrencyAmount) bool {
 	}
 	kind := amount.Kind()
 	return kind == types.ISSUED || kind == types.MPT
+}
+
+// isValidFixedHexBlob reports whether s is hexadecimal with the exact encoded length.
+func isValidFixedHexBlob(s string, hexLen int) bool {
+	return len(s) == hexLen && typecheck.IsHex(s)
 }

@@ -49,6 +49,12 @@ if issuance.ImmutableFlags&ledger.LsifMPTMetadata != 0 {
 
 `PriceData.AssetPrice` is a pointer so absent and explicit zero prices stay distinct. Oracle prices accept the XLS-47 `Scale` range from `0` through `20`. `Flatten` omits `Scale` when `AssetPrice` is absent, and `Validate` rejects a nonzero `Scale` without a price.
 
+### Confidential MPT fields
+
+XLS-96 adds confidential state to both MPT entries. `MPTokenIssuance` carries `IssuerEncryptionKey`, the optional `AuditorEncryptionKey`, and `ConfidentialOutstandingAmount`, the confidential supply, which is a quoted base-10 string like the other issuance amounts. `MPToken` carries `HolderEncryptionKey`, the `ConfidentialBalanceSpending` and `ConfidentialBalanceInbox` ciphertexts, the `IssuerEncryptedBalance` and optional `AuditorEncryptedBalance` mirror ciphertexts, and `ConfidentialBalanceVersion`.
+
+`LsfMPTCanHoldConfidentialBalance` on `MPTokenIssuance.Flags` reports whether the issuance allows confidential balances, and `LsifMPTCanHoldConfidentialBalance` on `ImmutableFlags` reports whether that setting can still change. See the [confidential guide](/docs/confidential) for how these fields are produced and consumed.
+
 ## Usage
 
 To import the package, you can use the following code:

@@ -56,6 +56,9 @@ jobs:
           retention-days: 14
 
   localnet-integration:
+    # This run carries the confidential MPT scenarios too, which need CGo. The runner
+    # image ships a C toolchain and the make target sets CGO_ENABLED explicitly, so
+    # there is nothing to install here.
     name: Localnet Integration
     runs-on: ubuntu-latest
     timeout-minutes: 10

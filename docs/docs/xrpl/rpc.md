@@ -151,6 +151,8 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error
 func (c *Client) AutofillMultisigned(tx *transaction.FlatTransaction, nSigners uint64) error
 ```
 
+Autofill sets `Fee` only when the transaction has none. Transaction types with a special cost carry it automatically, including the ten base fees a confidential MPT transaction owes, which also applies to a confidential transaction nested inside a `Batch`. A hand-set `Fee` is submitted unchanged, so a value sized for an ordinary transaction underpays and the submission fails with `telINSUF_FEE_P`. See the [confidential guide](/docs/confidential) for the full cost breakdown.
+
 ### Submit
 
 The `SubmitTx` and `SubmitTxBlob` methods submit a transaction to the XRPL network. They return a `SubmitResponse` with the immediate submission result. `SubmitTxBlob` requires a signed transaction blob. `SubmitTx` accepts a signed flat transaction, or it can sign an unsigned transaction when `SubmitOptions.Wallet` is set. It enables autofill only when `SubmitOptions.Autofill` is true.

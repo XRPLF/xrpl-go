@@ -40,6 +40,9 @@ Thumbs.db
 *.o
 *.a
 
+# Exception: vendored mpt-crypto static libraries
+!confidential/deps/libs/**/*.a
+
 # Debug files
 debug
 
@@ -56,7 +59,7 @@ coverage.html
 /unit-test-results.json
 
 # Multi-review skill output (per-run subdirectories)
-/reviews/
+reviews/
 
 # PR template skill output
-/PR/
+PR/

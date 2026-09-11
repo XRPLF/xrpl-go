@@ -9,9 +9,11 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 )
 
-// NetworkFeeDrops calculates the load-adjusted and capped network fee. Inputs
-// use binary64 precision, the cap is applied before rounding, and the result is
-// rounded half-up to a whole number of drops.
+// NetworkFeeDrops calculates the exact load-adjusted and capped network fee for
+// one base fee. Inputs use binary64 precision and the result keeps any
+// fractional drop, because rippled scales a transaction's whole base fee for
+// load in one step. Callers multiply by the transaction's base-fee factor and
+// round once, so a fractional drop is never amplified by that factor.
 func NetworkFeeDrops(baseFeeXRP, loadFactor, cushion float64, maxFee currency.Drops) (currency.Drops, error) {
 	baseFeeText, err := decimalFromFloat64(baseFeeXRP)
 	if err != nil {
@@ -44,7 +46,7 @@ func NetworkFeeDrops(baseFeeXRP, loadFactor, cushion float64, maxFee currency.Dr
 		return currency.Drops{}, fmt.Errorf("%w: fee cushion", ErrInvalidFeeValue)
 	}
 
-	return fee.Min(maxFee).RoundHalfUp(), nil
+	return fee.Min(maxFee), nil
 }
 
 // ParseFeeXRP creates an exact drops value from an XRP fee string while

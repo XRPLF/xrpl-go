@@ -93,10 +93,12 @@ var (
 	// ErrNetworkIDOverrideMismatch is returned when an override differs from server_info.
 	ErrNetworkIDOverrideMismatch = clientinternal.ErrNetworkIDOverrideMismatch
 	// ErrRawTransactionsFieldMissing is returned when the RawTransactions field is missing from a Batch transaction.
-	ErrRawTransactionsFieldMissing = errors.New("RawTransactions field missing from Batch transaction")
+	ErrRawTransactionsFieldMissing = clientinternal.ErrRawTransactionsFieldMissing
 	// ErrRawTransactionFieldMissing is returned when the RawTransaction field is missing from a wrapper.
-	ErrRawTransactionFieldMissing = errors.New("RawTransaction field missing from wrapper")
-	// ErrFeeFieldMissing is returned when the fee field is missing after calculation.
+	ErrRawTransactionFieldMissing = clientinternal.ErrRawTransactionFieldMissing
+	// ErrFeeFieldMissing was returned when the fee field was missing after calculation.
+	//
+	// Deprecated: fee calculation no longer returns this error. It will be removed in a future version.
 	ErrFeeFieldMissing = errors.New("fee field missing after calculation")
 
 	// client
@@ -124,16 +126,18 @@ var (
 	// ErrFeeHasTooManyDecimals is returned when an XRP fee cannot be represented as whole drops.
 	ErrFeeHasTooManyDecimals = clientinternal.ErrFeeHasTooManyDecimals
 	// ErrCouldNotGetBaseFeeXrp is returned when BaseFeeXrp cannot be retrieved from ServerInfo.
-	ErrCouldNotGetBaseFeeXrp = errors.New("get fee xrp: could not get BaseFeeXrp from ServerInfo")
+	ErrCouldNotGetBaseFeeXrp = clientinternal.ErrCouldNotGetBaseFeeXrp
 	// ErrCouldNotFetchOwnerReserve is returned when the owner reserve fee cannot be fetched.
-	ErrCouldNotFetchOwnerReserve = errors.New("could not fetch Owner Reserve")
+	ErrCouldNotFetchOwnerReserve = clientinternal.ErrCouldNotFetchOwnerReserve
 	// ErrLoanBrokerIDRequired is returned when LoanBrokerID is required but not provided.
-	ErrLoanBrokerIDRequired = errors.New("LoanBrokerID is required for LoanSet transaction")
+	ErrLoanBrokerIDRequired = clientinternal.ErrLoanBrokerIDRequired
 	// ErrCouldNotFetchLoanBroker is returned when the LoanBroker cannot be fetched.
 	ErrCouldNotFetchLoanBroker = errors.New("could not fetch LoanBroker")
 	// ErrCouldNotFetchLoanBrokerOwner is returned when the Owner field cannot be extracted from LoanBroker.
-	ErrCouldNotFetchLoanBrokerOwner = errors.New("could not fetch LoanBroker Owner")
-	// ErrCounterpartyRequired is returned when Counterparty is required but not provided.
+	ErrCouldNotFetchLoanBrokerOwner = clientinternal.ErrCouldNotFetchLoanBrokerOwner
+	// ErrCounterpartyRequired was returned when Counterparty was required but not provided.
+	//
+	// Deprecated: fee calculation no longer returns this error. It will be removed in a future version.
 	ErrCounterpartyRequired = errors.New("field Counterparty is required")
 
 	// account
@@ -195,7 +199,9 @@ func (e ErrMaxReconnectionAttemptsReached) Unwrap() error {
 	return e.Err
 }
 
-// ErrFailedToParseFee is returned when fee parsing fails.
+// ErrFailedToParseFee was returned when fee parsing failed.
+//
+// Deprecated: fee calculation no longer returns this error. It will be removed in a future version.
 type ErrFailedToParseFee struct {
 	Fee string
 	Err error
