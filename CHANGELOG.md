@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### binary-codec
+
+- Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
+
+### Changed
+
+#### binary-codec
+
+- Updated binary definitions from a rippled 3.4.0 development build (`21890d9d`), including new protocol fields and removal of unused Hook field definitions.
+
+#### xrpl/wallet
+
+- Updated LoanSet counterparty signing to use role-specific prefixes. Requires `fixCleanup3_4_0` on the target network. For networks without this amendment, use a previous library release.
+
 ## [v0.3.1-mpt.0]
 
 ### Added

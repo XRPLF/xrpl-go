@@ -1252,3 +1252,76 @@ func TestEncodeForSigningBatchCodecErrorIncludesTransactionIDIndex(t *testing.T)
 	var invalidHex *types.ErrInvalidHexString
 	require.ErrorAs(t, err, &invalidHex)
 }
+
+func TestRoleSigningEncoders(t *testing.T) {
+	// Reference bytes from ripple-binary-codec 2.11.0, independent of production constants.
+	const (
+		account                         = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+		encodedPayment                  = "120000240000000168400000000000000C73008114B5F762798A53D543A014CAF8B297CFF8F2F937E8"
+		signerAccountIDSuffix           = "B5F762798A53D543A014CAF8B297CFF8F2F937E8"
+		expectedTransactionPrefix       = "53545800"
+		expectedTransactionMultiPrefix  = "534D5400"
+		expectedCounterpartyPrefix      = "43505400"
+		expectedCounterpartyMultiPrefix = "43504D00"
+		expectedSponsorPrefix           = "53504E00"
+		expectedSponsorMultiPrefix      = "53504D00"
+	)
+
+	tests := []struct {
+		name         string
+		single       func(map[string]any) (string, error)
+		multi        func(map[string]any, string) (string, error)
+		singlePrefix string
+		multiPrefix  string
+	}{
+		{
+			name:         "ordinary",
+			single:       EncodeForSigning,
+			multi:        EncodeForMultisigning,
+			singlePrefix: expectedTransactionPrefix,
+			multiPrefix:  expectedTransactionMultiPrefix,
+		},
+		{
+			name:         "counterparty",
+			single:       EncodeForSigningCounterparty,
+			multi:        EncodeForMultisigningCounterparty,
+			singlePrefix: expectedCounterpartyPrefix,
+			multiPrefix:  expectedCounterpartyMultiPrefix,
+		},
+		{
+			name:         "sponsor",
+			single:       EncodeForSigningSponsor,
+			multi:        EncodeForMultisigningSponsor,
+			singlePrefix: expectedSponsorPrefix,
+			multiPrefix:  expectedSponsorMultiPrefix,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			newTransaction := func() map[string]any {
+				return map[string]any{
+					"TransactionType":       "Payment",
+					"Account":               account,
+					"Sequence":              uint32(1),
+					"Fee":                   "12",
+					"SigningPubKey":         "",
+					"TxnSignature":          "ABCD",
+					"CounterpartySignature": map[string]any{"TxnSignature": "ABCD"},
+					"SponsorSignature":      map[string]any{"TxnSignature": "ABCD"},
+				}
+			}
+			tx := newTransaction()
+			original := newTransaction()
+
+			single, err := tt.single(tx)
+			require.NoError(t, err)
+			require.Equal(t, tt.singlePrefix+encodedPayment, single)
+			require.Equal(t, original, tx)
+
+			multi, err := tt.multi(tx, account)
+			require.NoError(t, err)
+			require.Equal(t, tt.multiPrefix+encodedPayment+signerAccountIDSuffix, multi)
+			require.Equal(t, original, tx)
+		})
+	}
+}

@@ -65,7 +65,7 @@ jobs:
     env:
       INTEGRATION_TEST_REPORT: localnet-test-results.json
       LOCALNET_CONTAINER: xrpld_standalone
-      XRPLD_IMAGE: rippleci/xrpld@sha256:62099871128ee3083af2fa71418ebf95790c4a7d1f5271d0375059ab6b70b4a8 # rippleci/xrpld:3.3.0
+      XRPLD_IMAGE: rippleci/xrpld@sha256:1f62f82d87794614881d7900748890ce60fb14576c3534227926a5dc3add250e # 3.4.0 development build, commit 21890d9d
       KEEP_LOCALNET: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
