@@ -29,6 +29,11 @@ make test-integration-localnet      # Run integration tests on localnet
 make test-integration-devnet        # Run integration tests on devnet
 make test-integration-testnet       # Run integration tests on testnet
 
+# Confidential MPT (XLS-96) integration tests. Kept separate because they need CGo and
+# only build on linux/darwin with amd64/arm64.
+make test-integration-confidential-localnet   # Confidential MPT tests on localnet
+make test-integration-confidential-devnet     # Confidential MPT tests on devnet
+
 # Coverage and benchmarks
 make coverage-unit   # Generate coverage report (coverage.html)
 make benchmark       # Run benchmarks

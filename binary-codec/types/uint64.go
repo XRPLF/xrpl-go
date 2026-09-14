@@ -20,7 +20,7 @@ const (
 // not available in the definitions consumed by the codec.
 func uint64JSONBaseForField(fieldName string) int {
 	switch fieldName {
-	case "MaximumAmount", "OutstandingAmount", "MPTAmount", "LockedAmount":
+	case "MaximumAmount", "OutstandingAmount", "MPTAmount", "LockedAmount", "ConfidentialOutstandingAmount":
 		return uint64JSONBaseDecimal
 	default:
 		return uint64JSONBaseHex

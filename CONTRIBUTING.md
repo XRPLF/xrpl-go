@@ -76,6 +76,14 @@ make test-integration-localnet
 
 Use `make run-localnet-linux/arm64` on arm64 machines.
 
+The confidential MPT (XLS-96) integration tests are kept out of those targets because they
+link CGo. They build only on linux or darwin with amd64 or arm64, and need `CGO_ENABLED=1`:
+
+```bash
+make test-integration-confidential-localnet
+make test-integration-confidential-devnet
+```
+
 ## Documentation
 
 The documentation site lives in [`docs/`](docs/).

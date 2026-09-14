@@ -91,6 +91,12 @@ type MPTokenIssuance struct {
 	ImmutableFlags uint32 `json:",omitempty"`
 	// ReferenceHolding identifies the ledger entry that holds this issuance's reference balance.
 	ReferenceHolding types.Hash256 `json:",omitempty"`
+	// IssuerEncryptionKey is the issuer's compressed ElGamal public key for confidential balances.
+	IssuerEncryptionKey string `json:",omitempty"`
+	// AuditorEncryptionKey is an optional auditor's compressed ElGamal public key.
+	AuditorEncryptionKey string `json:",omitempty"`
+	// ConfidentialOutstandingAmount is the total amount held in confidential balances.
+	ConfidentialOutstandingAmount string `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.

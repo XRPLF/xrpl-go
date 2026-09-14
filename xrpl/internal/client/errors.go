@@ -89,6 +89,24 @@ var (
 	// ErrFeeHasTooManyDecimals is returned when an XRP fee cannot be represented
 	// as a whole number of drops.
 	ErrFeeHasTooManyDecimals = errors.New("fee has more than six decimal places")
+	// ErrCouldNotGetBaseFeeXrp is returned when BaseFeeXrp cannot be retrieved
+	// from ServerInfo.
+	ErrCouldNotGetBaseFeeXrp = errors.New("get fee xrp: could not get BaseFeeXrp from ServerInfo")
+	// ErrCouldNotFetchOwnerReserve is returned when the owner reserve fee cannot
+	// be fetched.
+	ErrCouldNotFetchOwnerReserve = errors.New("could not fetch Owner Reserve")
+	// ErrLoanBrokerIDRequired is returned when LoanBrokerID is required but not
+	// provided.
+	ErrLoanBrokerIDRequired = errors.New("LoanBrokerID is required for LoanSet transaction")
+	// ErrCouldNotFetchLoanBrokerOwner is returned when the Owner field cannot be
+	// extracted from LoanBroker.
+	ErrCouldNotFetchLoanBrokerOwner = errors.New("could not fetch LoanBroker Owner")
+	// ErrRawTransactionsFieldMissing is returned when a Batch has no
+	// RawTransactions field.
+	ErrRawTransactionsFieldMissing = errors.New("RawTransactions field missing from Batch transaction")
+	// ErrRawTransactionFieldMissing is returned when a Batch wrapper has no
+	// RawTransaction field.
+	ErrRawTransactionFieldMissing = errors.New("RawTransaction field missing from wrapper")
 	// ErrPreliminaryResult indicates that reliable submission stopped on a
 	// malformed preliminary engine result.
 	ErrPreliminaryResult = errors.New("malformed preliminary transaction result")

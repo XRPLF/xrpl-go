@@ -1,0 +1,109 @@
+---
+sidebar_position: 1
+sectionTopLabel: Packages
+---
+
+# confidential
+
+## Overview
+
+The `confidential` packages add support for XLS-96 confidential MPT workflows in `xrpl-go`.
+
+They cover three layers:
+
+- `confidential/mptcrypto`: low-level CGo bindings to the XRPLF `mpt-crypto` library.
+- `confidential/elgamal`, `confidential/commitment`, `confidential/proof`: Go-friendly hex-string APIs for encryption, commitments, context hashes, and zero-knowledge proofs.
+- `confidential/builder`: high-level transaction builders for constructing confidential MPT transactions from either ledger state or explicit inputs.
+
+## Build requirements
+
+Confidential MPT support depends on CGo-enabled builds.
+
+```bash
+CGO_ENABLED=1 go test ./confidential/...
+```
+
+If CGo is disabled, `confidential/mptcrypto` returns `ErrCgoRequired`, which means the builder and proof helpers cannot perform the underlying cryptographic operations.
+
+## Package map
+
+### `confidential/elgamal`
+
+Use this package when you need raw confidential amount encryption helpers.
+
+- `GenerateKeypair()` creates a confidential holder, issuer, or auditor keypair.
+- `GenerateBlindingFactor()` creates the shared randomness used across ciphertexts and commitments.
+- `Encrypt(amount, pubKeyHex, bfHex)` encrypts a `uint64` amount to a compressed secp256k1 public key under a given blinding factor. Reusing one blinding factor across the ciphertexts of a single transaction is what lets a proof tie them together.
+- `Decrypt(ciphertextHex, privateKeyHex, amountRange)` decrypts a confidential balance ciphertext with the matching private key by searching an inclusive `AmountRange`.
+
+Decryption requires bounds that contain the plaintext amount and satisfy `Low <= High < math.MaxUint64`. Search cost grows linearly with the interval size, so use the narrowest practical range:
+
+```go
+amount, err := elgamal.Decrypt(ciphertextHex, privateKeyHex, elgamal.AmountRange{
+    Low:  0,
+    High: 1_000_000,
+})
+```
+
+### `confidential/commitment`
+
+Use this package to create Pedersen commitments for confidential amounts.
+
+- `Create(amount, bf)` returns the compressed commitment used by confidential proofs and transaction fields such as `AmountCommitment` and `BalanceCommitment`.
+
+### `confidential/proof`
+
+Use this package if you want fine-grained control over proof generation or verification.
+
+- Context-hash helpers bind proofs to a specific XRPL transaction: `ConvertContextHash`, `ConvertBackContextHash`, `SendContextHash`, `ClawbackContextHash`.
+- Top-level proof helpers mirror the confidential transaction families: `GenerateConvertProof`, `GenerateConvertBackProof`, `GenerateSendProof`, `GenerateClawbackProof`.
+- Verification helpers let you validate proofs before submission or in tests.
+
+All APIs in this layer operate on hex strings and XRPL addresses in either form, which makes them suitable for transaction assembly. Context hashes bind the decoded AccountID, so a classic address and its X-address form produce the same hash.
+
+Every `Generate*Proof` helper verifies the proof it just produced before returning it, because the native
+generator reports no error for a mismatched amount or key pair. That check costs one verification per
+generation, measured at roughly 35% added wall time for a send proof. Callers that batch proof generation
+should budget for it. The `Build*` and `Prepare*` helpers inherit the same cost, since they generate
+through these functions.
+
+## Confidential transaction types
+
+The `xrpl/transaction` package now includes five confidential MPT transaction types:
+
+- `ConfidentialMPTConvert`: moves public MPT into confidential balance and optionally registers the holder encryption key on first use.
+- `ConfidentialMPTSend`: sends confidential MPT between opted-in holders using encrypted amounts plus a composite proof.
+- `ConfidentialMPTConvertBack`: converts confidential balance back into public balance with a proof of sufficient confidential funds.
+- `ConfidentialMPTClawback`: lets the issuer reclaim a holder's confidential balance with an equality proof.
+- `ConfidentialMPTMergeInbox`: merges a holder's confidential inbox balance into their spending balance.
+
+Related XRPL types were extended as well:
+
+- `MPTokenIssuanceCreate` and `MPTokenIssuanceSet` carry the confidential-transfer capability flags. `MPTokenIssuanceSet` also carries `IssuerEncryptionKey` and the optional `AuditorEncryptionKey`, which is where an issuance registers its keys.
+- `MPToken` and `MPTokenIssuance` ledger-entry types expose confidential balance and encryption-key fields.
+
+### Transaction cost
+
+Confidential MPT transactions cost ten network base fees, not one. rippled charges one base fee for the transaction itself plus an extra multiplier of nine. Multisigning adds the usual one base fee per signer on top, and the same multiplier applies to a confidential transaction nested inside a `Batch`.
+
+RPC and WebSocket autofill apply the multiplier for you, but only when the transaction has no `Fee` field. A hand-set `Fee` is submitted unchanged, so a value sized for an ordinary transaction underpays and the submission fails with `telINSUF_FEE_P`.
+
+## When to use builders
+
+Use [`builders`](/docs/confidential/builders) when you want the SDK to:
+
+- fetch ledger state such as `Sequence`, registered encryption keys, and confidential balance fields;
+- decrypt the holder's current confidential balance within a caller-supplied inclusive `BalanceRange` when required;
+- generate ciphertexts, commitments, and ZK proofs with the correct context hash;
+- return a ready-to-sign `xrpl/transaction` struct.
+
+Drop down to `elgamal`, `commitment`, and `proof` when you need custom transaction assembly, explicit control over proof inputs, or standalone verification in tests.
+
+## Examples
+
+`examples/confidential` in the repository holds three runnable programs:
+
+- `offline`: assembles an opt-in and an inbox merge from explicit inputs, without connecting, signing, or submitting. Use it to see what the `Prepare*` helpers produce.
+- `rpc` and `ws`: run a full lifecycle against devnet over each transport. They create a confidential-capable issuance, register the issuer key, opt two holders in, then convert, merge, send, convert back, and claw back, printing the decrypted balances at each step.
+
+Both online examples need a CGo-enabled build and fund their own wallets from the devnet faucet.

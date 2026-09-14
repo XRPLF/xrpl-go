@@ -3,10 +3,12 @@ package integration
 import (
 	"strconv"
 	"testing"
+	"time"
 
 	xrplhash "github.com/Peersyst/xrpl-go/xrpl/hash"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
+	querycommon "github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	xrplledger "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil/integration"
@@ -164,8 +166,10 @@ func testIntegrationLendingProtocolSingleSigning(t *testing.T, client integratio
 	require.NoError(t, err)
 	require.NotEmpty(t, counterpartyBlob)
 
-	_, err = client.SubmitTxBlobAndWait(counterpartyBlob, true)
+	loanResult, err := client.SubmitTxBlobAndWait(counterpartyBlob, true)
 	require.NoError(t, err)
+	require.True(t, loanResult.Validated)
+	require.Equal(t, "tesSUCCESS", loanResult.Meta.TransactionResult)
 
 	// Compute the Loan hash using the LoanBroker's LoanSequence at creation time
 	loanObjectID, err := xrplhash.Loan(loanBrokerObjectID, loanBrokerLoanSequence)
@@ -486,6 +490,7 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 	counterparty := borrower.GetAddress()
 	paymentTotal := types.PaymentTotal(1)
 	interestRate := types.InterestRate(0)
+	paymentInterval := types.PaymentInterval(60)
 	loanSetTx := &transaction.LoanSet{
 		BaseTx: transaction.BaseTx{
 			Account: loanBroker.GetAddress(),
@@ -493,6 +498,7 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 		LoanBrokerID:       loanBrokerObjectID,
 		PrincipalRequested: types.XRPLNumber("100000"),
 		InterestRate:       &interestRate,
+		PaymentInterval:    &paymentInterval,
 		Counterparty:       &counterparty,
 		PaymentTotal:       &paymentTotal,
 	}
@@ -527,8 +533,10 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 	require.NotNil(t, combinedTx)
 	require.NotEmpty(t, combinedBlob)
 
-	_, err = client.SubmitTxBlobAndWait(combinedBlob, true)
+	loanResult, err := client.SubmitTxBlobAndWait(combinedBlob, true)
 	require.NoError(t, err)
+	require.True(t, loanResult.Validated)
+	require.Equal(t, "tesSUCCESS", loanResult.Meta.TransactionResult)
 
 	// Compute the Loan hash using the LoanBroker's LoanSequence at creation time
 	loanObjectID, err := xrplhash.Loan(loanBrokerObjectID, loanBrokerLoanSequence)
@@ -631,6 +639,12 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 		},
 		LoanID: loanObjectID,
 	}
+	// fixCleanup3_4_0 only permits impairment after the next payment is due.
+	nextPaymentDue := integration.TxFieldUint32(t, loanObj, "NextPaymentDueDate")
+	require.Eventually(t, func() bool {
+		closed, queryErr := client.GetLedger(&xrplledger.Request{LedgerIndex: querycommon.Validated})
+		return queryErr == nil && uint64(closed.Ledger.CloseTime) > uint64(nextPaymentDue)+10
+	}, 2*time.Minute, 200*time.Millisecond, "loan must be overdue before impairment")
 	loanManageTx.SetLoanImpairFlag()
 
 	flatLoanManageTx := loanManageTx.Flatten()
@@ -662,6 +676,8 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 		},
 	}
 
+	// The impaired loan is overdue, so payment must use the late-payment flag.
+	loanPayTx.SetLatePaymentFlag()
 	flatLoanPayTx := loanPayTx.Flatten()
 	_, err = runner.TestTransaction(&flatLoanPayTx, borrower, "tesSUCCESS", nil)
 	require.NoError(t, err)

@@ -15,6 +15,11 @@ import (
 const (
 	// SECP256K1 prefix - value is 0
 	secp256K1Prefix byte = 0x00
+
+	// CompressedSECP256K1PointByteLength is the byte length of a compressed secp256k1
+	// point. Re-exported so callers can size a point without depending on the curve
+	// library directly.
+	CompressedSECP256K1PointByteLength = secp256k1.PubKeyBytesLenCompressed
 )
 
 var (
@@ -22,6 +27,17 @@ var (
 	// SECP256K1 family seed prefix - value is 33
 	secp256K1FamilySeedPrefix = []byte{0x21}
 )
+
+// IsCompressedSECP256K1Point reports whether hexStr decodes to a 33-byte compressed
+// secp256k1 point that lies on the curve.
+func IsCompressedSECP256K1Point(hexStr string) bool {
+	point, err := hexutil.DecodeFixedHex(hexStr, CompressedSECP256K1PointByteLength)
+	if err != nil {
+		return false
+	}
+	_, err = secp256k1.ParsePubKey(point)
+	return err == nil
+}
 
 // SECP256K1CryptoAlgorithm is the implementation of the SECP256K1 algorithm.
 type SECP256K1CryptoAlgorithm struct {

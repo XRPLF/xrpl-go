@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -195,6 +197,39 @@ func TestUnmarshalCurrencyAmount_RejectsMixedFields(t *testing.T) {
 	}
 }
 
+func TestMPTPlainAmount_UnmarshalJSON(t *testing.T) {
+	t.Run("pass - valid JSON string", func(t *testing.T) {
+		var a MPTPlainAmount
+		err := json.Unmarshal([]byte(`"12345"`), &a)
+		require.NoError(t, err)
+		require.Equal(t, MPTPlainAmount(12345), a)
+	})
+
+	t.Run("pass - zero value", func(t *testing.T) {
+		var a MPTPlainAmount
+		err := json.Unmarshal([]byte(`"0"`), &a)
+		require.NoError(t, err)
+		require.Equal(t, MPTPlainAmount(0), a)
+	})
+
+	t.Run("fail - invalid string", func(t *testing.T) {
+		var a MPTPlainAmount
+		err := json.Unmarshal([]byte(`"notanumber"`), &a)
+		require.Error(t, err)
+	})
+
+	t.Run("pass - round trip", func(t *testing.T) {
+		original := MPTPlainAmount(9999)
+		data, err := json.Marshal(original)
+		require.NoError(t, err)
+
+		var decoded MPTPlainAmount
+		err = json.Unmarshal(data, &decoded)
+		require.NoError(t, err)
+		require.Equal(t, original, decoded)
+	})
+}
+
 func TestUnmarshalCurrencyAmount_MPT(t *testing.T) {
 	testcases := []struct {
 		name     string
@@ -233,6 +268,28 @@ func TestUnmarshalCurrencyAmount_MPT(t *testing.T) {
 			} else {
 				require.Error(t, err)
 			}
+		})
+	}
+}
+
+func TestMPTPlainAmount_IsZeroAndIsValid(t *testing.T) {
+	tests := []struct {
+		name    string
+		amount  MPTPlainAmount
+		isZero  bool
+		isValid bool
+	}{
+		{name: "zero", amount: 0, isZero: true, isValid: true},
+		{name: "one", amount: 1, isValid: true},
+		{name: "maximum", amount: MPTPlainAmount(MaxMPTAmount), isValid: true},
+		{name: "above maximum", amount: MPTPlainAmount(MaxMPTAmount) + 1},
+		{name: "max uint64", amount: math.MaxUint64},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.isZero, test.amount.IsZero())
+			require.Equal(t, test.isValid, test.amount.IsValid())
 		})
 	}
 }

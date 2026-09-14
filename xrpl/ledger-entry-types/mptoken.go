@@ -39,6 +39,18 @@ type MPToken struct {
 	PreviousTxnLgrSeq uint32
 	// A hexadecimal hint indicating which page of the owner directory links to this entry, in case the directory consists of multiple pages.
 	OwnerNode string
+	// HolderEncryptionKey is the holder's compressed ElGamal public key.
+	HolderEncryptionKey string `json:",omitempty"`
+	// IssuerEncryptedBalance is the confidential balance encrypted for the issuer.
+	IssuerEncryptedBalance string `json:",omitempty"`
+	// AuditorEncryptedBalance is the confidential balance encrypted for an optional auditor.
+	AuditorEncryptedBalance string `json:",omitempty"`
+	// ConfidentialBalanceInbox contains pending incoming confidential amounts.
+	ConfidentialBalanceInbox string `json:",omitempty"`
+	// ConfidentialBalanceSpending contains the confidential amount available to spend.
+	ConfidentialBalanceSpending string `json:",omitempty"`
+	// ConfidentialBalanceVersion changes when the confidential spending balance changes.
+	ConfidentialBalanceVersion uint32 `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.

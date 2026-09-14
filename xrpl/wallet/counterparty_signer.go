@@ -20,6 +20,8 @@ type SignLoanSetByCounterpartyOptions struct {
 // SignLoanSetByCounterparty signs a LoanSet transaction as the counterparty/borrower.
 // The LoanBroker must have already signed the transaction (TxnSignature and SigningPubKey must be set).
 // The result is stored in CounterpartySignature on the transaction map.
+// Requires fixCleanup3_4_0 on the target network. For networks without this amendment,
+// use a previous library release that signs with the legacy transaction prefix.
 func SignLoanSetByCounterparty(
 	w Wallet,
 	tx *transaction.FlatTransaction,
@@ -82,7 +84,7 @@ func SignLoanSetByCounterparty(
 
 // SignLoanSetByCounterpartyBlob decodes a hex-encoded transaction blob and signs it as the counterparty.
 // This is a convenience wrapper around SignLoanSetByCounterparty for callers that have a serialized blob
-// rather than a FlatTransaction.
+// rather than a FlatTransaction. Requires fixCleanup3_4_0, as does SignLoanSetByCounterparty.
 func SignLoanSetByCounterpartyBlob(
 	w Wallet,
 	blob string,
@@ -171,9 +173,9 @@ func encodeAndSign(w *Wallet, tx transaction.FlatTransaction, multisign bool, ad
 	var encoded string
 	var err error
 	if multisign {
-		encoded, err = binarycodec.EncodeForMultisigning(tx, addr)
+		encoded, err = binarycodec.EncodeForMultisigningCounterparty(tx, addr)
 	} else {
-		encoded, err = binarycodec.EncodeForSigning(tx)
+		encoded, err = binarycodec.EncodeForSigningCounterparty(tx)
 	}
 	if err != nil {
 		return "", err
