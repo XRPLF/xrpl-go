@@ -57,6 +57,7 @@ bash <skill-dir>/scripts/fetch-xls.sh <number>
 | 61 | Cross-Currency NFTokenAcceptOffer | Stagnant | `references/tokens/xls-0061.md` |
 | 87 | Token Pre-Authorization — issuer approval by account, credential, or domain | Stagnant | `references/tokens/xls-0087.md` |
 | 89 | MPT Metadata Schema | Final | `references/tokens/xls-0089.md` |
+| 90 | Permissioned Domains for MPTs | Draft | `references/tokens/xls-0090.md` |
 | 94 | Dynamic MPT — mutable MPToken fields | Final | `references/tokens/xls-0094.md` |
 | 96 | Confidential MPT — `ConfidentialMPTConvert/Send/MergeInbox/ConvertBack/Clawback` | Final | `references/tokens/xls-0096.md` |
 | 99 | ElGamal Key Rotation for Confidential MPTs — issuer, auditor, and holder key rotation and recovery | Draft | `references/tokens/xls-0099.md` |
