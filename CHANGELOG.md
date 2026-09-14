@@ -13,11 +13,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
 
+#### xrpl/transaction
+
+- Added common sponsorship fields, fee and reserve flags, and sponsor signature validation, including Batch inner transaction checks. Sponsor multisigner lists require at most 32 signers in strict decoded AccountID order. Requires the `Sponsor` amendment on the target network.
+
+#### xrpl/rpc and xrpl/websocket
+
+- Added X-address normalization for `Sponsor`, `Sponsee`, and `CounterpartySponsor`, with embedded tags rejected.
+
 ### Changed
 
 #### binary-codec
 
 - Updated binary definitions from a rippled 3.4.0 development build (`21890d9d`), including new protocol fields and removal of unused Hook field definitions.
+
+#### xrpl/transaction
+
+- Transaction multisigner validation now rejects more than 32 signers, duplicate accounts, and lists not ordered by decoded AccountID. Validation does not reorder signers.
 
 #### xrpl/wallet
 

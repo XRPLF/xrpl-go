@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bytes"
 	"encoding/hex"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -66,15 +67,32 @@ func validateMemos(memoWrapper []types.MemoWrapper) error {
 	return nil
 }
 
-// validateSigners validates the Signers field in the transaction map.
+// maxTransactionSigners is STTx::kMaxMultiSigners in rippled 21890d9d.
+// This bounds transaction signatures, independently of SignerListSet entries.
+const maxTransactionSigners = 32
+
+// validateSigners checks entries and strict ascending decoded AccountID order.
+// Nil and empty lists are allowed here. Callers enforce required list presence.
+// Validation never sorts or otherwise changes the supplied signers.
 func validateSigners(signers []types.Signer) error {
-	// loop through each signer and validate it
+	if len(signers) > maxTransactionSigners {
+		return errTooManyTransactionSigners
+	}
+	var previous []byte
 	for _, signer := range signers {
-		isSigner, err := IsSigner(signer.SignerData)
-		if !isSigner {
+		accountID, err := validateSignerData(signer.SignerData)
+		if err != nil {
 			return err
 		}
+		if previous != nil {
+			switch bytes.Compare(previous, accountID) {
+			case 0:
+				return errDuplicateTransactionSigner
+			case 1:
+				return errUnsortedTransactionSigners
+			}
+		}
+		previous = accountID
 	}
-
 	return nil
 }

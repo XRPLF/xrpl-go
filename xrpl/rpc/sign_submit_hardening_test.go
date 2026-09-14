@@ -564,3 +564,20 @@ func setupRPCSubmitCapture(t *testing.T) (*Client, *[]map[string]any) {
 	require.NoError(t, err)
 	return NewClient(cfg), &seen
 }
+
+func TestClientAutofillNormalizesSponsorAddresses(t *testing.T) {
+	for _, field := range []string{"Sponsor", "Sponsee", "CounterpartySponsor"} {
+		t.Run(field, func(t *testing.T) {
+			tx := transaction.FlatTransaction{
+				"TransactionType":    transaction.AccountSetTx,
+				"Account":            "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(20),
+				field:                "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+			}
+			cl := setupTestRPCClientForAutofill(t, []string{`{"result":{"account_data":{"Sequence":42}}}`})
+			require.NoError(t, cl.Autofill(&tx))
+			require.Equal(t, "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", tx[field])
+		})
+	}
+}
