@@ -125,7 +125,7 @@ type Amount struct{}
 func (a *Amount) FromJSON(value any) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
-		return serializeXrpAmount(v)
+		return serializeXRPAmount(v)
 	case map[string]any:
 		// Extract and normalize the "value" field
 		rawVal, ok := v["value"]
@@ -350,8 +350,8 @@ func deserializeMPTAmount(data []byte) (map[string]any, error) {
 	}, nil
 }
 
-// verifyXrpValue validates the format and range of a native XRP amount in drops.
-func verifyXrpValue(value string) error {
+// verifyXRPValue validates the format and range of a native XRP amount in drops.
+func verifyXRPValue(value string) error {
 	drops, ok := new(big.Int).SetString(value, 10)
 	if !ok {
 		return errInvalidXRPValue
@@ -399,9 +399,32 @@ func verifyMPTValue(value string) error {
 	return nil
 }
 
-// serializeXrpAmount serializes an XRP amount value.
-func serializeXrpAmount(value string) ([]byte, error) {
-	if err := verifyXrpValue(value); err != nil {
+// serializeSignedXRPAmount serializes a native XRP delta, normalizing negative zero.
+func serializeSignedXRPAmount(value string) ([]byte, error) {
+	magnitude, negative := strings.CutPrefix(value, "-")
+	if negative && strings.HasPrefix(magnitude, "-") {
+		return nil, errInvalidXRPValue
+	}
+
+	encoded, err := serializeXRPAmount(magnitude)
+	if err != nil {
+		var invalidAmount *InvalidAmountError
+		if errors.As(err, &invalidAmount) {
+			return nil, &InvalidAmountError{Amount: value}
+		}
+		return nil, err
+	}
+
+	bits := binary.BigEndian.Uint64(encoded)
+	if negative && bits != PosSignBitMask {
+		binary.BigEndian.PutUint64(encoded, bits&^uint64(PosSignBitMask))
+	}
+	return encoded, nil
+}
+
+// serializeXRPAmount serializes an XRP amount value.
+func serializeXRPAmount(value string) ([]byte, error) {
+	if err := verifyXRPValue(value); err != nil {
 		return nil, err
 	}
 

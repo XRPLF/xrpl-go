@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVerifyXrpValue(t *testing.T) {
+func TestVerifyXRPValue(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
@@ -62,9 +62,9 @@ func TestVerifyXrpValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.expErr != nil {
-				require.Equal(t, tt.expErr, verifyXrpValue(tt.input))
+				require.Equal(t, tt.expErr, verifyXRPValue(tt.input))
 			} else {
-				require.NoError(t, verifyXrpValue(tt.input))
+				require.NoError(t, verifyXRPValue(tt.input))
 			}
 		})
 	}
@@ -319,7 +319,7 @@ func TestVerifyMPTValue(t *testing.T) {
 	}
 }
 
-func TestSerializeXrpAmount(t *testing.T) {
+func TestSerializeXRPAmount(t *testing.T) {
 	tests := []struct {
 		name           string
 		input          string
@@ -389,7 +389,7 @@ func TestSerializeXrpAmount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := serializeXrpAmount(tt.input)
+			got, err := serializeXRPAmount(tt.input)
 			if tt.expErr != nil {
 				require.EqualError(t, tt.expErr, err.Error())
 			} else {
@@ -1546,6 +1546,51 @@ func TestAmount_FromJson_Errors(t *testing.T) {
 			_, err := (&Amount{}).FromJSON(tc.input)
 			require.Error(t, err)
 			require.Regexp(t, tc.expErr, err.Error())
+		})
+	}
+}
+
+func TestSerializeSignedXRPAmount(t *testing.T) {
+	tests := []struct {
+		name, input, expected string
+	}{
+		{name: "positive", input: "10", expected: "400000000000000A"},
+		{name: "negative", input: "-10", expected: "000000000000000A"},
+		{name: "zero", input: "0", expected: "4000000000000000"},
+		{name: "negative zero", input: "-0", expected: "4000000000000000"},
+		{name: "leading zeros", input: "00010", expected: "400000000000000A"},
+		{name: "negative leading zeros", input: "-00010", expected: "000000000000000A"},
+		{name: "negative all zeros", input: "-000", expected: "4000000000000000"},
+		{name: "maximum", input: "100000000000000000", expected: "416345785D8A0000"},
+		{name: "negative maximum", input: "-100000000000000000", expected: "016345785D8A0000"},
+		{name: "below maximum", input: "99999999999999999", expected: "416345785D89FFFF"},
+		{name: "above minimum", input: "-99999999999999999", expected: "016345785D89FFFF"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := serializeSignedXRPAmount(tt.input)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, fmt.Sprintf("%X", encoded))
+		})
+	}
+}
+
+func TestSerializeSignedXRPAmountInvalidSyntax(t *testing.T) {
+	for _, input := range []string{"", "-", "+", "--10", "--0", "-+10", "+-10", "+10", "1.5", "1e2", "0x10", "1_000", " 10", "10 ", "NaN", "Inf"} {
+		t.Run(input, func(t *testing.T) {
+			_, err := serializeSignedXRPAmount(input)
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestSerializeSignedXRPAmountOutOfRange(t *testing.T) {
+	for _, input := range []string{"100000000000000001", "-100000000000000001", "999999999999999999999999999999", "-999999999999999999999999999999"} {
+		t.Run(input, func(t *testing.T) {
+			_, err := serializeSignedXRPAmount(input)
+			var invalidAmount *InvalidAmountError
+			require.ErrorAs(t, err, &invalidAmount)
+			require.Equal(t, input, invalidAmount.Amount)
 		})
 	}
 }
