@@ -136,6 +136,9 @@ func (b *Batch) Validate() (bool, error) {
 		if valid, err := rawTx.Validate(); !valid {
 			return false, err
 		}
+		if err := validateRawSponsorFields(rawTx.RawTransaction); err != nil {
+			return false, err
+		}
 	}
 
 	for _, batchSigner := range b.BatchSigners {

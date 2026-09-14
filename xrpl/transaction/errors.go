@@ -8,6 +8,10 @@ import (
 )
 
 var (
+	errTooManyTransactionSigners  = errors.New("signers: at most 32 transaction signers are allowed")
+	errDuplicateTransactionSigner = errors.New("signers: duplicate account")
+	errUnsortedTransactionSigners = errors.New("signers: accounts must be sorted ascending by AccountID")
+
 	// ErrDestinationAccountConflict is returned when the Destination matches the Account.
 	ErrDestinationAccountConflict = errors.New("destination cannot be the same as the Account")
 	// ErrTransactionTypeMissing is returned when the TransactionType field is absent
@@ -36,6 +40,29 @@ var (
 	ErrDelegateTagNotAllowed = fmt.Errorf("%w: %w", ErrInvalidDelegate, ErrAccountIDTagNotAllowed)
 	// ErrDelegateAccountConflict is returned when the Delegate matches the Account.
 	ErrDelegateAccountConflict = errors.New("addresses for Account and Delegate cannot be the same")
+	// ErrSponsorFieldsMissing is returned when sponsorship fields are incomplete.
+	ErrSponsorFieldsMissing = errors.New("sponsor and nonzero SponsorFlags must be supplied together")
+	// ErrInvalidSponsor is returned when Sponsor is not a valid account address.
+	ErrInvalidSponsor = errors.New("invalid xrpl address for Sponsor")
+	// ErrSponsorZero identifies both the Sponsor field and the zero-account condition.
+	ErrSponsorZero = fmt.Errorf("%w: %w", ErrInvalidSponsor, ErrZeroAccountID)
+	// ErrSponsorTagNotAllowed identifies both the Sponsor field and the forbidden tag.
+	ErrSponsorTagNotAllowed = fmt.Errorf("%w: %w", ErrInvalidSponsor, ErrAccountIDTagNotAllowed)
+	// ErrSponsorAccountConflict is returned when Sponsor and Account identify the same account.
+	ErrSponsorAccountConflict = errors.New("sponsor and Account must be different accounts")
+	// ErrInvalidSponsorFlags is returned for zero, malformed, or unsupported sponsor flags.
+	ErrInvalidSponsorFlags = errors.New("SponsorFlags must be a nonzero uint32 containing only fee and reserve flags")
+	// ErrReserveSponsorshipNotAllowed is returned for a transaction outside the reserve allow-list.
+	ErrReserveSponsorshipNotAllowed = errors.New("reserve sponsorship is not allowed for this transaction type")
+	// ErrSponsorDelegateConflict is returned for reserve sponsorship with Delegate.
+	ErrSponsorDelegateConflict = errors.New("reserve sponsorship cannot be combined with Delegate")
+	// ErrInnerBatchFeeSponsorship is returned for fee sponsorship on an inner Batch transaction.
+	ErrInnerBatchFeeSponsorship = errors.New("inner Batch transactions cannot use fee sponsorship")
+	// ErrInvalidSponsorSignature is returned for a malformed sponsor authorization object.
+	ErrInvalidSponsorSignature = errors.New("invalid SponsorSignature")
+	// ErrInnerBatchSponsorSignature is returned when an inner sponsor signature is not
+	// exactly the unsigned placeholder. It also matches ErrInvalidSponsorSignature.
+	ErrInnerBatchSponsorSignature = fmt.Errorf("%w: inner transaction requires only an empty SigningPubKey", ErrInvalidSponsorSignature)
 	// ErrAccountIDTagNotAllowed is returned when a tagged X-address is used in a field
 	// that has no companion tag field to carry the tag. It aliases the binary-codec
 	// sentinel so preflight and encoding report one error identity for this condition.
