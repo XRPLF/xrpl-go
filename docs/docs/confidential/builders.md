@@ -114,6 +114,8 @@ The `Low` and `High` bounds are inclusive and must contain the plaintext balance
 
 `PrepareSend` and `PrepareConvertBack` do not decrypt ledger state because their `CurrentBalance` is supplied explicitly.
 
+`BuildClawback` and `GetSpendingBalance` bound their searches the same way, additionally capping `High` at the issuance's `ConfidentialOutstandingAmount`, which no single holder balance can exceed.
+
 ### `BuildClawback` and `PrepareClawback`
 
 Use these for `ConfidentialMPTClawback`.
@@ -156,6 +158,41 @@ tx, err := builder.BuildMergeInbox(client, builder.BuildMergeInboxParams{
     IssuanceID: issuanceID,
 })
 ```
+
+## Reading a spending balance
+
+`GetSpendingBalance` is the read-only counterpart to the builders: it resolves a holder's
+`ConfidentialBalanceSpending` from the ledger and decrypts it with that holder's own ElGamal
+private key. Nothing is built or submitted, and no account sequence is read, because a balance
+read spends none.
+
+```go
+balance, err := builder.GetSpendingBalance(client, builder.SpendingBalanceParams{
+    Holder:        holderAddress,
+    IssuanceID:    issuanceID,
+    HolderPrivKey: holderPrivKeyHex,
+    BalanceRange:  elgamal.AmountRange{Low: 0, High: 1_000},
+})
+```
+
+- Reads the holder `MPToken` and the `MPTokenIssuance` from one validated ledger, pinned by
+  hash after the first read, so the supply that bounds the search can never predate the
+  balance it must cover.
+- Returns `ErrMPTokenNotFound` when the holder holds no `MPToken` for the issuance.
+- Returns `0` when the `MPToken` exists but carries no spending ciphertext, which is a holder
+  that has never converted: the first `ConfidentialMPTConvert` writes an encrypted zero spending
+  balance alongside the inbox credit. The issuance is not read in that case, and no
+  cryptographic work is done.
+- Excludes `ConfidentialBalanceInbox`. An inbox is not spendable until a
+  `ConfidentialMPTMergeInbox` moves it, so counting it would report a balance the holder
+  cannot send or convert back.
+- Bounds the search by `BalanceRange`, capped at the issuance `ConfidentialOutstandingAmount`,
+  exactly as `BuildClawback` does. `BalanceRange` is required rather than defaulted: the only
+  bound the SDK could infer is the issuance's whole confidential supply, which is as large as
+  the issuance is.
+
+Like every other decryption in this package, it needs a CGo-enabled build. The zero-balance
+case above is the one answer it can give without one.
 
 ## `Build*` vs `Prepare*`
 
@@ -344,8 +381,9 @@ Most builder errors are explicit and map to missing ledger state or invalid inpu
   validated ledger the build selected.
 - `ErrInvalidTransaction`: the assembled transaction failed its own `Validate()`.
 - `elgamal.ErrInvalidAmountRange`: `BalanceRange` is inverted, its upper bound is
-  `math.MaxUint64`, or a clawback's `BalanceRange.Low` is above the issuance
-  `ConfidentialOutstandingAmount`, which puts every possible balance outside the range.
+  `math.MaxUint64`, or its `Low` is above the issuance `ConfidentialOutstandingAmount`
+  that `BuildClawback` and `GetSpendingBalance` cap the search at, which puts every
+  possible balance outside the range.
 - `ErrCryptoFailed`: a cryptographic primitive failed, or the current balance falls outside `BalanceRange`.
 
 Address fields report the field that failed and wrap the reason:
