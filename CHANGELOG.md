@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### xrpl/flag
+
+- Added `ContainsAny` to check whether any bits in a flag mask are set.
+
 #### binary-codec
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
 
 #### xrpl/transaction
 
+- Added the Payment `TfSponsorCreatedAccount` flag and setter, with validation for native XRP amounts and incompatible fields and flags. Requires the `Sponsor` amendment on the target network.
 - Added common sponsorship fields, fee and reserve flags, and sponsor signature validation, including Batch inner transaction checks. Sponsor multisigner lists require at most 32 signers in strict decoded AccountID order. Requires the `Sponsor` amendment on the target network.
 
 #### xrpl/rpc and xrpl/websocket
