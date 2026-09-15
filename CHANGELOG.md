@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated LoanSet counterparty signing to use role-specific prefixes. Requires `fixCleanup3_4_0` on the target network. For networks without this amendment, use a previous library release.
 
+### Fixed
+
+#### xrpl/transaction
+
+- Reject odd-length `VaultCreate.Data` hex during validation instead of failing later during binary encoding.
+
 ## [v0.3.1-mpt.0]
 
 ### Added
