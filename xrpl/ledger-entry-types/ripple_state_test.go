@@ -1,12 +1,36 @@
 package ledger
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRippleStateSponsors(t *testing.T) {
+	for _, fixture := range []string{
+		`{}`,
+		`{"LowSponsor":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"}`,
+		`{"HighSponsor":"r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"}`,
+		`{"LowSponsor":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","HighSponsor":"r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"}`,
+	} {
+		t.Run(fixture, func(t *testing.T) {
+			var state RippleState
+			require.NoError(t, json.Unmarshal([]byte(fixture), &state))
+			encoded, err := json.Marshal(state)
+			require.NoError(t, err)
+			var fields map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(encoded, &fields))
+			var expected map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal([]byte(fixture), &expected))
+			for _, field := range []string{"LowSponsor", "HighSponsor"} {
+				require.Equal(t, expected[field], fields[field])
+			}
+		})
+	}
+}
 
 func TestRippleState(t *testing.T) {
 	var s Object = &RippleState{

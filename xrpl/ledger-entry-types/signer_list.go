@@ -68,6 +68,8 @@ type SignerList struct {
 	// A target number for signer weights. To produce a valid signature for the owner of this SignerList, the signers must provide valid signatures whose weights sum to this value or more.
 	SignerQuorum uint32
 	Flags        uint32
+	// The account paying this object's owner reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // SignerEntryWrapper wraps a SignerEntry for inclusion in a SignerList ledger entry.
