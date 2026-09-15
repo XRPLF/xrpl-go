@@ -28,7 +28,8 @@ func TestSponsorCodecRoundTrip(t *testing.T) {
 		{"single", &types.SponsorSignature{SigningPubKey: &key, TxnSignature: &signature}, 0},
 		{"multi", &types.SponsorSignature{Signers: signers}, 0},
 		{"multi with empty key", &types.SponsorSignature{SigningPubKey: &empty, Signers: signers}, 0},
-		{"inner placeholder", &types.SponsorSignature{SigningPubKey: &empty}, types.TfInnerBatchTxn},
+		{"inner empty object", &types.SponsorSignature{}, types.TfInnerBatchTxn},
+		{"inner empty key", &types.SponsorSignature{SigningPubKey: &empty}, types.TfInnerBatchTxn},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -133,11 +134,13 @@ func TestSponsorSignatureValidation(t *testing.T) {
 		{"empty signature with multi", &types.SponsorSignature{TxnSignature: &empty, Signers: signers}, false, false},
 		{"partial signature with multi", &types.SponsorSignature{TxnSignature: &signature, Signers: signers}, false, false},
 		{"invalid signer", &types.SponsorSignature{Signers: []types.Signer{{}}}, false, false},
-		{"inner placeholder", &types.SponsorSignature{SigningPubKey: &empty}, true, true},
-		{"inner missing key", &types.SponsorSignature{}, true, false},
+		{"inner empty key", &types.SponsorSignature{SigningPubKey: &empty}, true, true},
+		{"inner empty object", &types.SponsorSignature{}, true, true},
 		{"inner nonempty key", &types.SponsorSignature{SigningPubKey: &key}, true, false},
 		{"inner empty signature present", &types.SponsorSignature{SigningPubKey: &empty, TxnSignature: &empty}, true, false},
+		{"inner empty signature without key", &types.SponsorSignature{TxnSignature: &empty}, true, false},
 		{"inner empty signers present", &types.SponsorSignature{SigningPubKey: &empty, Signers: []types.Signer{}}, true, false},
+		{"inner empty signers without key", &types.SponsorSignature{Signers: []types.Signer{}}, true, false},
 		{"inner signed", &types.SponsorSignature{SigningPubKey: &key, TxnSignature: &signature}, true, false},
 	}
 	for _, tt := range tests {
@@ -180,7 +183,8 @@ func TestBaseTxSponsorSerialization(t *testing.T) {
 		{"multi with empty key", &types.SponsorSignature{SigningPubKey: &empty, Signers: []types.Signer{{SignerData: types.SignerData{Account: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", SigningPubKey: key, TxnSignature: signature}}}}, `{"SigningPubKey":"","Signers":[{"Signer":{"Account":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","SigningPubKey":"AB","TxnSignature":"CD"}}]}`},
 		{"unsigned", nil, `null`},
 		{"single", &types.SponsorSignature{SigningPubKey: &key, TxnSignature: &signature}, `{"SigningPubKey":"AB","TxnSignature":"CD"}`},
-		{"inner", &types.SponsorSignature{SigningPubKey: &empty}, `{"SigningPubKey":""}`},
+		{"inner empty object", &types.SponsorSignature{}, `{}`},
+		{"inner empty key", &types.SponsorSignature{SigningPubKey: &empty}, `{"SigningPubKey":""}`},
 		{"multi", &types.SponsorSignature{Signers: []types.Signer{{SignerData: types.SignerData{Account: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", SigningPubKey: key, TxnSignature: signature}}}}, `{"Signers":[{"Signer":{"Account":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","SigningPubKey":"AB","TxnSignature":"CD"}}]}`},
 	}
 	for _, tt := range tests {
@@ -215,6 +219,27 @@ func TestBaseTxSponsorSerialization(t *testing.T) {
 	for _, field := range []string{"Sponsor", "SponsorFlags", "SponsorSignature"} {
 		require.NotContains(t, fields, field)
 		require.NotContains(t, tx.Flatten(), field)
+	}
+}
+
+func TestSponsorSignaturePlaceholderEncoding(t *testing.T) {
+	empty := ""
+	tests := []struct {
+		name      string
+		signature *types.SponsorSignature
+		expected  string
+	}{
+		{"absent", nil, ""},
+		{"empty object", &types.SponsorSignature{}, "E026E1"},
+		{"empty key", &types.SponsorSignature{SigningPubKey: &empty}, "E0267300E1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := BaseTx{SponsorSignature: tt.signature}
+			encoded, err := binarycodec.Encode(tx.Flatten())
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, encoded)
+		})
 	}
 }
 
@@ -354,6 +379,69 @@ func TestBatchValidatesInnerSponsorship(t *testing.T) {
 				"SponsorFlags":     types.SpfSponsorReserve,
 				"SponsorSignature": map[string]any{},
 			},
+			expectedErr: nil,
+		},
+		{
+			name: "nil signature map",
+			fields: map[string]any{
+				"Sponsor":          "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":     types.SpfSponsorReserve,
+				"SponsorSignature": map[string]any(nil),
+			},
+			expectedErr: ErrInnerBatchSponsorSignature,
+		},
+		{
+			name: "null signing key",
+			fields: map[string]any{
+				"Sponsor":          "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":     types.SpfSponsorReserve,
+				"SponsorSignature": map[string]any{"SigningPubKey": nil},
+			},
+			expectedErr: ErrInnerBatchSponsorSignature,
+		},
+		{
+			name: "non-string signing key",
+			fields: map[string]any{
+				"Sponsor":          "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":     types.SpfSponsorReserve,
+				"SponsorSignature": map[string]any{"SigningPubKey": 0},
+			},
+			expectedErr: ErrInnerBatchSponsorSignature,
+		},
+		{
+			name: "empty signature without key",
+			fields: map[string]any{
+				"Sponsor":          "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":     types.SpfSponsorReserve,
+				"SponsorSignature": map[string]any{"TxnSignature": ""},
+			},
+			expectedErr: ErrInnerBatchSponsorSignature,
+		},
+		{
+			name: "null signature without key",
+			fields: map[string]any{
+				"Sponsor":          "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":     types.SpfSponsorReserve,
+				"SponsorSignature": map[string]any{"TxnSignature": nil},
+			},
+			expectedErr: ErrInnerBatchSponsorSignature,
+		},
+		{
+			name: "empty signers without key",
+			fields: map[string]any{
+				"Sponsor":          "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":     types.SpfSponsorReserve,
+				"SponsorSignature": map[string]any{"Signers": []any{}},
+			},
+			expectedErr: ErrInnerBatchSponsorSignature,
+		},
+		{
+			name: "null signers without key",
+			fields: map[string]any{
+				"Sponsor":          "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":     types.SpfSponsorReserve,
+				"SponsorSignature": map[string]any{"Signers": nil},
+			},
 			expectedErr: ErrInnerBatchSponsorSignature,
 		},
 		{
@@ -435,6 +523,8 @@ func TestBatchValidatesInnerSponsorship(t *testing.T) {
 					}},
 				},
 			}
+			original, err := json.Marshal(inner)
+			require.NoError(t, err)
 			valid, err := batch.Validate()
 			require.Equal(t, tt.expectedErr == nil, valid)
 			if tt.expectedErr == nil {
@@ -442,6 +532,9 @@ func TestBatchValidatesInnerSponsorship(t *testing.T) {
 			} else {
 				require.ErrorIs(t, err, tt.expectedErr)
 			}
+			after, err := json.Marshal(inner)
+			require.NoError(t, err)
+			require.Equal(t, original, after)
 		})
 	}
 }
@@ -520,7 +613,8 @@ func TestSponsorAddressErrorsWrapSharedConditions(t *testing.T) {
 }
 
 func TestInnerSponsorSignatureErrorWrapsInvalidSignature(t *testing.T) {
-	err := validateSponsorSignature(&types.SponsorSignature{}, true)
+	key := "AB"
+	err := validateSponsorSignature(&types.SponsorSignature{SigningPubKey: &key}, true)
 	require.ErrorIs(t, err, ErrInnerBatchSponsorSignature)
 	require.ErrorIs(t, err, ErrInvalidSponsorSignature)
 }

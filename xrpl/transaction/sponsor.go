@@ -72,7 +72,7 @@ func validateSponsorSignature(signature *types.SponsorSignature, inner bool) err
 		return nil
 	}
 	if inner {
-		if signature.SigningPubKey == nil || *signature.SigningPubKey != "" ||
+		if (signature.SigningPubKey != nil && *signature.SigningPubKey != "") ||
 			signature.TxnSignature != nil || signature.Signers != nil {
 			return ErrInnerBatchSponsorSignature
 		}
@@ -146,14 +146,17 @@ func validateRawSponsorFields(raw map[string]any) error {
 		}
 		// Only the unsigned placeholder is allowed. Check before conversion so
 		// extra fields cannot disappear from validation while remaining on the wire.
-		if len(signature) != 1 {
+		if signature == nil || len(signature) > 1 {
 			return ErrInnerBatchSponsorSignature
 		}
-		key, ok := signature["SigningPubKey"].(string)
-		if !ok {
-			return ErrInnerBatchSponsorSignature
+		tx.SponsorSignature = &types.SponsorSignature{}
+		if len(signature) == 1 {
+			key, ok := signature["SigningPubKey"].(string)
+			if !ok {
+				return ErrInnerBatchSponsorSignature
+			}
+			tx.SponsorSignature.SigningPubKey = &key
 		}
-		tx.SponsorSignature = &types.SponsorSignature{SigningPubKey: &key}
 	}
 	return validateSponsorFields(&tx)
 }

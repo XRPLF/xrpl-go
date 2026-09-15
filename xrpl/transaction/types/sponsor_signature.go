@@ -10,7 +10,8 @@ const (
 // SponsorSignature contains single-signature or multisignature authorization.
 // Outside Batch, use both nonempty signature strings or a nonempty Signers
 // list. Multisigning permits an absent or empty SigningPubKey, but no TxnSignature.
-// Inner Batch transactions use only an explicitly empty SigningPubKey.
+// Use an empty SponsorSignature for inner Batch transactions. An explicitly
+// empty SigningPubKey is also allowed.
 // Nil string pointers represent absent fields, not empty strings.
 type SponsorSignature struct {
 	SigningPubKey *string  `json:",omitempty"`

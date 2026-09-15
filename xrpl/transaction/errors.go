@@ -60,9 +60,10 @@ var (
 	ErrInnerBatchFeeSponsorship = errors.New("inner Batch transactions cannot use fee sponsorship")
 	// ErrInvalidSponsorSignature is returned for a malformed sponsor authorization object.
 	ErrInvalidSponsorSignature = errors.New("invalid SponsorSignature")
-	// ErrInnerBatchSponsorSignature is returned when an inner sponsor signature is not
-	// exactly the unsigned placeholder. It also matches ErrInvalidSponsorSignature.
-	ErrInnerBatchSponsorSignature = fmt.Errorf("%w: inner transaction requires only an empty SigningPubKey", ErrInvalidSponsorSignature)
+	// ErrInnerBatchSponsorSignature is returned when an inner sponsor signature has
+	// fields other than an optional empty SigningPubKey.
+	// It also matches ErrInvalidSponsorSignature.
+	ErrInnerBatchSponsorSignature = fmt.Errorf("%w: inner transaction permits only an optional empty SigningPubKey", ErrInvalidSponsorSignature)
 	// ErrAccountIDTagNotAllowed is returned when a tagged X-address is used in a field
 	// that has no companion tag field to carry the tag. It aliases the binary-codec
 	// sentinel so preflight and encoding report one error identity for this condition.
