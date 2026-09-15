@@ -121,6 +121,8 @@ func (e *InvalidCodeError) Error() string {
 // Amount is a struct that represents an XRPL Amount.
 type Amount struct{}
 
+var _ fieldAwareEncoder = (*Amount)(nil)
+
 // FromJSON serializes an issued currency amount to its bytes representation from JSON.
 func (a *Amount) FromJSON(value any) ([]byte, error) {
 	switch v := value.(type) {
@@ -167,6 +169,19 @@ func (a *Amount) FromJSON(value any) ([]byte, error) {
 
 	default:
 		return nil, errInvalidAmountType
+	}
+}
+
+func (a *Amount) fromJSONForField(value any, fieldName string) ([]byte, error) {
+	switch fieldName {
+	case "FeeAmountDelta":
+		native, ok := value.(string)
+		if !ok {
+			return nil, errInvalidAmountType
+		}
+		return serializeSignedXRPAmount(native)
+	default:
+		return a.FromJSON(value)
 	}
 }
 

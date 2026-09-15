@@ -75,6 +75,11 @@ func (t *STObject) fromJSON(json any, overrides RawFieldValueOverrides) ([]byte,
 	return t.binarySerializer.GetSink(), nil
 }
 
+// fieldAwareEncoder is implemented by types whose JSON encoding depends on the field name.
+type fieldAwareEncoder interface {
+	fromJSONForField(value any, fieldName string) ([]byte, error)
+}
+
 // encodeFieldValue applies field-specific JSON rules and returns value bytes.
 // It does not apply raw overrides or write field headers or length prefixes.
 func encodeFieldValue(fi definitions.FieldInstance, value any) ([]byte, error) {
@@ -83,18 +88,10 @@ func encodeFieldValue(fi definitions.FieldInstance, value any) ([]byte, error) {
 		return nil, fmt.Errorf("unknown type %q for field %q", fi.Type, fi.FieldName)
 	}
 
-	switch {
-	case fi.Type == "UInt64":
-		return (&UInt64{}).fromJSON(value, uint64JSONBaseForField(fi.FieldName))
-	case fi.Type == "Amount" && fi.FieldName == "FeeAmountDelta":
-		native, ok := value.(string)
-		if !ok {
-			return nil, errInvalidAmountType
-		}
-		return serializeSignedXRPAmount(native)
-	default:
-		return st.FromJSON(value)
+	if encoder, ok := st.(fieldAwareEncoder); ok {
+		return encoder.fromJSONForField(value, fi.FieldName)
 	}
+	return st.FromJSON(value)
 }
 
 // ToJSON takes a BinaryParser and optional parameters, and converts the serialized byte data
