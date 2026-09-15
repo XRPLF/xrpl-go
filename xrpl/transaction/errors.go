@@ -219,6 +219,12 @@ var (
 
 	// ErrPartialPaymentFlagRequired is returned when the TfPartialPayment flag is required but not set.
 	ErrPartialPaymentFlagRequired = errors.New("flag TfPartialPayment required with DeliverMin")
+	// ErrSponsorCreatedAccountInvalidFlags is returned for incompatible sponsored account creation flags.
+	ErrSponsorCreatedAccountInvalidFlags = errors.New("TfSponsorCreatedAccount cannot be combined with TfRippleNotDirect, TfPartialPayment, or TfLimitQuality")
+	// ErrSponsorCreatedAccountInvalidFields is returned when sponsored account creation includes SendMax or Paths.
+	ErrSponsorCreatedAccountInvalidFields = errors.New("TfSponsorCreatedAccount cannot be combined with SendMax or Paths")
+	// ErrSponsorCreatedAccountRequiresXRP is returned when sponsored account creation uses a non-XRP Amount.
+	ErrSponsorCreatedAccountRequiresXRP = errors.New("TfSponsorCreatedAccount requires a native XRP Amount")
 
 	// ErrInvalidExpiration indicates the expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel.
 	ErrInvalidExpiration = errors.New("expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel")

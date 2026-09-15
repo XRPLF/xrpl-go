@@ -64,6 +64,63 @@ func TestFlag_Contains(t *testing.T) {
 	}
 }
 
+func TestFlag_ContainsAny(t *testing.T) {
+	testCases := []struct {
+		name         string
+		currentFlags uint32
+		mask         uint32
+		expected     bool
+	}{
+		{
+			name:         "same flag",
+			currentFlags: dummyFlagA,
+			mask:         dummyFlagA,
+			expected:     true,
+		},
+		{
+			name:         "partial overlap",
+			currentFlags: dummyFlagA | dummyFlagC,
+			mask:         dummyFlagA | dummyFlagB,
+			expected:     true,
+		},
+		{
+			name:         "all selected bits",
+			currentFlags: dummyFlagA | dummyFlagB | dummyFlagC,
+			mask:         dummyFlagA | dummyFlagB,
+			expected:     true,
+		},
+		{
+			name:         "no overlap",
+			currentFlags: dummyFlagC,
+			mask:         dummyFlagA | dummyFlagB,
+			expected:     false,
+		},
+		{
+			name:         "zero mask",
+			currentFlags: dummyFlagA,
+			mask:         0,
+			expected:     false,
+		},
+		{
+			name:         "zero current flags",
+			currentFlags: 0,
+			mask:         dummyFlagA,
+			expected:     false,
+		},
+		{
+			name:         "zero values",
+			currentFlags: 0,
+			mask:         0,
+			expected:     false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, ContainsAny(tc.currentFlags, tc.mask))
+		})
+	}
+}
+
 func TestFlag_ContainsOnly(t *testing.T) {
 	testCases := []struct {
 		name         string
