@@ -1336,6 +1336,8 @@ func TestFeeAmountDeltaRoundTrip(t *testing.T) {
 		{name: "negative", input: "-10", payload: "000000000000000A", decoded: "-10"},
 		{name: "zero", input: "0", payload: "4000000000000000", decoded: "0"},
 		{name: "negative zero", input: "-0", payload: "4000000000000000", decoded: "0"},
+		{name: "negative all zeros", input: "-000", payload: "4000000000000000", decoded: "0"},
+		{name: "negative leading zeros", input: "-00010", payload: "000000000000000A", decoded: "-10"},
 		{name: "maximum", input: "100000000000000000", payload: "416345785D8A0000", decoded: "100000000000000000"},
 		{name: "minimum", input: "-100000000000000000", payload: "016345785D8A0000", decoded: "-100000000000000000"},
 	}
@@ -1427,7 +1429,7 @@ func TestFeeAmountDeltaRejectsNonStrings(t *testing.T) {
 func TestOrdinaryNativeAmountStillRejectsSignedInputs(t *testing.T) {
 	for _, field := range []string{"Amount", "Fee"} {
 		t.Run(field, func(t *testing.T) {
-			for _, input := range []string{"-10", "-0", "+10"} {
+			for _, input := range []string{"-10", "-00010", "-0", "-000", "+10", "+0", "+000"} {
 				_, expectedErr := (&types.Amount{}).FromJSON(input)
 				require.Error(t, expectedErr)
 				_, err := Encode(map[string]any{field: input})

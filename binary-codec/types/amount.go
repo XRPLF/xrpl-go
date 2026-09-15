@@ -127,7 +127,7 @@ var _ fieldAwareEncoder = (*Amount)(nil)
 func (a *Amount) FromJSON(value any) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
-		return serializeXRPAmount(v)
+		return serializeXRPAmount(v, false)
 	case map[string]any:
 		// Extract and normalize the "value" field
 		rawVal, ok := v["value"]
@@ -179,7 +179,7 @@ func (a *Amount) fromJSONForField(value any, fieldName string) ([]byte, error) {
 		if !ok {
 			return nil, errInvalidAmountType
 		}
-		return serializeSignedXRPAmount(native)
+		return serializeXRPAmount(native, true)
 	default:
 		return a.FromJSON(value)
 	}
@@ -365,24 +365,6 @@ func deserializeMPTAmount(data []byte) (map[string]any, error) {
 	}, nil
 }
 
-// verifyXRPValue validates the format and range of a native XRP amount in drops.
-func verifyXRPValue(value string) error {
-	drops, ok := new(big.Int).SetString(value, 10)
-	if !ok {
-		return errInvalidXRPValue
-	}
-
-	if drops.Sign() < 0 {
-		return &InvalidAmountError{Amount: value}
-	}
-
-	if drops.Cmp(maxDropsBig) > 0 {
-		return &InvalidAmountError{Amount: value}
-	}
-
-	return nil
-}
-
 // verifyMPTValue validates the format of an MPT amount value.
 // MPT values must be integers (no decimal point) and must not have the high bit set.
 func verifyMPTValue(value string) error {
@@ -414,46 +396,47 @@ func verifyMPTValue(value string) error {
 	return nil
 }
 
-// serializeSignedXRPAmount serializes a native XRP delta, normalizing negative zero.
-func serializeSignedXRPAmount(value string) ([]byte, error) {
-	magnitude, negative := strings.CutPrefix(value, "-")
-	if negative && strings.HasPrefix(magnitude, "-") {
-		return nil, errInvalidXRPValue
-	}
-
-	encoded, err := serializeXRPAmount(magnitude)
+// serializeXRPAmount serializes a native XRP amount, normalizing signed zero.
+func serializeXRPAmount(value string, allowNegative bool) ([]byte, error) {
+	drops, err := parseXRPValue(value, allowNegative)
 	if err != nil {
-		var invalidAmount *InvalidAmountError
-		if errors.As(err, &invalidAmount) {
-			return nil, &InvalidAmountError{Amount: value}
-		}
 		return nil, err
 	}
 
-	bits := binary.BigEndian.Uint64(encoded)
-	if negative && bits != PosSignBitMask {
-		binary.BigEndian.PutUint64(encoded, bits&^uint64(PosSignBitMask))
+	var signBit uint64
+	if drops.Sign() >= 0 {
+		signBit = PosSignBitMask
 	}
+	magnitude := drops.Abs(drops).Uint64()
+	encoded := make([]byte, NativeAmountByteLength)
+	binary.BigEndian.PutUint64(encoded, magnitude|signBit)
 	return encoded, nil
 }
 
-// serializeXRPAmount serializes an XRP amount value.
-func serializeXRPAmount(value string) ([]byte, error) {
-	if err := verifyXRPValue(value); err != nil {
+// parseXRPValue validates a native XRP amount in drops and returns its parsed value.
+// Negative inputs, including negative zero, are permitted only when allowNegative is true.
+func parseXRPValue(value string, allowNegative bool) (*big.Int, error) {
+	drops, ok := new(big.Int).SetString(value, 10)
+	if !ok {
+		return nil, errInvalidXRPValue
+	}
+
+	if !allowNegative && drops.Sign() < 0 {
+		return nil, &InvalidAmountError{Amount: value}
+	}
+
+	if drops.CmpAbs(maxDropsBig) > 0 {
+		return nil, &InvalidAmountError{Amount: value}
+	}
+
+	// SetString accepts '+' and normalizes '-0'. Preserve the existing ParseUint
+	// syntax errors for leading '+' and ordinary negative zero.
+	if strings.HasPrefix(value, "+") || (!allowNegative && strings.HasPrefix(value, "-")) {
+		_, err := strconv.ParseUint(value, 10, 64)
 		return nil, err
 	}
 
-	val, err := strconv.ParseUint(value, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	valWithPosBit := val | PosSignBitMask
-	valBytes := make([]byte, NativeAmountByteLength)
-
-	binary.BigEndian.PutUint64(valBytes, uint64(valWithPosBit))
-
-	return valBytes, nil
+	return drops, nil
 }
 
 // XRPL definition of precision is number of significant digits:
