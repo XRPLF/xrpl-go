@@ -148,6 +148,38 @@ func TestClient_GetAccountInfo(t *testing.T) {
 		expectedErr    error
 	}{
 		{
+			name: "vault pseudo-account link",
+			serverMessages: []map[string]any{{
+				"id": 1,
+				"result": map[string]any{"account_data": map[string]any{
+					"Account":         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+					"LedgerEntryType": "AccountRoot",
+					"VaultID":         "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
+				}},
+			}},
+			expected: &account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType: ledger.AccountRootEntry,
+				VaultID:         "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
+			}},
+		},
+		{
+			name: "loan broker pseudo-account link",
+			serverMessages: []map[string]any{{
+				"id": 1,
+				"result": map[string]any{"account_data": map[string]any{
+					"Account":         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+					"LedgerEntryType": "AccountRoot",
+					"LoanBrokerID":    "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210",
+				}},
+			}},
+			expected: &account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType: ledger.AccountRootEntry,
+				LoanBrokerID:    "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210",
+			}},
+		},
+		{
 			name: "Successful response",
 			serverMessages: []map[string]any{
 				{

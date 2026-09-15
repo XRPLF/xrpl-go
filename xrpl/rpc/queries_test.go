@@ -35,6 +35,36 @@ func TestClient_GetAccountInfo(t *testing.T) {
 		expectedError string
 	}{
 		{
+			name: "vault pseudo-account link",
+			mockResponse: `{"result":{"account_data":{
+				"Account":"rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				"LedgerEntryType":"AccountRoot",
+				"VaultID":"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+			}}}`,
+			mockStatus: 200,
+			request:    &account.InfoRequest{Account: "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"},
+			expected: account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType: ledger.AccountRootEntry,
+				VaultID:         "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
+			}},
+		},
+		{
+			name: "loan broker pseudo-account link",
+			mockResponse: `{"result":{"account_data":{
+				"Account":"rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				"LedgerEntryType":"AccountRoot",
+				"LoanBrokerID":"FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210"
+			}}}`,
+			mockStatus: 200,
+			request:    &account.InfoRequest{Account: "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"},
+			expected: account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType: ledger.AccountRootEntry,
+				LoanBrokerID:    "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210",
+			}},
+		},
+		{
 			name: "successful account info request",
 			mockResponse: `{
 				"result": {
