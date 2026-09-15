@@ -42,6 +42,8 @@ type Delegate struct {
 	PreviousTxnID types.Hash256
 	// The index of the ledger that contains the transaction that most recently modified this entry.
 	PreviousTxnLgrSeq uint32
+	// The account paying this object's owner reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.

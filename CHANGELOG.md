@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
 
+#### xrpl/ledger-entry-types
+
+- Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values, including in typed account responses. Network use requires the `Sponsor` amendment.
+
 ### Changed
 
 #### binary-codec

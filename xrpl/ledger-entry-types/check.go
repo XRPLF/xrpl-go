@@ -41,6 +41,8 @@ type Check struct {
 	Sequence uint32
 	// An arbitrary tag to further specify the source for this Check, such as a hosted recipient at the sender's address.
 	SourceTag uint32 `json:",omitempty"`
+	// The account paying this object's owner reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the ledger entry type for Check.

@@ -51,6 +51,8 @@ type MPToken struct {
 	ConfidentialBalanceSpending string `json:",omitempty"`
 	// ConfidentialBalanceVersion changes when the confidential spending balance changes.
 	ConfidentialBalanceVersion uint32 `json:",omitempty"`
+	// The account paying this object's owner reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.
