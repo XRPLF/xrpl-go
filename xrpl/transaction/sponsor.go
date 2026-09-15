@@ -80,13 +80,13 @@ func validateSponsorFields(fields sponsorFields) error {
 // isReserveSponsorable follows isReserveSponsorAllowed in rippled
 // 21890d9dafac235d8c631486c6026471b21c970e. Object creation alone is not sufficient.
 func isReserveSponsorable(txType TxType) bool {
-	switch txType.String() {
-	case "DelegateSet", "DepositPreauth", "Payment", "SignerListSet",
-		"CheckCancel", "CheckCash", "CheckCreate", "EscrowCancel", "EscrowCreate", "EscrowFinish",
-		"PaymentChannelClaim", "PaymentChannelCreate", "PaymentChannelFund", "Clawback",
-		"MPTokenAuthorize", "MPTokenIssuanceCreate", "MPTokenIssuanceDestroy", "MPTokenIssuanceSet",
-		"TrustSet", "CredentialAccept", "CredentialCreate", "CredentialDelete",
-		"AccountSet", "SetRegularKey", "SponsorshipTransfer":
+	switch txType { //nolint:exhaustive // All unlisted transaction types are deliberately rejected.
+	case DelegateSetTx, DepositPreauthTx, PaymentTx, SignerListSetTx,
+		CheckCancelTx, CheckCashTx, CheckCreateTx, EscrowCancelTx, EscrowCreateTx, EscrowFinishTx,
+		PaymentChannelClaimTx, PaymentChannelCreateTx, PaymentChannelFundTx, ClawbackTx,
+		MPTokenAuthorizeTx, MPTokenIssuanceCreateTx, MPTokenIssuanceDestroyTx, MPTokenIssuanceSetTx,
+		TrustSetTx, CredentialAcceptTx, CredentialCreateTx, CredentialDeleteTx,
+		AccountSetTx, SetRegularKeyTx, SponsorshipTransferTx:
 		return true
 	default:
 		return false

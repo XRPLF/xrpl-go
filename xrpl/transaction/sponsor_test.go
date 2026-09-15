@@ -729,14 +729,14 @@ func sponsorTestBatch(inner map[string]any) Batch {
 
 func TestReserveSponsorshipAllowList(t *testing.T) {
 	for _, txType := range []TxType{
-		"DelegateSet", "DepositPreauth", "Payment", "SignerListSet",
-		"CheckCancel", "CheckCash", "CheckCreate", "EscrowCancel", "EscrowCreate", "EscrowFinish",
-		"PaymentChannelClaim", "PaymentChannelCreate", "PaymentChannelFund", "Clawback",
-		"MPTokenAuthorize", "MPTokenIssuanceCreate", "MPTokenIssuanceDestroy", "MPTokenIssuanceSet",
-		"TrustSet", "CredentialAccept", "CredentialCreate", "CredentialDelete",
-		"AccountSet", "SetRegularKey", "SponsorshipTransfer",
+		DelegateSetTx, DepositPreauthTx, PaymentTx, SignerListSetTx,
+		CheckCancelTx, CheckCashTx, CheckCreateTx, EscrowCancelTx, EscrowCreateTx, EscrowFinishTx,
+		PaymentChannelClaimTx, PaymentChannelCreateTx, PaymentChannelFundTx, ClawbackTx,
+		MPTokenAuthorizeTx, MPTokenIssuanceCreateTx, MPTokenIssuanceDestroyTx, MPTokenIssuanceSetTx,
+		TrustSetTx, CredentialAcceptTx, CredentialCreateTx, CredentialDeleteTx,
+		AccountSetTx, SetRegularKeyTx, SponsorshipTransferTx,
 	} {
-		t.Run(string(txType), func(t *testing.T) {
+		t.Run(txType.String(), func(t *testing.T) {
 			tx := BaseTx{
 				Account: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", TransactionType: txType,
 				Sponsor: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", SponsorFlags: types.SpfSponsorReserve,
@@ -831,7 +831,7 @@ func TestReserveSponsorshipRejectsUnsupportedTypes(t *testing.T) {
 		DIDSetTx,
 		HashedTx,
 		"Invalid",
-		"LedgerStateFix",
+		LedgerStateFixTx,
 		LoanBrokerCoverClawbackTx,
 		LoanBrokerCoverDepositTx,
 		LoanBrokerCoverWithdrawTx,
@@ -853,7 +853,7 @@ func TestReserveSponsorshipRejectsUnsupportedTypes(t *testing.T) {
 		OracleSetTx,
 		PermissionedDomainDeleteTx,
 		PermissionedDomainSetTx,
-		"SponsorshipSet",
+		SponsorshipSetTx,
 		TicketCreateTx,
 		VaultClawbackTx,
 		VaultCreateTx,
