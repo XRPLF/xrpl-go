@@ -280,6 +280,35 @@ func TestBatchValidatesInnerSponsorship(t *testing.T) {
 			fields: map[string]any{
 				"Sponsor": nil,
 			},
+			expectedErr: ErrInvalidSponsor,
+		},
+		{
+			name: "null flags with sponsor omitted",
+			fields: map[string]any{
+				"SponsorFlags": nil,
+			},
+			expectedErr: ErrInvalidSponsorFlags,
+		},
+		{
+			name: "zero flags without sponsor",
+			fields: map[string]any{
+				"SponsorFlags": uint32(0),
+			},
+			expectedErr: ErrSponsorFieldsMissing,
+		},
+		{
+			name: "empty sponsor without flags",
+			fields: map[string]any{
+				"Sponsor": "",
+			},
+			expectedErr: ErrSponsorFieldsMissing,
+		},
+		{
+			name: "empty sponsor and zero flags",
+			fields: map[string]any{
+				"Sponsor":      "",
+				"SponsorFlags": uint32(0),
+			},
 			expectedErr: ErrSponsorFieldsMissing,
 		},
 		{
@@ -321,6 +350,24 @@ func TestBatchValidatesInnerSponsorship(t *testing.T) {
 				"Sponsor":      "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
 				"SponsorFlags": uint32(0),
 			},
+			expectedErr: ErrSponsorFieldsMissing,
+		},
+		{
+			name: "unknown signature member before zero flags",
+			fields: map[string]any{
+				"Sponsor":          "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":     uint32(0),
+				"SponsorSignature": map[string]any{"Account": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"},
+			},
+			expectedErr: ErrInnerBatchSponsorSignature,
+		},
+		{
+			name: "invalid flags before forbidden signers",
+			fields: map[string]any{
+				"Sponsor":          "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":     uint32(4),
+				"SponsorSignature": map[string]any{"Signers": nil},
+			},
 			expectedErr: ErrInvalidSponsorFlags,
 		},
 		{
@@ -361,7 +408,7 @@ func TestBatchValidatesInnerSponsorship(t *testing.T) {
 				"Sponsor":      "",
 				"SponsorFlags": types.SpfSponsorReserve,
 			},
-			expectedErr: ErrInvalidSponsor,
+			expectedErr: ErrSponsorFieldsMissing,
 		},
 		{
 			name: "null signature",
@@ -511,18 +558,7 @@ func TestBatchValidatesInnerSponsorship(t *testing.T) {
 				"SigningPubKey":   "",
 			}
 			maps.Copy(inner, tt.fields)
-			batch := Batch{
-				BaseTx: BaseTx{Account: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", TransactionType: BatchTx, Flags: TfAllOrNothing},
-				RawTransactions: []types.RawTransaction{
-					{RawTransaction: inner},
-					{RawTransaction: map[string]any{
-						"TransactionType": "AccountSet",
-						"Account":         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-						"Flags":           types.TfInnerBatchTxn,
-						"SigningPubKey":   "",
-					}},
-				},
-			}
+			batch := sponsorTestBatch(inner)
 			original, err := json.Marshal(inner)
 			require.NoError(t, err)
 			valid, err := batch.Validate()
@@ -536,6 +572,68 @@ func TestBatchValidatesInnerSponsorship(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, original, after)
 		})
+	}
+}
+
+func TestInnerSponsorshipValidationMatchesTypedAndRaw(t *testing.T) {
+	const account = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+	const sponsor = "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"
+	key, empty := "AB", ""
+	tests := []struct {
+		name        string
+		sponsor     types.Address
+		flags       uint32
+		signature   *types.SponsorSignature
+		expectedErr error
+	}{
+		{"reserve", sponsor, types.SpfSponsorReserve, nil, nil},
+		{"empty object", sponsor, types.SpfSponsorReserve, &types.SponsorSignature{}, nil},
+		{"empty key", sponsor, types.SpfSponsorReserve, &types.SponsorSignature{SigningPubKey: &empty}, nil},
+		{"missing sponsor", "", types.SpfSponsorReserve, nil, ErrSponsorFieldsMissing},
+		{"zero flags", sponsor, 0, nil, ErrSponsorFieldsMissing},
+		{"invalid sponsor", "invalid", types.SpfSponsorReserve, nil, ErrInvalidSponsor},
+		{"self sponsor", account, types.SpfSponsorReserve, nil, ErrSponsorAccountConflict},
+		{"invalid flags", sponsor, 4, nil, ErrInvalidSponsorFlags},
+		{"fee", sponsor, types.SpfSponsorFee, nil, ErrInnerBatchFeeSponsorship},
+		{"nonempty key", sponsor, types.SpfSponsorReserve, &types.SponsorSignature{SigningPubKey: &key}, ErrInnerBatchSponsorSignature},
+		{"signature present", sponsor, types.SpfSponsorReserve, &types.SponsorSignature{TxnSignature: &empty}, ErrInnerBatchSponsorSignature},
+		{"zero flags before signature", sponsor, 0, &types.SponsorSignature{TxnSignature: &empty}, ErrSponsorFieldsMissing},
+		{"invalid flags before signature", sponsor, 4, &types.SponsorSignature{TxnSignature: &empty}, ErrInvalidSponsorFlags},
+		{"fee before signature", sponsor, types.SpfSponsorFee, &types.SponsorSignature{TxnSignature: &empty}, ErrInnerBatchFeeSponsorship},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := BaseTx{
+				Account: account, TransactionType: PaymentTx, Flags: types.TfInnerBatchTxn,
+				Sponsor: tt.sponsor, SponsorFlags: tt.flags, SponsorSignature: tt.signature,
+			}
+			raw := tx.Flatten()
+			// Keep explicit zero values so conversion cannot hide them as absent fields.
+			raw["Sponsor"] = tt.sponsor.String()
+			raw["SponsorFlags"] = tt.flags
+			batch := sponsorTestBatch(raw)
+			typedValid, typedErr := tx.Validate()
+			rawValid, rawErr := batch.Validate()
+			require.Equal(t, tt.expectedErr == nil, typedValid)
+			require.Equal(t, typedValid, rawValid)
+			require.ErrorIs(t, typedErr, tt.expectedErr)
+			require.ErrorIs(t, rawErr, tt.expectedErr)
+		})
+	}
+}
+
+func sponsorTestBatch(inner map[string]any) Batch {
+	return Batch{
+		BaseTx: BaseTx{Account: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", TransactionType: BatchTx, Flags: TfAllOrNothing},
+		RawTransactions: []types.RawTransaction{
+			{RawTransaction: inner},
+			{RawTransaction: map[string]any{
+				"TransactionType": "AccountSet",
+				"Account":         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				"Flags":           types.TfInnerBatchTxn,
+				"SigningPubKey":   "",
+			}},
+		},
 	}
 }
 
@@ -613,8 +711,7 @@ func TestSponsorAddressErrorsWrapSharedConditions(t *testing.T) {
 }
 
 func TestInnerSponsorSignatureErrorWrapsInvalidSignature(t *testing.T) {
-	key := "AB"
-	err := validateSponsorSignature(&types.SponsorSignature{SigningPubKey: &key}, true)
+	err := validateSponsorSignature(&sponsorSignatureFields{signingPubKey: "AB"}, true)
 	require.ErrorIs(t, err, ErrInnerBatchSponsorSignature)
 	require.ErrorIs(t, err, ErrInvalidSponsorSignature)
 }

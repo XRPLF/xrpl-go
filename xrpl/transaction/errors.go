@@ -50,7 +50,7 @@ var (
 	ErrSponsorTagNotAllowed = fmt.Errorf("%w: %w", ErrInvalidSponsor, ErrAccountIDTagNotAllowed)
 	// ErrSponsorAccountConflict is returned when Sponsor and Account identify the same account.
 	ErrSponsorAccountConflict = errors.New("sponsor and Account must be different accounts")
-	// ErrInvalidSponsorFlags is returned for zero, malformed, or unsupported sponsor flags.
+	// ErrInvalidSponsorFlags is returned for malformed or unsupported sponsor flags.
 	ErrInvalidSponsorFlags = errors.New("SponsorFlags must be a nonzero uint32 containing only fee and reserve flags")
 	// ErrReserveSponsorshipNotAllowed is returned for a transaction outside the reserve allow-list.
 	ErrReserveSponsorshipNotAllowed = errors.New("reserve sponsorship is not allowed for this transaction type")

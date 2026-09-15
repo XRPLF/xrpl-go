@@ -290,7 +290,7 @@ func (tx *BaseTx) Validate() (bool, error) {
 		}
 	}
 
-	if err := validateSponsorFields(tx); err != nil {
+	if err := validateSponsorFields(sponsorFieldsFromBaseTx(tx)); err != nil {
 		return false, err
 	}
 
