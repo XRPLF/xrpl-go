@@ -65,6 +65,13 @@ type BaseTx struct {
 	// The delegate account that is sending the transaction.
 	//
 	Delegate types.Address `json:",omitempty"`
+	// Sponsor pays the transaction fee and/or reserves. Empty means absent.
+	Sponsor types.Address `json:",omitempty"`
+	// SponsorFlags selects fee and/or reserve sponsorship. Zero means absent.
+	SponsorFlags uint32 `json:",omitempty"`
+	// SponsorSignature authorizes co-signed sponsorship. Prefunded sponsorship
+	// does not require this field. Requires the Sponsor amendment on the network.
+	SponsorSignature *types.SponsorSignature `json:",omitempty"`
 	// Set of bit-flags for this transaction.
 	Flags uint32 `json:",omitempty"`
 	//
@@ -178,6 +185,16 @@ func (tx *BaseTx) Flatten() FlatTransaction {
 		flattened["Delegate"] = tx.Delegate.String()
 	}
 
+	if tx.Sponsor != "" {
+		flattened["Sponsor"] = tx.Sponsor.String()
+	}
+	if tx.SponsorFlags != 0 {
+		flattened["SponsorFlags"] = tx.SponsorFlags
+	}
+	if tx.SponsorSignature != nil {
+		flattened["SponsorSignature"] = tx.SponsorSignature.Flatten()
+	}
+
 	return flattened
 }
 
@@ -271,6 +288,10 @@ func (tx *BaseTx) Validate() (bool, error) {
 		if bytes.Equal(delegateID, accountID) {
 			return false, ErrDelegateAccountConflict
 		}
+	}
+
+	if err := validateSponsorFields(tx); err != nil {
+		return false, err
 	}
 
 	// memos

@@ -269,3 +269,45 @@ func TestSetValidAddresses(t *testing.T) {
 		}
 	}
 }
+
+func TestSetValidAddressesSponsorFieldsInBatch(t *testing.T) {
+	for _, field := range []string{"Sponsor", "Sponsee", "CounterpartySponsor"} {
+		t.Run(field, func(t *testing.T) {
+			inner := map[string]any{
+				"TransactionType": "Payment",
+				field:             "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+			}
+			tx := map[string]any{
+				"TransactionType": "Batch",
+				field:             "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+				"RawTransactions": []map[string]any{{"RawTransaction": inner}},
+			}
+			require.NoError(t, SetValidAddresses(tx))
+			require.Equal(t, "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", tx[field])
+			require.Equal(t, "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", inner[field])
+		})
+	}
+}
+
+func TestSetValidAddressesRejectsNestedSponsorTagAtomically(t *testing.T) {
+	for _, field := range []string{"Sponsor", "Sponsee", "CounterpartySponsor"} {
+		t.Run(field, func(t *testing.T) {
+			const untagged = "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ"
+			const taggedZero = "XV5sbjUmgPpvXv4ixFWZ5ptAYZ6PD2m4Er6SnvjVLpMWPjR"
+			inner := map[string]any{
+				"TransactionType": "Payment",
+				field:             taggedZero,
+			}
+			tx := map[string]any{
+				"TransactionType": "Batch",
+				"Account":         untagged,
+				field:             untagged,
+				"RawTransactions": []map[string]any{{"RawTransaction": inner}},
+			}
+			require.ErrorIs(t, SetValidAddresses(tx), ErrAccountIDTagNotAllowed)
+			require.Equal(t, untagged, tx["Account"])
+			require.Equal(t, untagged, tx[field])
+			require.Equal(t, taggedZero, inner[field])
+		})
+	}
+}
