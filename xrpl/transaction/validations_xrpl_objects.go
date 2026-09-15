@@ -286,9 +286,16 @@ func IsAsset(asset ledger.Asset) (bool, error) {
 	return true, nil
 }
 
-// IsDomainID checks if the given domain ID is valid.
+// IsDomainID reports whether id is exactly 64 hexadecimal characters.
+// Zero is accepted. Ledger existence is not checked.
 func IsDomainID(id string) bool {
 	return IsHex256(id)
+}
+
+// IsNonZeroDomainID reports whether id is exactly 64 hexadecimal characters
+// other than zero. It does not check ledger existence or permissions.
+func IsNonZeroDomainID(id string) bool {
+	return IsDomainID(id) && strings.TrimLeft(id, "0") != ""
 }
 
 // IsLedgerEntryID checks if the input is a valid ledger entry id.

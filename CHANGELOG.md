@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### xrpl/transaction
+
+- Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
+
 #### binary-codec
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
@@ -22,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/wallet
 
 - Updated LoanSet counterparty signing to use role-specific prefixes. Requires `fixCleanup3_4_0` on the target network. For networks without this amendment, use a previous library release.
+
+### Fixed
+
+#### xrpl/transaction
+
+- Reject zero `DomainID` references in Payment, OfferCreate, MPTokenIssuanceCreate, and VaultCreate. Preserve zero-domain clearing in MPTokenIssuanceSet and VaultSet.
+- Reject an empty `MPTokenIssuanceSet.DomainID` during validation instead of failing later during binary encoding. Use 64 zero digits to request domain removal.
 
 ## [v0.3.1-mpt.0]
 

@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"strings"
 	"testing"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -870,6 +871,32 @@ func TestIsPaths(t *testing.T) {
 			if ok, err := IsPaths(tt.input); ok != tt.expected {
 				t.Errorf("Expected IsPaths to return %v, but got %v with error: %v", tt.expected, ok, err)
 			}
+		})
+	}
+}
+
+func TestIsNonZeroDomainID(t *testing.T) {
+	tests := []struct {
+		name    string
+		id      string
+		syntax  bool
+		nonzero bool
+	}{
+		{"zero", strings.Repeat("0", 64), true, false},
+		{"nonzero first digit", "1" + strings.Repeat("0", 63), true, true},
+		{"nonzero last digit", strings.Repeat("0", 63) + "1", true, true},
+		{"uppercase", strings.Repeat("AB", 32), true, true},
+		{"lowercase", strings.Repeat("ab", 32), true, true},
+		{"mixed case", strings.Repeat("aB", 32), true, true},
+		{"empty", "", false, false},
+		{"too short", strings.Repeat("A", 63), false, false},
+		{"too long", strings.Repeat("A", 65), false, false},
+		{"nonhex", strings.Repeat("G", 64), false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.syntax, IsDomainID(tt.id))
+			require.Equal(t, tt.nonzero, IsNonZeroDomainID(tt.id))
 		})
 	}
 }
