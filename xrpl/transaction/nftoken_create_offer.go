@@ -117,12 +117,12 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 	}
 
 	// check owner and account are not equal
-	if n.Owner == n.Account {
+	if sameAccountAddress(n.Owner, n.Account) {
 		return false, ErrOwnerAccountConflict
 	}
 
 	// check account and destination are not equal
-	if n.Destination == n.Account {
+	if sameAccountAddress(n.Destination, n.Account) {
 		return false, ErrDestinationAccountConflict
 	}
 
