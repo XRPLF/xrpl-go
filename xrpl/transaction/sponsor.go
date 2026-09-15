@@ -122,10 +122,9 @@ func validateRawSponsorFields(raw map[string]any) error {
 	if !ok {
 		return ErrInvalidTransactionType
 	}
-	txFlags, ok := typecheck.ToUint32(raw["Flags"])
-	if !ok {
-		return ErrInvalidFlagsValue
-	}
+	// Batch.Validate is the only caller and runs RawTransaction.Validate first,
+	// which requires Flags to be uint32 and contain TfInnerBatchTxn.
+	txFlags, _ := typecheck.ToUint32(raw["Flags"])
 	tx := BaseTx{
 		Account:         types.Address(account),
 		TransactionType: TxType(txType),
