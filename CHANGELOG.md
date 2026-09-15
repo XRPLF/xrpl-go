@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated LoanSet counterparty signing to use role-specific prefixes. Requires `fixCleanup3_4_0` on the target network. For networks without this amendment, use a previous library release.
 
+### Fixed
+
+#### xrpl/ledger-entry-types
+
+- Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.
+
 ## [v0.3.1-mpt.0]
 
 ### Added

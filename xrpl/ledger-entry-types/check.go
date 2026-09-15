@@ -1,6 +1,12 @@
 package ledger
 
-import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+)
 
 // Check represents a check ledger entry, similar to a paper personal check, which can be cashed by its destination to debit the sender's balance. (Added by the Checks amendment.)
 type Check struct {
@@ -43,6 +49,32 @@ type Check struct {
 	SourceTag uint32 `json:",omitempty"`
 	// The account paying this object's owner reserve. Requires the Sponsor amendment.
 	Sponsor types.Address `json:",omitempty"`
+}
+
+// UnmarshalJSON decodes SendMax into its concrete amount type. JSON objects
+// replace the receiver only on success. Top-level null leaves it unchanged.
+func (c *Check) UnmarshalJSON(data []byte) error {
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return nil
+	}
+	// A defined type avoids recursion and retains all ordinary Check fields.
+	type checkFields Check
+	var decoded struct {
+		checkFields
+		SendMax json.RawMessage
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	if len(decoded.SendMax) != 0 && !bytes.Equal(bytes.TrimSpace(decoded.SendMax), []byte("null")) {
+		amount, err := types.UnmarshalCurrencyAmount(decoded.SendMax)
+		if err != nil {
+			return fmt.Errorf("Check.SendMax: %w", err)
+		}
+		decoded.checkFields.SendMax = amount
+	}
+	*c = Check(decoded.checkFields)
+	return nil
 }
 
 // EntryType returns the ledger entry type for Check.
