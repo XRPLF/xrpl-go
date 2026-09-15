@@ -255,6 +255,96 @@ func TestBatchValidatesInnerSponsorship(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
+			name: "EnableAmendment fee sponsorship",
+			fields: map[string]any{
+				"TransactionType": EnableAmendmentTx.String(),
+				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":    types.SpfSponsorFee,
+			},
+			expectedErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name: "EnableAmendment reserve sponsorship",
+			fields: map[string]any{
+				"TransactionType": EnableAmendmentTx.String(),
+				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":    types.SpfSponsorReserve,
+			},
+			expectedErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name: "EnableAmendment fee and reserve sponsorship",
+			fields: map[string]any{
+				"TransactionType": EnableAmendmentTx.String(),
+				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":    types.SpfSponsorFee | types.SpfSponsorReserve,
+			},
+			expectedErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name: "SetFee fee sponsorship",
+			fields: map[string]any{
+				"TransactionType": SetFeeTx.String(),
+				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":    types.SpfSponsorFee,
+			},
+			expectedErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name: "SetFee reserve sponsorship",
+			fields: map[string]any{
+				"TransactionType": SetFeeTx.String(),
+				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":    types.SpfSponsorReserve,
+			},
+			expectedErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name: "SetFee fee and reserve sponsorship",
+			fields: map[string]any{
+				"TransactionType": SetFeeTx.String(),
+				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":    types.SpfSponsorFee | types.SpfSponsorReserve,
+			},
+			expectedErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name: "UNLModify fee sponsorship",
+			fields: map[string]any{
+				"TransactionType": UNLModifyTx.String(),
+				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":    types.SpfSponsorFee,
+			},
+			expectedErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name: "UNLModify reserve sponsorship",
+			fields: map[string]any{
+				"TransactionType": UNLModifyTx.String(),
+				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":    types.SpfSponsorReserve,
+			},
+			expectedErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name: "UNLModify fee and reserve sponsorship",
+			fields: map[string]any{
+				"TransactionType": UNLModifyTx.String(),
+				"Account":         "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+				"SponsorFlags":    types.SpfSponsorFee | types.SpfSponsorReserve,
+			},
+			expectedErr: ErrPseudoTransactionSponsorship,
+		},
+		{
 			name: "flags omitted",
 			fields: map[string]any{
 				"Sponsor": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
@@ -717,7 +807,8 @@ func TestInnerSponsorSignatureErrorWrapsInvalidSignature(t *testing.T) {
 }
 
 // TestReserveSponsorshipRejectsUnsupportedTypes covers the complement of the
-// pinned reserve allow-list in the current definitions and Go transaction types.
+// pinned reserve allow-list, except pseudo-transactions. TestTx_Validate covers
+// their separate policy, which rejects all sponsorship.
 // Keep this explicit list independent of isReserveSponsorable.
 func TestReserveSponsorshipRejectsUnsupportedTypes(t *testing.T) {
 	for _, txType := range []TxType{
@@ -738,7 +829,6 @@ func TestReserveSponsorshipRejectsUnsupportedTypes(t *testing.T) {
 		ConfidentialMPTSendTx,
 		DIDDeleteTx,
 		DIDSetTx,
-		EnableAmendmentTx,
 		HashedTx,
 		"Invalid",
 		"LedgerStateFix",
@@ -763,10 +853,8 @@ func TestReserveSponsorshipRejectsUnsupportedTypes(t *testing.T) {
 		OracleSetTx,
 		PermissionedDomainDeleteTx,
 		PermissionedDomainSetTx,
-		SetFeeTx,
 		"SponsorshipSet",
 		TicketCreateTx,
-		UNLModifyTx,
 		VaultClawbackTx,
 		VaultCreateTx,
 		VaultDeleteTx,

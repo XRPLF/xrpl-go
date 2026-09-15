@@ -40,6 +40,9 @@ var (
 	ErrDelegateTagNotAllowed = fmt.Errorf("%w: %w", ErrInvalidDelegate, ErrAccountIDTagNotAllowed)
 	// ErrDelegateAccountConflict is returned when the Delegate matches the Account.
 	ErrDelegateAccountConflict = errors.New("addresses for Account and Delegate cannot be the same")
+	// ErrPseudoTransactionSponsorship is returned when client validation rejects
+	// sponsorship fields on a consensus-generated pseudo-transaction.
+	ErrPseudoTransactionSponsorship = errors.New("pseudo-transactions cannot be sponsored")
 	// ErrSponsorFieldsMissing is returned when sponsorship fields are incomplete.
 	ErrSponsorFieldsMissing = errors.New("sponsor and nonzero SponsorFlags must be supplied together")
 	// ErrInvalidSponsor is returned when Sponsor is not a valid account address.

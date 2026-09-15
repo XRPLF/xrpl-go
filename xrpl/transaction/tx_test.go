@@ -231,6 +231,96 @@ func TestTx_Validate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name:    "EnableAmendment fee sponsorship",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: EnableAmendmentTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount, SponsorFlags: types.SpfSponsorFee},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "EnableAmendment reserve sponsorship",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: EnableAmendmentTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount, SponsorFlags: types.SpfSponsorReserve},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "EnableAmendment fee and reserve sponsorship",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: EnableAmendmentTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount, SponsorFlags: types.SpfSponsorFee | types.SpfSponsorReserve},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "EnableAmendment Sponsor only",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: EnableAmendmentTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "EnableAmendment SponsorFlags only",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: EnableAmendmentTx, Fee: types.XRPCurrencyAmount(10), SponsorFlags: types.SpfSponsorFee},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "EnableAmendment SponsorSignature only",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: EnableAmendmentTx, Fee: types.XRPCurrencyAmount(10), SponsorSignature: &types.SponsorSignature{}},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "SetFee fee sponsorship",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: SetFeeTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount, SponsorFlags: types.SpfSponsorFee},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "SetFee reserve sponsorship",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: SetFeeTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount, SponsorFlags: types.SpfSponsorReserve},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "SetFee fee and reserve sponsorship",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: SetFeeTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount, SponsorFlags: types.SpfSponsorFee | types.SpfSponsorReserve},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "SetFee Sponsor only",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: SetFeeTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "SetFee SponsorFlags only",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: SetFeeTx, Fee: types.XRPCurrencyAmount(10), SponsorFlags: types.SpfSponsorFee},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "SetFee SponsorSignature only",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: SetFeeTx, Fee: types.XRPCurrencyAmount(10), SponsorSignature: &types.SponsorSignature{}},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "UNLModify fee sponsorship",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: UNLModifyTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount, SponsorFlags: types.SpfSponsorFee},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "UNLModify reserve sponsorship",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: UNLModifyTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount, SponsorFlags: types.SpfSponsorReserve},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "UNLModify fee and reserve sponsorship",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: UNLModifyTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount, SponsorFlags: types.SpfSponsorFee | types.SpfSponsorReserve},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "UNLModify Sponsor only",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: UNLModifyTx, Fee: types.XRPCurrencyAmount(10), Sponsor: testAddrAccount},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "UNLModify SponsorFlags only",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: UNLModifyTx, Fee: types.XRPCurrencyAmount(10), SponsorFlags: types.SpfSponsorFee},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
+			name:    "UNLModify SponsorSignature only",
+			tx:      &BaseTx{Account: testAddrZero, TransactionType: UNLModifyTx, Fee: types.XRPCurrencyAmount(10), SponsorSignature: &types.SponsorSignature{}},
+			wantErr: ErrPseudoTransactionSponsorship,
+		},
+		{
 			name:    "Untagged X-address Delegate",
 			tx:      &BaseTx{Account: testAddrAccount, Delegate: xAddr(t, testAddrDelegate, 0, false), TransactionType: PaymentTx, Fee: types.XRPCurrencyAmount(10)},
 			wantErr: nil,

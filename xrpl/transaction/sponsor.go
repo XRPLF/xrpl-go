@@ -36,6 +36,10 @@ func validateSponsorFields(fields sponsorFields) error {
 	if !fields.present {
 		return nil
 	}
+	// Client policy: consensus-generated transactions cannot be sponsored.
+	if IsPseudoTransactionType(fields.txType) {
+		return ErrPseudoTransactionSponsorship
+	}
 	if fields.sponsor == "" || fields.flags == 0 {
 		return ErrSponsorFieldsMissing
 	}
