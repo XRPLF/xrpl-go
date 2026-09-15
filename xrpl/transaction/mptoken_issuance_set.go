@@ -232,7 +232,7 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTokenIssuanceSetFlags
 	}
 
-	hasEnableFlag := m.Flags&mpTokenIssuanceSetEnableFlagMask != 0
+	hasEnableFlag := flag.ContainsAny(m.Flags, mpTokenIssuanceSetEnableFlagMask)
 	hasEncryptionKeys := m.IssuerEncryptionKey != nil || m.AuditorEncryptionKey != nil
 	isMutate := hasEnableFlag || m.ImmutableFlags != nil || m.MPTokenMetadata != nil || m.TransferFee != nil || hasEncryptionKeys
 
