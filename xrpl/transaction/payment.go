@@ -229,7 +229,7 @@ func (p *Payment) Validate() (bool, error) {
 	}
 
 	if p.DomainID != nil {
-		if ok := IsDomainID(*p.DomainID); !ok {
+		if ok := IsNonZeroDomainID(*p.DomainID); !ok {
 			return false, ErrInvalidDomainID
 		}
 	}

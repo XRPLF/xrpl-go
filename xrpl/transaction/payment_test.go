@@ -446,6 +446,18 @@ func TestPayment_Validate(t *testing.T) {
 			wantErr:   false,
 		},
 		{
+			name: "fail - zero DomainID",
+			payment: Payment{
+				BaseTx:      BaseTx{Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx},
+				Amount:      types.XRPCurrencyAmount(1),
+				Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+				DomainID:    types.DomainID("0000000000000000000000000000000000000000000000000000000000000000"),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidDomainID,
+		},
+		{
 			name: "fail - invalid DomainID length",
 			payment: Payment{
 				BaseTx: BaseTx{

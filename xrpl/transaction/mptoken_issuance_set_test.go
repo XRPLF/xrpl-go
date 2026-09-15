@@ -534,7 +534,7 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "pass - empty DomainID removes domain",
+			name: "fail - empty DomainID",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -543,8 +543,8 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 				MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 				DomainID:          types.DomainID(""),
 			},
-			wantOk:  true,
-			wantErr: nil,
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetDomainIDInvalid,
 		},
 		{
 			name: "fail - DomainID invalid hex",
@@ -665,6 +665,20 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			require.Equal(t, tt.wantErr, err)
 		})
 	}
+}
+
+// This checks the clear sentinel sent to the server, not on-ledger permissions.
+func TestMPTokenIssuanceSet_DomainClearingSentinel(t *testing.T) {
+	zero := strings.Repeat("0", 64)
+	tx := MPTokenIssuanceSet{
+		BaseTx:            BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: MPTokenIssuanceSetTx},
+		MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+		DomainID:          types.DomainID(zero),
+	}
+	ok, err := tx.Validate()
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, zero, tx.Flatten()["DomainID"])
 }
 
 func TestMPTokenIssuanceSet_ImmutableFlags(t *testing.T) {

@@ -153,7 +153,7 @@ func (tx *VaultCreate) Validate() (bool, error) {
 		if !flag.Contains(tx.Flags, TfVaultPrivate) {
 			return false, ErrVaultCreateDomainIDRequiresPrivateFlag
 		}
-		if !IsDomainID(*tx.DomainID) {
+		if !IsNonZeroDomainID(*tx.DomainID) {
 			return false, ErrVaultCreateDomainIDInvalid
 		}
 	}

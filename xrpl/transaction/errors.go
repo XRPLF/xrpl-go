@@ -277,8 +277,8 @@ var (
 	ErrMPTIssuanceSetInvalidImmutableFlags = errors.New("mptoken issuance set: ImmutableFlags contains unsupported flags")
 	// ErrMPTIssuanceSetTransferFeeWithConfidentialBalance is returned when a non-zero transfer fee is enabled with confidential balances.
 	ErrMPTIssuanceSetTransferFeeWithConfidentialBalance = errors.New("mptoken issuance set: TransferFee cannot be non-zero when TfMPTSetCanHoldConfidentialBalance is set")
-	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string (and not empty).
-	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string or empty")
+	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
+	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string")
 	// ErrMPTIssuanceSetKeyConflict is returned when encryption keys are set together with Holder.
 	ErrMPTIssuanceSetKeyConflict = errors.New("mptoken issuance set: encryption keys cannot be set together with Holder")
 	// ErrMPTIssuanceSetAuditorRequiresIssuerKey is returned when AuditorEncryptionKey is set without IssuerEncryptionKey.

@@ -139,7 +139,7 @@ func (o *OfferCreate) Validate() (bool, error) {
 	}
 
 	if o.DomainID != nil {
-		if ok := IsDomainID(*o.DomainID); !ok {
+		if ok := IsNonZeroDomainID(*o.DomainID); !ok {
 			return false, ErrInvalidDomainID
 		}
 	}

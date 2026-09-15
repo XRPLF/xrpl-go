@@ -281,6 +281,16 @@ func TestMPTokenIssuanceCreate_Validate(t *testing.T) {
 			errMessage: ErrMPTIssuanceCreateInvalidImmutableFlags,
 		},
 		{
+			name: "fail - zero DomainID",
+			tx: &MPTokenIssuanceCreate{
+				BaseTx:   BaseTx{Account: "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2", TransactionType: MPTokenIssuanceCreateTx, Flags: TfMPTRequireAuth},
+				DomainID: types.DomainID("0000000000000000000000000000000000000000000000000000000000000000"),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrMPTIssuanceCreateDomainIDInvalid,
+		},
+		{
 			name: "pass - valid with DomainID and TfMPTRequireAuth",
 			tx: &MPTokenIssuanceCreate{
 				BaseTx: BaseTx{
