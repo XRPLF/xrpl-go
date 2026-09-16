@@ -51,6 +51,17 @@ var (
 	ErrHolderNotAuthorized      = errors.New("builder: holder is not authorized to hold the issuance")
 	ErrAmountExceedsOutstanding = errors.New("builder: amount exceeds the issuance confidential outstanding amount")
 
+	// Batch assembly errors. Each names a chain BuildBatch refuses to assemble rather
+	// than emitting a proof the ledger is certain to reject. See BuildBatch for what each
+	// limit is and what to do instead.
+	ErrBatchOperationCount        = errors.New("builder: a Batch holds between two and eight inner transactions")
+	ErrBatchModeNotSupported      = errors.New("builder: only the all-or-nothing Batch mode is supported")
+	ErrBatchMissingOperation      = errors.New("builder: batch operation is required")
+	ErrBatchInnerNotSupported     = errors.New("builder: transaction is not supported as a Batch inner")
+	ErrBatchInnerSequenceSet      = errors.New("builder: a confidential Batch operation cannot set its own sequence")
+	ErrBatchInnerSequenceMismatch = errors.New("builder: a ready-made inner's Sequence does not match its position in the Batch")
+	ErrBatchUnpredictableState    = errors.New("builder: an earlier inner in this Batch left a balance this operation reads at a value the client cannot reproduce")
+
 	// ErrInvalidAddress names an address that failed to decode where the field it came
 	// from is not known. The query helpers use it because they resolve an MPToken for an
 	// Account, a Destination, or a Holder depending on the caller, so naming any one of

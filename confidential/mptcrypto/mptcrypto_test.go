@@ -462,3 +462,79 @@ func TestComputeConvertBackRemainder(t *testing.T) {
 }
 
 // endregion
+
+// TestCiphertextArithmetic covers the native homomorphic group operations. They are what a
+// client uses to follow a confidential balance the ledger changes without decrypting it.
+func TestCiphertextArithmetic(t *testing.T) {
+	privkey, pubkey, err := mptcrypto.GenerateKeypair()
+	require.NoError(t, err)
+
+	encrypt := func(amount uint64) mptcrypto.Ciphertext {
+		bf, err := mptcrypto.GenerateBlindingFactor()
+		require.NoError(t, err)
+		ciphertext, err := mptcrypto.EncryptAmount(amount, pubkey, bf)
+		require.NoError(t, err)
+		return ciphertext
+	}
+
+	tests := []struct {
+		name  string
+		left  uint64
+		right uint64
+		want  uint64
+		op    func(a, b mptcrypto.Ciphertext) (mptcrypto.Ciphertext, error)
+	}{
+		{name: "add", left: 100, right: 23, want: 123, op: mptcrypto.AddCiphertexts},
+		{name: "subtract", left: 100, right: 23, want: 77, op: mptcrypto.SubtractCiphertexts},
+		{name: "subtract to zero", left: 100, right: 100, want: 0, op: mptcrypto.SubtractCiphertexts},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.op(encrypt(tt.left), encrypt(tt.right))
+			require.NoError(t, err)
+
+			decrypted, err := mptcrypto.DecryptAmount(result, privkey, 0, 200)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, decrypted)
+		})
+	}
+}
+
+// TestCiphertextArithmeticErrors covers the two results that are not ciphertexts: an operand
+// whose bytes are not a pair of curve points, and a subtraction of a ciphertext from itself,
+// which yields the identity element.
+func TestCiphertextArithmeticErrors(t *testing.T) {
+	_, pubkey, err := mptcrypto.GenerateKeypair()
+	require.NoError(t, err)
+	bf, err := mptcrypto.GenerateBlindingFactor()
+	require.NoError(t, err)
+	valid, err := mptcrypto.EncryptAmount(5, pubkey, bf)
+	require.NoError(t, err)
+
+	var malformed mptcrypto.Ciphertext
+
+	tests := []struct {
+		name    string
+		first   mptcrypto.Ciphertext
+		second  mptcrypto.Ciphertext
+		op      func(a, b mptcrypto.Ciphertext) (mptcrypto.Ciphertext, error)
+		wantErr error
+	}{
+		{name: "add malformed first", first: malformed, second: valid, op: mptcrypto.AddCiphertexts, wantErr: mptcrypto.ErrInvalidCiphertext},
+		{name: "add malformed second", first: valid, second: malformed, op: mptcrypto.AddCiphertexts, wantErr: mptcrypto.ErrInvalidCiphertext},
+		{name: "subtract malformed first", first: malformed, second: valid, op: mptcrypto.SubtractCiphertexts, wantErr: mptcrypto.ErrInvalidCiphertext},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.op(tt.first, tt.second)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+
+	t.Run("subtract identical ciphertexts", func(t *testing.T) {
+		_, err := mptcrypto.SubtractCiphertexts(valid, valid)
+		require.Error(t, err)
+	})
+}

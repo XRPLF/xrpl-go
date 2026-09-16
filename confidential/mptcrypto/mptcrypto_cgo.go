@@ -454,3 +454,48 @@ func ComputeConvertBackRemainder(commitmentIn Commitment, amount uint64) (commit
 }
 
 // endregion
+
+// region Homomorphic ciphertext arithmetic
+
+// AddCiphertexts homomorphically adds two ElGamal ciphertexts encrypted under the same public key,
+// returning an encryption of the sum of their plaintexts.
+func AddCiphertexts(a, b Ciphertext) (sum Ciphertext, err error) {
+	return combineCiphertexts(a, b, false)
+}
+
+// SubtractCiphertexts homomorphically subtracts b from a, both encrypted under the same public
+// key, returning an encryption of the difference of their plaintexts.
+func SubtractCiphertexts(a, b Ciphertext) (difference Ciphertext, err error) {
+	return combineCiphertexts(a, b, true)
+}
+
+// combineCiphertexts parses both operands into the library's internal point form, applies the
+// requested group operation, and serializes the result back to the wire form.
+func combineCiphertexts(a, b Ciphertext, subtract bool) (result Ciphertext, err error) {
+	var aC1, aC2, bC1, bC2, outC1, outC2 C.secp256k1_pubkey
+	if !C.mpt_make_ec_pair(uint8Ptr(&a[0]), &aC1, &aC2) {
+		return result, fmt.Errorf("%w: first operand", ErrInvalidCiphertext)
+	}
+	if !C.mpt_make_ec_pair(uint8Ptr(&b[0]), &bC1, &bC2) {
+		return result, fmt.Errorf("%w: second operand", ErrInvalidCiphertext)
+	}
+
+	ctx := C.mpt_secp256k1_context()
+	operation, ret := "secp256k1_elgamal_add", C.int(0)
+	if subtract {
+		operation = "secp256k1_elgamal_subtract"
+		ret = C.secp256k1_elgamal_subtract(ctx, &outC1, &outC2, &aC1, &aC2, &bC1, &bC2)
+	} else {
+		ret = C.secp256k1_elgamal_add(ctx, &outC1, &outC2, &aC1, &aC2, &bC1, &bC2)
+	}
+	if ret != 1 {
+		return result, fmt.Errorf("%s failed with code %d", operation, ret)
+	}
+
+	if !C.mpt_serialize_ec_pair(&outC1, &outC2, uint8Ptr(&result[0])) {
+		return result, fmt.Errorf("%w: %s produced a point that cannot be serialized", ErrInvalidCiphertext, operation)
+	}
+	return result, nil
+}
+
+// endregion

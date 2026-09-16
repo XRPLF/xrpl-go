@@ -13,13 +13,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
 
+#### confidential
+
+- Added `elgamal.Add()` and `elgamal.Subtract()`, hex-string wrappers over new `mptcrypto.AddCiphertexts()` and `mptcrypto.SubtractCiphertexts()` bindings for the native homomorphic ElGamal group operations. They reproduce the credits and debits the confidential MPT transactors apply to a stored balance, which is what lets a client predict the state a transaction leaves behind. Subtracting a ciphertext from itself has no ciphertext result and reports `elgamal.ErrCiphertextArithmetic`.
+
 #### confidential/builder
 
+- Added `BuildBatch()`, which assembles two to eight ordered confidential operations into one XLS-56 `Batch`. Calling the standalone builders in a row cannot produce one, because each reads the ledger and an earlier inner changes the balance and version a later inner's proof binds. See the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders) for the full reference.
+- `BuildBatch()` reads every `MPToken` and `MPTokenIssuance` from one validated ledger and threads predicted state through the inners in order, keyed by the decoded holder `AccountID` and issuance ID: spending and inbox ciphertexts, issuer and auditor mirror balances, holder keys, balance versions, and public amounts, each advanced exactly as the transactor advances it, including the re-randomization a send applies to the credits it posts to its destination.
+- Every inner nonce is resolved before any proof is generated, so a later autofill cannot invalidate a proof. An account's inners take consecutive sequences, and the outer `Batch` account's start one past the sequence the `Batch` spends, or at its current sequence when the `Batch` spends a `Ticket`. A confidential operation may spend a `Ticket`, which its proof then binds, and reports `ErrBatchInnerSequenceSet` if it sets its own `Sequence`. A `TransactionOp` may carry its own `Sequence`, which must be the one its position requires or `ErrBatchInnerSequenceMismatch` is reported.
+- Inners are shaped for XLS-56 with `tfInnerBatchTxn`, a zero `Fee`, an empty `SigningPubKey`, and no individual signature. `Fee` and `LastLedgerSequence` are left to the client's own autofill, which prices the `Batch` by summing its inners, and signing stays with the caller through `wallet.SignMultiBatch()` and `wallet.CombineBatchSigners()`.
+- Added `ConvertOp`, `ConvertBackOp`, `SendOp`, `MergeInboxOp`, and `ClawbackOp`, each wrapping the parameters of the standalone builder it mirrors, plus `TransactionOp` for a ready-made ordinary transaction and `IsSupportedInnerTransactionType()` for the types it accepts. Types that could change a confidential balance, an `MPToken`'s existence, or an issuance are rejected with `ErrBatchInnerNotSupported`.
+- `BuildBatch()` defaults to `tfAllOrNothing` and rejects every other mode with `ErrBatchModeNotSupported`, because an inner that can be skipped or fail leaves every later prediction describing a ledger that never happened. A chain that reads a balance an earlier merge, clawback, or first-time convert left as the canonical encrypted zero reports `ErrBatchUnpredictableState` rather than emitting a proof the network would reject; an inner needing only that field's existence still builds.
 - Added `GetSpendingBalance()`, which reads a holder's `ConfidentialBalanceSpending` and decrypts it with that holder's ElGamal private key. It takes the same `LedgerQuerier` the builders do, so `rpc.Client` and `websocket.Client` share one reader. Both reads come from one validated ledger, no account sequence is queried, the unspendable `ConfidentialBalanceInbox` is excluded, a missing `MPToken` reports `ErrMPTokenNotFound`, and an `MPToken` with no spending ciphertext reads as zero without decrypting. The search is bounded by the caller's `BalanceRange`, capped at the issuance `ConfidentialOutstandingAmount` as `BuildClawback` already does.
 
 #### docs
 
 - Documented `GetSpendingBalance()` in the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders).
+- Documented `BuildBatch()` in the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders), covering the operation types, nonce and inner shaping, the autofill and signing flow, and the chains the assembler refuses to assemble.
 
 #### xrpl/flag
 

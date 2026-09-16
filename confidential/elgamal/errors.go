@@ -13,6 +13,9 @@ var (
 	ErrEncryptFailed = errors.New("elgamal: encryption failed")
 	// ErrDecryptFailed is returned when the underlying C decryption call fails.
 	ErrDecryptFailed = errors.New("elgamal: decryption failed")
+	// ErrCiphertextArithmetic is returned when a homomorphic add or subtract has no result,
+	// such as a subtraction of a ciphertext from itself.
+	ErrCiphertextArithmetic = errors.New("elgamal: ciphertext arithmetic failed")
 	// ErrInvalidAmountRange is returned when a decryption search range is invalid.
 	ErrInvalidAmountRange = errors.New("elgamal: invalid amount range")
 )

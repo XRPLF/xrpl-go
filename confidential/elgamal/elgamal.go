@@ -106,3 +106,34 @@ func Decrypt(ciphertextHex, privateKeyHex string, amountRange AmountRange) (uint
 	}
 	return result, nil
 }
+
+// Add homomorphically adds two ciphertexts encrypted under the same public key, returning an
+// encryption of the sum of their plaintexts.
+func Add(firstHex, secondHex string) (string, error) {
+	return combine(firstHex, secondHex, mptcrypto.AddCiphertexts)
+}
+
+// Subtract homomorphically subtracts the second ciphertext from the first, both encrypted under
+// the same public key, returning an encryption of the difference of their plaintexts.
+func Subtract(firstHex, secondHex string) (string, error) {
+	return combine(firstHex, secondHex, mptcrypto.SubtractCiphertexts)
+}
+
+// combine decodes both hex operands, applies one of the native group operations, and re-encodes
+// the result.
+func combine(firstHex, secondHex string, op func(a, b mptcrypto.Ciphertext) (mptcrypto.Ciphertext, error)) (string, error) {
+	first, err := hexutil.DecodeFixedHex(firstHex, mptsizes.CiphertextSize)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
+	}
+	second, err := hexutil.DecodeFixedHex(secondHex, mptsizes.CiphertextSize)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
+	}
+
+	result, err := op(mptcrypto.Ciphertext(first), mptcrypto.Ciphertext(second))
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrCiphertextArithmetic, err)
+	}
+	return hex.EncodeToString(result[:]), nil
+}

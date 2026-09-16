@@ -242,3 +242,109 @@ func TestInvalidHexInputs(t *testing.T) {
 		})
 	}
 }
+
+// TestAddAndSubtract covers the homomorphic arithmetic a client uses to predict the balance a
+// confidential transaction leaves behind: the ledger stores ciphertexts, and the transactors
+// credit and debit them without ever decrypting, so a prediction has to do the same.
+func TestAddAndSubtract(t *testing.T) {
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	encrypt := func(amount uint64) string {
+		bf, err := elgamal.GenerateBlindingFactor()
+		require.NoError(t, err)
+		ciphertext, err := elgamal.Encrypt(amount, kp.PubKeyHex, bf)
+		require.NoError(t, err)
+		return ciphertext
+	}
+
+	tests := []struct {
+		name  string
+		left  uint64
+		right uint64
+		want  uint64
+		op    func(first, second string) (string, error)
+	}{
+		{name: "add", left: 40, right: 15, want: 55, op: elgamal.Add},
+		{name: "add zero", left: 40, right: 0, want: 40, op: elgamal.Add},
+		{name: "subtract", left: 40, right: 15, want: 25, op: elgamal.Subtract},
+		{name: "subtract to zero", left: 40, right: 40, want: 0, op: elgamal.Subtract},
+		{name: "subtract zero", left: 40, right: 0, want: 40, op: elgamal.Subtract},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.op(encrypt(tt.left), encrypt(tt.right))
+			require.NoError(t, err)
+			require.Len(t, result, mptsizes.CiphertextSize*2)
+
+			decrypted, err := elgamal.Decrypt(result, kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 100})
+			require.NoError(t, err)
+			require.Equal(t, tt.want, decrypted)
+		})
+	}
+}
+
+// TestAddAndSubtractErrors covers the inputs that have no ciphertext result. Subtracting a
+// ciphertext from itself is the one that is not a malformed input: the difference is the
+// curve's identity element, which has no encoding as a ciphertext.
+func TestAddAndSubtractErrors(t *testing.T) {
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	bf, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	ciphertext, err := elgamal.Encrypt(7, kp.PubKeyHex, bf)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		first   string
+		second  string
+		op      func(first, second string) (string, error)
+		wantErr error
+	}{
+		{name: "add first not hex", first: "zz", second: ciphertext, op: elgamal.Add, wantErr: elgamal.ErrInvalidCiphertext},
+		{name: "add second wrong length", first: ciphertext, second: "00", op: elgamal.Add, wantErr: elgamal.ErrInvalidCiphertext},
+		{name: "subtract first empty", first: "", second: ciphertext, op: elgamal.Subtract, wantErr: elgamal.ErrInvalidCiphertext},
+		{name: "subtract identical ciphertexts", first: ciphertext, second: ciphertext, op: elgamal.Subtract, wantErr: elgamal.ErrCiphertextArithmetic},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.op(tt.first, tt.second)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
+// TestAddIsHomomorphicAcrossKeys pins that the arithmetic is per key: a mirror balance held
+// under the issuer's key tracks the holder's own balance only because the same amount is
+// encrypted separately to each key, never because the ciphertexts are interchangeable.
+func TestAddIsHomomorphicAcrossKeys(t *testing.T) {
+	holder, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuer, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	bf, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	holderCt, err := elgamal.Encrypt(12, holder.PubKeyHex, bf)
+	require.NoError(t, err)
+	issuerCt, err := elgamal.Encrypt(12, issuer.PubKeyHex, bf)
+	require.NoError(t, err)
+
+	holderSum, err := elgamal.Add(holderCt, holderCt)
+	require.NoError(t, err)
+	issuerSum, err := elgamal.Add(issuerCt, issuerCt)
+	require.NoError(t, err)
+
+	bounds := elgamal.AmountRange{Low: 0, High: 100}
+	holderAmount, err := elgamal.Decrypt(holderSum, holder.PrivKeyHex, bounds)
+	require.NoError(t, err)
+	issuerAmount, err := elgamal.Decrypt(issuerSum, issuer.PrivKeyHex, bounds)
+	require.NoError(t, err)
+
+	require.Equal(t, uint64(24), holderAmount)
+	require.Equal(t, uint64(24), issuerAmount)
+	require.NotEqual(t, holderSum, issuerSum, "the same amount under two keys is two ciphertexts")
+}
