@@ -240,6 +240,29 @@ func sponsorSignatureFromRaw(value any) (*types.SponsorSignature, error) {
 	return fields, nil
 }
 
+func sponsorSignatureFromInnerRaw(value any) (*types.SponsorSignature, error) {
+	signature, ok := value.(map[string]any)
+	if !ok {
+		return nil, ErrInvalidSponsorSignature
+	}
+	if signature == nil {
+		return nil, ErrInnerBatchSponsorSignature
+	}
+	// Inner signatures allow only an absent or empty SigningPubKey.
+	fields := &types.SponsorSignature{}
+	for name, value := range signature {
+		if name != "SigningPubKey" {
+			return nil, ErrInnerBatchSponsorSignature
+		}
+		key, ok := value.(string)
+		if !ok || key != "" {
+			return nil, ErrInnerBatchSponsorSignature
+		}
+		fields.SigningPubKey = &key
+	}
+	return fields, nil
+}
+
 func sponsorSignersFromRaw(value any) ([]types.Signer, error) {
 	var entries []any
 	switch signers := value.(type) {
@@ -274,27 +297,4 @@ func sponsorSignersFromRaw(value any) ([]types.Signer, error) {
 		}
 	}
 	return signers, nil
-}
-
-func sponsorSignatureFromInnerRaw(value any) (*types.SponsorSignature, error) {
-	signature, ok := value.(map[string]any)
-	if !ok {
-		return nil, ErrInvalidSponsorSignature
-	}
-	if signature == nil {
-		return nil, ErrInnerBatchSponsorSignature
-	}
-	// Inner signatures allow only an absent or empty SigningPubKey.
-	fields := &types.SponsorSignature{}
-	for name, value := range signature {
-		if name != "SigningPubKey" {
-			return nil, ErrInnerBatchSponsorSignature
-		}
-		key, ok := value.(string)
-		if !ok || key != "" {
-			return nil, ErrInnerBatchSponsorSignature
-		}
-		fields.SigningPubKey = &key
-	}
-	return fields, nil
 }
