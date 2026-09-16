@@ -101,7 +101,9 @@ Sponsor signing requires `Sponsor` and `fixCleanup3_4_0` on the target network. 
 
 All checks are offline structural checks. They do not establish cryptographic validity of supplied signatures, ledger authorization, quorum, sponsorship balance, or amendment activation. `transaction.ValidateSponsorFields` exposes the shared raw sponsorship rules, not full transaction validation. `transaction.InspectSponsorFields` applies the same rules and returns an independent `*types.SponsorSignature` (nil when absent). It retains field presence, including an explicitly empty `SigningPubKey`, and returns no signature on error.
 
-See the [runnable sponsor example](https://github.com/XRPLF/xrpl-go/tree/confidential-transfers/examples/sponsor-signing) for co-signed, multisigned, and pre-funded flows. Submit the final blob without modifying it or autofilling again.
+Submit the final blob without modifying it or autofilling again.
+
+See the [runnable sponsor example](https://github.com/XRPLF/xrpl-go/tree/confidential-transfers/examples/sponsor-signing) for complete co-signed, multisigned, and pre-funded flows. Its README includes instructions for devnet and localnet.
 
 ## Signing a batch transaction
 
