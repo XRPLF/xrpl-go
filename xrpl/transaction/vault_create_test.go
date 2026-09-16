@@ -29,6 +29,15 @@ func TestVaultCreate_Flatten(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - empty Data omitted",
+			tx: &VaultCreate{
+				Data: func() *types.Data { v := types.Data(""); return &v }(),
+			},
+			expected: FlatTransaction{
+				"TransactionType": VaultCreateTx.String(),
+			},
+		},
+		{
 			name: "pass - with XRP asset",
 			tx: &VaultCreate{
 				BaseTx: BaseTx{

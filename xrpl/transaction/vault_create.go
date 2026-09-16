@@ -54,6 +54,13 @@ type VaultCreate struct {
 	// The scaling factor for vault shares. Only applicable for IOU assets.
 	// Valid values are between 0 and 18 inclusive. For XRP and MPT, this must not be provided.
 	Scale *uint8 `json:",omitempty"`
+	// VaultKind selects open-ended (0, the default) or closed-ended (1) operation.
+	// Setting it or either date requires LendingProtocolV1_1.
+	VaultKind *types.VaultKind `json:",omitempty"`
+	// SubscriptionDate is the deposit cutoff, in seconds since the Ripple Epoch.
+	SubscriptionDate *uint32 `json:",omitempty"`
+	// RedemptionDate is when redemption starts, in seconds since the Ripple Epoch.
+	RedemptionDate *uint32 `json:",omitempty"`
 }
 
 // TxType returns the TxType for VaultCreate transactions.
@@ -103,6 +110,16 @@ func (tx *VaultCreate) Flatten() FlatTransaction {
 
 	if tx.Scale != nil {
 		flattened["Scale"] = *tx.Scale
+	}
+
+	if tx.VaultKind != nil {
+		flattened["VaultKind"] = uint8(*tx.VaultKind)
+	}
+	if tx.SubscriptionDate != nil {
+		flattened["SubscriptionDate"] = *tx.SubscriptionDate
+	}
+	if tx.RedemptionDate != nil {
+		flattened["RedemptionDate"] = *tx.RedemptionDate
 	}
 
 	return flattened
@@ -156,6 +173,31 @@ func (tx *VaultCreate) Validate() (bool, error) {
 		if !IsNonZeroDomainID(*tx.DomainID) {
 			return false, ErrVaultCreateDomainIDInvalid
 		}
+	}
+
+	kind := types.VaultKindOpen
+	if tx.VaultKind != nil {
+		kind = *tx.VaultKind
+	}
+	switch kind {
+	case types.VaultKindOpen:
+		if tx.SubscriptionDate != nil || tx.RedemptionDate != nil {
+			return false, ErrVaultCreateDatesRequireClosedKind
+		}
+	case types.VaultKindClosed:
+		if tx.SubscriptionDate == nil || tx.RedemptionDate == nil {
+			return false, ErrVaultCreateDatesRequired
+		}
+		// Check ordering first so subtraction cannot wrap around UInt32.
+		if *tx.RedemptionDate < *tx.SubscriptionDate {
+			return false, ErrVaultCreateInvestmentPeriodInvalid
+		}
+		period := *tx.RedemptionDate - *tx.SubscriptionDate
+		if period < 180 || period >= 946708560 {
+			return false, ErrVaultCreateInvestmentPeriodInvalid
+		}
+	default:
+		return false, ErrVaultCreateKindInvalid
 	}
 
 	return true, nil

@@ -587,6 +587,14 @@ var (
 
 	// vault
 
+	// ErrVaultCreateKindInvalid is returned for an unsupported vault kind.
+	ErrVaultCreateKindInvalid = errors.New("vaultCreate: VaultKind must be 0 (open) or 1 (closed)")
+	// ErrVaultCreateDatesRequired is returned when a closed vault omits either date.
+	ErrVaultCreateDatesRequired = errors.New("vaultCreate: closed vaults require SubscriptionDate and RedemptionDate")
+	// ErrVaultCreateDatesRequireClosedKind is returned for dates on an open vault.
+	ErrVaultCreateDatesRequireClosedKind = errors.New("vaultCreate: dates require a closed vault")
+	// ErrVaultCreateInvestmentPeriodInvalid is returned when the investment period is outside protocol bounds.
+	ErrVaultCreateInvestmentPeriodInvalid = errors.New("vaultCreate: investment period must be at least 180 and less than 946708560 seconds")
 	// ErrVaultCreateAssetRequired is returned when Asset is not set on a VaultCreate transaction.
 	ErrVaultCreateAssetRequired = errors.New("vaultCreate: Asset is required")
 	// ErrVaultCreateAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number.
@@ -615,6 +623,8 @@ var (
 	// ErrVaultSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
 	ErrVaultSetDomainIDInvalid = errors.New("vaultSet: DomainID must be a valid 64-character hexadecimal string")
 
+	// ErrVaultDeleteMemoDataInvalid is returned for empty, malformed, or oversized deletion metadata.
+	ErrVaultDeleteMemoDataInvalid = errors.New("vaultDelete: MemoData must encode 1 to 256 complete bytes as hexadecimal")
 	// ErrVaultDeleteVaultIDRequired is returned when VaultID is not set on a VaultDelete transaction.
 	ErrVaultDeleteVaultIDRequired = errors.New("vaultDelete: VaultID is required")
 	// ErrVaultDeleteVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.

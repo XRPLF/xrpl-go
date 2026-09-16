@@ -84,7 +84,7 @@ func TestTransactionAccountIdentity(t *testing.T) {
 				conflict, invalid error
 			}{
 				{"DepositPreauth Authorize", &DepositPreauth{BaseTx: depositBase, Authorize: pair.other}, ErrDepositPreauthAuthorizeCannotBeSender, ErrDepositPreauthInvalidAuthorize},
-				// Retain the SDK's self-Unauthorize rule, also enforced by xrpl.js.
+				// Retain the SDK's rule that an account cannot unauthorize itself.
 				{"DepositPreauth Unauthorize", &DepositPreauth{BaseTx: depositBase, Unauthorize: pair.other}, ErrDepositPreauthUnauthorizeCannotBeSender, ErrDepositPreauthInvalidUnauthorize},
 				{"NFTokenCreateOffer Owner", &NFTokenCreateOffer{BaseTx: offerBase, NFTokenID: nftID, Amount: types.XRPCurrencyAmount(1), Owner: pair.other}, ErrOwnerAccountConflict, ErrInvalidOwner},
 				{"NFTokenCreateOffer Destination", &NFTokenCreateOffer{BaseTx: sellBase, NFTokenID: nftID, Amount: types.XRPCurrencyAmount(1), Destination: pair.other}, ErrDestinationAccountConflict, ErrInvalidDestination},

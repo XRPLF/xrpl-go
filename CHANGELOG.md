@@ -29,10 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added optional `VaultID` and `LoanBrokerID` fields to `AccountRoot`, preserving pseudo-account links in typed ledger and `account_info` responses.
 - Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values, including in typed account responses. Network use requires the `Sponsor` amendment.
+- Added optional vault accounting version, kind, subscription date, and redemption date fields for `LendingProtocolV1_1`.
 
 #### xrpl/queries/vault
 
 - Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
+- Preserve optional vault accounting version, kind, subscription date, and redemption date in `vault_info` responses.
 
 #### xrpl/rpc
 
@@ -44,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
 - Added `LedgerStateFixTx`, `SponsorshipSetTx`, and `SponsorshipTransferTx` transaction type constants.
 - Added the Payment `TfSponsorCreatedAccount` flag and setter, with validation for native XRP amounts and incompatible fields and flags. Requires the `Sponsor` amendment on the target network.
+- Added closed-ended VaultCreate fields with investment-period validation and top-level VaultDelete `MemoData` for `LendingProtocolV1_1`.
+- Added `CredentialIDs` to VaultWithdraw and LoanBrokerCoverWithdraw with scoped validation for one to eight distinct, nonzero 256-bit IDs. Requires `Credentials` and `fixCleanup3_4_0`. Existing credential validators remain unchanged.
 
 #### xrpl/websocket
 

@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -62,6 +63,60 @@ func TestVaultDelete_Validate(t *testing.T) {
 		tx       *VaultDelete
 		expected error
 	}{
+		{
+			name: "valid metadata",
+			tx: &VaultDelete{
+				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultDeleteTx},
+				VaultID:  "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				MemoData: func() *string { value := "aBcD"; return &value }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "empty metadata",
+			tx: &VaultDelete{
+				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultDeleteTx},
+				VaultID:  "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				MemoData: func() *string { value := ""; return &value }(),
+			},
+			expected: ErrVaultDeleteMemoDataInvalid,
+		},
+		{
+			name: "odd metadata",
+			tx: &VaultDelete{
+				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultDeleteTx},
+				VaultID:  "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				MemoData: func() *string { value := "ABC"; return &value }(),
+			},
+			expected: ErrVaultDeleteMemoDataInvalid,
+		},
+		{
+			name: "nonhex metadata",
+			tx: &VaultDelete{
+				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultDeleteTx},
+				VaultID:  "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				MemoData: func() *string { value := "XX"; return &value }(),
+			},
+			expected: ErrVaultDeleteMemoDataInvalid,
+		},
+		{
+			name: "maximum metadata",
+			tx: &VaultDelete{
+				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultDeleteTx},
+				VaultID:  "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				MemoData: func() *string { value := strings.Repeat("AB", 256); return &value }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "oversized metadata",
+			tx: &VaultDelete{
+				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultDeleteTx},
+				VaultID:  "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				MemoData: func() *string { value := strings.Repeat("AB", 257); return &value }(),
+			},
+			expected: ErrVaultDeleteMemoDataInvalid,
+		},
 		{
 			name: "fail - base tx invalid",
 			tx: &VaultDelete{
