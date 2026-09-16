@@ -1,9 +1,12 @@
-package server
+package server_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/server"
 	servertypes "github.com/Peersyst/xrpl-go/xrpl/queries/server/types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/stretchr/testify/require"
@@ -23,7 +26,7 @@ func TestServerInfoNetworkIDPresence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var response InfoResponse
+			var response server.InfoResponse
 			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
 			if !tt.present {
 				require.Nil(t, response.Info.NetworkID)
@@ -66,7 +69,7 @@ func TestServerInfoVersionParsing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var response InfoResponse
+			var response server.InfoResponse
 			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
 			require.Equal(t, tt.expectedBuildVersion, response.Info.BuildVersion)
 			require.Equal(t, tt.expectedRippledVersion, response.Info.RippledVersion)
@@ -88,7 +91,7 @@ func TestServerInfoLoadFactor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var response InfoResponse
+			var response server.InfoResponse
 			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
 			require.InDelta(t, tt.expected, response.Info.LoadFactor, 0)
 		})
@@ -105,7 +108,7 @@ func TestServerInfoOptionalLoadFactors(t *testing.T) {
 		"load_factor_server":1.03125
 	}}`
 
-	var response InfoResponse
+	var response server.InfoResponse
 	require.NoError(t, json.Unmarshal([]byte(responseJSON), &response))
 	require.InDelta(t, 1.00390625, response.Info.LoadFactorLocal, 0)
 	require.InDelta(t, 1.0078125, response.Info.LoadFactorNet, 0)
@@ -130,7 +133,7 @@ func TestServerInfoBaseFeeXRPPresence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var response InfoResponse
+			var response server.InfoResponse
 			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
 			actual := response.Info.ValidatedLedger.BaseFeeXRP
 			if !tt.present {
@@ -143,9 +146,9 @@ func TestServerInfoBaseFeeXRPPresence(t *testing.T) {
 	}
 }
 
-func TestServerInfoResponse(t *testing.T) {
+func serverInfoResponseFixture() (server.InfoResponse, string) {
 	baseFeeXRP := 0.00001
-	s := InfoResponse{
+	s := server.InfoResponse{
 		Info: servertypes.Info{
 			BuildVersion:    "1.9.4",
 			CompleteLedgers: "32570-75801736",
@@ -196,7 +199,6 @@ func TestServerInfoResponse(t *testing.T) {
 			ValidationQuorum: 28,
 		},
 	}
-
 	j := `{
 	"info": {
 		"build_version": "1.9.4",
@@ -248,8 +250,30 @@ func TestServerInfoResponse(t *testing.T) {
 		"validation_quorum": 28
 	}
 }`
+	return s, j
+}
 
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+func TestServerInfoResponseSerialize(t *testing.T) {
+	value, payload := serverInfoResponseFixture()
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestServerInfoResponseJSONDecode(t *testing.T) {
+	want, payload := serverInfoResponseFixture()
+	var got server.InfoResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestServerInfoResponseClientDecode(t *testing.T) {
+	want, payload := serverInfoResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got server.InfoResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }

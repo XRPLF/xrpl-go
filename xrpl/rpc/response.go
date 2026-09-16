@@ -1,9 +1,8 @@
 package rpc
 
 import (
-	"github.com/Peersyst/xrpl-go/pkg/decodehook"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
-	"github.com/go-viper/mapstructure/v2"
 )
 
 // Response represents a JSON-RPC response from an XRPL server.
@@ -33,22 +32,7 @@ type APIWarning struct {
 
 // GetResult decodes the RPC response result into the provided value using mapstructure.
 func (r Response) GetResult(v any) error {
-	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		TagName: "json",
-		Result:  &v,
-		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			decodehook.JSON(),
-			mapstructure.TextUnmarshallerHookFunc(),
-		),
-	})
-	if err != nil {
-		return err
-	}
-	err = dec.Decode(r.Result)
-	if err != nil {
-		return err
-	}
-	return nil
+	return clientinternal.DecodeResultInto(r.Result, v)
 }
 
 // XRPLResponse defines the interface for types that can extract a result from an RPC response.

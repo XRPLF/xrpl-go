@@ -7,12 +7,6 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 )
 
-// ResponseDecoder decodes a transport response payload into a typed result.
-// Both the RPC and WebSocket client responses satisfy it.
-type ResponseDecoder interface {
-	GetResult(v any) error
-}
-
 // TxFinalityHooks adapts a client's transaction and validated-ledger queries to
 // the finality state machine, keeping the response-to-status mapping in one
 // place. isNotFound reports transport errors that mean "transaction not found",
