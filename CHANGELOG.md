@@ -22,9 +22,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
 
+#### xrpl/rpc
+
+- Added X-address normalization for `Sponsor`, `Sponsee`, and `CounterpartySponsor`, with embedded tags rejected.
+
 #### xrpl/transaction
 
+- Added common sponsorship fields, fee and reserve flags, and sponsor signature validation, including Batch inner transaction checks. Client validation rejects sponsorship on `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions with `ErrPseudoTransactionSponsorship`. Sponsor multisigner lists require at most 32 signers in strict decoded AccountID order. Requires the `Sponsor` amendment on the target network.
 - Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
+- Added `LedgerStateFixTx`, `SponsorshipSetTx`, and `SponsorshipTransferTx` transaction type constants.
+
+#### xrpl/websocket
+
+- Added X-address normalization for `Sponsor`, `Sponsee`, and `CounterpartySponsor`, with embedded tags rejected.
 
 ### Changed
 
@@ -32,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated binary definitions from a rippled 3.4.0 development build (`21890d9d`), including new protocol fields and removal of unused Hook field definitions.
 - `FeeAmountDelta` now accepts negative XRP strings and rejects non-string values, including IOU and MPT objects. Ordinary amount encoding is unchanged.
+
+#### xrpl/transaction
+
+- Transaction multisigner validation now rejects more than 32 signers, duplicate accounts, and lists not ordered by decoded AccountID. Validation does not reorder signers.
 
 #### xrpl/wallet
 

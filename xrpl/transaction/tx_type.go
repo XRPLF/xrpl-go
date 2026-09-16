@@ -35,6 +35,7 @@ const (
 	EscrowCreateTx                      TxType = "EscrowCreate"
 	EscrowFinishTx                      TxType = "EscrowFinish"
 	EnableAmendmentTx                   TxType = "EnableAmendment"
+	LedgerStateFixTx                    TxType = "LedgerStateFix"
 	MPTokenAuthorizeTx                  TxType = "MPTokenAuthorize"
 	MPTokenIssuanceCreateTx             TxType = "MPTokenIssuanceCreate"  //nolint:gosec // G101 false positive, not credentials
 	MPTokenIssuanceDestroyTx            TxType = "MPTokenIssuanceDestroy" //nolint:gosec // G101 false positive, not credentials
@@ -58,6 +59,8 @@ const (
 	SetFeeTx                            TxType = "SetFee"
 	SetRegularKeyTx                     TxType = "SetRegularKey"
 	SignerListSetTx                     TxType = "SignerListSet"
+	SponsorshipSetTx                    TxType = "SponsorshipSet"
+	SponsorshipTransferTx               TxType = "SponsorshipTransfer"
 	TrustSetTx                          TxType = "TrustSet"
 	TicketCreateTx                      TxType = "TicketCreate"
 	UNLModifyTx                         TxType = "UNLModify"
