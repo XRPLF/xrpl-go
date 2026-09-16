@@ -10,7 +10,7 @@ import (
 )
 
 // Protect raw field presence: conversion must not hide null, mixed, or unknown members.
-func TestValidateSponsorFieldsRawSignature(t *testing.T) {
+func TestInspectSponsorFieldsRawSignature(t *testing.T) {
 	signer := orderedTransactionSigners(t, 1)[0]
 	validSigner := signer.Flatten()
 	tests := []struct {
@@ -47,15 +47,12 @@ func TestValidateSponsorFieldsRawSignature(t *testing.T) {
 			tx["SponsorSignature"] = tt.value
 			before, err := json.Marshal(tx)
 			require.NoError(t, err)
-			err = ValidateSponsorFields(tx)
-			signature, inspectErr := InspectSponsorFields(tx)
+			signature, err := InspectSponsorFields(tx)
 			if tt.valid {
 				require.NoError(t, err)
-				require.NoError(t, inspectErr)
 				require.NotNil(t, signature)
 			} else {
 				require.Error(t, err)
-				require.ErrorIs(t, inspectErr, err)
 				require.Nil(t, signature, "failed inspection must not publish a partial signature")
 			}
 			after, err := json.Marshal(tx)
@@ -119,7 +116,7 @@ func rawSponsoredPayment() FlatTransaction {
 	return FlatTransaction{"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "Sponsor": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", "SponsorFlags": types.SpfSponsorFee}
 }
 
-func TestValidateSponsorFieldsNumericFlags(t *testing.T) {
+func TestInspectSponsorFieldsNumericFlags(t *testing.T) {
 	tests := []struct {
 		name    string
 		value   any
@@ -141,7 +138,7 @@ func TestValidateSponsorFieldsNumericFlags(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tx := rawSponsoredPayment()
 			tx["SponsorFlags"] = tt.value
-			err := ValidateSponsorFields(tx)
+			_, err := InspectSponsorFields(tx)
 			if tt.wantErr == nil {
 				require.NoError(t, err)
 			} else {
@@ -151,7 +148,7 @@ func TestValidateSponsorFieldsNumericFlags(t *testing.T) {
 	}
 }
 
-func TestValidateSponsorFieldsContext(t *testing.T) {
+func TestInspectSponsorFieldsContext(t *testing.T) {
 	tests := []struct {
 		name, field string
 		value       any
@@ -169,14 +166,18 @@ func TestValidateSponsorFieldsContext(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tx := rawSponsoredPayment()
 			tx[tt.field] = tt.value
-			require.ErrorIs(t, ValidateSponsorFields(tx), tt.wantErr)
+			_, err := InspectSponsorFields(tx)
+			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
-	require.NoError(t, ValidateSponsorFields(nil), "this helper validates only sponsorship, not complete transactions")
+	_, err := InspectSponsorFields(nil)
+	require.NoError(t, err, "this helper validates only sponsorship, not complete transactions")
 	tx := rawSponsoredPayment()
 	delete(tx, "SponsorFlags")
-	require.ErrorIs(t, ValidateSponsorFields(tx), ErrSponsorFieldsMissing)
+	_, err = InspectSponsorFields(tx)
+	require.ErrorIs(t, err, ErrSponsorFieldsMissing)
 	tx = rawSponsoredPayment()
 	delete(tx, "Sponsor")
-	require.ErrorIs(t, ValidateSponsorFields(tx), ErrSponsorFieldsMissing)
+	_, err = InspectSponsorFields(tx)
+	require.ErrorIs(t, err, ErrSponsorFieldsMissing)
 }

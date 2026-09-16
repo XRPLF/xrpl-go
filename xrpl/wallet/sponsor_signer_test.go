@@ -260,7 +260,8 @@ func TestCombineSponsorSigners(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, before1, map[string]any(first))
 			require.Equal(t, before2, map[string]any(other))
-			require.NoError(t, transaction.ValidateSponsorFields(combined))
+			_, err = transaction.InspectSponsorFields(combined)
+			require.NoError(t, err)
 			signers := combined["SponsorSignature"].(map[string]any)["Signers"].([]any)
 			require.Len(t, signers, 2)
 			for _, entry := range signers {

@@ -99,7 +99,7 @@ Pass the **combined planned account and sponsor multisigner count** to the exist
 
 Sponsor signing requires `Sponsor` and `fixCleanup3_4_0` on the target network. These helpers always use sponsor prefixes `0x53504E00` and `0x53504D00`. They do not silently fall back to ordinary signing prefixes. Pre-funded use requires the `Sponsor` amendment but no sponsor signature prefix.
 
-All checks are offline structural checks. They do not establish cryptographic validity of supplied signatures, ledger authorization, quorum, sponsorship balance, or amendment activation. `transaction.ValidateSponsorFields` exposes the shared raw sponsorship rules, not full transaction validation. `transaction.InspectSponsorFields` applies the same rules and returns an independent `*types.SponsorSignature` (nil when absent). It retains field presence, including an explicitly empty `SigningPubKey`, and returns no signature on error.
+All checks are offline structural checks. They do not establish cryptographic validity of supplied signatures, ledger authorization, quorum, sponsorship balance, or amendment activation. `transaction.InspectSponsorFields` applies the shared raw sponsorship rules, not full transaction validation, and returns an independent `*types.SponsorSignature` (nil when absent). Discard the returned signature when only validation is needed. It retains field presence, including an explicitly empty `SigningPubKey`, and returns no signature on error.
 
 Submit the final blob without modifying it or autofilling again.
 

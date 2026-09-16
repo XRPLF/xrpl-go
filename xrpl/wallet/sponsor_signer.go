@@ -85,7 +85,7 @@ func SignAsSponsor(w Wallet, tx transaction.FlatTransaction, opts *SignAsSponsor
 		sponsorSignature.TxnSignature = &signature
 	}
 	working["SponsorSignature"] = flattenSponsorSignature(sponsorSignature)
-	if err := transaction.ValidateSponsorFields(working); err != nil {
+	if _, err := transaction.InspectSponsorFields(working); err != nil {
 		return nil, "", "", err
 	}
 	blob, err := binarycodec.Encode(working)
@@ -167,7 +167,7 @@ func CombineSponsorSigners(transactions []transaction.FlatTransaction) (transact
 	}
 	combinedSignature.Signers = allSigners
 	combined["SponsorSignature"] = flattenSponsorSignature(combinedSignature)
-	if err := transaction.ValidateSponsorFields(combined); err != nil {
+	if _, err := transaction.InspectSponsorFields(combined); err != nil {
 		return nil, "", err
 	}
 	blob, err := binarycodec.Encode(combined)
@@ -212,7 +212,7 @@ func AddPreFundedSponsor(tx transaction.FlatTransaction, sponsor types.Address, 
 	}
 	working := transaction.FlatTransaction(clientinternal.CloneTransaction(tx))
 	working["Sponsor"], working["SponsorFlags"] = sponsor.String(), flags
-	if err := transaction.ValidateSponsorFields(working); err != nil {
+	if _, err := transaction.InspectSponsorFields(working); err != nil {
 		return nil, err
 	}
 	return working, nil
