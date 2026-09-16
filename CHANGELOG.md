@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Compare decoded account identities in DepositPreauth, NFTokenCreateOffer, SetRegularKey, DelegateSet, NFTokenMint, NFTokenModify, MPTokenAuthorize, and MPTokenIssuanceSet self-reference checks, so equivalent classic and X-addresses cannot bypass them. AMMClawback now accepts equivalent address forms in its asset issuer/account check.
+- Reject odd-length `VaultCreate.Data` hex during validation instead of failing later during binary encoding.
 
 ## [v0.3.1-mpt.0]
 
