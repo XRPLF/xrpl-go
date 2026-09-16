@@ -217,7 +217,7 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 	if m.Holder != nil && !addresscodec.IsValidAddress(m.Holder.String()) {
 		return false, ErrInvalidAccount
 	}
-	if m.Holder != nil && m.Account.String() == m.Holder.String() {
+	if m.Holder != nil && sameAccountAddress(m.Account, *m.Holder) {
 		return false, ErrHolderAccountConflict
 	}
 

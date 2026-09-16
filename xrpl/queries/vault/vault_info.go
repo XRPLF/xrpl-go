@@ -80,6 +80,8 @@ func (r *InfoRequest) Validate() error {
 // ############################################################################
 
 // Shares contains details about the shares issued by a Vault.
+// OwnerNode and Flags are required in the XRPL.js response model. Their existing
+// Go types and omission behavior are retained for compatibility.
 type Shares struct {
 	// The ID of the Issuer of the Share. It will always be the pseudo-account ID.
 	Issuer types.Address `json:"Issuer"`
@@ -103,9 +105,24 @@ type Shares struct {
 	DomainID string `json:"DomainID,omitempty"`
 	// Bit-field flags associated with the shares issuance.
 	Flags *uint32 `json:"Flags,omitempty"`
+	// The number of decimal places used to display share amounts. Zero is omitted on encoding.
+	AssetScale uint8 `json:"AssetScale,omitempty"`
+	// The maximum number of shares that can be issued, as an unsigned decimal integer string.
+	MaximumAmount string `json:"MaximumAmount,omitempty"`
+	// The transfer fee in tenths of a basis point. Zero is omitted on encoding.
+	TransferFee uint16 `json:"TransferFee,omitempty"`
+	// Arbitrary metadata about the share issuance, encoded as hexadecimal.
+	MPTokenMetadata string `json:"MPTokenMetadata,omitempty"`
+	// The number of locked shares, as an unsigned decimal integer string.
+	LockedAmount string `json:"LockedAmount,omitempty"`
+	// The ledger entry holding the underlying asset for the vault's pseudo-account.
+	// Set for IOU and MPT vaults created with fixCleanup3_2_0 enabled, not XRP vaults.
+	ReferenceHolding types.Hash256 `json:"ReferenceHolding,omitempty"`
 }
 
 // Vault contains the vault data returned by the vault_info method.
+// OwnerNode, ShareMPTID, WithdrawalPolicy, and Flags are required in the XRPL.js
+// response model. Their existing Go types and omission behavior are retained for compatibility.
 type Vault struct {
 	// The pseudo-account ID of the vault.
 	Account types.Address `json:"Account"`

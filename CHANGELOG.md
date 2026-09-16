@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
 
+#### xrpl/ledger-entry-types
+
+- Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values, including in typed account responses. Network use requires the `Sponsor` amendment.
+
+#### xrpl/queries/vault
+
+- Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
+
 ### Changed
 
 #### binary-codec
@@ -25,8 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### xrpl/ledger-entry-types
+
+- Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.
+
 #### xrpl/transaction
 
+- Compare decoded account identities in DepositPreauth, NFTokenCreateOffer, SetRegularKey, DelegateSet, NFTokenMint, NFTokenModify, MPTokenAuthorize, and MPTokenIssuanceSet self-reference checks, so equivalent classic and X-addresses cannot bypass them. AMMClawback now accepts equivalent address forms in its asset issuer/account check.
 - Reject odd-length `VaultCreate.Data` hex during validation instead of failing later during binary encoding.
 
 ## [v0.3.1-mpt.0]

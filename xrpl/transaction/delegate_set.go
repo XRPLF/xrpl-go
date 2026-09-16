@@ -116,7 +116,7 @@ func (d *DelegateSet) Validate() (bool, error) {
 	}
 
 	// Authorize and Account must be different
-	if d.Authorize == d.Account {
+	if sameAccountAddress(d.Authorize, d.Account) {
 		return false, ErrDelegateSetAuthorizeAccountConflict
 	}
 
