@@ -119,6 +119,13 @@ type AccountRoot struct {
 	RegularKey types.Address `json:",omitempty"`
 	// The sequence number of the next valid transaction for this account.
 	Sequence uint32
+	// The number of owned objects whose reserves are paid by other accounts.
+	// Nil means the field is absent, while a pointer to zero preserves an explicit zero.
+	SponsoredOwnerCount *uint32 `json:",omitempty"`
+	// The number of objects whose reserves this account pays for other accounts.
+	SponsoringOwnerCount *uint32 `json:",omitempty"`
+	// The number of other accounts whose base reserves this account pays.
+	SponsoringAccountCount *uint32 `json:",omitempty"`
 	// How many Tickets this account owns in the ledger. This is updated automatically to ensure that the account
 	// stays within the hard limit of 250 Tickets at a time. This field is omitted if the account has zero Tickets.
 	// (Added by the TicketBatch amendment.)
@@ -132,6 +139,8 @@ type AccountRoot struct {
 	WalletLocator types.Hash256 `json:",omitempty"`
 	// Unused. (The code supports this field but there is no way to set it.)
 	WalletSize uint32 `json:",omitempty"`
+	// The account paying this account's base reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the ledger entry type for AccountRoot.

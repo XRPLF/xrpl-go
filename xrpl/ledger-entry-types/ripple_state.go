@@ -103,6 +103,10 @@ type RippleState struct {
 	PreviousTxnID types.Hash256
 	// The index of the ledger that contains the transaction that most recently modified this entry.
 	PreviousTxnLgrSeq uint32
+	// The account paying the low account's reserve for this trust line. Requires the Sponsor amendment.
+	LowSponsor types.Address `json:",omitempty"`
+	// The account paying the high account's reserve for this trust line. Requires the Sponsor amendment.
+	HighSponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.

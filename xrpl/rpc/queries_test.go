@@ -26,6 +26,7 @@ import (
 )
 
 func TestClient_GetAccountInfo(t *testing.T) {
+	zero, one, two, maximum := uint32(0), uint32(1), uint32(2), uint32(4294967295)
 	tests := []struct {
 		name          string
 		mockResponse  string
@@ -65,7 +66,37 @@ func TestClient_GetAccountInfo(t *testing.T) {
 			}},
 		},
 		{
-			name: "successful account info request",
+			name: "explicit zero sponsorship counters",
+			mockResponse: `{"result":{"account_data":{
+				"Account":"rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				"LedgerEntryType":"AccountRoot",
+				"SponsoredOwnerCount":0,"SponsoringOwnerCount":0,"SponsoringAccountCount":0
+			}}}`,
+			mockStatus: 200,
+			request:    &account.InfoRequest{Account: "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"},
+			expected: account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:             "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType:     ledger.AccountRootEntry,
+				SponsoredOwnerCount: &zero, SponsoringOwnerCount: &zero, SponsoringAccountCount: &zero,
+			}},
+		},
+		{
+			name: "nonzero sponsorship counters",
+			mockResponse: `{"result":{"account_data":{
+				"Account":"rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				"LedgerEntryType":"AccountRoot",
+				"SponsoredOwnerCount":1,"SponsoringOwnerCount":2,"SponsoringAccountCount":4294967295
+			}}}`,
+			mockStatus: 200,
+			request:    &account.InfoRequest{Account: "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"},
+			expected: account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:             "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType:     ledger.AccountRootEntry,
+				SponsoredOwnerCount: &one, SponsoringOwnerCount: &two, SponsoringAccountCount: &maximum,
+			}},
+		},
+		{
+			name: "successful account info request with absent sponsorship counters",
 			mockResponse: `{
 				"result": {
 					"account_data": {

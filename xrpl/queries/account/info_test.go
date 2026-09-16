@@ -12,6 +12,48 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAccountInfoSponsorshipFields(t *testing.T) {
+	zero, one, maximum := uint32(0), uint32(1), uint32(4294967295)
+	tests := []struct {
+		name                            string
+		fields                          string
+		sponsored, sponsoring, accounts *uint32
+	}{
+		{name: "absent", fields: `{}`},
+		{name: "sponsored zero", fields: `{"SponsoredOwnerCount":0}`, sponsored: &zero},
+		{name: "sponsoring zero", fields: `{"SponsoringOwnerCount":0}`, sponsoring: &zero},
+		{name: "accounts zero", fields: `{"SponsoringAccountCount":0}`, accounts: &zero},
+		{name: "all counts", fields: `{"SponsoredOwnerCount":1,"SponsoringOwnerCount":4294967295,"SponsoringAccountCount":0}`, sponsored: &one, sponsoring: &maximum, accounts: &zero},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal([]byte(tt.fields), &data))
+			data["Sponsor"] = json.RawMessage(`"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"`)
+			data["Account"] = json.RawMessage(`"r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"`)
+			data["Balance"] = json.RawMessage(`"1000000"`)
+			data["LedgerEntryType"] = json.RawMessage(`"AccountRoot"`)
+			fixture, err := json.Marshal(map[string]any{"account_data": data, "validated": true})
+			require.NoError(t, err)
+			var response InfoResponse
+			require.NoError(t, json.Unmarshal(fixture, &response))
+			require.Equal(t, types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"), response.AccountData.Sponsor)
+			require.Equal(t, tt.sponsored, response.AccountData.SponsoredOwnerCount)
+			require.Equal(t, tt.sponsoring, response.AccountData.SponsoringOwnerCount)
+			require.Equal(t, tt.accounts, response.AccountData.SponsoringAccountCount)
+			encoded, err := json.Marshal(response)
+			require.NoError(t, err)
+			var roundtrip struct {
+				AccountData map[string]json.RawMessage `json:"account_data"`
+			}
+			require.NoError(t, json.Unmarshal(encoded, &roundtrip))
+			for _, field := range []string{"Sponsor", "SponsoredOwnerCount", "SponsoringOwnerCount", "SponsoringAccountCount"} {
+				require.Equal(t, data[field], roundtrip.AccountData[field], field)
+			}
+		})
+	}
+}
+
 func TestAccountInfoRequest(t *testing.T) {
 	s := InfoRequest{
 		Account:     "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
