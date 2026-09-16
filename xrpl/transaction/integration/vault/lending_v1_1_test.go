@@ -17,9 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// These scenarios require LendingProtocolV1_1, Credentials, DepositAuth,
-// DepositPreauth, and fixCleanup3_4_0. The pinned localnet config enables them, rather than
-// silently skipping scenarios on an incompatible node.
+// Create an empty closed-ended vault, check its ledger fields, then delete it
+// with metadata. Requires LendingProtocolV1_1.
 func testClosedVaultLifecycle(t *testing.T, client integration.Client) {
 	t.Helper()
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 1})
@@ -27,148 +26,197 @@ func testClosedVaultLifecycle(t *testing.T, client integration.Client) {
 	defer runner.Teardown()
 	owner := runner.GetWallet(0)
 
-	latest, err := client.GetLedger(&queryledger.Request{LedgerIndex: common.Validated})
+	// Use ledger time, not the host clock. Allow one hour for subscription and
+	// one hour for investment so both dates remain valid during this test.
+	const subscriptionWindow uint32 = 3600
+	const investmentPeriod uint32 = 3600
+	validatedLedger, err := client.GetLedger(&queryledger.Request{LedgerIndex: common.Validated})
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, latest.Ledger.CloseTime, 0)
-	require.LessOrEqual(t, int64(latest.Ledger.CloseTime), int64(math.MaxUint32-7200))
-	subscription := uint32(latest.Ledger.CloseTime) + 3600 //nolint:gosec // bounded above
-	redemption := subscription + 3600
+	closeTime := validatedLedger.Ledger.CloseTime
+	require.GreaterOrEqual(t, closeTime, 0)
+	require.LessOrEqual(t, int64(closeTime), int64(math.MaxUint32-subscriptionWindow-investmentPeriod))
+	subscriptionDate := uint32(closeTime) + subscriptionWindow //nolint:gosec // bounded above
+	redemptionDate := subscriptionDate + investmentPeriod
+
+	// Create the vault and wait until it is available in the validated ledger.
 	kind := types.VaultKindClosed
-	create := transaction.VaultCreate{
+	createVault := transaction.VaultCreate{
 		BaseTx:           transaction.BaseTx{Account: owner.GetAddress()},
 		Asset:            ledger.Asset{Currency: "XRP"},
 		VaultKind:        &kind,
-		SubscriptionDate: &subscription,
-		RedemptionDate:   &redemption,
+		SubscriptionDate: &subscriptionDate,
+		RedemptionDate:   &redemptionDate,
 	}
-	flat := create.Flatten()
-	_, err = runner.TestSuccessfulTransactionAndWait(&flat, owner, nil)
+	createTx := createVault.Flatten()
+	_, err = runner.TestSuccessfulTransactionAndWait(&createTx, owner, nil)
 	require.NoError(t, err)
 
-	objects, err := client.GetAccountObjects(&account.ObjectsRequest{
-		Account: owner.GetAddress(), Type: account.VaultObject, LedgerIndex: common.Validated,
-	})
+	vaultRequest := &account.ObjectsRequest{
+		Account:     owner.GetAddress(),
+		Type:        account.VaultObject,
+		LedgerIndex: common.Validated,
+	}
+	vaultObjects, err := client.GetAccountObjects(vaultRequest)
 	require.NoError(t, err)
-	require.Len(t, objects.AccountObjects, 1)
-	vault := integration.DecodeLedgerObject[ledger.Vault](t, objects.AccountObjects[0])
+	require.Len(t, vaultObjects.AccountObjects, 1)
+	vault := integration.DecodeLedgerObject[ledger.Vault](t, vaultObjects.AccountObjects[0])
 	require.Equal(t, &kind, vault.VaultKind)
-	require.Equal(t, &subscription, vault.SubscriptionDate)
-	require.Equal(t, &redemption, vault.RedemptionDate)
+	require.Equal(t, &subscriptionDate, vault.SubscriptionDate)
+	require.Equal(t, &redemptionDate, vault.RedemptionDate)
 	require.NotNil(t, vault.LEVersion)
 	require.Equal(t, uint8(1), *vault.LEVersion)
 
-	metadata := "636C6F73696E67207661756C74"
-	deletion := transaction.VaultDelete{
-		BaseTx: transaction.BaseTx{Account: owner.GetAddress()}, VaultID: vault.Index, MemoData: &metadata,
+	// Deletion must retain the top-level metadata and remove the vault object.
+	metadata := "636C6F73696E67207661756C74" // "closing vault"
+	deleteVault := transaction.VaultDelete{
+		BaseTx:   transaction.BaseTx{Account: owner.GetAddress()},
+		VaultID:  vault.Index,
+		MemoData: &metadata,
 	}
-	flat = deletion.Flatten()
-	response, err := runner.TestSuccessfulTransactionAndWait(&flat, owner, nil)
+	deleteTx := deleteVault.Flatten()
+	deleteResult, err := runner.TestSuccessfulTransactionAndWait(&deleteTx, owner, nil)
 	require.NoError(t, err)
-	require.Equal(t, metadata, response.TxJSON["MemoData"])
-	objects, err = client.GetAccountObjects(&account.ObjectsRequest{
-		Account: owner.GetAddress(), Type: account.VaultObject, LedgerIndex: common.Validated,
-	})
+	require.Equal(t, metadata, deleteResult.TxJSON["MemoData"])
+
+	vaultObjects, err = client.GetAccountObjects(vaultRequest)
 	require.NoError(t, err)
-	require.Empty(t, objects.AccountObjects)
+	require.Empty(t, vaultObjects.AccountObjects)
 }
 
+// A deposit-authorized receiver must reject a withdrawal without CredentialIDs
+// and accept the same withdrawal with them. Requires Credentials, DepositAuth,
+// DepositPreauth, and fixCleanup3_4_0.
 func testVaultWithdrawalCredentials(t *testing.T, client integration.Client) {
 	t.Helper()
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 3})
 	require.NoError(t, runner.Setup())
 	defer runner.Teardown()
-	owner, depositor, receiver := runner.GetWallet(0), runner.GetWallet(1), runner.GetWallet(2)
-	submit := func(flat transaction.FlatTransaction, signer *wallet.Wallet) {
+
+	owner := runner.GetWallet(0) // Also issues the depositor's credential.
+	depositor := runner.GetWallet(1)
+	receiver := runner.GetWallet(2)
+	receiverAddress := receiver.GetAddress()
+
+	submitAndWait := func(tx transaction.FlatTransaction, signer *wallet.Wallet) {
 		t.Helper()
-		_, err := runner.TestSuccessfulTransactionAndWait(&flat, signer, nil)
+		_, err := runner.TestSuccessfulTransactionAndWait(&tx, signer, nil)
 		require.NoError(t, err)
 	}
 
-	credentialType := types.CredentialType("6C702D6B7963")
+	// Give the depositor an accepted credential from the vault owner.
+	credentialType := types.CredentialType("6C702D6B7963") // "lp-kyc"
 	createCredential := transaction.CredentialCreate{
-		BaseTx: transaction.BaseTx{Account: owner.GetAddress()}, Subject: depositor.GetAddress(), CredentialType: credentialType,
+		BaseTx:         transaction.BaseTx{Account: owner.GetAddress()},
+		Subject:        depositor.GetAddress(),
+		CredentialType: credentialType,
 	}
-	submit(createCredential.Flatten(), owner)
+	submitAndWait(createCredential.Flatten(), owner)
+
 	acceptCredential := transaction.CredentialAccept{
-		BaseTx: transaction.BaseTx{Account: depositor.GetAddress()}, Issuer: owner.GetAddress(), CredentialType: credentialType,
+		BaseTx:         transaction.BaseTx{Account: depositor.GetAddress()},
+		Issuer:         owner.GetAddress(),
+		CredentialType: credentialType,
 	}
-	submit(acceptCredential.Flatten(), depositor)
+	submitAndWait(acceptCredential.Flatten(), depositor)
 
-	// Only the receiver's deposit authorization requires CredentialIDs. A private
-	// vault's domain does not require them for a withdrawal to the depositor.
-	depositAuth := transaction.AccountSet{BaseTx: transaction.BaseTx{Account: receiver.GetAddress()}}
+	// Require this credential to deposit funds into the receiver's account.
+	// The vault is public, so only the receiver's deposit authorization is tested.
+	depositAuth := transaction.AccountSet{
+		BaseTx: transaction.BaseTx{Account: receiverAddress},
+	}
 	depositAuth.SetAsfDepositAuth()
-	submit(depositAuth.Flatten(), receiver)
-	preauth := transaction.DepositPreauth{
-		BaseTx: transaction.BaseTx{Account: receiver.GetAddress()},
-		AuthorizeCredentials: []types.AuthorizeCredentialsWrapper{{Credential: types.AuthorizeCredentials{
-			Issuer: owner.GetAddress(), CredentialType: credentialType,
-		}}},
-	}
-	submit(preauth.Flatten(), receiver)
+	submitAndWait(depositAuth.Flatten(), receiver)
 
+	preauthorizeCredential := transaction.DepositPreauth{
+		BaseTx: transaction.BaseTx{Account: receiverAddress},
+		AuthorizeCredentials: []types.AuthorizeCredentialsWrapper{
+			{
+				Credential: types.AuthorizeCredentials{
+					Issuer:         owner.GetAddress(),
+					CredentialType: credentialType,
+				},
+			},
+		},
+	}
+	submitAndWait(preauthorizeCredential.Flatten(), receiver)
+
+	// Create a public XRP vault and find the ledger IDs used by the withdrawal.
 	createVault := transaction.VaultCreate{
 		BaseTx: transaction.BaseTx{Account: owner.GetAddress()},
 		Asset:  ledger.Asset{Currency: "XRP"},
 	}
-	submit(createVault.Flatten(), owner)
-	vaults, err := client.GetAccountObjects(&account.ObjectsRequest{
-		Account: owner.GetAddress(), Type: account.VaultObject, LedgerIndex: common.Validated,
-	})
-	require.NoError(t, err)
-	require.Len(t, vaults.AccountObjects, 1)
-	vaultID, ok := vaults.AccountObjects[0]["index"].(string)
-	require.True(t, ok)
-	credentials, err := client.GetAccountObjects(&account.ObjectsRequest{
-		Account: depositor.GetAddress(), Type: account.CredentialObject, LedgerIndex: common.Validated,
-	})
-	require.NoError(t, err)
-	require.Len(t, credentials.AccountObjects, 1)
-	credentialID, ok := credentials.AccountObjects[0]["index"].(string)
-	require.True(t, ok)
+	submitAndWait(createVault.Flatten(), owner)
 
+	vaultRequest := &account.ObjectsRequest{
+		Account:     owner.GetAddress(),
+		Type:        account.VaultObject,
+		LedgerIndex: common.Validated,
+	}
+	vaultObjects, err := client.GetAccountObjects(vaultRequest)
+	require.NoError(t, err)
+	require.Len(t, vaultObjects.AccountObjects, 1)
+	vault := integration.DecodeLedgerObject[ledger.Vault](t, vaultObjects.AccountObjects[0])
+	require.NotEmpty(t, vault.Index)
+
+	credentialObjects, err := client.GetAccountObjects(&account.ObjectsRequest{
+		Account:     depositor.GetAddress(),
+		Type:        account.CredentialObject,
+		LedgerIndex: common.Validated,
+	})
+	require.NoError(t, err)
+	require.Len(t, credentialObjects.AccountObjects, 1)
+	credential := integration.DecodeLedgerObject[ledger.Credential](t, credentialObjects.AccountObjects[0])
+	require.NotEmpty(t, credential.Index)
+
+	// The depositor funds the vault, then tries to send half to the receiver.
+	const depositAmount types.XRPCurrencyAmount = 1_000_000
+	const withdrawalAmount types.XRPCurrencyAmount = 500_000
 	deposit := transaction.VaultDeposit{
 		BaseTx:  transaction.BaseTx{Account: depositor.GetAddress()},
-		VaultID: types.Hash256(vaultID), Amount: types.XRPCurrencyAmount(1_000_000),
+		VaultID: vault.Index,
+		Amount:  depositAmount,
 	}
-	submit(deposit.Flatten(), depositor)
-	destination := receiver.GetAddress()
-	balanceBefore, err := client.GetXrpDropsBalanceValidated(destination)
+	submitAndWait(deposit.Flatten(), depositor)
+
+	balanceBefore, err := client.GetXrpDropsBalanceValidated(receiverAddress)
 	require.NoError(t, err)
 	withdraw := transaction.VaultWithdraw{
-		BaseTx:  transaction.BaseTx{Account: depositor.GetAddress()},
-		VaultID: types.Hash256(vaultID), Amount: types.XRPCurrencyAmount(500_000),
-		Destination: &destination,
+		BaseTx:      transaction.BaseTx{Account: depositor.GetAddress()},
+		VaultID:     vault.Index,
+		Amount:      withdrawalAmount,
+		Destination: &receiverAddress,
 	}
 
-	// Even with the accepted credential and preauthorization on the ledger,
-	// omitting CredentialIDs must fail. Wait for the claimed-fee result before
-	// submitting again so the next transaction uses the updated sequence.
-	flat := withdraw.Flatten()
-	require.NoError(t, client.Autofill(&flat))
-	blob, _, err := depositor.Sign(flat)
+	// Without CredentialIDs, the withdrawal must fail even though the credential
+	// and preauthorization exist. Wait for validation because the fee is claimed
+	// and the depositor's sequence changes before the retry.
+	withdrawTx := withdraw.Flatten()
+	require.NoError(t, client.Autofill(&withdrawTx))
+	withdrawBlob, _, err := depositor.Sign(withdrawTx)
 	require.NoError(t, err)
-	response, err := client.SubmitTxBlobAndWait(blob, false)
+	rejectedWithdrawal, err := client.SubmitTxBlobAndWait(withdrawBlob, false)
 	require.NoError(t, err)
-	require.True(t, response.Validated)
-	require.Equal(t, "tecNO_PERMISSION", response.Meta.TransactionResult)
-	balanceAfterRejection, err := client.GetXrpDropsBalanceValidated(destination)
+	require.True(t, rejectedWithdrawal.Validated)
+	require.Equal(t, "tecNO_PERMISSION", rejectedWithdrawal.Meta.TransactionResult)
+
+	balanceAfterRejection, err := client.GetXrpDropsBalanceValidated(receiverAddress)
 	require.NoError(t, err)
 	require.Equal(t, balanceBefore, balanceAfterRejection)
 
-	// Adding only CredentialIDs must authorize the same withdrawal. This must
-	// fail if the IDs are dropped during flattening, signing, or submission.
-	withdraw.CredentialIDs = types.CredentialIDs{credentialID}
-	submit(withdraw.Flatten(), depositor)
-	balanceAfterWithdrawal, err := client.GetXrpDropsBalanceValidated(destination)
+	// Change only CredentialIDs. The receiver must now get the funds.
+	withdraw.CredentialIDs = types.CredentialIDs{credential.Index.String()}
+	submitAndWait(withdraw.Flatten(), depositor)
+
+	balanceAfterWithdrawal, err := client.GetXrpDropsBalanceValidated(receiverAddress)
 	require.NoError(t, err)
-	require.Equal(t, balanceBefore+types.XRPCurrencyAmount(500_000), balanceAfterWithdrawal)
-	vaults, err = client.GetAccountObjects(&account.ObjectsRequest{
-		Account: owner.GetAddress(), Type: account.VaultObject, LedgerIndex: common.Validated,
-	})
+	require.Equal(t, balanceBefore+withdrawalAmount, balanceAfterWithdrawal)
+
+	vaultObjects, err = client.GetAccountObjects(vaultRequest)
 	require.NoError(t, err)
-	require.Len(t, vaults.AccountObjects, 1)
-	require.Equal(t, "500000", vaults.AccountObjects[0]["AssetsTotal"])
+	require.Len(t, vaultObjects.AccountObjects, 1)
+	vault = integration.DecodeLedgerObject[ledger.Vault](t, vaultObjects.AccountObjects[0])
+	require.NotNil(t, vault.AssetsTotal)
+	require.Equal(t, types.XRPLNumber("500000"), *vault.AssetsTotal)
 }
 
 func TestIntegrationClosedVaultLifecycle_RPCClient(t *testing.T) {
@@ -180,8 +228,8 @@ func TestIntegrationClosedVaultLifecycle_RPCClient(t *testing.T) {
 
 func TestIntegrationClosedVaultLifecycle_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
-	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	testClosedVaultLifecycle(t, client)
+	config := websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider)
+	testClosedVaultLifecycle(t, websocket.NewClient(config))
 }
 
 func TestIntegrationVaultWithdrawalCredentials_RPCClient(t *testing.T) {
@@ -193,6 +241,6 @@ func TestIntegrationVaultWithdrawalCredentials_RPCClient(t *testing.T) {
 
 func TestIntegrationVaultWithdrawalCredentials_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
-	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
-	testVaultWithdrawalCredentials(t, client)
+	config := websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider)
+	testVaultWithdrawalCredentials(t, websocket.NewClient(config))
 }
