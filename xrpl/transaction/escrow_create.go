@@ -82,32 +82,20 @@ func (e *EscrowCreate) Flatten() FlatTransaction {
 
 // UnmarshalJSON implements custom JSON unmarshalling for EscrowCreate.
 func (e *EscrowCreate) UnmarshalJSON(data []byte) error {
-	type escrowCreateHelper struct {
-		BaseTx
-		Amount         json.RawMessage
-		Destination    types.Address
-		CancelAfter    uint32  `json:",omitempty"`
-		FinishAfter    uint32  `json:",omitempty"`
-		Condition      string  `json:",omitempty"`
-		DestinationTag *uint32 `json:",omitempty"`
+	type escrowCreateFields EscrowCreate
+	var decoded struct {
+		escrowCreateFields
+		Amount json.RawMessage
 	}
-	var h escrowCreateHelper
-	if err := json.Unmarshal(data, &h); err != nil {
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
-	*e = EscrowCreate{
-		BaseTx:         h.BaseTx,
-		Destination:    h.Destination,
-		CancelAfter:    h.CancelAfter,
-		FinishAfter:    h.FinishAfter,
-		Condition:      h.Condition,
-		DestinationTag: h.DestinationTag,
-	}
-	amount, err := types.UnmarshalCurrencyAmount(h.Amount)
+	amount, err := types.UnmarshalCurrencyAmount(decoded.Amount)
 	if err != nil {
 		return err
 	}
-	e.Amount = amount
+	decoded.escrowCreateFields.Amount = amount
+	*e = EscrowCreate(decoded.escrowCreateFields)
 	return nil
 }
 
