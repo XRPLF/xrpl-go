@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### xrpl/ledger-entry-types
+
+- Added the XLS-68 `Sponsorship` ledger entry, with its `SponsorshipEntry` type, the `LsfSponsorshipRequireSignForFee` and `LsfSponsorshipRequireSignForReserve` flags, and its optional `FeeAmount`, `MaxFee`, and `RemainingOwnerCount` budget fields.
+
+#### xrpl/queries
+
+- Added the `sponsorship` selector to `EntryRequest`, which accepts a ledger-entry index or a `SponsorshipSelectorFields` object holding a sponsor and a sponsee.
+
+#### xrpl/transaction
+
+- Added the `SpfSponsorFee`, `SpfSponsorReserve`, and `SpfSponsorUniversal` constants for the XLS-68 `SponsorFlags` transaction common field.
+
+#### xrpl/rpc, xrpl/websocket
+
+- Added `ValidateSponsorship` and `ValidateSponsorshipContext`, an explicit, opt-in preflight for sponsored transactions. It looks up the `Sponsorship` entry for the transaction's sponsor and sponsee (its `Delegate` when present, otherwise its `Account`) on the current ledger, requires a sponsor co-signature when no entry exists, and otherwise checks the entry's require-signature flags, `FeeAmount`, and `MaxFee` against a supplied fee estimate or the transaction `Fee`. A `Sponsor` equal to `Account`, a delegated transaction requesting reserve sponsorship, and invalid `SponsorFlags` are rejected without a lookup, and a zero fee draws nothing from the entry, all matching xrpld 3.4.0. `SponsorshipValidation` reports the outcome with the entry and fee it checked, and the `ErrSponsorship*`, `ErrSponsorIsAccount`, `ErrInvalidSponsorFlags`, and `ErrDelegatedReserveSponsorship` sentinels identify each rejection. Only `entryNotFound` is treated as an absent entry; transport, permission, and decoding failures are returned as errors. Autofill and submission are unchanged and still make no sponsorship query.
+
 ### Fixed
 
 #### dependencies

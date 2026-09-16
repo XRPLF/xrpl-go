@@ -81,6 +81,59 @@ var (
 	// ErrAmountAndDeliverMaxMustBeIdentical indicates that a Payment has conflicting Amount and DeliverMax values.
 	ErrAmountAndDeliverMaxMustBeIdentical = errors.New("payment transaction: Amount and DeliverMax fields must be identical when both are provided")
 
+	// ErrTransactionNotSponsored indicates that a sponsorship preflight received a transaction
+	// without the Sponsor and SponsorFlags common fields.
+	ErrTransactionNotSponsored = errors.New("transaction is not sponsored: Sponsor and SponsorFlags are required")
+	// ErrInvalidSponsorFlags indicates Sponsor without SponsorFlags or vice versa, or SponsorFlags
+	// that are zero or use unknown bits.
+	ErrInvalidSponsorFlags = errors.New("invalid sponsorship: Sponsor and SponsorFlags must be set together and SponsorFlags must use only spfSponsorFee and spfSponsorReserve")
+	// ErrSponsorIsAccount indicates a transaction whose Sponsor is its own Account.
+	ErrSponsorIsAccount = errors.New("a transaction cannot be sponsored by its own Account")
+	// ErrSponsorFieldIsNotAString indicates that a transaction Sponsor value has the wrong Go
+	// type.
+	ErrSponsorFieldIsNotAString = errors.New("field Sponsor must be a string")
+	// ErrSponsorFlagsFieldIsNotAUint32 indicates that a transaction SponsorFlags value has the
+	// wrong Go type.
+	ErrSponsorFlagsFieldIsNotAUint32 = errors.New("field SponsorFlags must be a uint32")
+	// ErrSponsorshipSponseeUnavailable indicates that a sponsorship preflight could not resolve a
+	// sponsee from the transaction's Delegate or Account.
+	ErrSponsorshipSponseeUnavailable = errors.New("sponsorship sponsee is unavailable: Delegate or Account is required")
+	// ErrSponsorshipFeeUnavailable indicates that a sponsorship preflight has neither an estimated
+	// fee nor a transaction Fee to validate.
+	ErrSponsorshipFeeUnavailable = errors.New("sponsorship fee is unavailable: supply an estimated fee or set the transaction Fee")
+	// ErrSponsorshipFeeIsNotAString indicates that a transaction Fee value has the wrong Go type.
+	ErrSponsorshipFeeIsNotAString = errors.New("field Fee must be a string")
+	// ErrInvalidSponsorshipFee indicates that a sponsorship preflight fee is not a whole, non-
+	// negative number of drops.
+	ErrInvalidSponsorshipFee = errors.New("invalid sponsorship fee")
+	// ErrDelegatedReserveSponsorship indicates that a delegated transaction requested reserve
+	// sponsorship, which rippled rejects outright.
+	ErrDelegatedReserveSponsorship = errors.New("a delegated transaction cannot request reserve sponsorship")
+	// ErrSponsorshipEntryUnexpectedType indicates that a ledger_entry lookup returned a node that
+	// is not a Sponsorship entry.
+	ErrSponsorshipEntryUnexpectedType = errors.New("ledger entry is not a Sponsorship entry")
+	// ErrSponsorshipEntryMalformed indicates that a Sponsorship ledger entry could not be decoded.
+	ErrSponsorshipEntryMalformed = errors.New("malformed Sponsorship ledger entry")
+	// ErrSponsorshipEntryNotFound indicates that no Sponsorship ledger entry exists for the
+	// sponsor and sponsee, and the transaction carries no sponsor co-signature to authorize the
+	// sponsorship instead.
+	ErrSponsorshipEntryNotFound = errors.New("no Sponsorship ledger entry and no SponsorSignature")
+	// ErrSponsorshipFeeSignatureRequired indicates that the Sponsorship entry sets
+	// lsfSponsorshipRequireSignForFee, so fee sponsorship needs a sponsor co-signature.
+	ErrSponsorshipFeeSignatureRequired = errors.New("fee sponsorship requires a SponsorSignature")
+	// ErrSponsorshipReserveSignatureRequired indicates that the Sponsorship entry sets
+	// lsfSponsorshipRequireSignForReserve, so reserve sponsorship needs a sponsor co-signature.
+	ErrSponsorshipReserveSignatureRequired = errors.New("reserve sponsorship requires a SponsorSignature")
+	// ErrSponsorshipFeeAmountMissing indicates that the Sponsorship entry has no FeeAmount to draw
+	// a sponsored fee from.
+	ErrSponsorshipFeeAmountMissing = errors.New("sponsorship has no FeeAmount for fee sponsorship")
+	// ErrSponsorshipFeeBudgetExhausted indicates that the Sponsorship entry's FeeAmount cannot
+	// cover the transaction fee.
+	ErrSponsorshipFeeBudgetExhausted = errors.New("sponsorship FeeAmount cannot cover the transaction fee")
+	// ErrSponsorshipMaxFeeExceeded indicates that the transaction fee is above the Sponsorship
+	// entry's per-transaction MaxFee cap.
+	ErrSponsorshipMaxFeeExceeded = errors.New("transaction fee exceeds the sponsorship MaxFee")
+
 	// fee
 
 	// ErrInvalidFeeValue is returned when a fee input is not a finite,

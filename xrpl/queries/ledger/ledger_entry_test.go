@@ -216,6 +216,19 @@ func TestEntryRequestSelectors(t *testing.T) {
 			expected: `{"ripple_state":{"accounts":["rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW"],"currency":"USD"}}`,
 		},
 		{
+			name: "sponsorship object",
+			request: EntryRequest{Sponsorship: objectSelector(SponsorshipSelectorFields{
+				Sponsor: accountA,
+				Sponsee: accountB,
+			})},
+			expected: `{"sponsorship":{"sponsor":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","sponsee":"rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW"}}`,
+		},
+		{
+			name:     "sponsorship index",
+			request:  EntryRequest{Sponsorship: SponsorshipSelector{Index: entryIndex}},
+			expected: `{"sponsorship":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
+		},
+		{
 			name: "ticket object",
 			request: EntryRequest{Ticket: objectSelector(TicketSelectorFields{
 				Account:   accountA,
@@ -298,6 +311,14 @@ func TestEntryRequestValidate(t *testing.T) {
 			name:     "unpaired bridge account on another selector",
 			request:  EntryRequest{Index: entryIndex, BridgeAccount: accountA},
 			expected: ErrInvalidBridgeSelector,
+		},
+		{
+			name: "sponsorship selector with index and object",
+			request: EntryRequest{Sponsorship: SponsorshipSelector{
+				Index:  entryIndex,
+				Object: &SponsorshipSelectorFields{Sponsor: accountA, Sponsee: accountB},
+			}},
+			expected: ErrInvalidEntrySelector,
 		},
 		{
 			name: "selector with index and object",

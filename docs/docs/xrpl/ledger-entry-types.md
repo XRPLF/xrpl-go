@@ -30,6 +30,7 @@ The `ledger-entry-types` package contains types and functions to handle ledger o
 - [`PermissionedDomain`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/permissioneddomain)
 - [`RippleState`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/ripplestate)
 - [`SignerList`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/signerlist)
+- [`Sponsorship`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/sponsorship)
 - [`Ticket`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/ticket)
 - [`Vault`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/vault)
 - [`XChainOwnedClaimID`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/xchainownedclaimid)

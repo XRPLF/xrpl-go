@@ -214,6 +214,23 @@ A WebSocket write or write-deadline failure invalidates and closes the failed so
 func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error)
 ```
 
+### Sponsorship preflight
+
+`ValidateSponsorship` checks a sponsored transaction (XLS-68) against the `Sponsorship` ledger entry between its sponsor and its sponsee, reading the current ledger. The check is explicit and optional: autofill and submission never query sponsorship on their own.
+
+The transaction must carry `Sponsor` and a valid `SponsorFlags`, and either a `Fee` or a nonempty `estimatedFee` in drops. The sponsee is the transaction's `Delegate` when present and its `Account` otherwise.
+
+Without a `Sponsorship` entry, only a sponsor co-signature (`SponsorSignature`) authorizes the sponsorship. With an entry, its budget always applies, even to a co-signed transaction, because rippled prefers the pre-funded fee payer whenever the entry exists: a sponsored fee must fit within `FeeAmount` and any `MaxFee` cap. Pre-funded use is additionally rejected when the entry sets `lsfSponsorshipRequireSignForFee` or `lsfSponsorshipRequireSignForReserve` for the requested sponsorship type. A delegated transaction cannot request reserve sponsorship at all, and a zero fee draws nothing from the entry.
+
+A nil error means the preflight completed; read `SponsorshipValidation.Valid` and `SponsorshipValidation.Reason`, which wraps an `ErrSponsorship*` sentinel. A non-nil error means the preflight could not run, because the transaction inputs were unusable or the `ledger_entry` lookup failed. Only `entryNotFound` counts as an absent entry; transport, permission, and decoding failures are returned as errors.
+
+The check does not prove the sponsor holds enough XRP for its own account reserve, and it does not check `RemainingOwnerCount`, because the client cannot know how many reserved objects the transaction creates; the entry is returned in `SponsorshipValidation.Sponsorship` for callers that do. A `Sponsor` equal to `Account` is rejected, and `SponsorFlags` must be set together with `Sponsor` and use only the two defined bits. Which transaction types may request reserve sponsorship is left to transaction validation. rippled remains authoritative.
+
+```go
+func (c *Client) ValidateSponsorship(tx transaction.FlatTransaction, estimatedFee string) (SponsorshipValidation, error)
+func (c *Client) ValidateSponsorshipContext(ctx context.Context, tx transaction.FlatTransaction, estimatedFee string) (SponsorshipValidation, error)
+```
+
 ### Server definitions
 
 `GetServerDefinitions` retrieves the server protocol definitions. Set `DefinitionsRequest.Hash` to a cached hash to allow a hash-only unchanged response.

@@ -143,6 +143,16 @@ type RippleStateSelector struct {
 	Currency string           `json:"currency"`
 }
 
+// SponsorshipSelectorFields identifies a Sponsorship ledger entry by the sponsor that owns it and
+// the sponsee it funds.
+type SponsorshipSelectorFields struct {
+	Sponsor types.Address `json:"sponsor"`
+	Sponsee types.Address `json:"sponsee"`
+}
+
+// SponsorshipSelector is the string-or-object selector accepted by the sponsorship field.
+type SponsorshipSelector = EntrySelector[SponsorshipSelectorFields]
+
 // TicketSelectorFields identifies a Ticket by account and ticket sequence.
 type TicketSelectorFields struct {
 	Account   types.Address `json:"account"`
