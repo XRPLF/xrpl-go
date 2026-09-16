@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Added common sponsorship fields, fee and reserve flags, and sponsor signature validation, including Batch inner transaction checks. Client validation rejects sponsorship on `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions with `ErrPseudoTransactionSponsorship`. Sponsor multisigner lists require at most 32 signers in strict decoded AccountID order. Requires the `Sponsor` amendment on the target network.
+- Added typed `SponsorshipSet` and `SponsorshipTransfer` transactions with operation flags, signed budget deltas, and validation for counterparty, deletion, reserve sponsorship, and account-level sponsor authorization rules. Requires the `Sponsor` amendment on the target network.
 - Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
 - Added `LedgerStateFixTx`, `SponsorshipSetTx`, and `SponsorshipTransferTx` transaction type constants.
 - Added the Payment `TfSponsorCreatedAccount` flag and setter, with validation for native XRP amounts and incompatible fields and flags. Requires the `Sponsor` amendment on the target network.
