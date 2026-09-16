@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values, including in typed account responses. Network use requires the `Sponsor` amendment.
 
+#### xrpl/queries/vault
+
+- Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
+
 ### Changed
 
 #### binary-codec
