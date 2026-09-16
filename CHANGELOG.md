@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
 
+#### xrpl/ledger-entry-types
+
+- Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values, including in typed account responses. Network use requires the `Sponsor` amendment.
+
+#### xrpl/queries/vault
+
+- Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
+
 ### Changed
 
 #### binary-codec
@@ -24,6 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated LoanSet counterparty signing to use role-specific prefixes. Requires `fixCleanup3_4_0` on the target network. For networks without this amendment, use a previous library release.
 
 ### Fixed
+
+#### xrpl/ledger-entry-types
+
+- Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.
 
 #### xrpl/transaction
 
