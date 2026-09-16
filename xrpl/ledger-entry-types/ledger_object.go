@@ -31,6 +31,7 @@ const (
 	PermissionedDomainEntry              EntryType = "PermissionedDomain"
 	RippleStateEntry                     EntryType = "RippleState"
 	SignerListEntry                      EntryType = "SignerList"
+	SponsorshipEntry                     EntryType = "Sponsorship"
 	TicketEntry                          EntryType = "Ticket"
 	VaultEntry                           EntryType = "Vault"
 	XChainOwnedClaimIDEntry              EntryType = "XChainOwnedClaimID"
@@ -106,6 +107,8 @@ func EmptyLedgerObject(t string) (Object, error) {
 		return &RippleState{}, nil
 	case SignerListEntry:
 		return &SignerList{}, nil
+	case SponsorshipEntry:
+		return &Sponsorship{}, nil
 	case TicketEntry:
 		return &Ticket{}, nil
 	case VaultEntry:
