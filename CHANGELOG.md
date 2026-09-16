@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
 
+#### confidential/builder
+
+- Added `GetSpendingBalance()`, which reads a holder's `ConfidentialBalanceSpending` and decrypts it with that holder's ElGamal private key. It takes the same `LedgerQuerier` the builders do, so `rpc.Client` and `websocket.Client` share one reader. Both reads come from one validated ledger, no account sequence is queried, the unspendable `ConfidentialBalanceInbox` is excluded, a missing `MPToken` reports `ErrMPTokenNotFound`, and an `MPToken` with no spending ciphertext reads as zero without decrypting. The search is bounded by the caller's `BalanceRange`, capped at the issuance `ConfidentialOutstandingAmount` as `BuildClawback` already does.
+
+#### docs
+
+- Documented `GetSpendingBalance()` in the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders).
+
 #### xrpl/flag
 
 - Added `ContainsAny` to check whether any bits in a flag mask are set.

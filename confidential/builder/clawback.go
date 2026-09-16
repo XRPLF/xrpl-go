@@ -92,16 +92,9 @@ func BuildClawback(q LedgerQuerier, p BuildClawbackParams) (*transaction.Confide
 	// The confidential supply bounds every holder's balance, and a clawback above it fails
 	// with tecINSUFFICIENT_FUNDS, so it is both a preflight check and a ceiling that keeps
 	// the decryption search from scanning further than the balance can possibly reach.
-	searchRange := p.BalanceRange
-	if searchRange.Low > issuance.confidentialOutstanding {
-		// The range cannot contain the holder's balance, which is a problem with the bounds
-		// the caller supplied rather than the protocol bound ErrAmountExceedsOutstanding
-		// reports, so it is not that sentinel.
-		return nil, fmt.Errorf("%w: BalanceRange.Low %d exceeds the issuance confidential outstanding amount %d",
-			elgamal.ErrInvalidAmountRange, searchRange.Low, issuance.confidentialOutstanding)
-	}
-	if searchRange.High > issuance.confidentialOutstanding {
-		searchRange.High = issuance.confidentialOutstanding
+	searchRange, err := boundedBalanceRange(p.BalanceRange, issuance.confidentialOutstanding)
+	if err != nil {
+		return nil, err
 	}
 
 	amount, err := elgamal.Decrypt(issuerCt, p.IssuerPrivKey, searchRange)
