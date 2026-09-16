@@ -27,34 +27,43 @@ func validateSponsorFields(fields sponsorFields) error {
 	if !fields.present {
 		return nil
 	}
+
 	// Client policy: consensus-generated transactions cannot be sponsored.
 	if IsPseudoTransactionType(fields.txType) {
 		return ErrPseudoTransactionSponsorship
 	}
+
 	if fields.sponsor == "" || fields.flags == 0 {
 		return ErrSponsorFieldsMissing
 	}
+
 	sponsorID, hasTag, err := decodeAddressAccountID(fields.sponsor)
 	if err != nil {
 		return ErrInvalidSponsor
 	}
+
 	if addresscodec.IsZeroAccountID(sponsorID) {
 		return ErrSponsorZero
 	}
+
 	if hasTag {
 		return ErrSponsorTagNotAllowed
 	}
+
 	accountID, _, err := decodeAddressAccountID(fields.account)
 	if err != nil {
 		return ErrInvalidAccount
 	}
+
 	if bytes.Equal(sponsorID, accountID) {
 		return ErrSponsorAccountConflict
 	}
-	if fields.flags & ^(types.SpfSponsorFee|types.SpfSponsorReserve) != 0 {
+
+	if !flag.ContainsOnly(fields.flags, types.SpfSponsorFee|types.SpfSponsorReserve) {
 		return ErrInvalidSponsorFlags
 	}
-	if fields.flags&types.SpfSponsorReserve != 0 {
+
+	if flag.Contains(fields.flags, types.SpfSponsorReserve) {
 		if !isReserveSponsorable(fields.txType) {
 			return fmt.Errorf("%w: %s", ErrReserveSponsorshipNotAllowed, fields.txType)
 		}
@@ -62,9 +71,11 @@ func validateSponsorFields(fields sponsorFields) error {
 			return ErrSponsorDelegateConflict
 		}
 	}
-	if fields.inner && fields.flags&types.SpfSponsorFee != 0 {
+
+	if fields.inner && flag.Contains(fields.flags, types.SpfSponsorFee) {
 		return ErrInnerBatchFeeSponsorship
 	}
+
 	return validateSponsorSignature(fields.signature, fields.inner)
 }
 
@@ -88,25 +99,30 @@ func validateSponsorSignature(signature *types.SponsorSignature, inner bool) err
 	if signature == nil {
 		return nil
 	}
+
 	var signingPubKey string
 	if signature.SigningPubKey != nil {
 		signingPubKey = *signature.SigningPubKey
 	}
+
 	if inner {
 		if signingPubKey != "" || signature.TxnSignature != nil || signature.Signers != nil {
 			return ErrInnerBatchSponsorSignature
 		}
 		return nil
 	}
+
 	if signature.Signers != nil {
 		if len(signature.Signers) == 0 || signingPubKey != "" || signature.TxnSignature != nil {
 			return ErrInvalidSponsorSignature
 		}
 		return validateSigners(signature.Signers)
 	}
+
 	if signingPubKey == "" || signature.TxnSignature == nil || *signature.TxnSignature == "" {
 		return ErrInvalidSponsorSignature
 	}
+
 	return nil
 }
 
@@ -138,29 +154,30 @@ func InspectSponsorFields(tx FlatTransaction) (*types.SponsorSignature, error) {
 		}
 		inner = flag.Contains(flags, types.TfInnerBatchTxn)
 	}
+
 	fields, err := sponsorFieldsFromRaw(tx, inner)
 	if err != nil {
 		return nil, err
 	}
+
 	if err := validateSponsorFields(fields); err != nil {
 		return nil, err
 	}
+
 	return fields.signature, nil
 }
 
-// sponsorFieldsFromInnerRaw converts a Batch inner map after RawTransaction.Validate.
-func sponsorFieldsFromInnerRaw(raw map[string]any) (sponsorFields, error) {
-	return sponsorFieldsFromRaw(raw, true)
-}
-
+// sponsorFieldsFromRaw parses raw sponsorship fields. Set inner for Batch inner transactions.
 func sponsorFieldsFromRaw(raw map[string]any, inner bool) (sponsorFields, error) {
 	_, hasSponsor := raw["Sponsor"]
 	_, hasFlags := raw["SponsorFlags"]
 	_, hasSignature := raw["SponsorSignature"]
+
 	fields := sponsorFields{inner: inner, present: hasSponsor || hasFlags || hasSignature}
 	if !fields.present {
 		return fields, nil
 	}
+
 	if hasSponsor {
 		sponsor, ok := typecheck.ToString(raw["Sponsor"])
 		if !ok {
@@ -168,6 +185,7 @@ func sponsorFieldsFromRaw(raw map[string]any, inner bool) (sponsorFields, error)
 		}
 		fields.sponsor = types.Address(sponsor)
 	}
+
 	if hasFlags {
 		flags, ok := typecheck.ToUint32(raw["SponsorFlags"])
 		if !ok {
@@ -175,16 +193,21 @@ func sponsorFieldsFromRaw(raw map[string]any, inner bool) (sponsorFields, error)
 		}
 		fields.flags = flags
 	}
+
 	account, ok := typecheck.ToString(raw["Account"])
 	if !ok {
 		return sponsorFields{}, ErrInvalidAccount
 	}
+
 	fields.account = types.Address(account)
+
 	txType, ok := typecheck.ToString(raw["TransactionType"])
 	if !ok {
 		return sponsorFields{}, ErrInvalidTransactionType
 	}
+
 	fields.txType = TxType(txType)
+
 	if value, present := raw["Delegate"]; present {
 		delegate, ok := typecheck.ToString(value)
 		if !ok || delegate == "" {
@@ -192,6 +215,7 @@ func sponsorFieldsFromRaw(raw map[string]any, inner bool) (sponsorFields, error)
 		}
 		fields.delegate = types.Address(delegate)
 	}
+
 	if hasSignature {
 		var err error
 		if inner {
@@ -199,10 +223,12 @@ func sponsorFieldsFromRaw(raw map[string]any, inner bool) (sponsorFields, error)
 		} else {
 			fields.signature, err = sponsorSignatureFromRaw(raw["SponsorSignature"])
 		}
+
 		if err != nil {
 			return sponsorFields{}, err
 		}
 	}
+
 	return fields, nil
 }
 
@@ -212,6 +238,7 @@ func sponsorSignatureFromRaw(value any) (*types.SponsorSignature, error) {
 	if !ok || signature == nil {
 		return nil, ErrInvalidSponsorSignature
 	}
+
 	fields := &types.SponsorSignature{}
 	for name, value := range signature {
 		switch name {
@@ -221,22 +248,26 @@ func sponsorSignatureFromRaw(value any) (*types.SponsorSignature, error) {
 				return nil, ErrInvalidSponsorSignature
 			}
 			fields.SigningPubKey = &key
+
 		case "TxnSignature":
 			sig, ok := value.(string)
 			if !ok {
 				return nil, ErrInvalidSponsorSignature
 			}
 			fields.TxnSignature = &sig
+
 		case "Signers":
 			signers, err := sponsorSignersFromRaw(value)
 			if err != nil {
 				return nil, err
 			}
 			fields.Signers = signers
+
 		default:
 			return nil, ErrInvalidSponsorSignature
 		}
 	}
+
 	return fields, nil
 }
 
@@ -245,21 +276,26 @@ func sponsorSignatureFromInnerRaw(value any) (*types.SponsorSignature, error) {
 	if !ok {
 		return nil, ErrInvalidSponsorSignature
 	}
+
 	if signature == nil {
 		return nil, ErrInnerBatchSponsorSignature
 	}
+
 	// Inner signatures allow only an absent or empty SigningPubKey.
 	fields := &types.SponsorSignature{}
 	for name, value := range signature {
 		if name != "SigningPubKey" {
 			return nil, ErrInnerBatchSponsorSignature
 		}
+
 		key, ok := value.(string)
 		if !ok || key != "" {
 			return nil, ErrInnerBatchSponsorSignature
 		}
+
 		fields.SigningPubKey = &key
 	}
+
 	return fields, nil
 }
 
@@ -268,33 +304,40 @@ func sponsorSignersFromRaw(value any) ([]types.Signer, error) {
 	switch signers := value.(type) {
 	case []any:
 		entries = signers
+
 	case []map[string]any:
 		entries = make([]any, len(signers))
 		for i, signer := range signers {
 			entries[i] = signer
 		}
+
 	default:
 		return nil, ErrInvalidSponsorSignature
 	}
+
 	signers := make([]types.Signer, len(entries))
 	for i, entry := range entries {
 		wrapper, ok := entry.(map[string]any)
 		if !ok || len(wrapper) != 1 {
 			return nil, ErrInvalidSponsorSignature
 		}
+
 		signer, ok := wrapper["Signer"].(map[string]any)
 		if !ok || len(signer) != 3 {
 			return nil, ErrInvalidSponsorSignature
 		}
+
 		account, accountOK := signer["Account"].(string)
 		key, keyOK := signer["SigningPubKey"].(string)
 		sig, sigOK := signer["TxnSignature"].(string)
 		if !accountOK || !keyOK || !sigOK {
 			return nil, ErrInvalidSponsorSignature
 		}
+
 		signers[i].SignerData = types.SignerData{
 			Account: types.Address(account), SigningPubKey: key, TxnSignature: sig,
 		}
 	}
+
 	return signers, nil
 }

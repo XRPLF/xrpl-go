@@ -96,6 +96,7 @@ func TestBaseTxSponsorValidation(t *testing.T) {
 			if tt.inner {
 				tx.Flags = types.TfInnerBatchTxn
 			}
+
 			// The raw entry point shares the typed sponsorship rules, without
 			// requiring Fee or Sequence to have been autofilled.
 			_, rawErr := InspectSponsorFields(tx.Flatten())
@@ -104,6 +105,7 @@ func TestBaseTxSponsorValidation(t *testing.T) {
 			} else {
 				require.ErrorIs(t, rawErr, tt.expectedErr)
 			}
+
 			valid, err := tx.Validate()
 			require.Equal(t, tt.expectedErr == nil, valid)
 			if tt.expectedErr == nil {
@@ -696,6 +698,7 @@ func TestInnerSponsorshipValidationTypedAndRaw(t *testing.T) {
 		{"fee", sponsor, types.SpfSponsorFee, nil, ErrInnerBatchFeeSponsorship, ErrInnerBatchFeeSponsorship},
 		{"nonempty key", sponsor, types.SpfSponsorReserve, &types.SponsorSignature{SigningPubKey: &key}, ErrInnerBatchSponsorSignature, ErrInnerBatchSponsorSignature},
 		{"signature present", sponsor, types.SpfSponsorReserve, &types.SponsorSignature{TxnSignature: &empty}, ErrInnerBatchSponsorSignature, ErrInnerBatchSponsorSignature},
+
 		// Raw parsing rejects forbidden signature fields before validating sponsor flags.
 		{"zero flags and signature", sponsor, 0, &types.SponsorSignature{TxnSignature: &empty}, ErrSponsorFieldsMissing, ErrInnerBatchSponsorSignature},
 		{"invalid flags and signature", sponsor, 4, &types.SponsorSignature{TxnSignature: &empty}, ErrInvalidSponsorFlags, ErrInnerBatchSponsorSignature},

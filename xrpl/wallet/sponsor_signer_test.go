@@ -18,13 +18,16 @@ import (
 
 func sponsorTestWallet(t *testing.T, seed string) Wallet {
 	t.Helper()
+
 	w, err := FromSeed(seed, "")
 	require.NoError(t, err)
+
 	return w
 }
 
 func sponsorAccountSignedTx(t *testing.T, sponsor Wallet, multi bool) (transaction.FlatTransaction, Wallet) {
 	t.Helper()
+
 	account := sponsorTestWallet(t, brokerSeed)
 	tx := transaction.FlatTransaction{
 		"TransactionType": "Payment", "Account": account.ClassicAddress.String(),
@@ -32,6 +35,7 @@ func sponsorAccountSignedTx(t *testing.T, sponsor Wallet, multi bool) (transacti
 		"Sponsor": sponsor.ClassicAddress.String(), "SponsorFlags": types.SpfSponsorFee,
 		"Fee": "100", "Sequence": uint32(1),
 	}
+
 	var blob string
 	var err error
 	if multi {
@@ -41,16 +45,21 @@ func sponsorAccountSignedTx(t *testing.T, sponsor Wallet, multi bool) (transacti
 	} else {
 		blob, _, err = account.Sign(tx)
 	}
+
 	require.NoError(t, err)
+
 	decoded, err := binarycodec.Decode(blob)
 	require.NoError(t, err)
+
 	return transaction.FlatTransaction(decoded), account
 }
 
 func requireSponsorPayloadVerification(t *testing.T, key, signature, payload string, want bool) {
 	t.Helper()
+
 	bytes, err := hex.DecodeString(payload)
 	require.NoError(t, err)
+
 	valid, err := keypairs.Validate(string(bytes), key, signature)
 	require.NoError(t, err)
 	require.Equal(t, want, valid)
@@ -58,9 +67,11 @@ func requireSponsorPayloadVerification(t *testing.T, key, signature, payload str
 
 func requireSponsorBlobHash(t *testing.T, tx transaction.FlatTransaction, blob, txHash string) {
 	t.Helper()
+
 	encoded, err := binarycodec.Encode(tx)
 	require.NoError(t, err)
 	require.Equal(t, encoded, blob)
+
 	wantHash, err := hash.SignTxBlob(blob)
 	require.NoError(t, err)
 	require.Equal(t, wantHash, txHash)
@@ -80,9 +91,11 @@ func TestSignAsSponsorRoles(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, before, map[string]any(tx))
 					requireSponsorBlobHash(t, signed, blob, txHash)
+
 					for _, field := range []string{"SigningPubKey", "TxnSignature", "Signers"} {
 						require.Equal(t, tx[field], signed[field])
 					}
+
 					var accountPayload, accountSignature string
 					if accountMulti {
 						accountPayload, err = binarycodec.EncodeForMultisigning(signed, account.ClassicAddress.String())
@@ -91,31 +104,41 @@ func TestSignAsSponsorRoles(t *testing.T) {
 						accountPayload, err = binarycodec.EncodeForSigning(signed)
 						accountSignature = signed["TxnSignature"].(string)
 					}
+
 					require.NoError(t, err)
 					requireSponsorPayloadVerification(t, account.PublicKey, accountSignature, accountPayload, true)
+
 					var rolePayload, ordinaryPayload, counterpartyPayload string
 					sigObject := signed["SponsorSignature"].(map[string]any)
 					if sponsorMulti {
 						sigObject = sigObject["Signers"].([]any)[0].(map[string]any)["Signer"].(map[string]any)
 						rolePayload, err = binarycodec.EncodeForMultisigningSponsor(signed, sponsor.ClassicAddress.String())
 						require.NoError(t, err)
+
 						ordinaryPayload, err = binarycodec.EncodeForMultisigning(signed, sponsor.ClassicAddress.String())
 						require.NoError(t, err)
+
 						counterpartyPayload, err = binarycodec.EncodeForMultisigningCounterparty(signed, sponsor.ClassicAddress.String())
 					} else {
 						rolePayload, err = binarycodec.EncodeForSigningSponsor(signed)
 						require.NoError(t, err)
+
 						ordinaryPayload, err = binarycodec.EncodeForSigning(signed)
 						require.NoError(t, err)
+
 						counterpartyPayload, err = binarycodec.EncodeForSigningCounterparty(signed)
 					}
+
 					require.NoError(t, err)
+
 					signature := sigObject["TxnSignature"].(string)
 					requireSponsorPayloadVerification(t, sponsor.PublicKey, signature, rolePayload, true)
 					requireSponsorPayloadVerification(t, sponsor.PublicKey, signature, ordinaryPayload, false)
 					requireSponsorPayloadVerification(t, sponsor.PublicKey, signature, counterpartyPayload, false)
+
 					accountBlob, err := binarycodec.Encode(tx)
 					require.NoError(t, err)
+
 					fromBlob, sameBlob, sameHash, err := SignAsSponsorBlob(sponsor, accountBlob, opts)
 					require.NoError(t, err)
 					require.Equal(t, signed, fromBlob)
@@ -151,6 +174,7 @@ func TestSignAsSponsorRejectsInvalidInput(t *testing.T) {
 		{"wallet mismatch", "Sponsor", counterpartyOverrideAccount, false, ErrSponsorWalletMismatch},
 		{"invalid flags type", "Flags", 1.5, false, transaction.ErrInvalidFlagsValue},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tx := transaction.FlatTransaction(clientinternal.CloneTransaction(base))
@@ -159,6 +183,7 @@ func TestSignAsSponsorRejectsInvalidInput(t *testing.T) {
 			} else {
 				tx[tt.field] = tt.value
 			}
+
 			before := clientinternal.CloneTransaction(tx)
 			got, blob, txHash, err := SignAsSponsor(sponsor, tx, nil)
 			require.ErrorIs(t, err, tt.wantErr)
@@ -168,6 +193,7 @@ func TestSignAsSponsorRejectsInvalidInput(t *testing.T) {
 			require.Equal(t, before, map[string]any(tx))
 		})
 	}
+
 	_, _, _, err := SignAsSponsor(sponsor, nil, nil)
 	require.ErrorIs(t, err, ErrNilTransaction)
 }
@@ -179,26 +205,34 @@ func TestSignAsSponsorAddressOptions(t *testing.T) {
 		t.Run(fmt.Sprintf("testnet=%t", testnet), func(t *testing.T) {
 			xAddress, err := addresscodec.ClassicAddressToXAddress(sponsor.ClassicAddress.String(), 0, false, testnet)
 			require.NoError(t, err)
+
 			tx := transaction.FlatTransaction(clientinternal.CloneTransaction(base))
 			tx["Sponsor"] = xAddress
 			_, _, _, err = SignAsSponsor(sponsor, tx, nil)
 			require.NoError(t, err, "equivalent sponsor identities must match")
+
 			override, err := addresscodec.ClassicAddressToXAddress(counterpartyOverrideAccount, 0, false, testnet)
 			require.NoError(t, err)
+
 			signed, _, _, err := SignAsSponsor(sponsor, tx, &SignAsSponsorOptions{MultisignAccount: override})
 			require.NoError(t, err)
+
 			signer := signed["SponsorSignature"].(map[string]any)["Signers"].([]any)[0].(map[string]any)["Signer"].(map[string]any)
 			require.Equal(t, counterpartyOverrideAccount, signer["Account"])
+
 			payload, err := binarycodec.EncodeForMultisigningSponsor(signed, counterpartyOverrideAccount)
 			require.NoError(t, err)
 			requireSponsorPayloadVerification(t, sponsor.PublicKey, signer["TxnSignature"].(string), payload, true)
+
 			wrongPayload, err := binarycodec.EncodeForMultisigningSponsor(signed, sponsor.ClassicAddress.String())
 			require.NoError(t, err)
 			requireSponsorPayloadVerification(t, sponsor.PublicKey, signer["TxnSignature"].(string), wrongPayload, false)
 		})
 	}
+
 	tagged, err := addresscodec.ClassicAddressToXAddress(sponsor.ClassicAddress.String(), 0, true, false)
 	require.NoError(t, err)
+
 	for _, tt := range []struct {
 		address string
 		wantErr error
@@ -210,12 +244,15 @@ func TestSignAsSponsorAddressOptions(t *testing.T) {
 		_, _, _, err = SignAsSponsor(sponsor, base, &SignAsSponsorOptions{MultisignAccount: tt.address})
 		require.ErrorIs(t, err, tt.wantErr)
 	}
+
 	tx := transaction.FlatTransaction(clientinternal.CloneTransaction(base))
 	tx["Sponsor"] = tagged
 	_, _, _, err = SignAsSponsor(sponsor, tx, nil)
 	require.ErrorIs(t, err, transaction.ErrSponsorTagNotAllowed)
+
 	regular, err := FromSeed(counterparty2Seed, sponsor.ClassicAddress.String())
 	require.NoError(t, err)
+
 	signed, _, _, err := SignAsSponsor(regular, base, nil)
 	require.NoError(t, err)
 	require.Equal(t, regular.PublicKey, signed["SponsorSignature"].(map[string]any)["SigningPubKey"])
@@ -229,17 +266,21 @@ func TestSignAsSponsorPreservesCounterparty(t *testing.T) {
 	delete(tx, "Amount")
 	blob, _, err := account.Sign(tx)
 	require.NoError(t, err)
+
 	decoded, err := binarycodec.Decode(blob)
 	require.NoError(t, err)
+
 	tx = transaction.FlatTransaction(decoded)
 	counterparty := sponsorTestWallet(t, counterparty2Seed)
 	_, _, err = SignLoanSetByCounterparty(counterparty, &tx, nil)
 	require.NoError(t, err)
+
 	before := clientinternal.CloneTransaction(tx)
 	signed, _, _, err := SignAsSponsor(sponsor, tx, nil)
 	require.NoError(t, err)
 	require.Equal(t, before, map[string]any(tx))
 	require.Equal(t, tx["CounterpartySignature"], signed["CounterpartySignature"])
+
 	payload, err := binarycodec.EncodeForSigningCounterparty(signed)
 	require.NoError(t, err)
 	requireSponsorPayloadVerification(t, counterparty.PublicKey, signed["CounterpartySignature"].(map[string]any)["TxnSignature"].(string), payload, true)
@@ -253,30 +294,38 @@ func TestCombineSponsorSigners(t *testing.T) {
 			tx, _ := sponsorAccountSignedTx(t, sponsor, accountMulti)
 			first, blob1, _, err := SignAsSponsor(sponsor, tx, &SignAsSponsorOptions{Multisign: true})
 			require.NoError(t, err)
+
 			other, blob2, _, err := SignAsSponsor(second, tx, &SignAsSponsorOptions{Multisign: true})
 			require.NoError(t, err)
+
 			before1, before2 := clientinternal.CloneTransaction(first), clientinternal.CloneTransaction(other)
 			combined, blob, err := CombineSponsorSigners([]transaction.FlatTransaction{other, first, other})
 			require.NoError(t, err)
 			require.Equal(t, before1, map[string]any(first))
 			require.Equal(t, before2, map[string]any(other))
+
 			_, err = transaction.InspectSponsorFields(combined)
 			require.NoError(t, err)
+
 			signers := combined["SponsorSignature"].(map[string]any)["Signers"].([]any)
 			require.Len(t, signers, 2)
+
 			for _, entry := range signers {
 				signer := entry.(map[string]any)["Signer"].(map[string]any)
 				payload, err := binarycodec.EncodeForMultisigningSponsor(combined, signer["Account"].(string))
 				require.NoError(t, err)
 				requireSponsorPayloadVerification(t, signer["SigningPubKey"].(string), signer["TxnSignature"].(string), payload, true)
 			}
+
 			fromBlob, sameBlob, err := CombineSponsorSignersBlob([]string{blob1, blob2})
 			require.NoError(t, err)
 			require.Equal(t, combined, fromBlob)
 			require.Equal(t, blob, sameBlob)
+
 			txHash, err := hash.SignTxBlob(blob)
 			require.NoError(t, err)
 			requireSponsorBlobHash(t, combined, blob, txHash)
+
 			// Mutating a returned nested signer must not alter a source fragment.
 			signers[0].(map[string]any)["Signer"].(map[string]any)["TxnSignature"] = "AB"
 			require.Equal(t, before1, map[string]any(first))
@@ -291,9 +340,11 @@ func TestCombineSponsorSignersFirstDecodedIdentityWins(t *testing.T) {
 	tx, _ := sponsorAccountSignedTx(t, sponsor, false)
 	first, _, _, err := SignAsSponsor(sponsor, tx, &SignAsSponsorOptions{Multisign: true})
 	require.NoError(t, err)
+
 	other := transaction.FlatTransaction(clientinternal.CloneTransaction(first))
 	xAddress, err := addresscodec.ClassicAddressToXAddress(sponsor.ClassicAddress.String(), 0, false, true)
 	require.NoError(t, err)
+
 	otherSigner := other["SponsorSignature"].(map[string]any)["Signers"].([]any)[0].(map[string]any)
 	otherSigner["Signer"].(map[string]any)["Account"] = xAddress
 	otherSigner["Signer"].(map[string]any)["TxnSignature"] = "AB"
@@ -303,14 +354,19 @@ func TestCombineSponsorSignersFirstDecodedIdentityWins(t *testing.T) {
 		combined, _, err := CombineSponsorSigners(inputs)
 		require.NoError(t, err)
 		require.Equal(t, before, map[string]any(inputs[0]))
+
 		signers := combined["SponsorSignature"].(map[string]any)["Signers"].([]any)
 		require.Len(t, signers, 1)
+
 		signer := signers[0].(map[string]any)["Signer"].(map[string]any)
 		require.Equal(t, sponsor.ClassicAddress.String(), signer["Account"])
+
 		encoded, err := binarycodec.Encode(inputs[0])
 		require.NoError(t, err)
+
 		decoded, err := binarycodec.Decode(encoded)
 		require.NoError(t, err)
+
 		want := decoded["SponsorSignature"].(map[string]any)["Signers"].([]any)[0].(map[string]any)["Signer"].(map[string]any)
 		require.Equal(t, want["TxnSignature"], signer["TxnSignature"])
 	}
@@ -321,6 +377,7 @@ func TestCombineSponsorSignersRejectsMismatches(t *testing.T) {
 	tx, _ := sponsorAccountSignedTx(t, sponsor, false)
 	first, _, _, err := SignAsSponsor(sponsor, tx, &SignAsSponsorOptions{Multisign: true})
 	require.NoError(t, err)
+
 	for _, field := range []string{"Fee", "TxnSignature", "SigningPubKey", "Sponsor", "SponsorFlags"} {
 		t.Run(field, func(t *testing.T) {
 			other := transaction.FlatTransaction(clientinternal.CloneTransaction(first))
@@ -334,6 +391,7 @@ func TestCombineSponsorSignersRejectsMismatches(t *testing.T) {
 			default:
 				other[field] = "AB"
 			}
+
 			before := clientinternal.CloneTransaction(other)
 			got, blob, err := CombineSponsorSigners([]transaction.FlatTransaction{first, other})
 			require.ErrorIs(t, err, ErrSponsorTxNotEqual)
@@ -342,10 +400,12 @@ func TestCombineSponsorSignersRejectsMismatches(t *testing.T) {
 			require.Equal(t, before, map[string]any(other))
 		})
 	}
+
 	other := transaction.FlatTransaction(clientinternal.CloneTransaction(first))
 	other["SponsorSignature"].(map[string]any)["SigningPubKey"] = ""
 	_, _, err = CombineSponsorSigners([]transaction.FlatTransaction{first, other})
 	require.ErrorIs(t, err, ErrSponsorTxNotEqual, "remaining sponsor fields participate in equivalence")
+
 	combined, _, err := CombineSponsorSigners([]transaction.FlatTransaction{other})
 	require.NoError(t, err)
 	require.Contains(t, combined["SponsorSignature"], "SigningPubKey")
@@ -357,10 +417,12 @@ func TestCombineSponsorSignersWireEquivalence(t *testing.T) {
 	tx, _ := sponsorAccountSignedTx(t, sponsor, true)
 	first, _, _, err := SignAsSponsor(sponsor, tx, &SignAsSponsorOptions{Multisign: true})
 	require.NoError(t, err)
+
 	other := transaction.FlatTransaction(clientinternal.CloneTransaction(first))
 	other["hash"] = "metadata is not serialized"
 	_, _, err = CombineSponsorSigners([]transaction.FlatTransaction{first, other})
 	require.NoError(t, err)
+
 	other["Signers"].([]any)[0].(map[string]any)["Signer"].(map[string]any)["TxnSignature"] = "AB"
 	_, _, err = CombineSponsorSigners([]transaction.FlatTransaction{first, other})
 	require.ErrorIs(t, err, ErrSponsorTxNotEqual)
@@ -376,31 +438,41 @@ func TestCombineSponsorSignersListRules(t *testing.T) {
 		id[19] = byte(i + 1)
 		address, err := addresscodec.EncodeAccountIDToClassicAddress(id)
 		require.NoError(t, err)
+
 		entries[i] = map[string]any{"Signer": map[string]any{"Account": address, "SigningPubKey": "AB", "TxnSignature": "CD"}}
 		fragments[i] = transaction.FlatTransaction(clientinternal.CloneTransaction(base))
 		fragments[i]["SponsorSignature"] = map[string]any{"Signers": []any{entries[i]}}
 	}
+
 	combined, _, err := CombineSponsorSigners(fragments[:32])
 	require.NoError(t, err)
 	require.Len(t, combined["SponsorSignature"].(map[string]any)["Signers"], 32)
+
 	_, _, err = CombineSponsorSigners(fragments)
 	require.Error(t, err)
+
 	for _, invalid := range []any{nil, []any{}, []any{entries[1], entries[0]}, []any{entries[0], entries[0]}, []any{"bad"}, []any{map[string]any{"Signer": nil}}} {
 		tx := transaction.FlatTransaction(clientinternal.CloneTransaction(base))
 		tx["SponsorSignature"] = map[string]any{"Signers": invalid}
 		_, _, err = CombineSponsorSigners([]transaction.FlatTransaction{tx})
 		require.Error(t, err)
 	}
+
 	_, _, err = CombineSponsorSigners(nil)
 	require.ErrorIs(t, err, ErrNoTransactionsToSign)
+
 	_, _, err = CombineSponsorSigners([]transaction.FlatTransaction{base})
 	require.ErrorIs(t, err, ErrTxMustIncludeSponsorSigners)
+
 	_, _, err = CombineSponsorSigners([]transaction.FlatTransaction{nil})
 	require.ErrorIs(t, err, ErrNilTransaction)
+
 	single, _, _, err := SignAsSponsor(sponsor, base, nil)
 	require.NoError(t, err)
+
 	_, _, err = CombineSponsorSigners([]transaction.FlatTransaction{single})
 	require.ErrorIs(t, err, ErrTxMustIncludeSponsorSigners)
+
 	unsigned := transaction.FlatTransaction(clientinternal.CloneTransaction(fragments[0]))
 	delete(unsigned, "TxnSignature")
 	_, _, err = CombineSponsorSigners([]transaction.FlatTransaction{unsigned})
@@ -425,6 +497,7 @@ func TestSignAsSponsorFailureIsAtomic(t *testing.T) {
 			case "final encoding":
 				tx["Signers"].([]any)[0].(map[string]any)["Signer"].(map[string]any)["TxnSignature"] = "ZZ"
 			}
+
 			before := clientinternal.CloneTransaction(tx)
 			got, blob, txHash, err := SignAsSponsor(w, tx, nil)
 			require.Error(t, err)
@@ -434,6 +507,7 @@ func TestSignAsSponsorFailureIsAtomic(t *testing.T) {
 			require.Equal(t, before, map[string]any(tx))
 		})
 	}
+
 	unsigned := transaction.FlatTransaction(clientinternal.CloneTransaction(base))
 	delete(unsigned, "Signers")
 	delete(unsigned, "SigningPubKey")
@@ -446,9 +520,11 @@ func TestSponsorBlobErrors(t *testing.T) {
 	for _, blob := range []string{"not hex", "0", "FF"} {
 		_, _, _, err := SignAsSponsorBlob(sponsor, blob, nil)
 		require.Error(t, err)
+
 		_, _, err = CombineSponsorSignersBlob([]string{blob})
 		require.Error(t, err)
 	}
+
 	_, _, err := CombineSponsorSignersBlob(nil)
 	require.ErrorIs(t, err, ErrNoTransactionsToSign)
 }
@@ -462,6 +538,7 @@ func TestAddPreFundedSponsor(t *testing.T) {
 		if placeholder {
 			tx["SigningPubKey"] = ""
 		}
+
 		before := clientinternal.CloneTransaction(tx)
 		got, err := AddPreFundedSponsor(tx, sponsor.ClassicAddress, types.SpfSponsorFee|types.SpfSponsorReserve)
 		require.NoError(t, err)
@@ -469,9 +546,11 @@ func TestAddPreFundedSponsor(t *testing.T) {
 		require.Equal(t, sponsor.ClassicAddress.String(), got["Sponsor"])
 		require.Equal(t, uint32(3), got["SponsorFlags"])
 		require.NotContains(t, got, "SponsorSignature")
+
 		got["Memos"].([]map[string]any)[0]["Memo"].(map[string]any)["MemoData"] = "CD"
 		require.Equal(t, before, map[string]any(tx))
 	}
+
 	for _, field := range []string{"TxnSignature", "Signers", "SponsorSignature", "CounterpartySignature", "BatchSigners", "SigningPubKey"} {
 		for _, value := range []any{nil, "AB"} {
 			tx := transaction.FlatTransaction(clientinternal.CloneTransaction(base))
@@ -483,12 +562,15 @@ func TestAddPreFundedSponsor(t *testing.T) {
 			require.Equal(t, before, map[string]any(tx))
 		}
 	}
+
 	for _, flags := range []uint32{0, 4} {
 		_, err := AddPreFundedSponsor(base, sponsor.ClassicAddress, flags)
 		require.Error(t, err)
 	}
+
 	_, err := AddPreFundedSponsor(base, account.ClassicAddress, types.SpfSponsorFee)
 	require.ErrorIs(t, err, transaction.ErrSponsorAccountConflict)
+
 	_, err = AddPreFundedSponsor(nil, sponsor.ClassicAddress, types.SpfSponsorFee)
 	require.ErrorIs(t, err, ErrNilTransaction)
 }

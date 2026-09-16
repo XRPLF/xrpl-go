@@ -40,6 +40,7 @@ func TestInspectSponsorFieldsRawSignature(t *testing.T) {
 		{"unknown signer member", map[string]any{"Signers": []any{map[string]any{"Signer": map[string]any{"Account": signer.SignerData.Account.String(), "SigningPubKey": "AB", "TxnSignature": "CD", "Extra": true}}}}, false},
 		{"null signer field", map[string]any{"Signers": []any{map[string]any{"Signer": map[string]any{"Account": nil, "SigningPubKey": "AB", "TxnSignature": "CD"}}}}, false},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tx := rawSponsoredPayment()
@@ -47,6 +48,7 @@ func TestInspectSponsorFieldsRawSignature(t *testing.T) {
 			tx["SponsorSignature"] = tt.value
 			before, err := json.Marshal(tx)
 			require.NoError(t, err)
+
 			signature, err := InspectSponsorFields(tx)
 			if tt.valid {
 				require.NoError(t, err)
@@ -55,6 +57,7 @@ func TestInspectSponsorFieldsRawSignature(t *testing.T) {
 				require.Error(t, err)
 				require.Nil(t, signature, "failed inspection must not publish a partial signature")
 			}
+
 			after, err := json.Marshal(tx)
 			require.NoError(t, err)
 			require.Equal(t, string(before), string(after))
@@ -79,6 +82,7 @@ func TestInspectSponsorFields(t *testing.T) {
 		{"inner empty object", &types.SponsorSignature{}, true},
 		{"inner empty key", &types.SponsorSignature{SigningPubKey: &empty}, true},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tx := rawSponsoredPayment()
@@ -86,25 +90,32 @@ func TestInspectSponsorFields(t *testing.T) {
 				tx["Flags"] = types.TfInnerBatchTxn
 				tx["SponsorFlags"] = types.SpfSponsorReserve
 			}
+
 			if tt.signature != nil {
 				tx["SponsorSignature"] = tt.signature.Flatten()
 			}
+
 			before, err := json.Marshal(tx)
 			require.NoError(t, err)
+
 			got, err := InspectSponsorFields(tx)
 			require.NoError(t, err)
 			require.Equal(t, tt.signature, got)
+
 			if got != nil {
 				if got.SigningPubKey != nil {
 					*got.SigningPubKey = "EF"
 				}
+
 				if got.TxnSignature != nil {
 					*got.TxnSignature = "EF"
 				}
+
 				if len(got.Signers) > 0 {
 					got.Signers[0].SignerData.TxnSignature = "EF"
 				}
 			}
+
 			after, err := json.Marshal(tx)
 			require.NoError(t, err)
 			require.Equal(t, string(before), string(after))
@@ -134,6 +145,7 @@ func TestInspectSponsorFieldsNumericFlags(t *testing.T) {
 		{"zero", 0, ErrSponsorFieldsMissing},
 		{"unknown bit", 4, ErrInvalidSponsorFlags},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tx := rawSponsoredPayment()
@@ -162,6 +174,7 @@ func TestInspectSponsorFieldsContext(t *testing.T) {
 		{"bad flags", "Flags", nil, ErrInvalidFlagsValue},
 		{"inner fee", "Flags", types.TfInnerBatchTxn, ErrInnerBatchFeeSponsorship},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tx := rawSponsoredPayment()
@@ -170,12 +183,15 @@ func TestInspectSponsorFieldsContext(t *testing.T) {
 			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
+
 	_, err := InspectSponsorFields(nil)
 	require.NoError(t, err, "this helper validates only sponsorship, not complete transactions")
+
 	tx := rawSponsoredPayment()
 	delete(tx, "SponsorFlags")
 	_, err = InspectSponsorFields(tx)
 	require.ErrorIs(t, err, ErrSponsorFieldsMissing)
+
 	tx = rawSponsoredPayment()
 	delete(tx, "Sponsor")
 	_, err = InspectSponsorFields(tx)

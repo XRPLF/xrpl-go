@@ -17,6 +17,7 @@ import (
 type SignAsSponsorOptions struct {
 	// Multisign adds this wallet as one signer for the sponsor account.
 	Multisign bool
+
 	// MultisignAccount identifies the signer account when using a regular key.
 	// A nonempty value enables multisigning and overrides wallet.ClassicAddress.
 	MultisignAccount string
@@ -34,9 +35,11 @@ func SignAsSponsor(w Wallet, tx transaction.FlatTransaction, opts *SignAsSponsor
 	if tx == nil {
 		return nil, "", "", ErrNilTransaction
 	}
+
 	if _, present := tx["SponsorSignature"]; present {
 		return nil, "", "", ErrSponsorAlreadySigned
 	}
+
 	if _, err := inspectSponsorTransaction(tx); err != nil {
 		return nil, "", "", err
 	}
@@ -46,10 +49,12 @@ func SignAsSponsor(w Wallet, tx transaction.FlatTransaction, opts *SignAsSponsor
 	if opts != nil && opts.MultisignAccount != "" {
 		signerAddress = opts.MultisignAccount
 	}
+
 	signer, err := sponsorSignerAddress(signerAddress)
 	if err != nil {
 		return nil, "", "", err
 	}
+
 	if !multisign {
 		sponsor, _ := typecheck.ToString(tx["Sponsor"]) // Validated by inspectSponsorTransaction.
 		sponsorAddress, err := addresscodec.DecodeAddress(sponsor)
@@ -68,13 +73,16 @@ func SignAsSponsor(w Wallet, tx transaction.FlatTransaction, opts *SignAsSponsor
 	} else {
 		payload, err = binarycodec.EncodeForSigningSponsor(working)
 	}
+
 	if err != nil {
 		return nil, "", "", err
 	}
+
 	signature, err := w.ComputeSignature(payload)
 	if err != nil {
 		return nil, "", "", err
 	}
+
 	var sponsorSignature types.SponsorSignature
 	if multisign {
 		sponsorSignature.Signers = []types.Signer{{SignerData: types.SignerData{
@@ -84,18 +92,22 @@ func SignAsSponsor(w Wallet, tx transaction.FlatTransaction, opts *SignAsSponsor
 		sponsorSignature.SigningPubKey = &w.PublicKey
 		sponsorSignature.TxnSignature = &signature
 	}
+
 	working["SponsorSignature"] = flattenSponsorSignature(sponsorSignature)
 	if _, err := transaction.InspectSponsorFields(working); err != nil {
 		return nil, "", "", err
 	}
+
 	blob, err := binarycodec.Encode(working)
 	if err != nil {
 		return nil, "", "", err
 	}
+
 	txHash, err := hash.SignTxBlob(blob)
 	if err != nil {
 		return nil, "", "", err
 	}
+
 	return working, blob, txHash, nil
 }
 
@@ -105,6 +117,7 @@ func SignAsSponsorBlob(w Wallet, blob string, opts *SignAsSponsorOptions) (trans
 	if err != nil {
 		return nil, "", "", err
 	}
+
 	return SignAsSponsor(w, transaction.FlatTransaction(tx), opts)
 }
 
@@ -121,37 +134,45 @@ func CombineSponsorSigners(transactions []transaction.FlatTransaction) (transact
 	if len(transactions) == 0 {
 		return nil, "", ErrNoTransactionsToSign
 	}
+
 	var combined transaction.FlatTransaction
 	var combinedSignature types.SponsorSignature
 	var reference string
 	var allSigners []types.Signer
 	seen := make(map[[addresscodec.AccountAddressLength]byte]bool)
+
 	for _, tx := range transactions {
 		signature, err := inspectSponsorTransaction(tx)
 		if err != nil {
 			return nil, "", err
 		}
+
 		if signature == nil || len(signature.Signers) == 0 {
 			return nil, "", ErrTxMustIncludeSponsorSigners
 		}
+
 		signers := signature.Signers
 		signature.Signers = nil
+
 		working := transaction.FlatTransaction(clientinternal.CloneTransaction(tx))
 		working["SponsorSignature"] = signature.Flatten()
 		comparison, err := binarycodec.Encode(working)
 		if err != nil {
 			return nil, "", err
 		}
+
 		if combined == nil {
 			combined, combinedSignature, reference = working, *signature, comparison
 		} else if comparison != reference {
 			return nil, "", ErrSponsorTxNotEqual
 		}
+
 		for _, signer := range signers {
 			address, err := sponsorSignerAddress(signer.SignerData.Account.String())
 			if err != nil {
 				return nil, "", err
 			}
+
 			// Deduplicate before the unstable sort to preserve first-input wins.
 			if !seen[address.AccountID] {
 				seen[address.AccountID] = true
@@ -160,20 +181,24 @@ func CombineSponsorSigners(transactions []transaction.FlatTransaction) (transact
 			}
 		}
 	}
+
 	if err := xrpl.SortByAccountID(allSigners, func(signer types.Signer) (string, error) {
 		return signer.SignerData.Account.String(), nil
 	}); err != nil {
 		return nil, "", err
 	}
+
 	combinedSignature.Signers = allSigners
 	combined["SponsorSignature"] = flattenSponsorSignature(combinedSignature)
 	if _, err := transaction.InspectSponsorFields(combined); err != nil {
 		return nil, "", err
 	}
+
 	blob, err := binarycodec.Encode(combined)
 	if err != nil {
 		return nil, "", err
 	}
+
 	return combined, blob, nil
 }
 
@@ -185,8 +210,10 @@ func CombineSponsorSignersBlob(blobs []string) (transaction.FlatTransaction, str
 		if err != nil {
 			return nil, "", err
 		}
+
 		transactions[i] = transaction.FlatTransaction(tx)
 	}
+
 	return CombineSponsorSigners(transactions)
 }
 
@@ -199,22 +226,26 @@ func AddPreFundedSponsor(tx transaction.FlatTransaction, sponsor types.Address, 
 	if tx == nil {
 		return nil, ErrNilTransaction
 	}
+
 	for _, field := range []string{"TxnSignature", "Signers", "SponsorSignature", "CounterpartySignature", "BatchSigners"} {
 		if _, present := tx[field]; present {
 			return nil, ErrTransactionAlreadySigned
 		}
 	}
+
 	if value, present := tx["SigningPubKey"]; present {
 		key, ok := value.(string)
 		if !ok || key != "" {
 			return nil, ErrTransactionAlreadySigned
 		}
 	}
+
 	working := transaction.FlatTransaction(clientinternal.CloneTransaction(tx))
 	working["Sponsor"], working["SponsorFlags"] = sponsor.String(), flags
 	if _, err := transaction.InspectSponsorFields(working); err != nil {
 		return nil, err
 	}
+
 	return working, nil
 }
 
@@ -231,6 +262,7 @@ func flattenSponsorSignature(signature types.SponsorSignature) map[string]any {
 		}
 		flat["Signers"] = entries
 	}
+
 	return flat
 }
 
@@ -238,16 +270,20 @@ func inspectSponsorTransaction(tx transaction.FlatTransaction) (*types.SponsorSi
 	if tx == nil {
 		return nil, ErrNilTransaction
 	}
+
 	form, err := clientinternal.InspectSignedTransaction(tx, false)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrAccountMustSignFirst, err)
 	}
+
 	if form != clientinternal.SingleSignedTransaction && form != clientinternal.MultiSignedTransaction {
 		return nil, ErrAccountMustSignFirst
 	}
+
 	if _, present := tx["Sponsor"]; !present {
 		return nil, transaction.ErrSponsorFieldsMissing
 	}
+
 	return transaction.InspectSponsorFields(tx)
 }
 
@@ -256,11 +292,14 @@ func sponsorSignerAddress(address string) (addresscodec.DecodedAddress, error) {
 	if err != nil {
 		return addresscodec.DecodedAddress{}, fmt.Errorf("%w: %w", xrpl.ErrInvalidSigner, err)
 	}
+
 	if decoded.HasTag {
 		return addresscodec.DecodedAddress{}, ErrAddressHasTag
 	}
+
 	if addresscodec.IsZeroAccountID(decoded.AccountID[:]) {
 		return addresscodec.DecodedAddress{}, transaction.ErrSignerAccountZero
 	}
+
 	return decoded, nil
 }
