@@ -75,6 +75,41 @@ func TestAccountInfoRequest(t *testing.T) {
 	}
 }
 
+func TestAccountInfoResponsePseudoAccountLinks(t *testing.T) {
+	const id = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+	tests := []struct {
+		name                         string
+		ammID, vaultID, loanBrokerID types.Hash256
+		linkJSON                     string
+	}{
+		{name: "ordinary account"},
+		{name: "AMM account", ammID: id, linkJSON: `,"AMMID":"` + id + `"`},
+		{name: "vault account", vaultID: id, linkJSON: `,"VaultID":"` + id + `"`},
+		{name: "loan broker account", loanBrokerID: id, linkJSON: `,"LoanBrokerID":"` + id + `"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := InfoResponse{
+				AccountData: ledger.AccountRoot{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					LedgerEntryType: ledger.AccountRootEntry,
+					AMMID:           tt.ammID,
+					VaultID:         tt.vaultID,
+					LoanBrokerID:    tt.loanBrokerID,
+				},
+				Validated: true,
+			}
+			j := `{"account_data":{"Account":"rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD","LedgerEntryType":"AccountRoot","Flags":0,"OwnerCount":0,"PreviousTxnID":"","PreviousTxnLgrSeq":0,"Sequence":0` + tt.linkJSON + `},"validated":true}`
+			encoded, err := json.Marshal(s)
+			require.NoError(t, err)
+			require.JSONEq(t, j, string(encoded))
+			var decoded InfoResponse
+			require.NoError(t, json.Unmarshal([]byte(j), &decoded))
+			require.Equal(t, s, decoded)
+		})
+	}
+}
+
 func TestAccountInfoResponse(t *testing.T) {
 	s := InfoResponse{
 		AccountData: ledger.AccountRoot{

@@ -79,6 +79,12 @@ type AccountRoot struct {
 	// Set during account creation; cannot be modified. If present, indicates that this is a
 	// special AMM AccountRoot; always omitted on non-AMM accounts.
 	AMMID types.Hash256 `json:",omitempty"`
+	// (Added by the SingleAssetVault amendment) The ledger entry ID of the vault associated with this pseudo-account.
+	// Omitted on accounts that are not vault pseudo-accounts.
+	VaultID types.Hash256 `json:",omitempty"`
+	// (Added by the LendingProtocol amendment) The ledger entry ID of the loan broker associated with this pseudo-account.
+	// Omitted on accounts that are not loan broker pseudo-accounts.
+	LoanBrokerID types.Hash256 `json:",omitempty"`
 	// The account's current XRP balance in drops, represented as a string.
 	Balance types.XRPCurrencyAmount `json:",omitempty"`
 	// How many total of this account's issued non-fungible tokens have been burned.
