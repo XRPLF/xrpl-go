@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -66,7 +67,23 @@ func TestPaymentFlags(t *testing.T) {
 			expected: TfPartialPayment | TfLimitQuality,
 		},
 		{
-			name: "pass - all flags",
+			name: "pass - SetSponsorCreatedAccountFlag",
+			setter: func(p *Payment) {
+				p.SetSponsorCreatedAccountFlag()
+			},
+			expected: 0x00080000,
+		},
+		{
+			name: "pass - sponsor flag preserves existing flags and is idempotent",
+			setter: func(p *Payment) {
+				p.Flags = types.TfFullyCanonicalSig
+				p.SetSponsorCreatedAccountFlag()
+				p.SetSponsorCreatedAccountFlag()
+			},
+			expected: types.TfFullyCanonicalSig | 0x00080000,
+		},
+		{
+			name: "pass - all payment path flags",
 			setter: func(p *Payment) {
 				p.SetRippleNotDirectFlag()
 				p.SetPartialPaymentFlag()
@@ -95,6 +112,202 @@ func TestPayment_Validate(t *testing.T) {
 		wantErr     bool
 		expectedErr error
 	}{
+		{
+			name: "pass - sponsored account creation without transaction sponsor",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount,
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantValid: true,
+		},
+		{
+			name: "pass - sponsored account creation with separate fee sponsor",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags:   TfSponsorCreatedAccount,
+					Sponsor: "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn", SponsorFlags: types.SpfSponsorFee,
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantValid: true,
+		},
+		{
+			name: "fail - sponsored account creation with missing sponsor flags",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount, Sponsor: "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantErr: true, expectedErr: ErrSponsorFieldsMissing,
+		},
+		{
+			name: "fail - sponsored account creation with invalid sponsor signature",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags:   TfSponsorCreatedAccount,
+					Sponsor: "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn", SponsorFlags: types.SpfSponsorFee,
+					SponsorSignature: &types.SponsorSignature{},
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantErr: true, expectedErr: ErrInvalidSponsorSignature,
+		},
+		{
+			name: "fail - sponsored account creation with no ripple direct",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount | TfRippleNotDirect,
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantErr: true, expectedErr: ErrSponsorCreatedAccountInvalidFlags,
+		},
+		{
+			name: "fail - sponsored account creation with partial payment",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount | TfPartialPayment,
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantErr: true, expectedErr: ErrSponsorCreatedAccountInvalidFlags,
+		},
+		{
+			name: "fail - sponsored account creation with limit quality",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount | TfLimitQuality,
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantErr: true, expectedErr: ErrSponsorCreatedAccountInvalidFlags,
+		},
+		{
+			name: "fail - sponsored account creation with SendMax",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount,
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+				SendMax: types.XRPCurrencyAmount(1),
+			},
+			wantErr: true, expectedErr: ErrSponsorCreatedAccountInvalidFields,
+		},
+		{
+			name: "fail - sponsored account creation with zero SendMax",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account:         "rJwjoukM94WwKwxM428V7b9npHjpkSvif",
+					TransactionType: PaymentTx,
+					Flags:           TfSponsorCreatedAccount,
+				},
+				Amount:      types.XRPCurrencyAmount(1),
+				Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+				SendMax:     types.XRPCurrencyAmount(0),
+			},
+			wantErr:     true,
+			expectedErr: ErrSponsorCreatedAccountInvalidFields,
+		},
+		{
+			name: "fail - sponsored account creation with Paths",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount,
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+				Paths: [][]PathStep{{{Account: "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn"}}},
+			},
+			wantErr: true, expectedErr: ErrSponsorCreatedAccountInvalidFields,
+		},
+		{
+			name: "fail - sponsored account creation with explicitly empty Paths",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount,
+				},
+				Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+				Paths: [][]PathStep{},
+			},
+			wantErr: true, expectedErr: ErrEmptyPath,
+		},
+		{
+			name: "fail - sponsored account creation with issued Amount",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount,
+				},
+				Amount: types.IssuedCurrencyAmount{
+					Currency: "USD", Issuer: "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn", Value: "1",
+				},
+				Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantErr: true, expectedErr: ErrSponsorCreatedAccountRequiresXRP,
+		},
+		{
+			name: "fail - sponsored account creation with MPT Amount",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+					Flags: TfSponsorCreatedAccount,
+				},
+				Amount: types.MPTCurrencyAmount{
+					MPTIssuanceID: "0000000190F5DDBAE9EFC7B7A5CE437B4E6A86B41D1E0534", Value: "1",
+				},
+				Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantErr: true, expectedErr: ErrSponsorCreatedAccountRequiresXRP,
+		},
+		{
+			name: "pass - ordinary issued payment with SendMax and Paths",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account:         "rJwjoukM94WwKwxM428V7b9npHjpkSvif",
+					TransactionType: PaymentTx,
+				},
+				Amount: types.IssuedCurrencyAmount{
+					Currency: "USD",
+					Issuer:   "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
+					Value:    "1",
+				},
+				SendMax: types.IssuedCurrencyAmount{
+					Currency: "USD",
+					Issuer:   "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
+					Value:    "2",
+				},
+				Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+				Paths:       [][]PathStep{{{Account: "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn"}}},
+			},
+			wantValid: true,
+		},
+		{
+			name: "pass - ordinary MPT payment",
+			payment: Payment{
+				BaseTx: BaseTx{
+					Account:         "rJwjoukM94WwKwxM428V7b9npHjpkSvif",
+					TransactionType: PaymentTx,
+				},
+				Amount: types.MPTCurrencyAmount{
+					MPTIssuanceID: "0000000190F5DDBAE9EFC7B7A5CE437B4E6A86B41D1E0534",
+					Value:         "1",
+				},
+				Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+			},
+			wantValid: true,
+		},
 		{
 			name: "pass - valid Payment",
 			payment: Payment{
@@ -446,6 +659,18 @@ func TestPayment_Validate(t *testing.T) {
 			wantErr:   false,
 		},
 		{
+			name: "fail - zero DomainID",
+			payment: Payment{
+				BaseTx:      BaseTx{Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx},
+				Amount:      types.XRPCurrencyAmount(1),
+				Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+				DomainID:    types.DomainID("0000000000000000000000000000000000000000000000000000000000000000"),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidDomainID,
+		},
+		{
 			name: "fail - invalid DomainID length",
 			payment: Payment{
 				BaseTx: BaseTx{
@@ -483,6 +708,35 @@ func TestPayment_Validate(t *testing.T) {
 			}
 		})
 	}
+}
+
+// This tests the model-to-codec boundary, not network activation or account creation.
+func TestPayment_SponsorCreatedAccountEncoding(t *testing.T) {
+	p := Payment{
+		BaseTx: BaseTx{
+			Account: "rJwjoukM94WwKwxM428V7b9npHjpkSvif", TransactionType: PaymentTx,
+			Fee: types.XRPCurrencyAmount(10), Sequence: 1, Flags: types.TfFullyCanonicalSig,
+		},
+		Amount: types.XRPCurrencyAmount(1), Destination: "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
+	}
+	p.SetSponsorCreatedAccountFlag()
+	valid, err := p.Validate()
+	require.NoError(t, err)
+	require.True(t, valid)
+
+	flat := p.Flatten()
+	require.EqualValues(t, 0x80080000, flat["Flags"])
+	require.Equal(t, "1", flat["Amount"])
+	require.NotContains(t, flat, "Sponsor")
+	require.NotContains(t, flat, "SponsorFlags")
+	require.NotContains(t, flat, "SponsorSignature")
+	encoded, err := binarycodec.Encode(flat)
+	require.NoError(t, err)
+	decoded, err := binarycodec.Decode(encoded)
+	require.NoError(t, err)
+	require.EqualValues(t, 0x80080000, decoded["Flags"])
+	require.Equal(t, "1", decoded["Amount"])
+	require.Equal(t, p.Destination.String(), decoded["Destination"])
 }
 
 func TestPayment_Flatten(t *testing.T) {

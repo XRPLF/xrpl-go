@@ -63,36 +63,43 @@ func IsMemo(memo types.Memo) (bool, error) {
 
 // IsSigner checks if the given object is a valid Signer object.
 func IsSigner(signerData types.SignerData) (bool, error) {
+	_, err := validateSignerData(signerData)
+	return err == nil, err
+}
+
+// validateSignerData preserves the per-entry checks and returns the validated
+// AccountID so list validation can compare identities without decoding twice.
+func validateSignerData(signerData types.SignerData) ([]byte, error) {
 	size := len(maputils.GetKeys(signerData.Flatten()))
 	if size != SignerSize {
-		return false, ErrSignerShouldHaveThreeFields
+		return nil, ErrSignerShouldHaveThreeFields
 	}
 
 	accountID, hasTag, err := decodeAddressAccountID(signerData.Account)
 	if err != nil {
-		return false, ErrSignerAccountShouldBeString
+		return nil, ErrSignerAccountShouldBeString
 	}
 	// A Signer names an account that must produce a signature, and no keypair can produce
 	// ACCOUNT_ZERO, so the entry can never be satisfied.
 	if addresscodec.IsZeroAccountID(accountID) {
-		return false, ErrSignerAccountZero
+		return nil, ErrSignerAccountZero
 	}
 	// Signer.Account has no companion tag field. The binary codec routes an embedded tag by
 	// field name alone, so a tagged X-address nested here is written as a SourceTag inside
 	// the Signer object rather than rejected, which is why preflight has to reject it.
 	if hasTag {
-		return false, ErrSignerAccountTagNotAllowed
+		return nil, ErrSignerAccountTagNotAllowed
 	}
 
 	if strings.TrimSpace(signerData.TxnSignature) == "" {
-		return false, ErrSignerTxnSignatureShouldBeNonEmpty
+		return nil, ErrSignerTxnSignatureShouldBeNonEmpty
 	}
 
 	if strings.TrimSpace(signerData.SigningPubKey) == "" {
-		return false, ErrSignerSigningPubKeyShouldBeNonEmpty
+		return nil, ErrSignerSigningPubKeyShouldBeNonEmpty
 	}
 
-	return true, nil
+	return accountID, nil
 }
 
 // IsAmount checks if the given object is a valid Amount object.
@@ -286,9 +293,16 @@ func IsAsset(asset ledger.Asset) (bool, error) {
 	return true, nil
 }
 
-// IsDomainID checks if the given domain ID is valid.
+// IsDomainID reports whether id is exactly 64 hexadecimal characters.
+// Zero is accepted. Ledger existence is not checked.
 func IsDomainID(id string) bool {
 	return IsHex256(id)
+}
+
+// IsNonZeroDomainID reports whether id is exactly 64 hexadecimal characters
+// other than zero. It does not check ledger existence or permissions.
+func IsNonZeroDomainID(id string) bool {
+	return IsDomainID(id) && strings.TrimLeft(id, "0") != ""
 }
 
 // IsLedgerEntryID checks if the input is a valid ledger entry id.

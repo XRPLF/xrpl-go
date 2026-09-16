@@ -203,11 +203,18 @@ func TestVaultInfoResponse(t *testing.T) {
 				PreviousTxnLgrSeq: 28991004,
 				Sequence:          1,
 				Index:             "5A92F6ED33FDA68FB4B9FD140EA38C056CD2BA9673ECA5B4CEF40F2166BB6F0C",
-				OwnerNode:         "0000000000000000",
+				OwnerNode:         "0",
+				Flags:             &flags,
+				AssetScale:        6,
+				MaximumAmount:     "9223372036854775807",
+				TransferFee:       50000,
+				MPTokenMetadata:   "534841524553",
+				LockedAmount:      "9007199254740993",
+				ReferenceHolding:  types.Hash256("13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8"),
 			},
 			ShareMPTID:       "00000000000000000000000000000000000000000000000000000000",
 			WithdrawalPolicy: &withdrawalPolicy,
-			OwnerNode:        "0000000000000000",
+			OwnerNode:        "0",
 			Flags:            &flags,
 		},
 		LedgerHash:  "4C99E5F63C0D0B1C2283B4F5DCE2239F80CE92E8B1A6AED1E110C198FC96E659",
@@ -238,9 +245,16 @@ func TestVaultInfoResponse(t *testing.T) {
 			"PreviousTxnLgrSeq": 28991004,
 			"Sequence": 1,
 			"index": "5A92F6ED33FDA68FB4B9FD140EA38C056CD2BA9673ECA5B4CEF40F2166BB6F0C",
-			"OwnerNode": "0000000000000000"
+			"OwnerNode": "0",
+			"Flags": 0,
+			"AssetScale": 6,
+			"MaximumAmount": "9223372036854775807",
+			"TransferFee": 50000,
+			"MPTokenMetadata": "534841524553",
+			"LockedAmount": "9007199254740993",
+			"ReferenceHolding": "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8"
 		},
-		"OwnerNode": "0000000000000000",
+		"OwnerNode": "0",
 		"ShareMPTID": "00000000000000000000000000000000000000000000000000000000",
 		"WithdrawalPolicy": 0,
 		"Flags": 0
@@ -249,7 +263,72 @@ func TestVaultInfoResponse(t *testing.T) {
 	"ledger_index": 1234,
 	"validated": true
 }`
+	// Exercise the response contract, not a specific on-chain combination of share fields.
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestSharesOptionalFields(t *testing.T) {
+	tests := []struct {
+		name string
+		json string
+	}{
+		{name: "absent", json: `{}`},
+		{name: "explicit zero scale and fee", json: `{"AssetScale":0,"TransferFee":0}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var shares Shares
+			require.NoError(t, json.Unmarshal([]byte(tt.json), &shares))
+			require.Equal(t, Shares{}, shares)
+		})
+	}
+
+	encoded, err := json.Marshal(Shares{})
+	require.NoError(t, err)
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(encoded, &fields))
+	for _, field := range []string{"AssetScale", "MaximumAmount", "TransferFee", "MPTokenMetadata", "LockedAmount", "ReferenceHolding"} {
+		require.NotContains(t, fields, field)
+	}
+}
+
+func TestSharesNumericLimits(t *testing.T) {
+	// These are JSON type limits, not protocol validation. Zero is covered above.
+	tests := []struct {
+		name    string
+		json    string
+		want    Shares
+		wantErr bool
+	}{
+		{
+			name: "maximum unsigned values",
+			json: `{"AssetScale":255,"TransferFee":65535}`,
+			want: Shares{AssetScale: 255, TransferFee: 65535},
+		},
+		{
+			name:    "negative scale",
+			json:    `{"AssetScale":-1}`,
+			wantErr: true,
+		},
+		{
+			name:    "negative transfer fee",
+			json:    `{"TransferFee":-1}`,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var shares Shares
+			err := json.Unmarshal([]byte(tt.json), &shares)
+			if tt.wantErr {
+				var typeErr *json.UnmarshalTypeError
+				require.ErrorAs(t, err, &typeErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, shares)
+		})
 	}
 }

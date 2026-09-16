@@ -84,6 +84,8 @@ type Escrow struct {
 	// (Optional) A hexadecimal hint indicating which page of the issuer's owner directory links to this entry.
 	// Used when the issuer is neither the source nor destination account. (Requires the TokenEscrow amendment.)
 	IssuerNode string `json:",omitempty"`
+	// The account paying this object's owner reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the ledger entry type for Escrow.
@@ -108,9 +110,10 @@ func (e *Escrow) UnmarshalJSON(data []byte) error {
 		OwnerNode         string
 		PreviousTxnID     types.Hash256
 		PreviousTxnLgrSeq uint32
-		SourceTag         uint32 `json:",omitempty"`
-		TransferRate      uint32 `json:",omitempty"`
-		IssuerNode        string `json:",omitempty"`
+		SourceTag         uint32        `json:",omitempty"`
+		TransferRate      uint32        `json:",omitempty"`
+		IssuerNode        string        `json:",omitempty"`
+		Sponsor           types.Address `json:",omitempty"`
 	}
 	var h escrowHelper
 	if err := json.Unmarshal(data, &h); err != nil {
@@ -133,6 +136,7 @@ func (e *Escrow) UnmarshalJSON(data []byte) error {
 		SourceTag:         h.SourceTag,
 		TransferRate:      h.TransferRate,
 		IssuerNode:        h.IssuerNode,
+		Sponsor:           h.Sponsor,
 	}
 	amount, err := types.UnmarshalCurrencyAmount(h.Amount)
 	if err != nil {

@@ -634,3 +634,23 @@ func setupWSSubmitCapture(t *testing.T) (*Client, <-chan map[string]any, func())
 	}
 	return cl, seen, cleanup
 }
+
+func TestClientAutofillNormalizesSponsorAddresses(t *testing.T) {
+	for _, field := range []string{"Sponsor", "Sponsee", "CounterpartySponsor"} {
+		t.Run(field, func(t *testing.T) {
+			tx := transaction.FlatTransaction{
+				"TransactionType":    transaction.AccountSetTx,
+				"Account":            "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				"Fee":                "10",
+				"LastLedgerSequence": uint32(20),
+				field:                "X7AcgcsBL6XDcUb289X4mJ8djcdyKaB5hJDWMArnXr61cqZ",
+			}
+			cl, cleanup := setupTestClientForAutofill(t, []map[string]any{{
+				"id": 1, "result": map[string]any{"account_data": map[string]any{"Sequence": uint32(42)}},
+			}})
+			defer cleanup()
+			require.NoError(t, cl.Autofill(&tx))
+			require.Equal(t, "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", tx[field])
+		})
+	}
+}

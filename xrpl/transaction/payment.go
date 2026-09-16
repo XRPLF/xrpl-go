@@ -19,6 +19,9 @@ const (
 	// is equal or better than the ratio of Amount:SendMax. See Limit Quality for
 	// details.
 	TfLimitQuality uint32 = 262144
+	// TfSponsorCreatedAccount makes Account sponsor the reserve of a newly created Destination.
+	// Requires the Sponsor amendment. This does not require the transaction's Sponsor fields.
+	TfSponsorCreatedAccount uint32 = 0x00080000
 )
 
 // PaymentMetadata represents the resulting metadata of a succeeded Payment transaction.
@@ -178,6 +181,12 @@ func (p *Payment) SetLimitQualityFlag() {
 	p.Flags |= TfLimitQuality
 }
 
+// SetSponsorCreatedAccountFlag makes the sender sponsor the new destination account's reserve.
+// Requires the Sponsor amendment and a native XRP payment to an account that does not exist.
+func (p *Payment) SetSponsorCreatedAccountFlag() {
+	p.Flags |= TfSponsorCreatedAccount
+}
+
 // Validate validates the Payment struct and make sure all the fields are correct.
 func (p *Payment) Validate() (bool, error) {
 	// Validate the base transaction
@@ -229,11 +238,28 @@ func (p *Payment) Validate() (bool, error) {
 	}
 
 	if p.DomainID != nil {
-		if ok := IsDomainID(*p.DomainID); !ok {
+		if ok := IsNonZeroDomainID(*p.DomainID); !ok {
 			return false, ErrInvalidDomainID
 		}
 	}
 
+	return checkSponsorCreatedAccount(p)
+}
+
+func checkSponsorCreatedAccount(tx *Payment) (bool, error) {
+	if !flag.Contains(tx.Flags, TfSponsorCreatedAccount) {
+		return true, nil
+	}
+	if flag.ContainsAny(tx.Flags, TfRippleNotDirect|TfPartialPayment|TfLimitQuality) {
+		return false, ErrSponsorCreatedAccountInvalidFlags
+	}
+	if tx.SendMax != nil || tx.Paths != nil {
+		return false, ErrSponsorCreatedAccountInvalidFields
+	}
+	// Validate has already checked that Amount is present and valid.
+	if tx.Amount.Kind() != types.XRP {
+		return false, ErrSponsorCreatedAccountRequiresXRP
+	}
 	return true, nil
 }
 

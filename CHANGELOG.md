@@ -21,15 +21,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Documented `GetSpendingBalance()` in the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders).
 
+#### xrpl/flag
+
+- Added `ContainsAny` to check whether any bits in a flag mask are set.
+
+#### xrpl/ledger-entry-types
+
+- Added optional `VaultID` and `LoanBrokerID` fields to `AccountRoot`, preserving pseudo-account links in typed ledger and `account_info` responses.
+- Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values, including in typed account responses. Network use requires the `Sponsor` amendment.
+
+#### xrpl/queries/vault
+
+- Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
+
+#### xrpl/rpc
+
+- Added X-address normalization for `Sponsor`, `Sponsee`, and `CounterpartySponsor`, with embedded tags rejected.
+
+#### xrpl/transaction
+
+- Added common sponsorship fields, fee and reserve flags, and sponsor signature validation, including Batch inner transaction checks. Client validation rejects sponsorship on `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions with `ErrPseudoTransactionSponsorship`. Sponsor multisigner lists require at most 32 signers in strict decoded AccountID order. Requires the `Sponsor` amendment on the target network.
+- Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
+- Added `LedgerStateFixTx`, `SponsorshipSetTx`, and `SponsorshipTransferTx` transaction type constants.
+- Added the Payment `TfSponsorCreatedAccount` flag and setter, with validation for native XRP amounts and incompatible fields and flags. Requires the `Sponsor` amendment on the target network.
+
+#### xrpl/websocket
+
+- Added X-address normalization for `Sponsor`, `Sponsee`, and `CounterpartySponsor`, with embedded tags rejected.
+
 ### Changed
 
 #### binary-codec
 
 - Updated binary definitions from a rippled 3.4.0 development build (`21890d9d`), including new protocol fields and removal of unused Hook field definitions.
+- `FeeAmountDelta` now accepts negative XRP strings and rejects non-string values, including IOU and MPT objects. Ordinary amount encoding is unchanged.
+
+#### xrpl/transaction
+
+- Transaction multisigner validation now rejects more than 32 signers, duplicate accounts, and lists not ordered by decoded AccountID. Validation does not reorder signers.
 
 #### xrpl/wallet
 
 - Updated LoanSet counterparty signing to use role-specific prefixes. Requires `fixCleanup3_4_0` on the target network. For networks without this amendment, use a previous library release.
+
+### Fixed
+
+#### xrpl/ledger-entry-types
+
+- Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.
+
+#### xrpl/transaction
+
+- Reject zero `DomainID` references in Payment, OfferCreate, MPTokenIssuanceCreate, and VaultCreate. Preserve zero-domain clearing in MPTokenIssuanceSet and VaultSet.
+- Reject an empty `MPTokenIssuanceSet.DomainID` during validation instead of failing later during binary encoding. Use 64 zero digits to request domain removal.
+- Compare decoded account identities in DepositPreauth, NFTokenCreateOffer, SetRegularKey, DelegateSet, NFTokenMint, NFTokenModify, MPTokenAuthorize, and MPTokenIssuanceSet self-reference checks, so equivalent classic and X-addresses cannot bypass them. AMMClawback now accepts equivalent address forms in its asset issuer/account check.
+- Reject odd-length `VaultCreate.Data` hex during validation instead of failing later during binary encoding.
 
 ## [v0.3.1-mpt.0]
 

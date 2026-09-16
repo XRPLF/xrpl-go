@@ -30,6 +30,7 @@ type VaultSet struct {
 	// The maximum asset amount that can be held in a vault.
 	AssetsMaximum *types.XRPLNumber `json:",omitempty"`
 	// The PermissionedDomain object ID associated with the shares of this Vault.
+	// A string of 64 zero digits removes the domain, subject to server permission checks.
 	DomainID *string `json:",omitempty"`
 }
 

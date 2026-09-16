@@ -8,6 +8,10 @@ import (
 )
 
 var (
+	errTooManyTransactionSigners  = errors.New("signers: at most 32 transaction signers are allowed")
+	errDuplicateTransactionSigner = errors.New("signers: duplicate account")
+	errUnsortedTransactionSigners = errors.New("signers: accounts must be sorted ascending by AccountID")
+
 	// ErrDestinationAccountConflict is returned when the Destination matches the Account.
 	ErrDestinationAccountConflict = errors.New("destination cannot be the same as the Account")
 	// ErrTransactionTypeMissing is returned when the TransactionType field is absent
@@ -36,6 +40,33 @@ var (
 	ErrDelegateTagNotAllowed = fmt.Errorf("%w: %w", ErrInvalidDelegate, ErrAccountIDTagNotAllowed)
 	// ErrDelegateAccountConflict is returned when the Delegate matches the Account.
 	ErrDelegateAccountConflict = errors.New("addresses for Account and Delegate cannot be the same")
+	// ErrPseudoTransactionSponsorship is returned when client validation rejects
+	// sponsorship fields on a consensus-generated pseudo-transaction.
+	ErrPseudoTransactionSponsorship = errors.New("pseudo-transactions cannot be sponsored")
+	// ErrSponsorFieldsMissing is returned when sponsorship fields are incomplete.
+	ErrSponsorFieldsMissing = errors.New("sponsor and nonzero SponsorFlags must be supplied together")
+	// ErrInvalidSponsor is returned when Sponsor is not a valid account address.
+	ErrInvalidSponsor = errors.New("invalid xrpl address for Sponsor")
+	// ErrSponsorZero identifies both the Sponsor field and the zero-account condition.
+	ErrSponsorZero = fmt.Errorf("%w: %w", ErrInvalidSponsor, ErrZeroAccountID)
+	// ErrSponsorTagNotAllowed identifies both the Sponsor field and the forbidden tag.
+	ErrSponsorTagNotAllowed = fmt.Errorf("%w: %w", ErrInvalidSponsor, ErrAccountIDTagNotAllowed)
+	// ErrSponsorAccountConflict is returned when Sponsor and Account identify the same account.
+	ErrSponsorAccountConflict = errors.New("sponsor and Account must be different accounts")
+	// ErrInvalidSponsorFlags is returned for malformed or unsupported sponsor flags.
+	ErrInvalidSponsorFlags = errors.New("SponsorFlags must be a nonzero uint32 containing only fee and reserve flags")
+	// ErrReserveSponsorshipNotAllowed is returned for a transaction outside the reserve allow-list.
+	ErrReserveSponsorshipNotAllowed = errors.New("reserve sponsorship is not allowed for this transaction type")
+	// ErrSponsorDelegateConflict is returned for reserve sponsorship with Delegate.
+	ErrSponsorDelegateConflict = errors.New("reserve sponsorship cannot be combined with Delegate")
+	// ErrInnerBatchFeeSponsorship is returned for fee sponsorship on an inner Batch transaction.
+	ErrInnerBatchFeeSponsorship = errors.New("inner Batch transactions cannot use fee sponsorship")
+	// ErrInvalidSponsorSignature is returned for a malformed sponsor authorization object.
+	ErrInvalidSponsorSignature = errors.New("invalid SponsorSignature")
+	// ErrInnerBatchSponsorSignature is returned when an inner sponsor signature has
+	// fields other than an optional empty SigningPubKey.
+	// It also matches ErrInvalidSponsorSignature.
+	ErrInnerBatchSponsorSignature = fmt.Errorf("%w: inner transaction permits only an optional empty SigningPubKey", ErrInvalidSponsorSignature)
 	// ErrAccountIDTagNotAllowed is returned when a tagged X-address is used in a field
 	// that has no companion tag field to carry the tag. It aliases the binary-codec
 	// sentinel so preflight and encoding report one error identity for this condition.
@@ -188,6 +219,12 @@ var (
 
 	// ErrPartialPaymentFlagRequired is returned when the TfPartialPayment flag is required but not set.
 	ErrPartialPaymentFlagRequired = errors.New("flag TfPartialPayment required with DeliverMin")
+	// ErrSponsorCreatedAccountInvalidFlags is returned for incompatible sponsored account creation flags.
+	ErrSponsorCreatedAccountInvalidFlags = errors.New("TfSponsorCreatedAccount cannot be combined with TfRippleNotDirect, TfPartialPayment, or TfLimitQuality")
+	// ErrSponsorCreatedAccountInvalidFields is returned when sponsored account creation includes SendMax or Paths.
+	ErrSponsorCreatedAccountInvalidFields = errors.New("TfSponsorCreatedAccount cannot be combined with SendMax or Paths")
+	// ErrSponsorCreatedAccountRequiresXRP is returned when sponsored account creation uses a non-XRP Amount.
+	ErrSponsorCreatedAccountRequiresXRP = errors.New("TfSponsorCreatedAccount requires a native XRP Amount")
 
 	// ErrInvalidExpiration indicates the expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel.
 	ErrInvalidExpiration = errors.New("expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel")
@@ -277,8 +314,8 @@ var (
 	ErrMPTIssuanceSetInvalidImmutableFlags = errors.New("mptoken issuance set: ImmutableFlags contains unsupported flags")
 	// ErrMPTIssuanceSetTransferFeeWithConfidentialBalance is returned when a non-zero transfer fee is enabled with confidential balances.
 	ErrMPTIssuanceSetTransferFeeWithConfidentialBalance = errors.New("mptoken issuance set: TransferFee cannot be non-zero when TfMPTSetCanHoldConfidentialBalance is set")
-	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string (and not empty).
-	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string or empty")
+	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
+	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string")
 	// ErrMPTIssuanceSetKeyConflict is returned when encryption keys are set together with Holder.
 	ErrMPTIssuanceSetKeyConflict = errors.New("mptoken issuance set: encryption keys cannot be set together with Holder")
 	// ErrMPTIssuanceSetAuditorRequiresIssuerKey is returned when AuditorEncryptionKey is set without IssuerEncryptionKey.

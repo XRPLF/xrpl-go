@@ -55,7 +55,7 @@ type MPTokenIssuanceSet struct {
 	// Holder is the optional XRPL address of a token holder balance to lock or unlock.
 	Holder *types.Address
 	// DomainID is the optional permissioned domain to associate with this issuance.
-	// An empty string removes the domain.
+	// A string of 64 zero digits removes the domain, subject to server permission checks.
 	DomainID *string `json:",omitempty"`
 	// MPTokenMetadata is the optional new metadata. An empty string removes the metadata.
 	MPTokenMetadata *string `json:",omitempty"`
@@ -217,7 +217,7 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 	if m.Holder != nil && !addresscodec.IsValidAddress(m.Holder.String()) {
 		return false, ErrInvalidAccount
 	}
-	if m.Holder != nil && m.Account.String() == m.Holder.String() {
+	if m.Holder != nil && sameAccountAddress(m.Account, *m.Holder) {
 		return false, ErrHolderAccountConflict
 	}
 
@@ -232,7 +232,7 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 		return false, ErrMPTokenIssuanceSetFlags
 	}
 
-	hasEnableFlag := m.Flags&mpTokenIssuanceSetEnableFlagMask != 0
+	hasEnableFlag := flag.ContainsAny(m.Flags, mpTokenIssuanceSetEnableFlagMask)
 	hasEncryptionKeys := m.IssuerEncryptionKey != nil || m.AuditorEncryptionKey != nil
 	isMutate := hasEnableFlag || m.ImmutableFlags != nil || m.MPTokenMetadata != nil || m.TransferFee != nil || hasEncryptionKeys
 
@@ -269,7 +269,7 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 	if m.MPTokenMetadata != nil && *m.MPTokenMetadata != "" && !ValidateHexMetadata(*m.MPTokenMetadata, 2*types.MaxMPTokenMetadataByteLength) {
 		return false, ErrInvalidMPTokenMetadata
 	}
-	if m.DomainID != nil && *m.DomainID != "" && !IsDomainID(*m.DomainID) {
+	if m.DomainID != nil && !IsDomainID(*m.DomainID) {
 		return false, ErrMPTIssuanceSetDomainIDInvalid
 	}
 	if m.AuditorEncryptionKey != nil && m.IssuerEncryptionKey == nil {
