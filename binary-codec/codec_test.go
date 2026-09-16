@@ -1,6 +1,7 @@
 package binarycodec
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -1324,4 +1325,122 @@ func TestRoleSigningEncoders(t *testing.T) {
 			require.Equal(t, original, tx)
 		})
 	}
+}
+
+func TestFeeAmountDeltaRoundTrip(t *testing.T) {
+	const feeAmountDeltaHeader = "6022"
+	tests := []struct {
+		name, input, payload, decoded string
+	}{
+		{name: "positive", input: "10", payload: "400000000000000A", decoded: "10"},
+		{name: "negative", input: "-10", payload: "000000000000000A", decoded: "-10"},
+		{name: "zero", input: "0", payload: "4000000000000000", decoded: "0"},
+		{name: "negative zero", input: "-0", payload: "4000000000000000", decoded: "0"},
+		{name: "negative all zeros", input: "-000", payload: "4000000000000000", decoded: "0"},
+		{name: "negative leading zeros", input: "-00010", payload: "000000000000000A", decoded: "-10"},
+		{name: "maximum", input: "100000000000000000", payload: "416345785D8A0000", decoded: "100000000000000000"},
+		{name: "minimum", input: "-100000000000000000", payload: "016345785D8A0000", decoded: "-100000000000000000"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := Encode(map[string]any{"FeeAmountDelta": tt.input})
+			require.NoError(t, err)
+			require.Equal(t, feeAmountDeltaHeader+tt.payload, encoded)
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.Equal(t, map[string]any{"FeeAmountDelta": tt.decoded}, decoded)
+		})
+	}
+}
+
+func TestFeeAmountDeltaNestedRoundTrip(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    map[string]any
+		expected string
+	}{
+		{
+			name: "object",
+			input: map[string]any{
+				"FinalFields": map[string]any{"FeeAmountDelta": "-10"},
+			},
+			expected: "E76022000000000000000AE1",
+		},
+		{
+			name: "array",
+			input: map[string]any{
+				"AffectedNodes": []any{
+					map[string]any{
+						"ModifiedNode": map[string]any{
+							"FinalFields": map[string]any{"FeeAmountDelta": "-10"},
+						},
+					},
+				},
+			},
+			expected: "F8E5E76022000000000000000AE1E1F1",
+		},
+		{
+			name: "ordinary fee with signed delta",
+			input: map[string]any{
+				"Fee":            "12",
+				"FeeAmountDelta": "-10",
+			},
+			expected: "68400000000000000C6022000000000000000A",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := Encode(tt.input)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, encoded)
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.Equal(t, tt.input, decoded)
+		})
+	}
+}
+
+func TestFeeAmountDeltaRejectsNonStrings(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+	}{
+		{name: "integer", input: 10},
+		{name: "float", input: 10.0},
+		{name: "JSON number", input: json.Number("10")},
+		{name: "boolean", input: true},
+		{name: "nil", input: nil},
+		{name: "slice", input: []string{"10"}},
+		{name: "issued currency", input: map[string]any{
+			"currency": "USD", "issuer": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "value": "10",
+		}},
+		{name: "MPT", input: map[string]any{
+			"mpt_issuance_id": "000000000000000000000000000000000000000000000001", "value": "10",
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Encode(map[string]any{"FeeAmountDelta": tt.input})
+			require.EqualError(t, err, "invalid amount type")
+		})
+	}
+}
+
+func TestOrdinaryNativeAmountStillRejectsSignedInputs(t *testing.T) {
+	for _, field := range []string{"Amount", "Fee"} {
+		t.Run(field, func(t *testing.T) {
+			for _, input := range []string{"-10", "-00010", "-0", "-000", "+10", "+0", "+000"} {
+				_, expectedErr := (&types.Amount{}).FromJSON(input)
+				require.Error(t, expectedErr)
+				_, err := Encode(map[string]any{field: input})
+				require.Equal(t, expectedErr, err)
+			}
+		})
+	}
+}
+
+func TestFeeAmountDeltaDecodesExistingNegativeZero(t *testing.T) {
+	decoded, err := Decode("60220000000000000000")
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"FeeAmountDelta": "-0"}, decoded)
 }

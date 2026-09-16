@@ -121,11 +121,13 @@ func (e *InvalidCodeError) Error() string {
 // Amount is a struct that represents an XRPL Amount.
 type Amount struct{}
 
+var _ fieldAwareEncoder = (*Amount)(nil)
+
 // FromJSON serializes an issued currency amount to its bytes representation from JSON.
 func (a *Amount) FromJSON(value any) ([]byte, error) {
 	switch v := value.(type) {
 	case string:
-		return serializeXrpAmount(v)
+		return serializeXRPAmount(v, false)
 	case map[string]any:
 		// Extract and normalize the "value" field
 		rawVal, ok := v["value"]
@@ -167,6 +169,19 @@ func (a *Amount) FromJSON(value any) ([]byte, error) {
 
 	default:
 		return nil, errInvalidAmountType
+	}
+}
+
+func (a *Amount) fromJSONForField(value any, fieldName string) ([]byte, error) {
+	switch fieldName {
+	case "FeeAmountDelta":
+		native, ok := value.(string)
+		if !ok {
+			return nil, errInvalidAmountType
+		}
+		return serializeXRPAmount(native, true)
+	default:
+		return a.FromJSON(value)
 	}
 }
 
@@ -350,24 +365,6 @@ func deserializeMPTAmount(data []byte) (map[string]any, error) {
 	}, nil
 }
 
-// verifyXrpValue validates the format and range of a native XRP amount in drops.
-func verifyXrpValue(value string) error {
-	drops, ok := new(big.Int).SetString(value, 10)
-	if !ok {
-		return errInvalidXRPValue
-	}
-
-	if drops.Sign() < 0 {
-		return &InvalidAmountError{Amount: value}
-	}
-
-	if drops.Cmp(maxDropsBig) > 0 {
-		return &InvalidAmountError{Amount: value}
-	}
-
-	return nil
-}
-
 // verifyMPTValue validates the format of an MPT amount value.
 // MPT values must be integers (no decimal point) and must not have the high bit set.
 func verifyMPTValue(value string) error {
@@ -399,23 +396,47 @@ func verifyMPTValue(value string) error {
 	return nil
 }
 
-// serializeXrpAmount serializes an XRP amount value.
-func serializeXrpAmount(value string) ([]byte, error) {
-	if err := verifyXrpValue(value); err != nil {
-		return nil, err
-	}
-
-	val, err := strconv.ParseUint(value, 10, 64)
+// serializeXRPAmount serializes a native XRP amount, normalizing signed zero.
+func serializeXRPAmount(value string, allowNegative bool) ([]byte, error) {
+	drops, err := parseXRPValue(value, allowNegative)
 	if err != nil {
 		return nil, err
 	}
 
-	valWithPosBit := val | PosSignBitMask
-	valBytes := make([]byte, NativeAmountByteLength)
+	var signBit uint64
+	if drops.Sign() >= 0 {
+		signBit = PosSignBitMask
+	}
+	magnitude := drops.Abs(drops).Uint64()
+	encoded := make([]byte, NativeAmountByteLength)
+	binary.BigEndian.PutUint64(encoded, magnitude|signBit)
+	return encoded, nil
+}
 
-	binary.BigEndian.PutUint64(valBytes, uint64(valWithPosBit))
+// parseXRPValue validates a native XRP amount in drops and returns its parsed value.
+// Negative inputs, including negative zero, are permitted only when allowNegative is true.
+func parseXRPValue(value string, allowNegative bool) (*big.Int, error) {
+	drops, ok := new(big.Int).SetString(value, 10)
+	if !ok {
+		return nil, errInvalidXRPValue
+	}
 
-	return valBytes, nil
+	if !allowNegative && drops.Sign() < 0 {
+		return nil, &InvalidAmountError{Amount: value}
+	}
+
+	if drops.CmpAbs(maxDropsBig) > 0 {
+		return nil, &InvalidAmountError{Amount: value}
+	}
+
+	// SetString accepts '+' and normalizes '-0'. Preserve the existing ParseUint
+	// syntax errors for leading '+' and ordinary negative zero.
+	if strings.HasPrefix(value, "+") || (!allowNegative && strings.HasPrefix(value, "-")) {
+		_, err := strconv.ParseUint(value, 10, 64)
+		return nil, err
+	}
+
+	return drops, nil
 }
 
 // XRPL definition of precision is number of significant digits:
