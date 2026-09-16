@@ -60,25 +60,44 @@ func TestVaultDeleteMemoDataFlattenPresence(t *testing.T) {
 }
 
 func TestVaultDeleteMemoDataRoundTrip(t *testing.T) {
-	metadata := strings.Repeat("AB", 256)
+	deletionMetadata := strings.Repeat("AB", 256)
 	tx := VaultDelete{
-		BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", Memos: []types.MemoWrapper{{Memo: types.Memo{MemoData: "4344"}}}},
+		BaseTx: BaseTx{
+			Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+			Memos: []types.MemoWrapper{
+				{Memo: types.Memo{MemoData: "4344"}},
+			},
+		},
 		VaultID:  "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-		MemoData: &metadata,
+		MemoData: &deletionMetadata,
 	}
+
+	// Top-level deletion metadata must remain separate from transaction memos.
 	flat := tx.Flatten()
-	require.Equal(t, metadata, flat["MemoData"])
-	blob, err := binarycodec.Encode(flat)
+	require.Equal(t, deletionMetadata, flat["MemoData"])
+
+	encodedTx, err := binarycodec.Encode(flat)
 	require.NoError(t, err)
-	decoded, err := binarycodec.Decode(blob)
+	decodedTx, err := binarycodec.Decode(encodedTx)
 	require.NoError(t, err)
-	require.Equal(t, metadata, decoded["MemoData"])
-	require.Equal(t, []any{map[string]any{"Memo": map[string]any{"MemoData": "4344"}}}, decoded["Memos"])
-	signing, err := binarycodec.EncodeForSigning(flat)
+
+	wantMemos := []any{
+		map[string]any{
+			"Memo": map[string]any{"MemoData": "4344"},
+		},
+	}
+	require.Equal(t, deletionMetadata, decodedTx["MemoData"])
+	require.Equal(t, wantMemos, decodedTx["Memos"])
+
+	// All fields in this fixture belong in the signing payload.
+	const signingPrefix = "53545800" // "STX\x00", the single-signing prefix.
+	signingData, err := binarycodec.EncodeForSigning(flat)
 	require.NoError(t, err)
-	require.Equal(t, "53545800"+blob, signing)
-	delete(flat, "MemoData")
-	withoutMetadata, err := binarycodec.EncodeForSigning(flat)
+	require.Equal(t, signingPrefix+encodedTx, signingData)
+
+	// Removing deletion metadata must change the data that is signed.
+	tx.MemoData = nil
+	signingDataWithoutMetadata, err := binarycodec.EncodeForSigning(tx.Flatten())
 	require.NoError(t, err)
-	require.NotEqual(t, withoutMetadata, signing)
+	require.NotEqual(t, signingData, signingDataWithoutMetadata)
 }
