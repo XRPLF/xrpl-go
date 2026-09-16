@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bytes"
 	"encoding/hex"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -16,6 +17,18 @@ func decodeAddressAccountID(address types.Address) (accountID []byte, hasTag boo
 		return nil, false, err
 	}
 	return decoded.AccountID[:], decoded.HasTag, nil
+}
+
+// sameAccountAddress compares account identity, ignoring X-address tags and network
+// prefixes. Invalid addresses are not equal. Callers retain field-specific address
+// validation and tag policies.
+func sameAccountAddress(a, b types.Address) bool {
+	aID, _, err := decodeAddressAccountID(a)
+	if err != nil {
+		return false
+	}
+	bID, _, err := decodeAddressAccountID(b)
+	return err == nil && bytes.Equal(aID, bID)
 }
 
 func decodeMPTIssuanceID(issuanceID string) ([]byte, bool) {

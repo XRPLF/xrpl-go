@@ -87,11 +87,11 @@ func (d *DepositPreauth) Validate() (bool, error) {
 		return false, ErrDepositPreauthMustSetOnlyOneField
 	}
 
-	if d.Authorize != "" && d.Authorize.String() == d.Account.String() {
+	if d.Authorize != "" && sameAccountAddress(d.Authorize, d.Account) {
 		return false, ErrDepositPreauthAuthorizeCannotBeSender
 	}
 
-	if d.Unauthorize != "" && d.Unauthorize.String() == d.Account.String() {
+	if d.Unauthorize != "" && sameAccountAddress(d.Unauthorize, d.Account) {
 		return false, ErrDepositPreauthUnauthorizeCannotBeSender
 	}
 

@@ -38,6 +38,8 @@ type Credential struct {
 	SubjectNode string
 	// Arbitrary additional data about the credential, for example a URL where a W3C-formatted Verifiable Credential can be retrieved.
 	URI string `json:",omitempty"`
+	// The account paying this object's owner reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.
