@@ -18,6 +18,9 @@ const (
 )
 
 var (
+	errAccountHasSponsorshipObligations = errors.New("account cannot be deleted; it has outstanding sponsorship obligations (SponsoringOwnerCount/SponsoringAccountCount)")
+	errAccountDeleteSponsorMismatch     = errors.New("account cannot be deleted; its Sponsor does not match the AccountDelete Destination")
+
 	// transaction
 
 	// ErrMissingTxSignatureOrSigningPubKey is returned when a transaction has no complete signing form.

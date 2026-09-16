@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
@@ -204,7 +205,7 @@ func (c *Client) setLastLedgerSequence(ctx context.Context, tx *transaction.Flat
 
 // Checks for any blockers that prevent the deletion of an account.
 // Returns nil if there are no blockers, otherwise returns an error.
-func (c *Client) checkAccountDeleteBlockers(ctx context.Context, address types.Address) error {
+func (c *Client) checkAccountDeleteBlockers(ctx context.Context, address types.Address, destination string) error {
 	var accObjects account.ObjectsResponse
 	if err := c.requestResult(ctx, &account.ObjectsRequest{
 		Account:              address,
@@ -216,6 +217,34 @@ func (c *Client) checkAccountDeleteBlockers(ctx context.Context, address types.A
 
 	if len(accObjects.AccountObjects) > 0 {
 		return ErrAccountCannotBeDeleted
+	}
+
+	var info account.InfoResponse
+	if err := c.requestResult(ctx, &account.InfoRequest{
+		Account:     address,
+		LedgerIndex: common.LedgerTitle("validated"),
+	}, &info); err != nil {
+		return err
+	}
+	// Field presence blocks deletion, including an explicitly reported zero.
+	root := info.AccountData
+	if root.SponsoringOwnerCount != nil || root.SponsoringAccountCount != nil {
+		return errAccountHasSponsorshipObligations
+	}
+	// Autofill does not enforce required fields. Address normalization has
+	// already rejected malformed destinations, but permits missing/nil values.
+	if root.Sponsor != "" && destination != "" {
+		sponsor, err := addresscodec.DecodeAddress(root.Sponsor.String())
+		if err != nil {
+			return fmt.Errorf("decode account Sponsor: %w", err)
+		}
+		dest, err := addresscodec.DecodeAddress(destination)
+		if err != nil {
+			return fmt.Errorf("decode AccountDelete Destination: %w", err)
+		}
+		if sponsor.AccountID != dest.AccountID {
+			return errAccountDeleteSponsorMismatch
+		}
 	}
 	return nil
 }

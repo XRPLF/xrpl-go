@@ -103,6 +103,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### xrpl/rpc, xrpl/websocket
+
+- Added AccountDelete autofill checks for outstanding sponsorship obligations and a sponsored account's destination. The destination must identify the account's sponsor when supplied. Account query failures are returned without changing the caller's transaction.
+
 #### xrpl/ledger-entry-types
 
 - Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.

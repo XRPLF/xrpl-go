@@ -412,7 +412,9 @@ func (c *Client) autofill(ctx context.Context, tx *transaction.FlatTransaction, 
 		if !ok {
 			return ErrMissingAccountInTransaction
 		}
-		if err := c.checkAccountDeleteBlockers(ctx, types.Address(accountAddress)); err != nil {
+		// Normalization permits missing/nil Destination, which Autofill does not require.
+		destination, _ := typecheck.ToString((*tx)["Destination"])
+		if err := c.checkAccountDeleteBlockers(ctx, types.Address(accountAddress), destination); err != nil {
 			return err
 		}
 	}
