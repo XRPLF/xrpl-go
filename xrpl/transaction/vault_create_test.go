@@ -457,6 +457,15 @@ func TestVaultCreate_Validate(t *testing.T) {
 			expected: nil,
 		},
 		{
+			name: "fail - zero DomainID",
+			tx: &VaultCreate{
+				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultCreateTx, Flags: TfVaultPrivate},
+				Asset:    ledger.Asset{Currency: "XRP"},
+				DomainID: types.DomainID(strings.Repeat("0", 64)),
+			},
+			expected: ErrVaultCreateDomainIDInvalid,
+		},
+		{
 			name: "fail - DomainID invalid (too short)",
 			tx: &VaultCreate{
 				BaseTx: BaseTx{

@@ -9,21 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-#### xrpl/ledger-entry-types
-
-- Added optional `VaultID` and `LoanBrokerID` fields to `AccountRoot`, preserving pseudo-account links in typed ledger and `account_info` responses.
-
 #### binary-codec
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
 
 #### xrpl/ledger-entry-types
 
+- Added optional `VaultID` and `LoanBrokerID` fields to `AccountRoot`, preserving pseudo-account links in typed ledger and `account_info` responses.
 - Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values, including in typed account responses. Network use requires the `Sponsor` amendment.
 
 #### xrpl/queries/vault
 
 - Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
+
+#### xrpl/transaction
+
+- Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
 
 ### Changed
 
@@ -44,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
+- Reject zero `DomainID` references in Payment, OfferCreate, MPTokenIssuanceCreate, and VaultCreate. Preserve zero-domain clearing in MPTokenIssuanceSet and VaultSet.
+- Reject an empty `MPTokenIssuanceSet.DomainID` during validation instead of failing later during binary encoding. Use 64 zero digits to request domain removal.
 - Compare decoded account identities in DepositPreauth, NFTokenCreateOffer, SetRegularKey, DelegateSet, NFTokenMint, NFTokenModify, MPTokenAuthorize, and MPTokenIssuanceSet self-reference checks, so equivalent classic and X-addresses cannot bypass them. AMMClawback now accepts equivalent address forms in its asset issuer/account check.
 - Reject odd-length `VaultCreate.Data` hex during validation instead of failing later during binary encoding.
 
