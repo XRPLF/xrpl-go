@@ -58,6 +58,7 @@ func TestVaultDelete_Flatten(t *testing.T) {
 }
 
 func TestVaultDelete_Validate(t *testing.T) {
+	const maxMetadataBytes = 256
 	testcases := []struct {
 		name     string
 		tx       *VaultDelete
@@ -104,7 +105,7 @@ func TestVaultDelete_Validate(t *testing.T) {
 			tx: &VaultDelete{
 				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultDeleteTx},
 				VaultID:  "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				MemoData: func() *string { value := strings.Repeat("AB", 256); return &value }(),
+				MemoData: func() *string { value := strings.Repeat("AB", maxMetadataBytes); return &value }(),
 			},
 			expected: nil,
 		},
@@ -113,7 +114,7 @@ func TestVaultDelete_Validate(t *testing.T) {
 			tx: &VaultDelete{
 				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultDeleteTx},
 				VaultID:  "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				MemoData: func() *string { value := strings.Repeat("AB", 257); return &value }(),
+				MemoData: func() *string { value := strings.Repeat("AB", maxMetadataBytes+1); return &value }(),
 			},
 			expected: ErrVaultDeleteMemoDataInvalid,
 		},

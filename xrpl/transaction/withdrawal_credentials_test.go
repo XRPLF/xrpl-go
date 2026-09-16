@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const credentialIDBytes = 32
+
 type withdrawalTestTx interface {
 	Tx
 	Validate() (bool, error)
@@ -18,10 +20,11 @@ type withdrawalTestTx interface {
 }
 
 func TestWithdrawalCredentialValidation(t *testing.T) {
-	id := strings.Repeat("AB", 32)
-	maximum := make(types.CredentialIDs, 8)
+	const maxCredentialIDs = 8
+	id := strings.Repeat("AB", credentialIDBytes)
+	maximum := make(types.CredentialIDs, maxCredentialIDs)
 	for i := range maximum {
-		maximum[i] = fmt.Sprintf("%064X", i+1)
+		maximum[i] = fmt.Sprintf("%0*X", 2*credentialIDBytes, i+1)
 	}
 	tests := []struct {
 		name  string
@@ -37,11 +40,11 @@ func TestWithdrawalCredentialValidation(t *testing.T) {
 		{"duplicate", types.CredentialIDs{id, id}, false},
 		{"duplicate case", types.CredentialIDs{id, strings.ToLower(id)}, false},
 		{"empty id", types.CredentialIDs{""}, false},
-		{"zero id", types.CredentialIDs{strings.Repeat("0", 64)}, false},
+		{"zero id", types.CredentialIDs{strings.Repeat("00", credentialIDBytes)}, false},
 		{"short", types.CredentialIDs{"AB"}, false},
-		{"odd", types.CredentialIDs{id[:63]}, false},
+		{"odd", types.CredentialIDs{id[:len(id)-1]}, false},
 		{"long", types.CredentialIDs{id + "00"}, false},
-		{"nonhex", types.CredentialIDs{strings.Repeat("ZZ", 32)}, false},
+		{"nonhex", types.CredentialIDs{strings.Repeat("ZZ", credentialIDBytes)}, false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -137,8 +140,9 @@ func TestWithdrawalCredentialsFlattenPresence(t *testing.T) {
 }
 
 func TestWithdrawalCredentialsBinaryRoundTrip(t *testing.T) {
-	id := strings.Repeat("AB", 32)
-	ids := types.CredentialIDs{id, strings.Repeat("CD", 32)}
+	const signingPrefix = "53545800" // "STX\x00", the single-signing prefix.
+	id := strings.Repeat("AB", credentialIDBytes)
+	ids := types.CredentialIDs{id, strings.Repeat("CD", credentialIDBytes)}
 	txs := []withdrawalTestTx{
 		&VaultWithdraw{
 			BaseTx:        BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es"},
@@ -164,7 +168,7 @@ func TestWithdrawalCredentialsBinaryRoundTrip(t *testing.T) {
 			require.Equal(t, map[string]any(flat), decoded)
 			signing, err := binarycodec.EncodeForSigning(flat)
 			require.NoError(t, err)
-			require.Equal(t, "53545800"+blob, signing)
+			require.Equal(t, signingPrefix+blob, signing)
 		})
 	}
 }

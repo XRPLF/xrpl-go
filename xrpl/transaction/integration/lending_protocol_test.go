@@ -45,12 +45,14 @@ func findLoanObject(objects []ledger.FlatLedgerObject, loanObjectID string) ledg
 // These tests require LendingProtocolV1_1 and fixCleanup3_4_0.
 func closedLendingVaultDates(t *testing.T, client integration.Client) (uint32, uint32) {
 	t.Helper()
+	const subscriptionWindowSeconds uint32 = 120 // Two minutes for deposits.
+	const investmentPeriodSeconds uint32 = 86400 // One day for loan maturity.
 	closed, err := client.GetLedger(&xrplledger.Request{LedgerIndex: querycommon.Validated})
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, closed.Ledger.CloseTime, 0)
-	require.LessOrEqual(t, int64(closed.Ledger.CloseTime), int64(math.MaxUint32-120-86400))
-	subscription := uint32(closed.Ledger.CloseTime) + 120 //nolint:gosec // bounded above
-	return subscription, subscription + 86400
+	require.LessOrEqual(t, int64(closed.Ledger.CloseTime), int64(math.MaxUint32-subscriptionWindowSeconds-investmentPeriodSeconds))
+	subscription := uint32(closed.Ledger.CloseTime) + subscriptionWindowSeconds //nolint:gosec // bounded above
+	return subscription, subscription + investmentPeriodSeconds
 }
 
 func waitForVaultInvestment(t *testing.T, client integration.Client, subscription uint32) {

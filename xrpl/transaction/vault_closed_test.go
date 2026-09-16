@@ -11,11 +11,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const minInvestmentPeriodSeconds uint32 = 180
+
 func TestVaultCreateClosedValidation(t *testing.T) {
+	const maxInvestmentPeriodSeconds uint32 = 946708560 // Exclusive limit: 30 Gregorian years.
 	open, closed, invalid, maxKind := types.VaultKindOpen, types.VaultKindClosed, types.VaultKind(2), types.VaultKind(math.MaxUint8)
-	zero, sub, before, tooShort, minDate := uint32(0), uint32(1000), uint32(999), uint32(1179), uint32(1180)
-	maxDate, tooLong, overflow := sub+946708559, sub+946708560, uint32(math.MaxUint32)
-	lastSubscription := overflow - 180
+	zero, sub := uint32(0), uint32(1000)
+	before := sub - 1
+	tooShort := sub + minInvestmentPeriodSeconds - 1
+	minDate := sub + minInvestmentPeriodSeconds
+	maxDate := sub + maxInvestmentPeriodSeconds - 1
+	tooLong := sub + maxInvestmentPeriodSeconds
+	overflow := uint32(math.MaxUint32)
+	lastSubscription := overflow - minInvestmentPeriodSeconds
 	tests := []struct {
 		name                     string
 		kind                     *types.VaultKind
@@ -63,8 +71,8 @@ func TestVaultCreateClosedValidation(t *testing.T) {
 
 func TestVaultCreateClosedSerialization(t *testing.T) {
 	open, closed := types.VaultKindOpen, types.VaultKindClosed
-	zero, minimum := uint32(0), uint32(180)
-	lastSubscription, maxDate := uint32(math.MaxUint32-180), uint32(math.MaxUint32)
+	zero, minimum := uint32(0), minInvestmentPeriodSeconds
+	lastSubscription, maxDate := uint32(math.MaxUint32-minInvestmentPeriodSeconds), uint32(math.MaxUint32)
 	tests := []struct {
 		name     string
 		tx       VaultCreate

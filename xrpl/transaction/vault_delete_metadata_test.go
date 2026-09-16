@@ -60,7 +60,8 @@ func TestVaultDeleteMemoDataFlattenPresence(t *testing.T) {
 }
 
 func TestVaultDeleteMemoDataRoundTrip(t *testing.T) {
-	deletionMetadata := strings.Repeat("AB", 256)
+	const maxMetadataBytes = 256
+	deletionMetadata := strings.Repeat("AB", maxMetadataBytes)
 	tx := VaultDelete{
 		BaseTx: BaseTx{
 			Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
