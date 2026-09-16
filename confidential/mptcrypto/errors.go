@@ -13,4 +13,6 @@ var (
 	// ErrInvalidCiphertext is returned when a ciphertext does not decode to two curve
 	// points, or when a homomorphic result has no compressed encoding.
 	ErrInvalidCiphertext = errors.New("mptcrypto: invalid ciphertext")
+	// ErrInvalidPublicKey is returned when a public key does not decode to a curve point.
+	ErrInvalidPublicKey = errors.New("mptcrypto: invalid public key")
 )

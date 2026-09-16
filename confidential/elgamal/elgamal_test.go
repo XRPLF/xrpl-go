@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 	"github.com/stretchr/testify/require"
@@ -347,4 +348,60 @@ func TestAddIsHomomorphicAcrossKeys(t *testing.T) {
 	require.Equal(t, uint64(24), holderAmount)
 	require.Equal(t, uint64(24), issuerAmount)
 	require.NotEqual(t, holderSum, issuerSum, "the same amount under two keys is two ciphertexts")
+}
+
+// TestEncryptCanonicalZero pins that the canonical zero is deterministic, decrypts to zero, and
+// is the same for an account's classic and X-address forms, which share one AccountID.
+func TestEncryptCanonicalZero(t *testing.T) {
+	const (
+		classicAddress = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+		issuanceID     = "000004C463C52827307480341E3CB23A0710CC839EB58A0A"
+	)
+	xAddress, err := addresscodec.ClassicAddressToXAddress(classicAddress, 0, false, false)
+	require.NoError(t, err)
+
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	zero, err := elgamal.EncryptCanonicalZero(kp.PubKeyHex, classicAddress, issuanceID)
+	require.NoError(t, err)
+	require.Len(t, zero, mptsizes.CiphertextSize*2)
+
+	again, err := elgamal.EncryptCanonicalZero(kp.PubKeyHex, xAddress, strings.ToLower(issuanceID))
+	require.NoError(t, err)
+	require.Equal(t, zero, again)
+
+	decrypted, err := elgamal.Decrypt(zero, kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 10})
+	require.NoError(t, err)
+	require.Zero(t, decrypted)
+}
+
+func TestEncryptCanonicalZeroErrors(t *testing.T) {
+	const (
+		account    = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+		issuanceID = "000004C463C52827307480341E3CB23A0710CC839EB58A0A"
+	)
+
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		pubkey     string
+		account    string
+		issuanceID string
+		wantErr    error
+	}{
+		{name: "malformed key", pubkey: "zz", account: account, issuanceID: issuanceID, wantErr: elgamal.ErrInvalidKey},
+		{name: "key off the curve", pubkey: strings.Repeat("00", mptsizes.PubKeySize), account: account, issuanceID: issuanceID, wantErr: elgamal.ErrEncryptFailed},
+		{name: "malformed account", pubkey: kp.PubKeyHex, account: "not-an-address", issuanceID: issuanceID, wantErr: elgamal.ErrInvalidAddress},
+		{name: "malformed issuance", pubkey: kp.PubKeyHex, account: account, issuanceID: "00", wantErr: elgamal.ErrInvalidIssuanceID},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := elgamal.EncryptCanonicalZero(tt.pubkey, tt.account, tt.issuanceID)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
 }

@@ -226,10 +226,15 @@ batch, err := builder.BuildBatch(client, builder.BuildBatchParams{
 Each of the five confidential operations wraps the parameters of the standalone builder it
 mirrors, so an inner reads the same as the call it replaces: `ConvertOp`, `ConvertBackOp`,
 `SendOp`, `MergeInboxOp`, and `ClawbackOp`. `TransactionOp` carries a ready-made ordinary
-transaction, which the assembler only shapes as an inner.
+transaction, which the assembler only shapes as an inner. Each operation can be passed as a
+value or as a non-nil pointer.
 
-The assembler owns four things:
+The assembler owns five things:
 
+- **Up-front validation.** Every operation's inputs are checked before the first ledger query,
+  by the same validator and with the same sentinels as the standalone builder it mirrors,
+  including the `TxOptions` rules. An invalid later operation costs no ledger read and no
+  proof for the operations before it.
 - **One validated ledger.** Every `MPToken` and `MPTokenIssuance` the `Batch` touches is read
   from a single snapshot, pinned by hash after the first read, so no inner's proof mixes state
   from two ledgers.
@@ -237,12 +242,19 @@ The assembler owns four things:
   carries the spending and inbox ciphertexts, the issuer and auditor mirror balances, the
   holder keys, the balance versions, and the public amounts. After each inner it is advanced
   by exactly what the transactor does, including the re-randomization the network applies to a
-  send's credited ciphertexts.
+  send's credited ciphertexts and the canonical encrypted zero it writes when it resets a
+  balance: a merge resets the inbox, a holder's first convert starts its spending balance at
+  zero, and a clawback resets every balance of its holder. `elgamal.EncryptCanonicalZero`
+  derives that ciphertext from the key, the holder account, and the issuance the same way the
+  network does, so a later inner can spend from a reset balance within the same `Batch`. As in
+  the standalone builders, an open-ledger version change rejects the build with
+  `ErrStaleBalanceVersion` only for a holder whose version a send or convert-back proof binds.
 - **Final nonces.** Each inner's `Sequence`, or the `TicketSequence` it spends instead, is
   resolved before any proof is generated, because a confidential context hash commits to the
   nonce and no later autofill can repair a proof. An account's inners take consecutive
   sequences; the outer `Batch` account's start one past the sequence the `Batch` itself spends,
-  or at its current sequence when the `Batch` spends a `Ticket`.
+  or at its current sequence when the `Batch` spends a `Ticket`. A `TicketCreate` inner moves
+  its account's later sequences past every `Ticket` it creates.
 - **Inner shape.** Every inner carries `tfInnerBatchTxn`, a zero `Fee`, an empty
   `SigningPubKey`, and no signature of its own.
 
@@ -275,15 +287,8 @@ refusal has its own sentinel:
 - `ErrBatchModeNotSupported`: only `tfAllOrNothing`, the default, is supported. Under any
   other mode an inner can be skipped or fail while later inners still apply, and every
   prediction after it would describe a ledger that never happened.
-- `ErrBatchUnpredictableState`: a later inner reads a balance value an earlier inner left as
-  the canonical encrypted zero. The network derives that ciphertext from the holder key, the
-  account, and the issuance, and this package does not, so the three inners that produce one
-  hand the rest of the `Batch` a balance it cannot name: a merge leaves the inbox that way, a
-  clawback leaves all four balances of its holder that way, and a holder's first convert
-  leaves its spending balance that way. Only an inner that reads the *value* is refused; one
-  that needs the field merely to exist still builds, which the network also allows. In
-  practice a holder can receive after a merge and merge after a first convert, but cannot
-  spend from a balance any of the three left behind — split that across `Batch`es.
+- `ErrBatchMissingOperation`: an operation is nil, as an interface or as a pointer, or a
+  `TransactionOp` carries no transaction.
 - `ErrBatchInnerNotSupported`: a `TransactionOp` of a type the assembler does not accept.
   `IsSupportedInnerTransactionType` reports the allowlist: `AccountSet`, `SetRegularKey`,
   `SignerListSet`, `TicketCreate`, `TrustSet`, `DepositPreauth`, `DelegateSet`,
@@ -299,8 +304,14 @@ refusal has its own sentinel:
   the sequence.
 - `ErrBatchInnerSequenceMismatch`: a `TransactionOp` carries a `Sequence` that is not the one
   its position in the `Batch` requires for its account, such as the outer `Batch`'s own
-  sequence or one past an allocated inner. A `TransactionOp` with a `TicketSequence`, or with
-  no nonce at all, is always accepted.
+  sequence, one past an allocated inner, or one a `TicketCreate` earlier in the `Batch` turned
+  into a `Ticket`. This holds for every account, so a caller-set sequence of an account other
+  than the outer one is checked against that account's current sequence.
+- `ErrConflictingNonce`: an inner, confidential or ready-made, sets both `Sequence` and
+  `TicketSequence`. The network requires exactly one.
+- `ErrBatchDuplicateNonce`: two inners of one account spend the same sequence or `Ticket`, or
+  an inner spends the `Ticket` the outer `Batch` itself spends. The network rejects an
+  all-or-nothing `Batch` that repeats a nonce.
 
 Everything the standalone builders reject, a `Batch` inner rejects too, with the same
 sentinel: the issuance capability checks, the locked and authorized preflights, the key

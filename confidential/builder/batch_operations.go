@@ -2,7 +2,6 @@ package builder
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -10,11 +9,7 @@ import (
 )
 
 // prepareBatchConvert builds a ConfidentialMPTConvert inner.
-func prepareBatchConvert(state *batchState, op ConvertOp, options TxOptions) (BatchInnerTransaction, error) {
-	params := op.BuildConvertParams
-	if err := validateConvertBase(params); err != nil {
-		return nil, err
-	}
+func prepareBatchConvert(state *batchState, op ConvertOp, nonce TxOptions) (BatchInnerTransaction, error) {
 	issuance, token, err := state.resolve(op.Account, op.IssuanceID)
 	if err != nil {
 		return nil, err
@@ -28,7 +23,8 @@ func prepareBatchConvert(state *batchState, op ConvertOp, options TxOptions) (Ba
 		return nil, fmt.Errorf("%w: holder key", ErrKeyMismatch)
 	}
 
-	params.TxOptions = options
+	params := op.BuildConvertParams
+	params.TxOptions = nonce
 	tx, err := PrepareConvert(ConvertParams{
 		BuildConvertParams: params,
 		IssuerPubKey:       issuance.issuerKey,
@@ -39,24 +35,19 @@ func prepareBatchConvert(state *batchState, op ConvertOp, options TxOptions) (Ba
 		return nil, err
 	}
 
-	if err := token.applyConvertCredit(tx.HolderEncryptedAmount, mirrorsOf(tx.IssuerEncryptedAmount, tx.AuditorEncryptedAmount), firstTime); err != nil {
+	if firstTime {
+		token.holderKey = op.HolderPubKey
+	}
+	if err := token.applyConvert(tx.HolderEncryptedAmount, mirrorsOf(tx.IssuerEncryptedAmount, tx.AuditorEncryptedAmount)); err != nil {
 		return nil, err
 	}
-	token.holderKey = op.HolderPubKey
 	token.publicAmount -= op.Amount
 	issuance.creditOutstanding(op.Amount)
 	return tx, nil
 }
 
 // prepareBatchConvertBack builds a ConfidentialMPTConvertBack inner.
-func prepareBatchConvertBack(state *batchState, op ConvertBackOp, options TxOptions) (BatchInnerTransaction, error) {
-	params := op.BuildConvertBackParams
-	if err := validateConvertBackBase(params); err != nil {
-		return nil, err
-	}
-	if err := op.BalanceRange.Validate(); err != nil {
-		return nil, err
-	}
+func prepareBatchConvertBack(state *batchState, op ConvertBackOp, nonce TxOptions) (BatchInnerTransaction, error) {
 	issuance, token, err := state.resolve(op.Account, op.IssuanceID)
 	if err != nil {
 		return nil, err
@@ -74,7 +65,8 @@ func prepareBatchConvertBack(state *batchState, op ConvertBackOp, options TxOpti
 		return nil, err
 	}
 
-	params.TxOptions = options
+	params := op.BuildConvertBackParams
+	params.TxOptions = nonce
 	tx, err := PrepareConvertBack(ConvertBackParams{
 		BuildConvertBackParams: params,
 		IssuerPubKey:           issuance.issuerKey,
@@ -96,14 +88,7 @@ func prepareBatchConvertBack(state *batchState, op ConvertBackOp, options TxOpti
 }
 
 // prepareBatchSend builds a ConfidentialMPTSend inner.
-func prepareBatchSend(state *batchState, op SendOp, options TxOptions) (BatchInnerTransaction, error) {
-	params := op.BuildSendParams
-	if err := validateSendBase(params); err != nil {
-		return nil, err
-	}
-	if err := op.BalanceRange.Validate(); err != nil {
-		return nil, err
-	}
+func prepareBatchSend(state *batchState, op SendOp, nonce TxOptions) (BatchInnerTransaction, error) {
 	issuance, sender, err := state.resolve(op.Account, op.IssuanceID)
 	if err != nil {
 		return nil, err
@@ -133,7 +118,8 @@ func prepareBatchSend(state *batchState, op SendOp, options TxOptions) (BatchInn
 		return nil, err
 	}
 
-	params.TxOptions = options
+	params := op.BuildSendParams
+	params.TxOptions = nonce
 	tx, err := PrepareSend(SendParams{
 		BuildSendParams:  params,
 		ReceiverPubKey:   destinationKey,
@@ -168,26 +154,26 @@ func prepareBatchSend(state *batchState, op SendOp, options TxOptions) (BatchInn
 }
 
 // prepareBatchMergeInbox builds a ConfidentialMPTMergeInbox inner.
-func prepareBatchMergeInbox(state *batchState, op MergeInboxOp, options TxOptions) (BatchInnerTransaction, error) {
-	params := op.BuildMergeInboxParams
-	if err := validateMergeInboxBase(params); err != nil {
-		return nil, err
-	}
+func prepareBatchMergeInbox(state *batchState, op MergeInboxOp, nonce TxOptions) (BatchInnerTransaction, error) {
 	_, token, err := state.resolve(op.Account, op.IssuanceID)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := token.requireHolderKey(); err != nil {
-		return nil, fmt.Errorf("%w: HolderEncryptionKey is missing", ErrMissingSenderState)
-	}
-	if err := token.spending.requireExists("ConfidentialBalanceSpending", ErrMissingSenderState); err != nil {
-		return nil, err
-	}
-	if err := token.inbox.requireExists("ConfidentialBalanceInbox", ErrMissingSenderState); err != nil {
-		return nil, err
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{"HolderEncryptionKey", token.holderKey},
+		{"ConfidentialBalanceSpending", token.spending},
+		{"ConfidentialBalanceInbox", token.inbox},
+	} {
+		if err := requireField(field.value, field.name, ErrMissingSenderState); err != nil {
+			return nil, err
+		}
 	}
 
-	params.TxOptions = options
+	params := op.BuildMergeInboxParams
+	params.TxOptions = nonce
 	tx, err := PrepareMergeInbox(MergeInboxParams{BuildMergeInboxParams: params})
 	if err != nil {
 		return nil, err
@@ -199,14 +185,7 @@ func prepareBatchMergeInbox(state *batchState, op MergeInboxOp, options TxOption
 }
 
 // prepareBatchClawback builds a ConfidentialMPTClawback inner.
-func prepareBatchClawback(state *batchState, op ClawbackOp, options TxOptions) (BatchInnerTransaction, error) {
-	params := op.BuildClawbackParams
-	if err := validateClawbackBase(params); err != nil {
-		return nil, err
-	}
-	if err := op.BalanceRange.Validate(); err != nil {
-		return nil, err
-	}
+func prepareBatchClawback(state *batchState, op ClawbackOp, nonce TxOptions) (BatchInnerTransaction, error) {
 	issuance, err := state.issuance(op.IssuanceID)
 	if err != nil {
 		return nil, err
@@ -219,30 +198,32 @@ func prepareBatchClawback(state *batchState, op ClawbackOp, options TxOptions) (
 		return nil, err
 	}
 
-	if _, err := holder.requireHolderKey(); err != nil {
-		return nil, fmt.Errorf("%w: HolderEncryptionKey is missing", ErrMissingSenderState)
-	}
-	issuerCt, err := holder.issuerEnc.require("IssuerEncryptedBalance", ErrMissingSenderState)
-	if err != nil {
+	if err := requireField(holder.holderKey, "HolderEncryptionKey", ErrMissingSenderState); err != nil {
 		return nil, err
 	}
-	amount, err := decryptPredictedBalance(issuance, issuerCt, op.IssuerPrivKey, op.BalanceRange, "holder balance")
+	if err := requireField(holder.issuerEnc, "IssuerEncryptedBalance", ErrMissingSenderState); err != nil {
+		return nil, err
+	}
+	amount, err := decryptPredictedBalance(issuance, holder.issuerEnc, op.IssuerPrivKey, op.BalanceRange, "holder balance")
 	if err != nil {
 		return nil, err
 	}
 
-	params.TxOptions = options
+	params := op.BuildClawbackParams
+	params.TxOptions = nonce
 	tx, err := PrepareClawback(ClawbackParams{
 		BuildClawbackParams: params,
 		Amount:              amount,
 		IssuerPubKey:        issuance.issuerKey,
-		IssuerCiphertext:    issuerCt,
+		IssuerCiphertext:    holder.issuerEnc,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	holder.applyClawback()
+	if err := holder.applyClawback(issuance); err != nil {
+		return nil, err
+	}
 	issuance.debitOutstanding(amount)
 	return tx, nil
 }
@@ -280,55 +261,59 @@ func (s *tokenState) creditPublic(amount uint64) {
 	s.publicAmount += amount
 }
 
+// requireField rejects a confidential field an inner needs that the MPToken does not carry.
+func requireField(value, field string, absent error) error {
+	if value == "" {
+		return fmt.Errorf("%w: %s is missing", absent, field)
+	}
+	return nil
+}
+
 // requireSpendable checks the state ConfidentialMPTSend and ConfidentialMPTConvertBack both demand
 // of the spender, in the order their transactors do, and returns the spending ciphertext the proof
 // consumes.
 func requireSpendable(token *tokenState, issuance *batchIssuance, pubKey string) (string, error) {
-	if token.holderKey == "" {
-		return "", fmt.Errorf("%w: HolderEncryptionKey is missing", ErrMissingSenderState)
+	if err := requireField(token.holderKey, "HolderEncryptionKey", ErrMissingSenderState); err != nil {
+		return "", err
 	}
 	if !sameEncryptionKey(token.holderKey, pubKey) {
 		return "", fmt.Errorf("%w: holder key", ErrKeyMismatch)
 	}
-	spending, err := token.spending.require("ConfidentialBalanceSpending", ErrMissingSenderState)
-	if err != nil {
+	if err := requireField(token.spending, "ConfidentialBalanceSpending", ErrMissingSenderState); err != nil {
 		return "", err
 	}
-	if err := token.issuerEnc.requireExists("IssuerEncryptedBalance", ErrMissingSenderState); err != nil {
+	if err := requireField(token.issuerEnc, "IssuerEncryptedBalance", ErrMissingSenderState); err != nil {
 		return "", err
 	}
 	if issuance.hasAuditor() {
-		if err := token.auditorEnc.requireExists("AuditorEncryptedBalance", ErrMissingSenderState); err != nil {
+		if err := requireField(token.auditorEnc, "AuditorEncryptedBalance", ErrMissingSenderState); err != nil {
 			return "", err
 		}
 	}
-	return spending, nil
+	return token.spending, nil
 }
 
 // requireReceivable checks the state a confidential send's destination must already have and
 // returns the key the transferred amount is encrypted under.
 func requireReceivable(token *tokenState, issuance *batchIssuance) (string, error) {
-	holderKey, err := token.requireHolderKey()
-	if err != nil {
-		return "", err
-	}
 	for _, field := range []struct {
-		name    string
-		balance predictedBalance
+		name  string
+		value string
 	}{
+		{"HolderEncryptionKey", token.holderKey},
 		{"ConfidentialBalanceInbox", token.inbox},
 		{"IssuerEncryptedBalance", token.issuerEnc},
 	} {
-		if err := field.balance.requireExists(field.name, ErrReceiverNotOptedIn); err != nil {
+		if err := requireField(field.value, field.name, ErrReceiverNotOptedIn); err != nil {
 			return "", err
 		}
 	}
 	if issuance.hasAuditor() {
-		if err := token.auditorEnc.requireExists("AuditorEncryptedBalance", ErrReceiverNotOptedIn); err != nil {
+		if err := requireField(token.auditorEnc, "AuditorEncryptedBalance", ErrReceiverNotOptedIn); err != nil {
 			return "", err
 		}
 	}
-	return holderKey, nil
+	return token.holderKey, nil
 }
 
 // decryptPredictedBalance recovers the plaintext a proof needs from a predicted ciphertext, under
@@ -382,88 +367,53 @@ func IsSupportedInnerTransactionType(txType transaction.TxType) bool {
 	return supported
 }
 
-// validatePlainInner rejects a ready-made inner the assembler cannot carry.
-func validatePlainInner(op TransactionOp) error {
-	if isNilTx(op.Tx) {
-		return ErrBatchMissingOperation
+// batchStep validates a ready-made inner and extracts its account and nonce once, applying the
+// same TxOptions contract the confidential operations follow. A caller-set Sequence is kept and
+// later checked against the sequence the inner's position requires.
+func (op TransactionOp) batchStep() (batchStep, error) {
+	if isNilValue(op.Tx) {
+		return batchStep{}, ErrBatchMissingOperation
 	}
 	txType := op.Tx.TxType()
 	if !IsSupportedInnerTransactionType(txType) {
-		return fmt.Errorf("%w: %s", ErrBatchInnerNotSupported, txType)
+		return batchStep{}, fmt.Errorf("%w: %s", ErrBatchInnerNotSupported, txType)
 	}
 	if err := validatePreparedTransaction(op.Tx); err != nil {
-		return err
+		return batchStep{}, err
 	}
 
 	flat := op.Tx.Flatten()
-	if _, ok := flat["Account"].(string); !ok {
-		return ErrMissingAccount
+	account, ok := flat["Account"].(string)
+	if !ok {
+		return batchStep{}, ErrMissingAccount
 	}
 	for _, field := range []string{"LastLedgerSequence", "TxnSignature", "Signers"} {
 		if _, present := flat[field]; present {
-			return fmt.Errorf("%w: %s is not allowed on a Batch inner", ErrBatchInnerNotSupported, field)
+			return batchStep{}, fmt.Errorf("%w: %s is not allowed on a Batch inner", ErrBatchInnerNotSupported, field)
 		}
 	}
-	return nil
-}
 
-// plainInnerAccount reports the account a ready-made inner's nonce comes from.
-func plainInnerAccount(op TransactionOp) (string, error) {
-	if isNilTx(op.Tx) {
-		return "", ErrBatchMissingOperation
-	}
-	account, ok := op.Tx.Flatten()["Account"].(string)
-	if !ok {
-		return "", ErrMissingAccount
-	}
-	return account, nil
-}
-
-// buildPlainInner shapes a ready-made transaction as a Batch inner, assigning it a position-
-// derived sequence only when it carries neither nonce of its own.
-func buildPlainInner(nonces *batchNonces, op TransactionOp) (transaction.FlatTransaction, error) {
-	flat := op.Tx.Flatten()
-	account, err := plainInnerAccount(op)
-	if err != nil {
-		return nil, err
-	}
-	ticket, _ := flat["TicketSequence"].(uint32)
-	sequence, _ := flat["Sequence"].(uint32)
-	switch {
-	case ticket != 0:
-	case sequence != 0:
-		if err := nonces.claim(account, sequence); err != nil {
-			return nil, err
-		}
-	default:
-		sequence, err := nonces.allocate(account, TxOptions{})
-		if err != nil {
-			return nil, err
-		}
-		flat["Sequence"] = sequence
+	var options TxOptions
+	options.Sequence, _ = flat["Sequence"].(uint32)
+	options.TicketSequence, _ = flat["TicketSequence"].(uint32)
+	options.Delegate, _ = flat["Delegate"].(string)
+	if err := options.validate(account, txType); err != nil {
+		return batchStep{}, err
 	}
 
-	flags, _ := flat["Flags"].(uint32)
-	flat["Flags"] = flags | types.TfInnerBatchTxn
-	flat["Fee"] = "0"
-	flat["SigningPubKey"] = ""
-	return flat, nil
-}
-
-// isNilTx reports a nil interface or a typed nil pointer.
-func isNilTx(tx BatchInnerTransaction) bool {
-	if tx == nil {
-		return true
+	step := batchStep{
+		account: account,
+		options: options,
+		build: func(_ *batchState, nonce TxOptions) (transaction.FlatTransaction, error) {
+			inner := op.Tx.Flatten()
+			if nonce.Sequence != 0 {
+				inner["Sequence"] = nonce.Sequence
+			}
+			return shapeBatchInner(inner), nil
+		},
 	}
-	v := reflect.ValueOf(tx)
-	return v.Kind() == reflect.Pointer && v.IsNil()
-}
-
-// plainInnerHasNonce reports whether a flattened transaction already carries a nonce.
-func plainInnerHasNonce(flat transaction.FlatTransaction) bool {
-	if ticket, ok := flat["TicketSequence"].(uint32); ok && ticket != 0 {
-		return true
+	if txType == transaction.TicketCreateTx {
+		step.ticketCount, _ = flat["TicketCount"].(uint32)
 	}
-	sequence, ok := flat["Sequence"].(uint32)
-	return ok && sequence != 0
+	return step, nil
 }

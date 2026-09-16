@@ -7,6 +7,10 @@ var (
 	ErrInvalidKey = errors.New("elgamal: invalid key")
 	// ErrInvalidCiphertext is returned when a ciphertext is not valid hex or has an unexpected byte length.
 	ErrInvalidCiphertext = errors.New("elgamal: invalid ciphertext")
+	// ErrInvalidAddress is returned when an account is not a valid classic or X-address.
+	ErrInvalidAddress = errors.New("elgamal: invalid address")
+	// ErrInvalidIssuanceID is returned when an issuance ID is not valid hex or has an unexpected byte length.
+	ErrInvalidIssuanceID = errors.New("elgamal: invalid issuance ID")
 	// ErrInvalidBlindingFactor is returned when a blinding factor is not valid hex or has an unexpected byte length.
 	ErrInvalidBlindingFactor = errors.New("elgamal: invalid blinding factor")
 	// ErrEncryptFailed is returned when the underlying C encryption call fails.

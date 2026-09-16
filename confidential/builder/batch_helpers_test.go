@@ -3,6 +3,7 @@ package builder
 import (
 	"encoding/hex"
 	"errors"
+	"maps"
 	"strconv"
 	"testing"
 
@@ -223,8 +224,16 @@ type batchQuerier struct {
 	fixture    *batchFixture
 	entryErrs  map[string]error
 	accountErr error
-	requests   []ledger.EntryRequest
-	accounts   []account.InfoRequest
+	// openVersions reports a different ConfidentialBalanceVersion on the open ledger for the
+	// MPToken at each index, as a confidential transaction still in flight would.
+	openVersions map[string]uint32
+	requests     []ledger.EntryRequest
+	accounts     []account.InfoRequest
+}
+
+// queries counts every ledger request the querier answered.
+func (q *batchQuerier) queries() int {
+	return len(q.requests) + len(q.accounts)
 }
 
 func (q *batchQuerier) GetAccountInfo(req *account.InfoRequest) (*account.InfoResponse, error) {
@@ -253,6 +262,12 @@ func (q *batchQuerier) GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryRe
 		return nil, errors.New(ledgerEntryNotFound)
 	}
 	if req.LedgerIndex == common.Current {
+		if version, changed := q.openVersions[req.Index]; changed {
+			open := make(ledgerentries.FlatLedgerObject, len(node))
+			maps.Copy(open, node)
+			open["ConfidentialBalanceVersion"] = float64(version)
+			node = open
+		}
 		return &ledger.EntryResponse{
 			Index:              req.Index,
 			LedgerCurrentIndex: mockOpenLedgerIndex,
@@ -424,4 +439,200 @@ func decodeParticipant(t *testing.T, pubKey, ciphertext string) mptcrypto.Partic
 	t.Helper()
 
 	return mptcrypto.Participant{PubKey: decodePubKey(t, pubKey), Ciphertext: decodeCiphertext(t, ciphertext)}
+}
+
+// sendOp builds a SendOp with the fixture's key for the sender and the standard bounds.
+func sendOp(f *batchFixture, from, to, issuanceID string, amount uint64) SendOp {
+	key := f.holderKey(from, issuanceID)
+	return SendOp{BuildSendParams{
+		Account:       from,
+		Destination:   to,
+		IssuanceID:    issuanceID,
+		Amount:        amount,
+		SenderPrivKey: key.PrivKeyHex,
+		SenderPubKey:  key.PubKeyHex,
+		BalanceRange:  batchRange(),
+	}}
+}
+
+// convertOp builds a ConvertOp with the fixture's key for the holder.
+func convertOp(f *batchFixture, holder, issuanceID string, amount uint64) ConvertOp {
+	key := f.holderKey(holder, issuanceID)
+	return ConvertOp{BuildConvertParams{
+		Account:       holder,
+		IssuanceID:    issuanceID,
+		Amount:        amount,
+		HolderPrivKey: key.PrivKeyHex,
+		HolderPubKey:  key.PubKeyHex,
+	}}
+}
+
+// convertBackOp builds a ConvertBackOp with the fixture's key for the holder.
+func convertBackOp(f *batchFixture, holder, issuanceID string, amount uint64) ConvertBackOp {
+	key := f.holderKey(holder, issuanceID)
+	return ConvertBackOp{BuildConvertBackParams{
+		Account:       holder,
+		IssuanceID:    issuanceID,
+		Amount:        amount,
+		HolderPrivKey: key.PrivKeyHex,
+		HolderPubKey:  key.PubKeyHex,
+		BalanceRange:  batchRange(),
+	}}
+}
+
+// mergeOp builds a MergeInboxOp for one holder.
+func mergeOp(holder, issuanceID string) MergeInboxOp {
+	return MergeInboxOp{BuildMergeInboxParams{Account: holder, IssuanceID: issuanceID}}
+}
+
+// clawbackOp builds a ClawbackOp submitted by the issuance's issuer.
+func clawbackOp(f *batchFixture, issuer, holder, issuanceID string) ClawbackOp {
+	return ClawbackOp{BuildClawbackParams{
+		Account:       issuer,
+		Holder:        holder,
+		IssuanceID:    issuanceID,
+		IssuerPrivKey: f.issuerKey(issuanceID).PrivKeyHex,
+		BalanceRange:  batchRange(),
+	}}
+}
+
+// plainAccountSet builds a ready-made AccountSet inner, carrying a sequence only when one is given.
+func plainAccountSet(account string, sequence uint32) TransactionOp {
+	return TransactionOp{Tx: &transaction.AccountSet{
+		BaseTx: transaction.BaseTx{
+			Account:         types.Address(account),
+			TransactionType: transaction.AccountSetTx,
+			Sequence:        sequence,
+		},
+	}}
+}
+
+// plainTicketCreate builds a ready-made TicketCreate inner funded by the given nonce.
+func plainTicketCreate(account string, count uint32, nonce TxOptions) TransactionOp {
+	return TransactionOp{Tx: &transaction.TicketCreate{
+		BaseTx: transaction.BaseTx{
+			Account:         types.Address(account),
+			TransactionType: transaction.TicketCreateTx,
+			Sequence:        nonce.Sequence,
+			TicketSequence:  nonce.TicketSequence,
+		},
+		TicketCount: count,
+	}}
+}
+
+// firstSend decodes one built inner back into the typed transaction the assertions read.
+func firstSend(t *testing.T, batch *transaction.Batch, index int) *transaction.ConfidentialMPTSend {
+	t.Helper()
+
+	inner := innerOf(t, batch, index)
+	require.Equal(t, transaction.ConfidentialMPTSendTx.String(), inner["TransactionType"])
+
+	tx := &transaction.ConfidentialMPTSend{
+		BaseTx: transaction.BaseTx{
+			Account:         types.Address(inner["Account"].(string)),
+			TransactionType: transaction.ConfidentialMPTSendTx,
+		},
+		MPTokenIssuanceID:          inner["MPTokenIssuanceID"].(string),
+		Destination:                types.Address(inner["Destination"].(string)),
+		SenderEncryptedAmount:      inner["SenderEncryptedAmount"].(string),
+		DestinationEncryptedAmount: inner["DestinationEncryptedAmount"].(string),
+		IssuerEncryptedAmount:      inner["IssuerEncryptedAmount"].(string),
+		ZKProof:                    inner["ZKProof"].(string),
+		AmountCommitment:           inner["AmountCommitment"].(string),
+		BalanceCommitment:          inner["BalanceCommitment"].(string),
+	}
+	if auditor, ok := inner["AuditorEncryptedAmount"].(string); ok {
+		tx.AuditorEncryptedAmount = &auditor
+	}
+	return tx
+}
+
+// convertBackInner decodes one built ConfidentialMPTConvertBack inner.
+func convertBackInner(t *testing.T, batch *transaction.Batch, index int) *transaction.ConfidentialMPTConvertBack {
+	t.Helper()
+
+	inner := innerOf(t, batch, index)
+	require.Equal(t, transaction.ConfidentialMPTConvertBackTx.String(), inner["TransactionType"])
+
+	amount, err := strconv.ParseUint(inner["MPTAmount"].(string), 10, 64)
+	require.NoError(t, err)
+	return &transaction.ConfidentialMPTConvertBack{
+		BaseTx: transaction.BaseTx{
+			Account:         types.Address(inner["Account"].(string)),
+			TransactionType: transaction.ConfidentialMPTConvertBackTx,
+		},
+		MPTokenIssuanceID: inner["MPTokenIssuanceID"].(string),
+		MPTAmount:         types.MPTPlainAmount(amount),
+		BalanceCommitment: inner["BalanceCommitment"].(string),
+		ZKProof:           inner["ZKProof"].(string),
+	}
+}
+
+// clawbackInner decodes one built ConfidentialMPTClawback inner.
+func clawbackInner(t *testing.T, batch *transaction.Batch, index int) *transaction.ConfidentialMPTClawback {
+	t.Helper()
+
+	inner := innerOf(t, batch, index)
+	require.Equal(t, transaction.ConfidentialMPTClawbackTx.String(), inner["TransactionType"])
+
+	amount, err := strconv.ParseUint(inner["MPTAmount"].(string), 10, 64)
+	require.NoError(t, err)
+	return &transaction.ConfidentialMPTClawback{
+		BaseTx: transaction.BaseTx{
+			Account:         types.Address(inner["Account"].(string)),
+			TransactionType: transaction.ConfidentialMPTClawbackTx,
+		},
+		MPTokenIssuanceID: inner["MPTokenIssuanceID"].(string),
+		Holder:            types.Address(inner["Holder"].(string)),
+		MPTAmount:         types.MPTPlainAmount(amount),
+		ZKProof:           inner["ZKProof"].(string),
+	}
+}
+
+// fixtureField reads one confidential field the fixture ledger carries for one holder, which is
+// the state the first inner on that MPToken finds.
+func fixtureField(t *testing.T, fixture *batchFixture, holder, issuanceID, field string) string {
+	t.Helper()
+
+	index, err := xrplhash.MPToken(issuanceID, holder)
+	require.NoError(t, err)
+	value, ok := fixture.entries[index][field].(string)
+	require.True(t, ok, "fixture holder has no %s", field)
+	return value
+}
+
+// spendingCiphertext reads the spending balance the fixture ledger carries for one holder.
+func spendingCiphertext(t *testing.T, fixture *batchFixture, holder, issuanceID string) string {
+	t.Helper()
+
+	return fixtureField(t, fixture, holder, issuanceID, "ConfidentialBalanceSpending")
+}
+
+// issuerMirrorOf reads the issuer mirror balance the fixture ledger carries for one holder.
+func issuerMirrorOf(t *testing.T, fixture *batchFixture, holder, issuanceID string) string {
+	t.Helper()
+
+	return fixtureField(t, fixture, holder, issuanceID, "IssuerEncryptedBalance")
+}
+
+// canonicalZeroOf computes the canonical encrypted zero independently of the assembler.
+func canonicalZeroOf(t *testing.T, pubKey, holder, issuanceID string) string {
+	t.Helper()
+
+	zero, err := elgamal.EncryptCanonicalZero(pubKey, holder, issuanceID)
+	require.NoError(t, err)
+	return zero
+}
+
+// addCiphertexts adds ciphertexts in order, the way a test recomputes a transactor's credits.
+func addCiphertexts(t *testing.T, first string, rest ...string) string {
+	t.Helper()
+
+	sum := first
+	for _, next := range rest {
+		var err error
+		sum, err = elgamal.Add(sum, next)
+		require.NoError(t, err)
+	}
+	return sum
 }

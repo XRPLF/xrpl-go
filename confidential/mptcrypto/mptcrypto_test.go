@@ -538,3 +538,51 @@ func TestCiphertextArithmeticErrors(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+// TestCanonicalEncryptedZero pins the properties a client relies on to reproduce a balance a
+// confidential transactor resets: the ciphertext is deterministic, decrypts to zero under the
+// matching key, and is specific to the key, the account, and the issuance.
+func TestCanonicalEncryptedZero(t *testing.T) {
+	privkey, pubkey, err := mptcrypto.GenerateKeypair()
+	require.NoError(t, err)
+	_, otherPubkey, err := mptcrypto.GenerateKeypair()
+	require.NoError(t, err)
+
+	account := [mptsizes.AccountIDSize]byte{1, 2, 3}
+	issuance := [mptsizes.IssuanceIDSize]byte{7, 8, 9}
+
+	zero, err := mptcrypto.CanonicalEncryptedZero(pubkey, account, issuance)
+	require.NoError(t, err)
+
+	again, err := mptcrypto.CanonicalEncryptedZero(pubkey, account, issuance)
+	require.NoError(t, err)
+	require.Equal(t, zero, again, "the canonical zero must be deterministic")
+
+	decrypted, err := mptcrypto.DecryptAmount(zero, privkey, 0, 10)
+	require.NoError(t, err)
+	require.Zero(t, decrypted)
+
+	tests := []struct {
+		name     string
+		pubkey   mptcrypto.PublicKey
+		account  [mptsizes.AccountIDSize]byte
+		issuance [mptsizes.IssuanceIDSize]byte
+	}{
+		{name: "another key", pubkey: otherPubkey, account: account, issuance: issuance},
+		{name: "another account", pubkey: pubkey, account: [mptsizes.AccountIDSize]byte{4, 5, 6}, issuance: issuance},
+		{name: "another issuance", pubkey: pubkey, account: account, issuance: [mptsizes.IssuanceIDSize]byte{10, 11, 12}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			other, err := mptcrypto.CanonicalEncryptedZero(tt.pubkey, tt.account, tt.issuance)
+			require.NoError(t, err)
+			require.NotEqual(t, zero, other)
+		})
+	}
+}
+
+func TestCanonicalEncryptedZeroRejectsInvalidPublicKey(t *testing.T) {
+	_, err := mptcrypto.CanonicalEncryptedZero(mptcrypto.PublicKey{}, [mptsizes.AccountIDSize]byte{}, [mptsizes.IssuanceIDSize]byte{})
+	require.ErrorIs(t, err, mptcrypto.ErrInvalidPublicKey)
+}

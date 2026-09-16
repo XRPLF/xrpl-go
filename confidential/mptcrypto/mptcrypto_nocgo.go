@@ -156,3 +156,13 @@ func SubtractCiphertexts(a, b Ciphertext) (difference Ciphertext, err error) {
 }
 
 // endregion
+
+// region Canonical encrypted zero
+
+// CanonicalEncryptedZero returns the deterministic encryption of zero that xrpld writes when a
+// confidential transactor initializes or resets a balance.
+func CanonicalEncryptedZero(pubkey PublicKey, account [mptsizes.AccountIDSize]byte, iss [mptsizes.IssuanceIDSize]byte) (ct Ciphertext, err error) {
+	return ct, ErrCgoRequired
+}
+
+// endregion

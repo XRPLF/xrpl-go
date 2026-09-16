@@ -499,3 +499,36 @@ func combineCiphertexts(a, b Ciphertext, subtract bool) (result Ciphertext, err 
 }
 
 // endregion
+
+// region Canonical encrypted zero
+
+// CanonicalEncryptedZero returns the deterministic encryption of zero that xrpld writes when a
+// confidential transactor initializes or resets a balance: a first-time convert's spending
+// balance, a merge's inbox, and every balance a clawback clears. It is derived from the key the
+// balance is encrypted under, the holder's AccountID, and the issuance, so the ciphertext the
+// ledger stores can be reproduced client-side.
+func CanonicalEncryptedZero(pubkey PublicKey, account [mptsizes.AccountIDSize]byte, iss [mptsizes.IssuanceIDSize]byte) (ct Ciphertext, err error) {
+	ctx := C.mpt_secp256k1_context()
+
+	var parsed, c1, c2 C.secp256k1_pubkey
+	if C.secp256k1_ec_pubkey_parse(ctx, &parsed, (*C.uchar)(unsafe.Pointer(&pubkey[0])), C.size_t(len(pubkey))) != 1 {
+		return ct, ErrInvalidPublicKey
+	}
+	ret := C.generate_canonical_encrypted_zero(
+		ctx,
+		&c1,
+		&c2,
+		&parsed,
+		(*C.uchar)(unsafe.Pointer(&account[0])),
+		(*C.uchar)(unsafe.Pointer(&iss[0])),
+	)
+	if ret != 1 {
+		return ct, fmt.Errorf("generate_canonical_encrypted_zero failed with code %d", ret)
+	}
+	if !C.mpt_serialize_ec_pair(&c1, &c2, uint8Ptr(&ct[0])) {
+		return ct, fmt.Errorf("%w: canonical encrypted zero cannot be serialized", ErrInvalidCiphertext)
+	}
+	return ct, nil
+}
+
+// endregion

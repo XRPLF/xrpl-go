@@ -60,7 +60,7 @@ var (
 	ErrBatchInnerNotSupported     = errors.New("builder: transaction is not supported as a Batch inner")
 	ErrBatchInnerSequenceSet      = errors.New("builder: a confidential Batch operation cannot set its own sequence")
 	ErrBatchInnerSequenceMismatch = errors.New("builder: a ready-made inner's Sequence does not match its position in the Batch")
-	ErrBatchUnpredictableState    = errors.New("builder: an earlier inner in this Batch left a balance this operation reads at a value the client cannot reproduce")
+	ErrBatchDuplicateNonce        = errors.New("builder: a Batch spends the same sequence or Ticket twice for one account")
 
 	// ErrInvalidAddress names an address that failed to decode where the field it came
 	// from is not known. The query helpers use it because they resolve an MPToken for an

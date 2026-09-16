@@ -2,7 +2,7 @@ package builder
 
 import (
 	"fmt"
-	"strings"
+	"reflect"
 
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -15,10 +15,13 @@ const (
 	maxBatchOperations = 8
 )
 
-// BatchOperation is one ordered inner of a confidential Batch.
+// BatchOperation is one ordered inner of a confidential Batch. ConvertOp, ConvertBackOp, SendOp,
+// MergeInboxOp, ClawbackOp, and TransactionOp implement it, each as a value or as a non-nil
+// pointer.
 type BatchOperation interface {
-	// batchOperation seals the interface to this package.
-	batchOperation()
+	// batchStep validates the operation's own inputs and normalizes it into the step the
+	// assembler builds. It seals the interface to this package.
+	batchStep() (batchStep, error)
 }
 
 // ConvertOp moves public MPT into a confidential balance, as BuildConvert does.
@@ -58,13 +61,6 @@ type BatchInnerTransaction interface {
 	Validate() (bool, error)
 }
 
-func (ConvertOp) batchOperation()     {}
-func (ConvertBackOp) batchOperation() {}
-func (SendOp) batchOperation()        {}
-func (MergeInboxOp) batchOperation()  {}
-func (ClawbackOp) batchOperation()    {}
-func (TransactionOp) batchOperation() {}
-
 // BuildBatchParams holds the inputs for BuildBatch.
 type BuildBatchParams struct {
 	// TxOptions is the outer Batch's nonce. Delegate is rejected: Batch is not delegatable.
@@ -77,17 +73,18 @@ type BuildBatchParams struct {
 	Flags uint32
 }
 
-// BuildBatch assembles an ordered Batch of confidential MPT operations. Every MPToken and
-// issuance is read from one validated ledger, and the state each inner leaves behind is
-// predicted and fed to the next, so later proofs bind balances and versions the ledger will
-// actually hold when the Batch applies. Inners are shaped for XLS-56 and left unsigned; Fee
-// and LastLedgerSequence are left to the client's autofill.
+// BuildBatch assembles an ordered Batch of confidential MPT operations. Every operation's inputs
+// are validated before any ledger access. Every inner's nonce is then resolved, and every
+// MPToken and issuance is read from one validated ledger, before any proof is generated. The
+// state each inner leaves behind is predicted and fed to the next, including the canonical
+// encrypted zero a merge, a clawback, or a first-time convert writes, so later proofs bind
+// balances and versions the ledger will actually hold when the Batch applies. Inners are shaped
+// for XLS-56 and left unsigned; Fee and LastLedgerSequence are left to the client's autofill.
 //
-// Only tfAllOrNothing is supported. An inner that reads a balance an earlier merge, clawback,
-// or first-time convert reset to the canonical encrypted zero reports
-// ErrBatchUnpredictableState, since that ciphertext cannot be reproduced client-side.
+// Only tfAllOrNothing is supported.
 func BuildBatch(q LedgerQuerier, p BuildBatchParams) (*transaction.Batch, error) {
-	if err := validateBatchParams(p); err != nil {
+	steps, err := planBatch(p)
+	if err != nil {
 		return nil, err
 	}
 
@@ -97,18 +94,18 @@ func BuildBatch(q LedgerQuerier, p BuildBatchParams) (*transaction.Batch, error)
 	}
 	p.TxOptions = resolved
 
-	nonces, err := loadBatchSequences(q, p)
+	nonces, err := planBatchNonces(q, p.Account, p.TxOptions, steps)
 	if err != nil {
 		return nil, err
 	}
-	state, err := loadBatchState(snapshot, p.Operations)
+	state, err := loadBatchState(snapshot, steps)
 	if err != nil {
 		return nil, err
 	}
 
-	rawTransactions := make([]types.RawTransaction, 0, len(p.Operations))
-	for index, operation := range p.Operations {
-		inner, err := buildBatchInner(state, nonces, operation)
+	rawTransactions := make([]types.RawTransaction, 0, len(steps))
+	for index, step := range steps {
+		inner, err := step.build(state, nonces[index])
 		if err != nil {
 			return nil, fmt.Errorf("operation %d: %w", index, err)
 		}
@@ -135,183 +132,278 @@ func batchFlags(flags uint32) uint32 {
 	return flags
 }
 
-// validateBatchParams rejects what the assembler can decide before any ledger access.
-func validateBatchParams(p BuildBatchParams) error {
+// planBatch rejects everything the assembler can decide from the inputs alone and normalizes
+// each operation into its step, so no invalid operation costs a ledger read or a proof.
+func planBatch(p BuildBatchParams) ([]batchStep, error) {
 	if p.Account == "" {
-		return ErrMissingAccount
+		return nil, ErrMissingAccount
 	}
 	if _, err := decodeBuilderAddress(p.Account); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidAccount, err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidAccount, err)
 	}
 	if count := len(p.Operations); count < minBatchOperations || count > maxBatchOperations {
-		return fmt.Errorf("%w: a Batch holds between %d and %d inner transactions, got %d",
+		return nil, fmt.Errorf("%w: a Batch holds between %d and %d inner transactions, got %d",
 			ErrBatchOperationCount, minBatchOperations, maxBatchOperations, count)
 	}
 	if flags := batchFlags(p.Flags); flags != transaction.TfAllOrNothing {
-		return fmt.Errorf("%w: only tfAllOrNothing (%#x) is supported, got %#x",
+		return nil, fmt.Errorf("%w: only tfAllOrNothing (%#x) is supported, got %#x",
 			ErrBatchModeNotSupported, transaction.TfAllOrNothing, flags)
 	}
 
+	steps := make([]batchStep, 0, len(p.Operations))
 	for index, operation := range p.Operations {
-		if err := validateBatchOperation(operation); err != nil {
-			return fmt.Errorf("operation %d: %w", index, err)
+		step, err := planOperation(operation)
+		if err != nil {
+			return nil, fmt.Errorf("operation %d: %w", index, err)
 		}
+		steps = append(steps, step)
 	}
-	return nil
+	return steps, nil
 }
 
-// validateBatchOperation rejects an operation the assembler cannot own the nonce of, and a ready-
-// made inner whose effect it cannot predict.
-func validateBatchOperation(operation BatchOperation) error {
-	if operation == nil {
-		return ErrBatchMissingOperation
+// planOperation normalizes one operation, rejecting a nil operation in either form before its
+// value-receiver method could dereference a nil pointer.
+func planOperation(operation BatchOperation) (batchStep, error) {
+	if isNilValue(operation) {
+		return batchStep{}, ErrBatchMissingOperation
 	}
-	if plain, ok := operation.(TransactionOp); ok {
-		return validatePlainInner(plain)
-	}
-	options, err := operationOptions(operation)
-	if err != nil {
-		return err
+	return operation.batchStep()
+}
+
+// batchStep is one validated operation, reduced to what nonce planning, state loading, and
+// inner assembly need, so none of them switches on the operation type again.
+type batchStep struct {
+	// account is the account whose nonce the inner spends, as the caller spelled it.
+	account string
+	// options carries the nonce the caller supplied, if any, and the inner's Delegate.
+	options TxOptions
+	// ticketCount is the number of Tickets a TicketCreate inner creates, each of which moves
+	// its account's sequence past the one the inner itself spends.
+	ticketCount uint32
+	// issuanceID is the issuance a confidential operation acts on, empty for a TransactionOp.
+	issuanceID string
+	// tokens are the MPTokens a confidential operation reads or writes, with what its
+	// transactor requires of each.
+	tokens []tokenReference
+	// needsIssuerKey is set where the inner encrypts to the issuer key, which is every
+	// confidential operation but the inbox merge.
+	needsIssuerKey bool
+	// build assembles the inner against the predicted state and advances that state.
+	build func(state *batchState, nonce TxOptions) (transaction.FlatTransaction, error)
+}
+
+// tokenReference names one MPToken an operation touches.
+type tokenReference struct {
+	holder string
+	access mptokenAccess
+}
+
+// confidentialStep completes a confidential operation's step once its own validator has run:
+// it applies the TxOptions contract the standalone builder applies, and rejects a caller-set
+// sequence, which the assembler derives from the operation's position instead.
+func confidentialStep(
+	account string,
+	options TxOptions,
+	txType transaction.TxType,
+	issuanceID string,
+	tokens []tokenReference,
+	prepare func(state *batchState, nonce TxOptions) (BatchInnerTransaction, error),
+) (batchStep, error) {
+	if err := options.validate(account, txType); err != nil {
+		return batchStep{}, err
 	}
 	if options.Sequence != 0 {
-		return ErrBatchInnerSequenceSet
+		return batchStep{}, ErrBatchInnerSequenceSet
 	}
-	return nil
+	return batchStep{
+		account:        account,
+		options:        options,
+		issuanceID:     issuanceID,
+		tokens:         tokens,
+		needsIssuerKey: txType != transaction.ConfidentialMPTMergeInboxTx,
+		build: func(state *batchState, nonce TxOptions) (transaction.FlatTransaction, error) {
+			tx, err := prepare(state, nonce)
+			if err != nil {
+				return nil, err
+			}
+			return shapeBatchInner(tx.Flatten()), nil
+		},
+	}, nil
 }
 
-// operationAccount reports the account whose nonce an operation spends.
-func operationAccount(operation BatchOperation) (string, error) {
-	switch op := operation.(type) {
-	case ConvertOp:
-		return op.Account, nil
-	case ConvertBackOp:
-		return op.Account, nil
-	case SendOp:
-		return op.Account, nil
-	case MergeInboxOp:
-		return op.Account, nil
-	case ClawbackOp:
-		return op.Account, nil
-	case TransactionOp:
-		return plainInnerAccount(op)
-	default:
-		return "", fmt.Errorf("%w: %T", ErrBatchInnerNotSupported, operation)
+func (op ConvertOp) batchStep() (batchStep, error) {
+	if err := validateConvertBase(op.BuildConvertParams); err != nil {
+		return batchStep{}, err
 	}
+	return confidentialStep(op.Account, op.TxOptions, transaction.ConfidentialMPTConvertTx, op.IssuanceID,
+		[]tokenReference{{holder: op.Account, access: holderAccess}},
+		func(state *batchState, nonce TxOptions) (BatchInnerTransaction, error) {
+			return prepareBatchConvert(state, op, nonce)
+		})
 }
 
-// operationOptions reports the nonce options a confidential operation carries.
-func operationOptions(operation BatchOperation) (TxOptions, error) {
-	switch op := operation.(type) {
-	case ConvertOp:
-		return op.TxOptions, nil
-	case ConvertBackOp:
-		return op.TxOptions, nil
-	case SendOp:
-		return op.TxOptions, nil
-	case MergeInboxOp:
-		return op.TxOptions, nil
-	case ClawbackOp:
-		return op.TxOptions, nil
-	default:
-		return TxOptions{}, fmt.Errorf("%w: %T", ErrBatchInnerNotSupported, operation)
+func (op ConvertBackOp) batchStep() (batchStep, error) {
+	if err := validateConvertBackBase(op.BuildConvertBackParams); err != nil {
+		return batchStep{}, err
 	}
+	if err := op.BalanceRange.Validate(); err != nil {
+		return batchStep{}, err
+	}
+	return confidentialStep(op.Account, op.TxOptions, transaction.ConfidentialMPTConvertBackTx, op.IssuanceID,
+		[]tokenReference{{holder: op.Account, access: spenderAccess}},
+		func(state *batchState, nonce TxOptions) (BatchInnerTransaction, error) {
+			return prepareBatchConvertBack(state, op, nonce)
+		})
 }
 
-// operationCarriesNonce reports whether an inner already has a nonce of its own, and so takes no
-// sequence from its account's counter.
-func operationCarriesNonce(operation BatchOperation) (bool, error) {
-	if plain, ok := operation.(TransactionOp); ok {
-		if isNilTx(plain.Tx) {
-			return false, ErrBatchMissingOperation
-		}
-		return plainInnerHasNonce(plain.Tx.Flatten()), nil
+func (op SendOp) batchStep() (batchStep, error) {
+	if err := validateSendBase(op.BuildSendParams); err != nil {
+		return batchStep{}, err
 	}
-	options, err := operationOptions(operation)
-	if err != nil {
-		return false, err
+	if err := op.BalanceRange.Validate(); err != nil {
+		return batchStep{}, err
 	}
-	return options.TicketSequence != 0, nil
+	return confidentialStep(op.Account, op.TxOptions, transaction.ConfidentialMPTSendTx, op.IssuanceID,
+		[]tokenReference{{holder: op.Account, access: spenderAccess}, {holder: op.Destination, access: holderAccess}},
+		func(state *batchState, nonce TxOptions) (BatchInnerTransaction, error) {
+			return prepareBatchSend(state, op, nonce)
+		})
 }
 
-// batchNonces allocates each inner its sequence.
-type batchNonces struct {
+func (op MergeInboxOp) batchStep() (batchStep, error) {
+	if err := validateMergeInboxBase(op.BuildMergeInboxParams); err != nil {
+		return batchStep{}, err
+	}
+	return confidentialStep(op.Account, op.TxOptions, transaction.ConfidentialMPTMergeInboxTx, op.IssuanceID,
+		[]tokenReference{{holder: op.Account, access: holderAccess}},
+		func(state *batchState, nonce TxOptions) (BatchInnerTransaction, error) {
+			return prepareBatchMergeInbox(state, op, nonce)
+		})
+}
+
+func (op ClawbackOp) batchStep() (batchStep, error) {
+	if err := validateClawbackBase(op.BuildClawbackParams); err != nil {
+		return batchStep{}, err
+	}
+	if err := op.BalanceRange.Validate(); err != nil {
+		return batchStep{}, err
+	}
+	return confidentialStep(op.Account, op.TxOptions, transaction.ConfidentialMPTClawbackTx, op.IssuanceID,
+		[]tokenReference{{holder: op.Holder, access: clawbackAccess}},
+		func(state *batchState, nonce TxOptions) (BatchInnerTransaction, error) {
+			return prepareBatchClawback(state, op, nonce)
+		})
+}
+
+// isNilValue reports a nil interface or a typed nil pointer.
+func isNilValue(value any) bool {
+	if value == nil {
+		return true
+	}
+	v := reflect.ValueOf(value)
+	return v.Kind() == reflect.Pointer && v.IsNil()
+}
+
+// nonceKey is one sequence or Ticket number of one account.
+type nonceKey struct {
+	account string
+	value   uint32
+}
+
+// batchNoncePlan tracks the nonces of one Batch while they are resolved in apply order.
+type batchNoncePlan struct {
+	q LedgerQuerier
+	// next is the sequence each account spends next, loaded from the open ledger on first use.
 	next map[string]uint32
+	// spent is every sequence and Ticket already taken. rippled rejects an all-or-nothing Batch
+	// whose inners repeat a number for one account, whether as a sequence or as a Ticket.
+	spent map[nonceKey]struct{}
 }
 
-// allocate consumes an account's next sequence, or reports that the inner spends a Ticket and
-// needs none.
-func (n *batchNonces) allocate(account string, options TxOptions) (uint32, error) {
-	if options.TicketSequence != 0 {
-		return 0, nil
-	}
-	decoded, err := decodeBuilderAddress(account)
-	if err != nil {
-		return 0, fmt.Errorf("%w: %w", ErrInvalidAccount, err)
-	}
-	sequence, ok := n.next[decoded.Classic]
-	if !ok {
-		return 0, fmt.Errorf("%w: no sequence resolved for %s", ErrInvalidLedgerState, decoded.Classic)
-	}
-	n.next[decoded.Classic] = sequence + 1
-	return sequence, nil
-}
-
-// claim accepts a caller-set sequence only if it is the one the account would be allocated at this
-// position, so a ready-made inner cannot collide with or skip past an allocated one.
-func (n *batchNonces) claim(account string, sequence uint32) error {
-	decoded, err := decodeBuilderAddress(account)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidAccount, err)
-	}
-	next, tracked := n.next[decoded.Classic]
-	if !tracked {
-		return nil
-	}
-	if sequence != next {
-		return fmt.Errorf("%w: got %d, position requires %d", ErrBatchInnerSequenceMismatch, sequence, next)
-	}
-	n.next[decoded.Classic] = sequence + 1
-	return nil
-}
-
-// loadBatchSequences resolves the first sequence each inner account will spend.
-func loadBatchSequences(q LedgerQuerier, p BuildBatchParams) (*batchNonces, error) {
-	batchAccount, err := decodeBuilderAddress(p.Account)
+// planBatchNonces resolves the nonce of every inner before any proof binds one. Each account's
+// inners spend consecutive sequences in apply order: the outer account's start one past the
+// sequence the Batch spends, and every other account's at its current sequence. A Ticket spends
+// no sequence, but each number, including the outer Batch's own Ticket, is spent once, and a
+// TicketCreate moves its account's sequence past every Ticket it creates.
+func planBatchNonces(q LedgerQuerier, account string, outer TxOptions, steps []batchStep) ([]TxOptions, error) {
+	batchAccount, err := decodeBuilderAddress(account)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidAccount, err)
 	}
 
-	nonces := &batchNonces{next: make(map[string]uint32, len(p.Operations)+1)}
-	if p.Sequence != 0 {
-		nonces.next[batchAccount.Classic] = p.Sequence + 1
+	plan := &batchNoncePlan{
+		q:     q,
+		next:  make(map[string]uint32, len(steps)+1),
+		spent: make(map[nonceKey]struct{}, len(steps)+1),
 	}
-	for _, operation := range p.Operations {
-		ownNonce, err := operationCarriesNonce(operation)
-		if err != nil {
-			return nil, err
-		}
-		if ownNonce {
-			continue
-		}
-		account, err := operationAccount(operation)
-		if err != nil {
-			return nil, err
-		}
-		decoded, err := decodeBuilderAddress(account)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrInvalidAccount, err)
-		}
-		if _, loaded := nonces.next[decoded.Classic]; loaded {
-			continue
-		}
+	if outer.Sequence != 0 {
+		plan.next[batchAccount.Classic] = outer.Sequence + 1
+	}
+	if outer.TicketSequence != 0 {
+		plan.spent[nonceKey{account: batchAccount.Classic, value: outer.TicketSequence}] = struct{}{}
+	}
 
-		sequence, err := currentAccountSequence(q, decoded.Classic)
+	nonces := make([]TxOptions, 0, len(steps))
+	for index, step := range steps {
+		nonce, err := plan.resolve(step)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("operation %d: %w", index, err)
 		}
-		nonces.next[decoded.Classic] = sequence
+		nonces = append(nonces, nonce)
 	}
 	return nonces, nil
+}
+
+// resolve assigns one inner its nonce and records what the inner consumes.
+func (p *batchNoncePlan) resolve(step batchStep) (TxOptions, error) {
+	decoded, err := decodeBuilderAddress(step.account)
+	if err != nil {
+		return TxOptions{}, fmt.Errorf("%w: %w", ErrInvalidAccount, err)
+	}
+	account := decoded.Classic
+
+	nonce := step.options
+	value := nonce.TicketSequence
+	if nonce.TicketSequence == 0 {
+		next, err := p.sequence(account)
+		if err != nil {
+			return TxOptions{}, err
+		}
+		if nonce.Sequence != 0 && nonce.Sequence != next {
+			return TxOptions{}, fmt.Errorf("%w: got %d, position requires %d", ErrBatchInnerSequenceMismatch, nonce.Sequence, next)
+		}
+		nonce.Sequence = next
+		p.next[account] = next + 1
+		value = next
+	}
+
+	key := nonceKey{account: account, value: value}
+	if _, spent := p.spent[key]; spent {
+		return TxOptions{}, fmt.Errorf("%w: %d for %s", ErrBatchDuplicateNonce, value, account)
+	}
+	p.spent[key] = struct{}{}
+
+	if step.ticketCount != 0 {
+		next, err := p.sequence(account)
+		if err != nil {
+			return TxOptions{}, err
+		}
+		p.next[account] = next + step.ticketCount
+	}
+	return nonce, nil
+}
+
+// sequence reports the sequence an account spends next, reading it on first use.
+func (p *batchNoncePlan) sequence(account string) (uint32, error) {
+	if next, loaded := p.next[account]; loaded {
+		return next, nil
+	}
+	next, err := currentAccountSequence(p.q, account)
+	if err != nil {
+		return 0, err
+	}
+	p.next[account] = next
+	return next, nil
 }
 
 // currentAccountSequence reads the sequence an account will next spend from the open ledger.
@@ -326,50 +418,42 @@ func currentAccountSequence(q LedgerQuerier, classic string) (uint32, error) {
 	return info.AccountData.Sequence, nil
 }
 
-// loadBatchState reads the initial state of every issuance and MPToken the operations reference,
-// all from one validated ledger.
-func loadBatchState(snapshot *ledgerSnapshot, operations []BatchOperation) (*batchState, error) {
+// loadBatchState reads the initial state of every issuance and MPToken the steps reference, all
+// from one validated ledger, holding each MPToken to the combined requirements of every
+// operation that touches it.
+func loadBatchState(snapshot *ledgerSnapshot, steps []batchStep) (*batchState, error) {
 	state := &batchState{
-		tokens:    make(map[tokenKey]*tokenState, len(operations)),
-		issuances: make(map[string]*batchIssuance, len(operations)),
+		tokens:    make(map[tokenKey]*tokenState, len(steps)),
+		issuances: make(map[string]*batchIssuance, len(steps)),
 	}
-
-	usable := make(map[tokenKey]bool)
-	provable := make(map[string]bool)
 
 	type reference struct {
 		key    tokenKey
 		holder string
 	}
-	issuanceIDs := make([]string, 0, len(operations))
-	references := make([]reference, 0, len(operations)+1)
-	for _, operation := range operations {
-		issuanceID, holders, err := operationReferences(operation)
-		if err != nil {
-			return nil, err
-		}
-		if issuanceID == "" {
+	provable := make(map[string]bool)
+	issuanceIDs := make([]string, 0, len(steps))
+	access := make(map[tokenKey]mptokenAccess)
+	references := make([]reference, 0, len(steps)+1)
+	for _, step := range steps {
+		if step.issuanceID == "" {
 			continue
 		}
-		normalized := strings.ToUpper(issuanceID)
-		if _, seen := provable[normalized]; !seen {
-			provable[normalized] = false
-			issuanceIDs = append(issuanceIDs, normalized)
+		issuanceID := normalizeIssuanceID(step.issuanceID)
+		if _, seen := provable[issuanceID]; !seen {
+			issuanceIDs = append(issuanceIDs, issuanceID)
 		}
-		if _, isMerge := operation.(MergeInboxOp); !isMerge {
-			provable[normalized] = true
-		}
+		provable[issuanceID] = provable[issuanceID] || step.needsIssuerKey
 
-		_, isClawback := operation.(ClawbackOp)
-		for _, holder := range holders {
-			key, err := newTokenKey(holder, issuanceID)
+		for _, token := range step.tokens {
+			key, err := newTokenKey(token.holder, step.issuanceID)
 			if err != nil {
 				return nil, err
 			}
-			if _, seen := usable[key]; !seen {
-				references = append(references, reference{key: key, holder: holder})
+			if _, seen := access[key]; !seen {
+				references = append(references, reference{key: key, holder: token.holder})
 			}
-			usable[key] = usable[key] || !isClawback
+			access[key] = access[key].merge(token.access)
 		}
 	}
 
@@ -385,7 +469,7 @@ func loadBatchState(snapshot *ledgerSnapshot, operations []BatchOperation) (*bat
 		if err != nil {
 			return nil, err
 		}
-		token, err := readBatchTokenState(snapshot, issuance.issuanceState, ref.key, ref.holder, usable[ref.key])
+		token, err := readBatchTokenState(snapshot, issuance.issuanceState, ref.key, ref.holder, access[ref.key])
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", ref.key, err)
 		}
@@ -407,78 +491,8 @@ func readBatchIssuance(snapshot *ledgerSnapshot, issuanceID string, needsIssuerK
 	return &batchIssuance{issuanceState: issuance, outstanding: issuance.confidentialOutstanding}, nil
 }
 
-// operationReferences reports the issuance an operation acts on and the holders whose MPToken
-// state it reads or writes.
-func operationReferences(operation BatchOperation) (string, []string, error) {
-	switch op := operation.(type) {
-	case ConvertOp:
-		return op.IssuanceID, []string{op.Account}, nil
-	case ConvertBackOp:
-		return op.IssuanceID, []string{op.Account}, nil
-	case SendOp:
-		return op.IssuanceID, []string{op.Account, op.Destination}, nil
-	case MergeInboxOp:
-		return op.IssuanceID, []string{op.Account}, nil
-	case ClawbackOp:
-		return op.IssuanceID, []string{op.Holder}, nil
-	case TransactionOp:
-		return "", nil, nil
-	default:
-		return "", nil, fmt.Errorf("%w: %T", ErrBatchInnerNotSupported, operation)
-	}
-}
-
-// buildBatchInner builds one inner against the current predictions, advances them by what that
-// inner does, and returns the inner shaped for a Batch.
-func buildBatchInner(state *batchState, nonces *batchNonces, operation BatchOperation) (transaction.FlatTransaction, error) {
-	if plain, ok := operation.(TransactionOp); ok {
-		return buildPlainInner(nonces, plain)
-	}
-
-	account, err := operationAccount(operation)
-	if err != nil {
-		return nil, err
-	}
-	options, err := operationOptions(operation)
-	if err != nil {
-		return nil, err
-	}
-	sequence, err := nonces.allocate(account, options)
-	if err != nil {
-		return nil, err
-	}
-	options.Sequence = sequence
-
-	tx, err := prepareBatchOperation(state, operation, options)
-	if err != nil {
-		return nil, err
-	}
-	return shapeBatchInner(tx), nil
-}
-
-// prepareBatchOperation dispatches to the Prepare helper of the operation's own builder, feeding
-// it the predicted state in place of the ledger reads the Build helper would make, and then
-// advances the predictions.
-func prepareBatchOperation(state *batchState, operation BatchOperation, options TxOptions) (BatchInnerTransaction, error) {
-	switch op := operation.(type) {
-	case ConvertOp:
-		return prepareBatchConvert(state, op, options)
-	case ConvertBackOp:
-		return prepareBatchConvertBack(state, op, options)
-	case SendOp:
-		return prepareBatchSend(state, op, options)
-	case MergeInboxOp:
-		return prepareBatchMergeInbox(state, op, options)
-	case ClawbackOp:
-		return prepareBatchClawback(state, op, options)
-	default:
-		return nil, fmt.Errorf("%w: %T", ErrBatchInnerNotSupported, operation)
-	}
-}
-
-// shapeBatchInner shapes a built transaction as an XLS-56 inner.
-func shapeBatchInner(tx BatchInnerTransaction) transaction.FlatTransaction {
-	flat := tx.Flatten()
+// shapeBatchInner shapes a flattened transaction as an XLS-56 inner.
+func shapeBatchInner(flat transaction.FlatTransaction) transaction.FlatTransaction {
 	flags, _ := flat["Flags"].(uint32)
 	flat["Flags"] = flags | types.TfInnerBatchTxn
 	flat["Fee"] = "0"

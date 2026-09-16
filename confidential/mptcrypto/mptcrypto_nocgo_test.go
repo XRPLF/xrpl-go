@@ -23,3 +23,8 @@ func TestCiphertextArithmeticWithoutCgo(t *testing.T) {
 	_, err = mptcrypto.SubtractCiphertexts(mptcrypto.Ciphertext{}, mptcrypto.Ciphertext{})
 	require.ErrorIs(t, err, mptcrypto.ErrCgoRequired)
 }
+
+func TestCanonicalEncryptedZeroWithoutCgo(t *testing.T) {
+	_, err := mptcrypto.CanonicalEncryptedZero(mptcrypto.PublicKey{}, [20]byte{}, [24]byte{})
+	require.ErrorIs(t, err, mptcrypto.ErrCgoRequired)
+}
