@@ -141,6 +141,7 @@ func TestClient_GetServerInfo(t *testing.T) {
 }
 
 func TestClient_GetAccountInfo(t *testing.T) {
+	zero, one, two, maximum := uint32(0), uint32(1), uint32(2), uint32(4294967295)
 	tests := []struct {
 		name           string
 		serverMessages []map[string]any
@@ -148,7 +149,71 @@ func TestClient_GetAccountInfo(t *testing.T) {
 		expectedErr    error
 	}{
 		{
-			name: "Successful response",
+			name: "vault pseudo-account link",
+			serverMessages: []map[string]any{{
+				"id": 1,
+				"result": map[string]any{"account_data": map[string]any{
+					"Account":         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+					"LedgerEntryType": "AccountRoot",
+					"VaultID":         "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
+				}},
+			}},
+			expected: &account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType: ledger.AccountRootEntry,
+				VaultID:         "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
+			}},
+		},
+		{
+			name: "loan broker pseudo-account link",
+			serverMessages: []map[string]any{{
+				"id": 1,
+				"result": map[string]any{"account_data": map[string]any{
+					"Account":         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+					"LedgerEntryType": "AccountRoot",
+					"LoanBrokerID":    "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210",
+				}},
+			}},
+			expected: &account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:         "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType: ledger.AccountRootEntry,
+				LoanBrokerID:    "FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210",
+			}},
+		},
+		{
+			name: "explicit zero sponsorship counters",
+			serverMessages: []map[string]any{{
+				"id": 1,
+				"result": map[string]any{"account_data": map[string]any{
+					"Account":             "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+					"LedgerEntryType":     "AccountRoot",
+					"SponsoredOwnerCount": 0, "SponsoringOwnerCount": 0, "SponsoringAccountCount": 0,
+				}},
+			}},
+			expected: &account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:             "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType:     ledger.AccountRootEntry,
+				SponsoredOwnerCount: &zero, SponsoringOwnerCount: &zero, SponsoringAccountCount: &zero,
+			}},
+		},
+		{
+			name: "nonzero sponsorship counters",
+			serverMessages: []map[string]any{{
+				"id": 1,
+				"result": map[string]any{"account_data": map[string]any{
+					"Account":             "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+					"LedgerEntryType":     "AccountRoot",
+					"SponsoredOwnerCount": 1, "SponsoringOwnerCount": 2, "SponsoringAccountCount": uint32(4294967295),
+				}},
+			}},
+			expected: &account.InfoResponse{AccountData: ledger.AccountRoot{
+				Account:             "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+				LedgerEntryType:     ledger.AccountRootEntry,
+				SponsoredOwnerCount: &one, SponsoringOwnerCount: &two, SponsoringAccountCount: &maximum,
+			}},
+		},
+		{
+			name: "Successful response with absent sponsorship counters",
 			serverMessages: []map[string]any{
 				{
 					"id": 1,

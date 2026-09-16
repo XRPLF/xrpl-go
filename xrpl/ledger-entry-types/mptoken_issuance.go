@@ -97,6 +97,8 @@ type MPTokenIssuance struct {
 	AuditorEncryptionKey string `json:",omitempty"`
 	// ConfidentialOutstandingAmount is the total amount held in confidential balances.
 	ConfidentialOutstandingAmount string `json:",omitempty"`
+	// The account paying this object's owner reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the type of the ledger entry.

@@ -176,7 +176,7 @@ func (n *NFTokenMint) Validate() (bool, error) {
 	}
 
 	// check issuer is not the same as the account
-	if n.Issuer == n.Account {
+	if sameAccountAddress(n.Issuer, n.Account) {
 		return false, ErrIssuerAccountConflict
 	}
 
