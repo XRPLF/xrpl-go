@@ -6,6 +6,7 @@ import (
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -121,7 +122,7 @@ func sponsorFieldsFromBaseTx(tx *BaseTx) sponsorFields {
 		sponsor:   tx.Sponsor,
 		flags:     tx.SponsorFlags,
 		signature: sponsorSignatureFromTyped(tx.SponsorSignature),
-		inner:     tx.Flags&types.TfInnerBatchTxn != 0,
+		inner:     flag.Contains(tx.Flags, types.TfInnerBatchTxn),
 		delegate:  tx.Delegate,
 		txType:    tx.TransactionType,
 		present:   tx.Sponsor != "" || tx.SponsorFlags != 0 || tx.SponsorSignature != nil,
