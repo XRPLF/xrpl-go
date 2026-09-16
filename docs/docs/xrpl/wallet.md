@@ -61,6 +61,48 @@ The `Sign` method signs a flat transaction and returns the signed transaction bl
 
 On the other hand, the `Multisign` method multisigns a flat transaction by adding the wallet's signature to the transaction and returning the resulting transaction blob and the blob hash. Learn more about how multisigns work in the [official documentation](https://xrpl.org/docs/concepts/accounts/multi-signing).
 
+## Sponsor signing
+
+Sponsor helpers accept flattened transaction maps or encoded blobs. They return new maps without changing the inputs. Errors return no partial result.
+
+```go
+func SignAsSponsor(w Wallet, tx transaction.FlatTransaction, opts *SignAsSponsorOptions) (transaction.FlatTransaction, string, string, error)
+func SignAsSponsorBlob(w Wallet, blob string, opts *SignAsSponsorOptions) (transaction.FlatTransaction, string, string, error)
+func CombineSponsorSigners(txs []transaction.FlatTransaction) (transaction.FlatTransaction, string, error)
+func CombineSponsorSignersBlob(blobs []string) (transaction.FlatTransaction, string, error)
+func AddPreFundedSponsor(tx transaction.FlatTransaction, sponsor types.Address, flags uint32) (transaction.FlatTransaction, error)
+```
+
+Signing returns the transaction, final blob, and final hash. Combining returns the transaction and final blob. Use `hash.SignTxBlob(blob)` to calculate the combined hash.
+
+### Co-signed sponsorship
+
+Set `Sponsor` and `SponsorFlags` (`types.SpfSponsorFee`, `types.SpfSponsorReserve`, or both) **before account signing**. Autofill before signing too. Then sign the account and pass its signed map or blob to `SignAsSponsor` or `SignAsSponsorBlob`.
+
+The helpers preserve account signatures and the top-level `SigningPubKey`. They write only `SponsorSignature`. Account signatures must already be present. This signing order is an offline helper policy, not a claim that consensus requires that invocation order.
+
+Use `SignAsSponsorOptions{Multisign: true}` for sponsor multisigning. Each signer signs the same account-signed transaction independently. Combine those fragments with `CombineSponsorSigners`. Do not chain sponsor signing calls. If the account also uses multisigning, combine its fragments before sponsor signing.
+
+For a regular-key multisigner, set `MultisignAccount` to the signer account. A nonempty override enables multisigning and takes precedence over the wallet address. For single-signing with a regular key, construct the wallet with `FromSeed(seed, sponsorAccount)`.
+
+The combiner requires canonical wire equivalence except for `SponsorSignature.Signers`. It compares account authorization and other sponsor fields, but not nonserialized metadata. Each input signer list must be sorted and unique by decoded AccountID. The result is sorted, and overlaps between fragments retain the **first input occurrence** by decoded identity. If duplicates have different signatures, the first is retained even if it is invalid. No signature or quorum verification is performed.
+
+### Pre-funded sponsorship
+
+Call `AddPreFundedSponsor` before signing. It sets sponsor fields without adding a sponsor signature. It permits an absent or empty `SigningPubKey`, but rejects existing account, counterparty, sponsor, or Batch authorization fields, including partial or null values.
+
+This helper does not create or fund a ledger `Sponsorship` object. The caller needs an existing sponsorship with enough resources and with the applicable require-sign flags disabled. The helper does not check funds or ledger authorization.
+
+### Fees and amendment compatibility
+
+Pass the **combined planned account and sponsor multisigner count** to the existing RPC or WebSocket `AutofillMultisigned` before account signing. A single sponsor signature adds no surcharge. A single account signature also adds no multisigner count. Leave Fee absent so autofill can calculate it. A supplied Fee is not overwritten.
+
+Sponsor signing requires `Sponsor` and `fixCleanup3_4_0` on the target network. These helpers always use sponsor prefixes `0x53504E00` and `0x53504D00`. They do not silently fall back to ordinary signing prefixes. Pre-funded use requires the `Sponsor` amendment but no sponsor signature prefix.
+
+All checks are offline structural checks. They do not establish cryptographic validity of supplied signatures, ledger authorization, quorum, sponsorship balance, or amendment activation. `transaction.ValidateSponsorFields` exposes the shared raw sponsorship rules, not full transaction validation. `transaction.InspectSponsorFields` applies the same rules and returns an independent `*types.SponsorSignature` (nil when absent). It retains field presence, including an explicitly empty `SigningPubKey`, and returns no signature on error.
+
+See the [runnable sponsor example](https://github.com/XRPLF/xrpl-go/tree/confidential-transfers/examples/sponsor-signing) for co-signed, multisigned, and pre-funded flows. Submit the final blob without modifying it or autofilling again.
+
 ## Signing a batch transaction
 
 There's also the `SignMultiBatch` package function that signs each `RawTransaction` of a `Batch` transaction, signed by every account involved, excluding the account that's signing the overall transaction.

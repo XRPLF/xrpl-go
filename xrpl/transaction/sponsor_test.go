@@ -96,6 +96,14 @@ func TestBaseTxSponsorValidation(t *testing.T) {
 			if tt.inner {
 				tx.Flags = types.TfInnerBatchTxn
 			}
+			// The raw entry point shares the typed sponsorship rules, without
+			// requiring Fee or Sequence to have been autofilled.
+			rawErr := ValidateSponsorFields(tx.Flatten())
+			if tt.expectedErr == nil {
+				require.NoError(t, rawErr)
+			} else {
+				require.ErrorIs(t, rawErr, tt.expectedErr)
+			}
 			valid, err := tx.Validate()
 			require.Equal(t, tt.expectedErr == nil, valid)
 			if tt.expectedErr == nil {
@@ -801,7 +809,8 @@ func TestSponsorAddressErrorsWrapSharedConditions(t *testing.T) {
 }
 
 func TestInnerSponsorSignatureErrorWrapsInvalidSignature(t *testing.T) {
-	err := validateSponsorSignature(&sponsorSignatureFields{signingPubKey: "AB"}, true)
+	key := "AB"
+	err := validateSponsorSignature(&types.SponsorSignature{SigningPubKey: &key}, true)
 	require.ErrorIs(t, err, ErrInnerBatchSponsorSignature)
 	require.ErrorIs(t, err, ErrInvalidSponsorSignature)
 }
