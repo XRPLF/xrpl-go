@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### binary-codec
 
 - Updated binary definitions from a rippled 3.4.0 development build (`21890d9d`), including new protocol fields and removal of unused Hook field definitions.
+- `FeeAmountDelta` now accepts negative XRP strings and rejects non-string values, including IOU and MPT objects. Ordinary amount encoding is unchanged.
 
 #### xrpl/wallet
 
