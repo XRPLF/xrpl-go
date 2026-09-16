@@ -56,7 +56,7 @@ func (s *SetRegularKey) Validate() (bool, error) {
 	}
 
 	// Check if the regular key is not the same as the account address
-	if s.RegularKey != "" && s.RegularKey == s.Account {
+	if s.RegularKey != "" && sameAccountAddress(s.RegularKey, s.Account) {
 		return false, ErrRegularKeyMatchesAccount
 	}
 

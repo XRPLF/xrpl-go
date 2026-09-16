@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.
 
+#### xrpl/transaction
+
+- Compare decoded account identities in DepositPreauth, NFTokenCreateOffer, SetRegularKey, DelegateSet, NFTokenMint, NFTokenModify, MPTokenAuthorize, and MPTokenIssuanceSet self-reference checks, so equivalent classic and X-addresses cannot bypass them. AMMClawback now accepts equivalent address forms in its asset issuer/account check.
+
 ## [v0.3.1-mpt.0]
 
 ### Added
