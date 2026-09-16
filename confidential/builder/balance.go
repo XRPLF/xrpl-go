@@ -24,8 +24,12 @@ type SpendingBalanceParams struct {
 // it cannot be spent until a ConfidentialMPTMergeInbox moves it. An MPToken with no spending
 // ciphertext reads as zero without decrypting. Decryption requires CGo.
 //
-// Errors: ErrMPTokenNotFound, ErrIssuanceNotFound, ErrLedgerQuery, ErrInvalidLedgerState,
-// and ErrCryptoFailed when the balance is outside the search range.
+// Errors: the parameter validation errors (ErrMissingHolder, ErrInvalidHolder,
+// ErrMissingIssuanceID, ErrInvalidIssuanceID, ErrIssuerNotAllowed, ErrMissingHolderKey,
+// ErrInvalidPrivKey), ErrMPTokenNotFound, ErrIssuanceNotFound, ErrConfidentialDisabled,
+// ErrLedgerQuery, ErrInvalidLedgerState, elgamal.ErrInvalidAmountRange when BalanceRange is
+// invalid or starts above the issuance's confidential supply, and ErrCryptoFailed when
+// decryption fails, including when the balance is outside the search range.
 func GetSpendingBalance(q LedgerQuerier, p SpendingBalanceParams) (uint64, error) {
 	if err := validateSpendingBalanceParams(p); err != nil {
 		return 0, err

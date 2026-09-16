@@ -45,7 +45,7 @@ func spendingBalanceParams() SpendingBalanceParams {
 	}
 }
 
-// unspendableCiphertext is a well-formed ciphertext that fails to decrypt.
+// unspendableCiphertext is a malformed ciphertext that fails to decrypt.
 const unspendableCiphertext = "not-a-ciphertext"
 
 // spendingMPToken returns an MPToken carrying a spending ciphertext.

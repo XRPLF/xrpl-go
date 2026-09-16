@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### docs
 
-- Documented `GetSpendingBalance()` in the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders), and updated the RPC and WebSocket confidential examples to read spending balances through it.
+- Documented `GetSpendingBalance()` in the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders).
 
 ### Changed
 

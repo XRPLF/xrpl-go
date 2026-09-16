@@ -169,7 +169,7 @@ func run() error {
 	// A convert credits the inbox, not the spending balance, so the holder cannot spend it
 	// yet. The split is what keeps an incoming credit from invalidating a proof already in
 	// flight against the spending balance.
-	if err := report(client, issuanceID, holder.GetAddress(), holderKey, "holder after convert"); err != nil {
+	if err := report(client, holder.GetAddress(), holderKey, "holder after convert"); err != nil {
 		return err
 	}
 
@@ -178,7 +178,7 @@ func run() error {
 	if err := mergeInbox(client, &holder, issuanceID); err != nil {
 		return err
 	}
-	if err := report(client, issuanceID, holder.GetAddress(), holderKey, "holder after merge"); err != nil {
+	if err := report(client, holder.GetAddress(), holderKey, "holder after merge"); err != nil {
 		return err
 	}
 
@@ -222,10 +222,10 @@ func run() error {
 	if err := mergeInbox(client, &receiver, issuanceID); err != nil {
 		return err
 	}
-	if err := report(client, issuanceID, holder.GetAddress(), holderKey, "holder after send"); err != nil {
+	if err := report(client, holder.GetAddress(), holderKey, "holder after send"); err != nil {
 		return err
 	}
-	if err := report(client, issuanceID, receiver.GetAddress(), receiverKey, "receiver after merge"); err != nil {
+	if err := report(client, receiver.GetAddress(), receiverKey, "receiver after merge"); err != nil {
 		return err
 	}
 
@@ -245,7 +245,7 @@ func run() error {
 	if err := submit(client, &holder, convertBack.Flatten(), "ConfidentialMPTConvertBack"); err != nil {
 		return err
 	}
-	if err := report(client, issuanceID, holder.GetAddress(), holderKey, "holder after convert back"); err != nil {
+	if err := report(client, holder.GetAddress(), holderKey, "holder after convert back"); err != nil {
 		return err
 	}
 
@@ -265,7 +265,7 @@ func run() error {
 	if err := submit(client, &issuer, clawback.Flatten(), "ConfidentialMPTClawback"); err != nil {
 		return err
 	}
-	if err := report(client, issuanceID, receiver.GetAddress(), receiverKey, "receiver after clawback"); err != nil {
+	if err := report(client, receiver.GetAddress(), receiverKey, "receiver after clawback"); err != nil {
 		return err
 	}
 
@@ -287,7 +287,7 @@ func mergeInbox(client *websocket.Client, holder *wallet.Wallet, issuanceID stri
 
 // report decrypts and prints a holder's own view of its confidential balances. Only the
 // holder private key can do this, which is the point: the ledger stores ciphertexts.
-func report(client *websocket.Client, issuanceID string, address types.Address, key elgamal.Keypair, label string) error {
+func report(client *websocket.Client, address types.Address, key elgamal.Keypair, label string) error {
 	token, err := mptoken(client, address)
 	if err != nil {
 		return err
@@ -297,12 +297,7 @@ func report(client *websocket.Client, issuanceID string, address types.Address, 
 	if err != nil {
 		return fmt.Errorf("%s inbox: %w", label, err)
 	}
-	spending, err := builder.GetSpendingBalance(client, builder.SpendingBalanceParams{
-		Holder:        address.String(),
-		IssuanceID:    issuanceID,
-		HolderPrivKey: key.PrivKeyHex,
-		BalanceRange:  balanceSearch,
-	})
+	spending, err := decrypt(token.ConfidentialBalanceSpending, key.PrivKeyHex)
 	if err != nil {
 		return fmt.Errorf("%s spending: %w", label, err)
 	}

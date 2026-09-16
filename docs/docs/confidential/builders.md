@@ -187,9 +187,9 @@ balance, err := builder.GetSpendingBalance(client, builder.SpendingBalanceParams
   `ConfidentialMPTMergeInbox` moves it, so counting it would report a balance the holder
   cannot send or convert back.
 - Bounds the search by `BalanceRange`, capped at the issuance `ConfidentialOutstandingAmount`,
-  exactly as `BuildClawback` does. `BalanceRange` is required rather than defaulted: the only
-  bound the SDK could infer is the issuance's whole confidential supply, which is as large as
-  the issuance is.
+  exactly as `BuildClawback` does. If omitted, `BalanceRange` is `[0, 0]`, so callers must set
+  a range that contains any nonzero balance. The SDK does not default the range to the
+  issuance's whole confidential supply, because that range can be as large as the issuance.
 
 Like every other decryption in this package, it needs a CGo-enabled build. The zero-balance
 case above is the one answer it can give without one.

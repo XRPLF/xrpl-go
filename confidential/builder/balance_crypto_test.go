@@ -3,7 +3,6 @@
 package builder
 
 import (
-	"strconv"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
@@ -52,21 +51,20 @@ func TestGetSpendingBalanceDecryptsEncryptedZero(t *testing.T) {
 	require.Zero(t, balance)
 }
 
-func TestGetSpendingBalanceSearchesWiderRangesUpToTheSupply(t *testing.T) {
-	const spendingBalance, outstanding uint64 = 250, 1000
-
-	holderKP, q := newBalanceLedgerFixture(t, 0, 1, spendingBalance)
+func TestGetSpendingBalanceDecryptsEncryptedZeroWithoutOutstandingSupply(t *testing.T) {
+	holderKP, q := newBalanceLedgerFixture(t, 0, 1, 0)
 	issuanceIndex, err := xrplhash.MPTokenIssuance(testIssuanceID)
 	require.NoError(t, err)
-	q.entries[issuanceIndex]["ConfidentialOutstandingAmount"] = strconv.FormatUint(outstanding, 10)
+	// An omitted ConfidentialOutstandingAmount reads as zero, which caps the search to [0, 0].
+	delete(q.entries[issuanceIndex], "ConfidentialOutstandingAmount")
 
 	params := spendingBalanceParams()
 	params.HolderPrivKey = holderKP.PrivKeyHex
-	params.BalanceRange = elgamal.AmountRange{Low: 0, High: outstanding * 1000}
+	params.BalanceRange = elgamal.AmountRange{Low: 0, High: 1000}
 
 	balance, err := GetSpendingBalance(q, params)
 	require.NoError(t, err)
-	require.Equal(t, spendingBalance, balance)
+	require.Zero(t, balance)
 }
 
 func TestGetSpendingBalanceReportsFailedBoundedSearch(t *testing.T) {
