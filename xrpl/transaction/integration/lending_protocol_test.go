@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"math"
 	"strconv"
 	"testing"
 	"time"
@@ -39,6 +40,31 @@ func findLoanObject(objects []ledger.FlatLedgerObject, loanObjectID string) ledg
 	return nil
 }
 
+// closedLendingVaultDates leaves time for deposits before subscription closes and
+// a full day for loan maturity, including the server's 60-second redemption buffer.
+// These tests require LendingProtocolV1_1 and fixCleanup3_4_0.
+func closedLendingVaultDates(t *testing.T, client integration.Client) (uint32, uint32) {
+	t.Helper()
+	const subscriptionWindowSeconds uint32 = 120 // Two minutes for deposits.
+	const investmentPeriodSeconds uint32 = 86400 // One day for loan maturity.
+	closed, err := client.GetLedger(&xrplledger.Request{LedgerIndex: querycommon.Validated})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, closed.Ledger.CloseTime, 0)
+	require.LessOrEqual(t, int64(closed.Ledger.CloseTime), int64(math.MaxUint32-subscriptionWindowSeconds-investmentPeriodSeconds))
+	subscription := uint32(closed.Ledger.CloseTime) + subscriptionWindowSeconds //nolint:gosec // bounded above
+	return subscription, subscription + investmentPeriodSeconds
+}
+
+func waitForVaultInvestment(t *testing.T, client integration.Client, subscription uint32) {
+	t.Helper()
+	// The validated ledger is the parent of the applying ledger. Equality is
+	// still subscription, so wait until its close time is strictly later.
+	require.Eventually(t, func() bool {
+		closed, err := client.GetLedger(&xrplledger.Request{LedgerIndex: querycommon.Validated})
+		return err == nil && int64(closed.Ledger.CloseTime) > int64(subscription)
+	}, 3*time.Minute, 100*time.Millisecond, "vault did not enter the investment phase")
+}
+
 // testIntegrationLendingProtocolSingleSigning tests the full lending protocol lifecycle
 // with single signing: VaultCreate -> VaultDeposit -> LoanBrokerSet -> LoanSet with
 // counterparty signing -> LoanPay (partial) -> LoanPay (full with tfLoanFullPayment flag).
@@ -63,6 +89,8 @@ func testIntegrationLendingProtocolSingleSigning(t *testing.T, client integratio
 
 	// ========== STEP 1: Create Vault ==========
 	assetsMaximum := types.XRPLNumber("1e17")
+	subscription, redemption := closedLendingVaultDates(t, client)
+	kind := types.VaultKindClosed
 	vaultCreateTx := &transaction.VaultCreate{
 		BaseTx: transaction.BaseTx{
 			Account: vaultOwner.GetAddress(),
@@ -70,7 +98,10 @@ func testIntegrationLendingProtocolSingleSigning(t *testing.T, client integratio
 		Asset: ledger.Asset{
 			Currency: "XRP",
 		},
-		AssetsMaximum: &assetsMaximum,
+		AssetsMaximum:    &assetsMaximum,
+		VaultKind:        &kind,
+		SubscriptionDate: &subscription,
+		RedemptionDate:   &redemption,
 	}
 
 	flatVaultCreateTx := vaultCreateTx.Flatten()
@@ -143,8 +174,10 @@ func testIntegrationLendingProtocolSingleSigning(t *testing.T, client integratio
 	loanBrokerLoanSequence := integration.TxFieldUint32(t, loanBrokerObj, "LoanSequence")
 
 	// ========== STEP 4: Create Loan ==========
+	waitForVaultInvestment(t, client, subscription)
 	counterparty := types.Address(borrower.GetAddress())
 	paymentTotal := types.PaymentTotal(3)
+	paymentInterval := types.PaymentInterval(60)
 	loanSetTx := &transaction.LoanSet{
 		BaseTx: transaction.BaseTx{
 			Account: loanBroker.GetAddress(),
@@ -152,6 +185,7 @@ func testIntegrationLendingProtocolSingleSigning(t *testing.T, client integratio
 		LoanBrokerID:       loanBrokerObjectID,
 		PrincipalRequested: types.XRPLNumber("5000000"),
 		Counterparty:       &counterparty,
+		PaymentInterval:    &paymentInterval,
 		PaymentTotal:       &paymentTotal,
 	}
 
@@ -355,7 +389,9 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 	mptTokenIssuanceID := mptTokenTxResp.Meta.MPTIssuanceID.String()
 	require.NotEmpty(t, mptTokenIssuanceID)
 
-	// Create an MPT-collateralized vault
+	// Create a closed-ended MPT-collateralized vault for the loan broker.
+	subscription, redemption := closedLendingVaultDates(t, client)
+	kind := types.VaultKindClosed
 	vaultCreateTx := &transaction.VaultCreate{
 		BaseTx: transaction.BaseTx{
 			Account: vaultOwner.GetAddress(),
@@ -363,6 +399,9 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 		Asset: ledger.Asset{
 			MPTIssuanceID: mptTokenIssuanceID,
 		},
+		VaultKind:        &kind,
+		SubscriptionDate: &subscription,
+		RedemptionDate:   &redemption,
 	}
 
 	flatVaultCreateTx := vaultCreateTx.Flatten()
@@ -487,6 +526,7 @@ func testIntegrationLendingProtocolMultiSigning(t *testing.T, client integration
 	loanBrokerLoanSequence := integration.TxFieldUint32(t, loanBrokerObj, "LoanSequence")
 
 	// ========== Create a Loan (negative test: expect temBAD_SIGNER without counterparty sig) ==========
+	waitForVaultInvestment(t, client, subscription)
 	counterparty := borrower.GetAddress()
 	paymentTotal := types.PaymentTotal(1)
 	interestRate := types.InterestRate(0)

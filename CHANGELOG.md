@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added optional `VaultID` and `LoanBrokerID` fields to `AccountRoot`, preserving pseudo-account links in typed ledger and `account_info` responses.
 - Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values, including in typed account responses. Network use requires the `Sponsor` amendment.
+- Added optional vault accounting version, kind, subscription date, and redemption date fields for `LendingProtocolV1_1`.
 
 #### xrpl/queries
 
@@ -51,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/queries/vault
 
 - Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
+- Preserve optional vault accounting version, kind, subscription date, and redemption date in `vault_info` responses.
 
 #### xrpl/rpc
 
@@ -58,10 +60,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
+- Added `InspectSponsorFields` for non-mutating raw sponsorship validation without requiring autofilled fields. Inspection returns the validated typed sponsor signature while preserving field presence.
 - Added common sponsorship fields, fee and reserve flags, and sponsor signature validation, including Batch inner transaction checks. Client validation rejects sponsorship on `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions with `ErrPseudoTransactionSponsorship`. Sponsor multisigner lists require at most 32 signers in strict decoded AccountID order. Requires the `Sponsor` amendment on the target network.
+- Added typed `SponsorshipSet` and `SponsorshipTransfer` transactions with operation flags, signed budget deltas, and validation for counterparty, deletion, reserve sponsorship, and account-level sponsor authorization rules. Requires the `Sponsor` amendment on the target network.
 - Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
 - Added `LedgerStateFixTx`, `SponsorshipSetTx`, and `SponsorshipTransferTx` transaction type constants.
 - Added the Payment `TfSponsorCreatedAccount` flag and setter, with validation for native XRP amounts and incompatible fields and flags. Requires the `Sponsor` amendment on the target network.
+- Added closed-ended VaultCreate fields with investment-period validation and top-level VaultDelete `MemoData` for `LendingProtocolV1_1`.
+- Added `CredentialIDs` to VaultWithdraw and LoanBrokerCoverWithdraw. These fields require `Credentials` and `fixCleanup3_4_0`.
+
+#### xrpl/wallet
+
+- Added non-mutating sponsor signing, sponsor multisign combining, and pre-funded sponsor setup helpers, with map/blob APIs and examples. Co-signing uses the `fixCleanup3_4_0` sponsor prefixes and preserves account signatures. Network sponsorship requires the `Sponsor` amendment.
 
 #### xrpl/websocket
 
@@ -94,6 +104,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reject an empty `MPTokenIssuanceSet.DomainID` during validation instead of failing later during binary encoding. Use 64 zero digits to request domain removal.
 - Compare decoded account identities in DepositPreauth, NFTokenCreateOffer, SetRegularKey, DelegateSet, NFTokenMint, NFTokenModify, MPTokenAuthorize, and MPTokenIssuanceSet self-reference checks, so equivalent classic and X-addresses cannot bypass them. AMMClawback now accepts equivalent address forms in its asset issuer/account check.
 - Reject odd-length `VaultCreate.Data` hex during validation instead of failing later during binary encoding.
+
+#### xrpl/transaction/types
+
+- Fixed `CredentialIDs.IsValid()` to require one to eight distinct, nonzero 256-bit hexadecimal IDs across all transaction and confidential builder callers. This tightens validation of previously accepted lists. Zero IDs are rejected offline without checking `fixCleanup3_4_0` activation.
 
 ## [v0.3.1-mpt.0]
 
