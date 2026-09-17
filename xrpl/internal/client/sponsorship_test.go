@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"maps"
 	"testing"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -403,6 +404,11 @@ func TestValidateSponsorshipInputErrors(t *testing.T) {
 			expectedErr: ErrInvalidAddress,
 		},
 		{
+			name:        "tagged delegate address",
+			tx:          with(map[string]any{"Delegate": xAddress(t, delegateAddress, 7, true)}),
+			expectedErr: ErrAccountIDTagNotAllowed,
+		},
+		{
 			name:        "sponsor equal to account",
 			tx:          with(map[string]any{"Sponsor": sponseeAddress}),
 			expectedErr: transaction.ErrSponsorAccountConflict,
@@ -548,32 +554,78 @@ func TestValidateSponsorshipUsesDelegateAsSponsee(t *testing.T) {
 	require.Equal(t, types.Address(delegateAddress), gotSponsee)
 }
 
-// TestValidateSponsorshipLooksUpClassicAddresses pins that X-addresses are converted on a copy
-// before the lookup, so the request and the check against the returned entry both use the classic
-// addresses the ledger stores, while the caller's transaction is left unchanged.
+// The lookup must use classic sponsor and sponsee addresses without validating unrelated
+// fields or modifying any part of the caller's transaction, including Batch inner transactions.
 func TestValidateSponsorshipLooksUpClassicAddresses(t *testing.T) {
-	tx := sponsoredTx(types.SpfSponsorFee)
 	account := xAddress(t, sponseeAddress, 7, true)
 	sponsor := xAddress(t, sponsorAddress, 0, false)
-	tx["Account"] = account
-	tx["Sponsor"] = sponsor
-
-	var gotSponsor, gotSponsee types.Address
-	request := func(ctx context.Context, req Request, result any) error {
-		entryRequest, ok := req.(*ledgerquery.EntryRequest)
-		require.True(t, ok)
-		gotSponsor, gotSponsee = entryRequest.Sponsorship.Object.Sponsor, entryRequest.Sponsorship.Object.Sponsee
-		return staticSponsorship(sponsorshipEntry(0, xrpAmount(1000000), nil, nil))(ctx, req, result)
+	tests := []struct {
+		name    string
+		fields  map[string]any
+		sponsee types.Address
+	}{
+		{
+			name:    "tagged account",
+			sponsee: sponseeAddress,
+		},
+		{
+			name:    "untagged delegate",
+			fields:  map[string]any{"Delegate": xAddress(t, delegateAddress, 0, false)},
+			sponsee: delegateAddress,
+		},
+		{
+			name:    "unrelated invalid destination",
+			fields:  map[string]any{"Destination": "not-an-address"},
+			sponsee: sponseeAddress,
+		},
+		{
+			name:    "JSON-decoded source tag",
+			fields:  map[string]any{"SourceTag": float64(7)},
+			sponsee: sponseeAddress,
+		},
+		{
+			name:    "conflicting source tag is outside the lookup scope",
+			fields:  map[string]any{"SourceTag": uint32(8)},
+			sponsee: sponseeAddress,
+		},
+		{
+			name: "Batch inner addresses are untouched",
+			fields: map[string]any{
+				"TransactionType": "Batch",
+				"RawTransactions": []map[string]any{
+					{"RawTransaction": map[string]any{"Account": account, "Sponsor": sponsor}},
+				},
+			},
+			sponsee: sponseeAddress,
+		},
 	}
-	result, err := ValidateSponsorship(t.Context(), request, isSponsorshipEntryAbsent, tx, "")
 
-	require.NoError(t, err)
-	require.True(t, result.Valid)
-	require.Equal(t, types.Address(sponsorAddress), gotSponsor)
-	require.Equal(t, types.Address(sponseeAddress), gotSponsee)
-	require.Equal(t, account, tx["Account"])
-	require.Equal(t, sponsor, tx["Sponsor"])
-	require.NotContains(t, tx, "SourceTag")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := sponsoredTx(types.SpfSponsorFee)
+			tx["Account"] = account
+			tx["Sponsor"] = sponsor
+			maps.Copy(tx, tt.fields)
+			before := CloneTransaction(tx)
+
+			entry := sponsorshipEntry(0, xrpAmount(1000000), nil, nil)
+			entry.Sponsee = tt.sponsee
+			var gotSponsor, gotSponsee types.Address
+			request := func(ctx context.Context, req Request, result any) error {
+				entryRequest, ok := req.(*ledgerquery.EntryRequest)
+				require.True(t, ok)
+				gotSponsor, gotSponsee = entryRequest.Sponsorship.Object.Sponsor, entryRequest.Sponsorship.Object.Sponsee
+				return staticSponsorship(entry)(ctx, req, result)
+			}
+			result, err := ValidateSponsorship(t.Context(), request, isSponsorshipEntryAbsent, tx, "")
+
+			require.NoError(t, err)
+			require.True(t, result.Valid)
+			require.Equal(t, types.Address(sponsorAddress), gotSponsor)
+			require.Equal(t, tt.sponsee, gotSponsee)
+			require.Equal(t, before, tx)
+		})
+	}
 }
 
 func TestValidateSponsorshipRejectsMismatchedEntry(t *testing.T) {

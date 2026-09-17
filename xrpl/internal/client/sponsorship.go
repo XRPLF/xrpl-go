@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"maps"
 
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
@@ -188,23 +187,24 @@ func rejectSponsorship(
 }
 
 // sponsorshipParties resolves the sponsor and the sponsee the lookup uses, as classic addresses.
-// xrpld accepts only classic addresses in the sponsorship selector, so X-addresses are converted
-// with the autofill helper on a copy, leaving the caller's transaction unchanged. The sponsee is
+// Only the two lookup fields are normalized, so unrelated fields, explicit tags, and Batch inner
+// transactions cannot affect this lookup. The caller's transaction is unchanged. The sponsee is
 // the Delegate when present and the Account otherwise, as rippled's getInitiator resolves it.
 func sponsorshipParties(tx map[string]any) (types.Address, types.Address, error) {
-	normalized := maps.Clone(tx)
-	// Batch inner transactions are shared with the caller's map and play no part in this lookup,
-	// so they are left out rather than rewritten in place.
-	delete(normalized, "RawTransactions")
-	if err := SetValidAddresses(normalized); err != nil {
+	sponseeField := "Account"
+	if _, delegated := tx["Delegate"]; delegated {
+		sponseeField = "Delegate"
+	}
+	parties := map[string]any{
+		"Sponsor":    tx["Sponsor"],
+		sponseeField: tx[sponseeField],
+	}
+	if err := SetValidAddresses(parties); err != nil {
 		return "", "", err
 	}
 
-	sponsor, _ := typecheck.ToString(normalized["Sponsor"])
-	sponsee, _ := typecheck.ToString(normalized["Delegate"])
-	if sponsee == "" {
-		sponsee, _ = typecheck.ToString(normalized["Account"])
-	}
+	sponsor, _ := typecheck.ToString(parties["Sponsor"])
+	sponsee, _ := typecheck.ToString(parties[sponseeField])
 	return types.Address(sponsor), types.Address(sponsee), nil
 }
 

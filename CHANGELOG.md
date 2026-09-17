@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc, xrpl/websocket
 
-- Added `ValidateSponsorship` and `ValidateSponsorshipContext`, an opt-in online check of sponsorship signature requirements and fee budgets against the current ledger. The sponsorship fields are first checked with the same rules as `BaseTx.Validate`, returning its `xrpl/transaction` errors, and X-addresses are looked up as classic addresses without modifying the transaction. `SponsorshipValidation` reports the outcome, entry, and fee checked. Only `entryNotFound` is treated as an absent entry. Other lookup and decoding failures, and an entry for a different sponsor or sponsee (`ErrSponsorshipEntryMismatch`), are returned as errors. Autofill and submission are unchanged.
+- Added `ValidateSponsorship` and `ValidateSponsorshipContext`, an opt-in online check of sponsorship signature requirements and fee budgets against the current ledger. The sponsorship fields are first checked with the same rules as `BaseTx.Validate`, returning its `xrpl/transaction` errors. Only the sponsor and resolved sponsee addresses are normalized for lookup, without checking unrelated addresses or tags or modifying the transaction. `SponsorshipValidation` reports the outcome, entry, and fee checked. Only `entryNotFound` is treated as an absent entry. Other lookup and decoding failures, and an entry for a different sponsor or sponsee (`ErrSponsorshipEntryMismatch`), are returned as errors. Autofill and submission are unchanged.
 
 #### xrpl/transaction
 
