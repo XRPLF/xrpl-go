@@ -1,8 +1,6 @@
 package rpc
 
 import (
-	"context"
-
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	account "github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/amm"
@@ -124,20 +122,8 @@ func (c *Client) GetChannelVerify(req *channel.VerifyRequest) (*channel.VerifyRe
 
 // Simulate executes an unsigned transaction as a dry run without submitting it
 // to the network. Results reflect current ledger state and do not guarantee the
-// outcome of a later submission.
+// outcome of a later submission. Request fields are validated by the server.
 func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error) {
-	if err := req.ValidateNetworkID(nil); err != nil {
-		return nil, err
-	}
-	if _, hasNetworkID := req.TxJSON["NetworkID"]; hasNetworkID {
-		identity, err := c.ensureNetworkIdentity(context.Background())
-		if err != nil {
-			return nil, err
-		}
-		if err := req.ValidateNetworkID(identity.NetworkID); err != nil {
-			return nil, err
-		}
-	}
 	response, err := c.Request(req)
 	return clientinternal.DecodeSimulate(req, response, err)
 }
