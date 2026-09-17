@@ -1,15 +1,20 @@
-package account
+package account_test
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	accounttypes "github.com/Peersyst/xrpl-go/xrpl/queries/account/types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAccountNFTsRequest(t *testing.T) {
-	s := NFTsRequest{
+	s := account.NFTsRequest{
 		Account:     "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		LedgerIndex: common.Validated,
 		LedgerHash:  "123",
@@ -27,15 +32,17 @@ func TestAccountNFTsRequest(t *testing.T) {
 	}
 }
 
-func TestAccountNFTsResponse(t *testing.T) {
-	tests := []struct {
-		name     string
-		response NFTsResponse
-		expected string
-	}{
+type accountNFTsResponseFixture struct {
+	name string
+	want account.NFTsResponse
+	json string
+}
+
+func accountNFTsResponseFixtures() []accountNFTsResponseFixture {
+	return []accountNFTsResponseFixture{
 		{
 			name: "validated ledger",
-			response: NFTsResponse{
+			want: account.NFTsResponse{
 				Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 				AccountNFTs: []accounttypes.NFT{
 					{
@@ -53,7 +60,7 @@ func TestAccountNFTsResponse(t *testing.T) {
 				Marker:      "abc",
 				Limit:       123,
 			},
-			expected: `{
+			json: `{
 	"account": "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 	"account_nfts": [
 		{
@@ -74,13 +81,13 @@ func TestAccountNFTsResponse(t *testing.T) {
 		},
 		{
 			name: "open ledger",
-			response: NFTsResponse{
+			want: account.NFTsResponse{
 				Account:            "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 				AccountNFTs:        []accounttypes.NFT{},
 				LedgerCurrentIndex: 1234,
 				Validated:          false,
 			},
-			expected: `{
+			json: `{
 	"account": "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 	"account_nfts": [],
 	"ledger_current_index": 1234,
@@ -88,12 +95,38 @@ func TestAccountNFTsResponse(t *testing.T) {
 }`,
 		},
 	}
+}
 
-	for _, tt := range tests {
+func TestAccountNFTsResponseSerialize(t *testing.T) {
+	for _, tt := range accountNFTsResponseFixtures() {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := testutil.SerializeAndDeserialize(t, tt.response, tt.expected); err != nil {
-				t.Error(err)
-			}
+			require.NoError(t, testutil.Serialize(t, tt.want, tt.json))
+		})
+	}
+}
+
+func TestAccountNFTsResponseJSONDecode(t *testing.T) {
+	for _, tt := range accountNFTsResponseFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			var got account.NFTsResponse
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			require.NoError(t, decoder.Decode(&got))
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestAccountNFTsResponseClientDecode(t *testing.T) {
+	for _, tt := range accountNFTsResponseFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			var data map[string]any
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			require.NoError(t, decoder.Decode(&data))
+			var got account.NFTsResponse
+			require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
