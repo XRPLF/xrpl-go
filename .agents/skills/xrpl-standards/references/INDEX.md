@@ -68,6 +68,7 @@
 | 77 | Deep Freeze | Final | `references/accounts/xls-0077.md` |
 | 80 | Permissioned Domains | Final | `references/accounts/xls-0080.md` |
 | 86 | Firewall | Draft | `references/accounts/xls-0086.md` |
+| 103 | On-Chain Cosigner | Draft | `references/accounts/xls-0103.md` |
 
 ## data
 | XLS | Title | Status | File |
