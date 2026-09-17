@@ -1,12 +1,18 @@
 package wallet
 
-import "errors"
+import (
+	"errors"
+
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+)
 
 var (
 	// signing
 
 	// ErrNilTransaction is returned when a nil transaction map is provided.
 	ErrNilTransaction = errors.New("transaction cannot be nil")
+	// ErrAmountAndDeliverMaxMustBeIdentical is returned when sponsor signing receives conflicting Payment amount fields.
+	ErrAmountAndDeliverMaxMustBeIdentical = clientinternal.ErrAmountAndDeliverMaxMustBeIdentical
 
 	// address
 
@@ -28,6 +34,19 @@ var (
 	// ErrBatchSignableNotEqual is returned when the batch signable is not equal.
 	ErrBatchSignableNotEqual = errors.New("batch signable is not equal")
 
+	// sponsor
+
+	// ErrSponsorAlreadySigned is returned when SponsorSignature is already present.
+	ErrSponsorAlreadySigned = errors.New("transaction already has SponsorSignature")
+	// ErrAccountMustSignFirst is returned when sponsor signing lacks account signatures.
+	ErrAccountMustSignFirst = errors.New("account must sign before the sponsor")
+	// ErrSponsorWalletMismatch is returned when a single-signing wallet does not match Sponsor.
+	ErrSponsorWalletMismatch = errors.New("sponsor does not match the signing wallet")
+	// ErrTxMustIncludeSponsorSigners is returned when a fragment has no sponsor multisigners.
+	ErrTxMustIncludeSponsorSigners = errors.New("transaction must include SponsorSignature.Signers")
+	// ErrSponsorTxNotEqual is returned when sponsor fragments differ on the wire.
+	ErrSponsorTxNotEqual = errors.New("transactions are not equivalent (excluding SponsorSignature.Signers)")
+
 	// counterparty
 
 	// ErrTxMustBeLoanSet is returned when the transaction is not a LoanSet.
@@ -36,7 +55,7 @@ var (
 	ErrCounterpartyAlreadySigned = errors.New("counterparty has already signed this transaction")
 	// ErrBrokerMustSignFirst is returned when the first party has not yet signed.
 	ErrBrokerMustSignFirst = errors.New("transaction must be signed by the first party before the counterparty can sign")
-	// ErrNoTransactionsToSign is returned when CombineLoanSetCounterpartySigners receives an empty slice.
+	// ErrNoTransactionsToSign is returned when a counterparty or sponsor combiner receives an empty slice.
 	ErrNoTransactionsToSign = errors.New("no transactions provided to combine")
 	// ErrTxMustIncludeCounterpartySigners is returned when CounterpartySignature.Signers is missing or empty.
 	ErrTxMustIncludeCounterpartySigners = errors.New("transaction must include counterparty signers in CounterpartySignature.Signers")

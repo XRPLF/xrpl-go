@@ -55,6 +55,7 @@ func TestSendBaseValidation(t *testing.T) {
 		{name: "fail - self send across address forms", base: BuildSendParams{Account: testAccount, Destination: xAddressOf(t, testAccount), IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: ErrSelfSend},
 		{name: "fail - destination tag duplicated by tagged X-address", base: BuildSendParams{Account: testAccount, Destination: taggedXAddressOf(t, testDestination, 42), DestinationTag: &explicitTag, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex}, wantErr: transaction.ErrDuplicateXAddressTag},
 		{name: "fail - invalid credential ID", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex, CredentialIDs: []string{"ZZ"}}, wantErr: ErrInvalidCredentialIDs},
+		{name: "fail - short credential ID", base: BuildSendParams{Account: testAccount, Destination: testDestination, IssuanceID: testIssuanceID, Amount: 1, SenderPrivKey: kp.PrivKeyHex, SenderPubKey: kp.PubKeyHex, CredentialIDs: []string{"AB"}}, wantErr: ErrInvalidCredentialIDs},
 	}
 
 	t.Run("fail - validation PrepareSend", func(t *testing.T) {

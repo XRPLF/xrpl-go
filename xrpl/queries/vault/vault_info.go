@@ -80,8 +80,6 @@ func (r *InfoRequest) Validate() error {
 // ############################################################################
 
 // Shares contains details about the shares issued by a Vault.
-// OwnerNode and Flags are required in the XRPL.js response model. Their existing
-// Go types and omission behavior are retained for compatibility.
 type Shares struct {
 	// The ID of the Issuer of the Share. It will always be the pseudo-account ID.
 	Issuer types.Address `json:"Issuer"`
@@ -121,8 +119,6 @@ type Shares struct {
 }
 
 // Vault contains the vault data returned by the vault_info method.
-// OwnerNode, ShareMPTID, WithdrawalPolicy, and Flags are required in the XRPL.js
-// response model. Their existing Go types and omission behavior are retained for compatibility.
 type Vault struct {
 	// The pseudo-account ID of the vault.
 	Account types.Address `json:"Account"`
@@ -161,6 +157,14 @@ type Vault struct {
 	// The scaling factor for vault shares. Only applicable for IOU assets.
 	// Valid values are between 0 and 18 inclusive. For XRP and MPT, this is always 0.
 	Scale *uint8 `json:"Scale,omitempty"`
+	// LEVersion is the ledger object's accounting version: absent/0 is legacy, 1 is cash-basis.
+	LEVersion *uint8 `json:"LEVersion,omitempty"`
+	// VaultKind selects open-ended (0) or closed-ended (1) operation.
+	VaultKind *types.VaultKind `json:"VaultKind,omitempty"`
+	// SubscriptionDate is the deposit cutoff, in seconds since the Ripple Epoch.
+	SubscriptionDate *uint32 `json:"SubscriptionDate,omitempty"`
+	// RedemptionDate is when redemption starts, in seconds since the Ripple Epoch.
+	RedemptionDate *uint32 `json:"RedemptionDate,omitempty"`
 	// Flags.
 	Flags *uint32 `json:"Flags,omitempty"`
 }

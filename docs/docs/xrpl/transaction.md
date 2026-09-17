@@ -68,6 +68,8 @@ These are the transaction types available in the XRPL:
 - [PermissionedDomainSet](https://xrpl.org/docs/references/protocol/transactions/types/permissioneddomainset)
 - [SetRegularKey](https://xrpl.org/docs/references/protocol/transactions/types/setregularkey)
 - [SignerListSet](https://xrpl.org/docs/references/protocol/transactions/types/signerlistset)
+- [SponsorshipSet](https://xrpl.org/docs/references/protocol/transactions/types/sponsorshipset)
+- [SponsorshipTransfer](https://xrpl.org/docs/references/protocol/transactions/types/sponsorshiptransfer)
 - [TicketCreate](https://xrpl.org/docs/references/protocol/transactions/types/ticketcreate)
 - [TrustSet](https://xrpl.org/docs/references/protocol/transactions/types/trustset)
 - [VaultClawback](https://xrpl.org/docs/references/protocol/transactions/types/vaultclawback)
@@ -84,6 +86,12 @@ These are the transaction types available in the XRPL:
 - [XChainCreateBridge](https://xrpl.org/docs/references/protocol/transactions/types/xchaincreatebridge)
 - [XChainCreateClaimID](https://xrpl.org/docs/references/protocol/transactions/types/xchaincreateclaimid)
 - [XChainModifyBridge](https://xrpl.org/docs/references/protocol/transactions/types/xchainmodifybridge)
+
+## Credential IDs
+
+`types.CredentialIDs.IsValid()` requires 1 to 8 distinct, nonzero, 256-bit hexadecimal IDs. Each ID must contain exactly 64 hex characters. Hex letter case does not affect uniqueness. All transaction types with `CredentialIDs` use this validator and return `transaction.ErrInvalidCredentialIDs` when validation fails.
+
+Leave an optional `CredentialIDs` field nil to omit it. An explicitly empty list fails transaction validation. The validator checks only the list format, not credential existence, ownership, expiry, or authorization. It rejects zero IDs offline, without checking whether the target network has enabled `fixCleanup3_4_0`.
 
 ## Dynamic MPT
 

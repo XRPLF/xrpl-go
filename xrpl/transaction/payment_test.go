@@ -324,7 +324,7 @@ func TestPayment_Validate(t *testing.T) {
 				},
 				Destination:    "rDgHn3T2P7eNAaoHh43iRudhAUjAHmDgEP",
 				DestinationTag: types.DestinationTag(123),
-				CredentialIDs:  types.CredentialIDs{"0000000000000000000000000000000000000000000000000000000000000000"},
+				CredentialIDs:  types.CredentialIDs{"0000000000000000000000000000000000000000000000000000000000000001"},
 			},
 			wantValid: true,
 			wantErr:   false,
