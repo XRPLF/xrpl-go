@@ -810,8 +810,8 @@ func (c *Client) setTransactionNextValidSequenceNumber(
 	return nil
 }
 
-// feeRequest adapts the client transport to the shared fee helpers.
-func (c *Client) feeRequest() clientinternal.RequestResultFunc {
+// requestResultFunc adapts the client transport to the shared client helpers.
+func (c *Client) requestResultFunc() clientinternal.RequestResultFunc {
 	return func(ctx context.Context, req clientinternal.Request, result any) error {
 		return c.requestResult(ctx, req, result)
 	}
@@ -829,7 +829,7 @@ func (c *Client) calculateFeePerTransactionType(
 	tx *transaction.FlatTransaction,
 	nSigners uint64,
 ) error {
-	_, err := clientinternal.CalculateFee(ctx, c.feeRequest(), tx, nSigners, c.feeSettings())
+	_, err := clientinternal.CalculateFee(ctx, c.requestResultFunc(), tx, nSigners, c.feeSettings())
 	return err
 }
 
