@@ -70,39 +70,19 @@ func (*NFTokenOffer) EntryType() EntryType {
 
 // UnmarshalJSON implements custom JSON unmarshalling for NFTokenOffer.
 func (n *NFTokenOffer) UnmarshalJSON(data []byte) error {
-	type nftHelper struct {
-		Amount            json.RawMessage
-		Destination       types.Address
-		Expiration        uint32
-		Flags             uint32
-		LedgerEntryType   EntryType
-		NFTokenID         types.Hash256
-		NFTokenOfferNode  string
-		Owner             types.Address
-		OwnerNode         string
-		PreviousTxnID     types.Hash256
-		PreviousTxnLgrSeq uint32
+	type nftokenOfferFields NFTokenOffer
+	var decoded struct {
+		nftokenOfferFields
+		Amount json.RawMessage
 	}
-	var h nftHelper
-	if err := json.Unmarshal(data, &h); err != nil {
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
-	*n = NFTokenOffer{
-		Destination:       h.Destination,
-		Expiration:        h.Expiration,
-		Flags:             h.Flags,
-		LedgerEntryType:   h.LedgerEntryType,
-		NFTokenID:         h.NFTokenID,
-		NFTokenOfferNode:  h.NFTokenOfferNode,
-		Owner:             h.Owner,
-		OwnerNode:         h.OwnerNode,
-		PreviousTxnID:     h.PreviousTxnID,
-		PreviousTxnLgrSeq: h.PreviousTxnLgrSeq,
-	}
-	amnt, err := types.UnmarshalCurrencyAmount(h.Amount)
+	amount, err := types.UnmarshalCurrencyAmount(decoded.Amount)
 	if err != nil {
 		return err
 	}
-	n.Amount = amnt
+	decoded.nftokenOfferFields.Amount = amount
+	*n = NFTokenOffer(decoded.nftokenOfferFields)
 	return nil
 }

@@ -127,40 +127,31 @@ func (priceData PriceData) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON decodes the price data, accepting AssetPrice as the hexadecimal
 // string rippled emits or as a plain base-10 JSON number.
 func (priceData *PriceData) UnmarshalJSON(data []byte) error {
-	type priceDataRaw struct {
-		BaseAsset  string
-		QuoteAsset string
+	type priceDataFields PriceData
+	var decoded struct {
+		priceDataFields
 		AssetPrice json.RawMessage
-		Scale      uint8
 	}
-	var raw priceDataRaw
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
 
-	*priceData = PriceData{
-		BaseAsset:  raw.BaseAsset,
-		QuoteAsset: raw.QuoteAsset,
-		Scale:      raw.Scale,
-	}
-
-	if len(raw.AssetPrice) == 0 || string(raw.AssetPrice) == "null" {
-		return nil
-	}
-
-	token := string(raw.AssetPrice)
-	base := 10
-	if raw.AssetPrice[0] == '"' {
-		if err := json.Unmarshal(raw.AssetPrice, &token); err != nil {
-			return err
+	if len(decoded.AssetPrice) != 0 && string(decoded.AssetPrice) != "null" {
+		token := string(decoded.AssetPrice)
+		base := 10
+		if decoded.AssetPrice[0] == '"' {
+			if err := json.Unmarshal(decoded.AssetPrice, &token); err != nil {
+				return err
+			}
+			base = 16
 		}
-		base = 16
+		value, err := strconv.ParseUint(token, base, 64)
+		if err != nil {
+			return fmt.Errorf("%w: %q", ErrPriceDataAssetPrice, token)
+		}
+		decoded.priceDataFields.AssetPrice = AssetPrice(value)
 	}
-	value, err := strconv.ParseUint(token, base, 64)
-	if err != nil {
-		return fmt.Errorf("%w: %q", ErrPriceDataAssetPrice, token)
-	}
-	priceData.AssetPrice = AssetPrice(value)
+	*priceData = PriceData(decoded.priceDataFields)
 	return nil
 }
 

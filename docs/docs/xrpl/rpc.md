@@ -151,6 +151,8 @@ func (c *Client) Autofill(tx *transaction.FlatTransaction) error
 func (c *Client) AutofillMultisigned(tx *transaction.FlatTransaction, nSigners uint64) error
 ```
 
+Autofill sets `Fee` only when the transaction has none. Transaction types with a special cost carry it automatically, including the ten base fees a confidential MPT transaction owes, which also applies to a confidential transaction nested inside a `Batch`. A hand-set `Fee` is submitted unchanged, so a value sized for an ordinary transaction underpays and the submission fails with `telINSUF_FEE_P`. See the [confidential guide](/docs/confidential) for the full cost breakdown.
+
 ### Submit
 
 The `SubmitTx` and `SubmitTxBlob` methods submit a transaction to the XRPL network. They return a `SubmitResponse` with the immediate submission result. `SubmitTxBlob` requires a signed transaction blob. `SubmitTx` accepts a signed flat transaction, or it can sign an unsigned transaction when `SubmitOptions.Wallet` is set. It enables autofill only when `SubmitOptions.Autofill` is true.
@@ -184,10 +186,29 @@ The client verifies that each validated-ledger response is marked as validated a
 
 ### Simulate
 
-`Simulate` runs an XLS-69 dry run against the current open-ledger state. It accepts validated JSON transaction input or an opaque hexadecimal blob and returns either decoded or binary transaction and metadata output. A simulation does not guarantee the result of a later submission.
+`Simulate` runs an XLS-69 dry run against the current open-ledger state. It sends JSON transaction input or a blob without local request preflight or network-identity discovery. The server validates the input. Nil-request protection and response validation remain enabled. It returns either decoded or binary transaction and metadata output. Supply an unsigned transaction, and do not send signed transactions to an untrusted node. A simulation does not guarantee the result of a later submission.
 
 ```go
 func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error)
+```
+
+### Sponsorship preflight
+
+`ValidateSponsorship` checks a sponsored transaction (XLS-68) against the `Sponsorship` ledger entry between its sponsor and its sponsee, reading the current ledger. The check is explicit and optional: autofill and submission never query sponsorship on their own.
+
+The transaction must carry `Sponsor` and a valid `SponsorFlags`, and either a `Fee` or a nonempty `estimatedFee` in drops. Before any lookup, the sponsorship fields are checked with the same rules `BaseTx.Validate` applies, and a failure is returned as the matching `xrpl/transaction` error: for example `ErrSponsorFieldsMissing`, `ErrInvalidSponsorFlags`, `ErrSponsorAccountConflict`, `ErrSponsorDelegateConflict` for reserve sponsorship on a delegated transaction, `ErrReserveSponsorshipNotAllowed`, `ErrInnerBatchFeeSponsorship`, or `ErrInvalidSponsorSignature`. A present `SponsorSignature` must hold `SigningPubKey` with `TxnSignature` or a `Signers` array, except on an inner Batch transaction (`tfInnerBatchTxn`), where it may hold at most an empty `SigningPubKey` because the sponsor signs the outer `Batch`.
+
+The sponsee is the transaction's `Delegate` when present and its `Account` otherwise. Only the sponsor and resolved sponsee addresses are converted to classic addresses for the lookup, because xrpld accepts only classic addresses in the `sponsorship` selector. Unrelated addresses, explicit tags, and Batch inner transactions are outside this lookup's validation scope. The caller's transaction is not modified.
+
+Without a `Sponsorship` entry, only a sponsor co-signature (`SponsorSignature`) authorizes the sponsorship. With an entry, its budget always applies, even to a co-signed transaction, because rippled prefers the pre-funded fee payer whenever the entry exists: a sponsored fee must fit within `FeeAmount` and any `MaxFee` cap. Pre-funded use is additionally rejected when the entry sets `lsfSponsorshipRequireSignForFee` or `lsfSponsorshipRequireSignForReserve` for the requested sponsorship type. A zero fee draws nothing from the entry.
+
+A nil error means the preflight completed; read `SponsorshipValidation.Valid` and `SponsorshipValidation.Reason`, which wraps an `ErrSponsorship*` sentinel. A non-nil error means the preflight could not run, because the transaction inputs were unusable or the `ledger_entry` lookup failed. Only `entryNotFound` counts as an absent entry; transport, permission, and decoding failures, and an entry whose `Owner` or `Sponsee` differs from the requested pair (`ErrSponsorshipEntryMismatch`), are returned as errors.
+
+The check does not confirm that the sponsor account exists, which rippled requires even for a co-signed transaction, or that a co-signing sponsor's balance minus its reserve covers the fee when no entry pays it. It does not check that the fee includes the extra base fee rippled charges for each `SponsorSignature.Signers` entry, nor, for a co-signed inner Batch transaction, that the sponsor also signs the outer `Batch` through `BatchSigners`, which the inner transaction alone cannot show. It does not check `RemainingOwnerCount` either, because the client cannot know how many reserved objects the transaction creates; the entry is returned in `SponsorshipValidation.Sponsorship` for callers that do. rippled remains authoritative.
+
+```go
+func (c *Client) ValidateSponsorship(tx transaction.FlatTransaction, estimatedFee string) (SponsorshipValidation, error)
+func (c *Client) ValidateSponsorshipContext(ctx context.Context, tx transaction.FlatTransaction, estimatedFee string) (SponsorshipValidation, error)
 ```
 
 ### Server definitions

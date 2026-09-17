@@ -137,6 +137,24 @@ func TestMPTokenIssuanceSet_Flatten(t *testing.T) {
 				"DomainID":          "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
 			},
 		},
+		{
+			name: "pass - with encryption keys",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				},
+				MPTokenIssuanceID:    "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+				IssuerEncryptionKey:  types.EncryptionKey(strings.Repeat("AB", 33)),
+				AuditorEncryptionKey: types.EncryptionKey(strings.Repeat("CD", 33)),
+			},
+			expected: FlatTransaction{
+				"TransactionType":      "MPTokenIssuanceSet",
+				"Account":              "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				"MPTokenIssuanceID":    "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+				"IssuerEncryptionKey":  strings.Repeat("AB", 33),
+				"AuditorEncryptionKey": strings.Repeat("CD", 33),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -516,7 +534,7 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "pass - empty DomainID removes domain",
+			name: "fail - empty DomainID",
 			tx: &MPTokenIssuanceSet{
 				BaseTx: BaseTx{
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -525,8 +543,8 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 				MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 				DomainID:          types.DomainID(""),
 			},
-			wantOk:  true,
-			wantErr: nil,
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetDomainIDInvalid,
 		},
 		{
 			name: "fail - DomainID invalid hex",
@@ -582,6 +600,62 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			wantOk:  false,
 			wantErr: ErrMPTIssuanceSetFlagsMutuallyExclusive,
 		},
+		{
+			name: "pass - enable confidential balances with encryption keys",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+					Flags:           TfMPTSetCanHoldConfidentialBalance,
+				},
+				MPTokenIssuanceID:    "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+				IssuerEncryptionKey:  types.EncryptionKey(testCompressedPoint1),
+				AuditorEncryptionKey: types.EncryptionKey(testCompressedPoint2),
+			},
+			wantOk:  true,
+			wantErr: nil,
+		},
+		{
+			name: "fail - auditor encryption key requires issuer key",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:    "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+				AuditorEncryptionKey: types.EncryptionKey(strings.Repeat("CD", 33)),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetAuditorRequiresIssuerKey,
+		},
+		{
+			name: "fail - invalid issuer encryption key",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+				},
+				MPTokenIssuanceID:   "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+				IssuerEncryptionKey: types.EncryptionKey("AABB"),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetInvalidEncryptionKey,
+		},
+		{
+			name: "fail - encryption keys are mutually exclusive with holder",
+			tx: &MPTokenIssuanceSet{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: MPTokenIssuanceSetTx,
+					Flags:           TfMPTLock,
+				},
+				MPTokenIssuanceID:   "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+				Holder:              types.Holder("rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2"),
+				IssuerEncryptionKey: types.EncryptionKey(strings.Repeat("AB", 33)),
+			},
+			wantOk:  false,
+			wantErr: ErrMPTIssuanceSetKeyConflict,
+		},
 	}
 
 	for _, tt := range tests {
@@ -591,6 +665,20 @@ func TestMPTokenIssuanceSet_Validate(t *testing.T) {
 			require.Equal(t, tt.wantErr, err)
 		})
 	}
+}
+
+// This checks the clear sentinel sent to the server, not on-ledger permissions.
+func TestMPTokenIssuanceSet_DomainClearingSentinel(t *testing.T) {
+	zero := strings.Repeat("0", 64)
+	tx := MPTokenIssuanceSet{
+		BaseTx:            BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: MPTokenIssuanceSetTx},
+		MPTokenIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
+		DomainID:          types.DomainID(zero),
+	}
+	ok, err := tx.Validate()
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.Equal(t, zero, tx.Flatten()["DomainID"])
 }
 
 func TestMPTokenIssuanceSet_ImmutableFlags(t *testing.T) {

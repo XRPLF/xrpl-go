@@ -1,9 +1,13 @@
 package amm
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -112,10 +116,9 @@ func TestAMMInfoRequest_WithAMMAccountAndLedgerHash(t *testing.T) {
 	}
 }
 
-func TestAMMInfoResponse(t *testing.T) {
+func ammInfoResponseFixture() (InfoResponse, string) {
 	assetFrozen := true
 	asset2Frozen := false
-
 	s := InfoResponse{
 		AMM: Info{
 			Account: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
@@ -163,7 +166,6 @@ func TestAMMInfoResponse(t *testing.T) {
 		LedgerIndex: 1234,
 		Validated:   true,
 	}
-
 	j := `{
 	"amm": {
 		"account": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
@@ -213,9 +215,32 @@ func TestAMMInfoResponse(t *testing.T) {
 	"ledger_index": 1234,
 	"validated": true
 }`
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+	return s, j
+}
+
+func TestAMMInfoResponseSerialize(t *testing.T) {
+	value, payload := ammInfoResponseFixture()
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestAMMInfoResponseJSONDecode(t *testing.T) {
+	want, payload := ammInfoResponseFixture()
+	var got InfoResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestAMMInfoResponseClientDecode(t *testing.T) {
+	want, payload := ammInfoResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got InfoResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }
 
 func TestAuctionSlotInfo_TimeIntervalExpiredSentinel(t *testing.T) {
@@ -245,9 +270,8 @@ func TestAuctionSlotInfo_TimeIntervalExpiredSentinel(t *testing.T) {
 	}
 }
 
-func TestAMMInfoResponse_OpenLedgerWithXRPAssets(t *testing.T) {
+func ammInfoResponse_OpenLedgerWithXRPAssetsFixture() (InfoResponse, string) {
 	asset2Frozen := false
-
 	s := InfoResponse{
 		AMM: Info{
 			Account: "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
@@ -268,7 +292,6 @@ func TestAMMInfoResponse_OpenLedgerWithXRPAssets(t *testing.T) {
 		LedgerCurrentIndex: 106107390,
 		Validated:          false,
 	}
-
 	j := `{
 	"amm": {
 		"account": "rE54zDvgnghAoPopCgvtiqWNq3dU5y836S",
@@ -288,9 +311,32 @@ func TestAMMInfoResponse_OpenLedgerWithXRPAssets(t *testing.T) {
 	},
 	"ledger_current_index": 106107390
 }`
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+	return s, j
+}
+
+func TestAMMInfoResponse_OpenLedgerWithXRPAssetsSerialize(t *testing.T) {
+	value, payload := ammInfoResponse_OpenLedgerWithXRPAssetsFixture()
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestAMMInfoResponse_OpenLedgerWithXRPAssetsJSONDecode(t *testing.T) {
+	want, payload := ammInfoResponse_OpenLedgerWithXRPAssetsFixture()
+	var got InfoResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestAMMInfoResponse_OpenLedgerWithXRPAssetsClientDecode(t *testing.T) {
+	want, payload := ammInfoResponse_OpenLedgerWithXRPAssetsFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got InfoResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }
 
 func TestAMMInfoResponse_FrozenFieldOptionality(t *testing.T) {

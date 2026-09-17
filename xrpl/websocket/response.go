@@ -1,8 +1,7 @@
 package websocket
 
 import (
-	"github.com/Peersyst/xrpl-go/pkg/decodehook"
-	"github.com/go-viper/mapstructure/v2"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 )
 
 // ResponseWarning represents a warning returned in a WebSocket response.
@@ -38,18 +37,7 @@ type ClientResponse struct {
 
 // GetResult decodes the Result field into the provided variable v using mapstructure.
 func (r *ClientResponse) GetResult(v any) error {
-	dec, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
-		TagName: "json",
-		Result:  &v,
-		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			decodehook.JSON(),
-			mapstructure.TextUnmarshallerHookFunc(),
-		),
-	})
-	if err != nil {
-		return err
-	}
-	return dec.Decode(r.Result)
+	return clientinternal.DecodeResultInto(r.Result, v)
 }
 
 // CheckError checks if the response contains an error and returns an ErrorWebsocketClientXrplResponse if found.

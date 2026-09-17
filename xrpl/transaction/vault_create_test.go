@@ -29,6 +29,15 @@ func TestVaultCreate_Flatten(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - empty Data omitted",
+			tx: &VaultCreate{
+				Data: func() *types.Data { v := types.Data(""); return &v }(),
+			},
+			expected: FlatTransaction{
+				"TransactionType": VaultCreateTx.String(),
+			},
+		},
+		{
 			name: "pass - with XRP asset",
 			tx: &VaultCreate{
 				BaseTx: BaseTx{
@@ -196,6 +205,54 @@ func TestVaultCreate_Validate(t *testing.T) {
 				Data:  func() *types.Data { v := types.Data("zznothex"); return &v }(),
 			},
 			expected: ErrVaultCreateDataInvalid,
+		},
+		{
+			name: "fail - Data odd-length hex",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset: ledger.Asset{Currency: "XRP"},
+				Data:  func() *types.Data { v := types.Data("A"); return &v }(),
+			},
+			expected: ErrVaultCreateDataInvalid,
+		},
+		{
+			name: "pass - empty Data",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset: ledger.Asset{Currency: "XRP"},
+				Data:  func() *types.Data { v := types.Data(""); return &v }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - Data at 256-byte limit",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset: ledger.Asset{Currency: "XRP"},
+				Data:  func() *types.Data { v := types.Data(strings.Repeat("AB", 256)); return &v }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - mixed-case Data",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset: ledger.Asset{Currency: "XRP"},
+				Data:  func() *types.Data { v := types.Data("aB12"); return &v }(),
+			},
+			expected: nil,
 		},
 		{
 			name: "fail - Data too large (> 256 bytes)",
@@ -409,6 +466,15 @@ func TestVaultCreate_Validate(t *testing.T) {
 			expected: nil,
 		},
 		{
+			name: "fail - zero DomainID",
+			tx: &VaultCreate{
+				BaseTx:   BaseTx{Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es", TransactionType: VaultCreateTx, Flags: TfVaultPrivate},
+				Asset:    ledger.Asset{Currency: "XRP"},
+				DomainID: types.DomainID(strings.Repeat("0", 64)),
+			},
+			expected: ErrVaultCreateDomainIDInvalid,
+		},
+		{
 			name: "fail - DomainID invalid (too short)",
 			tx: &VaultCreate{
 				BaseTx: BaseTx{
@@ -428,7 +494,7 @@ func TestVaultCreate_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
-				assert.Contains(t, err.Error(), testcase.expected.Error())
+				assert.ErrorIs(t, err, testcase.expected)
 			} else {
 				require.NoError(t, err)
 			}

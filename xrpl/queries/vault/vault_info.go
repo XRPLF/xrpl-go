@@ -103,6 +103,19 @@ type Shares struct {
 	DomainID string `json:"DomainID,omitempty"`
 	// Bit-field flags associated with the shares issuance.
 	Flags *uint32 `json:"Flags,omitempty"`
+	// The number of decimal places used to display share amounts. Zero is omitted on encoding.
+	AssetScale uint8 `json:"AssetScale,omitempty"`
+	// The maximum number of shares that can be issued, as an unsigned decimal integer string.
+	MaximumAmount string `json:"MaximumAmount,omitempty"`
+	// The transfer fee in tenths of a basis point. Zero is omitted on encoding.
+	TransferFee uint16 `json:"TransferFee,omitempty"`
+	// Arbitrary metadata about the share issuance, encoded as hexadecimal.
+	MPTokenMetadata string `json:"MPTokenMetadata,omitempty"`
+	// The number of locked shares, as an unsigned decimal integer string.
+	LockedAmount string `json:"LockedAmount,omitempty"`
+	// The ledger entry holding the underlying asset for the vault's pseudo-account.
+	// Set for IOU and MPT vaults created with fixCleanup3_2_0 enabled, not XRP vaults.
+	ReferenceHolding types.Hash256 `json:"ReferenceHolding,omitempty"`
 }
 
 // Vault contains the vault data returned by the vault_info method.
@@ -144,6 +157,14 @@ type Vault struct {
 	// The scaling factor for vault shares. Only applicable for IOU assets.
 	// Valid values are between 0 and 18 inclusive. For XRP and MPT, this is always 0.
 	Scale *uint8 `json:"Scale,omitempty"`
+	// LEVersion is the ledger object's accounting version: absent/0 is legacy, 1 is cash-basis.
+	LEVersion *uint8 `json:"LEVersion,omitempty"`
+	// VaultKind selects open-ended (0) or closed-ended (1) operation.
+	VaultKind *types.VaultKind `json:"VaultKind,omitempty"`
+	// SubscriptionDate is the deposit cutoff, in seconds since the Ripple Epoch.
+	SubscriptionDate *uint32 `json:"SubscriptionDate,omitempty"`
+	// RedemptionDate is when redemption starts, in seconds since the Ripple Epoch.
+	RedemptionDate *uint32 `json:"RedemptionDate,omitempty"`
 	// Flags.
 	Flags *uint32 `json:"Flags,omitempty"`
 }

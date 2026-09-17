@@ -3,8 +3,16 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: Use vX.Y.Z for stable, or add a suffix such as -rc1, -beta1, or -b1 for prerelease
+      module:
+        description: Module to release
+        required: true
+        default: core
+        type: choice
+        options:
+          - core
+          - confidential
+      version:
+        description: Version without a module prefix, such as v0.3.1 or v0.1.0-rc1
         required: true
         type: string
 
@@ -12,77 +20,122 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ inputs.tag }}
+  group: release-${{ inputs.module }}-${{ inputs.version }}
   cancel-in-progress: false
 
 jobs:
   release:
-    name: Release
+    name: Release (${{ inputs.module }})
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: write
+    env:
+      # Release checks must use published dependencies, not a local workspace.
+      GOWORK: "off"
+      MODULE_DIRECTORY: ${{ inputs.module == 'confidential' && 'confidential' || '.' }}
+      RELEASE_MODULE: ${{ inputs.module }}
+      RELEASE_VERSION: ${{ inputs.version }}
+      RELEASE_TAG: ${{ inputs.module == 'confidential' && format('confidential/{0}', inputs.version) || inputs.version }}
     steps:
-      - name: Validate release tag
-        id: release
-        env:
-          RELEASE_TAG: ${{ inputs.tag }}
-        run: |
-          set -euo pipefail
-
-          semver_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+)(\.[0-9A-Za-z-]+)*)?$'
-          if [[ ! "$RELEASE_TAG" =~ $semver_pattern ]]; then
-            echo "Release tag must use vX.Y.Z or vX.Y.Z-prerelease format: $RELEASE_TAG" >&2
-            exit 1
-          fi
-
-          if [[ "$RELEASE_TAG" == *-* ]]; then
-            echo "prerelease=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "prerelease=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Checkout release commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
           persist-credentials: false
 
-      - name: Create release notes from changelog
-        env:
-          RELEASE_TAG: ${{ inputs.tag }}
+      - name: Prepare release notes
         run: |
           set -euo pipefail
-
-          awk -v heading="## [$RELEASE_TAG]" '
+          case "$RELEASE_MODULE" in
+            core|confidential) ;;
+            *) echo "Unknown module: $RELEASE_MODULE" >&2; exit 1 ;;
+          esac
+          # These module paths support v0 and v1. A v2 release needs a new path.
+          if [[ ! "$RELEASE_VERSION" =~ ^v[01]\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo 'Use vX.Y.Z or vX.Y.Z-prerelease, with major version 0 or 1.' >&2
+            exit 1
+          fi
+          if [[ "$RELEASE_VERSION" == *-* ]]; then
+            IFS=. read -r -a identifiers <<< "${RELEASE_VERSION#*-}"
+            for identifier in "${identifiers[@]}"; do
+              if [[ "$identifier" =~ ^0[0-9]+$ ]]; then
+                echo 'Numeric prerelease identifiers must not have leading zeroes.' >&2
+                exit 1
+              fi
+            done
+          fi
+          if ! awk -v heading="## [$RELEASE_VERSION]" '
             $0 == heading { found = 1; next }
             found && /^## \[/ { exit }
             found { print }
-            END { if (!found) exit 2 }
-          ' CHANGELOG.md > release-notes.md
-
-          if ! grep -q '[^[:space:]]' release-notes.md; then
-            echo "CHANGELOG.md has no release notes under ## [$RELEASE_TAG]" >&2
+            END { if (!found) exit 1 }
+          ' "$MODULE_DIRECTORY/CHANGELOG.md" > release-notes.md || ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "$MODULE_DIRECTORY/CHANGELOG.md has no release notes for $RELEASE_VERSION" >&2
             exit 1
           fi
+
+      - name: Reject an existing tag
+        run: |
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            echo "Tag already exists: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ${{ env.MODULE_DIRECTORY }}/go.mod
+          cache-dependency-path: |
+            go.sum
+            confidential/go.sum
+
+      - name: Check published dependencies and module metadata
+        working-directory: ${{ env.MODULE_DIRECTORY }}
+        run: |
+          # For confidential, this fails until its required core version is
+          # published and its go.sum has been updated against that release.
+          go mod tidy -diff
+          go mod edit -json | python3 -c '
+          import json, sys
+          if json.load(sys.stdin).get("Replace"):
+              sys.exit("Release modules must not contain replace directives.")
+          '
+
+      - name: Test core without cgo
+        if: inputs.module == 'core'
+        env:
+          CGO_ENABLED: "0"
+        run: make test-ci
+
+      - name: Test confidential against its published core dependency
+        if: inputs.module == 'confidential'
+        run: |
+          make test-confidential
+          make test-confidential-nocgo
+
+      - name: Verify clean module metadata
+        run: git diff --exit-code -- go.mod go.sum confidential/go.mod confidential/go.sum
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-          PRERELEASE: ${{ steps.release.outputs.prerelease }}
-          RELEASE_TAG: ${{ inputs.tag }}
+          PRERELEASE: ${{ contains(inputs.version, '-') }}
+          RELEASE_TITLE: ${{ inputs.module == 'confidential' && format('Confidential {0}', inputs.version) || inputs.version }}
           TARGET_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-
           release_arguments=(
             "$RELEASE_TAG"
             --target "$TARGET_SHA"
-            --title "$RELEASE_TAG"
+            --title "$RELEASE_TITLE"
             --notes-file release-notes.md
           )
           if [[ "$PRERELEASE" == "true" ]]; then
             release_arguments+=(--prerelease)
           fi
-
+          # GitHub has one Latest release per repository, not per Go module.
+          if [[ "$RELEASE_MODULE" == "confidential" ]]; then
+            release_arguments+=(--latest=false)
+          fi
           gh release create "${release_arguments[@]}"

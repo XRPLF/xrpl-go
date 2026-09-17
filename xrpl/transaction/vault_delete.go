@@ -1,6 +1,12 @@
 package transaction
 
-import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+import (
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+)
+
+// VaultDeleteMaxMemoDataLength is the maximum deletion metadata length in hex characters (256 bytes).
+const VaultDeleteMaxMemoDataLength = 512
 
 // VaultDelete deletes an existing Vault object.
 //
@@ -17,6 +23,10 @@ type VaultDelete struct {
 	BaseTx
 	// The ID of the Vault to be deleted.
 	VaultID types.Hash256
+	// MemoData is optional top-level deletion metadata, distinct from BaseTx.Memos.
+	// Requires LendingProtocolV1_1.
+	// When supplied, it must encode one to 256 complete bytes as hexadecimal.
+	MemoData *string `json:",omitempty"`
 }
 
 // TxType returns the TxType for VaultDelete transactions.
@@ -31,6 +41,10 @@ func (tx *VaultDelete) Flatten() FlatTransaction {
 	flattened["TransactionType"] = tx.TxType().String()
 
 	flattened["VaultID"] = tx.VaultID.String()
+
+	if tx.MemoData != nil {
+		flattened["MemoData"] = *tx.MemoData
+	}
 
 	return flattened
 }
@@ -47,6 +61,10 @@ func (tx *VaultDelete) Validate() (bool, error) {
 
 	if !IsLedgerEntryID(tx.VaultID.String()) {
 		return false, ErrVaultDeleteVaultIDInvalid
+	}
+
+	if tx.MemoData != nil && (!typecheck.IsHexBlob(*tx.MemoData) || len(*tx.MemoData) > VaultDeleteMaxMemoDataLength) {
+		return false, ErrVaultDeleteMemoDataInvalid
 	}
 
 	return true, nil

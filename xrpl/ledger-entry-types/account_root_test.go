@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -42,6 +43,38 @@ func TestAccountRoot(t *testing.T) {
 
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestAccountRoot_PseudoAccountLinks(t *testing.T) {
+	const id = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+	tests := []struct {
+		name                         string
+		ammID, vaultID, loanBrokerID types.Hash256
+		linkJSON                     string
+	}{
+		{name: "ordinary account"},
+		{name: "AMM account", ammID: id, linkJSON: `,"AMMID":"` + id + `"`},
+		{name: "vault account", vaultID: id, linkJSON: `,"VaultID":"` + id + `"`},
+		{name: "loan broker account", loanBrokerID: id, linkJSON: `,"LoanBrokerID":"` + id + `"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := AccountRoot{
+				Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				LedgerEntryType: AccountRootEntry,
+				AMMID:           tt.ammID,
+				VaultID:         tt.vaultID,
+				LoanBrokerID:    tt.loanBrokerID,
+			}
+			j := `{"Account":"rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD","LedgerEntryType":"AccountRoot","Flags":0,"OwnerCount":0,"PreviousTxnID":"","PreviousTxnLgrSeq":0,"Sequence":0` + tt.linkJSON + `}`
+			encoded, err := json.Marshal(s)
+			require.NoError(t, err)
+			require.JSONEq(t, j, string(encoded))
+			var decoded AccountRoot
+			require.NoError(t, json.Unmarshal([]byte(j), &decoded))
+			require.Equal(t, s, decoded)
+		})
 	}
 }
 

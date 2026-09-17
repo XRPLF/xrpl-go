@@ -27,6 +27,9 @@ type VaultWithdraw struct {
 	Destination *types.Address `json:",omitempty"`
 	// Arbitrary tag identifying the reason for the withdrawal to the destination.
 	DestinationTag *uint32 `json:",omitempty"`
+	// CredentialIDs authorizes the withdrawal using one to eight unique, nonzero ledger IDs.
+	// Requires Credentials and fixCleanup3_4_0. Nil omits the field.
+	CredentialIDs types.CredentialIDs `json:",omitzero"`
 }
 
 // TxType returns the TxType for VaultWithdraw transactions.
@@ -52,6 +55,10 @@ func (tx *VaultWithdraw) Flatten() FlatTransaction {
 
 	if tx.DestinationTag != nil {
 		flattened["DestinationTag"] = *tx.DestinationTag
+	}
+
+	if tx.CredentialIDs != nil {
+		flattened["CredentialIDs"] = tx.CredentialIDs.Flatten()
 	}
 
 	return flattened
@@ -83,6 +90,10 @@ func (tx *VaultWithdraw) Validate() (bool, error) {
 		if !addresscodec.IsValidAddress(tx.Destination.String()) {
 			return false, ErrInvalidDestination
 		}
+	}
+
+	if tx.CredentialIDs != nil && !tx.CredentialIDs.IsValid() {
+		return false, ErrInvalidCredentialIDs
 	}
 
 	return true, nil

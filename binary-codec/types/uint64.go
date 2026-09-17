@@ -20,7 +20,7 @@ const (
 // not available in the definitions consumed by the codec.
 func uint64JSONBaseForField(fieldName string) int {
 	switch fieldName {
-	case "MaximumAmount", "OutstandingAmount", "MPTAmount", "LockedAmount":
+	case "MaximumAmount", "OutstandingAmount", "MPTAmount", "LockedAmount", "ConfidentialOutstandingAmount":
 		return uint64JSONBaseDecimal
 	default:
 		return uint64JSONBaseHex
@@ -31,6 +31,8 @@ func uint64JSONBaseForField(fieldName string) int {
 // field: MPT amount fields use decimal strings, while other fields use hex.
 type UInt64 struct{}
 
+var _ fieldAwareEncoder = (*UInt64)(nil)
+
 // ErrInvalidUInt64String is returned when a value is not a valid UInt64 string
 // for the field's JSON radix.
 var ErrInvalidUInt64String = errors.New("invalid UInt64 string")
@@ -39,6 +41,10 @@ var ErrInvalidUInt64String = errors.New("invalid UInt64 string")
 // Field-aware STObject serialization uses decimal parsing for MPT amount fields.
 func (u *UInt64) FromJSON(value any) ([]byte, error) {
 	return u.fromJSON(value, uint64JSONBaseHex)
+}
+
+func (u *UInt64) fromJSONForField(value any, fieldName string) ([]byte, error) {
+	return u.fromJSON(value, uint64JSONBaseForField(fieldName))
 }
 
 func (u *UInt64) fromJSON(value any, base int) ([]byte, error) {

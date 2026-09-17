@@ -9,6 +9,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestEscrowSponsor(t *testing.T) {
+	for _, amount := range []string{
+		`"10000"`,
+		`{"currency":"USD","issuer":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","value":"10"}`,
+		`{"mpt_issuance_id":"00000001A407AF5856CE97C4D485191ACFDCB37A7DEB3EDC","value":"10"}`,
+	} {
+		t.Run(amount, func(t *testing.T) {
+			fixture := `{"LedgerEntryType":"Escrow","Amount":` + amount + `,"Sponsor":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","IssuerNode":"ABCDEF"}`
+			var escrow Escrow
+			require.NoError(t, json.Unmarshal([]byte(fixture), &escrow))
+			require.Equal(t, types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"), escrow.Sponsor)
+			require.Equal(t, "ABCDEF", escrow.IssuerNode)
+			encoded, err := json.Marshal(escrow)
+			require.NoError(t, err)
+			var decoded Escrow
+			require.NoError(t, json.Unmarshal(encoded, &decoded))
+			require.Equal(t, escrow, decoded)
+			// The custom decoder must also clear a previously populated Sponsor.
+			require.NoError(t, json.Unmarshal([]byte(`{"Amount":`+amount+`}`), &escrow))
+			require.Empty(t, escrow.Sponsor)
+			encoded, err = json.Marshal(escrow)
+			require.NoError(t, err)
+			require.NotContains(t, string(encoded), `"Sponsor"`)
+		})
+	}
+}
+
 func TestEscrow(t *testing.T) {
 	var s Object = &Escrow{
 		LedgerEntryType:   EscrowEntry,
@@ -46,6 +73,31 @@ func TestEscrow(t *testing.T) {
 
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestEscrowUnmarshalErrors(t *testing.T) {
+	tests := []struct {
+		name, fixture string
+	}{
+		{"invalid Amount", `{"FinishAfter":99,"Amount":"bad"}`},
+		{"ordinary field error after valid Account", `{"Account":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","FinishAfter":"bad","Amount":"20"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			escrow := Escrow{
+				Account:     "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				Amount:      types.XRPCurrencyAmount(10),
+				FinishAfter: 2,
+				Sponsor:     "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			}
+			before, err := json.Marshal(escrow)
+			require.NoError(t, err)
+			require.Error(t, json.Unmarshal([]byte(tt.fixture), &escrow))
+			after, err := json.Marshal(escrow)
+			require.NoError(t, err)
+			require.Equal(t, string(before), string(after))
+		})
 	}
 }
 

@@ -79,6 +79,12 @@ type AccountRoot struct {
 	// Set during account creation; cannot be modified. If present, indicates that this is a
 	// special AMM AccountRoot; always omitted on non-AMM accounts.
 	AMMID types.Hash256 `json:",omitempty"`
+	// (Added by the SingleAssetVault amendment) The ledger entry ID of the vault associated with this pseudo-account.
+	// Omitted on accounts that are not vault pseudo-accounts.
+	VaultID types.Hash256 `json:",omitempty"`
+	// (Added by the LendingProtocol amendment) The ledger entry ID of the loan broker associated with this pseudo-account.
+	// Omitted on accounts that are not loan broker pseudo-accounts.
+	LoanBrokerID types.Hash256 `json:",omitempty"`
 	// The account's current XRP balance in drops, represented as a string.
 	Balance types.XRPCurrencyAmount `json:",omitempty"`
 	// How many total of this account's issued non-fungible tokens have been burned.
@@ -113,6 +119,12 @@ type AccountRoot struct {
 	RegularKey types.Address `json:",omitempty"`
 	// The sequence number of the next valid transaction for this account.
 	Sequence uint32
+	// The number of owned objects whose reserves are paid by other accounts.
+	SponsoredOwnerCount *uint32 `json:",omitempty"`
+	// The number of objects whose reserves this account pays for other accounts.
+	SponsoringOwnerCount *uint32 `json:",omitempty"`
+	// The number of other accounts whose base reserves this account pays.
+	SponsoringAccountCount *uint32 `json:",omitempty"`
 	// How many Tickets this account owns in the ledger. This is updated automatically to ensure that the account
 	// stays within the hard limit of 250 Tickets at a time. This field is omitted if the account has zero Tickets.
 	// (Added by the TicketBatch amendment.)
@@ -126,6 +138,8 @@ type AccountRoot struct {
 	WalletLocator types.Hash256 `json:",omitempty"`
 	// Unused. (The code supports this field but there is no way to set it.)
 	WalletSize uint32 `json:",omitempty"`
+	// The account paying this account's base reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the ledger entry type for AccountRoot.

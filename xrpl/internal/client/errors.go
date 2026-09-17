@@ -25,6 +25,15 @@ var (
 	// an X-address with an embedded tag.
 	ErrAccountIDTagNotAllowed = binarycodectypes.ErrAccountIDTagNotAllowed
 
+	// account
+
+	// ErrAccountCannotBeDeleted is returned when associated objects prevent account deletion.
+	ErrAccountCannotBeDeleted = errors.New("account cannot be deleted; there are Escrows, PayChannels, RippleStates, or Checks associated with the account")
+	// ErrAccountHasSponsorshipObligations is returned when SponsoringOwnerCount or SponsoringAccountCount is present.
+	ErrAccountHasSponsorshipObligations = errors.New("account cannot be deleted: outstanding sponsorship obligations (SponsoringOwnerCount/SponsoringAccountCount)")
+	// ErrAccountDeleteSponsorMismatch is returned when the account's Sponsor does not match the supplied AccountDelete Destination.
+	ErrAccountDeleteSponsorMismatch = errors.New("account cannot be deleted: Sponsor does not match the AccountDelete Destination")
+
 	// network
 
 	// ErrNetworkIDUnavailable indicates that a client cannot safely determine
@@ -81,6 +90,45 @@ var (
 	// ErrAmountAndDeliverMaxMustBeIdentical indicates that a Payment has conflicting Amount and DeliverMax values.
 	ErrAmountAndDeliverMaxMustBeIdentical = errors.New("payment transaction: Amount and DeliverMax fields must be identical when both are provided")
 
+	// ErrTransactionNotSponsored indicates that a sponsorship preflight received a transaction
+	// without the Sponsor and SponsorFlags common fields.
+	ErrTransactionNotSponsored = errors.New("transaction is not sponsored: Sponsor and SponsorFlags are required")
+	// ErrSponsorshipFeeUnavailable indicates that a sponsorship preflight has neither an estimated
+	// fee nor a transaction Fee to validate.
+	ErrSponsorshipFeeUnavailable = errors.New("sponsorship fee is unavailable: supply an estimated fee or set the transaction Fee")
+	// ErrSponsorshipFeeIsNotAString indicates that a transaction Fee value has the wrong Go type.
+	ErrSponsorshipFeeIsNotAString = errors.New("field Fee must be a string")
+	// ErrInvalidSponsorshipFee indicates that a sponsorship preflight fee is not a whole, non-
+	// negative number of drops.
+	ErrInvalidSponsorshipFee = errors.New("invalid sponsorship fee")
+	// ErrSponsorshipEntryUnexpectedType indicates that a ledger_entry lookup returned a node that
+	// is not a Sponsorship entry.
+	ErrSponsorshipEntryUnexpectedType = errors.New("ledger entry is not a Sponsorship entry")
+	// ErrSponsorshipEntryMalformed indicates that a Sponsorship ledger entry could not be decoded.
+	ErrSponsorshipEntryMalformed = errors.New("malformed Sponsorship ledger entry")
+	// ErrSponsorshipEntryMismatch indicates that a ledger_entry lookup returned a Sponsorship entry
+	// whose Owner or Sponsee differs from the requested sponsor and sponsee.
+	ErrSponsorshipEntryMismatch = errors.New("sponsorship ledger entry does not match the requested sponsor and sponsee")
+	// ErrSponsorshipEntryNotFound indicates that no Sponsorship ledger entry exists for the
+	// sponsor and sponsee, and the transaction carries no sponsor co-signature to authorize the
+	// sponsorship instead.
+	ErrSponsorshipEntryNotFound = errors.New("no Sponsorship ledger entry and no SponsorSignature")
+	// ErrSponsorshipFeeSignatureRequired indicates that the Sponsorship entry sets
+	// lsfSponsorshipRequireSignForFee, so fee sponsorship needs a sponsor co-signature.
+	ErrSponsorshipFeeSignatureRequired = errors.New("fee sponsorship requires a SponsorSignature")
+	// ErrSponsorshipReserveSignatureRequired indicates that the Sponsorship entry sets
+	// lsfSponsorshipRequireSignForReserve, so reserve sponsorship needs a sponsor co-signature.
+	ErrSponsorshipReserveSignatureRequired = errors.New("reserve sponsorship requires a SponsorSignature")
+	// ErrSponsorshipFeeAmountMissing indicates that the Sponsorship entry has no FeeAmount to draw
+	// a sponsored fee from.
+	ErrSponsorshipFeeAmountMissing = errors.New("sponsorship has no FeeAmount for fee sponsorship")
+	// ErrSponsorshipFeeBudgetExhausted indicates that the Sponsorship entry's FeeAmount cannot
+	// cover the transaction fee.
+	ErrSponsorshipFeeBudgetExhausted = errors.New("sponsorship FeeAmount cannot cover the transaction fee")
+	// ErrSponsorshipMaxFeeExceeded indicates that the transaction fee is above the Sponsorship
+	// entry's per-transaction MaxFee cap.
+	ErrSponsorshipMaxFeeExceeded = errors.New("transaction fee exceeds the sponsorship MaxFee")
+
 	// fee
 
 	// ErrInvalidFeeValue is returned when a fee input is not a finite,
@@ -89,6 +137,24 @@ var (
 	// ErrFeeHasTooManyDecimals is returned when an XRP fee cannot be represented
 	// as a whole number of drops.
 	ErrFeeHasTooManyDecimals = errors.New("fee has more than six decimal places")
+	// ErrCouldNotGetBaseFeeXrp is returned when BaseFeeXrp cannot be retrieved
+	// from ServerInfo.
+	ErrCouldNotGetBaseFeeXrp = errors.New("get fee xrp: could not get BaseFeeXrp from ServerInfo")
+	// ErrCouldNotFetchOwnerReserve is returned when the owner reserve fee cannot
+	// be fetched.
+	ErrCouldNotFetchOwnerReserve = errors.New("could not fetch Owner Reserve")
+	// ErrLoanBrokerIDRequired is returned when LoanBrokerID is required but not
+	// provided.
+	ErrLoanBrokerIDRequired = errors.New("LoanBrokerID is required for LoanSet transaction")
+	// ErrCouldNotFetchLoanBrokerOwner is returned when the Owner field cannot be
+	// extracted from LoanBroker.
+	ErrCouldNotFetchLoanBrokerOwner = errors.New("could not fetch LoanBroker Owner")
+	// ErrRawTransactionsFieldMissing is returned when a Batch has no
+	// RawTransactions field.
+	ErrRawTransactionsFieldMissing = errors.New("RawTransactions field missing from Batch transaction")
+	// ErrRawTransactionFieldMissing is returned when a Batch wrapper has no
+	// RawTransaction field.
+	ErrRawTransactionFieldMissing = errors.New("RawTransaction field missing from wrapper")
 	// ErrPreliminaryResult indicates that reliable submission stopped on a
 	// malformed preliminary engine result.
 	ErrPreliminaryResult = errors.New("malformed preliminary transaction result")
