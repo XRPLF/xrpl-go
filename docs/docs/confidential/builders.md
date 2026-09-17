@@ -372,8 +372,9 @@ Most builder errors are explicit and map to missing ledger state or invalid inpu
 - `ErrDelegateNotAllowed`: a `Delegate` was set on a type `NonDelegatableTransactionsMap` lists,
   which among the confidential types is `ConfidentialMPTConvert`.
 - `ErrKeyMismatch`: the supplied public key differs from the one registered on the ledger.
-- `ErrInvalidCredentialIDs`: `BuildSendParams.CredentialIDs` is not a valid hexadecimal string
-  array. It wraps `transaction.ErrInvalidCredentialIDs`, so `errors.Is` matches either sentinel.
+- `ErrInvalidCredentialIDs`: a nonempty `BuildSendParams.CredentialIDs` list must contain
+  1 to 8 distinct, nonzero, 256-bit hexadecimal IDs. Hex letter case does not affect uniqueness.
+  It wraps `transaction.ErrInvalidCredentialIDs`, so `errors.Is` matches either sentinel.
 - `ErrStaleBalanceVersion`: a confidential transaction of the holder's own is still in flight and
   has already moved `ConfidentialBalanceVersion`, so a proof built against the validated ledger
   would be rejected. Rebuild once it validates.

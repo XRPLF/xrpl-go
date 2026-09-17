@@ -109,8 +109,8 @@ var (
 	ErrDuplicateXAddressTag = bctypes.ErrDuplicateXAddressTag
 	// ErrInvalidCheckID is returned when the CheckID is not a valid 64-character hexadecimal string.
 	ErrInvalidCheckID = errors.New("invalid CheckID, must be a valid 64-character hexadecimal string")
-	// ErrInvalidCredentialIDs is returned when the CredentialIDs field is empty or not a valid hexadecimal string array.
-	ErrInvalidCredentialIDs = errors.New("invalid credential IDs, must be a valid hexadecimal string array")
+	// ErrInvalidCredentialIDs is returned when CredentialIDs does not contain one to eight distinct, nonzero 256-bit hexadecimal IDs.
+	ErrInvalidCredentialIDs = errors.New("invalid credential IDs: must contain 1 to 8 distinct, nonzero 256-bit hexadecimal IDs")
 	// ErrInvalidDestination is returned when the Destination field does not meet XRPL address standards.
 	ErrInvalidDestination = errors.New("invalid xrpl address for Destination")
 	// ErrInvalidIssuer is returned when the issuer address is an invalid xrpl address.
@@ -619,6 +619,14 @@ var (
 
 	// vault
 
+	// ErrVaultCreateKindInvalid is returned for an unsupported vault kind.
+	ErrVaultCreateKindInvalid = errors.New("vaultCreate: VaultKind must be 0 (open) or 1 (closed)")
+	// ErrVaultCreateDatesRequired is returned when a closed vault omits either date.
+	ErrVaultCreateDatesRequired = errors.New("vaultCreate: closed vaults require SubscriptionDate and RedemptionDate")
+	// ErrVaultCreateDatesRequireClosedKind is returned for dates on an open vault.
+	ErrVaultCreateDatesRequireClosedKind = errors.New("vaultCreate: dates require a closed vault")
+	// ErrVaultCreateInvestmentPeriodInvalid is returned when the investment period is outside protocol bounds.
+	ErrVaultCreateInvestmentPeriodInvalid = errors.New("vaultCreate: investment period must be at least 180 and less than 946708560 seconds")
 	// ErrVaultCreateAssetRequired is returned when Asset is not set on a VaultCreate transaction.
 	ErrVaultCreateAssetRequired = errors.New("vaultCreate: Asset is required")
 	// ErrVaultCreateAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number.
@@ -647,6 +655,8 @@ var (
 	// ErrVaultSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
 	ErrVaultSetDomainIDInvalid = errors.New("vaultSet: DomainID must be a valid 64-character hexadecimal string")
 
+	// ErrVaultDeleteMemoDataInvalid is returned for empty, malformed, or oversized deletion metadata.
+	ErrVaultDeleteMemoDataInvalid = errors.New("vaultDelete: MemoData must encode 1 to 256 complete bytes as hexadecimal")
 	// ErrVaultDeleteVaultIDRequired is returned when VaultID is not set on a VaultDelete transaction.
 	ErrVaultDeleteVaultIDRequired = errors.New("vaultDelete: VaultID is required")
 	// ErrVaultDeleteVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.

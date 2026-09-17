@@ -22,6 +22,8 @@ CONFIDENTIAL_INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration/confiden
 
 PARALLEL_TESTS = 4
 TEST_TIMEOUT = 5m
+# Public networks advance ledger time in real time, including vault subscription waits.
+PUBLICNET_INTEGRATION_TEST_TIMEOUT ?= 20m
 CONFIDENTIAL_TEST_TIMEOUT ?= 60m
 UNIT_TEST_REPORT ?= unit-test-results.json
 INTEGRATION_TEST_REPORT ?= localnet-test-results.json
@@ -35,7 +37,8 @@ GOTEST := $(shell command -v gotest 2>/dev/null || echo "go test")
 GOLANGCI_LINT_MAJOR_VERSION = 2
 GOLANGCI_LINT_VERSION = v2.11.3
 
-XRPLD_IMAGE ?= rippleci/xrpld:develop
+# 3.4.0 development build, commit 21890d9d. Supports LendingProtocolV1_1 and fixCleanup3_4_0.
+XRPLD_IMAGE ?= rippleci/xrpld@sha256:1f62f82d87794614881d7900748890ce60fb14576c3534227926a5dc3add250e
 XRPLD_CONFIG ?= /etc/xrpld/xrpld.cfg
 LOCALNET_CONTAINER ?= xrpld_standalone
 LOCALNET_LEDGER_INTERVAL ?= 0.1
@@ -126,13 +129,13 @@ test-integration-localnet-ci:
 test-integration-devnet:
 	@echo "Running Go tests for integration package..."
 	@go clean -testcache
-	@env INTEGRATION=devnet $(GOTEST) $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+	@env INTEGRATION=devnet $(GOTEST) $(INTEGRATION_TEST_PACKAGES) -timeout $(PUBLICNET_INTEGRATION_TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 test-integration-testnet:
 	@echo "Running Go tests for integration package..."
 	@go clean -testcache
-	@env INTEGRATION=testnet $(GOTEST) $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+	@env INTEGRATION=testnet $(GOTEST) $(INTEGRATION_TEST_PACKAGES) -timeout $(PUBLICNET_INTEGRATION_TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 # The confidential MPT integration tests are kept out of the targets above because they
