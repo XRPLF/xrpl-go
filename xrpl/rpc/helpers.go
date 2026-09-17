@@ -229,7 +229,7 @@ func (c *Client) checkAccountDeleteBlockers(ctx context.Context, address types.A
 	// Field presence blocks deletion, including an explicitly reported zero.
 	root := info.AccountData
 	if root.SponsoringOwnerCount != nil || root.SponsoringAccountCount != nil {
-		return errAccountHasSponsorshipObligations
+		return ErrAccountHasSponsorshipObligations
 	}
 	// Autofill does not enforce required fields. Address normalization has
 	// already rejected malformed destinations, but permits missing/nil values.
@@ -243,7 +243,7 @@ func (c *Client) checkAccountDeleteBlockers(ctx context.Context, address types.A
 			return fmt.Errorf("decode AccountDelete Destination: %w", err)
 		}
 		if sponsor.AccountID != dest.AccountID {
-			return errAccountDeleteSponsorMismatch
+			return ErrAccountDeleteSponsorMismatch
 		}
 	}
 	return nil

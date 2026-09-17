@@ -33,18 +33,18 @@ func TestAccountDeleteSponsorshipBlockers(t *testing.T) {
 		wantContext string
 	}{
 		{name: "ordinary account", root: map[string]any{}},
-		{name: "owner count zero", root: map[string]any{"SponsoringOwnerCount": 0}, wantErr: errAccountHasSponsorshipObligations},
-		{name: "owner count nonzero", root: map[string]any{"SponsoringOwnerCount": 2}, wantErr: errAccountHasSponsorshipObligations},
-		{name: "account count zero", root: map[string]any{"SponsoringAccountCount": 0}, wantErr: errAccountHasSponsorshipObligations},
-		{name: "account count nonzero", root: map[string]any{"SponsoringAccountCount": 2}, wantErr: errAccountHasSponsorshipObligations},
+		{name: "owner count zero", root: map[string]any{"SponsoringOwnerCount": 0}, wantErr: ErrAccountHasSponsorshipObligations},
+		{name: "owner count nonzero", root: map[string]any{"SponsoringOwnerCount": 2}, wantErr: ErrAccountHasSponsorshipObligations},
+		{name: "account count zero", root: map[string]any{"SponsoringAccountCount": 0}, wantErr: ErrAccountHasSponsorshipObligations},
+		{name: "account count nonzero", root: map[string]any{"SponsoringAccountCount": 2}, wantErr: ErrAccountHasSponsorshipObligations},
 		{name: "sponsored owner count zero", root: map[string]any{"SponsoredOwnerCount": 0}},
 		{name: "sponsored owner count nonzero", root: map[string]any{"SponsoredOwnerCount": 2}},
 		{name: "matching sponsor", root: map[string]any{"Sponsor": deleteSponsor}, destination: deleteSponsor},
 		{name: "equivalent X-address", root: map[string]any{"Sponsor": deleteSponsor}, destination: x},
 		{name: "equivalent tagged testnet X-address", root: map[string]any{"Sponsor": deleteSponsor}, destination: tagged},
-		{name: "sponsor mismatch", root: map[string]any{"Sponsor": deleteSponsor}, destination: deleteAccount, wantErr: errAccountDeleteSponsorMismatch},
+		{name: "sponsor mismatch", root: map[string]any{"Sponsor": deleteSponsor}, destination: deleteAccount, wantErr: ErrAccountDeleteSponsorMismatch},
 		{name: "missing destination", root: map[string]any{"Sponsor": deleteSponsor}},
-		{name: "missing destination still checks counters", root: map[string]any{"Sponsor": deleteSponsor, "SponsoringOwnerCount": 0}, wantErr: errAccountHasSponsorshipObligations},
+		{name: "missing destination still checks counters", root: map[string]any{"Sponsor": deleteSponsor, "SponsoringOwnerCount": 0}, wantErr: ErrAccountHasSponsorshipObligations},
 		{name: "malformed sponsor", root: map[string]any{"Sponsor": "invalid"}, destination: deleteSponsor, wantErr: addresscodec.ErrInvalidAddressFormat, wantContext: "decode account Sponsor:"},
 		{name: "malformed destination", root: map[string]any{"Sponsor": deleteSponsor}, destination: "invalid", wantErr: addresscodec.ErrInvalidAddressFormat, wantContext: "decode AccountDelete Destination:"},
 	}
@@ -174,8 +174,8 @@ func TestAccountDeleteAutofillFailuresAreAtomic(t *testing.T) {
 		wantErr     error
 		wantMessage string
 	}{
-		{name: "obligations", results: []map[string]any{{"account_objects": []any{}}, {"account_data": map[string]any{"SponsoringAccountCount": 0}}}, wantErr: errAccountHasSponsorshipObligations},
-		{name: "mismatch", results: []map[string]any{{"account_objects": []any{}}, {"account_data": map[string]any{"Sponsor": deleteAccount}}}, wantErr: errAccountDeleteSponsorMismatch},
+		{name: "obligations", results: []map[string]any{{"account_objects": []any{}}, {"account_data": map[string]any{"SponsoringAccountCount": 0}}}, wantErr: ErrAccountHasSponsorshipObligations},
+		{name: "mismatch", results: []map[string]any{{"account_objects": []any{}}, {"account_data": map[string]any{"Sponsor": deleteAccount}}}, wantErr: ErrAccountDeleteSponsorMismatch},
 		{name: "object query failure", results: []map[string]any{{"error": "actNotFound"}}, wantMessage: "actNotFound"},
 		{name: "info query failure", results: []map[string]any{{"account_objects": []any{}}, {"error": "actNotFound"}}, wantMessage: "actNotFound"},
 		{name: "info decode failure", results: []map[string]any{{"account_objects": []any{}}, {"account_data": "not an object"}}, wantMessage: "account_data"},
@@ -189,6 +189,7 @@ func TestAccountDeleteAutofillFailuresAreAtomic(t *testing.T) {
 			err := cl.Autofill(&tx)
 			if tt.wantErr != nil {
 				require.ErrorIs(t, err, tt.wantErr)
+				require.ErrorIs(t, err, ErrAccountCannotBeDeleted)
 			} else {
 				require.ErrorContains(t, err, tt.wantMessage)
 			}
@@ -211,7 +212,7 @@ func TestAccountDeleteMissingDestinationStillChecksObligations(t *testing.T) {
 				tx["Destination"] = nil
 			}
 			before := clientinternal.CloneTransaction(tx)
-			require.ErrorIs(t, cl.Autofill(&tx), errAccountHasSponsorshipObligations)
+			require.ErrorIs(t, cl.Autofill(&tx), ErrAccountHasSponsorshipObligations)
 			require.Equal(t, transaction.FlatTransaction(before), tx)
 			require.Len(t, requests(), 2)
 		})
@@ -227,7 +228,7 @@ func TestAccountDeleteUsesValidatedInfoAfterSequenceAutofill(t *testing.T) {
 	tx := deletionTransaction()
 	delete(tx, "Sequence")
 	before := clientinternal.CloneTransaction(tx)
-	require.ErrorIs(t, cl.Autofill(&tx), errAccountHasSponsorshipObligations)
+	require.ErrorIs(t, cl.Autofill(&tx), ErrAccountHasSponsorshipObligations)
 	require.Equal(t, transaction.FlatTransaction(before), tx)
 	got := requests()
 	require.Len(t, got, 3)
@@ -243,7 +244,7 @@ func TestAccountDeleteMultisignedChecksSponsorship(t *testing.T) {
 	})
 	tx := deletionTransaction()
 	before := clientinternal.CloneTransaction(tx)
-	require.ErrorIs(t, cl.AutofillMultisigned(&tx, 2), errAccountDeleteSponsorMismatch)
+	require.ErrorIs(t, cl.AutofillMultisigned(&tx, 2), ErrAccountDeleteSponsorMismatch)
 	require.Equal(t, transaction.FlatTransaction(before), tx)
 	require.Len(t, requests(), 2)
 }

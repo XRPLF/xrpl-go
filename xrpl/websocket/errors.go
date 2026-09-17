@@ -18,9 +18,6 @@ const (
 )
 
 var (
-	errAccountHasSponsorshipObligations = errors.New("account cannot be deleted; it has outstanding sponsorship obligations (SponsoringOwnerCount/SponsoringAccountCount)")
-	errAccountDeleteSponsorMismatch     = errors.New("account cannot be deleted; its Sponsor does not match the AccountDelete Destination")
-
 	// transaction
 
 	// ErrMissingTxSignatureOrSigningPubKey is returned when a transaction has no complete signing form.
@@ -186,8 +183,14 @@ var (
 
 	// account
 
-	// ErrAccountCannotBeDeleted is returned when an account cannot be deleted due to associated objects.
-	ErrAccountCannotBeDeleted = errors.New("account cannot be deleted; there are Escrows, PayChannels, RippleStates, or Checks associated with the account")
+	// ErrAccountCannotBeDeleted indicates that associated objects or sponsorship checks prevent account deletion.
+	ErrAccountCannotBeDeleted = errors.New("account cannot be deleted")
+	// ErrAccountHasSponsorshipObligations is returned when SponsoringOwnerCount or SponsoringAccountCount is present, including zero.
+	// It wraps ErrAccountCannotBeDeleted.
+	ErrAccountHasSponsorshipObligations = fmt.Errorf("%w: outstanding sponsorship obligations (SponsoringOwnerCount/SponsoringAccountCount)", ErrAccountCannotBeDeleted)
+	// ErrAccountDeleteSponsorMismatch is returned when the account's Sponsor does not match the supplied AccountDelete Destination.
+	// It wraps ErrAccountCannotBeDeleted.
+	ErrAccountDeleteSponsorMismatch = fmt.Errorf("%w: Sponsor does not match the AccountDelete Destination", ErrAccountCannotBeDeleted)
 
 	// payment
 

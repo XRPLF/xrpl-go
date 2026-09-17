@@ -103,15 +103,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-#### xrpl/rpc, xrpl/websocket
-
-- Added AccountDelete autofill checks for outstanding sponsorship obligations and a sponsored account's destination. The destination must identify the account's sponsor when supplied. Account query failures are returned without changing the caller's transaction.
-
 #### xrpl/ledger-entry-types
 
 - Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.
 - Fixed JSON decoding to preserve `index` in `Offer` and `NFTokenOffer`.
 - Fixed failed JSON decoding to leave existing `Escrow`, `NFTokenOffer`, `Offer`, and `PriceData` values unchanged.
+
+#### xrpl/rpc
+
+- Fixed AccountDelete autofill to reject outstanding sponsorship obligations and a supplied destination that does not identify the account's sponsor. The sponsorship errors are exported and match `ErrAccountCannotBeDeleted` through `errors.Is`.
 
 #### xrpl/transaction
 
@@ -124,6 +124,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction/types
 
 - Fixed `CredentialIDs.IsValid()` to require one to eight distinct, nonzero 256-bit hexadecimal IDs across all transaction and confidential builder callers. This tightens validation of previously accepted lists. Zero IDs are rejected offline without checking `fixCleanup3_4_0` activation.
+
+#### xrpl/websocket
+
+- Fixed AccountDelete autofill to reject outstanding sponsorship obligations and a supplied destination that does not identify the account's sponsor. The sponsorship errors are exported and match `ErrAccountCannotBeDeleted` through `errors.Is`.
 
 ## [v0.3.1-mpt.0]
 
