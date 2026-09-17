@@ -520,6 +520,20 @@ func plainTicketCreate(account string, count uint32, nonce TxOptions) Transactio
 	}}
 }
 
+// flatInner is a custom ready-made inner whose Flatten returns the same map on every call, as a
+// transaction decoded from JSON or caching its payload would.
+type flatInner struct {
+	flat transaction.FlatTransaction
+}
+
+func (f flatInner) TxType() transaction.TxType {
+	return transaction.TxType(f.flat["TransactionType"].(string))
+}
+
+func (f flatInner) Flatten() transaction.FlatTransaction { return f.flat }
+
+func (f flatInner) Validate() (bool, error) { return true, nil }
+
 // firstSend decodes one built inner back into the typed transaction the assertions read.
 func firstSend(t *testing.T, batch *transaction.Batch, index int) *transaction.ConfidentialMPTSend {
 	t.Helper()

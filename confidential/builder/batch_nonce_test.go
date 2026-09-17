@@ -202,6 +202,56 @@ func TestBuildBatchTicketCreateAdvancesSequence(t *testing.T) {
 	}
 }
 
+func TestBuildBatchNormalizesPlainInnerNumbers(t *testing.T) {
+	fixture := newBatchFixture(t)
+	batch, err := BuildBatch(fixture.querier(), BuildBatchParams{
+		TxOptions: TxOptions{Sequence: 10},
+		Account:   testAccount,
+		Operations: []BatchOperation{
+			TransactionOp{Tx: flatInner{flat: transaction.FlatTransaction{
+				"Account":         testAccount,
+				"TransactionType": transaction.TicketCreateTx.String(),
+				"TicketCount":     float64(3),
+			}}},
+			TransactionOp{Tx: flatInner{flat: transaction.FlatTransaction{
+				"Account":         testAccount,
+				"TransactionType": transaction.AccountSetTx.String(),
+				"Flags":           float64(transaction.TfRequireDestTag),
+			}}},
+		},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, uint32(11), innerOf(t, batch, 0)["Sequence"])
+	require.Equal(t, uint32(3), innerOf(t, batch, 0)["TicketCount"])
+	second := innerOf(t, batch, 1)
+	require.Equal(t, uint32(15), second["Sequence"])
+	require.Equal(t, transaction.TfRequireDestTag|types.TfInnerBatchTxn, second["Flags"])
+}
+
+func TestBuildBatchCopiesSharedPlainInnerPayload(t *testing.T) {
+	shared := transaction.FlatTransaction{
+		"Account":         testAccount,
+		"TransactionType": transaction.AccountSetTx.String(),
+	}
+	tx := flatInner{flat: shared}
+
+	fixture := newBatchFixture(t)
+	batch, err := BuildBatch(fixture.querier(), BuildBatchParams{
+		TxOptions:  TxOptions{Sequence: 10},
+		Account:    testAccount,
+		Operations: []BatchOperation{TransactionOp{Tx: tx}, TransactionOp{Tx: tx}},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, uint32(11), innerOf(t, batch, 0)["Sequence"])
+	require.Equal(t, uint32(12), innerOf(t, batch, 1)["Sequence"])
+	require.Equal(t, transaction.FlatTransaction{
+		"Account":         testAccount,
+		"TransactionType": transaction.AccountSetTx.String(),
+	}, shared, "the caller's payload must not be modified")
+}
+
 func TestBuildBatchRejectsInvalidNonces(t *testing.T) {
 	tests := []struct {
 		name       string

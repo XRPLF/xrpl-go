@@ -286,9 +286,11 @@ func TestAddAndSubtract(t *testing.T) {
 	}
 }
 
-// TestAddAndSubtractErrors covers the inputs that have no ciphertext result. Subtracting a
-// ciphertext from itself is the one that is not a malformed input: the difference is the
-// curve's identity element, which has no encoding as a ciphertext.
+// TestAddAndSubtractErrors covers the inputs that have no ciphertext result. Hex that does not
+// decode to a ciphertext's length reports ErrInvalidCiphertext. Everything that decodes but fails
+// in the native arithmetic reports ErrCiphertextArithmetic: an operand whose bytes are not two
+// curve points, and a ciphertext subtracted from itself, whose difference is the curve's identity
+// element and has no encoding as a ciphertext.
 func TestAddAndSubtractErrors(t *testing.T) {
 	kp, err := elgamal.GenerateKeypair()
 	require.NoError(t, err)
@@ -307,6 +309,7 @@ func TestAddAndSubtractErrors(t *testing.T) {
 		{name: "add first not hex", first: "zz", second: ciphertext, op: elgamal.Add, wantErr: elgamal.ErrInvalidCiphertext},
 		{name: "add second wrong length", first: ciphertext, second: "00", op: elgamal.Add, wantErr: elgamal.ErrInvalidCiphertext},
 		{name: "subtract first empty", first: "", second: ciphertext, op: elgamal.Subtract, wantErr: elgamal.ErrInvalidCiphertext},
+		{name: "add second not curve points", first: ciphertext, second: strings.Repeat("00", mptsizes.CiphertextSize), op: elgamal.Add, wantErr: elgamal.ErrCiphertextArithmetic},
 		{name: "subtract identical ciphertexts", first: ciphertext, second: ciphertext, op: elgamal.Subtract, wantErr: elgamal.ErrCiphertextArithmetic},
 	}
 

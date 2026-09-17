@@ -201,6 +201,39 @@ func TestBuildBatchRejectsInvalidOperationsBeforeLedgerAccess(t *testing.T) {
 			wantErr: ErrConflictingNonce,
 		},
 		{
+			name: "ready-made inner with a fractional TicketCount",
+			operation: func(_ *batchFixture) BatchOperation {
+				return TransactionOp{Tx: flatInner{flat: transaction.FlatTransaction{
+					"Account":         testAccount,
+					"TransactionType": transaction.TicketCreateTx.String(),
+					"TicketCount":     1.5,
+				}}}
+			},
+			wantErr: ErrInvalidTransaction,
+		},
+		{
+			name: "ready-made inner with a negative Sequence",
+			operation: func(_ *batchFixture) BatchOperation {
+				return TransactionOp{Tx: flatInner{flat: transaction.FlatTransaction{
+					"Account":         testAccount,
+					"TransactionType": transaction.AccountSetTx.String(),
+					"Sequence":        -1,
+				}}}
+			},
+			wantErr: ErrInvalidTransaction,
+		},
+		{
+			name: "ready-made inner with non-numeric Flags",
+			operation: func(_ *batchFixture) BatchOperation {
+				return TransactionOp{Tx: flatInner{flat: transaction.FlatTransaction{
+					"Account":         testAccount,
+					"TransactionType": transaction.AccountSetTx.String(),
+					"Flags":           "3",
+				}}}
+			},
+			wantErr: ErrInvalidTransaction,
+		},
+		{
 			name: "confidential operation with its own sequence",
 			operation: func(f *batchFixture) BatchOperation {
 				op := sendOp(f, testAccount, testDestination, testIssuanceID, 10)

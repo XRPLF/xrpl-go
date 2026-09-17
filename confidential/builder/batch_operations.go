@@ -2,8 +2,10 @@ package builder
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -382,7 +384,9 @@ func (op TransactionOp) batchStep() (batchStep, error) {
 		return batchStep{}, err
 	}
 
-	flat := op.Tx.Flatten()
+	// Flatten may return a map the transaction keeps, so the payload is copied once here and
+	// every later read and build works from that copy.
+	flat := maps.Clone(op.Tx.Flatten())
 	account, ok := flat["Account"].(string)
 	if !ok {
 		return batchStep{}, ErrMissingAccount
@@ -391,6 +395,19 @@ func (op TransactionOp) batchStep() (batchStep, error) {
 		if _, present := flat[field]; present {
 			return batchStep{}, fmt.Errorf("%w: %s is not allowed on a Batch inner", ErrBatchInnerNotSupported, field)
 		}
+	}
+	// A Flatten built from decoded JSON carries numbers as float64, so every UInt32 the
+	// assembler reads is normalized to uint32 rather than silently read as absent.
+	for _, field := range []string{"Sequence", "TicketSequence", "TicketCount", "Flags"} {
+		value, present := flat[field]
+		if !present {
+			continue
+		}
+		normalized, ok := typecheck.ToUint32(value)
+		if !ok {
+			return batchStep{}, fmt.Errorf("%w: %s is not a UInt32: %v", ErrInvalidTransaction, field, value)
+		}
+		flat[field] = normalized
 	}
 
 	var options TxOptions
@@ -405,7 +422,7 @@ func (op TransactionOp) batchStep() (batchStep, error) {
 		account: account,
 		options: options,
 		build: func(_ *batchState, nonce TxOptions) (transaction.FlatTransaction, error) {
-			inner := op.Tx.Flatten()
+			inner := maps.Clone(flat)
 			if nonce.Sequence != 0 {
 				inner["Sequence"] = nonce.Sequence
 			}
