@@ -1,6 +1,7 @@
 package ledger
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -10,6 +11,7 @@ import (
 
 func TestOffer(t *testing.T) {
 	var s Object = &Offer{
+		Index:             "96F76F27D8A327FC48753167EC04A46AA0E382E6F57F32FD12274144D00F1797",
 		Account:           "rBqb89MRQJnMPq8wTwEbtz4kvxrEDfcYvt",
 		BookDirectory:     "ACC27DE91DBA86FC509069EAF4BC511D73128B780F2E54BF5E07A369E2446000",
 		BookNode:          "0000000000000000",
@@ -28,6 +30,7 @@ func TestOffer(t *testing.T) {
 	}
 
 	j := `{
+	"index": "96F76F27D8A327FC48753167EC04A46AA0E382E6F57F32FD12274144D00F1797",
 	"Flags": 131072,
 	"LedgerEntryType": "Offer",
 	"Account": "rBqb89MRQJnMPq8wTwEbtz4kvxrEDfcYvt",
@@ -47,6 +50,34 @@ func TestOffer(t *testing.T) {
 
 	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestOfferUnmarshalErrors(t *testing.T) {
+	tests := []struct {
+		name, fixture string
+	}{
+		{"invalid TakerPays", `{"Sequence":99,"TakerPays":"bad","TakerGets":"20"}`},
+		{"invalid TakerGets after valid TakerPays", `{"Sequence":99,"TakerPays":"20","TakerGets":"bad"}`},
+		{"ordinary field error", `{"Sequence":"bad","TakerPays":"20","TakerGets":"30"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			domainID := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+			offer := Offer{
+				Account:   "rBqb89MRQJnMPq8wTwEbtz4kvxrEDfcYvt",
+				Sequence:  2,
+				TakerPays: types.XRPCurrencyAmount(10),
+				TakerGets: types.XRPCurrencyAmount(15),
+				DomainID:  &domainID,
+			}
+			before, err := json.Marshal(offer)
+			require.NoError(t, err)
+			require.Error(t, json.Unmarshal([]byte(tt.fixture), &offer))
+			after, err := json.Marshal(offer)
+			require.NoError(t, err)
+			require.Equal(t, string(before), string(after))
+		})
 	}
 }
 

@@ -74,9 +74,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/ledger-entry-types
 
 - Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.
+- Fixed JSON decoding to preserve `index` in `Offer` and `NFTokenOffer`.
+- Fixed failed JSON decoding to leave existing `Escrow`, `NFTokenOffer`, `Offer`, and `PriceData` values unchanged.
 
 #### xrpl/transaction
 
+- Fixed failed JSON decoding to leave an existing `EscrowCreate` value unchanged.
 - Reject zero `DomainID` references in Payment, OfferCreate, MPTokenIssuanceCreate, and VaultCreate. Preserve zero-domain clearing in MPTokenIssuanceSet and VaultSet.
 - Reject an empty `MPTokenIssuanceSet.DomainID` during validation instead of failing later during binary encoding. Use 64 zero digits to request domain removal.
 - Compare decoded account identities in DepositPreauth, NFTokenCreateOffer, SetRegularKey, DelegateSet, NFTokenMint, NFTokenModify, MPTokenAuthorize, and MPTokenIssuanceSet self-reference checks, so equivalent classic and X-addresses cannot bypass them. AMMClawback now accepts equivalent address forms in its asset issuer/account check.

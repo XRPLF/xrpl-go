@@ -126,7 +126,16 @@ func TestClient_SimulateRejectsLocally(t *testing.T) {
 		wantErr   error
 	}{
 		{name: "nil request", wantErr: transactions.ErrInvalidSimulateRequest},
-
+		{name: "both inputs", request: &transactions.SimulateRequest{
+			TxJSON: transaction.FlatTransaction{"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
+			TxBlob: rpcSimulateTxBlob,
+		}, wantErr: transactions.ErrInvalidSimulateRequest},
+		{name: "neither input", request: &transactions.SimulateRequest{}, wantErr: transactions.ErrInvalidSimulateRequest},
+		{name: "signed JSON", request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
+			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TxnSignature": "DEADBEEF",
+		}}, wantErr: transactions.ErrSignedSimulateTransaction},
+		{name: "non-hex blob", request: &transactions.SimulateRequest{TxBlob: "not-hex"}, wantErr: transactions.ErrInvalidSimulateTxBlob},
+		{name: "odd-length blob", request: &transactions.SimulateRequest{TxBlob: "ABC"}, wantErr: transactions.ErrInvalidSimulateTxBlob},
 		{name: "network ID mismatch", request: &transactions.SimulateRequest{TxJSON: transaction.FlatTransaction{
 			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "NetworkID": uint32(2049),
 		}}, networkID: 2048, wantErr: transactions.ErrMismatchedSimulateNetworkID},
