@@ -35,7 +35,6 @@ type Sponsorship struct {
 	// The maximum fee allowed per transaction, in XRP drops.
 	MaxFee *types.XRPCurrencyAmount `json:",omitempty"`
 	// The remaining number of owner reserves available for sponsorship.
-	// Nil means absent. A pointer to zero preserves an explicit zero.
 	RemainingOwnerCount *uint32 `json:",omitempty"`
 }
 

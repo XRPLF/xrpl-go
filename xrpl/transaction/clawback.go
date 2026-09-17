@@ -47,13 +47,11 @@ func (c *Clawback) Flatten() FlatTransaction {
 
 // UnmarshalJSON implements custom JSON unmarshalling for Clawback currency amounts.
 func (c *Clawback) UnmarshalJSON(data []byte) error {
-	type clawbackJSON struct {
-		BaseTx
+	type clawbackFields Clawback
+	var decoded struct {
+		clawbackFields
 		Amount json.RawMessage
-		Holder types.Address
 	}
-
-	var decoded clawbackJSON
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
@@ -63,11 +61,8 @@ func (c *Clawback) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	*c = Clawback{
-		BaseTx: decoded.BaseTx,
-		Amount: amount,
-		Holder: decoded.Holder,
-	}
+	decoded.clawbackFields.Amount = amount
+	*c = Clawback(decoded.clawbackFields)
 	return nil
 }
 

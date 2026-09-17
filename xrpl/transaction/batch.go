@@ -136,7 +136,8 @@ func (b *Batch) Validate() (bool, error) {
 		if valid, err := rawTx.Validate(); !valid {
 			return false, err
 		}
-		sponsor, err := sponsorFieldsFromInnerRaw(rawTx.RawTransaction)
+
+		sponsor, err := sponsorFieldsFromRaw(rawTx.RawTransaction, true)
 		if err != nil {
 			return false, err
 		}

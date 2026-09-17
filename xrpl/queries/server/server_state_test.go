@@ -1,9 +1,12 @@
-package server
+package server_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/server"
 	servertypes "github.com/Peersyst/xrpl-go/xrpl/queries/server/types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/stretchr/testify/require"
@@ -24,7 +27,7 @@ func TestServerStateReserveIncPresence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var response StateResponse
+			var response server.StateResponse
 			require.NoError(t, json.Unmarshal([]byte(tt.response), &response))
 			reserveInc := response.State.ValidatedLedger.ReserveInc
 			actual, present := uint64(0), reserveInc != nil
@@ -54,7 +57,7 @@ func TestServerStateClosedLedgerFeePrecisionAndPresence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			responseJSON := `{"state":{"closed_ledger":{"base_fee":16777217,"reserve_base":20000001` +
 				tt.reserveInc + `}}}`
-			var response StateResponse
+			var response server.StateResponse
 			require.NoError(t, json.Unmarshal([]byte(responseJSON), &response))
 			require.Equal(t, uint64(16777217), response.State.ClosedLedger.BaseFee)
 			require.Equal(t, uint64(20000001), response.State.ClosedLedger.ReserveBase)
@@ -70,9 +73,9 @@ func TestServerStateClosedLedgerFeePrecisionAndPresence(t *testing.T) {
 	}
 }
 
-func TestServerStateResponse(t *testing.T) {
+func serverStateResponseFixture() (server.StateResponse, string) {
 	reserveInc := uint64(5000000)
-	s := StateResponse{
+	s := server.StateResponse{
 		State: servertypes.State{
 			BuildVersion:    "1.7.2",
 			CompleteLedgers: "64572720-65887201",
@@ -127,7 +130,6 @@ func TestServerStateResponse(t *testing.T) {
 			ValidationQuorum: 33,
 		},
 	}
-
 	j := `{
 	"state": {
 		"build_version": "1.7.2",
@@ -183,8 +185,30 @@ func TestServerStateResponse(t *testing.T) {
 		"validation_quorum": 33
 	}
 }`
+	return s, j
+}
 
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+func TestServerStateResponseSerialize(t *testing.T) {
+	value, payload := serverStateResponseFixture()
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestServerStateResponseJSONDecode(t *testing.T) {
+	want, payload := serverStateResponseFixture()
+	var got server.StateResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestServerStateResponseClientDecode(t *testing.T) {
+	want, payload := serverStateResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got server.StateResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }

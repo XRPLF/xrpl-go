@@ -18,6 +18,7 @@ var NonDelegatableTransactionsMap = map[string]uint8{
 	DelegateSetTx.String():             0,
 	AccountDeleteTx.String():           0,
 	BatchTx.String():                   0,
+	SponsorshipTransferTx.String():     0,
 	VaultCreateTx.String():             0,
 	VaultSetTx.String():                0,
 	VaultDeleteTx.String():             0,

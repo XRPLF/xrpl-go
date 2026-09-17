@@ -131,51 +131,29 @@ func (o *Offer) SetLsfHybrid() {
 
 // UnmarshalJSON unmarshals the offer from a JSON byte slice.
 func (o *Offer) UnmarshalJSON(data []byte) error {
-	type offerHelper struct {
-		Account           types.Address
-		BookDirectory     types.Hash256
-		BookNode          string
-		Expiration        uint32
-		Flags             uint32
-		LedgerEntryType   EntryType
-		OwnerNode         string
-		PreviousTxnID     types.Hash256
-		PreviousTxnLgrSeq uint32
-		Sequence          uint32
-		TakerPays         json.RawMessage
-		TakerGets         json.RawMessage
-		DomainID          string `json:",omitempty"`
-		AdditionalBooks   []Book `json:",omitempty"`
+	type offerFields Offer
+	var decoded struct {
+		offerFields
+		TakerPays json.RawMessage
+		TakerGets json.RawMessage
+		DomainID  string
 	}
-	var h offerHelper
-	if err := json.Unmarshal(data, &h); err != nil {
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
-	*o = Offer{
-		Account:           h.Account,
-		BookDirectory:     h.BookDirectory,
-		BookNode:          h.BookNode,
-		Expiration:        h.Expiration,
-		Flags:             h.Flags,
-		LedgerEntryType:   h.LedgerEntryType,
-		OwnerNode:         h.OwnerNode,
-		PreviousTxnID:     h.PreviousTxnID,
-		PreviousTxnLgrSeq: h.PreviousTxnLgrSeq,
-		Sequence:          h.Sequence,
-		AdditionalBooks:   h.AdditionalBooks,
+	if decoded.DomainID != "" {
+		decoded.offerFields.DomainID = &decoded.DomainID
 	}
-	if h.DomainID != "" {
-		o.DomainID = &h.DomainID
-	}
-	pays, err := types.UnmarshalCurrencyAmount(h.TakerPays)
+	pays, err := types.UnmarshalCurrencyAmount(decoded.TakerPays)
 	if err != nil {
 		return err
 	}
-	gets, err := types.UnmarshalCurrencyAmount(h.TakerGets)
+	gets, err := types.UnmarshalCurrencyAmount(decoded.TakerGets)
 	if err != nil {
 		return err
 	}
-	o.TakerPays = pays
-	o.TakerGets = gets
+	decoded.offerFields.TakerPays = pays
+	decoded.offerFields.TakerGets = gets
+	*o = Offer(decoded.offerFields)
 	return nil
 }

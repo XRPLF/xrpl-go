@@ -1,14 +1,19 @@
-package server
+package server_test
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/server"
 	servertypes "github.com/Peersyst/xrpl-go/xrpl/queries/server/types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
+	"github.com/stretchr/testify/require"
 )
 
-func TestFeeResponse(t *testing.T) {
-	s := FeeResponse{
+func feeResponseFixture() (server.FeeResponse, string) {
+	s := server.FeeResponse{
 		CurrentLedgerSize: "14",
 		CurrentQueueSize:  "0",
 		Drops: servertypes.FeeDrops{
@@ -27,7 +32,6 @@ func TestFeeResponse(t *testing.T) {
 		},
 		MaxQueueSize: "480",
 	}
-
 	j := `{
 	"current_ledger_size": "14",
 	"current_queue_size": "0",
@@ -47,8 +51,30 @@ func TestFeeResponse(t *testing.T) {
 	},
 	"max_queue_size": "480"
 }`
+	return s, j
+}
 
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+func TestFeeResponseSerialize(t *testing.T) {
+	value, payload := feeResponseFixture()
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestFeeResponseJSONDecode(t *testing.T) {
+	want, payload := feeResponseFixture()
+	var got server.FeeResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestFeeResponseClientDecode(t *testing.T) {
+	want, payload := feeResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got server.FeeResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }

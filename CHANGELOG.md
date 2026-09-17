@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values, including in typed account responses. Network use requires the `Sponsor` amendment.
 - Added optional vault accounting version, kind, subscription date, and redemption date fields for `LendingProtocolV1_1`.
 
+#### xrpl/queries
+
+- Added `account_sponsoring` models and RPC/WebSocket client methods. Requires a server supporting this method, identified as Clio-only by XRPL.js.
+- Added the optional `account_objects.sponsored` filter, the sponsorship object type, and `ledger_entry` sponsorship selectors by object ID or sponsor/sponsee pair.
+
 #### xrpl/queries/vault
 
 - Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
@@ -42,12 +47,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
+- Added `InspectSponsorFields` for non-mutating raw sponsorship validation without requiring autofilled fields. Inspection returns the validated typed sponsor signature while preserving field presence.
 - Added common sponsorship fields, fee and reserve flags, and sponsor signature validation, including Batch inner transaction checks. Client validation rejects sponsorship on `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions with `ErrPseudoTransactionSponsorship`. Sponsor multisigner lists require at most 32 signers in strict decoded AccountID order. Requires the `Sponsor` amendment on the target network.
+- Added typed `SponsorshipSet` and `SponsorshipTransfer` transactions with operation flags, signed budget deltas, and validation for counterparty, deletion, reserve sponsorship, and account-level sponsor authorization rules. Requires the `Sponsor` amendment on the target network.
 - Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
 - Added `LedgerStateFixTx`, `SponsorshipSetTx`, and `SponsorshipTransferTx` transaction type constants.
 - Added the Payment `TfSponsorCreatedAccount` flag and setter, with validation for native XRP amounts and incompatible fields and flags. Requires the `Sponsor` amendment on the target network.
 - Added closed-ended VaultCreate fields with investment-period validation and top-level VaultDelete `MemoData` for `LendingProtocolV1_1`.
 - Added `CredentialIDs` to VaultWithdraw and LoanBrokerCoverWithdraw. These fields require `Credentials` and `fixCleanup3_4_0`.
+
+#### xrpl/wallet
+
+- Added non-mutating sponsor signing, sponsor multisign combining, and pre-funded sponsor setup helpers, with map/blob APIs and examples. Co-signing uses the `fixCleanup3_4_0` sponsor prefixes and preserves account signatures. Network sponsorship requires the `Sponsor` amendment.
 
 #### xrpl/websocket
 

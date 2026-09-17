@@ -3,9 +3,12 @@ package nft
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
+
 	nfttypes "github.com/Peersyst/xrpl-go/xrpl/queries/nft/types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -101,32 +104,54 @@ func makePaginationOffers(count int, amount string, flags uint, owner types.Addr
 	return offers
 }
 
-func TestNFTokenBuyOffersResponse(t *testing.T) {
+func nftBuyOffersResponseFixture() (NFTokenBuyOffersResponse, string) {
 	s := NFTokenBuyOffersResponse{
 		NFTokenID: "00090000D0B007439B080E9B05BF62403911301A7B1F0CFAA048C0A200000007",
 		Offers: []nfttypes.NFTokenOffer{
 			{
-				Amount:            types.XRPCurrencyAmount(1500),
-				Flags:             0,
+				Amount:            "1500",
+				Flags:             1,
 				NFTokenOfferIndex: "3212D26DB00031889D4EF7D9129BB0FA673B5B40B1759564486C0F0946BA203F",
 				Owner:             "rsuHaTvJh1bDmDoxX9QcKP7HEBSBt4XsHx",
 			},
 		},
 	}
-
 	j := `{
 	"nft_id": "00090000D0B007439B080E9B05BF62403911301A7B1F0CFAA048C0A200000007",
 	"offers": [
 		{
 			"amount": "1500",
-			"flags": 0,
+			"flags": 1,
 			"nft_offer_index": "3212D26DB00031889D4EF7D9129BB0FA673B5B40B1759564486C0F0946BA203F",
 			"owner": "rsuHaTvJh1bDmDoxX9QcKP7HEBSBt4XsHx"
 		}
 	]
 }`
+	return s, j
+}
 
-	if err := testutil.Serialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+func TestNFTokenBuyOffersResponseSerialize(t *testing.T) {
+	value, payload := nftBuyOffersResponseFixture()
+	value.Offers[0].Amount = types.XRPCurrencyAmount(1500)
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestNFTokenBuyOffersResponseJSONDecode(t *testing.T) {
+	want, payload := nftBuyOffersResponseFixture()
+	var got NFTokenBuyOffersResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestNFTokenBuyOffersResponseClientDecode(t *testing.T) {
+	want, payload := nftBuyOffersResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got NFTokenBuyOffersResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }
