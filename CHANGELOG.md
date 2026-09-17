@@ -109,6 +109,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed JSON decoding to preserve `index` in `Offer` and `NFTokenOffer`.
 - Fixed failed JSON decoding to leave existing `Escrow`, `NFTokenOffer`, `Offer`, and `PriceData` values unchanged.
 
+#### xrpl/rpc
+
+- Fixed AccountDelete autofill to reject outstanding sponsorship obligations with `ErrAccountHasSponsorshipObligations` and a supplied destination that does not identify the account's sponsor with `ErrAccountDeleteSponsorMismatch`.
+
 #### xrpl/transaction
 
 - Fixed failed JSON decoding to leave an existing `EscrowCreate` value unchanged.
@@ -120,6 +124,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction/types
 
 - Fixed `CredentialIDs.IsValid()` to require one to eight distinct, nonzero 256-bit hexadecimal IDs across all transaction and confidential builder callers. This tightens validation of previously accepted lists. Zero IDs are rejected offline without checking `fixCleanup3_4_0` activation.
+
+#### xrpl/websocket
+
+- Fixed AccountDelete autofill to reject outstanding sponsorship obligations with `ErrAccountHasSponsorshipObligations` and a supplied destination that does not identify the account's sponsor with `ErrAccountDeleteSponsorMismatch`.
 
 ## [v0.3.1-mpt.0]
 

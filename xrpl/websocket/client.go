@@ -382,7 +382,8 @@ func (c *Client) autofill(ctx context.Context, tx *transaction.FlatTransaction, 
 		if !ok {
 			return ErrMissingAccountInTransaction
 		}
-		if err := c.checkAccountDeleteBlockers(ctx, types.Address(accountAddress)); err != nil {
+		destination, _ := typecheck.ToString((*tx)["Destination"])
+		if err := c.checkAccountDeleteBlockers(ctx, types.Address(accountAddress), destination); err != nil {
 			return err
 		}
 	}
@@ -847,22 +848,8 @@ func (c *Client) setLastLedgerSequence(ctx context.Context, tx *transaction.Flat
 	return nil
 }
 
-// Checks for any blockers that prevent the deletion of an account.
-// Returns nil if there are no blockers, otherwise returns an error.
-func (c *Client) checkAccountDeleteBlockers(ctx context.Context, address types.Address) error {
-	var accObjects account.ObjectsResponse
-	if err := c.requestResult(ctx, &account.ObjectsRequest{
-		Account:              address,
-		LedgerIndex:          common.LedgerTitle("validated"),
-		DeletionBlockersOnly: true,
-	}, &accObjects); err != nil {
-		return err
-	}
-
-	if len(accObjects.AccountObjects) > 0 {
-		return ErrAccountCannotBeDeleted
-	}
-	return nil
+func (c *Client) checkAccountDeleteBlockers(ctx context.Context, address types.Address, destination string) error {
+	return clientinternal.CheckAccountDeleteBlockers(ctx, c.requestResultFunc(), address, destination)
 }
 
 func (c *Client) checkPaymentAmounts(tx *transaction.FlatTransaction) error {

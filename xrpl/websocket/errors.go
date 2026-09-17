@@ -183,8 +183,12 @@ var (
 
 	// account
 
-	// ErrAccountCannotBeDeleted is returned when an account cannot be deleted due to associated objects.
-	ErrAccountCannotBeDeleted = errors.New("account cannot be deleted; there are Escrows, PayChannels, RippleStates, or Checks associated with the account")
+	// ErrAccountCannotBeDeleted is returned when associated objects prevent account deletion.
+	ErrAccountCannotBeDeleted = clientinternal.ErrAccountCannotBeDeleted
+	// ErrAccountHasSponsorshipObligations is returned when SponsoringOwnerCount or SponsoringAccountCount is present.
+	ErrAccountHasSponsorshipObligations = clientinternal.ErrAccountHasSponsorshipObligations
+	// ErrAccountDeleteSponsorMismatch is returned when the account's Sponsor does not match the supplied AccountDelete Destination.
+	ErrAccountDeleteSponsorMismatch = clientinternal.ErrAccountDeleteSponsorMismatch
 
 	// payment
 

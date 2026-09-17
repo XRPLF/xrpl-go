@@ -1085,6 +1085,12 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 						"validated":       true,
 					},
 				},
+				{
+					"id": 2,
+					"result": map[string]any{
+						"account_data": map[string]any{"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"},
+					},
+				},
 			},
 			expectedErr: nil,
 		},
@@ -1107,7 +1113,7 @@ func TestClient_checkAccountDeleteBlockers(t *testing.T) {
 			}
 			defer cl.Disconnect()
 
-			err := cl.checkAccountDeleteBlockers(context.Background(), tt.address)
+			err := cl.checkAccountDeleteBlockers(context.Background(), tt.address, "")
 
 			if tt.expectedErr != nil {
 				if err == nil || err.Error() != tt.expectedErr.Error() {

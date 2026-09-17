@@ -25,6 +25,15 @@ var (
 	// an X-address with an embedded tag.
 	ErrAccountIDTagNotAllowed = binarycodectypes.ErrAccountIDTagNotAllowed
 
+	// account
+
+	// ErrAccountCannotBeDeleted is returned when associated objects prevent account deletion.
+	ErrAccountCannotBeDeleted = errors.New("account cannot be deleted; there are Escrows, PayChannels, RippleStates, or Checks associated with the account")
+	// ErrAccountHasSponsorshipObligations is returned when SponsoringOwnerCount or SponsoringAccountCount is present.
+	ErrAccountHasSponsorshipObligations = errors.New("account cannot be deleted: outstanding sponsorship obligations (SponsoringOwnerCount/SponsoringAccountCount)")
+	// ErrAccountDeleteSponsorMismatch is returned when the account's Sponsor does not match the supplied AccountDelete Destination.
+	ErrAccountDeleteSponsorMismatch = errors.New("account cannot be deleted: Sponsor does not match the AccountDelete Destination")
+
 	// network
 
 	// ErrNetworkIDUnavailable indicates that a client cannot safely determine
