@@ -1,3 +1,5 @@
+github.com/Peersyst/xrpl-go v0.3.1 h1:Y2mexgAo1UtTofQk2ZmvbSvRyo/JcMQbh774g3iyvyU=
+github.com/Peersyst/xrpl-go v0.3.1/go.mod h1:NrV3RYaN1TA0/E6VPEMKioKLbnojg0hsvhB86CgnqR0=
 github.com/bsv-blockchain/go-sdk v1.2.9 h1:LwFzuts+J5X7A+ECx0LNowtUgIahCkNNlXckdiEMSDk=
 github.com/bsv-blockchain/go-sdk v1.2.9/go.mod h1:KiHWa/hblo3Bzr+IsX11v0sn1E6elGbNX0VXl5mOq6E=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
