@@ -1,14 +1,19 @@
-package account
+package account_test
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGatewayBalancesRequest(t *testing.T) {
-	s := GatewayBalancesRequest{
+	s := account.GatewayBalancesRequest{
 		Account:     "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		Strict:      true,
 		HotWallet:   []string{"rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu"},
@@ -30,14 +35,15 @@ func TestGatewayBalancesRequest(t *testing.T) {
 	}
 }
 
-func TestGatewayBalancesResponse(t *testing.T) {
-	s := GatewayBalancesResponse{
+func gatewayBalancesResponseFixture() (account.GatewayBalancesResponse, string) {
+	s := account.GatewayBalancesResponse{
 		Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		Obligations: map[string]string{
 			"USD": "100",
 			"EUR": "200",
 		},
-		Balances: map[string][]GatewayBalance{
+		Balances: map[string][]account.GatewayBalance{
+			"ra7JkEzrgeKHdzKgo4EUUVBnxggY4z37kt": {{Currency: "USD", Value: "12345.9"}},
 			"rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu": {
 				{
 					Currency: "USD",
@@ -49,11 +55,11 @@ func TestGatewayBalancesResponse(t *testing.T) {
 				},
 			},
 		},
-		Assets: map[string][]GatewayBalance{
+		Assets: map[string][]account.GatewayBalance{
 			"rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu": {
 				{
 					Currency: "USD",
-					Value:    "25",
+					Value:    "5444166510000000e-26",
 				},
 			},
 		},
@@ -61,7 +67,6 @@ func TestGatewayBalancesResponse(t *testing.T) {
 		LedgerCurrentIndex: 54321,
 		LedgerIndex:        12345,
 	}
-
 	j := `{
 	"account": "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 	"obligations": {
@@ -78,13 +83,19 @@ func TestGatewayBalancesResponse(t *testing.T) {
 				"currency": "EUR",
 				"value": "100"
 			}
+		],
+		"ra7JkEzrgeKHdzKgo4EUUVBnxggY4z37kt": [
+			{
+				"currency": "USD",
+				"value": "12345.9"
+			}
 		]
 	},
 	"assets": {
 		"rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu": [
 			{
 				"currency": "USD",
-				"value": "25"
+				"value": "5444166510000000e-26"
 			}
 		]
 	},
@@ -92,7 +103,30 @@ func TestGatewayBalancesResponse(t *testing.T) {
 	"ledger_current_index": 54321,
 	"ledger_index": 12345
 }`
-	if err := testutil.Serialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+	return s, j
+}
+
+func TestGatewayBalancesResponseSerialize(t *testing.T) {
+	value, payload := gatewayBalancesResponseFixture()
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestGatewayBalancesResponseJSONDecode(t *testing.T) {
+	want, payload := gatewayBalancesResponseFixture()
+	var got account.GatewayBalancesResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestGatewayBalancesResponseClientDecode(t *testing.T) {
+	want, payload := gatewayBalancesResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got account.GatewayBalancesResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }

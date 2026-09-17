@@ -2,9 +2,12 @@ package vault
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
@@ -175,11 +178,10 @@ func TestVaultInfoResponse_LedgerMetadata(t *testing.T) {
 	}
 }
 
-func TestVaultInfoResponse(t *testing.T) {
+func vaultInfoResponseFixture() (Response, string) {
 	withdrawalPolicy := types.VaultWithdrawalPolicy(0)
 	flags := uint32(0)
 	ledgerIndex := uint32(1234)
-
 	s := Response{
 		Vault: Vault{
 			Account: "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
@@ -221,7 +223,6 @@ func TestVaultInfoResponse(t *testing.T) {
 		LedgerIndex: &ledgerIndex,
 		Validated:   true,
 	}
-
 	j := `{
 	"vault": {
 		"Account": "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
@@ -263,10 +264,32 @@ func TestVaultInfoResponse(t *testing.T) {
 	"ledger_index": 1234,
 	"validated": true
 }`
-	// Exercise the response contract, not a specific on-chain combination of share fields.
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+	return s, j
+}
+
+func TestVaultInfoResponseSerialize(t *testing.T) {
+	value, payload := vaultInfoResponseFixture()
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestVaultInfoResponseJSONDecode(t *testing.T) {
+	want, payload := vaultInfoResponseFixture()
+	var got Response
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestVaultInfoResponseClientDecode(t *testing.T) {
+	want, payload := vaultInfoResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got Response
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }
 
 func TestSharesOptionalFields(t *testing.T) {

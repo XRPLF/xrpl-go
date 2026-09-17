@@ -27,6 +27,7 @@ const (
 	PaymentChannelObject     ObjectType = "payment_channel"
 	PermissionedDomainObject ObjectType = "permissioned_domain"
 	SignerListObject         ObjectType = "signer_list"
+	SponsorshipObject        ObjectType = "sponsorship"
 	StateObject              ObjectType = "state"
 	TicketObject             ObjectType = "ticket"
 	VaultObject              ObjectType = "vault"
@@ -40,8 +41,10 @@ const (
 // For a higher-level view of trust lines and balances, see account_lines.
 type ObjectsRequest struct {
 	common.BaseRequest
-	Account              types.Address          `json:"account"`
-	Type                 ObjectType             `json:"type,omitempty"`
+	Account types.Address `json:"account"`
+	Type    ObjectType    `json:"type,omitempty"`
+	// Sponsored filters sponsored (true) or unsponsored (false) objects. Nil includes both.
+	Sponsored            *bool                  `json:"sponsored,omitempty"`
 	DeletionBlockersOnly bool                   `json:"deletion_blockers_only,omitempty"`
 	LedgerHash           common.LedgerHash      `json:"ledger_hash,omitempty"`
 	LedgerIndex          common.LedgerSpecifier `json:"ledger_index,omitempty"`

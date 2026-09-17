@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/queries
 
 - Added the `sponsorship` selector to `EntryRequest`, accepting a ledger-entry index or a `SponsorshipSelectorFields` object with a sponsor and a sponsee.
+- Added `account_sponsoring` models and RPC/WebSocket client methods. Requires a server supporting this method, identified as Clio-only by XRPL.js.
+- Added the optional `account_objects.sponsored` filter, the sponsorship object type, and `ledger_entry` sponsorship selectors by object ID or sponsor/sponsee pair.
 
 #### xrpl/queries/vault
 

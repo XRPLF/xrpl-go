@@ -1,11 +1,14 @@
-package ledger
+package ledger_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	ledgerentry "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
+	ledgerquery "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
@@ -18,13 +21,13 @@ const (
 	mptID      = "05EECEBE97A7D635DE2393068691A015FED5A89AD203F5AA"
 )
 
-func objectSelector[T any](object T) EntrySelector[T] {
-	return EntrySelector[T]{Object: &object}
+func objectSelector[T any](object T) ledgerquery.EntrySelector[T] {
+	return ledgerquery.EntrySelector[T]{Object: &object}
 }
 
 func TestEntryRequestSelectors(t *testing.T) {
 	subIndex := uint64(0)
-	bridge := BridgeSelector{
+	bridge := ledgerquery.BridgeSelector{
 		IssuingChainDoor:  accountA,
 		IssuingChainIssue: ledgerentry.Asset{Currency: "XRP"},
 		LockingChainDoor:  accountB,
@@ -33,12 +36,12 @@ func TestEntryRequestSelectors(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		request  EntryRequest
+		request  ledgerquery.EntryRequest
 		expected string
 	}{
 		{
 			name: "raw index with include deleted",
-			request: EntryRequest{
+			request: ledgerquery.EntryRequest{
 				Index:          entryIndex,
 				LedgerIndex:    common.Validated,
 				IncludeDeleted: true,
@@ -47,12 +50,12 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "account root",
-			request:  EntryRequest{AccountRoot: accountA},
+			request:  ledgerquery.EntryRequest{AccountRoot: accountA},
 			expected: `{"account_root":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn"}`,
 		},
 		{
 			name: "amm object",
-			request: EntryRequest{AMM: objectSelector(AMMSelectorFields{
+			request: ledgerquery.EntryRequest{AMM: objectSelector(ledgerquery.AMMSelectorFields{
 				Asset:  ledgerentry.Asset{Currency: "XRP"},
 				Asset2: ledgerentry.Asset{Currency: "TST", Issuer: accountC},
 			})},
@@ -60,12 +63,12 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "amm index",
-			request:  EntryRequest{AMM: AMMSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{AMM: ledgerquery.AMMSelector{Index: entryIndex}},
 			expected: `{"amm":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name: "bridge",
-			request: EntryRequest{
+			request: ledgerquery.EntryRequest{
 				BridgeAccount: accountB,
 				Bridge:        bridge,
 			},
@@ -73,12 +76,12 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "check",
-			request:  EntryRequest{Check: entryIndex},
+			request:  ledgerquery.EntryRequest{Check: entryIndex},
 			expected: `{"check":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name: "credential object",
-			request: EntryRequest{Credential: objectSelector(CredentialSelectorFields{
+			request: ledgerquery.EntryRequest{Credential: objectSelector(ledgerquery.CredentialSelectorFields{
 				Subject:        accountA,
 				Issuer:         accountB,
 				CredentialType: types.CredentialType("746573742D63726564656E7469616C"),
@@ -87,12 +90,12 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "credential index",
-			request:  EntryRequest{Credential: CredentialSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{Credential: ledgerquery.CredentialSelector{Index: entryIndex}},
 			expected: `{"credential":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name: "delegate object",
-			request: EntryRequest{Delegate: objectSelector(DelegateSelectorFields{
+			request: ledgerquery.EntryRequest{Delegate: objectSelector(ledgerquery.DelegateSelectorFields{
 				Account:   accountA,
 				Authorize: accountB,
 			})},
@@ -100,12 +103,12 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "delegate index",
-			request:  EntryRequest{Delegate: DelegateSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{Delegate: ledgerquery.DelegateSelector{Index: entryIndex}},
 			expected: `{"delegate":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name: "deposit preauth account object",
-			request: EntryRequest{DepositPreauth: objectSelector(DepositPreauthSelectorFields{
+			request: ledgerquery.EntryRequest{DepositPreauth: objectSelector(ledgerquery.DepositPreauthSelectorFields{
 				Owner:      accountA,
 				Authorized: accountB,
 			})},
@@ -113,9 +116,9 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name: "deposit preauth credentials object",
-			request: EntryRequest{DepositPreauth: objectSelector(DepositPreauthSelectorFields{
+			request: ledgerquery.EntryRequest{DepositPreauth: objectSelector(ledgerquery.DepositPreauthSelectorFields{
 				Owner: accountA,
-				AuthorizedCredentials: []DepositPreauthCredential{{
+				AuthorizedCredentials: []ledgerquery.DepositPreauthCredential{{
 					Issuer:         accountB,
 					CredentialType: types.CredentialType("4B5943"),
 				}},
@@ -124,17 +127,17 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "deposit preauth index",
-			request:  EntryRequest{DepositPreauth: DepositPreauthSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{DepositPreauth: ledgerquery.DepositPreauthSelector{Index: entryIndex}},
 			expected: `{"deposit_preauth":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name:     "did",
-			request:  EntryRequest{DID: accountA},
+			request:  ledgerquery.EntryRequest{DID: accountA},
 			expected: `{"did":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn"}`,
 		},
 		{
 			name: "directory owner object",
-			request: EntryRequest{Directory: objectSelector(DirectorySelectorFields{
+			request: ledgerquery.EntryRequest{Directory: objectSelector(ledgerquery.DirectorySelectorFields{
 				Owner:    accountA,
 				SubIndex: &subIndex,
 			})},
@@ -142,7 +145,7 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name: "directory root object",
-			request: EntryRequest{Directory: objectSelector(DirectorySelectorFields{
+			request: ledgerquery.EntryRequest{Directory: objectSelector(ledgerquery.DirectorySelectorFields{
 				DirRoot:  entryIndex,
 				SubIndex: &subIndex,
 			})},
@@ -150,12 +153,12 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "directory index",
-			request:  EntryRequest{Directory: DirectorySelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{Directory: ledgerquery.DirectorySelector{Index: entryIndex}},
 			expected: `{"directory":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name: "escrow object",
-			request: EntryRequest{Escrow: objectSelector(EscrowSelectorFields{
+			request: ledgerquery.EntryRequest{Escrow: objectSelector(ledgerquery.EscrowSelectorFields{
 				Owner: accountA,
 				Seq:   126,
 			})},
@@ -163,17 +166,17 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "escrow index",
-			request:  EntryRequest{Escrow: EscrowSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{Escrow: ledgerquery.EscrowSelector{Index: entryIndex}},
 			expected: `{"escrow":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name:     "mpt issuance",
-			request:  EntryRequest{MPTIssuance: types.MPTIssuanceID(mptID)},
+			request:  ledgerquery.EntryRequest{MPTIssuance: types.MPTIssuanceID(mptID)},
 			expected: `{"mpt_issuance":"05EECEBE97A7D635DE2393068691A015FED5A89AD203F5AA"}`,
 		},
 		{
 			name: "mptoken object",
-			request: EntryRequest{MPToken: objectSelector(MPTokenSelectorFields{
+			request: ledgerquery.EntryRequest{MPToken: objectSelector(ledgerquery.MPTokenSelectorFields{
 				MPTIssuanceID: types.MPTIssuanceID(mptID),
 				Account:       accountA,
 			})},
@@ -181,17 +184,17 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "mptoken index",
-			request:  EntryRequest{MPToken: MPTokenSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{MPToken: ledgerquery.MPTokenSelector{Index: entryIndex}},
 			expected: `{"mptoken":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name:     "nft page",
-			request:  EntryRequest{NFTPage: entryIndex},
+			request:  ledgerquery.EntryRequest{NFTPage: entryIndex},
 			expected: `{"nft_page":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name: "offer object",
-			request: EntryRequest{Offer: objectSelector(OfferSelectorFields{
+			request: ledgerquery.EntryRequest{Offer: objectSelector(ledgerquery.OfferSelectorFields{
 				Account: accountA,
 				Seq:     359,
 			})},
@@ -199,38 +202,25 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "offer index",
-			request:  EntryRequest{Offer: OfferSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{Offer: ledgerquery.OfferSelector{Index: entryIndex}},
 			expected: `{"offer":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name:     "payment channel",
-			request:  EntryRequest{PaymentChannel: entryIndex},
+			request:  ledgerquery.EntryRequest{PaymentChannel: entryIndex},
 			expected: `{"payment_channel":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name: "ripple state",
-			request: EntryRequest{RippleState: RippleStateSelector{
+			request: ledgerquery.EntryRequest{RippleState: ledgerquery.RippleStateSelector{
 				Accounts: [2]types.Address{accountA, accountB},
 				Currency: "USD",
 			}},
 			expected: `{"ripple_state":{"accounts":["rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW"],"currency":"USD"}}`,
 		},
 		{
-			name: "sponsorship object",
-			request: EntryRequest{Sponsorship: objectSelector(SponsorshipSelectorFields{
-				Sponsor: accountA,
-				Sponsee: accountB,
-			})},
-			expected: `{"sponsorship":{"sponsor":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","sponsee":"rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW"}}`,
-		},
-		{
-			name:     "sponsorship index",
-			request:  EntryRequest{Sponsorship: SponsorshipSelector{Index: entryIndex}},
-			expected: `{"sponsorship":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
-		},
-		{
 			name: "ticket object",
-			request: EntryRequest{Ticket: objectSelector(TicketSelectorFields{
+			request: ledgerquery.EntryRequest{Ticket: objectSelector(ledgerquery.TicketSelectorFields{
 				Account:   accountA,
 				TicketSeq: 389,
 			})},
@@ -238,12 +228,12 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "ticket index",
-			request:  EntryRequest{Ticket: TicketSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{Ticket: ledgerquery.TicketSelector{Index: entryIndex}},
 			expected: `{"ticket":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name: "xchain owned claim id object",
-			request: EntryRequest{XChainOwnedClaimID: objectSelector(XChainOwnedClaimIDSelectorFields{
+			request: ledgerquery.EntryRequest{XChainOwnedClaimID: objectSelector(ledgerquery.XChainOwnedClaimIDSelectorFields{
 				BridgeSelector:     bridge,
 				XChainOwnedClaimID: 1,
 			})},
@@ -251,20 +241,40 @@ func TestEntryRequestSelectors(t *testing.T) {
 		},
 		{
 			name:     "xchain owned claim id index",
-			request:  EntryRequest{XChainOwnedClaimID: XChainOwnedClaimIDSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{XChainOwnedClaimID: ledgerquery.XChainOwnedClaimIDSelector{Index: entryIndex}},
 			expected: `{"xchain_owned_claim_id":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
 			name: "xchain owned create account claim id object",
-			request: EntryRequest{XChainOwnedCreateAccountClaimID: objectSelector(XChainOwnedCreateAccountClaimIDSelectorFields{
+			request: ledgerquery.EntryRequest{XChainOwnedCreateAccountClaimID: objectSelector(ledgerquery.XChainOwnedCreateAccountClaimIDSelectorFields{
 				BridgeSelector:                  bridge,
 				XChainOwnedCreateAccountClaimID: 1,
 			})},
 			expected: `{"xchain_owned_create_account_claim_id":{"IssuingChainDoor":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","IssuingChainIssue":{"currency":"XRP"},"LockingChainDoor":"rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW","LockingChainIssue":{"currency":"USD","issuer":"rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd"},"xchain_owned_create_account_claim_id":1}}`,
 		},
 		{
+			name:     "sponsorship index",
+			request:  ledgerquery.EntryRequest{Sponsorship: ledgerquery.SponsorshipSelector{Index: entryIndex}},
+			expected: `{"sponsorship":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
+		},
+		{
+			name:     "sponsorship pair",
+			request:  ledgerquery.EntryRequest{Sponsorship: objectSelector(ledgerquery.SponsorshipSelectorFields{Sponsor: accountA, Sponsee: accountB})},
+			expected: `{"sponsorship":{"sponsor":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","sponsee":"rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW"}}`,
+		},
+		{
+			name:     "sponsorship incomplete pair leaves semantics to server",
+			request:  ledgerquery.EntryRequest{Sponsorship: objectSelector(ledgerquery.SponsorshipSelectorFields{Sponsor: accountA})},
+			expected: `{"sponsorship":{"sponsor":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","sponsee":""}}`,
+		},
+		{
+			name:     "sponsorship malformed ID leaves semantics to server",
+			request:  ledgerquery.EntryRequest{Sponsorship: ledgerquery.SponsorshipSelector{Index: "invalid"}},
+			expected: `{"sponsorship":"invalid"}`,
+		},
+		{
 			name:     "xchain owned create account claim id index",
-			request:  EntryRequest{XChainOwnedCreateAccountClaimID: XChainOwnedCreateAccountClaimIDSelector{Index: entryIndex}},
+			request:  ledgerquery.EntryRequest{XChainOwnedCreateAccountClaimID: ledgerquery.XChainOwnedCreateAccountClaimIDSelector{Index: entryIndex}},
 			expected: `{"xchain_owned_create_account_claim_id":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 	}
@@ -280,11 +290,11 @@ func TestEntryRequestSelectors(t *testing.T) {
 }
 
 func TestEntryRequestValidate(t *testing.T) {
-	ammObject := AMMSelectorFields{
+	ammObject := ledgerquery.AMMSelectorFields{
 		Asset:  ledgerentry.Asset{Currency: "XRP"},
 		Asset2: ledgerentry.Asset{Currency: "USD", Issuer: accountC},
 	}
-	bridge := BridgeSelector{
+	bridge := ledgerquery.BridgeSelector{
 		IssuingChainDoor:  accountA,
 		IssuingChainIssue: ledgerentry.Asset{Currency: "XRP"},
 		LockingChainDoor:  accountB,
@@ -293,40 +303,34 @@ func TestEntryRequestValidate(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		request  EntryRequest
+		request  ledgerquery.EntryRequest
 		expected error
 	}{
-		{name: "zero selectors", request: EntryRequest{}, expected: ErrInvalidEntryRequest},
+		{name: "zero selectors", request: ledgerquery.EntryRequest{}, expected: ledgerquery.ErrInvalidEntryRequest},
+		{name: "sponsorship conflicts with index", request: ledgerquery.EntryRequest{Index: entryIndex, Sponsorship: ledgerquery.SponsorshipSelector{Index: entryIndex}}, expected: ledgerquery.ErrInvalidEntryRequest},
+		{name: "sponsorship has both forms", request: ledgerquery.EntryRequest{Sponsorship: ledgerquery.SponsorshipSelector{Index: entryIndex, Object: &ledgerquery.SponsorshipSelectorFields{Sponsor: accountA, Sponsee: accountB}}}, expected: ledgerquery.ErrInvalidEntrySelector},
 		{
 			name:     "multiple selectors",
-			request:  EntryRequest{Index: entryIndex, Check: entryIndex},
-			expected: ErrInvalidEntryRequest,
+			request:  ledgerquery.EntryRequest{Index: entryIndex, Check: entryIndex},
+			expected: ledgerquery.ErrInvalidEntryRequest,
 		},
 		{
 			name:     "bridge without bridge account",
-			request:  EntryRequest{Bridge: bridge},
-			expected: ErrInvalidBridgeSelector,
+			request:  ledgerquery.EntryRequest{Bridge: bridge},
+			expected: ledgerquery.ErrInvalidBridgeSelector,
 		},
 		{
 			name:     "unpaired bridge account on another selector",
-			request:  EntryRequest{Index: entryIndex, BridgeAccount: accountA},
-			expected: ErrInvalidBridgeSelector,
-		},
-		{
-			name: "sponsorship selector with index and object",
-			request: EntryRequest{Sponsorship: SponsorshipSelector{
-				Index:  entryIndex,
-				Object: &SponsorshipSelectorFields{Sponsor: accountA, Sponsee: accountB},
-			}},
-			expected: ErrInvalidEntrySelector,
+			request:  ledgerquery.EntryRequest{Index: entryIndex, BridgeAccount: accountA},
+			expected: ledgerquery.ErrInvalidBridgeSelector,
 		},
 		{
 			name: "selector with index and object",
-			request: EntryRequest{AMM: AMMSelector{
+			request: ledgerquery.EntryRequest{AMM: ledgerquery.AMMSelector{
 				Index:  entryIndex,
 				Object: &ammObject,
 			}},
-			expected: ErrInvalidEntrySelector,
+			expected: ledgerquery.ErrInvalidEntrySelector,
 		},
 	}
 
@@ -337,23 +341,17 @@ func TestEntryRequestValidate(t *testing.T) {
 	}
 }
 
-func TestEntryResponseVariants(t *testing.T) {
-	tests := []struct {
-		name     string
-		fixture  string
-		expected EntryResponse
-	}{
+type entryResponseVariantsFixture struct {
+	name string
+	want ledgerquery.EntryResponse
+	json string
+}
+
+func entryResponseVariantsFixtures() []entryResponseVariantsFixture {
+	return []entryResponseVariantsFixture{
 		{
 			name: "json node",
-			fixture: `{
-				"index":"13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
-				"ledger_hash":"31850E8E48E76D1064651DF39DF4E9542E8C90A9A9B629F4DE339EB3FA74F726",
-				"ledger_index":61966146,
-				"node":{"Account":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","Balance":"424021949","LedgerEntryType":"AccountRoot"},
-				"deleted_ledger_index":61966150,
-				"validated":true
-			}`,
-			expected: EntryResponse{
+			want: ledgerquery.EntryResponse{
 				Index:       "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
 				LedgerHash:  "31850E8E48E76D1064651DF39DF4E9542E8C90A9A9B629F4DE339EB3FA74F726",
 				LedgerIndex: 61966146,
@@ -365,29 +363,65 @@ func TestEntryResponseVariants(t *testing.T) {
 				DeletedLedgerIndex: 61966150,
 				Validated:          true,
 			},
+			json: `{
+				"index":"13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
+				"ledger_hash":"31850E8E48E76D1064651DF39DF4E9542E8C90A9A9B629F4DE339EB3FA74F726",
+				"ledger_index":61966146,
+				"node":{"Account":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","Balance":"424021949","LedgerEntryType":"AccountRoot"},
+				"deleted_ledger_index":61966150,
+				"validated":true
+			}`,
 		},
 		{
 			name: "binary node",
-			fixture: `{
-				"index":"13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
-				"ledger_index":61966146,
-				"node_binary":"1100612200000000",
-				"validated":true
-			}`,
-			expected: EntryResponse{
+			want: ledgerquery.EntryResponse{
 				Index:       "13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
 				LedgerIndex: 61966146,
 				NodeBinary:  "1100612200000000",
 				Validated:   true,
 			},
+			json: `{
+				"index":"13F1A95D7AAB7108D5CE7EEAF504B2894B8C674E6D68499076441C4837282BF8",
+				"ledger_index":61966146,
+				"node_binary":"1100612200000000",
+				"validated":true
+			}`,
 		},
 	}
+}
 
-	for _, tt := range tests {
+func TestEntryResponseVariantsSerialize(t *testing.T) {
+	for _, tt := range entryResponseVariantsFixtures() {
 		t.Run(tt.name, func(t *testing.T) {
-			var response EntryResponse
-			require.NoError(t, json.Unmarshal([]byte(tt.fixture), &response))
-			require.Equal(t, tt.expected, response)
+			encoded, err := json.Marshal(tt.want)
+			require.NoError(t, err)
+			require.JSONEq(t, tt.json, string(encoded))
+		})
+	}
+}
+
+func TestEntryResponseVariantsJSONDecode(t *testing.T) {
+	for _, tt := range entryResponseVariantsFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			var got ledgerquery.EntryResponse
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			require.NoError(t, decoder.Decode(&got))
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestEntryResponseVariantsClientDecode(t *testing.T) {
+	for _, tt := range entryResponseVariantsFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			var data map[string]any
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			require.NoError(t, decoder.Decode(&data))
+			var got ledgerquery.EntryResponse
+			require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -405,9 +439,9 @@ func TestEntryResponseRejectsInvalidVariants(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var response EntryResponse
+			var response ledgerquery.EntryResponse
 			err := json.Unmarshal([]byte(tt.fixture), &response)
-			require.ErrorIs(t, err, ErrInvalidEntryResponse)
+			require.ErrorIs(t, err, ledgerquery.ErrInvalidEntryResponse)
 		})
 	}
 }

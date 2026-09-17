@@ -120,7 +120,6 @@ type AccountRoot struct {
 	// The sequence number of the next valid transaction for this account.
 	Sequence uint32
 	// The number of owned objects whose reserves are paid by other accounts.
-	// Nil means the field is absent, while a pointer to zero preserves an explicit zero.
 	SponsoredOwnerCount *uint32 `json:",omitempty"`
 	// The number of objects whose reserves this account pays for other accounts.
 	SponsoringOwnerCount *uint32 `json:",omitempty"`

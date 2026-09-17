@@ -150,7 +150,7 @@ type SponsorshipSelectorFields struct {
 	Sponsee types.Address `json:"sponsee"`
 }
 
-// SponsorshipSelector is the string-or-object selector accepted by the sponsorship field.
+// SponsorshipSelector accepts an entry ID or a sponsor/sponsee pair.
 type SponsorshipSelector = EntrySelector[SponsorshipSelectorFields]
 
 // TicketSelectorFields identifies a Ticket by account and ticket sequence.

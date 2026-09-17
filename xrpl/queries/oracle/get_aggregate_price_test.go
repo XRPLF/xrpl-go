@@ -1,10 +1,15 @@
 package oracle
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
+
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 
 	"github.com/Peersyst/xrpl-go/xrpl/queries/oracle/types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetAggregatePriceRequest(t *testing.T) {
@@ -38,7 +43,7 @@ func TestGetAggregatePriceRequest(t *testing.T) {
 	}
 }
 
-func TestGetAggregatePriceResponse(t *testing.T) {
+func getAggregatePriceResponseFixture() (GetAggregatePriceResponse, string) {
 	s := GetAggregatePriceResponse{
 		EntireSet: types.Set{
 			Mean:              "0.5123",
@@ -55,7 +60,6 @@ func TestGetAggregatePriceResponse(t *testing.T) {
 		LedgerCurrentIndex: 54321,
 		Validated:          true,
 	}
-
 	j := `{
 	"entire_set": {
 		"mean": "0.5123",
@@ -72,7 +76,30 @@ func TestGetAggregatePriceResponse(t *testing.T) {
 	"ledger_current_index": 54321,
 	"validated": true
 }`
-	if err := testutil.Serialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+	return s, j
+}
+
+func TestGetAggregatePriceResponseSerialize(t *testing.T) {
+	value, payload := getAggregatePriceResponseFixture()
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestGetAggregatePriceResponseJSONDecode(t *testing.T) {
+	want, payload := getAggregatePriceResponseFixture()
+	var got GetAggregatePriceResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestGetAggregatePriceResponseClientDecode(t *testing.T) {
+	want, payload := getAggregatePriceResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got GetAggregatePriceResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }
