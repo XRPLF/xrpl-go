@@ -385,7 +385,7 @@ func TestEscrowCreateUnmarshalErrors(t *testing.T) {
 		name, fixture string
 	}{
 		{"invalid Amount", `{"Sequence":99,"Amount":"bad"}`},
-		{"ordinary field error", `{"Sequence":"bad","Amount":"20"}`},
+		{"ordinary field error after valid Account", `{"Account":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","Sequence":"bad","Amount":"20"}`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

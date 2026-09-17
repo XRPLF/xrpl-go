@@ -59,7 +59,7 @@ func TestOfferUnmarshalErrors(t *testing.T) {
 	}{
 		{"invalid TakerPays", `{"Sequence":99,"TakerPays":"bad","TakerGets":"20"}`},
 		{"invalid TakerGets after valid TakerPays", `{"Sequence":99,"TakerPays":"20","TakerGets":"bad"}`},
-		{"ordinary field error", `{"Sequence":"bad","TakerPays":"20","TakerGets":"30"}`},
+		{"ordinary field error after valid Account", `{"Account":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","Sequence":"bad","TakerPays":"20","TakerGets":"30"}`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

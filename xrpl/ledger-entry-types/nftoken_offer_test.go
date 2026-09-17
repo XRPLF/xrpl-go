@@ -46,7 +46,7 @@ func TestNFTokenOfferUnmarshalErrors(t *testing.T) {
 		name, fixture string
 	}{
 		{"invalid Amount", `{"Flags":99,"Amount":"bad"}`},
-		{"ordinary field error", `{"Flags":"bad","Amount":"20"}`},
+		{"ordinary field error after valid Owner", `{"Owner":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","Flags":"bad","Amount":"20"}`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
