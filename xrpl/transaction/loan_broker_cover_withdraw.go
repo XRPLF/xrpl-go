@@ -97,7 +97,7 @@ func (tx *LoanBrokerCoverWithdraw) Validate() (bool, error) {
 		}
 	}
 
-	if tx.CredentialIDs != nil && !tx.CredentialIDs.IsValidForWithdrawal() {
+	if tx.CredentialIDs != nil && !tx.CredentialIDs.IsValid() {
 		return false, ErrInvalidCredentialIDs
 	}
 

@@ -77,8 +77,8 @@ var (
 	ErrDuplicateXAddressTag = bctypes.ErrDuplicateXAddressTag
 	// ErrInvalidCheckID is returned when the CheckID is not a valid 64-character hexadecimal string.
 	ErrInvalidCheckID = errors.New("invalid CheckID, must be a valid 64-character hexadecimal string")
-	// ErrInvalidCredentialIDs is returned when the CredentialIDs field is empty or not a valid hexadecimal string array.
-	ErrInvalidCredentialIDs = errors.New("invalid credential IDs, must be a valid hexadecimal string array")
+	// ErrInvalidCredentialIDs is returned when CredentialIDs does not contain one to eight distinct, nonzero 256-bit hexadecimal IDs.
+	ErrInvalidCredentialIDs = errors.New("invalid credential IDs: must contain 1 to 8 distinct, nonzero 256-bit hexadecimal IDs")
 	// ErrInvalidDestination is returned when the Destination field does not meet XRPL address standards.
 	ErrInvalidDestination = errors.New("invalid xrpl address for Destination")
 	// ErrInvalidIssuer is returned when the issuer address is an invalid xrpl address.
