@@ -1,0 +1,63 @@
+name: CGo Matrix
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    # The confidential packages link a vendored mpt-crypto bundle that ships one
+    # set of static archives per platform. A bundle refresh can link cleanly on
+    # the platform it was built for and fail on every other one, so the unit
+    # suites run on each platform the CGo build tags accept.
+    name: Unit Tests (${{ matrix.platform }})
+    strategy:
+      # Platform-specific failures are what this job exists to surface, so one
+      # platform breaking must not cancel the answer from the others.
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-amd64
+          - os: ubuntu-22.04-arm
+            platform: linux-arm64
+          - os: macos-latest
+            platform: darwin-arm64
+          - os: macos-15-intel
+            platform: darwin-amd64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: confidential/go.mod
+          cache-dependency-path: |
+            go.sum
+            confidential/go.sum
+
+      # A missing archive makes the link fail with an error that names the symbol
+      # rather than the gap, so the bundle is checked before anything builds.
+      - name: Check the vendored bundle covers this platform
+        run: |
+          set -eu
+          for archive in libmpt-crypto.a libsecp256k1.a libcrypto.a; do
+            path="confidential/deps/libs/${{ matrix.platform }}/$archive"
+            if [ ! -s "$path" ]; then
+              echo "::error::Missing or empty $path"
+              exit 1
+            fi
+          done
+
+      - name: Use both checked-out modules
+        run: make workspace
+
+      - name: Run confidential unit tests
+        run: make test-confidential
+
+      - name: Check the unavailable-backend contract
+        run: make test-confidential-nocgo

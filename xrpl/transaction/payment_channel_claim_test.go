@@ -163,7 +163,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 				Channel:       "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
 				Signature:     "ABCDEF",
 				PublicKey:     "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
-				CredentialIDs: types.CredentialIDs{"1234567890abcdef"},
+				CredentialIDs: types.CredentialIDs{"1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"},
 			},
 			wantValid: true,
 			wantErr:   false,

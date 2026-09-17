@@ -84,6 +84,8 @@ type Escrow struct {
 	// (Optional) A hexadecimal hint indicating which page of the issuer's owner directory links to this entry.
 	// Used when the issuer is neither the source nor destination account. (Requires the TokenEscrow amendment.)
 	IssuerNode string `json:",omitempty"`
+	// The account paying this object's owner reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the ledger entry type for Escrow.
@@ -93,51 +95,19 @@ func (*Escrow) EntryType() EntryType {
 
 // UnmarshalJSON implements custom JSON unmarshalling for Escrow.
 func (e *Escrow) UnmarshalJSON(data []byte) error {
-	type escrowHelper struct {
-		Index             types.Hash256 `json:"index,omitempty"`
-		LedgerEntryType   EntryType
-		Flags             uint32
-		Account           types.Address
-		Amount            json.RawMessage
-		CancelAfter       uint32 `json:",omitempty"`
-		Condition         string `json:",omitempty"`
-		Destination       types.Address
-		DestinationNode   string `json:",omitempty"`
-		DestinationTag    uint32 `json:",omitempty"`
-		FinishAfter       uint32 `json:",omitempty"`
-		OwnerNode         string
-		PreviousTxnID     types.Hash256
-		PreviousTxnLgrSeq uint32
-		SourceTag         uint32 `json:",omitempty"`
-		TransferRate      uint32 `json:",omitempty"`
-		IssuerNode        string `json:",omitempty"`
+	type escrowFields Escrow
+	var decoded struct {
+		escrowFields
+		Amount json.RawMessage
 	}
-	var h escrowHelper
-	if err := json.Unmarshal(data, &h); err != nil {
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
-	*e = Escrow{
-		Index:             h.Index,
-		LedgerEntryType:   h.LedgerEntryType,
-		Flags:             h.Flags,
-		Account:           h.Account,
-		CancelAfter:       h.CancelAfter,
-		Condition:         h.Condition,
-		Destination:       h.Destination,
-		DestinationNode:   h.DestinationNode,
-		DestinationTag:    h.DestinationTag,
-		FinishAfter:       h.FinishAfter,
-		OwnerNode:         h.OwnerNode,
-		PreviousTxnID:     h.PreviousTxnID,
-		PreviousTxnLgrSeq: h.PreviousTxnLgrSeq,
-		SourceTag:         h.SourceTag,
-		TransferRate:      h.TransferRate,
-		IssuerNode:        h.IssuerNode,
-	}
-	amount, err := types.UnmarshalCurrencyAmount(h.Amount)
+	amount, err := types.UnmarshalCurrencyAmount(decoded.Amount)
 	if err != nil {
 		return err
 	}
-	e.Amount = amount
+	decoded.escrowFields.Amount = amount
+	*e = Escrow(decoded.escrowFields)
 	return nil
 }

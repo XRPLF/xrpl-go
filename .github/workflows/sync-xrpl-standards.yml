@@ -1,0 +1,65 @@
+name: Sync XRPL Standards references
+
+on:
+  schedule:
+    # Every Monday and Thursday, 06:00 UTC.
+    - cron: "0 6 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-xrpl-standards:
+    name: Update XRPL-Standards references
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Run XRPL-Standards sync script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .agents/skills/xrpl-standards/scripts/sync-xls-standards.py
+
+      - name: Check for reference changes
+        id: refs
+        run: |
+          set -eu
+          if [ -z "$(git status --porcelain -- .agents/skills/xrpl-standards/references)" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No reference changes found."
+            exit 0
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "### XRPL-Standards reference changes" > /tmp/xls_summary.txt
+          git diff --stat -- .agents/skills/xrpl-standards/references >> /tmp/xls_summary.txt
+          echo "diff_summary<<EOF" >> "$GITHUB_OUTPUT"
+          cat /tmp/xls_summary.txt >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request
+        if: steps.refs.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/auto-update-xrpl-standards
+          commit-message: "chore(skills): sync XRPL-Standards references"
+          title: "chore(skills): sync XRPL-Standards references"
+          body: |
+            Automated sync from https://github.com/XRPLF/XRPL-Standards.
+            Includes updates to existing references and new XLS files in
+            `references/UNCLASSIFIED` when the folder is not known.
+
+            ${{ steps.refs.outputs.diff_summary }}
+          add-paths: |
+            .agents/skills/xrpl-standards/references
+          labels: |
+            automation
+            xrpl-standards

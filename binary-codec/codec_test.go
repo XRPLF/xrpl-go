@@ -1,6 +1,7 @@
 package binarycodec
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -51,6 +52,36 @@ func TestDefinitionFieldsRoundTrip(t *testing.T) {
 				"ReferenceHolding": "A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
 			},
 			expected: "11007E5027A738A1E6E8505E1FC77BBB9FEF84FF9A9C609F2739E0F9573CDD6367100A0AA9",
+		},
+		{
+			name: "ConfidentialMPTConvert BlindingFactor uses Hash256 field 40",
+			input: map[string]any{
+				"TransactionType": "ConfidentialMPTConvert",
+				"Account":         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+				"MPTAmount":       "100",
+				"BlindingFactor":  "1E617B6FA885D8F2C1F22AFED8053BAACDEFEEEA4813EEDA30B6DF517851A509",
+			},
+			expected: "120055301A000000000000006450281E617B6FA885D8F2C1F22AFED8053BAACDEFEEEA4813EEDA30B6DF517851A509811495F14B0E44F78A264E41713C64B5F89242540EE2",
+		},
+		{
+			name: "ConfidentialMPTSend commitments use Blob fields 45 and 46",
+			input: map[string]any{
+				"TransactionType":   "ConfidentialMPTSend",
+				"Account":           "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+				"AmountCommitment":  "02E65F6CAA5D1F1910EB95345B222D906874BE7A6E75B1AD7CCF52C6A767089BFA",
+				"BalanceCommitment": "03596B2A176A8255A62FE5718A054A6B3E318B122F3F2FD783D551E0F17F628BB6",
+			},
+			expected: "120058702D2102E65F6CAA5D1F1910EB95345B222D906874BE7A6E75B1AD7CCF52C6A767089BFA702E2103596B2A176A8255A62FE5718A054A6B3E318B122F3F2FD783D551E0F17F628BB6811495F14B0E44F78A264E41713C64B5F89242540EE2",
+		},
+		{
+			name: "MPTokenIssuance confidential encryption keys and outstanding amount",
+			input: map[string]any{
+				"LedgerEntryType":               "MPTokenIssuance",
+				"ConfidentialOutstandingAmount": "100",
+				"IssuerEncryptionKey":           "0287729B8FC5820EA0264CCB119D831913CF186E3B575B23B277127FDBD5F15897",
+				"AuditorEncryptionKey":          "0351E792649D0108D02C7138ED2C77548276C563646CC250A28D6A312D8D78F3D2",
+			},
+			expected: "11007E302000000000000000647023210287729B8FC5820EA0264CCB119D831913CF186E3B575B23B277127FDBD5F15897702C210351E792649D0108D02C7138ED2C77548276C563646CC250A28D6A312D8D78F3D2",
 		},
 		{
 			name: "DirectoryNode MPT book assets",
@@ -488,6 +519,7 @@ func TestMPTUInt64FieldsUseDecimalJSON(t *testing.T) {
 		{field: "OutstandingAmount", header: "3019"},
 		{field: "MPTAmount", header: "301A"},
 		{field: "LockedAmount", header: "301D"},
+		{field: "ConfidentialOutstandingAmount", header: "3020"},
 	}
 
 	for _, tt := range tests {
@@ -1220,4 +1252,195 @@ func TestEncodeForSigningBatchCodecErrorIncludesTransactionIDIndex(t *testing.T)
 	require.ErrorContains(t, err, "BatchV1_1 txIDs[1]")
 	var invalidHex *types.ErrInvalidHexString
 	require.ErrorAs(t, err, &invalidHex)
+}
+
+func TestRoleSigningEncoders(t *testing.T) {
+	// Reference bytes from ripple-binary-codec 2.11.0, independent of production constants.
+	const (
+		account                         = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+		encodedPayment                  = "120000240000000168400000000000000C73008114B5F762798A53D543A014CAF8B297CFF8F2F937E8"
+		signerAccountIDSuffix           = "B5F762798A53D543A014CAF8B297CFF8F2F937E8"
+		expectedTransactionPrefix       = "53545800"
+		expectedTransactionMultiPrefix  = "534D5400"
+		expectedCounterpartyPrefix      = "43505400"
+		expectedCounterpartyMultiPrefix = "43504D00"
+		expectedSponsorPrefix           = "53504E00"
+		expectedSponsorMultiPrefix      = "53504D00"
+	)
+
+	tests := []struct {
+		name         string
+		single       func(map[string]any) (string, error)
+		multi        func(map[string]any, string) (string, error)
+		singlePrefix string
+		multiPrefix  string
+	}{
+		{
+			name:         "ordinary",
+			single:       EncodeForSigning,
+			multi:        EncodeForMultisigning,
+			singlePrefix: expectedTransactionPrefix,
+			multiPrefix:  expectedTransactionMultiPrefix,
+		},
+		{
+			name:         "counterparty",
+			single:       EncodeForSigningCounterparty,
+			multi:        EncodeForMultisigningCounterparty,
+			singlePrefix: expectedCounterpartyPrefix,
+			multiPrefix:  expectedCounterpartyMultiPrefix,
+		},
+		{
+			name:         "sponsor",
+			single:       EncodeForSigningSponsor,
+			multi:        EncodeForMultisigningSponsor,
+			singlePrefix: expectedSponsorPrefix,
+			multiPrefix:  expectedSponsorMultiPrefix,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			newTransaction := func() map[string]any {
+				return map[string]any{
+					"TransactionType":       "Payment",
+					"Account":               account,
+					"Sequence":              uint32(1),
+					"Fee":                   "12",
+					"SigningPubKey":         "",
+					"TxnSignature":          "ABCD",
+					"CounterpartySignature": map[string]any{"TxnSignature": "ABCD"},
+					"SponsorSignature":      map[string]any{"TxnSignature": "ABCD"},
+				}
+			}
+			tx := newTransaction()
+			original := newTransaction()
+
+			single, err := tt.single(tx)
+			require.NoError(t, err)
+			require.Equal(t, tt.singlePrefix+encodedPayment, single)
+			require.Equal(t, original, tx)
+
+			multi, err := tt.multi(tx, account)
+			require.NoError(t, err)
+			require.Equal(t, tt.multiPrefix+encodedPayment+signerAccountIDSuffix, multi)
+			require.Equal(t, original, tx)
+		})
+	}
+}
+
+func TestFeeAmountDeltaRoundTrip(t *testing.T) {
+	const feeAmountDeltaHeader = "6022"
+	tests := []struct {
+		name, input, payload, decoded string
+	}{
+		{name: "positive", input: "10", payload: "400000000000000A", decoded: "10"},
+		{name: "negative", input: "-10", payload: "000000000000000A", decoded: "-10"},
+		{name: "zero", input: "0", payload: "4000000000000000", decoded: "0"},
+		{name: "negative zero", input: "-0", payload: "4000000000000000", decoded: "0"},
+		{name: "negative all zeros", input: "-000", payload: "4000000000000000", decoded: "0"},
+		{name: "negative leading zeros", input: "-00010", payload: "000000000000000A", decoded: "-10"},
+		{name: "maximum", input: "100000000000000000", payload: "416345785D8A0000", decoded: "100000000000000000"},
+		{name: "minimum", input: "-100000000000000000", payload: "016345785D8A0000", decoded: "-100000000000000000"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := Encode(map[string]any{"FeeAmountDelta": tt.input})
+			require.NoError(t, err)
+			require.Equal(t, feeAmountDeltaHeader+tt.payload, encoded)
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.Equal(t, map[string]any{"FeeAmountDelta": tt.decoded}, decoded)
+		})
+	}
+}
+
+func TestFeeAmountDeltaNestedRoundTrip(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    map[string]any
+		expected string
+	}{
+		{
+			name: "object",
+			input: map[string]any{
+				"FinalFields": map[string]any{"FeeAmountDelta": "-10"},
+			},
+			expected: "E76022000000000000000AE1",
+		},
+		{
+			name: "array",
+			input: map[string]any{
+				"AffectedNodes": []any{
+					map[string]any{
+						"ModifiedNode": map[string]any{
+							"FinalFields": map[string]any{"FeeAmountDelta": "-10"},
+						},
+					},
+				},
+			},
+			expected: "F8E5E76022000000000000000AE1E1F1",
+		},
+		{
+			name: "ordinary fee with signed delta",
+			input: map[string]any{
+				"Fee":            "12",
+				"FeeAmountDelta": "-10",
+			},
+			expected: "68400000000000000C6022000000000000000A",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := Encode(tt.input)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, encoded)
+			decoded, err := Decode(encoded)
+			require.NoError(t, err)
+			require.Equal(t, tt.input, decoded)
+		})
+	}
+}
+
+func TestFeeAmountDeltaRejectsNonStrings(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+	}{
+		{name: "integer", input: 10},
+		{name: "float", input: 10.0},
+		{name: "JSON number", input: json.Number("10")},
+		{name: "boolean", input: true},
+		{name: "nil", input: nil},
+		{name: "slice", input: []string{"10"}},
+		{name: "issued currency", input: map[string]any{
+			"currency": "USD", "issuer": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "value": "10",
+		}},
+		{name: "MPT", input: map[string]any{
+			"mpt_issuance_id": "000000000000000000000000000000000000000000000001", "value": "10",
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Encode(map[string]any{"FeeAmountDelta": tt.input})
+			require.EqualError(t, err, "invalid amount type")
+		})
+	}
+}
+
+func TestOrdinaryNativeAmountStillRejectsSignedInputs(t *testing.T) {
+	for _, field := range []string{"Amount", "Fee"} {
+		t.Run(field, func(t *testing.T) {
+			for _, input := range []string{"-10", "-00010", "-0", "-000", "+10", "+0", "+000"} {
+				_, expectedErr := (&types.Amount{}).FromJSON(input)
+				require.Error(t, expectedErr)
+				_, err := Encode(map[string]any{field: input})
+				require.Equal(t, expectedErr, err)
+			}
+		})
+	}
+}
+
+func TestFeeAmountDeltaDecodesExistingNegativeZero(t *testing.T) {
+	decoded, err := Decode("60220000000000000000")
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"FeeAmountDelta": "-0"}, decoded)
 }

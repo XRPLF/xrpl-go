@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -75,6 +76,57 @@ func TestStObject_FromJson(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tc.output, got)
 			}
+		})
+	}
+}
+
+func TestEncodeFieldValue(t *testing.T) {
+	tests := []struct {
+		name, fieldName string
+		input           any
+		expected        string
+	}{
+		{
+			name: "signed native amount", fieldName: "FeeAmountDelta", input: "-10",
+			expected: "000000000000000a",
+		},
+		{
+			name: "ordinary native amount", fieldName: "Fee", input: "10",
+			expected: "400000000000000a",
+		},
+		{
+			name: "ordinary issued currency amount", fieldName: "Amount",
+			input: map[string]any{
+				"value": "10000000000000000", "currency": "USD", "issuer": "rweYz56rfmQ98cAdRaeTxQS9wVMGnrdsFp",
+			},
+			expected: "d8838d7ea4c68000" + "0000000000000000000000005553440000000000" + "69d33b18d53385f8a3185516c2eda5dedb8ac5c6",
+		},
+		{
+			name: "ordinary MPT amount", fieldName: "Amount",
+			input: map[string]any{
+				"value": "1000000", "mpt_issuance_id": "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF",
+			},
+			expected: "6000000000000f4240" + "1234567890abcdef1234567890abcdef1234567890abcdef",
+		},
+		{
+			name: "decimal UInt64", fieldName: "MaximumAmount", input: "10",
+			expected: "000000000000000a",
+		},
+		{
+			name: "hexadecimal UInt64", fieldName: "IndexNext", input: "10",
+			expected: "0000000000000010",
+		},
+		{
+			name: "type without field-aware encoding", fieldName: "MemoData", input: "CAFE",
+			expected: "cafe",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			field := testutil.GetFieldInstance(t, tt.fieldName)
+			encoded, err := encodeFieldValue(field, tt.input)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, hex.EncodeToString(encoded))
 		})
 	}
 }

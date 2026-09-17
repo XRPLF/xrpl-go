@@ -1,0 +1,117 @@
+name: API Compatibility
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  MODULE_DIRECTORY: ${{ inputs.module == 'confidential' && 'confidential' || '.' }}
+
+jobs:
+  api-compatibility:
+    name: API Compatibility (${{ inputs.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ${{ env.MODULE_DIRECTORY }}/go.mod
+          cache-dependency-path: |
+            go.sum
+            confidential/go.sum
+
+      - name: Install apidiff
+        run: go install golang.org/x/exp/cmd/apidiff@v0.0.0-20260813180055-c1d0aacb2297
+
+      - name: Compare exported API
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+
+          MODULE_PATH=github.com/Peersyst/xrpl-go
+          TAG_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+$'
+          if [[ "$MODULE_DIRECTORY" == confidential ]]; then
+            MODULE_PATH+=/confidential
+            TAG_PATTERN='^confidential/v[0-9]+\.[0-9]+\.[0-9]+$'
+          fi
+
+          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid pull request base SHA: $BASE_SHA" >&2
+            exit 1
+          fi
+
+          # Compatibility is measured against the newest stable release rather
+          # than against the base commit, because only an API that users can
+          # already import can be broken. Exported API that the base branch
+          # gained after that release has never shipped, so reshaping it is not
+          # a breaking change. Prerelease tags are skipped, matching the stable
+          # tag format that the release workflow accepts.
+          baseline_ref=$(
+            git tag --merged "$BASE_SHA" --sort=-v:refname |
+              grep -E "$TAG_PATTERN" |
+              head -n 1
+          ) || true
+
+          if [[ -z "$baseline_ref" ]]; then
+            if [[ "$MODULE_DIRECTORY" == confidential ]] && ! git cat-file -e "$BASE_SHA:confidential/go.mod" 2>/dev/null; then
+              echo "::notice title=New module::The base commit has no confidential module and no stable confidential release exists. There is no separate module API baseline yet."
+              exit 0
+            fi
+            baseline_ref=$BASE_SHA
+            echo "::notice title=No release to compare against::No stable release tag for this module is reachable from the base branch, so the base commit is used as the baseline."
+          fi
+
+          export_api() {
+            local ref=$1 destination=$2 worktree workfile=off
+            worktree=$(mktemp -d "$RUNNER_TEMP/api-tree-XXXXXX")
+            git archive "$ref" | tar -x -C "$worktree"
+            if [[ "$MODULE_DIRECTORY" == confidential ]]; then
+              (cd "$worktree" && make workspace)
+              workfile="$worktree/go.work"
+            fi
+            (
+              cd "$worktree/$MODULE_DIRECTORY"
+              GOWORK="$workfile" apidiff -m -w "$destination" "$MODULE_PATH"
+            )
+          }
+
+          baseline_api="$RUNNER_TEMP/api-baseline.export"
+          base_api="$RUNNER_TEMP/api-base.export"
+          head_api="$RUNNER_TEMP/api-head.export"
+          api_changes="$RUNNER_TEMP/api-changes.txt"
+          baseline_to_base="$RUNNER_TEMP/api-baseline-to-base.txt"
+          baseline_to_head="$RUNNER_TEMP/api-baseline-to-head.txt"
+          incompatible_changes="$RUNNER_TEMP/api-incompatible.txt"
+
+          export_api "$baseline_ref" "$baseline_api"
+          export_api "$BASE_SHA" "$base_api"
+          workfile=off
+          if [[ "$MODULE_DIRECTORY" == confidential ]]; then
+            make workspace
+            workfile="$PWD/go.work"
+          fi
+          (cd "$MODULE_DIRECTORY" && GOWORK="$workfile" apidiff -m -w "$head_api" "$MODULE_PATH")
+
+          apidiff -m "$base_api" "$head_api" > "$api_changes"
+          apidiff -m -incompatible "$baseline_api" "$base_api" | sort > "$baseline_to_base"
+          apidiff -m -incompatible "$baseline_api" "$head_api" | sort > "$baseline_to_head"
+
+          # Breakage that the base branch already carries was acknowledged when
+          # it merged, so report only what this pull request adds on top of it.
+          comm -23 "$baseline_to_head" "$baseline_to_base" > "$incompatible_changes"
+
+          BASELINE_REF=$baseline_ref scripts/report-api-compatibility.sh "$api_changes" "$incompatible_changes"

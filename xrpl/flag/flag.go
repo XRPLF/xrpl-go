@@ -9,6 +9,12 @@ func Contains(currentFlag, flag uint32) bool {
 	return flag != 0 && (currentFlag&flag) == flag
 }
 
+// ContainsAny reports whether any bits in mask are set in currentFlags.
+// Returns false if mask is zero.
+func ContainsAny(currentFlags, mask uint32) bool {
+	return currentFlags&mask != 0
+}
+
 // ContainsOnly checks if currentFlag contains no bits outside allowedFlags.
 func ContainsOnly(currentFlag, allowedFlags uint32) bool {
 	return currentFlag&^allowedFlags == 0

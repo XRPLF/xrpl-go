@@ -5,7 +5,7 @@ description: "Reference for any XRPL Standard (XLS-N) when implementing or revie
 
 # XRPL Standards
 
-Raw specification files for all 78 XRPL Standards (XLS-1 through XLS-102), organized by topic. Read the relevant file to get the full spec — field definitions, transaction formats, ledger objects, failure conditions, invariants, and RPC changes.
+Raw specification files for 81 XRPL Standards (XLS-1 through XLS-103), organized by topic. Read the relevant file to get the full spec — field definitions, transaction formats, ledger objects, failure conditions, invariants, and RPC changes.
 
 ## How to Use
 
@@ -57,8 +57,10 @@ bash <skill-dir>/scripts/fetch-xls.sh <number>
 | 61 | Cross-Currency NFTokenAcceptOffer | Stagnant | `references/tokens/xls-0061.md` |
 | 87 | Token Pre-Authorization — issuer approval by account, credential, or domain | Stagnant | `references/tokens/xls-0087.md` |
 | 89 | MPT Metadata Schema | Final | `references/tokens/xls-0089.md` |
-| 94 | Dynamic MPT — mutable MPToken fields | Draft | `references/tokens/xls-0094.md` |
-| 96 | Confidential MPT — `ConfidentialMPTConvert/Send/MergeInbox/ConvertBack/Clawback` | Draft | `references/tokens/xls-0096.md` |
+| 90 | Permissioned Domains for MPTs | Draft | `references/tokens/xls-0090.md` |
+| 94 | Dynamic MPT — mutable MPToken fields | Final | `references/tokens/xls-0094.md` |
+| 96 | Confidential MPT — `ConfidentialMPTConvert/Send/MergeInbox/ConvertBack/Clawback` | Final | `references/tokens/xls-0096.md` |
+| 99 | ElGamal Key Rotation for Confidential MPTs — issuer, auditor, and holder key rotation and recovery | Draft | `references/tokens/xls-0099.md` |
 | 10 | Non-Transferable Token standard | Stagnant | `references/tokens/xls-0010.md` |
 | 16 | NFT Metadata v1 | Stagnant | `references/tokens/xls-0016.md` |
 | 24 | NFT Metadata v2 | Final | `references/tokens/xls-0024.md` |
@@ -102,6 +104,7 @@ bash <skill-dir>/scripts/fetch-xls.sh <number>
 | 39 | Clawback — issuer clawback of IOU balances | Final | `references/accounts/xls-0039.md` |
 | 68 | Sponsored Fees and Reserves — `Sponsorship` obj, fee/reserve delegation | Draft | `references/accounts/xls-0068.md` |
 | 49 | Multiple Signer Lists | Draft | `references/accounts/xls-0049.md` |
+| 103 | On-Chain Cosigner: on-ledger transaction proposals and signature collection | Draft | `references/accounts/xls-0103.md` |
 | 64 | Pseudo-Account | Draft | `references/accounts/xls-0064.md` |
 | 23 | Lite Accounts | Stagnant | `references/accounts/xls-0023.md` |
 | 7 | Deletable Accounts | Final | `references/accounts/xls-0007.md` |
@@ -167,7 +170,17 @@ bash <skill-dir>/scripts/fetch-xls.sh <number>
 
 ## Refreshing Refs
 
+Use the local sync script in this repo:
+
 ```bash
-cd packages/skills-build
-pnpm build:xrpl-standards
+python3 .agents/skills/xrpl-standards/scripts/sync-xls-standards.py
 ```
+
+Run with `--dry-run` to inspect changes without writing files.
+
+- `--extract` writes the compressed extracted summary.
+- Default writes full upstream `README.md` content.
+
+A GitHub Action also runs this script every Monday and Thursday at 06:00 UTC:
+
+- `.github/workflows/sync-xrpl-standards.yml`

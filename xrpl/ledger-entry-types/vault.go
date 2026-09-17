@@ -67,6 +67,15 @@ type Vault struct {
 	// The scaling factor for vault shares. Only applicable for IOU assets.
 	// Valid values are between 0 and 18 inclusive. For XRP and MPT, this is always 0.
 	Scale *uint8 `json:",omitempty"`
+	// LEVersion is the ledger object's accounting version: absent/0 is legacy,
+	// and 1 is cash-basis. LendingProtocolV1_1 assigns 1 to newly created vaults.
+	LEVersion *uint8 `json:",omitempty"`
+	// VaultKind selects open-ended (0, the default) or closed-ended (1) operation.
+	VaultKind *types.VaultKind `json:",omitempty"`
+	// SubscriptionDate is the deposit cutoff, in seconds since the Ripple Epoch.
+	SubscriptionDate *uint32 `json:",omitempty"`
+	// RedemptionDate is when redemption starts, in seconds since the Ripple Epoch.
+	RedemptionDate *uint32 `json:",omitempty"`
 	// The identifying hash of the transaction that most recently modified this entry.
 	PreviousTxnID types.Hash256
 	// The index of the ledger that contains the transaction that most recently modified this entry.

@@ -28,6 +28,9 @@ type LoanBrokerCoverWithdraw struct {
 	Destination *types.Address `json:",omitempty"`
 	// An arbitrary tag to further specify the destination for this withdrawal.
 	DestinationTag *uint32 `json:",omitempty"`
+	// CredentialIDs authorizes the withdrawal using one to eight unique, nonzero ledger IDs.
+	// Requires Credentials and fixCleanup3_4_0. Nil omits the field.
+	CredentialIDs types.CredentialIDs `json:",omitzero"`
 }
 
 // TxType returns the TxType for LoanBrokerCoverWithdraw transactions.
@@ -59,6 +62,10 @@ func (tx *LoanBrokerCoverWithdraw) Flatten() FlatTransaction {
 		flattened["DestinationTag"] = *tx.DestinationTag
 	}
 
+	if tx.CredentialIDs != nil {
+		flattened["CredentialIDs"] = tx.CredentialIDs.Flatten()
+	}
+
 	return flattened
 }
 
@@ -88,6 +95,10 @@ func (tx *LoanBrokerCoverWithdraw) Validate() (bool, error) {
 		if !addresscodec.IsValidAddress(tx.Destination.String()) {
 			return false, ErrInvalidDestination
 		}
+	}
+
+	if tx.CredentialIDs != nil && !tx.CredentialIDs.IsValid() {
+		return false, ErrInvalidCredentialIDs
 	}
 
 	return true, nil

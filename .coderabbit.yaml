@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+tone_instructions: "Be concise and respectful to contributors. Flag correctness, security, and API-contract issues. Leave formatting and style to CI."
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: false
+  poem: false
+  in_progress_fortune: false
+  review_status: true
+  collapse_walkthrough: false
+  sequence_diagrams: false
+  abort_on_close: true
+  slop_detection:
+    enabled: true
+  auto_review:
+    enabled: true
+    drafts: false
+    ignore_usernames:
+      - "dependabot[bot]"
+  tools:
+    languagetool:
+      enabled: false
+
+chat:
+  auto_reply: true
+  art: false
+  allow_non_org_members: true
+
+knowledge_base:
+  code_guidelines:
+    filePatterns:
+      # Extend the default AGENTS.md discovery; apply this guide beyond .ai-review/.
+      - files: ".ai-review/instructions.md"
+        applyTo: "**"

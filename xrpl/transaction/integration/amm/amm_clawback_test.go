@@ -39,7 +39,7 @@ func testIntegrationAMMClawback(t *testing.T, client integration.Client) {
 		}
 		depositTx.SetSingleAssetFlag()
 		flatDepositTx := depositTx.Flatten()
-		_, err := runner.TestTransaction(&flatDepositTx, holderWallet, "tesSUCCESS", nil)
+		_, err := runner.TestSuccessfulTransactionAndWait(&flatDepositTx, holderWallet, nil)
 		require.NoError(t, err)
 
 		clawbackTx := &transaction.AMMClawback{
@@ -56,7 +56,7 @@ func testIntegrationAMMClawback(t *testing.T, client integration.Client) {
 			Asset2: types.IssuedCurrencyAmount{Currency: "XRP"},
 		}
 		flatAMMClawbackTx := clawbackTx.Flatten()
-		_, err = runner.TestTransaction(&flatAMMClawbackTx, pool.issuerWallet, "tesSUCCESS", nil)
+		_, err = runner.TestSuccessfulTransactionAndWait(&flatAMMClawbackTx, pool.issuerWallet, nil)
 		require.NoError(t, err)
 	})
 }

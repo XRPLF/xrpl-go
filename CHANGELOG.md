@@ -1,9 +1,157 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to the core library are documented in this file.
+See the [confidential module changelog](confidential/CHANGELOG.md) for cryptography and builder changes.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [v0.3.1]
+
+Core-library changes since `v0.3.0`, including the core changes from `v0.3.1-mpt.0`. The original [pre-release notes](https://xrplf.github.io/xrpl-go/changelog/v0.3.x/v0_3_1_mpt_0) remain available.
+
+### Added
+
+#### address-codec
+
+- Added `DecodeAddress()` to resolve classic and X-addresses to their decoded AccountID, and `IsZeroAccountID()` to identify ACCOUNT_ZERO.
+
+#### binary-codec
+
+- Added XLS-96 confidential MPT fields and definitions for `ConfidentialMPTSend`, `ConfidentialMPTConvert`, `ConfidentialMPTConvertBack`, `ConfidentialMPTMergeInbox`, and `ConfidentialMPTClawback`. `ConfidentialOutstandingAmount` uses decimal-string serialization.
+- Added the `tecBAD_PROOF`, `tecNO_SPONSOR_PERMISSION`, `temBAD_CIPHERTEXT`, `tefBAD_PATH_COUNT`, `tefNO_DST_PARTIAL`, and `terNO_PERMISSION` transaction result mappings.
+- Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
+
+#### pkg/crypto
+
+- Added `IsCompressedSECP256K1Point()` to validate compressed secp256k1 curve points and `CompressedSECP256K1PointByteLength` for their encoded size.
+
+#### pkg/hexutil
+
+- Added `DecodeFixedHex()` to decode hexadecimal values and enforce their decoded byte length.
+
+#### pkg/mptsizes
+
+- Added CGo-free XLS-96 wire-size constants shared by the transaction models and native bindings. The bindings check these constants against the vendored `mpt-crypto` headers at compile time.
+
+#### xrpl/flag
+
+- Added `ContainsAny` to check whether any bits in a flag mask are set.
+
+#### xrpl/hash
+
+- Added `MPToken()` and `MPTokenIssuance()` helpers for computing MPT ledger-entry keylet indexes.
+
+#### xrpl/ledger-entry-types
+
+- Added confidential balance and encryption-key fields to `MPToken` and `MPTokenIssuance`.
+- Added optional `VaultID` and `LoanBrokerID` fields to `AccountRoot`, preserving pseudo-account links in typed ledger and `account_info` responses.
+- Added the `Sponsorship` ledger model and factory support, sponsor fields on supported ledger entries, and sponsorship counters on `AccountRoot`. Optional budgets and counters preserve absent versus explicit zero values. Network use requires the `Sponsor` amendment.
+- Added optional `LEVersion`, `VaultKind`, `SubscriptionDate`, and `RedemptionDate` fields to `Vault` for `LendingProtocolV1_1`.
+
+#### xrpl/queries
+
+- Added `account_sponsoring` models and RPC/WebSocket client methods. Requires a server supporting this method, identified as Clio-only by XRPL.js.
+- Added the optional `account_objects.sponsored` filter, the sponsorship object type, and `ledger_entry` sponsorship selectors by object ID or sponsor/sponsee pair.
+
+#### xrpl/queries/vault
+
+- Added `AssetScale`, `MaximumAmount`, `TransferFee`, `MPTokenMetadata`, `LockedAmount`, and `ReferenceHolding` to typed `vault_info` share responses.
+- Added optional `LEVersion`, `VaultKind`, `SubscriptionDate`, and `RedemptionDate` fields to typed `vault_info` responses.
+
+#### xrpl/rpc, xrpl/websocket
+
+- Added the required 10x base fee for confidential MPT transactions during autofill, including inner Batch transactions, plus the normal per-signer surcharge.
+- Added X-address normalization for `Sponsor`, `Sponsee`, and `CounterpartySponsor`, with embedded tags rejected.
+- Added `ValidateSponsorship` and `ValidateSponsorshipContext` for opt-in checks of sponsorship signature requirements and fee budgets against the current ledger. They reuse the transaction sponsorship rules without modifying the input. `SponsorshipValidation` reports the outcome, entry, and fee checked. Only `entryNotFound` means an absent entry. Other lookup errors and mismatched entries are returned as errors. Autofill and submission remain unchanged by this optional check.
+
+#### xrpl/transaction
+
+- Added the five XLS-96 confidential MPT transaction models with amount, encryption-key, blinding-factor, ciphertext, commitment, and proof-size validation. `ConfidentialMPTSend` supports `DestinationTag` and rejects duplicate tags in the destination X-address.
+- Added `IssuerEncryptionKey` and `AuditorEncryptionKey` to `MPTokenIssuanceSet`. An auditor key requires an issuer key in the same transaction, and neither can be combined with `Holder`.
+- Added `IsMPTokenIssuer()` to check whether an address is the issuer encoded in an MPT issuance ID.
+- Added `ErrZeroAccountID`, `ErrAccountZero`, `ErrDelegateZero`, `ErrDelegateTagNotAllowed`, `ErrSignerAccountZero`, and `ErrSignerAccountTagNotAllowed` for field-specific address validation. Wrapped conditions remain matchable with `errors.Is`.
+- Added `ErrAccountIDTagNotAllowed` and `ErrDuplicateXAddressTag` as aliases of the binary-codec sentinels, so validation and encoding share error identities.
+- Added `InspectSponsorFields` for non-mutating sponsorship validation before autofill, returning the typed sponsor signature while preserving field presence.
+- Added common sponsorship fields, fee and reserve flags, and sponsor signature validation, including Batch inner transaction checks. Pseudo-transactions reject sponsorship with `ErrPseudoTransactionSponsorship`. Sponsor multisignatures require at most 32 signers in strict decoded AccountID order. Network use requires the `Sponsor` amendment.
+- Added `SponsorshipSet` and `SponsorshipTransfer` transactions with operation flags, signed budget deltas, and validation for counterparty, deletion, reserve sponsorship, and account-level sponsor authorization rules. Network use requires the `Sponsor` amendment.
+- Added `LedgerStateFixTx`, `SponsorshipSetTx`, and `SponsorshipTransferTx` transaction type constants.
+- Added the Payment `TfSponsorCreatedAccount` flag and setter, with validation for native XRP amounts and incompatible fields and flags. Network use requires the `Sponsor` amendment.
+- Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
+- Added closed-ended VaultCreate fields with investment-period validation and top-level VaultDelete `MemoData` for `LendingProtocolV1_1`.
+- Added `CredentialIDs` to VaultWithdraw and LoanBrokerCoverWithdraw. These fields require `Credentials` and `fixCleanup3_4_0`.
+
+#### xrpl/wallet
+
+- Added non-mutating `SignAsSponsor` and `CombineSponsorSigners` helpers, with map/blob APIs and examples. Co-signing preserves account signatures and requires the `Sponsor` and `fixCleanup3_4_0` amendments.
+- Added `AddPreFundedSponsor` to attach sponsorship fields to an unsigned copy before autofill and account signing. It does not create or fund a ledger Sponsorship entry.
+
+### Changed
+
+#### module
+
+- Separated the confidential cryptography and builders introduced in `v0.3.1-mpt.0` into the optional `github.com/Peersyst/xrpl-go/confidential` module, first released as `v0.1.0`. Core retains protocol models, codecs, clients, and wallet signing without a dependency on the native helpers. Core Go module downloads no longer include the confidential native bundles. Repository clones and GitHub source archives still contain both modules.
+
+#### binary-codec
+
+- Updated binary definitions to a rippled 3.4.0 development build (`21890d9d`), including new protocol fields and removal of unused Hook field definitions.
+- `FeeAmountDelta` now accepts negative XRP strings and rejects non-string values, including IOU and MPT objects. Ordinary amount encoding is unchanged.
+
+#### development
+
+- Root `./...` commands now check core only. Use `make workspace` and the separate confidential test and lint targets for paired development. Core and confidential CI and releases are scoped to the selected module.
+
+#### xrpl/queries/transactions
+
+- Deprecated `SimulateRequest.ValidateNetworkID` and the simulation input-validation error values, retaining them for source compatibility. `Validate` and `ValidateNetworkID` now only reject nil requests.
+
+#### xrpl/rpc, xrpl/websocket
+
+- `Simulate` now delegates request validation to the server, including input selection, signatures, blob syntax, and `NetworkID`. Removed simulation-specific network identity discovery. Nil-request protection and response validation remain enabled.
+- `ErrRawTransactionsFieldMissing`, `ErrRawTransactionFieldMissing`, `ErrCouldNotGetBaseFeeXrp`, `ErrCouldNotFetchOwnerReserve`, `ErrLoanBrokerIDRequired`, and `ErrCouldNotFetchLoanBrokerOwner` now share values across both clients, so `errors.Is` matches an error raised by either client.
+- Deprecated `ErrFeeFieldMissing`, `ErrCounterpartyRequired`, and `ErrFailedToParseFee`. Fee calculation no longer returns them.
+- Autofill fetches the network fee once per transaction instead of once per inner Batch transaction, reducing repeated `server_info` requests.
+
+#### xrpl/transaction
+
+- `BaseTx.Validate()` now rejects ACCOUNT_ZERO for `Account` and `Delegate`, and rejects tagged X-addresses for `Delegate`. Consensus-generated pseudo-transactions remain exempt from the Account zero check.
+- Transaction multisigner validation now rejects more than 32 signers, duplicate accounts, and lists not ordered by decoded AccountID. Validation does not reorder signers.
+- `ErrClawbackHolderTagNotAllowed` now wraps `ErrAccountIDTagNotAllowed`, preserving consistent `errors.Is` checks and adding the wrapped reason to its message.
+
+#### xrpl/wallet
+
+- LoanSet counterparty signing now uses role-specific prefixes and requires `fixCleanup3_4_0` on the target network. For networks without this amendment, use a previous library release.
+
+### Fixed
+
+#### dependencies
+
+- Raised the minimum Go version from 1.25.12 to 1.25.13 to fix the `net/url` quadratic path-resolution vulnerability (GO-2026-6218).
+
+#### xrpl/ledger-entry-types
+
+- Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.
+- Fixed JSON decoding to preserve `index` in `Offer` and `NFTokenOffer`.
+- Fixed failed JSON decoding to leave existing `Escrow`, `NFTokenOffer`, `Offer`, and `PriceData` values unchanged.
+
+#### xrpl/rpc, xrpl/websocket
+
+- Fixed fee calculation for transactions whose fee is a multiple of the base fee. Multipliers now apply to the exact load-adjusted network fee, and the total is rounded once. Batch inner fees are summed at the same precision.
+- Fixed AccountDelete autofill to reject outstanding sponsorship obligations with `ErrAccountHasSponsorshipObligations` and a supplied destination that does not identify the account's sponsor with `ErrAccountDeleteSponsorMismatch`.
+
+#### xrpl/transaction
+
+- Fixed failed JSON decoding to leave an existing `EscrowCreate` value unchanged.
+- Reject zero `DomainID` references in Payment, OfferCreate, MPTokenIssuanceCreate, and VaultCreate. Preserve zero-domain clearing in MPTokenIssuanceSet and VaultSet.
+- Reject an empty `MPTokenIssuanceSet.DomainID` during validation instead of failing later during binary encoding. Use 64 zero digits to request domain removal.
+- Compare decoded account identities in BaseTx Delegate checks and in DepositPreauth, NFTokenCreateOffer, SetRegularKey, DelegateSet, NFTokenMint, NFTokenModify, MPTokenAuthorize, and MPTokenIssuanceSet self-reference checks, so equivalent classic and X-addresses cannot bypass them. AMMClawback now accepts equivalent address forms in its asset issuer/account check.
+- Reject tagged X-addresses and ACCOUNT_ZERO in `Signers` with `ErrSignerAccountTagNotAllowed` and `ErrSignerAccountZero`, respectively.
+- Reject `ConfidentialMPTConvert` and `SponsorshipTransfer` permissions in `DelegateSet` because these transaction types are not delegatable.
+- Reject odd-length `VaultCreate.Data` hex during validation instead of failing later during binary encoding.
+
+#### xrpl/transaction/types
+
+- Fixed `CredentialIDs.IsValid()` to require one to eight distinct, nonzero 256-bit hexadecimal IDs. This tightens validation of previously accepted lists. Zero IDs are rejected offline without checking `fixCleanup3_4_0` activation.
 
 ## [v0.3.0]
 

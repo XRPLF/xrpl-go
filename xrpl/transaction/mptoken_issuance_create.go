@@ -264,9 +264,9 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 		return false, ErrInvalidMPTokenMetadata
 	}
 
-	// DomainID must be a valid 64-char hex string and requires TfMPTRequireAuth flag.
+	// DomainID must be a nonzero 64-char hex string and requires TfMPTRequireAuth flag.
 	if m.DomainID != nil {
-		if !IsDomainID(*m.DomainID) {
+		if !IsNonZeroDomainID(*m.DomainID) {
 			return false, ErrMPTIssuanceCreateDomainIDInvalid
 		}
 		if !flag.Contains(m.Flags, TfMPTRequireAuth) {

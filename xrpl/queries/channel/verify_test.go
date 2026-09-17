@@ -1,10 +1,15 @@
 package channel
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
+
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChannelVerifyRequest(t *testing.T) {
@@ -27,16 +32,51 @@ func TestChannelVerifyRequest(t *testing.T) {
 	}
 }
 
-func TestChannelVerifyResponse(t *testing.T) {
-	s := VerifyResponse{
-		SignatureVerified: false,
+type channelVerifyResponseFixture struct {
+	name string
+	want VerifyResponse
+	json string
+}
+
+func channelVerifyResponseFixtures() []channelVerifyResponseFixture {
+	return []channelVerifyResponseFixture{
+		{name: "verified", want: VerifyResponse{SignatureVerified: true}, json: `{"signature_verified":true}`},
+		{name: "not verified", want: VerifyResponse{SignatureVerified: false}, json: `{"signature_verified":false}`},
 	}
+}
 
-	j := `{
-	"signature_verified": false
-}`
+func TestChannelVerifyResponseSerialize(t *testing.T) {
+	for _, tt := range channelVerifyResponseFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := json.Marshal(tt.want)
+			require.NoError(t, err)
+			require.JSONEq(t, tt.json, string(encoded))
+		})
+	}
+}
 
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
-		t.Error(err)
+func TestChannelVerifyResponseJSONDecode(t *testing.T) {
+	for _, tt := range channelVerifyResponseFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			var got VerifyResponse
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			require.NoError(t, decoder.Decode(&got))
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestChannelVerifyResponseClientDecode(t *testing.T) {
+	for _, tt := range channelVerifyResponseFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			var data map[string]any
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			require.NoError(t, decoder.Decode(&data))
+			var got VerifyResponse
+			require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+			require.Equal(t, tt.want, got)
+		})
 	}
 }

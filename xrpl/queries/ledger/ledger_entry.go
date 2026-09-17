@@ -43,6 +43,7 @@ type EntryRequest struct {
 	Offer                           OfferSelector                           `json:"offer,omitzero"`
 	PaymentChannel                  string                                  `json:"payment_channel,omitempty"`
 	RippleState                     RippleStateSelector                     `json:"ripple_state,omitzero"`
+	Sponsorship                     SponsorshipSelector                     `json:"sponsorship,omitzero"`
 	Ticket                          TicketSelector                          `json:"ticket,omitzero"`
 	XChainOwnedClaimID              XChainOwnedClaimIDSelector              `json:"xchain_owned_claim_id,omitzero"`
 	XChainOwnedCreateAccountClaimID XChainOwnedCreateAccountClaimIDSelector `json:"xchain_owned_create_account_claim_id,omitzero"`
@@ -99,6 +100,7 @@ func (r *EntryRequest) Validate() error {
 		{name: "offer", selected: !r.Offer.IsZero(), err: r.Offer.validate()},
 		{name: "payment_channel", selected: r.PaymentChannel != ""},
 		{name: "ripple_state", selected: r.RippleState != (RippleStateSelector{})},
+		{name: "sponsorship", selected: !r.Sponsorship.IsZero(), err: r.Sponsorship.validate()},
 		{name: "ticket", selected: !r.Ticket.IsZero(), err: r.Ticket.validate()},
 		{name: "xchain_owned_claim_id", selected: !r.XChainOwnedClaimID.IsZero(), err: r.XChainOwnedClaimID.validate()},
 		{name: "xchain_owned_create_account_claim_id", selected: !r.XChainOwnedCreateAccountClaimID.IsZero(), err: r.XChainOwnedCreateAccountClaimID.validate()},

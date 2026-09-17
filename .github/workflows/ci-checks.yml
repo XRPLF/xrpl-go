@@ -1,0 +1,66 @@
+name: Checks
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  MODULE_DIRECTORY: ${{ inputs.module == 'confidential' && 'confidential' || '.' }}
+
+jobs:
+  lint:
+    name: Lint (${{ inputs.module }})
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ${{ env.MODULE_DIRECTORY }}/go.mod
+          cache-dependency-path: |
+            go.sum
+            confidential/go.sum
+
+      - name: Use both checked-out modules
+        if: inputs.module == 'confidential'
+        run: make workspace
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.11.3
+          working-directory: ${{ env.MODULE_DIRECTORY }}
+          args: --config ${{ github.workspace }}/.golangci.yml
+
+  govulncheck:
+    name: Govulncheck (${{ inputs.module }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ${{ env.MODULE_DIRECTORY }}/go.mod
+          cache-dependency-path: |
+            go.sum
+            confidential/go.sum
+
+      - name: Use both checked-out modules
+        if: inputs.module == 'confidential'
+        run: make workspace
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@0782b76014f15f24e22a438f30f308df42899ba1 # v1.3.0
+
+      - name: Run govulncheck
+        working-directory: ${{ env.MODULE_DIRECTORY }}
+        run: govulncheck ./...

@@ -13,8 +13,6 @@ const (
 	DefaultMaxRetries = 10
 	// DefaultMaxReconnects is the default maximum number of reconnect attempts for websocket.
 	DefaultMaxReconnects = 3
-	// DefaultRetryDelay is the default delay between retry or polling attempts.
-	DefaultRetryDelay = 1 * time.Second
 	// DefaultFeeCushion is the default fee cushion multiplier.
 	DefaultFeeCushion float64 = 1.2
 	// DefaultMaxFeeXRP is the default maximum fee in XRP.

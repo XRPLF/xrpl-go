@@ -1,10 +1,12 @@
-package server
+package server_test
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/server"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/version"
 	"github.com/stretchr/testify/require"
 )
@@ -37,13 +39,13 @@ const fullDefinitionsFixture = `{
 func TestDefinitionsRequest(t *testing.T) {
 	tests := []struct {
 		name    string
-		request DefinitionsRequest
+		request server.DefinitionsRequest
 		wantErr error
 	}{
 		{name: "without hash"},
-		{name: "with matching-length hash", request: DefinitionsRequest{Hash: definitionsHash}},
-		{name: "reject short hash", request: DefinitionsRequest{Hash: "ABCD"}, wantErr: ErrInvalidDefinitionsHash},
-		{name: "reject non-hex hash", request: DefinitionsRequest{Hash: "Z685734F5FEB756693B4BB978BBB3A158A65652E71EEB2977068B0D680689213"}, wantErr: ErrInvalidDefinitionsHash},
+		{name: "with matching-length hash", request: server.DefinitionsRequest{Hash: definitionsHash}},
+		{name: "reject short hash", request: server.DefinitionsRequest{Hash: "ABCD"}, wantErr: server.ErrInvalidDefinitionsHash},
+		{name: "reject non-hex hash", request: server.DefinitionsRequest{Hash: "Z685734F5FEB756693B4BB978BBB3A158A65652E71EEB2977068B0D680689213"}, wantErr: server.ErrInvalidDefinitionsHash},
 	}
 
 	for _, tt := range tests {
@@ -62,8 +64,8 @@ func TestDefinitionsRequest(t *testing.T) {
 
 func TestDefinitionTypesMarshalIncompleteValues(t *testing.T) {
 	t.Run("definition field", func(t *testing.T) {
-		field := DefinitionField{}
-		require.ErrorIs(t, field.Validate(), ErrInvalidDefinitionField)
+		field := server.DefinitionField{}
+		require.ErrorIs(t, field.Validate(), server.ErrInvalidDefinitionField)
 
 		encoded, err := json.Marshal(field)
 		require.NoError(t, err)
@@ -77,8 +79,8 @@ func TestDefinitionTypesMarshalIncompleteValues(t *testing.T) {
 	})
 
 	t.Run("definitions response", func(t *testing.T) {
-		response := DefinitionsResponse{}
-		require.ErrorIs(t, response.Validate(), ErrInvalidDefinitionsHash)
+		response := server.DefinitionsResponse{}
+		require.ErrorIs(t, response.Validate(), server.ErrInvalidDefinitionsHash)
 
 		encoded, err := json.Marshal(response)
 		require.NoError(t, err)
@@ -86,19 +88,60 @@ func TestDefinitionTypesMarshalIncompleteValues(t *testing.T) {
 	})
 }
 
-func TestDefinitionsResponseFullJSON(t *testing.T) {
-	got := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
-
-	require.Len(t, got.Fields, 2)
-	require.Equal(t, "TransactionType", got.Fields[1].Name)
-	require.Equal(t, "UInt16", got.Fields[1].Info.Type)
-	require.Equal(t, uint32(2147483648), got.LedgerEntryFlags["AccountRoot"]["lsfAllowTrustLineClawback"])
-	require.Equal(t, 0, got.TransactionTypes["Payment"])
-	require.Equal(t, definitionsHash, got.Hash)
-	requireDefinitionsResponseJSONRoundTrip(t, got)
+func definitionsResponseFullFixture() (server.DefinitionsResponse, string) {
+	expected := server.DefinitionsResponse{
+		Fields: []server.DefinitionField{
+			{Name: "Invalid", Info: server.DefinitionFieldInfo{Nth: -1, Type: "Unknown"}},
+			{Name: "TransactionType", Info: server.DefinitionFieldInfo{Nth: 2, Type: "UInt16", IsSerialized: true, IsSigningField: true}},
+		},
+		Types:              map[string]int{"Done": -1, "UInt16": 1},
+		LedgerEntryTypes:   map[string]int{"Invalid": -1, "AccountRoot": 97},
+		TransactionTypes:   map[string]int{"Invalid": -1, "Payment": 0},
+		TransactionResults: map[string]int{"temREDUNDANT": -275, "tesSUCCESS": 0},
+		LedgerEntryFormats: map[string][]server.DefinitionFormatField{
+			"common":      {{Name: "LedgerEntryType", Optionality: 0}},
+			"AccountRoot": {{Name: "Account", Optionality: 0}},
+		},
+		TransactionFormats: map[string][]server.DefinitionFormatField{
+			"common":  {{Name: "TransactionType", Optionality: 0}},
+			"Payment": {{Name: "Destination", Optionality: 0}},
+		},
+		LedgerEntryFlags: map[string]map[string]uint32{"AccountRoot": {"lsfAllowTrustLineClawback": 2147483648}},
+		TransactionFlags: map[string]map[string]uint32{"Payment": {"tfPartialPayment": 131072}},
+		AccountSetFlags:  map[string]uint32{"asfDefaultRipple": 8},
+		Hash:             definitionsHash,
+	}
+	return expected, fullDefinitionsFixture
 }
 
-func TestDefinitionsResponseLegacyJSON(t *testing.T) {
+func TestDefinitionsResponseFullSerialize(t *testing.T) {
+	value, payload := definitionsResponseFullFixture()
+	encoded, err := json.Marshal(value)
+	require.NoError(t, err)
+	require.JSONEq(t, payload, string(encoded))
+}
+
+func TestDefinitionsResponseFullJSONDecode(t *testing.T) {
+	want, payload := definitionsResponseFullFixture()
+	var got server.DefinitionsResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestDefinitionsResponseFullClientDecode(t *testing.T) {
+	want, payload := definitionsResponseFullFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got server.DefinitionsResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
+}
+
+func definitionsResponseLegacyFixture() (server.DefinitionsResponse, string) {
 	fixture := `{
 		"FIELDS": [["TransactionType", {"isSerialized": true, "isSigningField": true, "isVLEncoded": false, "nth": 2, "type": "UInt16"}]],
 		"TYPES": {"UInt16": 1},
@@ -107,16 +150,46 @@ func TestDefinitionsResponseLegacyJSON(t *testing.T) {
 		"TRANSACTION_RESULTS": {"tesSUCCESS": 0},
 		"hash": "` + definitionsHash + `"
 	}`
+	expected := server.DefinitionsResponse{
+		Fields:             []server.DefinitionField{{Name: "TransactionType", Info: server.DefinitionFieldInfo{Nth: 2, Type: "UInt16", IsSerialized: true, IsSigningField: true}}},
+		Types:              map[string]int{"UInt16": 1},
+		LedgerEntryTypes:   map[string]int{"AccountRoot": 97},
+		TransactionTypes:   map[string]int{"Payment": 0},
+		TransactionResults: map[string]int{"tesSUCCESS": 0},
+		Hash:               definitionsHash,
+	}
+	return expected, fixture
+}
 
-	got := mustDecodeDefinitionsResponse(t, fixture)
+func TestDefinitionsResponseLegacySerialize(t *testing.T) {
+	value, payload := definitionsResponseLegacyFixture()
+	encoded, err := json.Marshal(value)
+	require.NoError(t, err)
+	require.JSONEq(t, payload, string(encoded))
+}
 
-	require.Nil(t, got.LedgerEntryFormats)
-	require.Nil(t, got.TransactionFlags)
-	requireDefinitionsResponseJSONRoundTrip(t, got)
+func TestDefinitionsResponseLegacyJSONDecode(t *testing.T) {
+	want, payload := definitionsResponseLegacyFixture()
+	var got server.DefinitionsResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestDefinitionsResponseLegacyClientDecode(t *testing.T) {
+	want, payload := definitionsResponseLegacyFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got server.DefinitionsResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }
 
 func TestDefinitionsResponseAcceptsIndependentEnhancedSections(t *testing.T) {
-	clearEnhancedSections := func(r *DefinitionsResponse) {
+	clearEnhancedSections := func(r *server.DefinitionsResponse) {
 		r.LedgerEntryFormats = nil
 		r.TransactionFormats = nil
 		r.LedgerEntryFlags = nil
@@ -125,11 +198,11 @@ func TestDefinitionsResponseAcceptsIndependentEnhancedSections(t *testing.T) {
 	}
 	sections := []struct {
 		name string
-		keep func(*DefinitionsResponse)
+		keep func(*server.DefinitionsResponse)
 	}{
 		{
 			name: "ledger entry formats",
-			keep: func(r *DefinitionsResponse) {
+			keep: func(r *server.DefinitionsResponse) {
 				value := r.LedgerEntryFormats
 				clearEnhancedSections(r)
 				r.LedgerEntryFormats = value
@@ -137,7 +210,7 @@ func TestDefinitionsResponseAcceptsIndependentEnhancedSections(t *testing.T) {
 		},
 		{
 			name: "transaction formats",
-			keep: func(r *DefinitionsResponse) {
+			keep: func(r *server.DefinitionsResponse) {
 				value := r.TransactionFormats
 				clearEnhancedSections(r)
 				r.TransactionFormats = value
@@ -145,7 +218,7 @@ func TestDefinitionsResponseAcceptsIndependentEnhancedSections(t *testing.T) {
 		},
 		{
 			name: "ledger entry flags",
-			keep: func(r *DefinitionsResponse) {
+			keep: func(r *server.DefinitionsResponse) {
 				value := r.LedgerEntryFlags
 				clearEnhancedSections(r)
 				r.LedgerEntryFlags = value
@@ -153,7 +226,7 @@ func TestDefinitionsResponseAcceptsIndependentEnhancedSections(t *testing.T) {
 		},
 		{
 			name: "transaction flags",
-			keep: func(r *DefinitionsResponse) {
+			keep: func(r *server.DefinitionsResponse) {
 				value := r.TransactionFlags
 				clearEnhancedSections(r)
 				r.TransactionFlags = value
@@ -161,7 +234,7 @@ func TestDefinitionsResponseAcceptsIndependentEnhancedSections(t *testing.T) {
 		},
 		{
 			name: "account set flags",
-			keep: func(r *DefinitionsResponse) {
+			keep: func(r *server.DefinitionsResponse) {
 				value := r.AccountSetFlags
 				clearEnhancedSections(r)
 				r.AccountSetFlags = value
@@ -171,27 +244,51 @@ func TestDefinitionsResponseAcceptsIndependentEnhancedSections(t *testing.T) {
 
 	for _, section := range sections {
 		t.Run(section.name, func(t *testing.T) {
-			response := mustDecodeDefinitionsResponse(t, fullDefinitionsFixture)
+			response, _ := definitionsResponseFullFixture()
 			section.keep(&response)
 			require.NoError(t, response.Validate())
 
 			encoded, err := json.Marshal(response)
 			require.NoError(t, err)
 
-			var decoded DefinitionsResponse
+			var decoded server.DefinitionsResponse
 			require.NoError(t, json.Unmarshal(encoded, &decoded))
 			require.Equal(t, response, decoded)
 		})
 	}
 }
 
-func TestDefinitionsResponseHashOnlyJSON(t *testing.T) {
-	got := mustDecodeDefinitionsResponse(t, `{"hash":"`+definitionsHash+`"}`)
+func definitionsResponseHashOnlyFixture() (server.DefinitionsResponse, string) {
+	fixture := `{"hash":"` + definitionsHash + `"}`
+	expected := server.DefinitionsResponse{Hash: definitionsHash}
+	return expected, fixture
+}
 
-	require.Equal(t, definitionsHash, got.Hash)
-	require.Nil(t, got.Fields)
-	require.Nil(t, got.Types)
-	requireDefinitionsResponseJSONRoundTrip(t, got)
+func TestDefinitionsResponseHashOnlySerialize(t *testing.T) {
+	value, payload := definitionsResponseHashOnlyFixture()
+	encoded, err := json.Marshal(value)
+	require.NoError(t, err)
+	require.JSONEq(t, payload, string(encoded))
+}
+
+func TestDefinitionsResponseHashOnlyJSONDecode(t *testing.T) {
+	want, payload := definitionsResponseHashOnlyFixture()
+	var got server.DefinitionsResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestDefinitionsResponseHashOnlyClientDecode(t *testing.T) {
+	want, payload := definitionsResponseHashOnlyFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got server.DefinitionsResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }
 
 func TestDefinitionsResponseRejectsInvalidJSON(t *testing.T) {
@@ -203,32 +300,32 @@ func TestDefinitionsResponseRejectsInvalidJSON(t *testing.T) {
 		{
 			name:    "partial full response",
 			fixture: `{"TYPES":{"UInt16":1},"hash":"` + definitionsHash + `"}`,
-			wantErr: ErrInvalidDefinitionsResponse,
+			wantErr: server.ErrInvalidDefinitionsResponse,
 		},
 		{
 			name:    "null definition section",
 			fixture: `{"FIELDS":null,"hash":"` + definitionsHash + `"}`,
-			wantErr: ErrInvalidDefinitionsResponse,
+			wantErr: server.ErrInvalidDefinitionsResponse,
 		},
 		{
 			name:    "missing field property",
 			fixture: strings.Replace(fullDefinitionsFixture, `"nth": -1, `, "", 1),
-			wantErr: ErrInvalidDefinitionField,
+			wantErr: server.ErrInvalidDefinitionField,
 		},
 		{
 			name:    "missing format optionality",
 			fixture: strings.Replace(fullDefinitionsFixture, `, "optionality": 0`, "", 1),
-			wantErr: ErrInvalidDefinitionsResponse,
+			wantErr: server.ErrInvalidDefinitionsResponse,
 		},
 		{
 			name:    "missing hash",
 			fixture: `{"FIELDS":[]}`,
-			wantErr: ErrInvalidDefinitionsHash,
+			wantErr: server.ErrInvalidDefinitionsHash,
 		},
 		{
 			name:    "wrong section type with response sentinel",
 			fixture: `{"TYPES":[],"hash":"` + definitionsHash + `"}`,
-			wantErr: ErrInvalidDefinitionsResponse,
+			wantErr: server.ErrInvalidDefinitionsResponse,
 		},
 		{
 			name: "malformed field tuple",
@@ -240,7 +337,7 @@ func TestDefinitionsResponseRejectsInvalidJSON(t *testing.T) {
 				"TRANSACTION_RESULTS": {"tesSUCCESS": 0},
 				"hash": "` + definitionsHash + `"
 			}`,
-			wantErr: ErrInvalidDefinitionField,
+			wantErr: server.ErrInvalidDefinitionField,
 		},
 		{
 			name: "invalid optionality",
@@ -253,49 +350,50 @@ func TestDefinitionsResponseRejectsInvalidJSON(t *testing.T) {
 				"TRANSACTION_FORMATS": {"Payment": [{"name": "Destination", "optionality": 3}]},
 				"hash": "` + definitionsHash + `"
 			}`,
-			wantErr: ErrInvalidDefinitionsResponse,
+			wantErr: server.ErrInvalidDefinitionsResponse,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var response DefinitionsResponse
+			var response server.DefinitionsResponse
 			require.ErrorIs(t, json.Unmarshal([]byte(tt.fixture), &response), tt.wantErr)
 		})
 	}
 }
 
 func TestDefinitionsResponseValidateForRequest(t *testing.T) {
+	fullResponse, _ := definitionsResponseFullFixture()
 	matchingLowercaseHash := strings.ToLower(definitionsHash)
 	differentHash := "A685734F5FEB756693B4BB978BBB3A158A65652E71EEB2977068B0D680689213"
 
 	tests := []struct {
 		name     string
-		response DefinitionsResponse
-		request  *DefinitionsRequest
+		response server.DefinitionsResponse
+		request  *server.DefinitionsRequest
 		wantErr  error
 	}{
 		{
 			name:     "full response does not require request hash",
-			response: mustDecodeDefinitionsResponse(t, fullDefinitionsFixture),
-			request:  &DefinitionsRequest{},
+			response: fullResponse,
+			request:  &server.DefinitionsRequest{},
 		},
 		{
 			name:     "matching hash ignores case",
-			response: DefinitionsResponse{Hash: definitionsHash},
-			request:  &DefinitionsRequest{Hash: matchingLowercaseHash},
+			response: server.DefinitionsResponse{Hash: definitionsHash},
+			request:  &server.DefinitionsRequest{Hash: matchingLowercaseHash},
 		},
 		{
 			name:     "reject hash-only response without request hash",
-			response: DefinitionsResponse{Hash: definitionsHash},
-			request:  &DefinitionsRequest{},
-			wantErr:  ErrInvalidDefinitionsResponse,
+			response: server.DefinitionsResponse{Hash: definitionsHash},
+			request:  &server.DefinitionsRequest{},
+			wantErr:  server.ErrInvalidDefinitionsResponse,
 		},
 		{
 			name:     "reject hash-only response with different hash",
-			response: DefinitionsResponse{Hash: definitionsHash},
-			request:  &DefinitionsRequest{Hash: differentHash},
-			wantErr:  ErrInvalidDefinitionsResponse,
+			response: server.DefinitionsResponse{Hash: definitionsHash},
+			request:  &server.DefinitionsRequest{Hash: differentHash},
+			wantErr:  server.ErrInvalidDefinitionsResponse,
 		},
 	}
 
@@ -309,23 +407,4 @@ func TestDefinitionsResponseValidateForRequest(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
-}
-
-func mustDecodeDefinitionsResponse(t *testing.T, fixture string) DefinitionsResponse {
-	t.Helper()
-	var response DefinitionsResponse
-	require.NoError(t, json.Unmarshal([]byte(fixture), &response))
-	return response
-}
-
-func requireDefinitionsResponseJSONRoundTrip(t *testing.T, response DefinitionsResponse) {
-	t.Helper()
-	require.NoError(t, response.Validate())
-
-	encoded, err := json.Marshal(response)
-	require.NoError(t, err)
-
-	var roundTrip DefinitionsResponse
-	require.NoError(t, json.Unmarshal(encoded, &roundTrip))
-	require.Equal(t, response, roundTrip)
 }

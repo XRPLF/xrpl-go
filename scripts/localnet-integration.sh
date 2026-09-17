@@ -4,13 +4,14 @@ set -eu
 
 CONTAINER_NAME="${LOCALNET_CONTAINER:-xrpld_standalone}"
 MAX_WAIT_SECONDS="${MAX_WAIT_SECONDS:-60}"
+WAIT_ATTEMPTS_PER_SECOND=4
 RPC_URL="${RPC_URL:-http://127.0.0.1:5005}"
 STARTED_LOCALNET=0
 
 cleanup() {
 	if [ "$STARTED_LOCALNET" -eq 1 ] && [ "${KEEP_LOCALNET:-0}" != "1" ]; then
 		echo "Stopping localnet..."
-		docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || true
+		docker rm --force "$CONTAINER_NAME" >/dev/null 2>&1 || true
 	fi
 }
 
@@ -22,8 +23,9 @@ require_command() {
 }
 
 wait_for_localnet() {
-	elapsed=0
-	while [ "$elapsed" -lt "$MAX_WAIT_SECONDS" ]; do
+	attempt=0
+	max_attempts=$((MAX_WAIT_SECONDS * WAIT_ATTEMPTS_PER_SECOND))
+	while [ "$attempt" -lt "$max_attempts" ]; do
 		if curl -fsS \
 			-H "Content-Type: application/json" \
 			-d '{"method":"server_info","params":[{}]}' \
@@ -31,8 +33,8 @@ wait_for_localnet() {
 			return 0
 		fi
 
-		sleep 2
-		elapsed=$((elapsed + 2))
+		sleep 0.25
+		attempt=$((attempt + 1))
 	done
 
 	echo "Localnet RPC did not become ready within ${MAX_WAIT_SECONDS}s." >&2
@@ -58,4 +60,8 @@ echo "Waiting for localnet RPC at $RPC_URL..."
 wait_for_localnet
 
 echo "Running localnet integration tests..."
-make test-integration-localnet
+if [ -n "${INTEGRATION_TEST_REPORT:-}" ]; then
+	make test-integration-localnet-ci
+else
+	make test-integration-localnet
+fi

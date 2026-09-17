@@ -17,12 +17,16 @@ import (
 )
 
 const (
-	txMultiSigPrefix          = "534D5400"
-	paymentChannelClaimPrefix = "434C4D00"
-	txSigPrefix               = "53545800"
-	batchPrefix               = "42434800"
-	unlModifyTransactionType  = "UNLModify"
-	xrplZeroAccount           = "rrrrrrrrrrrrrrrrrrrrrhoLvTp"
+	counterpartySigPrefix      = "43505400"
+	counterpartyMultiSigPrefix = "43504D00"
+	sponsorSigPrefix           = "53504E00"
+	sponsorMultiSigPrefix      = "53504D00"
+	txMultiSigPrefix           = "534D5400"
+	paymentChannelClaimPrefix  = "434C4D00"
+	txSigPrefix                = "53545800"
+	batchPrefix                = "42434800"
+	unlModifyTransactionType   = "UNLModify"
+	xrplZeroAccount            = "rrrrrrrrrrrrrrrrrrrrrhoLvTp"
 )
 
 // Encode converts a JSON transaction object to a hex string in the canonical binary format.
@@ -80,9 +84,13 @@ func transactionRawFieldValueOverrides(json map[string]any) (types.RawFieldValue
 // signature towards a multi-signed transaction.
 // Only encodes fields that are intended to be signed.
 // NOTE: The caller is responsible for setting SigningPubKey to "" for regular multisigning.
-// For counterparty signing (e.g. LoanSet), SigningPubKey must remain set to the first signer's
-// public key, so this function must not overwrite it.
+// This function preserves SigningPubKey. For role-specific signatures, use
+// EncodeForMultisigningCounterparty or EncodeForMultisigningSponsor instead.
 func EncodeForMultisigning(json map[string]any, xrpAccountID string) (string, error) {
+	return encodeForMultisigning(json, xrpAccountID, txMultiSigPrefix)
+}
+
+func encodeForMultisigning(json map[string]any, xrpAccountID, prefix string) (string, error) {
 	st := &types.AccountID{}
 
 	suffix, err := st.FromJSON(xrpAccountID)
@@ -95,17 +103,45 @@ func EncodeForMultisigning(json map[string]any, xrpAccountID string) (string, er
 		return "", err
 	}
 
-	return strings.ToUpper(txMultiSigPrefix + encoded + hex.EncodeToString(suffix)), nil
+	return strings.ToUpper(prefix + encoded + hex.EncodeToString(suffix)), nil
 }
 
 // EncodeForSigning encodes a transaction into binary format in preparation for signing.
 func EncodeForSigning(json map[string]any) (string, error) {
+	return encodeForSigning(json, txSigPrefix)
+}
+
+// EncodeForSigningCounterparty prepares a counterparty signature payload.
+// Requires fixCleanup3_4_0 on the target network.
+func EncodeForSigningCounterparty(json map[string]any) (string, error) {
+	return encodeForSigning(json, counterpartySigPrefix)
+}
+
+// EncodeForMultisigningCounterparty prepares a counterparty multisignature payload.
+// Requires fixCleanup3_4_0. The caller must preserve the broker's SigningPubKey.
+func EncodeForMultisigningCounterparty(json map[string]any, xrpAccountID string) (string, error) {
+	return encodeForMultisigning(json, xrpAccountID, counterpartyMultiSigPrefix)
+}
+
+// EncodeForSigningSponsor prepares a sponsor signature payload.
+// Requires fixCleanup3_4_0 on the target network.
+func EncodeForSigningSponsor(json map[string]any) (string, error) {
+	return encodeForSigning(json, sponsorSigPrefix)
+}
+
+// EncodeForMultisigningSponsor prepares a sponsor multisignature payload.
+// Requires fixCleanup3_4_0. The caller's SigningPubKey is preserved.
+func EncodeForMultisigningSponsor(json map[string]any, xrpAccountID string) (string, error) {
+	return encodeForMultisigning(json, xrpAccountID, sponsorMultiSigPrefix)
+}
+
+func encodeForSigning(json map[string]any, prefix string) (string, error) {
 	encoded, err := Encode(signingFieldsOnly(json))
 	if err != nil {
 		return "", err
 	}
 
-	return strings.ToUpper(txSigPrefix + encoded), nil
+	return strings.ToUpper(prefix + encoded), nil
 }
 
 // signingFieldsOnly returns a new map containing only the fields from the JSON transaction that are signing fields.

@@ -1,10 +1,11 @@
 package websocket
 
 import (
-	"github.com/Peersyst/xrpl-go/xrpl/currency"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/amm"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/channel"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/clio"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/nft"
@@ -23,61 +24,34 @@ import (
 // It takes an AccountInfoRequest as input and returns an AccountInfoResponse,
 // along with the raw XRPL response and any error encountered.
 func (c *Client) GetAccountInfo(req *account.InfoRequest) (*account.InfoResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var air account.InfoResponse
-	err = res.GetResult(&air)
-	if err != nil {
-		return nil, err
-	}
-	return &air, nil
+	return clientinternal.DecodeResult[account.InfoResponse](c.Request(req))
 }
 
 // GetAccountChannels retrieves a list of payment channels associated with an account.
 // It takes an AccountChannelsRequest as input and returns an AccountChannelsResponse,
 // along with any error encountered.
 func (c *Client) GetAccountChannels(req *account.ChannelsRequest) (*account.ChannelsResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var acr account.ChannelsResponse
-	err = res.GetResult(&acr)
-	if err != nil {
-		return nil, err
-	}
-	return &acr, nil
+	return clientinternal.DecodeResult[account.ChannelsResponse](c.Request(req))
 }
 
 // GetAccountObjects retrieves a list of objects owned by an account on the XRP Ledger.
 // It takes an AccountObjectsRequest as input and returns an AccountObjectsResponse,
 // along with any error encountered.
 func (c *Client) GetAccountObjects(req *account.ObjectsRequest) (*account.ObjectsResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var acr account.ObjectsResponse
-	err = res.GetResult(&acr)
-	if err != nil {
-		return nil, err
-	}
-	return &acr, nil
+	return clientinternal.DecodeResult[account.ObjectsResponse](c.Request(req))
 }
 
 // GetXrpBalance retrieves the XRP balance of a given account address.
 // It returns the balance as a string in XRP (not drops) and any error encountered.
 func (c *Client) GetXrpBalance(address types.Address) (string, error) {
-	return c.getXrpBalance(address, nil)
+	return clientinternal.GetXRPBalance(c.GetAccountInfo, address, nil)
 }
 
 // GetXrpBalanceValidated retrieves the XRP balance of a given account address
 // from the most recently validated ledger. It returns the balance as a string
 // in XRP (not drops) and any error encountered.
 func (c *Client) GetXrpBalanceValidated(address types.Address) (string, error) {
-	return c.getXrpBalance(address, common.Validated)
+	return clientinternal.GetXRPBalance(c.GetAccountInfo, address, common.Validated)
 }
 
 // GetXrpDropsBalanceValidated retrieves the XRP balance of a given account
@@ -85,76 +59,34 @@ func (c *Client) GetXrpBalanceValidated(address types.Address) (string, error) {
 // GetXrpBalanceValidated when callers need integer drops (avoids a round-trip
 // through a decimal XRP string).
 func (c *Client) GetXrpDropsBalanceValidated(address types.Address) (types.XRPCurrencyAmount, error) {
-	return c.getXrpDropsBalance(address, common.Validated)
+	return clientinternal.GetXRPDropsBalance(c.GetAccountInfo, address, common.Validated)
 }
 
-func (c *Client) getXrpBalance(address types.Address, ledgerIndex common.LedgerSpecifier) (string, error) {
-	balance, err := c.getXrpDropsBalance(address, ledgerIndex)
-	if err != nil {
-		return "", err
-	}
-	return currency.DropsToXrp(balance.String())
-}
-
-// getXrpDropsBalance returns the account's XRP balance in drops at the given
-// ledger specifier. A nil ledgerIndex lets rippled apply its default.
-func (c *Client) getXrpDropsBalance(address types.Address, ledgerIndex common.LedgerSpecifier) (types.XRPCurrencyAmount, error) {
-	res, err := c.GetAccountInfo(&account.InfoRequest{
-		Account:     address,
-		LedgerIndex: ledgerIndex,
-	})
-	if err != nil {
-		return 0, err
-	}
-	return res.AccountData.Balance, nil
+// GetAccountSponsoring retrieves raw sponsored objects. The server must support
+// account_sponsoring, identified as Clio-only by XRPL.js.
+func (c *Client) GetAccountSponsoring(req *clio.AccountSponsoringRequest) (*clio.AccountSponsoringResponse, error) {
+	return clientinternal.DecodeResult[clio.AccountSponsoringResponse](c.Request(req))
 }
 
 // GetAccountLines retrieves the lines associated with an account on the XRP Ledger.
 // It takes an AccountLinesRequest as input and returns an AccountLinesResponse,
 // along with any error encountered.
 func (c *Client) GetAccountLines(req *account.LinesRequest) (*account.LinesResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var acr account.LinesResponse
-	err = res.GetResult(&acr)
-	if err != nil {
-		return nil, err
-	}
-	return &acr, nil
+	return clientinternal.DecodeResult[account.LinesResponse](c.Request(req))
 }
 
 // GetAccountNFTs retrieves a list of NFTs owned by an account on the XRP Ledger.
 // It takes an AccountNFTsRequest as input and returns an AccountNFTsResponse,
 // along with any error encountered.
 func (c *Client) GetAccountNFTs(req *account.NFTsRequest) (*account.NFTsResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var acr account.NFTsResponse
-	err = res.GetResult(&acr)
-	if err != nil {
-		return nil, err
-	}
-	return &acr, nil
+	return clientinternal.DecodeResult[account.NFTsResponse](c.Request(req))
 }
 
 // GetAccountCurrencies retrieves a list of currencies that an account can send or receive.
 // It takes an AccountCurrenciesRequest as input and returns an AccountCurrenciesResponse,
 // along with any error encountered.
 func (c *Client) GetAccountCurrencies(req *account.CurrenciesRequest) (*account.CurrenciesResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var acr account.CurrenciesResponse
-	err = res.GetResult(&acr)
-	if err != nil {
-		return nil, err
-	}
-	return &acr, nil
+	return clientinternal.DecodeResult[account.CurrenciesResponse](c.Request(req))
 }
 
 // GetAccountOffers retrieves a list of offers made by an account that are currently active
@@ -162,48 +94,21 @@ func (c *Client) GetAccountCurrencies(req *account.CurrenciesRequest) (*account.
 // It takes an AccountOffersRequest as input and returns an AccountOffersResponse,
 // along with any error encountered.
 func (c *Client) GetAccountOffers(req *account.OffersRequest) (*account.OffersResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var acr account.OffersResponse
-	err = res.GetResult(&acr)
-	if err != nil {
-		return nil, err
-	}
-	return &acr, nil
+	return clientinternal.DecodeResult[account.OffersResponse](c.Request(req))
 }
 
 // GetAccountTransactions retrieves a list of transactions that involved a specific account.
 // It takes an AccountTransactionsRequest as input and returns an AccountTransactionsResponse,
 // along with any error encountered.
 func (c *Client) GetAccountTransactions(req *account.TransactionsRequest) (*account.TransactionsResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var acr account.TransactionsResponse
-	err = res.GetResult(&acr)
-	if err != nil {
-		return nil, err
-	}
-	return &acr, nil
+	return clientinternal.DecodeResult[account.TransactionsResponse](c.Request(req))
 }
 
 // GetGatewayBalances retrieves the gateway balances for an account.
 // It takes a GatewayBalancesRequest as input and returns a GatewayBalancesResponse,
 // along with any error encountered.
 func (c *Client) GetGatewayBalances(req *account.GatewayBalancesRequest) (*account.GatewayBalancesResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var acr account.GatewayBalancesResponse
-	err = res.GetResult(&acr)
-	if err != nil {
-		return nil, err
-	}
-	return &acr, nil
+	return clientinternal.DecodeResult[account.GatewayBalancesResponse](c.Request(req))
 }
 
 // Channel queries
@@ -212,40 +117,17 @@ func (c *Client) GetGatewayBalances(req *account.GatewayBalancesRequest) (*accou
 // It takes a ChannelVerifyRequest as input and returns a ChannelVerifyResponse,
 // along with any error encountered.
 func (c *Client) GetChannelVerify(req *channel.VerifyRequest) (*channel.VerifyResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var acr channel.VerifyResponse
-	err = res.GetResult(&acr)
-	if err != nil {
-		return nil, err
-	}
-	return &acr, nil
+	return clientinternal.DecodeResult[channel.VerifyResponse](c.Request(req))
 }
 
 // Transaction queries
 
 // Simulate executes an unsigned transaction as a dry run without submitting it
 // to the network. Results reflect current ledger state and do not guarantee the
-// outcome of a later submission.
+// outcome of a later submission. Request fields are validated by the server.
 func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error) {
-	networkID, _ := c.NetworkIdentity()
-	if err := req.ValidateNetworkID(networkID); err != nil {
-		return nil, err
-	}
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var response transactions.SimulateResponse
-	if err := res.GetResult(&response); err != nil {
-		return nil, err
-	}
-	if err := response.ValidateForRequest(req); err != nil {
-		return nil, err
-	}
-	return &response, nil
+	response, err := c.Request(req)
+	return clientinternal.DecodeSimulate(req, response, err)
 }
 
 // Ledger queries
@@ -253,97 +135,40 @@ func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.Simu
 // GetLedgerIndex returns the index of the most recently validated ledger.
 // It returns the ledger index as a LedgerIndex type and any error encountered.
 func (c *Client) GetLedgerIndex() (common.LedgerIndex, error) {
-	res, err := c.Request(&ledger.Request{
-		LedgerIndex: common.LedgerTitle("validated"),
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	var lr ledger.Response
-	err = res.GetResult(&lr)
-	if err != nil {
-		return 0, err
-	}
-	return lr.LedgerIndex, err
+	return clientinternal.GetLedgerIndex(c.GetLedger)
 }
 
 // GetClosedLedger retrieves information about the last closed ledger.
 // It returns a ClosedResponse containing the ledger information and any error encountered.
 func (c *Client) GetClosedLedger() (*ledger.ClosedResponse, error) {
-	res, err := c.Request(&ledger.ClosedRequest{})
-	if err != nil {
-		return nil, err
-	}
-	var lr ledger.ClosedResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[ledger.ClosedResponse](c.Request(&ledger.ClosedRequest{}))
 }
 
 // GetCurrentLedger retrieves information about the current working ledger.
 // It returns a CurrentResponse containing the ledger information and any error encountered.
 func (c *Client) GetCurrentLedger() (*ledger.CurrentResponse, error) {
-	res, err := c.Request(&ledger.CurrentRequest{})
-	if err != nil {
-		return nil, err
-	}
-	var lr ledger.CurrentResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[ledger.CurrentResponse](c.Request(&ledger.CurrentRequest{}))
 }
 
 // GetLedgerData retrieves contents of a ledger.
 // It takes a DataRequest as input and returns a DataResponse containing the ledger data,
 // along with any error encountered.
 func (c *Client) GetLedgerData(req *ledger.DataRequest) (*ledger.DataResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr ledger.DataResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[ledger.DataResponse](c.Request(req))
 }
 
 // GetLedger retrieves information about a specific ledger version.
 // It takes a Request as input and returns a Response containing the ledger information,
 // along with any error encountered.
 func (c *Client) GetLedger(req *ledger.Request) (*ledger.Response, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr ledger.Response
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[ledger.Response](c.Request(req))
 }
 
 // GetLedgerEntry retrieves a specific ledger entry by its index.
 // It takes an EntryRequest as input and returns an EntryResponse containing the ledger entry,
 // along with any error encountered.
 func (c *Client) GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var ler ledger.EntryResponse
-	err = res.GetResult(&ler)
-	if err != nil {
-		return nil, err
-	}
-	return &ler, nil
+	return clientinternal.DecodeResult[ledger.EntryResponse](c.Request(req))
 }
 
 // NFT queries
@@ -352,32 +177,14 @@ func (c *Client) GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse
 // It takes an NFTokenBuyOffersRequest as input and returns an NFTokenBuyOffersResponse,
 // along with any error encountered.
 func (c *Client) GetNFTBuyOffers(req *nft.NFTokenBuyOffersRequest) (*nft.NFTokenBuyOffersResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr nft.NFTokenBuyOffersResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[nft.NFTokenBuyOffersResponse](c.Request(req))
 }
 
 // GetNFTSellOffers retrieves all sell offers for a specific NFT.
 // It takes an NFTokenSellOffersRequest as input and returns an NFTokenSellOffersResponse,
 // along with any error encountered.
 func (c *Client) GetNFTSellOffers(req *nft.NFTokenSellOffersRequest) (*nft.NFTokenSellOffersResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr nft.NFTokenSellOffersResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[nft.NFTokenSellOffersResponse](c.Request(req))
 }
 
 // Path queries
@@ -386,96 +193,42 @@ func (c *Client) GetNFTSellOffers(req *nft.NFTokenSellOffersRequest) (*nft.NFTok
 // It takes a BookOffersRequest as input and returns a BookOffersResponse,
 // along with any error encountered.
 func (c *Client) GetBookOffers(req *path.BookOffersRequest) (*path.BookOffersResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr path.BookOffersResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[path.BookOffersResponse](c.Request(req))
 }
 
 // GetDepositAuthorized checks whether one account is authorized to send payments directly to another.
 // It takes a DepositAuthorizedRequest as input and returns a DepositAuthorizedResponse,
 // along with any error encountered.
 func (c *Client) GetDepositAuthorized(req *path.DepositAuthorizedRequest) (*path.DepositAuthorizedResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr path.DepositAuthorizedResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[path.DepositAuthorizedResponse](c.Request(req))
 }
 
 // FindPathCreate creates a path finding request that will be monitored until it expires or is closed.
 // It takes a FindCreateRequest as input and returns a FindResponse,
 // along with any error encountered.
 func (c *Client) FindPathCreate(req *path.FindCreateRequest) (*path.FindResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr path.FindResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[path.FindResponse](c.Request(req))
 }
 
 // FindPathClose closes an existing path finding request.
 // It takes a FindCloseRequest as input and returns a FindResponse,
 // along with any error encountered.
 func (c *Client) FindPathClose(req *path.FindCloseRequest) (*path.FindResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr path.FindResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[path.FindResponse](c.Request(req))
 }
 
 // FindPathStatus checks the status of an existing path finding request.
 // It takes a FindStatusRequest as input and returns a FindResponse,
 // along with any error encountered.
 func (c *Client) FindPathStatus(req *path.FindStatusRequest) (*path.FindResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr path.FindResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[path.FindResponse](c.Request(req))
 }
 
 // GetRipplePathFind finds paths for a payment between two accounts.
 // It takes a RipplePathFindRequest as input and returns a RipplePathFindResponse,
 // along with any error encountered.
 func (c *Client) GetRipplePathFind(req *path.RipplePathFindRequest) (*path.RipplePathFindResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr path.RipplePathFindResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[path.RipplePathFindResponse](c.Request(req))
 }
 
 // Server queries
@@ -484,113 +237,49 @@ func (c *Client) GetRipplePathFind(req *path.RipplePathFindRequest) (*path.Rippl
 // It takes a ServerInfoRequest as input and returns a ServerInfoResponse,
 // along with any error encountered.
 func (c *Client) GetServerInfo(req *server.InfoRequest) (*server.InfoResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var sir server.InfoResponse
-	err = res.GetResult(&sir)
-	if err != nil {
-		return nil, err
-	}
-	return &sir, err
+	return clientinternal.DecodeResult[server.InfoResponse](c.Request(req))
 }
 
 // GetServerDefinitions retrieves the serialization definitions supported by the server.
 // A request hash that matches the server's definitions produces a hash-only response.
 func (c *Client) GetServerDefinitions(req *server.DefinitionsRequest) (*server.DefinitionsResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var response server.DefinitionsResponse
-	if err := res.GetResult(&response); err != nil {
-		return nil, err
-	}
-	if err := response.ValidateForRequest(req); err != nil {
-		return nil, err
-	}
-	return &response, nil
+	response, err := c.Request(req)
+	return clientinternal.DecodeServerDefinitions(req, response, err)
 }
 
 // GetAllFeatures retrieves information about all features supported by the server.
 // It takes a FeatureAllRequest as input and returns a FeatureAllResponse,
 // along with any error encountered.
 func (c *Client) GetAllFeatures(req *server.FeatureAllRequest) (*server.FeatureAllResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr server.FeatureAllResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[server.FeatureAllResponse](c.Request(req))
 }
 
 // GetFeature retrieves information about a specific feature supported by the server.
 // It takes a FeatureOneRequest as input and returns a FeatureResponse,
 // along with any error encountered.
 func (c *Client) GetFeature(req *server.FeatureOneRequest) (*server.FeatureResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr server.FeatureResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[server.FeatureResponse](c.Request(req))
 }
 
 // GetFee retrieves the current transaction fee settings from the server.
 // It takes a FeeRequest as input and returns a FeeResponse,
 // along with any error encountered.
 func (c *Client) GetFee(req *server.FeeRequest) (*server.FeeResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr server.FeeResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[server.FeeResponse](c.Request(req))
 }
 
 // GetManifest retrieves public information about a known validator.
 // It takes a ManifestRequest as input and returns a ManifestResponse,
 // along with any error encountered.
 func (c *Client) GetManifest(req *server.ManifestRequest) (*server.ManifestResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr server.ManifestResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[server.ManifestResponse](c.Request(req))
 }
 
 // GetServerState retrieves information about the current state of the server.
 // It takes a StateRequest as input and returns a StateResponse,
 // along with any error encountered.
 func (c *Client) GetServerState(req *server.StateRequest) (*server.StateResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr server.StateResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[server.StateResponse](c.Request(req))
 }
 
 // Oracle queries
@@ -599,16 +288,7 @@ func (c *Client) GetServerState(req *server.StateRequest) (*server.StateResponse
 // It takes a GetAggregatePriceRequest as input and returns a GetAggregatePriceResponse,
 // along with any error encountered.
 func (c *Client) GetAggregatePrice(req *oracle.GetAggregatePriceRequest) (*oracle.GetAggregatePriceResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr oracle.GetAggregatePriceResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[oracle.GetAggregatePriceResponse](c.Request(req))
 }
 
 // AMM queries
@@ -617,16 +297,7 @@ func (c *Client) GetAggregatePrice(req *oracle.GetAggregatePriceRequest) (*oracl
 // It takes an InfoRequest as input and returns an InfoResponse,
 // along with any error encountered.
 func (c *Client) GetAMMInfo(req *amm.InfoRequest) (*amm.InfoResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr amm.InfoResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[amm.InfoResponse](c.Request(req))
 }
 
 // Vault queries
@@ -635,16 +306,7 @@ func (c *Client) GetAMMInfo(req *amm.InfoRequest) (*amm.InfoResponse, error) {
 // It takes a InfoRequest as input and returns a Response,
 // along with any error encountered.
 func (c *Client) GetVaultInfo(req *vault.InfoRequest) (*vault.Response, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr vault.Response
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[vault.Response](c.Request(req))
 }
 
 // Utility queries
@@ -653,30 +315,12 @@ func (c *Client) GetVaultInfo(req *vault.InfoRequest) (*vault.Response, error) {
 // It takes a PingRequest as input and returns a PingResponse,
 // along with any error encountered.
 func (c *Client) Ping(req *utility.PingRequest) (*utility.PingResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr utility.PingResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[utility.PingResponse](c.Request(req))
 }
 
 // GetRandom provides a random number from the server.
 // It takes a RandomRequest as input and returns a RandomResponse,
 // along with any error encountered.
 func (c *Client) GetRandom(req *utility.RandomRequest) (*utility.RandomResponse, error) {
-	res, err := c.Request(req)
-	if err != nil {
-		return nil, err
-	}
-	var lr utility.RandomResponse
-	err = res.GetResult(&lr)
-	if err != nil {
-		return nil, err
-	}
-	return &lr, nil
+	return clientinternal.DecodeResult[utility.RandomResponse](c.Request(req))
 }

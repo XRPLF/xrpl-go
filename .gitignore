@@ -14,8 +14,9 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-# Go workspace file
+# Local Go workspace files
 go.work
+go.work.sum
 
 # IDE-specific files
 .idea/
@@ -40,6 +41,9 @@ Thumbs.db
 *.o
 *.a
 
+# Exception: vendored mpt-crypto static libraries
+!confidential/deps/libs/**/*.a
+
 # Debug files
 debug
 
@@ -50,11 +54,13 @@ debug
 *.tmp
 *.temp
 
-# Coverage report
+# CI test and coverage reports
 coverage.html
+/localnet-test-results.json
+/unit-test-results.json
 
 # Multi-review skill output (per-run subdirectories)
-/reviews/
+reviews/
 
 # PR template skill output
-/PR/
+PR/

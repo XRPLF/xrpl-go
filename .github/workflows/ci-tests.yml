@@ -1,0 +1,112 @@
+name: Tests
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    if: inputs.module == 'core'
+    name: Unit Tests and Coverage
+    runs-on: ubuntu-latest
+    env:
+      GOWORK: "off"
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check core module metadata
+        run: go mod tidy -diff
+
+      - name: Run unit tests and generate coverage
+        run: make coverage-unit-ci
+
+      - name: Check unit test coverage
+        uses: vladopajic/go-test-coverage@f94bcf0d6b9fa5fb8b783830b22648f6c17475e2 # v2.19.0
+        with:
+          config: ./.testcoverage.yml
+          profile: coverage.out
+          local-prefix: github.com/Peersyst/xrpl-go
+          threshold-file: 0
+          threshold-package: 0
+          threshold-total: 0
+
+      - name: Add unit test summary
+        if: always()
+        run: make test-report-summary TEST_REPORT=unit-test-results.json TEST_REPORT_TITLE="Unit test report" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unit-test-reports
+          path: |
+            unit-test-results.json
+            coverage.out
+            coverage.html
+          if-no-files-found: warn
+          retention-days: 14
+
+  localnet-integration:
+    name: Localnet Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      INTEGRATION_MODULE: ${{ inputs.module }}
+      INTEGRATION_TEST_REPORT: localnet-test-results.json
+      LOCALNET_CONTAINER: xrpld_standalone
+      XRPLD_IMAGE: rippleci/xrpld@sha256:1f62f82d87794614881d7900748890ce60fb14576c3534227926a5dc3add250e # 3.4.0 development build, commit 21890d9d
+      KEEP_LOCALNET: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ${{ inputs.module == 'confidential' && 'confidential/go.mod' || 'go.mod' }}
+          cache-dependency-path: |
+            go.sum
+            confidential/go.sum
+
+      - name: Use both checked-out modules
+        if: inputs.module == 'confidential'
+        run: make workspace
+
+      - name: Run localnet integration tests
+        run: make integration-localnet
+
+      - name: Capture localnet logs
+        if: always()
+        run: docker logs "$LOCALNET_CONTAINER" > localnet.log 2>&1 || true
+
+      - name: Add localnet test summary
+        if: always()
+        run: make test-report-summary TEST_REPORT="$INTEGRATION_TEST_REPORT" TEST_REPORT_TITLE="Localnet integration test report" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload localnet test reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: localnet-integration-reports
+          path: |
+            localnet-test-results.json
+            localnet.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop localnet
+        if: always()
+        run: make stop-localnet

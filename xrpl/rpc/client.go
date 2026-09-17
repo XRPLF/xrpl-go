@@ -20,7 +20,6 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
-	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	requests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -413,7 +412,8 @@ func (c *Client) autofill(ctx context.Context, tx *transaction.FlatTransaction, 
 		if !ok {
 			return ErrMissingAccountInTransaction
 		}
-		if err := c.checkAccountDeleteBlockers(ctx, types.Address(accountAddress)); err != nil {
+		destination, _ := typecheck.ToString((*tx)["Destination"])
+		if err := c.checkAccountDeleteBlockers(ctx, types.Address(accountAddress), destination); err != nil {
 			return err
 		}
 	}
@@ -457,7 +457,7 @@ func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 	// Starting balance. An error here (typically actNotFound for a
 	// brand-new account) is treated as a zero balance so polling can still
 	// detect the faucet deposit.
-	startBalance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
+	startBalance, err := c.GetXrpDropsBalanceValidated(wallet.ClassicAddress)
 	if err != nil && !isFundWalletActNotFound(err) {
 		return err
 	}
@@ -468,7 +468,7 @@ func (c *Client) FundWallet(wallet *wallet.Wallet) error {
 
 	for range fundWalletMaxAttempts {
 		time.Sleep(fundWalletPollInterval)
-		balance, err := c.getXrpDropsBalance(wallet.ClassicAddress, common.Validated)
+		balance, err := c.GetXrpDropsBalanceValidated(wallet.ClassicAddress)
 		if err != nil {
 			if isFundWalletActNotFound(err) {
 				continue

@@ -1,7 +1,6 @@
 # XRPL Standards Index
 
 ## identity
-
 | XLS | Title | Status | File |
 | ----- | ------- | -------- | ------ |
 | 40 | Decentralized Identity on XRP Ledger | Final | `references/identity/xls-0040.md` |
@@ -9,7 +8,6 @@
 | 70 | On-Chain Credentials | Final | `references/identity/xls-0070.md` |
 
 ## tokens
-
 | XLS | Title | Status | File |
 | ----- | ------- | -------- | ------ |
 | 10 | Non-Transferable Token (NTT) standard | Stagnant | `references/tokens/xls-0010.md` |
@@ -26,11 +24,12 @@
 | 61 | CrossCurrency NFTokenAcceptOffer | Stagnant | `references/tokens/xls-0061.md` |
 | 87 | Token Pre-Authorization | Stagnant | `references/tokens/xls-0087.md` |
 | 89 | Multi-Purpose Token Metadata Schema | Final | `references/tokens/xls-0089.md` |
-| 94 | Dynamic Multi-Purpose Tokens | Draft | `references/tokens/xls-0094.md` |
-| 96 | Confidential Transfers for Multi-Purpose Tokens | Draft | `references/tokens/xls-0096.md` |
+| 90 | Permissioned Domains for MPTs | Draft | `references/tokens/xls-0090.md` |
+| 94 | Dynamic Multi-Purpose Tokens | Final | `references/tokens/xls-0094.md` |
+| 96 | Confidential Transfers for Multi-Purpose Tokens | Final | `references/tokens/xls-0096.md` |
+| 99 | ElGamal Key Rotation for Confidential MPTs | Draft | `references/tokens/xls-0099.md` |
 
 ## defi
-
 | XLS | Title | Status | File |
 | ----- | ------- | -------- | ------ |
 | 30 | Automated Market Maker on XRPL | Final | `references/defi/xls-0030.md` |
@@ -44,7 +43,6 @@
 | 98 | Standard Metadata for Vaults | Draft | `references/defi/xls-0098.md` |
 
 ## payments
-
 | XLS | Title | Status | File |
 | ----- | ------- | -------- | ------ |
 | 34 | Token-Enabled Escrows and Payment Channels | Withdrawn | `references/payments/xls-0034.md` |
@@ -56,7 +54,6 @@
 | 100 | Smart Escrows | Draft | `references/payments/xls-0100.md` |
 
 ## accounts
-
 | XLS | Title | Status | File |
 | ----- | ------- | -------- | ------ |
 | 7 | Deletable Accounts | Final | `references/accounts/xls-0007.md` |
@@ -64,30 +61,28 @@
 | 39 | Clawback Support | Final | `references/accounts/xls-0039.md` |
 | 49 | Multiple Signer Lists | Draft | `references/accounts/xls-0049.md` |
 | 64 | Pseudo-Account | Draft | `references/accounts/xls-0064.md` |
-| 68 | Sponsored Fees and Reserves | Draft | `references/accounts/xls-0068.md` |
+| 68 | Sponsored Fees and Reserves | Final | `references/accounts/xls-0068.md` |
 | 71 | Initial Owner Reserve Exemption | Stagnant | `references/accounts/xls-0071.md` |
 | 74 | Account Permissions | Final | `references/accounts/xls-0074.md` |
 | 75 | Permission Delegation | Final | `references/accounts/xls-0075.md` |
 | 77 | Deep Freeze | Final | `references/accounts/xls-0077.md` |
 | 80 | Permissioned Domains | Final | `references/accounts/xls-0080.md` |
 | 86 | Firewall | Draft | `references/accounts/xls-0086.md` |
+| 103 | On-Chain Cosigner | Draft | `references/accounts/xls-0103.md` |
 
 ## data
-
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 47 | Price Oracles on XRP Ledger | Final | `references/data/xls-0047.md` |
 | 78 | Subscriptions | Draft | `references/data/xls-0078.md` |
 
 ## cross-chain
-
 | XLS | Title | Status | File |
-|-----|-------|--------|------|
+| ----- | ------- | -------- | ------ |
 | 38 | Cross-Chain Bridge | Final | `references/cross-chain/xls-0038.md` |
 | 41 | XRPL Proof of Payment Standard (XPOP) | Final | `references/cross-chain/xls-0041.md` |
 
 ## smart-contracts
-
 | XLS | Title | Status | File |
 | ----- | ------- | -------- | ------ |
 | 42 | XRPL Plugins | Stagnant | `references/smart-contracts/xls-0042.md` |
@@ -95,7 +90,6 @@
 | 102 | WASM VM | Draft | `references/smart-contracts/xls-0102.md` |
 
 ## core
-
 | XLS | Title | Status | File |
 | ----- | ------- | -------- | ------ |
 | 1 | XLS Process and Guidelines | Living | `references/core/xls-0001.md` |
@@ -120,10 +114,14 @@
 | 97 | Formats, Fields and Flags | Final | `references/core/xls-0097.md` |
 
 ## ecosystem
-
 | XLS | Title | Status | File |
 | ----- | ------- | -------- | ------ |
 | 2 | XRPL destination information | Stagnant | `references/ecosystem/xls-0002.md` |
 | 3 | Sharing and deeplinking signed transactions | Stagnant | `references/ecosystem/xls-0003.md` |
 | 4 | Trustline Add URI | Stagnant | `references/ecosystem/xls-0004.md` |
 | 6 | Standard for Visual Account Icons | Final | `references/ecosystem/xls-0006.md` |
+
+## UNCLASSIFIED
+| XLS | Title | Status | File |
+| ----- | ------- | -------- | ------ |
+| 103 | On-Chain Cosigner | Draft | `references/UNCLASSIFIED/xls-0103.md` |

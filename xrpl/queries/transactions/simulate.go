@@ -3,7 +3,6 @@ package transactions
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
@@ -12,8 +11,8 @@ import (
 )
 
 // SimulateRequest is the request type for the XLS-69 simulate command.
-// Exactly one transaction must be supplied as TxJSON or TxBlob. Blob inputs stay
-// opaque so the server can validate them with its authoritative definitions.
+// The server requires exactly one unsigned transaction as TxJSON or TxBlob and
+// validates all request fields. The client only rejects nil requests.
 // Binary selects whether the server returns transaction and metadata objects or
 // hexadecimal binary blobs.
 type SimulateRequest struct {
@@ -42,65 +41,19 @@ func (r SimulateRequest) MarshalJSON() ([]byte, error) {
 	return json.Marshal(simulateRequestAlias(r))
 }
 
-// Validate verifies the exclusive input variants, hexadecimal blob syntax,
-// unsigned JSON transaction shape, and any explicit JSON NetworkID value.
+// Validate only rejects a nil request. The server validates all request fields.
 func (r *SimulateRequest) Validate() error {
-	_, err := r.validatedTransaction()
-	return err
-}
-
-// ValidateNetworkID validates JSON input against the client's current target
-// network identity. Blob input stays opaque and is validated by the server.
-// NetworkID can be omitted because the server autofills it. When supplied in
-// JSON, it must match a known target network. A nil expected ID performs type
-// validation only.
-func (r *SimulateRequest) ValidateNetworkID(expected *uint32) error {
-	tx, err := r.validatedTransaction()
-	if err != nil {
-		return err
-	}
-	if r.TxBlob != "" {
-		return nil
-	}
-
-	actual, present, err := simulateNetworkID(tx)
-	if err != nil {
-		return err
-	}
-	if present && expected != nil && actual != *expected {
-		return ErrMismatchedSimulateNetworkID
+	if r == nil {
+		return ErrInvalidSimulateRequest
 	}
 	return nil
 }
 
-func (r *SimulateRequest) validatedTransaction() (transaction.FlatTransaction, error) {
-	if r == nil {
-		return nil, ErrInvalidSimulateRequest
-	}
-
-	hasTxJSON := r.TxJSON != nil
-	hasTxBlob := r.TxBlob != ""
-	if hasTxJSON == hasTxBlob {
-		return nil, ErrInvalidSimulateRequest
-	}
-	if hasTxBlob {
-		if !typecheck.IsHexBlob(r.TxBlob) {
-			return nil, ErrInvalidSimulateTxBlob
-		}
-		return nil, nil
-	}
-
-	tx := r.TxJSON
-	if err := validateUnsignedSimulateTx(tx); err != nil {
-		return nil, err
-	}
-	if !hasNonEmptyStringField(tx, "TransactionType") || !hasNonEmptyStringField(tx, "Account") {
-		return nil, fmt.Errorf("%w: TransactionType and Account must be non-empty strings", ErrInvalidSimulateTxJSON)
-	}
-	if _, _, err := simulateNetworkID(tx); err != nil {
-		return nil, err
-	}
-	return tx, nil
+// ValidateNetworkID retains the nil-request check without inspecting NetworkID.
+//
+// Deprecated: the server validates NetworkID. Use Validate for the nil-request check.
+func (r *SimulateRequest) ValidateNetworkID(_ *uint32) error {
+	return r.Validate()
 }
 
 // SimulateResponse is the response returned by simulate. Results reflect the
@@ -218,175 +171,4 @@ func (r *SimulateResponse) UnmarshalJSON(data []byte) error {
 
 	*r = response
 	return nil
-}
-
-func validateUnsignedSimulateTx(tx transaction.FlatTransaction) error {
-	if value, present := tx["TxnSignature"]; present {
-		signature, ok := underlyingString(value)
-		if !ok {
-			return fmt.Errorf("%w: TxnSignature must be a string", ErrInvalidSimulateTxJSON)
-		}
-		if signature != "" {
-			return fmt.Errorf("%w: TxnSignature is non-empty", ErrSignedSimulateTransaction)
-		}
-	}
-
-	// SigningPubKey identifies the signing key but does not sign the transaction.
-	if value, present := tx["SigningPubKey"]; present {
-		if _, ok := underlyingString(value); !ok {
-			return fmt.Errorf("%w: SigningPubKey must be a string", ErrInvalidSimulateTxJSON)
-		}
-	}
-
-	if signers, present := tx["Signers"]; present {
-		if err := validateUnsignedSimulateSigners(signers, "Signers"); err != nil {
-			return err
-		}
-	}
-
-	if batchSigners, present := tx["BatchSigners"]; present {
-		if err := validateUnsignedSimulateBatchSigners(batchSigners); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type simulateSignerFields struct {
-	SigningPubKey json.RawMessage `json:"SigningPubKey"`
-	TxnSignature  json.RawMessage `json:"TxnSignature"`
-}
-
-type simulateSignerEntry struct {
-	Signer *simulateSignerFields `json:"Signer"`
-}
-
-type simulateBatchSignerFields struct {
-	SigningPubKey json.RawMessage `json:"SigningPubKey"`
-	TxnSignature  json.RawMessage `json:"TxnSignature"`
-	Signers       json.RawMessage `json:"Signers"`
-}
-
-type simulateBatchSignerEntry struct {
-	BatchSigner *simulateBatchSignerFields `json:"BatchSigner"`
-}
-
-func validateUnsignedSimulateSigners(signers any, field string) error {
-	data, err := json.Marshal(signers)
-	if err != nil {
-		return fmt.Errorf("%w: %s: %w", ErrInvalidSimulateTxJSON, field, err)
-	}
-	if string(data) == "null" {
-		return fmt.Errorf("%w: %s must be an array", ErrInvalidSimulateTxJSON, field)
-	}
-
-	entries := make([]simulateSignerEntry, 0)
-	if err := json.Unmarshal(data, &entries); err != nil {
-		return fmt.Errorf("%w: %s must be an array of Signer objects: %w", ErrInvalidSimulateTxJSON, field, err)
-	}
-
-	for i, entry := range entries {
-		signerField := fmt.Sprintf("%s[%d].Signer", field, i)
-		if entry.Signer == nil {
-			return fmt.Errorf("%w: %s must be an object", ErrInvalidSimulateTxJSON, signerField)
-		}
-
-		if _, _, err := decodeSimulateString(entry.Signer.SigningPubKey, signerField+".SigningPubKey"); err != nil {
-			return err
-		}
-		signature, signaturePresent, err := decodeSimulateString(entry.Signer.TxnSignature, signerField+".TxnSignature")
-		if err != nil {
-			return err
-		}
-		if signaturePresent && signature != "" {
-			return fmt.Errorf("%w: %s.TxnSignature is non-empty", ErrSignedSimulateTransaction, signerField)
-		}
-	}
-	return nil
-}
-
-func validateUnsignedSimulateBatchSigners(batchSigners any) error {
-	data, err := json.Marshal(batchSigners)
-	if err != nil {
-		return fmt.Errorf("%w: BatchSigners: %w", ErrInvalidSimulateTxJSON, err)
-	}
-	if string(data) == "null" {
-		return fmt.Errorf("%w: BatchSigners must be an array", ErrInvalidSimulateTxJSON)
-	}
-
-	entries := make([]simulateBatchSignerEntry, 0)
-	if err := json.Unmarshal(data, &entries); err != nil {
-		return fmt.Errorf("%w: BatchSigners must be an array of BatchSigner objects: %w", ErrInvalidSimulateTxJSON, err)
-	}
-
-	for i, entry := range entries {
-		batchSignerField := fmt.Sprintf("BatchSigners[%d].BatchSigner", i)
-		if entry.BatchSigner == nil {
-			return fmt.Errorf("%w: %s must be an object", ErrInvalidSimulateTxJSON, batchSignerField)
-		}
-
-		if _, _, err := decodeSimulateString(entry.BatchSigner.SigningPubKey, batchSignerField+".SigningPubKey"); err != nil {
-			return err
-		}
-		signature, signaturePresent, err := decodeSimulateString(
-			entry.BatchSigner.TxnSignature,
-			batchSignerField+".TxnSignature",
-		)
-		if err != nil {
-			return err
-		}
-		if signaturePresent && signature != "" {
-			return fmt.Errorf("%w: %s.TxnSignature is non-empty", ErrSignedSimulateTransaction, batchSignerField)
-		}
-
-		if len(entry.BatchSigner.Signers) > 0 {
-			if err := validateUnsignedSimulateSigners(entry.BatchSigner.Signers, batchSignerField+".Signers"); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func decodeSimulateString(raw json.RawMessage, field string) (string, bool, error) {
-	if len(raw) == 0 {
-		return "", false, nil
-	}
-	var value string
-	if err := json.Unmarshal(raw, &value); err != nil {
-		return "", true, fmt.Errorf("%w: %s must be a string", ErrInvalidSimulateTxJSON, field)
-	}
-	return value, true, nil
-}
-
-func hasNonEmptyStringField(tx transaction.FlatTransaction, field string) bool {
-	value, present := tx[field]
-	if !present {
-		return false
-	}
-	stringValue, ok := underlyingString(value)
-	return ok && stringValue != ""
-}
-
-// underlyingString accepts named string types (e.g. types.Address) that appear
-// in hand-built FlatTransaction maps, so a plain .(string) assertion is not enough.
-// A nil value yields reflect.Invalid and is rejected by the kind check.
-func underlyingString(value any) (string, bool) {
-	reflected := reflect.ValueOf(value)
-	if reflected.Kind() != reflect.String {
-		return "", false
-	}
-	return reflected.String(), true
-}
-
-func simulateNetworkID(tx transaction.FlatTransaction) (uint32, bool, error) {
-	value, present := tx["NetworkID"]
-	if !present {
-		return 0, false, nil
-	}
-	networkID, ok := typecheck.ToUint32(value)
-	if !ok {
-		return 0, true, ErrInvalidSimulateNetworkID
-	}
-	return networkID, true, nil
 }

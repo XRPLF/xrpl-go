@@ -1,16 +1,21 @@
-package account
+package account_test
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account/types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAccountChannelRequest(t *testing.T) {
-	s := ChannelsRequest{
+	s := account.ChannelsRequest{
 		Account:            "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		DestinationAccount: "rnZvsWuLem5Ha46AZs61jLWR9R5esinkG3",
 		LedgerIndex:        common.Validated,
@@ -26,8 +31,8 @@ func TestAccountChannelRequest(t *testing.T) {
 	}
 }
 
-func TestAccountChannelsResponse(t *testing.T) {
-	s := ChannelsResponse{
+func accountChannelsResponseFixture() (account.ChannelsResponse, string) {
+	s := account.ChannelsResponse{
 		Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 		Channels: []types.ChannelResult{
 			{
@@ -36,6 +41,9 @@ func TestAccountChannelsResponse(t *testing.T) {
 				Balance:            "200",
 				ChannelID:          "500",
 				DestinationAccount: "rnZvsWuLem5Ha46AZs61jLWR9R5esinkG3",
+				PublicKey:          "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
+				PublicKeyHex:       "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2",
+				SettleDelay:        60,
 			},
 		},
 		LedgerIndex: 123,
@@ -43,7 +51,6 @@ func TestAccountChannelsResponse(t *testing.T) {
 		Validated:   true,
 		Limit:       1,
 	}
-
 	j := `{
 	"account": "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
 	"channels": [
@@ -52,7 +59,10 @@ func TestAccountChannelsResponse(t *testing.T) {
 			"amount": "100",
 			"balance": "200",
 			"channel_id": "500",
-			"destination_account": "rnZvsWuLem5Ha46AZs61jLWR9R5esinkG3"
+			"destination_account": "rnZvsWuLem5Ha46AZs61jLWR9R5esinkG3",
+			"settle_delay": 60,
+			"public_key": "aBR7mdD75Ycs8DRhMgQ4EMUEmBArF8SEh1hfjrT2V9DQTLNbJVqw",
+			"public_key_hex": "03CFD18E689434F032A4E84C63E2A3A6472D684EAF4FD52CA67742F3E24BAE81B2"
 		}
 	],
 	"ledger_index": 123,
@@ -60,13 +70,36 @@ func TestAccountChannelsResponse(t *testing.T) {
 	"validated": true,
 	"limit": 1
 }`
-	if err := testutil.SerializeAndDeserialize(t, s, j); err != nil {
-		t.Error(err)
-	}
+	return s, j
+}
+
+func TestAccountChannelsResponseSerialize(t *testing.T) {
+	value, payload := accountChannelsResponseFixture()
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestAccountChannelsResponseJSONDecode(t *testing.T) {
+	want, payload := accountChannelsResponseFixture()
+	var got account.ChannelsResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestAccountChannelsResponseClientDecode(t *testing.T) {
+	want, payload := accountChannelsResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got account.ChannelsResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }
 
 func TestValidate(t *testing.T) {
-	s := ChannelsRequest{
+	s := account.ChannelsRequest{
 		Account: "",
 	}
 

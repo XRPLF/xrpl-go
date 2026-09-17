@@ -75,7 +75,7 @@ func (n *NFTokenModify) Validate() (bool, error) {
 	}
 
 	// Check if the owner and account are not equal
-	if n.Account == n.Owner {
+	if sameAccountAddress(n.Account, n.Owner) {
 		return false, ErrOwnerAccountConflict
 	}
 

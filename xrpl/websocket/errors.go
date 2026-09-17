@@ -12,6 +12,9 @@ const (
 	txnNotFound = "txnNotFound"
 	// actNotFound is the error message returned by the xrpl node when requesting for a not found account.
 	actNotFound = "actNotFound"
+	// entryNotFound is the error message returned by the xrpl node when requesting a ledger entry
+	// that does not exist.
+	entryNotFound = "entryNotFound"
 )
 
 var (
@@ -49,6 +52,44 @@ var (
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
 	ErrInvalidFulfillmentLength = errors.New("invalid fulfillment length")
+
+	// ErrTransactionNotSponsored is returned when a sponsorship preflight receives a transaction
+	// without Sponsor and SponsorFlags.
+	ErrTransactionNotSponsored = clientinternal.ErrTransactionNotSponsored
+	// ErrSponsorshipFeeUnavailable is returned when a sponsorship preflight has no estimated fee
+	// and no transaction Fee.
+	ErrSponsorshipFeeUnavailable = clientinternal.ErrSponsorshipFeeUnavailable
+	// ErrSponsorshipFeeIsNotAString is returned when the Fee field is not a string.
+	ErrSponsorshipFeeIsNotAString = clientinternal.ErrSponsorshipFeeIsNotAString
+	// ErrInvalidSponsorshipFee is returned when a sponsorship preflight fee is not a whole, non-
+	// negative number of drops.
+	ErrInvalidSponsorshipFee = clientinternal.ErrInvalidSponsorshipFee
+	// ErrSponsorshipEntryUnexpectedType is returned when a ledger_entry lookup returns a node that
+	// is not a Sponsorship entry.
+	ErrSponsorshipEntryUnexpectedType = clientinternal.ErrSponsorshipEntryUnexpectedType
+	// ErrSponsorshipEntryMalformed is returned when a Sponsorship ledger entry cannot be decoded.
+	ErrSponsorshipEntryMalformed = clientinternal.ErrSponsorshipEntryMalformed
+	// ErrSponsorshipEntryMismatch is returned when a ledger_entry lookup returns a Sponsorship entry
+	// for a different sponsor or sponsee than requested.
+	ErrSponsorshipEntryMismatch = clientinternal.ErrSponsorshipEntryMismatch
+	// ErrSponsorshipEntryNotFound is returned when no Sponsorship entry exists and the transaction
+	// has no SponsorSignature.
+	ErrSponsorshipEntryNotFound = clientinternal.ErrSponsorshipEntryNotFound
+	// ErrSponsorshipFeeSignatureRequired is returned when the Sponsorship entry requires a
+	// signature for fee sponsorship.
+	ErrSponsorshipFeeSignatureRequired = clientinternal.ErrSponsorshipFeeSignatureRequired
+	// ErrSponsorshipReserveSignatureRequired is returned when the Sponsorship entry requires a
+	// signature for reserve sponsorship.
+	ErrSponsorshipReserveSignatureRequired = clientinternal.ErrSponsorshipReserveSignatureRequired
+	// ErrSponsorshipFeeAmountMissing is returned when the Sponsorship entry has no FeeAmount for
+	// fee sponsorship.
+	ErrSponsorshipFeeAmountMissing = clientinternal.ErrSponsorshipFeeAmountMissing
+	// ErrSponsorshipFeeBudgetExhausted is returned when the Sponsorship entry FeeAmount cannot
+	// cover the transaction fee.
+	ErrSponsorshipFeeBudgetExhausted = clientinternal.ErrSponsorshipFeeBudgetExhausted
+	// ErrSponsorshipMaxFeeExceeded is returned when the transaction fee exceeds the Sponsorship
+	// entry MaxFee cap.
+	ErrSponsorshipMaxFeeExceeded = clientinternal.ErrSponsorshipMaxFeeExceeded
 
 	// fields
 
@@ -93,10 +134,12 @@ var (
 	// ErrNetworkIDOverrideMismatch is returned when an override differs from server_info.
 	ErrNetworkIDOverrideMismatch = clientinternal.ErrNetworkIDOverrideMismatch
 	// ErrRawTransactionsFieldMissing is returned when the RawTransactions field is missing from a Batch transaction.
-	ErrRawTransactionsFieldMissing = errors.New("RawTransactions field missing from Batch transaction")
+	ErrRawTransactionsFieldMissing = clientinternal.ErrRawTransactionsFieldMissing
 	// ErrRawTransactionFieldMissing is returned when the RawTransaction field is missing from a wrapper.
-	ErrRawTransactionFieldMissing = errors.New("RawTransaction field missing from wrapper")
-	// ErrFeeFieldMissing is returned when the fee field is missing after calculation.
+	ErrRawTransactionFieldMissing = clientinternal.ErrRawTransactionFieldMissing
+	// ErrFeeFieldMissing was returned when the fee field was missing after calculation.
+	//
+	// Deprecated: fee calculation no longer returns this error. It will be removed in a future version.
 	ErrFeeFieldMissing = errors.New("fee field missing after calculation")
 
 	// client
@@ -124,22 +167,28 @@ var (
 	// ErrFeeHasTooManyDecimals is returned when an XRP fee cannot be represented as whole drops.
 	ErrFeeHasTooManyDecimals = clientinternal.ErrFeeHasTooManyDecimals
 	// ErrCouldNotGetBaseFeeXrp is returned when BaseFeeXrp cannot be retrieved from ServerInfo.
-	ErrCouldNotGetBaseFeeXrp = errors.New("get fee xrp: could not get BaseFeeXrp from ServerInfo")
+	ErrCouldNotGetBaseFeeXrp = clientinternal.ErrCouldNotGetBaseFeeXrp
 	// ErrCouldNotFetchOwnerReserve is returned when the owner reserve fee cannot be fetched.
-	ErrCouldNotFetchOwnerReserve = errors.New("could not fetch Owner Reserve")
+	ErrCouldNotFetchOwnerReserve = clientinternal.ErrCouldNotFetchOwnerReserve
 	// ErrLoanBrokerIDRequired is returned when LoanBrokerID is required but not provided.
-	ErrLoanBrokerIDRequired = errors.New("LoanBrokerID is required for LoanSet transaction")
+	ErrLoanBrokerIDRequired = clientinternal.ErrLoanBrokerIDRequired
 	// ErrCouldNotFetchLoanBroker is returned when the LoanBroker cannot be fetched.
 	ErrCouldNotFetchLoanBroker = errors.New("could not fetch LoanBroker")
 	// ErrCouldNotFetchLoanBrokerOwner is returned when the Owner field cannot be extracted from LoanBroker.
-	ErrCouldNotFetchLoanBrokerOwner = errors.New("could not fetch LoanBroker Owner")
-	// ErrCounterpartyRequired is returned when Counterparty is required but not provided.
+	ErrCouldNotFetchLoanBrokerOwner = clientinternal.ErrCouldNotFetchLoanBrokerOwner
+	// ErrCounterpartyRequired was returned when Counterparty was required but not provided.
+	//
+	// Deprecated: fee calculation no longer returns this error. It will be removed in a future version.
 	ErrCounterpartyRequired = errors.New("field Counterparty is required")
 
 	// account
 
-	// ErrAccountCannotBeDeleted is returned when an account cannot be deleted due to associated objects.
-	ErrAccountCannotBeDeleted = errors.New("account cannot be deleted; there are Escrows, PayChannels, RippleStates, or Checks associated with the account")
+	// ErrAccountCannotBeDeleted is returned when associated objects prevent account deletion.
+	ErrAccountCannotBeDeleted = clientinternal.ErrAccountCannotBeDeleted
+	// ErrAccountHasSponsorshipObligations is returned when SponsoringOwnerCount or SponsoringAccountCount is present.
+	ErrAccountHasSponsorshipObligations = clientinternal.ErrAccountHasSponsorshipObligations
+	// ErrAccountDeleteSponsorMismatch is returned when the account's Sponsor does not match the supplied AccountDelete Destination.
+	ErrAccountDeleteSponsorMismatch = clientinternal.ErrAccountDeleteSponsorMismatch
 
 	// payment
 
@@ -195,7 +244,9 @@ func (e ErrMaxReconnectionAttemptsReached) Unwrap() error {
 	return e.Err
 }
 
-// ErrFailedToParseFee is returned when fee parsing fails.
+// ErrFailedToParseFee was returned when fee parsing failed.
+//
+// Deprecated: fee calculation no longer returns this error. It will be removed in a future version.
 type ErrFailedToParseFee struct {
 	Fee string
 	Err error

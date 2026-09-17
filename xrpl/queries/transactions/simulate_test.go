@@ -1,11 +1,12 @@
-package transactions
+package transactions_test
 
 import (
 	"encoding/json"
-	"fmt"
+	"strings"
 	"testing"
 
-	"github.com/Peersyst/xrpl-go/xrpl/queries/version"
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
@@ -22,171 +23,20 @@ func validSimulateTxJSON() transaction.FlatTransaction {
 	}
 }
 
-func TestSimulateRequestValidate(t *testing.T) {
-	tests := []struct {
-		name    string
-		request SimulateRequest
-		wantErr error
-	}{
-		{name: "JSON input", request: SimulateRequest{TxJSON: validSimulateTxJSON()}},
-		{name: "blob input", request: SimulateRequest{TxBlob: simulateTxBlob, Binary: true}},
-		{name: "empty JSON signature fields remain unsigned", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"TxnSignature": "", "SigningPubKey": "", "Signers": []any{},
-		}}},
-		{name: "neither input", wantErr: ErrInvalidSimulateRequest},
-		{name: "both inputs", request: SimulateRequest{TxJSON: validSimulateTxJSON(), TxBlob: simulateTxBlob}, wantErr: ErrInvalidSimulateRequest},
-		{name: "empty JSON object", request: SimulateRequest{TxJSON: transaction.FlatTransaction{}}, wantErr: ErrInvalidSimulateTxJSON},
-		{name: "missing TransactionType", request: SimulateRequest{TxJSON: transaction.FlatTransaction{"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"}}, wantErr: ErrInvalidSimulateTxJSON},
-		{name: "missing Account", request: SimulateRequest{TxJSON: transaction.FlatTransaction{"TransactionType": "Payment"}}, wantErr: ErrInvalidSimulateTxJSON},
-		{name: "non-hex blob", request: SimulateRequest{TxBlob: "not-hex"}, wantErr: ErrInvalidSimulateTxBlob},
-		{name: "odd-length blob", request: SimulateRequest{TxBlob: "ABC"}, wantErr: ErrInvalidSimulateTxBlob},
-		{name: "opaque end-marker blob is server-validated", request: SimulateRequest{TxBlob: "E1"}},
-		{name: "opaque serialized blob is server-validated", request: SimulateRequest{TxBlob: "DEADBEEF"}},
-		{name: "signed JSON TxnSignature", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TxnSignature": "DEADBEEF",
-		}}, wantErr: ErrSignedSimulateTransaction},
-		{name: "JSON SigningPubKey remains unsigned", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "SigningPubKey": "ED0123",
-		}}},
-		{name: "unsigned JSON Signers remain unsigned", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"SigningPubKey": "", "Signers": []any{map[string]any{"Signer": map[string]any{
-				"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "SigningPubKey": "ED0123", "TxnSignature": "",
-			}}},
-		}}},
-		{name: "signed JSON Signers", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"SigningPubKey": "", "Signers": []any{map[string]any{"Signer": map[string]any{
-				"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "SigningPubKey": "ED0123", "TxnSignature": "3045022100AB",
-			}}},
-		}}, wantErr: ErrSignedSimulateTransaction},
-		{name: "unsigned JSON BatchSigners remain unsigned", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Batch", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"BatchSigners": []any{map[string]any{"BatchSigner": map[string]any{
-				"Account": "rLs1MzkFWCxTbuAHgjeTZK4fcCDDnf2KRv", "SigningPubKey": "ED0123", "TxnSignature": "",
-			}}},
-		}}},
-		{name: "signed JSON BatchSigners", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Batch", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"BatchSigners": []any{map[string]any{"BatchSigner": map[string]any{
-				"Account": "rLs1MzkFWCxTbuAHgjeTZK4fcCDDnf2KRv", "SigningPubKey": "ED0123", "TxnSignature": "3045022100AB",
-			}}},
-		}}, wantErr: ErrSignedSimulateTransaction},
-		{name: "signed nested JSON BatchSigners", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Batch", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"BatchSigners": []any{map[string]any{"BatchSigner": map[string]any{
-				"Account": "rLs1MzkFWCxTbuAHgjeTZK4fcCDDnf2KRv", "Signers": []any{map[string]any{"Signer": map[string]any{
-					"Account": "rK5VzeCz2zAYvfni1fN6sC2CaqZiXYvS3N", "SigningPubKey": "ED0456", "TxnSignature": "3045022100CD",
-				}}},
-			}}},
-		}}, wantErr: ErrSignedSimulateTransaction},
-		{name: "malformed batch signer signature type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Batch", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"BatchSigners": []any{map[string]any{"BatchSigner": map[string]any{"TxnSignature": 1}}},
-		}}, wantErr: ErrInvalidSimulateTxJSON},
-		{name: "malformed signature type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TxnSignature": 1,
-		}}, wantErr: ErrInvalidSimulateTxJSON},
-		{name: "malformed signer signature type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"Signers": []any{map[string]any{"Signer": map[string]any{"TxnSignature": 1}}},
-		}}, wantErr: ErrInvalidSimulateTxJSON},
-		{name: "malformed signer public key type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-			"Signers": []any{map[string]any{"Signer": map[string]any{"SigningPubKey": 1}}},
-		}}, wantErr: ErrInvalidSimulateTxJSON},
-		{name: "malformed Signers type", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "Signers": "",
-		}}, wantErr: ErrInvalidSimulateTxJSON},
-		{name: "invalid NetworkID", request: SimulateRequest{TxJSON: transaction.FlatTransaction{
-			"TransactionType": "Payment", "Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "NetworkID": -1,
-		}}, wantErr: ErrInvalidSimulateNetworkID},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			originalBlob := tt.request.TxBlob
-			err := tt.request.Validate()
-			require.Equal(t, originalBlob, tt.request.TxBlob, "validation must not mutate tx_blob")
-			if tt.wantErr != nil {
-				require.ErrorIs(t, err, tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-			require.Equal(t, "simulate", tt.request.Method())
-			require.Equal(t, version.RippledAPIV2, tt.request.APIVersion())
-		})
-	}
-}
-
 func TestSimulateRequestValidateNil(t *testing.T) {
-	var request *SimulateRequest
-	require.ErrorIs(t, request.Validate(), ErrInvalidSimulateRequest)
-}
-
-func TestSimulateRequestValidateNetworkID(t *testing.T) {
-	knownMainnet := uint32(0)
-	knownStandard := uint32(1)
-	knownRestricted := uint32(2048)
-	tests := []struct {
-		name     string
-		expected *uint32
-		network  any
-		omit     bool
-		blob     string
-		wantErr  error
-	}{
-		{name: "restricted JSON matching", expected: &knownRestricted, network: uint32(2048)},
-		{name: "restricted JSON matching alternate numeric representation", expected: &knownRestricted, network: json.Number("2048")},
-		{name: "restricted JSON missing is server-autofilled", expected: &knownRestricted, omit: true},
-		{name: "restricted JSON mismatch", expected: &knownRestricted, network: uint32(2049), wantErr: ErrMismatchedSimulateNetworkID},
-		{name: "identified standard JSON mismatch", expected: &knownStandard, network: uint32(2), wantErr: ErrMismatchedSimulateNetworkID},
-		{name: "known Mainnet JSON matching", expected: &knownMainnet, network: uint32(0)},
-		{name: "known Mainnet JSON mismatch", expected: &knownMainnet, network: uint32(2048), wantErr: ErrMismatchedSimulateNetworkID},
-		{name: "unknown identity accepts valid explicit JSON value", network: uint32(2048)},
-		{name: "opaque blob skips local NetworkID validation", expected: &knownRestricted, blob: "E1"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			request := SimulateRequest{}
-			if tt.blob != "" {
-				request.TxBlob = tt.blob
-			} else {
-				request.TxJSON = validSimulateTxJSON()
-				if !tt.omit {
-					request.TxJSON["NetworkID"] = tt.network
-				}
-			}
-
-			err := request.ValidateNetworkID(tt.expected)
-			require.Equal(t, tt.blob, request.TxBlob, "validation must not mutate tx_blob")
-			if tt.wantErr != nil {
-				require.ErrorIs(t, err, tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-			if tt.blob != "" || tt.omit {
-				return
-			}
-			require.Equal(t, tt.network, request.TxJSON["NetworkID"], "validation must preserve the caller's explicit value")
-			encoded, err := json.Marshal(request)
-			require.NoError(t, err)
-			require.Contains(t, string(encoded), fmt.Sprintf(`"NetworkID":%v`, tt.network))
-		})
-	}
+	var request *transactions.SimulateRequest
+	require.ErrorIs(t, request.Validate(), transactions.ErrInvalidSimulateRequest)
 }
 
 func TestSimulateResponseMarshalIncompleteValue(t *testing.T) {
 	type auditRecord struct {
-		RequestID string           `json:"request_id"`
-		Operator  string           `json:"operator"`
-		Response  SimulateResponse `json:"response"`
+		RequestID string                        `json:"request_id"`
+		Operator  string                        `json:"operator"`
+		Response  transactions.SimulateResponse `json:"response"`
 	}
 
-	response := SimulateResponse{}
-	require.ErrorIs(t, response.Validate(), ErrInvalidSimulateResponse)
+	response := transactions.SimulateResponse{}
+	require.ErrorIs(t, response.Validate(), transactions.ErrInvalidSimulateResponse)
 
 	encoded, err := json.Marshal(auditRecord{
 		RequestID: "request-1",
@@ -207,7 +57,13 @@ func TestSimulateResponseMarshalIncompleteValue(t *testing.T) {
 	}`, string(encoded))
 }
 
-func TestSimulateResponseJSONVariants(t *testing.T) {
+type simulateResponseFixture struct {
+	name string
+	want transactions.SimulateResponse
+	json string
+}
+
+func simulateResponseFixtures() []simulateResponseFixture {
 	const jsonSuccess = `{
 		"applied": false,
 		"engine_result": "tesSUCCESS",
@@ -226,6 +82,7 @@ func TestSimulateResponseJSONVariants(t *testing.T) {
 			"Destination": "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV",
 			"Fee": "10",
 			"Sequence": 44196,
+			"NetworkID": 2048,
 			"SigningPubKey": "",
 			"TransactionType": "Payment",
 			"TxnSignature": ""
@@ -251,139 +108,275 @@ func TestSimulateResponseJSONVariants(t *testing.T) {
 			"TransactionType": "Payment"
 		}
 	}`
+	return []simulateResponseFixture{
+		{
+			name: "JSON output with metadata",
+			want: transactions.SimulateResponse{
+				EngineResult:        "tesSUCCESS",
+				EngineResultMessage: "The simulated transaction would have been applied.",
+				LedgerIndex:         105935704,
+				Meta: &transaction.TxMetadataBuilder{
+					AffectedNodes:     []transaction.AffectedNode{},
+					TransactionIndex:  59,
+					TransactionResult: "tesSUCCESS",
+					DeliveredAmount:   "1",
+				},
+				TxJSON: transaction.FlatTransaction{
+					"Account":         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					"Amount":          "1",
+					"Destination":     "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV",
+					"Fee":             "10",
+					"NetworkID":       float64(2048),
+					"Sequence":        float64(44196),
+					"SigningPubKey":   "",
+					"TransactionType": "Payment",
+					"TxnSignature":    "",
+				},
+			},
+			json: jsonSuccess,
+		},
+		{
+			name: "binary output with metadata",
+			want: transactions.SimulateResponse{
+				EngineResult:        "tesSUCCESS",
+				EngineResultMessage: "The simulated transaction would have been applied.",
+				LedgerIndex:         105935704,
+				TxBlob:              simulateTxBlob,
+				MetaBlob:            "201C0000003BF8E5110061250644",
+			},
+			json: binarySuccess,
+		},
+		{
+			name: "non-tec JSON output without metadata",
+			want: transactions.SimulateResponse{
+				EngineResult:        "temREDUNDANT",
+				EngineResultCode:    -275,
+				EngineResultMessage: "The transaction is redundant.",
+				LedgerIndex:         105935694,
+				TxJSON: transaction.FlatTransaction{
+					"Account":         "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					"TransactionType": "Payment",
+				},
+			},
+			json: nonTecWithoutMetadata,
+		},
+		{
+			name: "non-tec binary output without metadata",
+			want: transactions.SimulateResponse{
+				EngineResult:        "temREDUNDANT",
+				EngineResultCode:    -275,
+				EngineResultMessage: "The transaction is redundant.",
+				LedgerIndex:         105935694,
+				TxBlob:              simulateTxBlob,
+			},
+			json: `{
+				"applied": false,
+				"engine_result": "temREDUNDANT",
+				"engine_result_code": -275,
+				"engine_result_message": "The transaction is redundant.",
+				"ledger_index": 105935694,
+				"tx_blob": "` + simulateTxBlob + `"
+			}`,
+		},
+	}
+}
 
-	tests := []struct {
-		name       string
-		fixture    string
-		wantErr    error
-		checkValue func(*testing.T, SimulateResponse)
-	}{
+func TestSimulateResponseSerialize(t *testing.T) {
+	for _, tt := range simulateResponseFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := json.Marshal(tt.want)
+			require.NoError(t, err)
+			require.JSONEq(t, tt.json, string(encoded))
+		})
+	}
+}
+
+func TestSimulateResponseJSONDecode(t *testing.T) {
+	for _, tt := range simulateResponseFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			var got transactions.SimulateResponse
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			require.NoError(t, decoder.Decode(&got))
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestSimulateResponseClientDecode(t *testing.T) {
+	for _, tt := range simulateResponseFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			var data map[string]any
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			require.NoError(t, decoder.Decode(&data))
+			var got transactions.SimulateResponse
+			require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+type simulateResponseInvalidFixture struct {
+	name    string
+	json    string
+	wantErr error
+}
+
+func simulateResponseInvalidFixtures() []simulateResponseInvalidFixture {
+	return []simulateResponseInvalidFixture{
 		{
-			name:    "JSON output with metadata",
-			fixture: jsonSuccess,
-			checkValue: func(t *testing.T, got SimulateResponse) {
-				require.NotNil(t, got.TxJSON)
-				require.Empty(t, got.MetaBlob)
-				require.NotNil(t, got.Meta)
-				require.Equal(t, "tesSUCCESS", got.Meta.TransactionResult)
-				require.Equal(t, "1", got.Meta.DeliveredAmount)
-			},
-		},
-		{
-			name:    "binary output with metadata",
-			fixture: binarySuccess,
-			checkValue: func(t *testing.T, got SimulateResponse) {
-				require.Equal(t, simulateTxBlob, got.TxBlob)
-				require.NotEmpty(t, got.MetaBlob)
-				require.Nil(t, got.Meta)
-			},
-		},
-		{
-			name:    "non-tec JSON output without metadata",
-			fixture: nonTecWithoutMetadata,
-			checkValue: func(t *testing.T, got SimulateResponse) {
-				require.Equal(t, "temREDUNDANT", got.EngineResult)
-				require.Nil(t, got.Meta)
-			},
-		},
-		{name: "reject both transaction output variants", fixture: `{
+			name: "reject both transaction output variants",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_json":{"TransactionType":"Payment"},"tx_blob":"1200"
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject neither transaction output variant", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject neither transaction output variant",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject JSON output with meta_blob", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject JSON output with meta_blob",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_json":{"TransactionType":"Payment"},"meta_blob":"1200"
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject binary output with meta", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject binary output with meta",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_blob":"1200","meta":{}
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject malformed binary transaction", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject malformed binary transaction",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_blob":"XYZ"
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject malformed binary metadata", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject malformed binary metadata",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_blob":"1200","meta_blob":"XYZ"
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject missing applied flag", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject missing applied flag",
+			json: `{
 			"engine_result":"tesSUCCESS","engine_result_code":0,"engine_result_message":"ok",
 			"ledger_index":1,"tx_blob":"1200"
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject applied true", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject applied true",
+			json: `{
 			"applied":true,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_blob":"1200"
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject null meta_blob in JSON response", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject null meta_blob in JSON response",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_json":{"TransactionType":"Payment"},"meta_blob":null
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject empty meta_blob in JSON response", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject empty meta_blob in JSON response",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_json":{"TransactionType":"Payment"},"meta_blob":""
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject null meta_blob in binary response", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject null meta_blob in binary response",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_blob":"1200","meta_blob":null
-		}`, wantErr: ErrInvalidSimulateResponse},
-		{name: "reject null metadata", fixture: `{
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
+		{
+			name: "reject null metadata",
+			json: `{
 			"applied":false,"engine_result":"tesSUCCESS","engine_result_code":0,
 			"engine_result_message":"ok","ledger_index":1,"tx_json":{"TransactionType":"Payment"},"meta":null
-		}`, wantErr: ErrInvalidSimulateResponse},
+		}`,
+			wantErr: transactions.ErrInvalidSimulateResponse,
+		},
 	}
+}
 
-	for _, tt := range tests {
+func TestSimulateResponseInvalidJSONDecode(t *testing.T) {
+	for _, tt := range simulateResponseInvalidFixtures() {
 		t.Run(tt.name, func(t *testing.T) {
-			var got SimulateResponse
-			err := json.Unmarshal([]byte(tt.fixture), &got)
-			if tt.wantErr != nil {
-				require.ErrorIs(t, err, tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-			require.NoError(t, got.Validate())
-			tt.checkValue(t, got)
+			var got transactions.SimulateResponse
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			err := decoder.Decode(&got)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
 
-			encoded, err := json.Marshal(got)
-			require.NoError(t, err)
-			var roundTrip SimulateResponse
-			require.NoError(t, json.Unmarshal(encoded, &roundTrip))
-			require.Equal(t, got, roundTrip)
+func TestSimulateResponseInvalidClientDecode(t *testing.T) {
+	for _, tt := range simulateResponseInvalidFixtures() {
+		t.Run(tt.name, func(t *testing.T) {
+			var data map[string]any
+			decoder := json.NewDecoder(strings.NewReader(tt.json))
+			decoder.UseNumber()
+			require.NoError(t, decoder.Decode(&data))
+			var got transactions.SimulateResponse
+			err := clientinternal.DecodeResultInto(data, &got)
+			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }
 
 func TestSimulateResponseValidateForRequest(t *testing.T) {
-	jsonResponse := SimulateResponse{
+	jsonResponse := transactions.SimulateResponse{
 		EngineResult:        "tesSUCCESS",
 		EngineResultMessage: "ok",
 		LedgerIndex:         1,
 		TxJSON:              transaction.FlatTransaction{"TransactionType": "Payment"},
 	}
-	binaryResponse := SimulateResponse{
+	binaryResponse := transactions.SimulateResponse{
 		EngineResult:        "tesSUCCESS",
 		EngineResultMessage: "ok",
 		LedgerIndex:         1,
 		TxBlob:              "1200",
 	}
-	jsonRequest := &SimulateRequest{TxJSON: validSimulateTxJSON()}
-	binaryRequest := &SimulateRequest{TxBlob: simulateTxBlob, Binary: true}
+	jsonRequest := &transactions.SimulateRequest{TxJSON: validSimulateTxJSON()}
+	binaryRequest := &transactions.SimulateRequest{TxBlob: simulateTxBlob, Binary: true}
 
 	tests := []struct {
 		name     string
-		response SimulateResponse
-		request  *SimulateRequest
+		response transactions.SimulateResponse
+		request  *transactions.SimulateRequest
 		wantErr  error
 	}{
 		{name: "JSON request with JSON response", response: jsonResponse, request: jsonRequest},
 		{name: "binary request with binary response", response: binaryResponse, request: binaryRequest},
-		{name: "JSON request with binary response", response: binaryResponse, request: jsonRequest, wantErr: ErrInvalidSimulateResponse},
-		{name: "binary request with JSON response", response: jsonResponse, request: binaryRequest, wantErr: ErrInvalidSimulateResponse},
-		{name: "nil request", response: jsonResponse, wantErr: ErrInvalidSimulateRequest},
+		{name: "JSON request with binary response", response: binaryResponse, request: jsonRequest, wantErr: transactions.ErrInvalidSimulateResponse},
+		{name: "binary request with JSON response", response: jsonResponse, request: binaryRequest, wantErr: transactions.ErrInvalidSimulateResponse},
+		{name: "nil request", response: jsonResponse, wantErr: transactions.ErrInvalidSimulateRequest},
 	}
 
 	for _, tt := range tests {

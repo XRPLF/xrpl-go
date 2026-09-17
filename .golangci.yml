@@ -60,6 +60,6 @@ output:
   formats:
     text:
       path: stdout
-      color: true
+      colors: true
       print-linter-name: true
       print-issued-lines: true
