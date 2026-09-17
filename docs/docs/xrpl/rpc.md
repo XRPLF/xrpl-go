@@ -186,7 +186,7 @@ The client verifies that each validated-ledger response is marked as validated a
 
 ### Simulate
 
-`Simulate` runs an XLS-69 dry run against the current open-ledger state. It accepts validated JSON transaction input or an opaque hexadecimal blob and returns either decoded or binary transaction and metadata output. A simulation does not guarantee the result of a later submission.
+`Simulate` runs an XLS-69 dry run against the current open-ledger state. It sends JSON transaction input or a blob without local request preflight or network-identity discovery. The server validates the input. Nil-request protection and response validation remain enabled. It returns either decoded or binary transaction and metadata output. Supply an unsigned transaction, and do not send signed transactions to an untrusted node. A simulation does not guarantee the result of a later submission.
 
 ```go
 func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error)

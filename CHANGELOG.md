@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated binary definitions from a rippled 3.4.0 development build (`21890d9d`), including new protocol fields and removal of unused Hook field definitions.
 - `FeeAmountDelta` now accepts negative XRP strings and rejects non-string values, including IOU and MPT objects. Ordinary amount encoding is unchanged.
 
+#### xrpl
+
+- RPC and WebSocket `Simulate` now delegate request validation to the server, including input selection, signatures, blob syntax, and `NetworkID`. Simulation no longer discovers network identity. Nil-request protection and response validation remain enabled.
+- Deprecated `SimulateRequest.ValidateNetworkID` and the simulation request-preflight error values, retaining them for source compatibility. `Validate` and `ValidateNetworkID` now only reject nil requests.
+
 #### xrpl/transaction
 
 - Transaction multisigner validation now rejects more than 32 signers, duplicate accounts, and lists not ordered by decoded AccountID. Validation does not reorder signers.
