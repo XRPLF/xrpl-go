@@ -183,14 +183,12 @@ var (
 
 	// account
 
-	// ErrAccountCannotBeDeleted indicates that associated objects or sponsorship checks prevent account deletion.
-	ErrAccountCannotBeDeleted = errors.New("account cannot be deleted")
-	// ErrAccountHasSponsorshipObligations is returned when SponsoringOwnerCount or SponsoringAccountCount is present, including zero.
-	// It wraps ErrAccountCannotBeDeleted.
-	ErrAccountHasSponsorshipObligations = fmt.Errorf("%w: outstanding sponsorship obligations (SponsoringOwnerCount/SponsoringAccountCount)", ErrAccountCannotBeDeleted)
+	// ErrAccountCannotBeDeleted is returned when associated objects prevent account deletion.
+	ErrAccountCannotBeDeleted = clientinternal.ErrAccountCannotBeDeleted
+	// ErrAccountHasSponsorshipObligations is returned when SponsoringOwnerCount or SponsoringAccountCount is present.
+	ErrAccountHasSponsorshipObligations = clientinternal.ErrAccountHasSponsorshipObligations
 	// ErrAccountDeleteSponsorMismatch is returned when the account's Sponsor does not match the supplied AccountDelete Destination.
-	// It wraps ErrAccountCannotBeDeleted.
-	ErrAccountDeleteSponsorMismatch = fmt.Errorf("%w: Sponsor does not match the AccountDelete Destination", ErrAccountCannotBeDeleted)
+	ErrAccountDeleteSponsorMismatch = clientinternal.ErrAccountDeleteSponsorMismatch
 
 	// payment
 

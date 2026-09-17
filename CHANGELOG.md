@@ -111,7 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc
 
-- Fixed AccountDelete autofill to reject outstanding sponsorship obligations and a supplied destination that does not identify the account's sponsor. The sponsorship errors are exported and match `ErrAccountCannotBeDeleted` through `errors.Is`.
+- Fixed AccountDelete autofill to reject outstanding sponsorship obligations with `ErrAccountHasSponsorshipObligations` and a supplied destination that does not identify the account's sponsor with `ErrAccountDeleteSponsorMismatch`.
 
 #### xrpl/transaction
 
@@ -127,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/websocket
 
-- Fixed AccountDelete autofill to reject outstanding sponsorship obligations and a supplied destination that does not identify the account's sponsor. The sponsorship errors are exported and match `ErrAccountCannotBeDeleted` through `errors.Is`.
+- Fixed AccountDelete autofill to reject outstanding sponsorship obligations with `ErrAccountHasSponsorshipObligations` and a supplied destination that does not identify the account's sponsor with `ErrAccountDeleteSponsorMismatch`.
 
 ## [v0.3.1-mpt.0]
 
