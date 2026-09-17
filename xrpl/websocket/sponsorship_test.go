@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"maps"
 	"testing"
 
@@ -54,15 +55,10 @@ var entryNotFoundMessage = map[string]any{
 	"error":  "entryNotFound",
 }
 
+// TestClient_ValidateSponsorship covers what the WebSocket wrapper adds over the shared preflight,
+// whose sponsorship rules are tested in xrpl/internal/client: decoding a found entry, forwarding the
+// estimated fee, and reading entryNotFound as an absent entry.
 func TestClient_ValidateSponsorship(t *testing.T) {
-	coSigned := func(tx transaction.FlatTransaction) transaction.FlatTransaction {
-		tx["SponsorSignature"] = map[string]any{
-			"SigningPubKey": "ED9434799226374926EDA3B54B1B461B4ABF7237962EAE18528FEA67595397FA32",
-			"TxnSignature":  "C3646313B08EED6AF4392261A31B961F10C66CB733DB7F6CD9EAB079857834C8",
-		}
-		return tx
-	}
-
 	tests := []struct {
 		name         string
 		tx           transaction.FlatTransaction
@@ -73,22 +69,14 @@ func TestClient_ValidateSponsorship(t *testing.T) {
 		expectEntry  bool
 	}{
 		{
-			name:        "pre-funded fee sponsorship within budget",
+			name:        "decodes a found entry into the result",
 			tx:          sponsoredPayment(types.SpfSponsorFee),
 			message:     sponsorshipMessage(sponsorshipNode(map[string]any{"FeeAmount": "1000000", "MaxFee": "1000"})),
 			expectValid: true,
 			expectEntry: true,
 		},
 		{
-			name:         "fee budget below the transaction fee is rejected",
-			tx:           sponsoredPayment(types.SpfSponsorFee),
-			message:      sponsorshipMessage(sponsorshipNode(map[string]any{"FeeAmount": "10"})),
-			expectValid:  false,
-			expectReason: ErrSponsorshipFeeBudgetExhausted,
-			expectEntry:  true,
-		},
-		{
-			name:         "the estimated fee is checked against the MaxFee cap",
+			name:         "forwards the estimated fee",
 			tx:           sponsoredPayment(types.SpfSponsorFee),
 			estimatedFee: "5000",
 			message:      sponsorshipMessage(sponsorshipNode(map[string]any{"FeeAmount": "1000000", "MaxFee": "1000"})),
@@ -97,32 +85,11 @@ func TestClient_ValidateSponsorship(t *testing.T) {
 			expectEntry:  true,
 		},
 		{
-			name:        "pre-funded reserve sponsorship with a remaining unit",
-			tx:          sponsoredPayment(types.SpfSponsorReserve),
-			message:     sponsorshipMessage(sponsorshipNode(map[string]any{"RemainingOwnerCount": uint32(1)})),
-			expectValid: true,
-			expectEntry: true,
-		},
-		{
-			name:         "pre-funded use needs a signature when the entry requires one",
-			tx:           sponsoredPayment(types.SpfSponsorFee),
-			message:      sponsorshipMessage(sponsorshipNode(map[string]any{"Flags": uint32(0x00010000), "FeeAmount": "1000000"})),
-			expectValid:  false,
-			expectReason: ErrSponsorshipFeeSignatureRequired,
-			expectEntry:  true,
-		},
-		{
-			name:         "a missing entry without a co-signature is rejected",
+			name:         "reads entryNotFound as an absent entry",
 			tx:           sponsoredPayment(types.SpfSponsorFee),
 			message:      entryNotFoundMessage,
 			expectValid:  false,
 			expectReason: ErrSponsorshipEntryNotFound,
-		},
-		{
-			name:        "a missing entry with a co-signature is authorized",
-			tx:          coSigned(sponsoredPayment(types.SpfSponsorFee)),
-			message:     entryNotFoundMessage,
-			expectValid: true,
 		},
 	}
 
@@ -148,26 +115,59 @@ func TestClient_ValidateSponsorship(t *testing.T) {
 	}
 }
 
-// A delegated transaction is sponsored through the delegate, so the lookup must resolve the entry
-// against Delegate rather than Account.
-func TestClient_ValidateSponsorshipUsesDelegateAsSponsee(t *testing.T) {
-	tx := sponsoredPayment(types.SpfSponsorFee)
-	tx["Delegate"] = delegateAddress
+// TestClient_ValidateSponsorshipRequest checks the outgoing ledger_entry request: the sponsee is the
+// Delegate when present and the Account otherwise, and the current ledger is selected.
+func TestClient_ValidateSponsorshipRequest(t *testing.T) {
+	tests := []struct {
+		name    string
+		tx      transaction.FlatTransaction
+		sponsee string
+	}{
+		{
+			name:    "looks the entry up against the transaction account",
+			tx:      sponsoredPayment(types.SpfSponsorFee),
+			sponsee: sponseeAddress,
+		},
+		{
+			name: "looks the entry up against the delegate",
+			tx: func() transaction.FlatTransaction {
+				tx := sponsoredPayment(types.SpfSponsorFee)
+				tx["Delegate"] = delegateAddress
+				return tx
+			}(),
+			sponsee: delegateAddress,
+		},
+	}
 
-	client, cleanup := setupTestClient(t, []map[string]any{
-		sponsorshipMessage(map[string]any{
-			"LedgerEntryType": "Sponsorship",
-			"Owner":           sponsorAddress,
-			"Sponsee":         delegateAddress,
-			"FeeAmount":       "1000000",
-		}),
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, request := setupQueryTestClient(t, map[string]any{
+				"node": sponsorshipNode(map[string]any{"Sponsee": tt.sponsee, "FeeAmount": "1000000"}),
+			})
+
+			result, err := client.ValidateSponsorship(tt.tx, "")
+			require.NoError(t, err)
+			require.True(t, result.Valid)
+
+			got := request()
+			require.Equal(t, "ledger_entry", got["command"])
+			require.Equal(t, map[string]any{"sponsor": sponsorAddress, "sponsee": tt.sponsee}, got["sponsorship"])
+			require.Equal(t, "current", got["ledger_index"])
+		})
+	}
+}
+
+func TestClient_ValidateSponsorshipContextCancellation(t *testing.T) {
+	client, cleanup := setupTestClient(t, []map[string]any{})
 	defer cleanup()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 
-	result, err := client.ValidateSponsorship(tx, "")
-	require.NoError(t, err)
-	require.True(t, result.Valid)
-	require.Equal(t, types.Address(delegateAddress), result.Sponsorship.Sponsee)
+	result, err := client.ValidateSponsorshipContext(ctx, sponsoredPayment(types.SpfSponsorFee), "")
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.False(t, result.Valid)
+	require.Nil(t, result.Sponsorship)
 }
 
 // A ledger_entry failure other than entryNotFound must never be read as an absent sponsorship.
@@ -220,6 +220,7 @@ func TestClient_ValidateSponsorshipRejectsUndecodableEntries(t *testing.T) {
 	}
 }
 
+// An input the shared preflight rejects must not reach the network.
 func TestClient_ValidateSponsorshipRejectsUnsponsoredTransactions(t *testing.T) {
 	client, cleanup := setupTestClient(t, []map[string]any{})
 	defer cleanup()

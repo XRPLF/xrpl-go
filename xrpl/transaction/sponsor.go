@@ -2,6 +2,8 @@ package transaction
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -61,7 +63,7 @@ func validateSponsorFields(fields sponsorFields) error {
 	if bytes.Equal(sponsorID, accountID) {
 		return ErrSponsorAccountConflict
 	}
-	if fields.flags & ^(types.SpfSponsorFee|types.SpfSponsorReserve) != 0 {
+	if !flag.ContainsOnly(fields.flags, types.SpfSponsorFee|types.SpfSponsorReserve) {
 		return ErrInvalidSponsorFlags
 	}
 	if fields.flags&types.SpfSponsorReserve != 0 {
@@ -147,13 +149,31 @@ func sponsorSignatureFromTyped(signature *types.SponsorSignature) *sponsorSignat
 	return fields
 }
 
+// ValidateFlatSponsorFields applies the sponsorship rules BaseTx.Validate enforces to a flattened
+// transaction, reading tfInnerBatchTxn from its Flags. A transaction without any sponsorship field
+// passes.
+func ValidateFlatSponsorFields(tx FlatTransaction) error {
+	flags, _ := typecheck.ToUint32(tx["Flags"])
+	fields, err := sponsorFieldsFromRaw(tx, flag.Contains(flags, types.TfInnerBatchTxn))
+	if err != nil {
+		return err
+	}
+	return validateSponsorFields(fields)
+}
+
 // sponsorFieldsFromInnerRaw converts a Batch inner map after RawTransaction.Validate.
 // JSON conversion errors are reported before the shared sponsorship rules run.
 func sponsorFieldsFromInnerRaw(raw map[string]any) (sponsorFields, error) {
+	return sponsorFieldsFromRaw(raw, true)
+}
+
+// sponsorFieldsFromRaw converts a flattened transaction map. Conversion errors are reported before
+// the shared sponsorship rules run.
+func sponsorFieldsFromRaw(raw map[string]any, inner bool) (sponsorFields, error) {
 	_, hasSponsor := raw["Sponsor"]
 	_, hasFlags := raw["SponsorFlags"]
 	_, hasSignature := raw["SponsorSignature"]
-	fields := sponsorFields{inner: true, present: hasSponsor || hasFlags || hasSignature}
+	fields := sponsorFields{inner: inner, present: hasSponsor || hasFlags || hasSignature}
 	if !fields.present {
 		return fields, nil
 	}
@@ -189,13 +209,100 @@ func sponsorFieldsFromInnerRaw(raw map[string]any) (sponsorFields, error) {
 		fields.delegate = types.Address(delegate)
 	}
 	if hasSignature {
-		signature, err := sponsorSignatureFromInnerRaw(raw["SponsorSignature"])
+		convert := sponsorSignatureFromRaw
+		if inner {
+			convert = sponsorSignatureFromInnerRaw
+		}
+		signature, err := convert(raw["SponsorSignature"])
 		if err != nil {
 			return sponsorFields{}, err
 		}
 		fields.signature = signature
 	}
 	return fields, nil
+}
+
+// sponsorSignatureFromRaw converts an ordinary transaction's SponsorSignature map, preserving field
+// presence for the shared validator.
+func sponsorSignatureFromRaw(value any) (*sponsorSignatureFields, error) {
+	signature, ok := value.(map[string]any)
+	if !ok || signature == nil {
+		return nil, ErrInvalidSponsorSignature
+	}
+	fields := &sponsorSignatureFields{}
+	for name, field := range signature {
+		switch name {
+		case "SigningPubKey":
+			key, ok := field.(string)
+			if !ok {
+				return nil, ErrInvalidSponsorSignature
+			}
+			fields.signingPubKey = key
+		case "TxnSignature":
+			txnSignature, ok := field.(string)
+			if !ok {
+				return nil, ErrInvalidSponsorSignature
+			}
+			fields.txnSignature = txnSignature
+			fields.hasTxnSignature = true
+		case "Signers":
+			signers, err := signersFromRaw(field)
+			if err != nil {
+				return nil, fmt.Errorf("%w: %w", ErrInvalidSponsorSignature, err)
+			}
+			fields.signers = signers
+			fields.hasSigners = true
+		default:
+			// Unknown fields must not disappear during conversion while remaining on the wire.
+			return nil, ErrInvalidSponsorSignature
+		}
+	}
+	return fields, nil
+}
+
+// signersFromRaw decodes a flattened Signers array into typed signers. rippled accepts only a
+// Signer object in each entry, holding only Account, SigningPubKey, and TxnSignature, so any other
+// key is rejected here rather than dropped by the decoding.
+func signersFromRaw(value any) ([]types.Signer, error) {
+	var entries []map[string]any
+	switch typed := value.(type) {
+	case []map[string]any:
+		entries = typed
+	case []any:
+		entries = make([]map[string]any, len(typed))
+		for i, entry := range typed {
+			wrapper, ok := entry.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("sponsor signer %d must be an object", i)
+			}
+			entries[i] = wrapper
+		}
+	default:
+		return nil, errors.New("sponsor signers must be an array")
+	}
+	for i, wrapper := range entries {
+		signer, ok := wrapper["Signer"].(map[string]any)
+		if !ok || len(wrapper) != 1 {
+			return nil, fmt.Errorf("sponsor signer %d must hold only a Signer object", i)
+		}
+		for name := range signer {
+			switch name {
+			case "Account", "SigningPubKey", "TxnSignature":
+			default:
+				return nil, fmt.Errorf("sponsor signer %d has unexpected field %s", i, name)
+			}
+		}
+	}
+
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var signers []types.Signer
+	if err := json.Unmarshal(encoded, &signers); err != nil {
+		return nil, err
+	}
+	return signers, nil
 }
 
 func sponsorSignatureFromInnerRaw(value any) (*sponsorSignatureFields, error) {

@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
@@ -10,6 +11,7 @@ import (
 	ledgerentry "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	ledgerquery "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -39,6 +41,9 @@ func SponsorshipEntryRequest(sponsor, sponsee types.Address) *ledgerquery.EntryR
 				Sponsee: sponsee,
 			},
 		},
+		// The transaction applies against the open ledger, so the current ledger is the one whose
+		// budget and flags decide it, including changes still pending validation. It is also the
+		// ledger rippled's ledger_entry defaults to.
 		LedgerIndex: common.Current,
 	}
 }
@@ -62,14 +67,20 @@ func DecodeSponsorshipEntry(node ledgerentry.FlatLedgerObject) (*ledgerentry.Spo
 }
 
 // ValidateSponsorship runs an online preflight of a sponsored transaction against the Sponsorship
-// ledger entry between its sponsor and sponsee.
+// ledger entry between its sponsor and sponsee. The sponsorship fields are first checked by the
+// same rules BaseTx.Validate applies, so this helper only adds the checks that need the ledger.
 func ValidateSponsorship(
 	tx map[string]any,
 	estimatedFee string,
 	fetchSponsorship FetchSponsorshipEntry,
 ) (SponsorshipValidation, error) {
-	sponsor, sponsorFlags, err := sponsorshipFields(tx)
-	if err != nil {
+	_, hasSponsor := tx["Sponsor"]
+	_, hasFlags := tx["SponsorFlags"]
+	_, coSigned := tx["SponsorSignature"]
+	if !hasSponsor && !hasFlags && !coSigned {
+		return SponsorshipValidation{}, ErrTransactionNotSponsored
+	}
+	if err := transaction.ValidateFlatSponsorFields(tx); err != nil {
 		return SponsorshipValidation{}, err
 	}
 
@@ -78,27 +89,21 @@ func ValidateSponsorship(
 		return SponsorshipValidation{}, err
 	}
 
-	sponsee, delegated, err := sponsorshipSponsee(tx)
+	sponsor, sponsee, err := sponsorshipParties(tx)
 	if err != nil {
 		return SponsorshipValidation{}, err
 	}
-
-	if account, _ := typecheck.ToString(tx["Account"]); account == string(sponsor) {
-		return SponsorshipValidation{Reason: ErrSponsorIsAccount, Fee: fee}, nil
-	}
-	// rippled rejects reserve sponsorship on a delegated transaction outright.
-	if delegated && flag.Contains(sponsorFlags, types.SpfSponsorReserve) {
-		return SponsorshipValidation{Reason: ErrDelegatedReserveSponsorship, Fee: fee}, nil
-	}
+	// The shared rules above already accepted SponsorFlags as a uint32.
+	sponsorFlags, _ := typecheck.ToUint32(tx["SponsorFlags"])
 
 	entry, err := fetchSponsorship(sponsor, sponsee)
 	if err != nil {
 		return SponsorshipValidation{}, err
 	}
 
-	coSigned := hasSponsorSignature(tx)
 	if entry == nil {
-		// rippled requires a Sponsorship entry only for pre-funded sponsorship.
+		// rippled requires a Sponsorship entry only for pre-funded sponsorship. A present
+		// SponsorSignature is a co-signature; the ledger verifies it cryptographically.
 		if !coSigned {
 			return SponsorshipValidation{
 				Reason: fmt.Errorf("%w: sponsor %s, sponsee %s", ErrSponsorshipEntryNotFound, sponsor, sponsee),
@@ -106,6 +111,13 @@ func ValidateSponsorship(
 			}, nil
 		}
 		return SponsorshipValidation{Valid: true, Fee: fee}, nil
+	}
+
+	if entry.Owner != sponsor || entry.Sponsee != sponsee {
+		return SponsorshipValidation{}, fmt.Errorf(
+			"%w: requested sponsor %s and sponsee %s, got Owner %s and Sponsee %s",
+			ErrSponsorshipEntryMismatch, sponsor, sponsee, entry.Owner, entry.Sponsee,
+		)
 	}
 
 	result := SponsorshipValidation{Sponsorship: entry, Fee: fee}
@@ -140,77 +152,47 @@ func rejectSponsorship(
 		return nil
 	}
 
+	// The fee comes from DropsFromString, which rejects fractional drops, so it always has a whole
+	// representation.
+	feeText, _ := fee.WholeString()
+
 	if entry.FeeAmount == nil {
 		return ErrSponsorshipFeeAmountMissing
 	}
 	feeAmount := currency.DropsFromUint64(entry.FeeAmount.Uint64())
 	if feeAmount.Cmp(fee) < 0 {
-		return fmt.Errorf("%w: FeeAmount %s drops, fee %s drops", ErrSponsorshipFeeBudgetExhausted, entry.FeeAmount, dropsText(fee))
+		return fmt.Errorf("%w: FeeAmount %s drops, fee %s drops", ErrSponsorshipFeeBudgetExhausted, entry.FeeAmount, feeText)
 	}
 
 	if entry.MaxFee != nil {
 		maxFee := currency.DropsFromUint64(entry.MaxFee.Uint64())
 		if fee.Cmp(maxFee) > 0 {
-			return fmt.Errorf("%w: MaxFee %s drops, fee %s drops", ErrSponsorshipMaxFeeExceeded, entry.MaxFee, dropsText(fee))
+			return fmt.Errorf("%w: MaxFee %s drops, fee %s drops", ErrSponsorshipMaxFeeExceeded, entry.MaxFee, feeText)
 		}
 	}
 
 	return nil
 }
 
-// sponsorshipFields reads the sponsored-transaction common fields that identify the sponsor and
-// the requested sponsorship types.
-func sponsorshipFields(tx map[string]any) (types.Address, uint32, error) {
-	sponsorValue, hasSponsor := tx["Sponsor"]
-	flagsValue, hasFlags := tx["SponsorFlags"]
-	if !hasSponsor && !hasFlags {
-		return "", 0, ErrTransactionNotSponsored
-	}
-	if hasSponsor != hasFlags {
-		return "", 0, ErrInvalidSponsorFlags
-	}
-
-	sponsor, ok := typecheck.ToString(sponsorValue)
-	if !ok {
-		return "", 0, fmt.Errorf("%w: got %T", ErrSponsorFieldIsNotAString, sponsorValue)
-	}
-	sponsorFlags, ok := typecheck.ToUint32(flagsValue)
-	if !ok {
-		return "", 0, fmt.Errorf("%w: got %T", ErrSponsorFlagsFieldIsNotAUint32, flagsValue)
-	}
-	if sponsor == "" {
-		return "", 0, ErrTransactionNotSponsored
-	}
-	if sponsorFlags == 0 || sponsorFlags&^types.SpfSponsorUniversal != 0 {
-		return "", 0, fmt.Errorf("%w: got %#x", ErrInvalidSponsorFlags, sponsorFlags)
+// sponsorshipParties resolves the sponsor and the sponsee the lookup uses, as classic addresses.
+// xrpld accepts only classic addresses in the sponsorship selector, so X-addresses are converted
+// with the autofill helper on a copy, leaving the caller's transaction unchanged. The sponsee is
+// the Delegate when present and the Account otherwise, as rippled's getInitiator resolves it.
+func sponsorshipParties(tx map[string]any) (types.Address, types.Address, error) {
+	normalized := maps.Clone(tx)
+	// Batch inner transactions are shared with the caller's map and play no part in this lookup,
+	// so they are left out rather than rewritten in place.
+	delete(normalized, "RawTransactions")
+	if err := SetValidAddresses(normalized); err != nil {
+		return "", "", err
 	}
 
-	return types.Address(sponsor), sponsorFlags, nil
-}
-
-// sponsorshipSponsee resolves the account whose sponsorship is being used, and reports whether a
-// Delegate supplied it.
-func sponsorshipSponsee(tx map[string]any) (types.Address, bool, error) {
-	for _, field := range []string{"Delegate", "Account"} {
-		value, exists := tx[field]
-		if !exists || value == nil {
-			continue
-		}
-		account, ok := typecheck.ToString(value)
-		if !ok {
-			return "", false, fmt.Errorf("%w: field %s is a %T", ErrAddressFieldIsNotAString, field, value)
-		}
-		if account != "" {
-			return types.Address(account), field == "Delegate", nil
-		}
+	sponsor, _ := typecheck.ToString(normalized["Sponsor"])
+	sponsee, _ := typecheck.ToString(normalized["Delegate"])
+	if sponsee == "" {
+		sponsee, _ = typecheck.ToString(normalized["Account"])
 	}
-	return "", false, ErrSponsorshipSponseeUnavailable
-}
-
-// hasSponsorSignature reports whether the transaction carries a sponsor co-signature.
-func hasSponsorSignature(tx map[string]any) bool {
-	signature, ok := tx["SponsorSignature"].(map[string]any)
-	return ok && len(signature) > 0
+	return types.Address(sponsor), types.Address(sponsee), nil
 }
 
 // sponsorshipFee prefers an explicitly supplied estimate over the transaction's own Fee, so a
@@ -237,12 +219,4 @@ func sponsorshipFee(tx map[string]any, estimatedFee string) (currency.Drops, err
 		return currency.Drops{}, fmt.Errorf("%w: %q: %w", ErrInvalidSponsorshipFee, feeText, err)
 	}
 	return fee, nil
-}
-
-func dropsText(drops currency.Drops) string {
-	text, err := drops.WholeString()
-	if err != nil {
-		return "unknown"
-	}
-	return text
 }

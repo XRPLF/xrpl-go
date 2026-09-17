@@ -56,18 +56,6 @@ var (
 	// ErrTransactionNotSponsored is returned when a sponsorship preflight receives a transaction
 	// without Sponsor and SponsorFlags.
 	ErrTransactionNotSponsored = clientinternal.ErrTransactionNotSponsored
-	// ErrInvalidSponsorFlags is returned when Sponsor and SponsorFlags are not set together or
-	// SponsorFlags is zero or uses unknown bits.
-	ErrInvalidSponsorFlags = clientinternal.ErrInvalidSponsorFlags
-	// ErrSponsorIsAccount is reported when the Sponsor is the transaction Account.
-	ErrSponsorIsAccount = clientinternal.ErrSponsorIsAccount
-	// ErrSponsorFieldIsNotAString is returned when the Sponsor field is not a string.
-	ErrSponsorFieldIsNotAString = clientinternal.ErrSponsorFieldIsNotAString
-	// ErrSponsorFlagsFieldIsNotAUint32 is returned when the SponsorFlags field is not a uint32.
-	ErrSponsorFlagsFieldIsNotAUint32 = clientinternal.ErrSponsorFlagsFieldIsNotAUint32
-	// ErrSponsorshipSponseeUnavailable is returned when neither Delegate nor Account identifies a
-	// sponsee.
-	ErrSponsorshipSponseeUnavailable = clientinternal.ErrSponsorshipSponseeUnavailable
 	// ErrSponsorshipFeeUnavailable is returned when a sponsorship preflight has no estimated fee
 	// and no transaction Fee.
 	ErrSponsorshipFeeUnavailable = clientinternal.ErrSponsorshipFeeUnavailable
@@ -76,14 +64,14 @@ var (
 	// ErrInvalidSponsorshipFee is returned when a sponsorship preflight fee is not a whole, non-
 	// negative number of drops.
 	ErrInvalidSponsorshipFee = clientinternal.ErrInvalidSponsorshipFee
-	// ErrDelegatedReserveSponsorship is returned when a delegated transaction requests reserve
-	// sponsorship.
-	ErrDelegatedReserveSponsorship = clientinternal.ErrDelegatedReserveSponsorship
 	// ErrSponsorshipEntryUnexpectedType is returned when a ledger_entry lookup returns a node that
 	// is not a Sponsorship entry.
 	ErrSponsorshipEntryUnexpectedType = clientinternal.ErrSponsorshipEntryUnexpectedType
 	// ErrSponsorshipEntryMalformed is returned when a Sponsorship ledger entry cannot be decoded.
 	ErrSponsorshipEntryMalformed = clientinternal.ErrSponsorshipEntryMalformed
+	// ErrSponsorshipEntryMismatch is returned when a ledger_entry lookup returns a Sponsorship entry
+	// for a different sponsor or sponsee than requested.
+	ErrSponsorshipEntryMismatch = clientinternal.ErrSponsorshipEntryMismatch
 	// ErrSponsorshipEntryNotFound is returned when no Sponsorship entry exists and the transaction
 	// has no SponsorSignature.
 	ErrSponsorshipEntryNotFound = clientinternal.ErrSponsorshipEntryNotFound

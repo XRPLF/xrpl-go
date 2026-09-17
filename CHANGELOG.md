@@ -32,7 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/queries
 
-- Added the `sponsorship` selector to `EntryRequest`, accepting a ledger-entry index or a `SponsorshipSelectorFields` object with a sponsor and a sponsee.
 - Added `account_sponsoring` models and RPC/WebSocket client methods. Requires a server supporting this method, identified as Clio-only by XRPL.js.
 - Added the optional `account_objects.sponsored` filter, the sponsorship object type, and `ledger_entry` sponsorship selectors by object ID or sponsor/sponsee pair.
 
@@ -46,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/rpc, xrpl/websocket
 
-- Added `ValidateSponsorship` and `ValidateSponsorshipContext`, an opt-in online check of sponsorship signature requirements and fee budgets against the current ledger. `SponsorshipValidation` reports the outcome, entry, and fee checked. Only `entryNotFound` is treated as an absent entry. Other lookup and decoding failures are returned as errors. Autofill and submission are unchanged.
+- Added `ValidateSponsorship` and `ValidateSponsorshipContext`, an opt-in online check of sponsorship signature requirements and fee budgets against the current ledger. The sponsorship fields are first checked with the same rules as `BaseTx.Validate`, returning its `xrpl/transaction` errors, and X-addresses are looked up as classic addresses without modifying the transaction. `SponsorshipValidation` reports the outcome, entry, and fee checked. Only `entryNotFound` is treated as an absent entry. Other lookup and decoding failures, and an entry for a different sponsor or sponsee (`ErrSponsorshipEntryMismatch`), are returned as errors. Autofill and submission are unchanged.
 
 #### xrpl/transaction
 
@@ -54,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `IsNonZeroDomainID` to check 64-character hexadecimal domain IDs excluding zero, without checking ledger existence or permissions. `IsDomainID` still accepts zero.
 - Added `LedgerStateFixTx`, `SponsorshipSetTx`, and `SponsorshipTransferTx` transaction type constants.
 - Added the Payment `TfSponsorCreatedAccount` flag and setter, with validation for native XRP amounts and incompatible fields and flags. Requires the `Sponsor` amendment on the target network.
-- Added `SpfSponsorUniversal`, the combined mask of the existing fee and reserve sponsorship flags.
+- Added `ValidateFlatSponsorFields`, which applies the sponsorship field rules of `BaseTx.Validate` to a flattened transaction.
 
 #### xrpl/websocket
 

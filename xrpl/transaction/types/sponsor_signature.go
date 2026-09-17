@@ -5,8 +5,6 @@ const (
 	SpfSponsorFee uint32 = 1
 	// SpfSponsorReserve indicates that the sponsor provides reserves.
 	SpfSponsorReserve uint32 = 2
-	// SpfSponsorUniversal is the mask of all defined sponsorship flags.
-	SpfSponsorUniversal uint32 = SpfSponsorFee | SpfSponsorReserve
 )
 
 // SponsorSignature contains single-signature or multisignature authorization.

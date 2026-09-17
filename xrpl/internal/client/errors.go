@@ -84,20 +84,6 @@ var (
 	// ErrTransactionNotSponsored indicates that a sponsorship preflight received a transaction
 	// without the Sponsor and SponsorFlags common fields.
 	ErrTransactionNotSponsored = errors.New("transaction is not sponsored: Sponsor and SponsorFlags are required")
-	// ErrInvalidSponsorFlags indicates Sponsor without SponsorFlags or vice versa, or SponsorFlags
-	// that are zero or use unknown bits.
-	ErrInvalidSponsorFlags = errors.New("invalid sponsorship: Sponsor and SponsorFlags must be set together and SponsorFlags must use only spfSponsorFee and spfSponsorReserve")
-	// ErrSponsorIsAccount indicates a transaction whose Sponsor is its own Account.
-	ErrSponsorIsAccount = errors.New("a transaction cannot be sponsored by its own Account")
-	// ErrSponsorFieldIsNotAString indicates that a transaction Sponsor value has the wrong Go
-	// type.
-	ErrSponsorFieldIsNotAString = errors.New("field Sponsor must be a string")
-	// ErrSponsorFlagsFieldIsNotAUint32 indicates that a transaction SponsorFlags value has the
-	// wrong Go type.
-	ErrSponsorFlagsFieldIsNotAUint32 = errors.New("field SponsorFlags must be a uint32")
-	// ErrSponsorshipSponseeUnavailable indicates that a sponsorship preflight could not resolve a
-	// sponsee from the transaction's Delegate or Account.
-	ErrSponsorshipSponseeUnavailable = errors.New("sponsorship sponsee is unavailable: Delegate or Account is required")
 	// ErrSponsorshipFeeUnavailable indicates that a sponsorship preflight has neither an estimated
 	// fee nor a transaction Fee to validate.
 	ErrSponsorshipFeeUnavailable = errors.New("sponsorship fee is unavailable: supply an estimated fee or set the transaction Fee")
@@ -106,14 +92,14 @@ var (
 	// ErrInvalidSponsorshipFee indicates that a sponsorship preflight fee is not a whole, non-
 	// negative number of drops.
 	ErrInvalidSponsorshipFee = errors.New("invalid sponsorship fee")
-	// ErrDelegatedReserveSponsorship indicates that a delegated transaction requested reserve
-	// sponsorship, which rippled rejects outright.
-	ErrDelegatedReserveSponsorship = errors.New("a delegated transaction cannot request reserve sponsorship")
 	// ErrSponsorshipEntryUnexpectedType indicates that a ledger_entry lookup returned a node that
 	// is not a Sponsorship entry.
 	ErrSponsorshipEntryUnexpectedType = errors.New("ledger entry is not a Sponsorship entry")
 	// ErrSponsorshipEntryMalformed indicates that a Sponsorship ledger entry could not be decoded.
 	ErrSponsorshipEntryMalformed = errors.New("malformed Sponsorship ledger entry")
+	// ErrSponsorshipEntryMismatch indicates that a ledger_entry lookup returned a Sponsorship entry
+	// whose Owner or Sponsee differs from the requested sponsor and sponsee.
+	ErrSponsorshipEntryMismatch = errors.New("sponsorship ledger entry does not match the requested sponsor and sponsee")
 	// ErrSponsorshipEntryNotFound indicates that no Sponsorship ledger entry exists for the
 	// sponsor and sponsee, and the transaction carries no sponsor co-signature to authorize the
 	// sponsorship instead.

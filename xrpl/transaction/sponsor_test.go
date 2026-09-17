@@ -97,11 +97,14 @@ func TestBaseTxSponsorValidation(t *testing.T) {
 				tx.Flags = types.TfInnerBatchTxn
 			}
 			valid, err := tx.Validate()
+			flatErr := ValidateFlatSponsorFields(tx.Flatten())
 			require.Equal(t, tt.expectedErr == nil, valid)
 			if tt.expectedErr == nil {
 				require.NoError(t, err)
+				require.NoError(t, flatErr)
 			} else {
 				require.ErrorIs(t, err, tt.expectedErr)
+				require.ErrorIs(t, flatErr, tt.expectedErr)
 			}
 		})
 	}
@@ -158,6 +161,63 @@ func TestSponsorSignatureValidation(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				require.Error(t, err)
+			}
+		})
+	}
+}
+
+// TestFlatSponsorSignatureValidation pins the SponsorSignature rules for a flattened transaction,
+// which is what the online sponsorship preflight receives.
+func TestFlatSponsorSignatureValidation(t *testing.T) {
+	signers := []any{map[string]any{"Signer": map[string]any{
+		"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "SigningPubKey": "AB", "TxnSignature": "CD",
+	}}}
+	tests := []struct {
+		name        string
+		signature   any
+		inner       bool
+		expectedErr error
+	}{
+		{"single", map[string]any{"SigningPubKey": "AB", "TxnSignature": "CD"}, false, nil},
+		{"multi", map[string]any{"Signers": signers}, false, nil},
+		{"empty key with multi", map[string]any{"SigningPubKey": "", "Signers": signers}, false, nil},
+		{"empty key only", map[string]any{"SigningPubKey": ""}, false, ErrInvalidSponsorSignature},
+		{"empty object", map[string]any{}, false, ErrInvalidSponsorSignature},
+		{"nil map", map[string]any(nil), false, ErrInvalidSponsorSignature},
+		{"not an object", "signed", false, ErrInvalidSponsorSignature},
+		{"unknown field", map[string]any{"SigningPubKey": "AB", "TxnSignature": "CD", "Extra": "x"}, false, ErrInvalidSponsorSignature},
+		{"non-string key", map[string]any{"SigningPubKey": 7, "TxnSignature": "CD"}, false, ErrInvalidSponsorSignature},
+		{"empty signers array", map[string]any{"Signers": []any{}}, false, ErrInvalidSponsorSignature},
+		{"flattened typed signers", map[string]any{"Signers": []map[string]any{signers[0].(map[string]any)}}, false, nil},
+		{"malformed signers", map[string]any{"Signers": "x"}, false, ErrInvalidSponsorSignature},
+		{"signers entry that is not an object", map[string]any{"Signers": []any{"x"}}, false, ErrInvalidSponsorSignature},
+		{"signer with an extra field", map[string]any{"Signers": []any{map[string]any{"Signer": map[string]any{
+			"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "SigningPubKey": "AB", "TxnSignature": "CD", "SourceTag": 5,
+		}}}}, false, ErrInvalidSponsorSignature},
+		{"signers entry with a sibling key", map[string]any{"Signers": []any{map[string]any{
+			"Signer": signers[0].(map[string]any)["Signer"], "Memo": map[string]any{},
+		}}}, false, ErrInvalidSponsorSignature},
+		{"nonempty key with multi", map[string]any{"SigningPubKey": "AB", "Signers": signers}, false, ErrInvalidSponsorSignature},
+		{"inner empty object", map[string]any{}, true, nil},
+		{"inner empty key", map[string]any{"SigningPubKey": ""}, true, nil},
+		{"inner signed", map[string]any{"SigningPubKey": "AB", "TxnSignature": "CD"}, true, ErrInnerBatchSponsorSignature},
+		{"inner multi", map[string]any{"Signers": signers}, true, ErrInnerBatchSponsorSignature},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := FlatTransaction{
+				"Account": "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", "TransactionType": "Payment",
+				"Sponsor": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", "SponsorFlags": types.SpfSponsorReserve,
+				"SponsorSignature": tt.signature,
+			}
+			if tt.inner {
+				tx["Flags"] = types.TfInnerBatchTxn
+			}
+			err := ValidateFlatSponsorFields(tx)
+			if tt.expectedErr == nil {
+				require.NoError(t, err)
+			} else {
+				require.ErrorIs(t, err, tt.expectedErr)
 			}
 		})
 	}

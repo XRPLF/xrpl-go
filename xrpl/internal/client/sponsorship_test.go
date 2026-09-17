@@ -4,10 +4,12 @@ import (
 	"errors"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	ledgerentry "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	ledgerquery "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
@@ -53,6 +55,39 @@ func ownerCount(count uint32) *uint32 {
 	return &count
 }
 
+func sponsorSigners() []any {
+	return []any{
+		map[string]any{"Signer": map[string]any{
+			"Account":       delegateAddress,
+			"SigningPubKey": "ED9434799226374926EDA3B54B1B461B4ABF7237962EAE18528FEA67595397FA32",
+			"TxnSignature":  "C3646313B08EED6AF4392261A31B961F10C66CB733DB7F6CD9EAB079857834C8B0334270A2C037E63CDCCC1932E0832882B7B7066ECD2FAEDEB4A83DF8AE6303",
+		}},
+	}
+}
+
+func withSponsorSignature(signature any) map[string]any {
+	tx := sponsoredTx(types.SpfSponsorFee)
+	tx["SponsorSignature"] = signature
+	return tx
+}
+
+// innerBatchWithSponsorSignature is a sponsored inner Batch transaction carrying the given
+// SponsorSignature.
+func innerBatchWithSponsorSignature(signature any) map[string]any {
+	tx := withSponsorSignature(signature)
+	tx["SponsorFlags"] = types.SpfSponsorReserve
+	tx["Flags"] = types.TfInnerBatchTxn
+	return tx
+}
+
+// xAddress encodes a classic test address as a mainnet X-address, with a tag when hasTag is set.
+func xAddress(t *testing.T, classic string, tag uint32, hasTag bool) string {
+	t.Helper()
+	address, err := addresscodec.ClassicAddressToXAddress(classic, tag, hasTag, false)
+	require.NoError(t, err)
+	return address
+}
+
 func staticSponsorship(entry *ledgerentry.Sponsorship) FetchSponsorshipEntry {
 	return func(_, _ types.Address) (*ledgerentry.Sponsorship, error) {
 		return entry, nil
@@ -86,6 +121,35 @@ func TestValidateSponsorship(t *testing.T) {
 				tx["SponsorSignature"] = coSignature
 				return tx
 			}(),
+			expectValid: true,
+		},
+		{
+			name: "no entry with a multisigned co-signature is authorized",
+			tx: func() map[string]any {
+				tx := sponsoredTx(types.SpfSponsorFee)
+				tx["SponsorSignature"] = map[string]any{"Signers": sponsorSigners()}
+				return tx
+			}(),
+			expectValid: true,
+		},
+		{
+			name: "no entry with the inner Batch placeholder co-signature is authorized",
+			tx: func() map[string]any {
+				tx := sponsoredTx(types.SpfSponsorReserve)
+				tx["Flags"] = types.TfInnerBatchTxn
+				tx["SponsorSignature"] = map[string]any{"SigningPubKey": ""}
+				return tx
+			}(),
+			expectValid: true,
+		},
+		{
+			name:        "no entry with an empty inner Batch SponsorSignature is authorized",
+			tx:          innerBatchWithSponsorSignature(map[string]any{}),
+			expectValid: true,
+		},
+		{
+			name:        "no entry with a multisigned co-signature and an empty SigningPubKey is authorized",
+			tx:          withSponsorSignature(map[string]any{"SigningPubKey": "", "Signers": sponsorSigners()}),
 			expectValid: true,
 		},
 		{
@@ -216,32 +280,11 @@ func TestValidateSponsorship(t *testing.T) {
 			expectValid: true,
 		},
 		{
-			name: "a nil SponsorSignature is not a co-signature",
-			tx: func() map[string]any {
-				tx := sponsoredTx(types.SpfSponsorFee)
-				tx["SponsorSignature"] = map[string]any(nil)
-				return tx
-			}(),
-			entry:        sponsorshipEntry(ledgerentry.LsfSponsorshipRequireSignForFee, xrpAmount(1000000), nil, nil),
-			expectValid:  false,
-			expectReason: ErrSponsorshipFeeSignatureRequired,
-		},
-		{
 			name:         "fee and reserve sponsorship still checks the fee budget",
 			tx:           sponsoredTx(types.SpfSponsorFee | types.SpfSponsorReserve),
 			entry:        sponsorshipEntry(0, xrpAmount(1), nil, ownerCount(0)),
 			expectValid:  false,
 			expectReason: ErrSponsorshipFeeBudgetExhausted,
-		},
-		{
-			name: "an empty SponsorSignature object is not a co-signature",
-			tx: func() map[string]any {
-				tx := sponsoredTx(types.SpfSponsorFee)
-				tx["SponsorSignature"] = map[string]any{}
-				return tx
-			}(),
-			expectValid:  false,
-			expectReason: ErrSponsorshipEntryNotFound,
 		},
 	}
 
@@ -268,98 +311,195 @@ func TestValidateSponsorship(t *testing.T) {
 	}
 }
 
+// TestValidateSponsorshipInputErrors pins that the sponsorship fields are checked by the rules
+// BaseTx.Validate applies, and that no unusable input reaches the ledger.
 func TestValidateSponsorshipInputErrors(t *testing.T) {
+	with := func(fields map[string]any) map[string]any {
+		tx := sponsoredTx(types.SpfSponsorFee)
+		for name, value := range fields {
+			if value == nil {
+				delete(tx, name)
+				continue
+			}
+			tx[name] = value
+		}
+		return tx
+	}
+
 	tests := []struct {
 		name        string
 		tx          map[string]any
 		expectedErr error
 	}{
 		{
+			name:        "transaction without sponsorship fields",
+			tx:          map[string]any{"Account": sponseeAddress, "TransactionType": "Payment", "Fee": "100"},
+			expectedErr: ErrTransactionNotSponsored,
+		},
+		{
 			name:        "unknown SponsorFlags bit",
 			tx:          sponsoredTx(types.SpfSponsorFee | 0x4),
-			expectedErr: ErrInvalidSponsorFlags,
+			expectedErr: transaction.ErrInvalidSponsorFlags,
 		},
 		{
-			name:        "transaction without sponsorship fields",
-			tx:          map[string]any{"Account": sponseeAddress, "Fee": "100"},
-			expectedErr: ErrTransactionNotSponsored,
+			name:        "sponsor without flags",
+			tx:          with(map[string]any{"SponsorFlags": nil}),
+			expectedErr: transaction.ErrSponsorFieldsMissing,
 		},
 		{
-			name:        "transaction with a sponsor but no flags",
-			tx:          map[string]any{"Account": sponseeAddress, "Fee": "100", "Sponsor": sponsorAddress},
-			expectedErr: ErrInvalidSponsorFlags,
+			name:        "zero sponsor flags",
+			tx:          with(map[string]any{"SponsorFlags": uint32(0)}),
+			expectedErr: transaction.ErrSponsorFieldsMissing,
 		},
 		{
-			name: "transaction with zero sponsor flags",
-			tx: map[string]any{
-				"Account": sponseeAddress, "Fee": "100",
-				"Sponsor": sponsorAddress, "SponsorFlags": uint32(0),
-			},
-			expectedErr: ErrInvalidSponsorFlags,
+			name:        "empty sponsor",
+			tx:          with(map[string]any{"Sponsor": ""}),
+			expectedErr: transaction.ErrSponsorFieldsMissing,
 		},
 		{
-			name: "transaction with an empty sponsor",
-			tx: map[string]any{
-				"Account": sponseeAddress, "Fee": "100",
-				"Sponsor": "", "SponsorFlags": types.SpfSponsorFee,
-			},
-			expectedErr: ErrTransactionNotSponsored,
+			name:        "SponsorSignature without Sponsor and SponsorFlags",
+			tx:          with(map[string]any{"Sponsor": nil, "SponsorFlags": nil, "SponsorSignature": map[string]any{"SigningPubKey": "ED94", "TxnSignature": "C364"}}),
+			expectedErr: transaction.ErrSponsorFieldsMissing,
 		},
 		{
-			name: "transaction with a non-string sponsor",
-			tx: map[string]any{
-				"Account": sponseeAddress, "Fee": "100",
-				"Sponsor": 7, "SponsorFlags": types.SpfSponsorFee,
-			},
-			expectedErr: ErrSponsorFieldIsNotAString,
+			name:        "non-string sponsor",
+			tx:          with(map[string]any{"Sponsor": 7}),
+			expectedErr: transaction.ErrInvalidSponsor,
 		},
 		{
-			name: "transaction with non-numeric sponsor flags",
-			tx: map[string]any{
-				"Account": sponseeAddress, "Fee": "100",
-				"Sponsor": sponsorAddress, "SponsorFlags": "fee",
-			},
-			expectedErr: ErrSponsorFlagsFieldIsNotAUint32,
+			name:        "malformed sponsor address",
+			tx:          with(map[string]any{"Sponsor": "not-an-address"}),
+			expectedErr: transaction.ErrInvalidSponsor,
 		},
 		{
-			name: "transaction without a fee or an estimate",
-			tx: map[string]any{
-				"Account": sponseeAddress,
-				"Sponsor": sponsorAddress, "SponsorFlags": types.SpfSponsorFee,
-			},
+			name:        "non-numeric sponsor flags",
+			tx:          with(map[string]any{"SponsorFlags": "fee"}),
+			expectedErr: transaction.ErrInvalidSponsorFlags,
+		},
+		{
+			name:        "transaction without an account",
+			tx:          with(map[string]any{"Account": nil}),
+			expectedErr: transaction.ErrInvalidAccount,
+		},
+		{
+			name:        "non-string delegate",
+			tx:          with(map[string]any{"Delegate": 7}),
+			expectedErr: transaction.ErrInvalidDelegate,
+		},
+		{
+			name:        "malformed delegate address",
+			tx:          with(map[string]any{"Delegate": "not-an-address"}),
+			expectedErr: ErrInvalidAddress,
+		},
+		{
+			name:        "sponsor equal to account",
+			tx:          with(map[string]any{"Sponsor": sponseeAddress}),
+			expectedErr: transaction.ErrSponsorAccountConflict,
+		},
+		{
+			name:        "sponsor equal to an X-address account",
+			tx:          with(map[string]any{"Account": xAddress(t, sponseeAddress, 7, true), "Sponsor": sponseeAddress}),
+			expectedErr: transaction.ErrSponsorAccountConflict,
+		},
+		{
+			name:        "X-address sponsor equal to account",
+			tx:          with(map[string]any{"Sponsor": xAddress(t, sponseeAddress, 0, false)}),
+			expectedErr: transaction.ErrSponsorAccountConflict,
+		},
+		{
+			name:        "reserve sponsorship on a delegated transaction",
+			tx:          with(map[string]any{"SponsorFlags": types.SpfSponsorReserve, "Delegate": delegateAddress}),
+			expectedErr: transaction.ErrSponsorDelegateConflict,
+		},
+		{
+			name:        "reserve sponsorship on a type outside the allow-list",
+			tx:          with(map[string]any{"SponsorFlags": types.SpfSponsorReserve, "TransactionType": "OfferCreate"}),
+			expectedErr: transaction.ErrReserveSponsorshipNotAllowed,
+		},
+		{
+			name: "fee sponsorship on an inner Batch transaction",
+			tx: func() map[string]any {
+				tx := innerBatchWithSponsorSignature(map[string]any{"SigningPubKey": ""})
+				tx["SponsorFlags"] = types.SpfSponsorFee
+				tx["Fee"] = "0"
+				return tx
+			}(),
+			expectedErr: transaction.ErrInnerBatchFeeSponsorship,
+		},
+		{
+			name:        "transaction without a fee or an estimate",
+			tx:          with(map[string]any{"Fee": nil}),
 			expectedErr: ErrSponsorshipFeeUnavailable,
 		},
 		{
-			name: "transaction with a non-string fee",
-			tx: map[string]any{
-				"Account": sponseeAddress, "Fee": 100,
-				"Sponsor": sponsorAddress, "SponsorFlags": types.SpfSponsorFee,
-			},
+			name:        "non-string fee",
+			tx:          with(map[string]any{"Fee": 100}),
 			expectedErr: ErrSponsorshipFeeIsNotAString,
 		},
 		{
-			name: "transaction with a fractional fee",
-			tx: map[string]any{
-				"Account": sponseeAddress, "Fee": "10.5",
-				"Sponsor": sponsorAddress, "SponsorFlags": types.SpfSponsorFee,
-			},
+			name:        "fractional fee",
+			tx:          with(map[string]any{"Fee": "10.5"}),
 			expectedErr: ErrInvalidSponsorshipFee,
 		},
 		{
-			name: "transaction without an account or a delegate",
-			tx: map[string]any{
-				"Fee":     "100",
-				"Sponsor": sponsorAddress, "SponsorFlags": types.SpfSponsorFee,
-			},
-			expectedErr: ErrSponsorshipSponseeUnavailable,
+			name:        "SponsorSignature that is not an object",
+			tx:          withSponsorSignature("signed"),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
 		},
 		{
-			name: "transaction with a non-string delegate",
-			tx: map[string]any{
-				"Account": sponseeAddress, "Delegate": 7, "Fee": "100",
-				"Sponsor": sponsorAddress, "SponsorFlags": types.SpfSponsorFee,
-			},
-			expectedErr: ErrAddressFieldIsNotAString,
+			name:        "nil SponsorSignature map",
+			tx:          withSponsorSignature(map[string]any(nil)),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "SponsorSignature with unrelated fields",
+			tx:          withSponsorSignature(map[string]any{"x": "y"}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "SponsorSignature with SigningPubKey but no TxnSignature",
+			tx:          withSponsorSignature(map[string]any{"SigningPubKey": "ED94"}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "SponsorSignature with TxnSignature but no SigningPubKey",
+			tx:          withSponsorSignature(map[string]any{"TxnSignature": "C364"}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "SponsorSignature mixing Signers and TxnSignature",
+			tx:          withSponsorSignature(map[string]any{"Signers": sponsorSigners(), "TxnSignature": "C364"}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "SponsorSignature mixing Signers and a nonempty SigningPubKey",
+			tx:          withSponsorSignature(map[string]any{"SigningPubKey": "ED94", "Signers": sponsorSigners()}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "SponsorSignature with empty Signers",
+			tx:          withSponsorSignature(map[string]any{"Signers": []any{}}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "empty SigningPubKey on an ordinary transaction",
+			tx:          withSponsorSignature(map[string]any{"SigningPubKey": ""}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "empty SponsorSignature object on an ordinary transaction",
+			tx:          withSponsorSignature(map[string]any{}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "single-signed SponsorSignature on an inner Batch transaction",
+			tx:          innerBatchWithSponsorSignature(map[string]any{"SigningPubKey": "ED94", "TxnSignature": "C364"}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
+		},
+		{
+			name:        "multisigned SponsorSignature on an inner Batch transaction",
+			tx:          innerBatchWithSponsorSignature(map[string]any{"SigningPubKey": "", "Signers": sponsorSigners()}),
+			expectedErr: transaction.ErrInvalidSponsorSignature,
 		},
 	}
 
@@ -381,6 +521,7 @@ func TestValidateSponsorshipUsesDelegateAsSponsee(t *testing.T) {
 
 	var gotSponsor, gotSponsee types.Address
 	entry := sponsorshipEntry(0, xrpAmount(1000000), nil, nil)
+	entry.Sponsee = delegateAddress
 	result, err := ValidateSponsorship(tx, "", func(sponsor, sponsee types.Address) (*ledgerentry.Sponsorship, error) {
 		gotSponsor, gotSponsee = sponsor, sponsee
 		return entry, nil
@@ -392,44 +533,60 @@ func TestValidateSponsorshipUsesDelegateAsSponsee(t *testing.T) {
 	require.Equal(t, types.Address(delegateAddress), gotSponsee)
 }
 
-// xrpld rejects reserve sponsorship on a delegated transaction outright, and resolves its reserve
-// budget against Account rather than the delegate, so no entry lookup can make the combination
-// valid.
-func TestValidateSponsorshipRejectsSponsorEqualToAccount(t *testing.T) {
+// TestValidateSponsorshipLooksUpClassicAddresses pins that X-addresses are converted on a copy
+// before the lookup, so the request and the check against the returned entry both use the classic
+// addresses the ledger stores, while the caller's transaction is left unchanged.
+func TestValidateSponsorshipLooksUpClassicAddresses(t *testing.T) {
 	tx := sponsoredTx(types.SpfSponsorFee)
-	tx["Sponsor"] = sponseeAddress
+	account := xAddress(t, sponseeAddress, 7, true)
+	sponsor := xAddress(t, sponsorAddress, 0, false)
+	tx["Account"] = account
+	tx["Sponsor"] = sponsor
 
-	result, err := ValidateSponsorship(tx, "", func(_, _ types.Address) (*ledgerentry.Sponsorship, error) {
-		t.Fatal("ledger_entry must not be queried")
-		return nil, nil
+	var gotSponsor, gotSponsee types.Address
+	result, err := ValidateSponsorship(tx, "", func(sponsor, sponsee types.Address) (*ledgerentry.Sponsorship, error) {
+		gotSponsor, gotSponsee = sponsor, sponsee
+		return sponsorshipEntry(0, xrpAmount(1000000), nil, nil), nil
 	})
+
 	require.NoError(t, err)
-	require.False(t, result.Valid)
-	require.ErrorIs(t, result.Reason, ErrSponsorIsAccount)
+	require.True(t, result.Valid)
+	require.Equal(t, types.Address(sponsorAddress), gotSponsor)
+	require.Equal(t, types.Address(sponseeAddress), gotSponsee)
+	require.Equal(t, account, tx["Account"])
+	require.Equal(t, sponsor, tx["Sponsor"])
+	require.NotContains(t, tx, "SourceTag")
 }
 
-func TestValidateSponsorshipRejectsDelegatedReserveSponsorship(t *testing.T) {
+func TestValidateSponsorshipRejectsMismatchedEntry(t *testing.T) {
 	tests := []struct {
-		name         string
-		sponsorFlags uint32
+		name  string
+		entry *ledgerentry.Sponsorship
 	}{
-		{name: "reserve sponsorship", sponsorFlags: types.SpfSponsorReserve},
-		{name: "fee and reserve sponsorship", sponsorFlags: types.SpfSponsorFee | types.SpfSponsorReserve},
+		{
+			name: "different owner",
+			entry: func() *ledgerentry.Sponsorship {
+				entry := sponsorshipEntry(0, xrpAmount(1000000), nil, nil)
+				entry.Owner = delegateAddress
+				return entry
+			}(),
+		},
+		{
+			name: "different sponsee",
+			entry: func() *ledgerentry.Sponsorship {
+				entry := sponsorshipEntry(0, xrpAmount(1000000), nil, nil)
+				entry.Sponsee = delegateAddress
+				return entry
+			}(),
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tx := sponsoredTx(tt.sponsorFlags)
-			tx["Delegate"] = delegateAddress
+			result, err := ValidateSponsorship(sponsoredTx(types.SpfSponsorFee), "", staticSponsorship(tt.entry))
 
-			result, err := ValidateSponsorship(tx, "", func(_, _ types.Address) (*ledgerentry.Sponsorship, error) {
-				t.Fatal("delegated reserve sponsorship must not reach the ledger")
-				return nil, nil
-			})
-
-			require.NoError(t, err)
+			require.ErrorIs(t, err, ErrSponsorshipEntryMismatch)
 			require.False(t, result.Valid)
-			require.ErrorIs(t, result.Reason, ErrDelegatedReserveSponsorship)
 			require.Nil(t, result.Sponsorship)
 		})
 	}

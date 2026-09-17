@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -45,15 +46,10 @@ func newSponsorshipTestClient(t *testing.T, mockResponse string) (*Client, *test
 	return NewClient(config), mockClient
 }
 
+// TestClient_ValidateSponsorship covers what the RPC wrapper adds over the shared preflight, whose
+// sponsorship rules are tested in xrpl/internal/client: decoding a found entry, forwarding the
+// estimated fee, and reading entryNotFound as an absent entry.
 func TestClient_ValidateSponsorship(t *testing.T) {
-	coSigned := func(tx transaction.FlatTransaction) transaction.FlatTransaction {
-		tx["SponsorSignature"] = map[string]any{
-			"SigningPubKey": "ED9434799226374926EDA3B54B1B461B4ABF7237962EAE18528FEA67595397FA32",
-			"TxnSignature":  "C3646313B08EED6AF4392261A31B961F10C66CB733DB7F6CD9EAB079857834C8",
-		}
-		return tx
-	}
-
 	tests := []struct {
 		name         string
 		tx           transaction.FlatTransaction
@@ -64,14 +60,14 @@ func TestClient_ValidateSponsorship(t *testing.T) {
 		expectEntry  bool
 	}{
 		{
-			name:         "pre-funded fee sponsorship within budget",
+			name:         "decodes a found entry into the result",
 			tx:           sponsoredPayment(types.SpfSponsorFee),
 			mockResponse: sponsorshipResponse(`{"LedgerEntryType":"Sponsorship","Owner":"` + sponsorAddress + `","Sponsee":"` + sponseeAddress + `","FeeAmount":"1000000","MaxFee":"1000"}`),
 			expectValid:  true,
 			expectEntry:  true,
 		},
 		{
-			name:         "fee above the MaxFee cap is rejected",
+			name:         "forwards the estimated fee",
 			tx:           sponsoredPayment(types.SpfSponsorFee),
 			estimatedFee: "5000",
 			mockResponse: sponsorshipResponse(`{"LedgerEntryType":"Sponsorship","Owner":"` + sponsorAddress + `","Sponsee":"` + sponseeAddress + `","FeeAmount":"1000000","MaxFee":"1000"}`),
@@ -80,17 +76,11 @@ func TestClient_ValidateSponsorship(t *testing.T) {
 			expectEntry:  true,
 		},
 		{
-			name:         "a missing entry without a co-signature is rejected",
+			name:         "reads entryNotFound as an absent entry",
 			tx:           sponsoredPayment(types.SpfSponsorFee),
 			mockResponse: `{"result":{"error":"entryNotFound","status":"error"}}`,
 			expectValid:  false,
 			expectReason: ErrSponsorshipEntryNotFound,
-		},
-		{
-			name:         "a missing entry with a co-signature is authorized",
-			tx:           coSigned(sponsoredPayment(types.SpfSponsorFee)),
-			mockResponse: `{"result":{"error":"entryNotFound","status":"error"}}`,
-			expectValid:  true,
 		},
 	}
 
@@ -162,11 +152,13 @@ func TestClient_ValidateSponsorshipRequest(t *testing.T) {
 	tests := []struct {
 		name            string
 		tx              transaction.FlatTransaction
+		sponsee         string
 		expectedRequest string
 	}{
 		{
-			name: "looks the entry up against the transaction account",
-			tx:   sponsoredPayment(types.SpfSponsorFee),
+			name:    "looks the entry up against the transaction account",
+			tx:      sponsoredPayment(types.SpfSponsorFee),
+			sponsee: sponseeAddress,
 			expectedRequest: `{"method":"ledger_entry","params":[{
 				"api_version":2,
 				"sponsorship":{"sponsor":"` + sponsorAddress + `","sponsee":"` + sponseeAddress + `"},
@@ -180,6 +172,7 @@ func TestClient_ValidateSponsorshipRequest(t *testing.T) {
 				tx["Delegate"] = delegateAddress
 				return tx
 			}(),
+			sponsee: delegateAddress,
 			expectedRequest: `{"method":"ledger_entry","params":[{
 				"api_version":2,
 				"sponsorship":{"sponsor":"` + sponsorAddress + `","sponsee":"` + delegateAddress + `"},
@@ -191,7 +184,7 @@ func TestClient_ValidateSponsorshipRequest(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client, mockClient := newSponsorshipTestClient(t, sponsorshipResponse(
-				`{"LedgerEntryType":"Sponsorship","Owner":"`+sponsorAddress+`","Sponsee":"`+sponseeAddress+`","FeeAmount":"1000000"}`,
+				`{"LedgerEntryType":"Sponsorship","Owner":"`+sponsorAddress+`","Sponsee":"`+tt.sponsee+`","FeeAmount":"1000000"}`,
 			))
 
 			result, err := client.ValidateSponsorship(tt.tx, "")
@@ -205,6 +198,19 @@ func TestClient_ValidateSponsorshipRequest(t *testing.T) {
 	}
 }
 
+func TestClient_ValidateSponsorshipContextCancellation(t *testing.T) {
+	client, _ := newSponsorshipTestClient(t, `{"result":{}}`)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	result, err := client.ValidateSponsorshipContext(ctx, sponsoredPayment(types.SpfSponsorFee), "")
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.False(t, result.Valid)
+	require.Nil(t, result.Sponsorship)
+}
+
+// An input the shared preflight rejects must not reach the network.
 func TestClient_ValidateSponsorshipRejectsUnsponsoredTransactions(t *testing.T) {
 	client, mockClient := newSponsorshipTestClient(t, `{"result":{}}`)
 
