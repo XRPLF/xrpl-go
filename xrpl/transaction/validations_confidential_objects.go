@@ -3,7 +3,6 @@ package transaction
 import (
 	"bytes"
 
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -58,29 +57,6 @@ func validateConfidentialMPTIssuer(issuanceID string, accountID []byte) error {
 		return ErrConfidentialMPTIssuerRequired
 	}
 	return nil
-}
-
-// decodeCounterparty decodes a counterparty AccountID field. It returns the decoded
-// AccountID, whether it names the same account as accountID, and whether it was given as
-// an X-address carrying an embedded tag. It errors when the counterparty address is
-// malformed, or when it names ACCOUNT_ZERO, which is well-formed in either address form
-// but can never hold the MPToken a send destination or a clawback holder must hold.
-// Callers wrap the error in their field-specific sentinel so the cause stays matchable.
-//
-// The comparison is made on decoded AccountIDs rather than the encoded strings. An
-// X-address and a classic address can name the same account, so comparing the strings
-// would let a self-reference through the self-send and self-clawback checks that XLS-96
-// requires.
-func decodeCounterparty(accountID []byte, counterparty types.Address) (counterpartyID []byte, same, hasTag bool, err error) {
-	counterpartyID, hasTag, err = decodeAddressAccountID(counterparty)
-	if err != nil {
-		return nil, false, false, err
-	}
-	if addresscodec.IsZeroAccountID(counterpartyID) {
-		return nil, false, false, ErrZeroAccountID
-	}
-
-	return counterpartyID, bytes.Equal(accountID, counterpartyID), hasTag, nil
 }
 
 // IsValidBlindingFactor reports whether bf is a 32-byte blinding factor encoded as

@@ -50,6 +50,21 @@ func mptIssuerAccountID(issuanceID string) ([]byte, bool) {
 	return issuanceIDBytes[len(issuanceIDBytes)-addresscodec.AccountAddressLength:], true
 }
 
+// decodeCounterparty decodes a nonzero counterparty AccountID and compares it
+// with accountID. Callers own tag restrictions, self-reference rules, and
+// field-specific error wrapping. Identity ignores X-address tags and networks.
+func decodeCounterparty(accountID []byte, counterparty types.Address) (counterpartyID []byte, same, hasTag bool, err error) {
+	counterpartyID, hasTag, err = decodeAddressAccountID(counterparty)
+	if err != nil {
+		return nil, false, false, err
+	}
+	if addresscodec.IsZeroAccountID(counterpartyID) {
+		return nil, false, false, ErrZeroAccountID
+	}
+
+	return counterpartyID, bytes.Equal(accountID, counterpartyID), hasTag, nil
+}
+
 // ValidateOptionalField validates an optional field in the transaction map.
 func ValidateOptionalField(tx FlatTransaction, paramName string, checkValidity func(any) bool) error {
 	// Check if the field is present in the transaction map.
