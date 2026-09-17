@@ -26,7 +26,7 @@ Core has no dependency on confidential. A core release does not need a matching 
 ## Use the release picker
 
 1. Ensure the normal CI checks pass for the intended release commit.
-2. Put the selected module's release notes under `## [vX.Y.Z]` in its own changelog. Keep `[Unreleased]` for later work.
+2. Put the selected module's release notes under `## [vX.Y.Z]` in its own changelog. Keep `[Unreleased]` only when it contains changes for a later release.
 3. Open **Actions -> Release -> Run workflow**.
 4. Select the release branch or ref, choose **core** or **confidential**, and enter the version, such as `v0.3.1` or `v0.1.0-rc1`.
 5. Run the workflow. It checks out the selected commit, validates module metadata, tests the selected module, and creates the release.

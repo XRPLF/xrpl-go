@@ -138,7 +138,7 @@ Published docs are hosted at <https://xrplf.github.io/xrpl-go/>.
 3. Make the smallest focused change that solves the issue.
 4. Add or update tests for code changes.
 5. Update documentation when behavior or user-facing APIs change.
-6. Update the affected module's changelog under `[Unreleased]`: `CHANGELOG.md` for core or `confidential/CHANGELOG.md` for the optional helpers.
+6. Update the affected module's changelog: `CHANGELOG.md` for core or `confidential/CHANGELOG.md` for the optional helpers. Use `[Unreleased]` for pending changes, creating the section when needed. During release preparation, update the target version section instead. Omit `[Unreleased]` when it is empty.
 7. Run the relevant checks before opening the pull request.
 
 Use conventional commits, for example:

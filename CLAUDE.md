@@ -190,7 +190,7 @@ The binary codec is critical for transaction signing and submission:
 
 ### Changelog
 
-Before editing `CHANGELOG.md`, compare the final branch with its base branch. Entries under `[Unreleased]` must describe the net effect of that final diff, not intermediate changes made during development.
+Before editing either module's changelog, compare the final branch with its base branch. Entries must describe the net effect of that final diff, not intermediate changes made during development. Follow the [contributor guidance](CONTRIBUTING.md#pull-requests) for section placement and omitting empty `[Unreleased]` sections.
 
 - Add or update an entry only when the final branch has a changelog-worthy difference from the base branch
 - If a feature changes and then returns to its base-branch behavior, remove its entry or add no entry
