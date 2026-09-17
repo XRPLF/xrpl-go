@@ -79,7 +79,7 @@ The first confidential release requires core `v0.3.1` or later. Go selects one v
 | `v0.3.0` | Upgrades core to `v0.3.1` |
 | A newer compatible core version | Keeps the newer version |
 
-A minimum dependency is not an exact version lock or a guarantee that every future version is compatible. Check release notes before upgrading.
+A minimum dependency is not an exact version lock or a guarantee that every future version is compatible. Check the [core changelog](https://github.com/XRPLF/xrpl-go/blob/main/CHANGELOG.md) and [confidential changelog](https://github.com/XRPLF/xrpl-go/blob/main/confidential/CHANGELOG.md) before upgrading.
 
 Update the modules separately:
 
@@ -99,7 +99,14 @@ The Go command uses a version without the directory prefix. The Git tag includes
 
 ### Migration from the combined module
 
-Update applications that used confidential packages from `v0.3.1-mpt.0` to core `v0.3.1` and add the confidential module. Keep the same imports. The new confidential module's minimum core requirement performs the core upgrade automatically.
+Update applications that used confidential packages from `v0.3.1-mpt.0` to core `v0.3.1` and add the confidential module. Once both releases are published, run:
+
+```bash
+go get github.com/Peersyst/xrpl-go@v0.3.1 github.com/Peersyst/xrpl-go/confidential@v0.1.0
+go mod tidy
+```
+
+Keep the same imports. Adding the new confidential module also selects its minimum core dependency, so a separate core installation is not normally needed. The command above makes both sides of the migration explicit.
 
 Do not use a local `replace` directive to force an older combined core release. Both modules would then contain the same helper package paths, which can cause ambiguous-import errors.
 
@@ -111,17 +118,20 @@ From a repository checkout:
 make workspace
 make test-confidential
 make test-confidential-nocgo
+make lint-confidential
 ```
 
 `make workspace` creates an ignored `go.work` file that uses both checked-out modules. It also maps the confidential module's required core version to the local core checkout, so development works before the first core release is published. This local replacement is not part of either published module.
 
-Root `go test ./...` does not test the nested module. To run an example after workspace setup:
+Root `go test ./...` does not test the nested module. Run package commands from `confidential/` to address its packages. To run an example after workspace setup:
 
 ```bash
 cd confidential
-go run ./examples/offline
+CGO_ENABLED=1 go run ./examples/offline
 ```
 
-The RPC and WebSocket examples are in `confidential/examples/rpc` and `confidential/examples/ws`. They connect to devnet and submit transactions.
+The offline example generates proofs without connecting, signing, or submitting. It still requires the native toolchain. The RPC and WebSocket examples are in `confidential/examples/rpc` and `confidential/examples/ws`. They connect to devnet, fund test wallets, and submit transactions.
+
+Confidential integration tests live in `confidential/integration/` and require a compatible ledger. Keep examples and tests that import the optional helpers inside this module, so root dependency management stays independent.
 
 For contributor checks, see [CONTRIBUTING.md](https://github.com/XRPLF/xrpl-go/blob/main/CONTRIBUTING.md). For release order and the GitHub Actions picker, see [RELEASING.md](https://github.com/XRPLF/xrpl-go/blob/main/RELEASING.md).
