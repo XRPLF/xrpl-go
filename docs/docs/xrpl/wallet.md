@@ -93,7 +93,7 @@ Call `AddPreFundedSponsor` before signing. It sets sponsor fields without adding
 
 This helper does not create or fund a ledger `Sponsorship` object. The caller needs an existing sponsorship with enough resources and with the applicable require-sign flags disabled. The helper does not check funds or ledger authorization.
 
-For fee sponsorship, the ledger looks up the relationship between `Sponsor` and `Account`. If the transaction has a `Delegate`, it uses `Sponsor` and `Delegate` instead. Reserve sponsorship with `Delegate` is not supported.
+For pre-funded fee or reserve sponsorship, xrpld looks up the `Sponsorship` object between `Sponsor` and `Account`. For fee sponsorship with a `Delegate`, it uses `Sponsor` and `Delegate` instead. Reserve sponsorship with `Delegate` is not supported.
 
 A pre-funded object does not replace the sponsor signature for either account-level `SponsorshipTransfer` case:
 
@@ -104,6 +104,8 @@ Both require `SponsorSignature`. Use co-signed sponsorship for these cases.
 
 ### Fees and amendment compatibility
 
+For fee sponsorship, if the matching `Sponsorship` object exists, xrpld deducts the fee from its `FeeAmount` pool even when `SponsorSignature` is present. A sponsor signature does not bypass the pool or its `MaxFee` limit. Co-signed fee sponsorship uses the sponsor's account balance only when no matching object exists.
+
 Pass the **combined planned account and sponsor multisigner count** to the existing RPC or WebSocket `AutofillMultisigned` before account signing. A single sponsor signature adds no surcharge. A single account signature also adds no multisigner count. Leave Fee absent so autofill can calculate it. A supplied Fee is not overwritten.
 
 Sponsor signing requires `Sponsor` and `fixCleanup3_4_0` on the target network. These helpers always use sponsor prefixes `0x53504E00` and `0x53504D00`. They do not silently fall back to ordinary signing prefixes. Pre-funded use requires the `Sponsor` amendment but no sponsor signature prefix.
@@ -112,7 +114,7 @@ All checks are offline structural checks. They do not establish cryptographic va
 
 Submit the final blob without modifying it or autofilling again.
 
-See the [runnable sponsor example](https://github.com/XRPLF/xrpl-go/tree/confidential-transfers/examples/sponsor-signing) for complete co-signed, multisigned, and pre-funded flows. Its README includes instructions for devnet and localnet.
+See the [runnable sponsor example](https://github.com/XRPLF/xrpl-go/tree/main/examples/sponsor-signing) for complete co-signed, multisigned, and pre-funded flows. Its README includes instructions for devnet and localnet.
 
 ## Signing a batch transaction
 
