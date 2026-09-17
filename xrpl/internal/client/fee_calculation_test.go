@@ -135,6 +135,27 @@ func TestCalculateFee(t *testing.T) {
 			expectedFee: "30",
 		},
 		{
+			name: "single sponsor adds no surcharge before signing",
+			tx: transaction.FlatTransaction{
+				"TransactionType": transaction.PaymentTx,
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", "SponsorFlags": uint32(1),
+			},
+			cushion:     1,
+			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			expectedFee: "10",
+		},
+		{
+			name: "account and sponsor multisigner counts are supplied together before signing",
+			tx: transaction.FlatTransaction{
+				"TransactionType": transaction.PaymentTx,
+				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", "SponsorFlags": uint32(1),
+			},
+			nSigners:    2 + 3,
+			cushion:     1,
+			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			expectedFee: "60",
+		},
+		{
 			name:        "cushion scales the network fee",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.PaymentTx},
 			cushion:     1.2,

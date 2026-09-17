@@ -68,6 +68,8 @@ These are the transaction types available in the XRPL:
 - [PermissionedDomainSet](https://xrpl.org/docs/references/protocol/transactions/types/permissioneddomainset)
 - [SetRegularKey](https://xrpl.org/docs/references/protocol/transactions/types/setregularkey)
 - [SignerListSet](https://xrpl.org/docs/references/protocol/transactions/types/signerlistset)
+- [SponsorshipSet](https://xrpl.org/docs/references/protocol/transactions/types/sponsorshipset)
+- [SponsorshipTransfer](https://xrpl.org/docs/references/protocol/transactions/types/sponsorshiptransfer)
 - [TicketCreate](https://xrpl.org/docs/references/protocol/transactions/types/ticketcreate)
 - [TrustSet](https://xrpl.org/docs/references/protocol/transactions/types/trustset)
 - [VaultClawback](https://xrpl.org/docs/references/protocol/transactions/types/vaultclawback)

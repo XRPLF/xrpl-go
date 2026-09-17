@@ -67,6 +67,38 @@ var (
 	// fields other than an optional empty SigningPubKey.
 	// It also matches ErrInvalidSponsorSignature.
 	ErrInnerBatchSponsorSignature = fmt.Errorf("%w: inner transaction permits only an optional empty SigningPubKey", ErrInvalidSponsorSignature)
+	// ErrInvalidSponsee is returned when Sponsee is not a valid, distinct, tagless counterparty.
+	ErrInvalidSponsee = errors.New("invalid Sponsee")
+	// ErrInvalidCounterpartySponsor identifies an invalid SponsorshipSet counterparty.
+	ErrInvalidCounterpartySponsor = errors.New("invalid CounterpartySponsor")
+	// ErrSponsorshipAccountConflict is returned when a sponsorship counterparty matches Account.
+	ErrSponsorshipAccountConflict = errors.New("sponsorship counterparty must differ from Account")
+	// ErrSponsorshipSetCounterpartyConflict identifies missing or conflicting counterparties.
+	ErrSponsorshipSetCounterpartyConflict = errors.New("SponsorshipSet requires exactly one of Sponsee and CounterpartySponsor")
+	// ErrSponsorshipSetCounterpartyCannotModify identifies a sponsee attempting an update.
+	ErrSponsorshipSetCounterpartyCannotModify = errors.New("CounterpartySponsor is only allowed when deleting a Sponsorship")
+	// ErrSponsorshipSetDeleteConflict is returned for modification fields on a deletion.
+	ErrSponsorshipSetDeleteConflict = errors.New("sponsorship deletion cannot include FeeAmountDelta, MaxFee, or RemainingOwnerCountDelta")
+	// ErrSponsorshipSetEmptyUpdate is returned when no change is specified.
+	ErrSponsorshipSetEmptyUpdate = errors.New("SponsorshipSet requires a modification field or flag")
+	// ErrSponsorshipSetFeeAmountDelta identifies an invalid signed fee-budget delta.
+	ErrSponsorshipSetFeeAmountDelta = errors.New("FeeAmountDelta must be nonzero canonical signed integer drops within the native XRP limit")
+	// ErrSponsorshipSetMaxFee identifies a fee limit that exceeds the native XRP limit.
+	ErrSponsorshipSetMaxFee = errors.New("MaxFee exceeds the native XRP limit")
+	// ErrSponsorshipSetRemainingOwnerCountDelta identifies an explicit zero reserve delta.
+	ErrSponsorshipSetRemainingOwnerCountDelta = errors.New("RemainingOwnerCountDelta must be nonzero when present")
+	// ErrSponsorshipTransferObjectID identifies a malformed object selector.
+	ErrSponsorshipTransferObjectID = errors.New("ObjectID must be a 64-character hexadecimal string")
+	// ErrSponsorshipTransferSponsorNotAllowed identifies a sponsor supplied when ending sponsorship.
+	ErrSponsorshipTransferSponsorNotAllowed = errors.New("ending sponsorship must omit Sponsor")
+	// ErrSponsorshipTransferSponsorRequired identifies a missing sponsor for create or reassign.
+	ErrSponsorshipTransferSponsorRequired = errors.New("creating or reassigning sponsorship requires Sponsor")
+	// ErrSponsorshipTransferReserveRequired identifies a missing reserve sponsorship flag.
+	ErrSponsorshipTransferReserveRequired = errors.New("creating or reassigning sponsorship requires spfSponsorReserve")
+	// ErrSponsorshipTransferSponseeNotAllowed identifies a sponsee supplied for create or reassign.
+	ErrSponsorshipTransferSponseeNotAllowed = errors.New("creating or reassigning sponsorship must omit Sponsee")
+	// ErrSponsorshipTransferSignatureRequired identifies missing account-level sponsor authorization.
+	ErrSponsorshipTransferSignatureRequired = errors.New("account-level sponsorship creation or reassignment requires SponsorSignature")
 	// ErrAccountIDTagNotAllowed is returned when a tagged X-address is used in a field
 	// that has no companion tag field to carry the tag. It aliases the binary-codec
 	// sentinel so preflight and encoding report one error identity for this condition.
@@ -96,7 +128,7 @@ var (
 	// ErrOwnerAccountConflict is returned when the owner is the same as the account.
 	ErrOwnerAccountConflict = errors.New("owner must be different from the account")
 
-	// ErrInvalidFlags is returned when provided flags for XChainModifyBridge are invalid.
+	// ErrInvalidFlags is returned for unsupported or conflicting transaction flags.
 	ErrInvalidFlags = errors.New("invalid flags")
 
 	// xchain

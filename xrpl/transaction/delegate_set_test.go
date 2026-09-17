@@ -159,6 +159,7 @@ func TestDelegateSet_ValidateRejectsNonDelegatablePermissions(t *testing.T) {
 		LoanManageTx,
 		LoanPayTx,
 		ConfidentialMPTConvertTx,
+		SponsorshipTransferTx,
 	}
 
 	for _, txType := range nonDelegable {

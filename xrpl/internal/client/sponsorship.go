@@ -80,7 +80,7 @@ func ValidateSponsorship(
 	if !hasSponsor && !hasFlags && !coSigned {
 		return SponsorshipValidation{}, ErrTransactionNotSponsored
 	}
-	if err := transaction.ValidateFlatSponsorFields(tx); err != nil {
+	if _, err := transaction.InspectSponsorFields(tx); err != nil {
 		return SponsorshipValidation{}, err
 	}
 
