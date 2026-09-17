@@ -18,15 +18,20 @@ type MockWebSocketServer struct {
 type connFn func(*websocket.Conn)
 
 // TestWebSocketServer starts an HTTP test server that upgrades requests to WebSocket and invokes writeFunc.
+// It closes each connection when writeFunc returns. To keep a connection alive,
+// writeFunc must wait for the client to disconnect before returning.
 func (ms *MockWebSocketServer) TestWebSocketServer(writeFunc connFn) *httptest.Server {
-	upgrader := websocket.Upgrader{}
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(_ *http.Request) bool { return true },
+	}
 
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		upgrader.CheckOrigin = func(_ *http.Request) bool { return true }
 		c, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println("Upgrade:", err)
+			return
 		}
+		defer func() { _ = c.Close() }()
 
 		writeFunc(c)
 	}))

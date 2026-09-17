@@ -1,12 +1,17 @@
 package path
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
+
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
 
 	pathtypes "github.com/Peersyst/xrpl-go/xrpl/queries/path/types"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRipplePathFindRequest(t *testing.T) {
@@ -94,7 +99,7 @@ func TestRipplePathFindRequestWithDomain(t *testing.T) {
 	}
 }
 
-func TestRipplePathFindResponse(t *testing.T) {
+func ripplePathFindResponseFixture() (RipplePathFindResponse, string) {
 	s := RipplePathFindResponse{
 		Alternatives: []pathtypes.RippleAlternative{
 			{
@@ -151,10 +156,12 @@ func TestRipplePathFindResponse(t *testing.T) {
 						},
 					},
 				},
-				SourceAmount: types.XRPCurrencyAmount(256987),
+				SourceAmount: "256987",
 			},
 		},
 		DestinationAccount: "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+		SourceAccount:      "rMAZ5ZnK73nyNUL4foAvaxdreczCkG3vA6",
+		FullReply:          true,
 		DestinationCurrencies: []string{
 			"015841551A748AD2C1F76FF6ECB0CCCD00000000",
 			"JOE",
@@ -167,7 +174,6 @@ func TestRipplePathFindResponse(t *testing.T) {
 			"XRP",
 		},
 	}
-
 	j := `{
 	"alternatives": [
 		{
@@ -239,10 +245,117 @@ func TestRipplePathFindResponse(t *testing.T) {
 		"USD",
 		"XRP"
 	],
-	"source_account": "",
+	"full_reply": true,
+	"source_account": "rMAZ5ZnK73nyNUL4foAvaxdreczCkG3vA6",
 	"validated": false
 }`
-	if err := testutil.Serialize(t, s, j); err != nil {
-		t.Error(err)
+	return s, j
+}
+
+func TestRipplePathFindResponseSerialize(t *testing.T) {
+	value, payload := ripplePathFindResponseFixture()
+	value.Alternatives[0].SourceAmount = types.XRPCurrencyAmount(256987)
+	require.NoError(t, testutil.Serialize(t, value, payload))
+}
+
+func TestRipplePathFindResponseJSONDecode(t *testing.T) {
+	want, payload := ripplePathFindResponseFixture()
+	var got RipplePathFindResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestRipplePathFindResponseClientDecode(t *testing.T) {
+	want, payload := ripplePathFindResponseFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got RipplePathFindResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
+}
+
+func ripplePathFindResponseIssuedSourceAmountFixture() (RipplePathFindResponse, string) {
+	expected := RipplePathFindResponse{
+		Alternatives: []pathtypes.RippleAlternative{
+			{
+				PathsComputed: [][]transaction.PathStep{
+					{
+						{
+							Currency: "USD",
+							Issuer:   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+							Account:  "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+						},
+					},
+				},
+				SourceAmount: map[string]any{
+					"currency": "USD",
+					"issuer":   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+					"value":    "100",
+				},
+			},
+		},
+		DestinationAccount:    "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+		DestinationCurrencies: []string{"USD"},
+		SourceAccount:         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+		FullReply:             true,
 	}
+	payload := `{
+  "alternatives": [
+    {
+      "paths_computed": [
+        [
+          {
+            "currency": "USD",
+            "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+            "account": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
+          }
+        ]
+      ],
+      "source_amount": {
+        "currency": "USD",
+        "issuer": "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+        "value": "100"
+      }
+    }
+  ],
+  "destination_account": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+  "destination_currencies": [
+    "USD"
+  ],
+  "source_account": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+  "full_reply": true,
+  "validated": false
+}`
+	return expected, payload
+}
+
+func TestRipplePathFindResponseIssuedSourceAmountSerialize(t *testing.T) {
+	value, payload := ripplePathFindResponseIssuedSourceAmountFixture()
+	encoded, err := json.Marshal(value)
+	require.NoError(t, err)
+	require.JSONEq(t, payload, string(encoded))
+}
+
+func TestRipplePathFindResponseIssuedSourceAmountJSONDecode(t *testing.T) {
+	want, payload := ripplePathFindResponseIssuedSourceAmountFixture()
+	var got RipplePathFindResponse
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&got))
+	require.Equal(t, want, got)
+}
+
+func TestRipplePathFindResponseIssuedSourceAmountClientDecode(t *testing.T) {
+	want, payload := ripplePathFindResponseIssuedSourceAmountFixture()
+	var data map[string]any
+	decoder := json.NewDecoder(strings.NewReader(payload))
+	decoder.UseNumber()
+	require.NoError(t, decoder.Decode(&data))
+	var got RipplePathFindResponse
+	require.NoError(t, clientinternal.DecodeResultInto(data, &got))
+	require.Equal(t, want, got)
 }
