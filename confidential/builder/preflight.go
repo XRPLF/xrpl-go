@@ -125,7 +125,7 @@ type mptokenState struct {
 // holder key or the spending balance with tecNO_PERMISSION. Returns ErrMPTokenNotFound if
 // the entry does not exist.
 func getMPTokenState(snapshot *ledgerSnapshot, issuance issuanceState, issuanceID, holder string) (mptokenState, error) {
-	resp, err := readUsableMPToken(snapshot, issuance, issuanceID, holder)
+	resp, err := readMPToken(snapshot, issuance, issuanceID, holder, spenderAccess)
 	if err != nil {
 		return mptokenState{}, err
 	}
@@ -154,7 +154,7 @@ func getMPTokenState(snapshot *ledgerSnapshot, issuance issuanceState, issuanceI
 	if state.balanceVersion, err = optionalUint32(resp.Node, "ConfidentialBalanceVersion"); err != nil {
 		return mptokenState{}, err
 	}
-	if err := requireCurrentBalanceVersion(snapshot, resp.Index, state.balanceVersion); err != nil {
+	if err := spenderAccess.requireFreshVersion(snapshot, resp.Index, state.balanceVersion); err != nil {
 		return mptokenState{}, err
 	}
 	return state, nil
@@ -211,17 +211,55 @@ func mirrorBalanceFields(issuance issuanceState) []string {
 	return []string{"IssuerEncryptedBalance"}
 }
 
-// readUsableMPToken reads a holder's MPToken and rejects a holder the transactor would reject
-// before it looks at any confidential state. Every confidential MPT reader goes through this
-// except getIssuerCiphertext, which reads the entry directly because the clawback deliberately
-// runs neither check.
-func readUsableMPToken(snapshot *ledgerSnapshot, issuance issuanceState, issuanceID, holder string) (*ledger.EntryResponse, error) {
+// mptokenAccess is what one confidential transactor requires of an MPToken it reads. The
+// standalone builders and BuildBatch read through the same values, so an MPToken is held to
+// one policy whichever path builds the transaction.
+type mptokenAccess struct {
+	// usable is set where the transactor runs checkFrozen and requireAuth on the holder.
+	usable bool
+	// bindsVersion is set where a proof binds the holder's ConfidentialBalanceVersion, which
+	// is the only case in which a version the open ledger already changed makes a build stale.
+	bindsVersion bool
+}
+
+var (
+	// spenderAccess is the sender of a ConfidentialMPTSend and the holder of a
+	// ConfidentialMPTConvertBack. Both proofs bind the balance version.
+	spenderAccess = mptokenAccess{usable: true, bindsVersion: true}
+	// holderAccess is a holder whose transactor runs the holder checks but whose proof, if
+	// any, binds no version: the destination of a ConfidentialMPTSend, and the holder of a
+	// ConfidentialMPTConvert or a ConfidentialMPTMergeInbox.
+	holderAccess = mptokenAccess{usable: true}
+	// clawbackAccess is the holder of a ConfidentialMPTClawback. The clawback runs neither
+	// holder check, because an issuer must be able to claw back from a holder it has locked,
+	// and its proof binds no version.
+	clawbackAccess = mptokenAccess{}
+)
+
+// merge combines the requirements of two operations that read the same MPToken.
+func (a mptokenAccess) merge(other mptokenAccess) mptokenAccess {
+	return mptokenAccess{usable: a.usable || other.usable, bindsVersion: a.bindsVersion || other.bindsVersion}
+}
+
+// requireFreshVersion rejects a stale balance version, but only where a proof binds it.
+func (a mptokenAccess) requireFreshVersion(snapshot *ledgerSnapshot, index string, validated uint32) error {
+	if !a.bindsVersion {
+		return nil
+	}
+	return requireCurrentBalanceVersion(snapshot, index, validated)
+}
+
+// readMPToken reads a holder's MPToken and, where the access requires it, rejects a holder the
+// transactor would reject before it looks at any confidential state.
+func readMPToken(snapshot *ledgerSnapshot, issuance issuanceState, issuanceID, holder string, access mptokenAccess) (*ledger.EntryResponse, error) {
 	resp, err := getMPTokenEntry(snapshot, issuanceID, holder)
 	if err != nil {
 		return nil, err
 	}
-	if err := requireHolderUsable(resp.Node, issuance); err != nil {
-		return nil, err
+	if access.usable {
+		if err := requireHolderUsable(resp.Node, issuance); err != nil {
+			return nil, err
+		}
 	}
 	return resp, nil
 }
@@ -281,7 +319,7 @@ func requireSpendField(node map[string]any, field string) (string, error) {
 // XLS-96 8.4 credits the destination's inbox and updates its mirror balances, so each one
 // must already exist.
 func getMPTokenReceiverState(snapshot *ledgerSnapshot, issuance issuanceState, issuanceID, destination string) (string, error) {
-	resp, err := readUsableMPToken(snapshot, issuance, issuanceID, destination)
+	resp, err := readMPToken(snapshot, issuance, issuanceID, destination, holderAccess)
 	if err != nil {
 		return "", err
 	}
@@ -304,7 +342,7 @@ func getMPTokenReceiverState(snapshot *ledgerSnapshot, issuance issuanceState, i
 // 9.2.1.2 lists only the two balances, so the key is taken from the transactor. The merge
 // moves a balance the ledger already knows, so no field value is read here.
 func getMPTokenMergeState(snapshot *ledgerSnapshot, issuance issuanceState, issuanceID, holder string) error {
-	resp, err := readUsableMPToken(snapshot, issuance, issuanceID, holder)
+	resp, err := readMPToken(snapshot, issuance, issuanceID, holder, holderAccess)
 	if err != nil {
 		return err
 	}
@@ -330,7 +368,7 @@ type convertState struct {
 // balance version is deliberately not read, so a convert never fails on a version it does
 // not consume.
 func getMPTokenConvertState(snapshot *ledgerSnapshot, issuance issuanceState, issuanceID, holder string) (convertState, error) {
-	resp, err := readUsableMPToken(snapshot, issuance, issuanceID, holder)
+	resp, err := readMPToken(snapshot, issuance, issuanceID, holder, holderAccess)
 	if err != nil {
 		return convertState{}, err
 	}
@@ -349,10 +387,10 @@ func getMPTokenConvertState(snapshot *ledgerSnapshot, issuance issuanceState, is
 // XLS-96 11.3.2 rejects a holder without it, and ConfidentialMPTClawback rejects a holder
 // missing the holder encryption key alongside it. The clawback is the one confidential
 // transactor that runs neither checkFrozen nor requireAuth, because an issuer must be able to
-// claw back from a holder it has locked, so this reads the entry directly rather than through
-// readUsableMPToken.
+// claw back from a holder it has locked, so this reads the entry under clawbackAccess, which
+// needs no issuance state.
 func getIssuerCiphertext(snapshot *ledgerSnapshot, issuanceID, holder string) (string, error) {
-	resp, err := getMPTokenEntry(snapshot, issuanceID, holder)
+	resp, err := readMPToken(snapshot, issuanceState{}, issuanceID, holder, clawbackAccess)
 	if err != nil {
 		return "", err
 	}
