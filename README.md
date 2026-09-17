@@ -2,21 +2,52 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/Peersyst/xrpl-go.svg)](https://pkg.go.dev/github.com/Peersyst/xrpl-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Peersyst/xrpl-go)](https://goreportcard.com/report/github.com/Peersyst/xrpl-go)
-[![Release Card](https://img.shields.io/github/v/release/XRPLF/xrpl-go?include_prereleases)](https://github.com/XRPLF/xrpl-go/releases)
+[![Core release](https://img.shields.io/github/v/release/XRPLF/xrpl-go)](https://github.com/XRPLF/xrpl-go/releases/latest)
 
 `xrpl-go` is a Go SDK for interacting with the [XRP Ledger](https://xrpl.org/). It provides address codecs, key management, binary serialization, typed transaction models, RPC and WebSocket clients, wallet helpers, local transaction signing, and multisigning.
 
+## Choose a module
+
+The repository contains two independently versioned Go modules:
+
+| Module | Provides | Native toolchain |
+| --- | --- | --- |
+| `github.com/Peersyst/xrpl-go` | Transaction and ledger models, codecs, clients, key management, and wallet signing | Not required |
+| [`github.com/Peersyst/xrpl-go/confidential`](confidential/README.md) | Confidential MPT builders, encryption, balance decryption, commitments, and proofs | Required for cryptographic operations |
+
+Core includes the confidential transaction models and ledger fields. It can encode, sign, and submit these transactions when your application supplies the ciphertexts and proofs. Install the optional module when you want the SDK to generate those fields or decrypt balances.
+
+The dependency goes from confidential to core only. Starting with core `v0.3.1`, core Go module downloads exclude the confidential module and its native bundles. Repository clones and GitHub source archives still contain both modules.
+
 ## Reference documentation
 
-See the [xrpl-go documentation](https://xrplf.github.io/xrpl-go/docs/installation) for guides and package docs, or browse the [Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go).
+See the [xrpl-go documentation](https://xrplf.github.io/xrpl-go/docs/installation) for guides and package docs, or browse the [core Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go). The optional helpers have their own [README](confidential/README.md), [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/confidential), and [changelog](confidential/CHANGELOG.md).
 
 ## Installation
 
-`xrpl-go` requires Go `1.25.13` or later.
+Both modules require Go `1.25.13` or later. Run installation commands from your application directory, which must contain a `go.mod` file. For a new application, run `go mod init <your-module-path>` first.
+
+### Core SDK
 
 ```bash
-go get github.com/Peersyst/xrpl-go
+go get github.com/Peersyst/xrpl-go@latest
 ```
+
+Core does not require cgo, including for wallet signing and confidential transaction serialization.
+
+### Optional confidential helpers
+
+The first independent helper release is `v0.1.0` and requires core `v0.3.1` or later. Once both releases are published, install it with:
+
+```bash
+go get github.com/Peersyst/xrpl-go/confidential@v0.1.0
+```
+
+Go also selects the required core dependency. Package imports remain unchanged, such as `github.com/Peersyst/xrpl-go/confidential/builder`. After adding imports, run `go mod tidy`.
+
+Native operations require cgo and a C/C++ toolchain on Linux or macOS with amd64 or arm64. Linux also needs the zlib development library. Unsupported targets and builds with `CGO_ENABLED=0` compile, but native operations return `mptcrypto.ErrCgoRequired`.
+
+See [confidential installation and migration](https://xrplf.github.io/xrpl-go/docs/confidential/installation) for details. Before the release tags are available, use the [development workspace](#contributing).
 
 ## Quickstart
 
@@ -114,17 +145,17 @@ For offline signing, keep the `Autofill()` and `Sign()` boundary explicit: autof
 
 See [`examples/send-xrp/rpc`](examples/send-xrp/rpc) for a longer payment example.
 
-## Packages
+## Core packages
 
 | Package | Use it for |
 | --- | --- |
 | `address-codec` | Encode and decode XRPL classic addresses and X-addresses |
 | `binary-codec` | Encode and decode XRPL objects and transactions in canonical binary format |
-| `confidential` | Build XLS-96 confidential MPT transactions and use CGo-backed cryptographic primitives |
 | `keypairs` | Generate seeds, derive keypairs, sign payloads, and verify signatures |
 | `xrpl/rpc` | Send JSON-RPC requests, autofill transactions, submit transactions, and fund Testnet or Devnet wallets |
 | `xrpl/websocket` | Connect to WebSocket servers, make requests, submit transactions, and subscribe to ledger streams |
 | `xrpl/transaction` | Build typed XRPL transaction models |
+| `xrpl/ledger-entry-types` | Read typed ledger state |
 | `xrpl/wallet` | Create wallets, derive wallets from seeds or mnemonics, sign transactions, multisign transactions, and authorize payment channels |
 
 ## Guides and resources
@@ -134,6 +165,8 @@ See [`examples/send-xrp/rpc`](examples/send-xrp/rpc) for a longer payment exampl
 - [Use the WebSocket client](https://xrplf.github.io/xrpl-go/docs/xrpl/websocket)
 - [Build transactions](https://xrplf.github.io/xrpl-go/docs/xrpl/transaction)
 - [Build confidential MPT transactions](https://xrplf.github.io/xrpl-go/docs/confidential)
+- [Core examples](examples) and [confidential examples](confidential/examples)
+- [Core changelog](CHANGELOG.md) and [confidential changelog](confidential/CHANGELOG.md)
 - [Learn XRPL concepts and protocol rules](https://xrpl.org/docs)
 
 ## Security and audits
@@ -143,6 +176,19 @@ The signing functionality in this repository has not been independently audited.
 ## Contributing
 
 Development setup, test commands, docs-site commands, and pull request guidance are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Root `go test ./...` only tests core. To develop both modules together, run these commands from the repository root after installing the native toolchain:
+
+```bash
+make workspace
+make test-ci
+make test-confidential
+make test-confidential-nocgo
+```
+
+The ignored `go.work` file links the two local checkouts, including before core `v0.3.1` is published. Confidential examples and integration tests live in `confidential/examples/` and `confidential/integration/`.
+
+Each module has its own changelog and release tag: `vX.Y.Z` for core and `confidential/vX.Y.Z` for the optional helpers. Core updates do not automatically update confidential. See [RELEASING.md](RELEASING.md) for independent releases and the release picker.
 
 ## Report an issue
 

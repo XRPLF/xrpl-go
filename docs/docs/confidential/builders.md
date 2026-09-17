@@ -1,12 +1,12 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # builders
 
 ## Overview
 
-The `confidential/builder` package is the high-level entry point for XLS-96 transaction construction.
+The `confidential/builder` package is the high-level entry point for XLS-96 transaction construction. It is part of the [optional confidential module](/docs/confidential/installation), not the core module.
 
 Each operation comes in two forms:
 

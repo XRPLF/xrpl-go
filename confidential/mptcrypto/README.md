@@ -1,6 +1,6 @@
 # mptcrypto
 
-`mptcrypto` is the low-level Go binding for the [XRPLF/mpt-crypto](https://github.com/XRPLF/mpt-crypto) C library used by XLS-96 Confidential MPT Transfers. It exposes EC-ElGamal encryption, Pedersen commitments, transaction context hashes, and the proof generation and verification routines required by confidential MPT transactions.
+`mptcrypto` is the low-level Go binding for the [XRPLF/mpt-crypto](https://github.com/XRPLF/mpt-crypto) C library used by XLS-96 Confidential MPT Transfers. It is part of the optional `github.com/Peersyst/xrpl-go/confidential` module. See the [module README](../README.md) for installation. It exposes EC-ElGamal encryption, Pedersen commitments, transaction context hashes, and the proof generation and verification routines required by confidential MPT transactions.
 
 This is the only package in this repository that imports `"C"`. Higher-level packages such as `confidential/elgamal`, `confidential/commitment`, and `confidential/proof` are pure Go wrappers that handle hex encoding, address decoding, and domain-specific errors.
 
@@ -26,20 +26,26 @@ Vendored headers and static libraries live under `confidential/deps/`:
 
 All other builds select `mptcrypto_nocgo.go`. The package still compiles and exposes the same API, but every operation immediately returns `ErrCgoRequired` without validating or processing its inputs. This includes builds with cgo enabled on an unsupported OS or architecture.
 
+From a repository checkout, create the local workspace before testing:
+
 ```bash
+make workspace
+cd confidential
+
 # Exercise the native implementation on a supported host.
-go test ./confidential/mptcrypto
+CGO_ENABLED=1 go test ./mptcrypto
 
 # Exercise the fallback implementation.
-CGO_ENABLED=0 go test ./confidential/mptcrypto
+CGO_ENABLED=0 go test ./mptcrypto
 ```
 
 ## Package layout
 
 ```text
 mptcrypto/
-  types.go                  # Package documentation, sizes, and value types
-  errors.go                 # Shared sentinel errors
+  types.go                 # Package documentation, sizes, and value types
+  errors.go                # Shared sentinel errors
+  sizes_cgo.go             # Compile-time checks against native size constants
   mptcrypto_cgo.go          # Native bindings and native-only validation
   mptcrypto_nocgo.go        # Unavailable-backend stubs
   mptcrypto_test.go         # Native cryptographic tests
@@ -50,7 +56,7 @@ mptcrypto/
 
 ### Size constants
 
-All sizes are in bytes and match `confidential/deps/include/utility/mpt_utility.h`.
+All sizes are in bytes. On native builds, `sizes_cgo.go` checks the shared `pkg/mptsizes` constants against the vendored native headers at compile time.
 
 | Constant | Bytes | Meaning |
 | --- | ---: | --- |
@@ -141,6 +147,26 @@ rangeLow <= rangeHigh < math.MaxUint64
 ```
 
 Invalid ranges wrap `ErrInvalidAmountRange`. Decryption cost grows linearly with the interval width, so callers should use the narrowest practical range. If the native backend is unavailable, `ErrCgoRequired` is returned before range validation.
+
+### Ciphertext arithmetic
+
+Both operations require ciphertexts encrypted under the same public key. Invalid ciphertext encodings and results that cannot be serialized wrap `ErrInvalidCiphertext`. Other native-operation failures return descriptive errors.
+
+#### `AddCiphertexts(a, b Ciphertext) (Ciphertext, error)`
+
+Adds two ElGamal ciphertexts and returns an encryption of the sum of their plaintexts.
+
+#### `SubtractCiphertexts(a, b Ciphertext) (Ciphertext, error)`
+
+Subtracts `b` from `a` and returns an encryption of the difference of their plaintexts. Subtracting a ciphertext from itself returns an error, not an encrypted zero.
+
+### Canonical encrypted zero
+
+#### `CanonicalEncryptedZero(pubkey PublicKey, account [AccountIDSize]byte, iss [IssuanceIDSize]byte) (Ciphertext, error)`
+
+Returns a deterministic encryption of zero derived from the public key, decoded holder AccountID, and issuance ID. Use it to reproduce a confidential balance that xrpld initializes or resets. No caller-supplied blinding factor is needed.
+
+An invalid public key returns `ErrInvalidPublicKey`. A result that cannot be serialized wraps `ErrInvalidCiphertext`.
 
 ### Transaction context hashes
 
@@ -281,12 +307,14 @@ Verifies the 754-byte aggregated range-proof component from a send proof. `balan
 
 ## Error behavior
 
-The package exposes two sentinel errors:
+The package exposes four sentinel errors:
 
 - `ErrCgoRequired`: the native backend is unavailable for the current build.
 - `ErrInvalidAmountRange`: a native `DecryptAmount` call received invalid search bounds.
+- `ErrInvalidCiphertext`: ciphertext arithmetic received an invalid ciphertext, or an arithmetic or canonical-zero result could not be serialized.
+- `ErrInvalidPublicKey`: a native `CanonicalEncryptedZero` call received a public key that does not decode to a curve point.
 
-Use `errors.Is` for these sentinels because range errors include bound details:
+Use `errors.Is` to match these sentinels because errors can include input or operation details:
 
 ```go
 amount, err := mptcrypto.DecryptAmount(ciphertext, privateKey, low, high)
@@ -298,7 +326,7 @@ if errors.Is(err, mptcrypto.ErrInvalidAmountRange) {
 }
 ```
 
-Other validation and native-library failures are returned as descriptive errors. Every native wrapper treats a non-zero C return code as failure.
+Other validation and native-library failures are returned as descriptive errors.
 
 ## Maintaining the cgo boundary
 

@@ -1,24 +1,28 @@
-.PHONY: lint lint-fix
+.PHONY: workspace lint lint-fix lint-confidential
 .PHONY: test-all test-binary-codec test-address-codec test-keypairs test-xrpl test-ci
 .PHONY: run-localnet run-localnet-linux/amd64 run-localnet-linux/arm64 stop-localnet integration-localnet
 .PHONY: test-integration-localnet test-integration-localnet-ci test-integration-devnet test-integration-testnet
 .PHONY: test-integration-confidential-localnet test-integration-confidential-devnet
 .PHONY: coverage-unit coverage-unit-ci test-report-summary benchmark
-.PHONY: test-confidential update-mpt-crypto
+.PHONY: test-confidential test-confidential-nocgo update-mpt-crypto
 .PHONY: update-definitions
 
-UNIT_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential) ./xrpl/testutil/integration/...
-EXCLUDED_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces | grep -v /confidential)
+# Root ./... does not cross the confidential module boundary.
+UNIT_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces) ./xrpl/testutil/integration/...
+EXCLUDED_TEST_PACKAGES = $(shell go list ./... | grep -v /faucet | grep -v /examples | grep -v /testutil | grep -v /interfaces)
 
-# Devnet and testnet leave the confidential suite out because it funds a fresh set of
-# accounts per scenario through a shared faucet and takes an order of magnitude longer
-# there. It has its own devnet target for the occasions that are worth the wait.
-INTEGRATION_TEST_PACKAGES = $(shell go list ./xrpl/transaction/integration/... | grep -v /confidential)
-# Localnet closes ledgers on demand and funds from the genesis account, so it runs the
-# whole suite, confidential included. That is the run CI makes on every change, and it
-# is what keeps the CGo transaction path covered end to end.
-LOCALNET_INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration/...
-CONFIDENTIAL_INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration/confidential/...
+INTEGRATION_TEST_PACKAGES = ./xrpl/transaction/integration/...
+# Localnet runs both modules. Public networks keep the slower confidential suite
+# separate. Confidential paths below are relative to its module directory.
+CONFIDENTIAL_INTEGRATION_TEST_PACKAGES = ./integration/...
+INTEGRATION_MODULE ?= all
+ifneq ($(INTEGRATION_MODULE),all)
+ifneq ($(INTEGRATION_MODULE),core)
+ifneq ($(INTEGRATION_MODULE),confidential)
+$(error INTEGRATION_MODULE must be all, core, or confidential)
+endif
+endif
+endif
 
 PARALLEL_TESTS = 4
 TEST_TIMEOUT = 5m
@@ -52,6 +56,10 @@ lint:
 	@go install github.com/golangci/golangci-lint/v$(GOLANGCI_LINT_MAJOR_VERSION)/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	@golangci-lint run
 	@echo "Linting complete!"
+
+lint-confidential:
+	@go install github.com/golangci/golangci-lint/v$(GOLANGCI_LINT_MAJOR_VERSION)/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	@cd confidential && golangci-lint run --config ../.golangci.yml
 
 lint-fix:
 	@echo "Fixing Go code..."
@@ -112,19 +120,30 @@ stop-localnet:
 integration-localnet:
 	@./scripts/localnet-integration.sh
 
-# CGO_ENABLED is explicit on both localnet targets because the confidential scenarios
-# are compiled out rather than failed when it is off, which would drop them silently.
+# Run make workspace first to test the two checked-out modules together.
+# CGO_ENABLED=1 prevents the confidential scenarios from being silently omitted.
 test-integration-localnet:
-	@echo "Running Go tests for integration package..."
+	@echo "Running localnet integration tests ($(INTEGRATION_MODULE))..."
 	@go clean -testcache
-	@env INTEGRATION=localnet CGO_ENABLED=1 $(GOTEST) -tags integration_localnet -p 1 $(LOCALNET_INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+ifneq ($(INTEGRATION_MODULE),confidential)
+	@env INTEGRATION=localnet $(GOTEST) -tags integration_localnet -p 1 $(INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+endif
+ifneq ($(INTEGRATION_MODULE),core)
+	@cd confidential && env INTEGRATION=localnet CGO_ENABLED=1 $(GOTEST) -tags integration_localnet -p 1 $(CONFIDENTIAL_INTEGRATION_TEST_PACKAGES) -timeout $(TEST_TIMEOUT) -v
+endif
 	@echo "Tests complete!"
 
 test-integration-localnet-ci:
-	@echo "Running Go localnet integration tests with structured output..."
+	@echo "Running localnet integration tests ($(INTEGRATION_MODULE)) with structured output..."
 	@go clean -testcache
-	@env INTEGRATION=localnet CGO_ENABLED=1 go test -json -tags integration_localnet -p 1 -timeout $(TEST_TIMEOUT) $(LOCALNET_INTEGRATION_TEST_PACKAGES) > "$(INTEGRATION_TEST_REPORT)" || { cat "$(INTEGRATION_TEST_REPORT)"; false; }
-	@cat "$(INTEGRATION_TEST_REPORT)"
+	@status=0; : > "$(INTEGRATION_TEST_REPORT)"; \
+		if [ "$(INTEGRATION_MODULE)" != confidential ]; then \
+			env INTEGRATION=localnet go test -json -tags integration_localnet -p 1 -timeout $(TEST_TIMEOUT) $(INTEGRATION_TEST_PACKAGES) >> "$(INTEGRATION_TEST_REPORT)" || status=1; \
+		fi; \
+		if [ "$(INTEGRATION_MODULE)" != core ]; then \
+			(cd confidential && env INTEGRATION=localnet CGO_ENABLED=1 go test -json -tags integration_localnet -p 1 -timeout $(TEST_TIMEOUT) $(CONFIDENTIAL_INTEGRATION_TEST_PACKAGES)) >> "$(INTEGRATION_TEST_REPORT)" || status=1; \
+		fi; \
+		cat "$(INTEGRATION_TEST_REPORT)"; exit $$status
 
 test-integration-devnet:
 	@echo "Running Go tests for integration package..."
@@ -138,18 +157,17 @@ test-integration-testnet:
 	@env INTEGRATION=testnet $(GOTEST) $(INTEGRATION_TEST_PACKAGES) -timeout $(PUBLICNET_INTEGRATION_TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
-# The confidential MPT integration tests are kept out of the targets above because they
-# link CGo and run roughly an order of magnitude longer.
+# Confidential-only integration targets run from the optional module.
 test-integration-confidential-localnet:
 	@echo "Running confidential MPT integration tests on localnet (CGo required)..."
 	@go clean -testcache
-	@env INTEGRATION=localnet CGO_ENABLED=1 $(GOTEST) -tags integration_localnet -p 1 $(CONFIDENTIAL_INTEGRATION_TEST_PACKAGES) -timeout $(CONFIDENTIAL_TEST_TIMEOUT) -v
+	@cd confidential && env INTEGRATION=localnet CGO_ENABLED=1 $(GOTEST) -tags integration_localnet -p 1 $(CONFIDENTIAL_INTEGRATION_TEST_PACKAGES) -timeout $(CONFIDENTIAL_TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 test-integration-confidential-devnet:
 	@echo "Running confidential MPT integration tests on devnet (CGo required)..."
 	@go clean -testcache
-	@env INTEGRATION=devnet CGO_ENABLED=1 $(GOTEST) -p 1 $(CONFIDENTIAL_INTEGRATION_TEST_PACKAGES) -timeout $(CONFIDENTIAL_TEST_TIMEOUT) -v
+	@cd confidential && env INTEGRATION=devnet CGO_ENABLED=1 $(GOTEST) -p 1 $(CONFIDENTIAL_INTEGRATION_TEST_PACKAGES) -timeout $(CONFIDENTIAL_TEST_TIMEOUT) -v
 	@echo "Tests complete!"
 
 coverage-unit:
@@ -182,10 +200,22 @@ benchmark:
 ######################### CONFIDENTIAL MPT #####################################
 ################################################################################
 
+# The workspace is local-only. The version-specific replacement also lets Go load
+# the dependency graph before the declared minimum core version is published.
+workspace:
+	@if [ ! -f go.work ]; then GOWORK=off go work init . ./confidential; fi
+	@GOWORK="$(CURDIR)/go.work" go work use . ./confidential
+	@core_version=$$(awk '$$1 == "github.com/Peersyst/xrpl-go" { print $$2; exit }' confidential/go.mod); \
+		GOWORK="$(CURDIR)/go.work" go work edit -replace="github.com/Peersyst/xrpl-go@$$core_version=."
+
 test-confidential:
 	@echo "Running confidential MPT tests (CGo required)..."
-	@CGO_ENABLED=1 go test ./confidential/... -v -timeout $(TEST_TIMEOUT)
+	@cd confidential && CGO_ENABLED=1 go test ./... -v -timeout $(TEST_TIMEOUT)
 	@echo "Confidential tests complete!"
+
+test-confidential-nocgo:
+	@cd confidential && CGO_ENABLED=0 go build ./...
+	@cd confidential && CGO_ENABLED=0 go test ./mptcrypto -timeout $(TEST_TIMEOUT)
 
 update-mpt-crypto:
 	@bash confidential/deps/update.sh

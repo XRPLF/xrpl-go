@@ -1,37 +1,10 @@
 name: CGo Matrix
 
-# The unit suites already run on ubuntu for every change. This workflow exists to
-# answer a narrower question, whether the CGo build still links and passes on the
-# other supported platforms, so it runs only when something that can change that
-# answer moves.
 on:
-  push:
-    branches: [main]
-    # GitHub Actions does not resolve YAML anchors, so the two filters are spelled out.
-    paths:
-      - confidential/**
-      - pkg/mptsizes/**
-      - go.mod
-      - go.sum
-      - Makefile
-      - .github/workflows/ci-cgo-matrix.yml
-  pull_request:
-    branches: ["**"]
-    paths:
-      - confidential/**
-      - pkg/mptsizes/**
-      - go.mod
-      - go.sum
-      - Makefile
-      - .github/workflows/ci-cgo-matrix.yml
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   unit-tests:
@@ -62,8 +35,10 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
-          cache: true
+          go-version-file: confidential/go.mod
+          cache-dependency-path: |
+            go.sum
+            confidential/go.sum
 
       # A missing archive makes the link fail with an error that names the symbol
       # rather than the gap, so the bundle is checked before anything builds.
@@ -78,10 +53,11 @@ jobs:
             fi
           done
 
-      - name: Run unit tests
-        run: make test-ci
+      - name: Use both checked-out modules
+        run: make workspace
 
-      # The confidential packages are excluded from the target above because they
-      # need CGo, which is exactly what this matrix is here to exercise.
       - name: Run confidential unit tests
         run: make test-confidential
+
+      - name: Check the unavailable-backend contract
+        run: make test-confidential-nocgo

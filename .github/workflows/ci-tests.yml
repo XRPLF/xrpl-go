@@ -1,22 +1,23 @@
 name: Tests
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: ["**"]
+  workflow_call:
+    inputs:
+      module:
+        required: true
+        type: string
 
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   unit-tests:
+    if: inputs.module == 'core'
     name: Unit Tests and Coverage
     runs-on: ubuntu-latest
+    env:
+      GOWORK: "off"
+      CGO_ENABLED: "0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -25,6 +26,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Check core module metadata
+        run: go mod tidy -diff
 
       - name: Run unit tests and generate coverage
         run: make coverage-unit-ci
@@ -56,13 +60,11 @@ jobs:
           retention-days: 14
 
   localnet-integration:
-    # This run carries the confidential MPT scenarios too, which need CGo. The runner
-    # image ships a C toolchain and the make target sets CGO_ENABLED explicitly, so
-    # there is nothing to install here.
     name: Localnet Integration
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      INTEGRATION_MODULE: ${{ inputs.module }}
       INTEGRATION_TEST_REPORT: localnet-test-results.json
       LOCALNET_CONTAINER: xrpld_standalone
       XRPLD_IMAGE: rippleci/xrpld@sha256:1f62f82d87794614881d7900748890ce60fb14576c3534227926a5dc3add250e # 3.4.0 development build, commit 21890d9d
@@ -74,8 +76,14 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
-          cache: true
+          go-version-file: ${{ inputs.module == 'confidential' && 'confidential/go.mod' || 'go.mod' }}
+          cache-dependency-path: |
+            go.sum
+            confidential/go.sum
+
+      - name: Use both checked-out modules
+        if: inputs.module == 'confidential'
+        run: make workspace
 
       - name: Run localnet integration tests
         run: make integration-localnet

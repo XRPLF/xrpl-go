@@ -7,25 +7,34 @@ sectionTopLabel: Packages
 
 ## Overview
 
-The `confidential` packages add support for XLS-96 confidential MPT workflows in `xrpl-go`.
+The optional `github.com/Peersyst/xrpl-go/confidential` module provides XLS-96 confidential MPT builders and cryptographic helpers. It depends on the core `xrpl-go` module, but core does not depend on it.
 
-They cover three layers:
+Use this module to generate encrypted transaction fields and proofs, read confidential spending balances, or build transactions from ledger state. Applications that supply ciphertexts and proofs from another implementation can use core alone.
 
-- `confidential/mptcrypto`: low-level CGo bindings to the XRPLF `mpt-crypto` library.
-- `confidential/elgamal`, `confidential/commitment`, `confidential/proof`: Go-friendly hex-string APIs for encryption, commitments, context hashes, and zero-knowledge proofs.
-- `confidential/builder`: high-level transaction builders for constructing confidential MPT transactions from either ledger state or explicit inputs.
+See [installation and versions](/docs/confidential/installation) for the initial `v0.1.0` release, its core `v0.3.1` minimum dependency, and migration from the combined module. Import paths such as `github.com/Peersyst/xrpl-go/confidential/builder` remain unchanged.
 
 ## Build requirements
 
-Confidential MPT support depends on CGo-enabled builds.
+The cryptographic helpers require cgo and a supported native toolchain. Core transaction models, codecs, and wallet signing do not require the optional module.
+
+To test the helpers from a repository checkout:
 
 ```bash
-CGO_ENABLED=1 go test ./confidential/...
+make workspace
+make test-confidential
 ```
 
-If CGo is disabled, `confidential/mptcrypto` returns `ErrCgoRequired`, which means the builder and proof helpers cannot perform the underlying cryptographic operations.
+If cgo is disabled, `confidential/mptcrypto` returns `ErrCgoRequired` for cryptographic operations. See the [native build requirements](/docs/confidential/installation#native-build-requirements) for supported platforms and the fallback behavior.
 
 ## Package map
+
+| Package | Purpose |
+| --- | --- |
+| [`confidential/builder`](/docs/confidential/builders) | Build transactions from ledger state with `Build*`, prepare them from explicit inputs with `Prepare*`, and read spending balances with `GetSpendingBalance` |
+| `confidential/elgamal` | Generate encryption keys and encrypt or decrypt amounts |
+| `confidential/commitment` | Create Pedersen commitments |
+| `confidential/proof` | Generate and verify proofs and transaction context hashes |
+| [`confidential/mptcrypto`](https://github.com/XRPLF/xrpl-go/blob/main/confidential/mptcrypto/README.md) | Low-level cgo bindings to `XRPLF/mpt-crypto` |
 
 ### `confidential/elgamal`
 
@@ -69,7 +78,7 @@ through these functions.
 
 ## Confidential transaction types
 
-The `xrpl/transaction` package now includes five confidential MPT transaction types:
+The core `xrpl/transaction` package includes five confidential MPT transaction types. These models, their codecs, and normal wallet signing do not depend on the optional module:
 
 - `ConfidentialMPTConvert`: moves public MPT into confidential balance and optionally registers the holder encryption key on first use.
 - `ConfidentialMPTSend`: sends confidential MPT between opted-in holders using encrypted amounts plus a composite proof.
@@ -97,13 +106,30 @@ Use [`builders`](/docs/confidential/builders) when you want the SDK to:
 - generate ciphertexts, commitments, and ZK proofs with the correct context hash;
 - return a ready-to-sign `xrpl/transaction` struct.
 
-Drop down to `elgamal`, `commitment`, and `proof` when you need custom transaction assembly, explicit control over proof inputs, or standalone verification in tests.
+Flatten the returned transaction, autofill the remaining network fields, sign with a core wallet, and submit through the RPC or WebSocket client. Proofs bind the transaction nonce, so do not change a prepared sequence or Ticket before submission. Core field validation does not verify the cryptographic validity of a ZK proof.
+
+Use `elgamal`, `commitment`, and `proof` directly when you need custom transaction assembly, control over proof inputs, or standalone verification in tests.
 
 ## Examples
 
-`examples/confidential` in the repository holds three runnable programs:
+From the repository root, set up the workspace and run the offline example from the optional module:
 
-- `offline`: assembles an opt-in and an inbox merge from explicit inputs, without connecting, signing, or submitting. Use it to see what the `Prepare*` helpers produce.
-- `rpc` and `ws`: run a full lifecycle against devnet over each transport. They create a confidential-capable issuance, register the issuer key, opt two holders in, then convert, merge, send, convert back, and claw back, printing the decrypted balances at each step.
+```bash
+make workspace
+cd confidential
+CGO_ENABLED=1 go run ./examples/offline
+```
 
-Both online examples need a CGo-enabled build and fund their own wallets from the devnet faucet.
+The example prepares an issuance, issuer-key registration, a holder conversion, and an inbox merge. It does not connect, sign, or submit transactions. Offline proof generation still needs the native toolchain.
+
+The [`rpc`](https://github.com/XRPLF/xrpl-go/tree/main/confidential/examples/rpc) and [`ws`](https://github.com/XRPLF/xrpl-go/tree/main/confidential/examples/ws) examples run a full lifecycle against devnet. They fund test wallets, create an issuance, register keys, opt holders in, and submit confidential transactions. Read the examples before running them.
+
+## Development and releases
+
+Examples are in `confidential/examples/`, and integration tests are in `confidential/integration/`. Root `go test ./...` does not include this module. Use the [development workspace](/docs/confidential/installation#development-workspace) and separate test targets to check it against the local core checkout.
+
+The module has its own [changelog](https://github.com/XRPLF/xrpl-go/blob/main/confidential/CHANGELOG.md) and uses Git tags such as `confidential/v0.1.0`. Core versions and releases are independent. See the [release guide](https://github.com/XRPLF/xrpl-go/blob/main/RELEASING.md) for release order and checks against published dependencies.
+
+## Security
+
+Protect both wallet signing secrets and confidential encryption private keys. Do not print, log, commit, or send them to telemetry. Test with non-production funds and read the [security and audit notice](https://github.com/XRPLF/xrpl-go#security-and-audits) before production use.

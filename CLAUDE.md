@@ -13,8 +13,14 @@ make lint-fix       # Run gofmt to fix formatting issues
 
 ```bash
 # Unit tests
-make test-ci        # Run all unit tests (CI mode, clean cache, parallel)
-make test-all       # Run all unit tests (standard mode)
+make test-ci        # Run core unit tests (CI mode, clean cache, parallel)
+make test-all       # Run core unit tests (standard mode)
+
+# Optional confidential module, tested with the checked-out core
+make workspace
+make test-confidential
+make test-confidential-nocgo
+make lint-confidential
 
 # Package-specific tests
 make test-binary-codec   # Test binary-codec package
@@ -54,6 +60,12 @@ go test -v ./xrpl/transaction
 # Run integration tests (set INTEGRATION env var)
 INTEGRATION=localnet go test ./xrpl/transaction/integration -v
 ```
+
+## Module boundaries
+
+The root module owns protocol types, codecs, clients, and wallet signing. The nested `confidential/` module owns builders, cryptographic helpers, native dependencies, its examples, and its integration tests. Dependencies go from confidential to core only. Keep code that imports confidential inside that module, including tests and examples, so root `go mod tidy` remains independent.
+
+Root `./...` commands skip the nested module. Use `make workspace` for paired development and `GOWORK=off` for checks against published dependencies. Before changing release automation, module version requirements, or release notes, read [RELEASING.md](RELEASING.md).
 
 ## Architecture Overview
 
@@ -178,14 +190,14 @@ The binary codec is critical for transaction signing and submission:
 
 ### Changelog
 
-Before editing `CHANGELOG.md`, compare the final branch with its base branch. Entries under `[Unreleased]` must describe the net effect of that final diff, not intermediate changes made during development.
+Before editing either module's changelog, compare the final branch with its base branch. Entries must describe the net effect of that final diff, not intermediate changes made during development. Follow the [contributor guidance](CONTRIBUTING.md#pull-requests) for section placement and omitting empty `[Unreleased]` sections.
 
 - Add or update an entry only when the final branch has a changelog-worthy difference from the base branch
 - If a feature changes and then returns to its base-branch behavior, remove its entry or add no entry
 - If later work changes the effect of an existing entry, edit that entry to describe the final result; do not add another entry for the intermediate state
 - It is valid to make no changelog change when the branch has no changelog-worthy net difference
 
-Follow the existing format: group entries under `### Added`, `### Changed`, or `### Fixed`, with a `#### <package>` subheading. Keep entries concise but descriptive enough that users understand the impact.
+Follow the existing format: group entries under `### Added`, `### Changed`, or `### Fixed`, with a `#### <package>` subheading. Keep entries concise but descriptive enough that users understand the impact. Use `confidential/CHANGELOG.md` for changes to the optional module and the root changelog for core changes.
 
 ### Common Gotchas
 
