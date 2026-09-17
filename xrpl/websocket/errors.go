@@ -12,6 +12,9 @@ const (
 	txnNotFound = "txnNotFound"
 	// actNotFound is the error message returned by the xrpl node when requesting for a not found account.
 	actNotFound = "actNotFound"
+	// entryNotFound is the error message returned by the xrpl node when requesting a ledger entry
+	// that does not exist.
+	entryNotFound = "entryNotFound"
 )
 
 var (
@@ -49,6 +52,44 @@ var (
 	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
 	ErrInvalidFulfillmentLength = errors.New("invalid fulfillment length")
+
+	// ErrTransactionNotSponsored is returned when a sponsorship preflight receives a transaction
+	// without Sponsor and SponsorFlags.
+	ErrTransactionNotSponsored = clientinternal.ErrTransactionNotSponsored
+	// ErrSponsorshipFeeUnavailable is returned when a sponsorship preflight has no estimated fee
+	// and no transaction Fee.
+	ErrSponsorshipFeeUnavailable = clientinternal.ErrSponsorshipFeeUnavailable
+	// ErrSponsorshipFeeIsNotAString is returned when the Fee field is not a string.
+	ErrSponsorshipFeeIsNotAString = clientinternal.ErrSponsorshipFeeIsNotAString
+	// ErrInvalidSponsorshipFee is returned when a sponsorship preflight fee is not a whole, non-
+	// negative number of drops.
+	ErrInvalidSponsorshipFee = clientinternal.ErrInvalidSponsorshipFee
+	// ErrSponsorshipEntryUnexpectedType is returned when a ledger_entry lookup returns a node that
+	// is not a Sponsorship entry.
+	ErrSponsorshipEntryUnexpectedType = clientinternal.ErrSponsorshipEntryUnexpectedType
+	// ErrSponsorshipEntryMalformed is returned when a Sponsorship ledger entry cannot be decoded.
+	ErrSponsorshipEntryMalformed = clientinternal.ErrSponsorshipEntryMalformed
+	// ErrSponsorshipEntryMismatch is returned when a ledger_entry lookup returns a Sponsorship entry
+	// for a different sponsor or sponsee than requested.
+	ErrSponsorshipEntryMismatch = clientinternal.ErrSponsorshipEntryMismatch
+	// ErrSponsorshipEntryNotFound is returned when no Sponsorship entry exists and the transaction
+	// has no SponsorSignature.
+	ErrSponsorshipEntryNotFound = clientinternal.ErrSponsorshipEntryNotFound
+	// ErrSponsorshipFeeSignatureRequired is returned when the Sponsorship entry requires a
+	// signature for fee sponsorship.
+	ErrSponsorshipFeeSignatureRequired = clientinternal.ErrSponsorshipFeeSignatureRequired
+	// ErrSponsorshipReserveSignatureRequired is returned when the Sponsorship entry requires a
+	// signature for reserve sponsorship.
+	ErrSponsorshipReserveSignatureRequired = clientinternal.ErrSponsorshipReserveSignatureRequired
+	// ErrSponsorshipFeeAmountMissing is returned when the Sponsorship entry has no FeeAmount for
+	// fee sponsorship.
+	ErrSponsorshipFeeAmountMissing = clientinternal.ErrSponsorshipFeeAmountMissing
+	// ErrSponsorshipFeeBudgetExhausted is returned when the Sponsorship entry FeeAmount cannot
+	// cover the transaction fee.
+	ErrSponsorshipFeeBudgetExhausted = clientinternal.ErrSponsorshipFeeBudgetExhausted
+	// ErrSponsorshipMaxFeeExceeded is returned when the transaction fee exceeds the Sponsorship
+	// entry MaxFee cap.
+	ErrSponsorshipMaxFeeExceeded = clientinternal.ErrSponsorshipMaxFeeExceeded
 
 	// fields
 
