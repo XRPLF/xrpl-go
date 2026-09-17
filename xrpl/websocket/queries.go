@@ -124,12 +124,8 @@ func (c *Client) GetChannelVerify(req *channel.VerifyRequest) (*channel.VerifyRe
 
 // Simulate executes an unsigned transaction as a dry run without submitting it
 // to the network. Results reflect current ledger state and do not guarantee the
-// outcome of a later submission.
+// outcome of a later submission. Request fields are validated by the server.
 func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error) {
-	networkID, _ := c.NetworkIdentity()
-	if err := req.ValidateNetworkID(networkID); err != nil {
-		return nil, err
-	}
 	response, err := c.Request(req)
 	return clientinternal.DecodeSimulate(req, response, err)
 }

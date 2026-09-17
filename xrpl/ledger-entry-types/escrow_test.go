@@ -76,6 +76,31 @@ func TestEscrow(t *testing.T) {
 	}
 }
 
+func TestEscrowUnmarshalErrors(t *testing.T) {
+	tests := []struct {
+		name, fixture string
+	}{
+		{"invalid Amount", `{"FinishAfter":99,"Amount":"bad"}`},
+		{"ordinary field error after valid Account", `{"Account":"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh","FinishAfter":"bad","Amount":"20"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			escrow := Escrow{
+				Account:     "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+				Amount:      types.XRPCurrencyAmount(10),
+				FinishAfter: 2,
+				Sponsor:     "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+			}
+			before, err := json.Marshal(escrow)
+			require.NoError(t, err)
+			require.Error(t, json.Unmarshal([]byte(tt.fixture), &escrow))
+			after, err := json.Marshal(escrow)
+			require.NoError(t, err)
+			require.Equal(t, string(before), string(after))
+		})
+	}
+}
+
 func TestEscrow_EntryType(t *testing.T) {
 	s := &Escrow{}
 	require.Equal(t, EscrowEntry, s.EntryType())

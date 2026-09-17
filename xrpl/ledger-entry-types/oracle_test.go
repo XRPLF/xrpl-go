@@ -246,10 +246,15 @@ func TestPriceData_AssetPriceJSON(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var priceData PriceData
-			err := json.Unmarshal([]byte(test.json), &priceData)
+			priceData := PriceData{BaseAsset: "EUR", QuoteAsset: "JPY", AssetPrice: AssetPrice(42), Scale: 2}
+			before, err := json.Marshal(priceData)
+			require.NoError(t, err)
+			err = json.Unmarshal([]byte(test.json), &priceData)
 			if test.wantErr != nil {
 				require.ErrorIs(t, err, test.wantErr)
+				after, err := json.Marshal(priceData)
+				require.NoError(t, err)
+				require.Equal(t, string(before), string(after))
 				return
 			}
 
