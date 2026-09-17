@@ -150,6 +150,52 @@ func TestSignAsSponsorRoles(t *testing.T) {
 	}
 }
 
+func TestSignAsSponsorDeliverMax(t *testing.T) {
+	sponsor := sponsorTestWallet(t, counterpartySeed)
+	tests := []struct {
+		name                       string
+		accountMulti, sponsorMulti bool
+		keepAmount                 bool
+	}{
+		{name: "single account and sponsor"},
+		{name: "multisigned sponsor", sponsorMulti: true},
+		{name: "multisigned account", accountMulti: true},
+		{name: "multisigned account and sponsor", accountMulti: true, sponsorMulti: true},
+		{name: "identical Amount and DeliverMax", keepAmount: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx, account := sponsorAccountSignedTx(t, sponsor, tt.accountMulti)
+			amount := tx["Amount"]
+			tx["DeliverMax"] = amount
+			if !tt.keepAmount {
+				delete(tx, "Amount")
+			}
+			before := clientinternal.CloneTransaction(tx)
+			signed, blob, txHash, err := SignAsSponsor(sponsor, tx, &SignAsSponsorOptions{Multisign: tt.sponsorMulti})
+			require.NoError(t, err)
+			require.Equal(t, before, map[string]any(tx))
+			requireSponsorBlobHash(t, signed, blob, txHash)
+			decoded, err := binarycodec.Decode(blob)
+			require.NoError(t, err)
+
+			var payload, signature string
+			if tt.accountMulti {
+				payload, err = binarycodec.EncodeForMultisigning(decoded, account.ClassicAddress.String())
+				signature = decoded["Signers"].([]any)[0].(map[string]any)["Signer"].(map[string]any)["TxnSignature"].(string)
+			} else {
+				payload, err = binarycodec.EncodeForSigning(decoded)
+				signature = decoded["TxnSignature"].(string)
+			}
+			require.NoError(t, err)
+			requireSponsorPayloadVerification(t, account.PublicKey, signature, payload, true)
+			require.Equal(t, amount, decoded["Amount"])
+			require.Equal(t, amount, signed["Amount"])
+			require.NotContains(t, signed, "DeliverMax")
+		})
+	}
+}
+
 func TestSignAsSponsorRejectsInvalidInput(t *testing.T) {
 	sponsor := sponsorTestWallet(t, counterpartySeed)
 	base, _ := sponsorAccountSignedTx(t, sponsor, false)
@@ -173,6 +219,7 @@ func TestSignAsSponsorRejectsInvalidInput(t *testing.T) {
 		{"zero sponsor", "Sponsor", "rrrrrrrrrrrrrrrrrrrrrhoLvTp", false, transaction.ErrSponsorZero},
 		{"wallet mismatch", "Sponsor", counterpartyOverrideAccount, false, ErrSponsorWalletMismatch},
 		{"invalid flags type", "Flags", 1.5, false, transaction.ErrInvalidFlagsValue},
+		{"conflicting amounts", "DeliverMax", "2", false, ErrAmountAndDeliverMaxMustBeIdentical},
 	}
 
 	for _, tt := range tests {

@@ -79,7 +79,7 @@ Signing returns the transaction, final blob, and final hash. Combining returns t
 
 Set `Sponsor` and `SponsorFlags` (`types.SpfSponsorFee`, `types.SpfSponsorReserve`, or both) **before account signing**. Autofill before signing too. Then sign the account and pass its signed map or blob to `SignAsSponsor` or `SignAsSponsorBlob`.
 
-The helpers preserve account signatures and the top-level `SigningPubKey`. They write only `SponsorSignature`. Account signatures must already be present. This signing order is an offline helper policy, not a claim that consensus requires that invocation order.
+The helpers preserve account signatures and the top-level `SigningPubKey`. They add `SponsorSignature`. For Payments, `SignAsSponsor` also converts `DeliverMax` to `Amount` on the returned map before signing and encoding. Conflicting values return `wallet.ErrAmountAndDeliverMaxMustBeIdentical`. Account signatures must already be present. This signing order is an offline helper policy, not a claim that consensus requires that invocation order.
 
 Use `SignAsSponsorOptions{Multisign: true}` for sponsor multisigning. Each signer signs the same account-signed transaction independently. Combine those fragments with `CombineSponsorSigners`. Do not chain sponsor signing calls. If the account also uses multisigning, combine its fragments before sponsor signing.
 
@@ -92,6 +92,15 @@ The combiner requires canonical wire equivalence except for `SponsorSignature.Si
 Call `AddPreFundedSponsor` before signing. It sets sponsor fields without adding a sponsor signature. It permits an absent or empty `SigningPubKey`, but rejects existing account, counterparty, sponsor, or Batch authorization fields, including partial or null values.
 
 This helper does not create or fund a ledger `Sponsorship` object. The caller needs an existing sponsorship with enough resources and with the applicable require-sign flags disabled. The helper does not check funds or ledger authorization.
+
+For fee sponsorship, the ledger looks up the relationship between `Sponsor` and `Account`. If the transaction has a `Delegate`, it uses `Sponsor` and `Delegate` instead. Reserve sponsorship with `Delegate` is not supported.
+
+A pre-funded object does not replace the sponsor signature for either account-level `SponsorshipTransfer` case:
+
+- `tfSponsorshipCreate` with no `ObjectID`.
+- `tfSponsorshipReassign` with no `ObjectID`.
+
+Both require `SponsorSignature`. Use co-signed sponsorship for these cases.
 
 ### Fees and amendment compatibility
 

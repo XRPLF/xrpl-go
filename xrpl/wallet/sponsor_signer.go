@@ -25,6 +25,8 @@ type SignAsSponsorOptions struct {
 
 // SignAsSponsor adds sponsor authorization to an account-signed transaction.
 // It returns a new transaction, its blob, and its final hash, without changing tx.
+// For Payments, DeliverMax is normalized to Amount. Conflicting values return
+// ErrAmountAndDeliverMaxMustBeIdentical.
 // The Sponsor and fixCleanup3_4_0 amendments must be enabled on the target network.
 // No legacy signing fallback or network authorization check is performed.
 //
@@ -67,6 +69,11 @@ func SignAsSponsor(w Wallet, tx transaction.FlatTransaction, opts *SignAsSponsor
 	}
 
 	working := transaction.FlatTransaction(clientinternal.CloneTransaction(tx))
+	if working.TxType() == transaction.PaymentTx {
+		if err := clientinternal.NormalizeDeliverMax(working); err != nil {
+			return nil, "", "", err
+		}
+	}
 	var payload string
 	if multisign {
 		payload, err = binarycodec.EncodeForMultisigningSponsor(working, signer.Classic)

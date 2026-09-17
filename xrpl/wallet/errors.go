@@ -1,12 +1,18 @@
 package wallet
 
-import "errors"
+import (
+	"errors"
+
+	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+)
 
 var (
 	// signing
 
 	// ErrNilTransaction is returned when a nil transaction map is provided.
 	ErrNilTransaction = errors.New("transaction cannot be nil")
+	// ErrAmountAndDeliverMaxMustBeIdentical is returned when sponsor signing receives conflicting Payment amount fields.
+	ErrAmountAndDeliverMaxMustBeIdentical = clientinternal.ErrAmountAndDeliverMaxMustBeIdentical
 
 	// address
 
