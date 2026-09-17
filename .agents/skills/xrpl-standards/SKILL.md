@@ -5,7 +5,7 @@ description: "Reference for any XRPL Standard (XLS-N) when implementing or revie
 
 # XRPL Standards
 
-Raw specification files for all 79 XRPL Standards (XLS-1 through XLS-102), organized by topic. Read the relevant file to get the full spec — field definitions, transaction formats, ledger objects, failure conditions, invariants, and RPC changes.
+Raw specification files for 81 XRPL Standards (XLS-1 through XLS-103), organized by topic. Read the relevant file to get the full spec — field definitions, transaction formats, ledger objects, failure conditions, invariants, and RPC changes.
 
 ## How to Use
 
@@ -104,6 +104,7 @@ bash <skill-dir>/scripts/fetch-xls.sh <number>
 | 39 | Clawback — issuer clawback of IOU balances | Final | `references/accounts/xls-0039.md` |
 | 68 | Sponsored Fees and Reserves — `Sponsorship` obj, fee/reserve delegation | Draft | `references/accounts/xls-0068.md` |
 | 49 | Multiple Signer Lists | Draft | `references/accounts/xls-0049.md` |
+| 103 | On-Chain Cosigner: on-ledger transaction proposals and signature collection | Draft | `references/accounts/xls-0103.md` |
 | 64 | Pseudo-Account | Draft | `references/accounts/xls-0064.md` |
 | 23 | Lite Accounts | Stagnant | `references/accounts/xls-0023.md` |
 | 7 | Deletable Accounts | Final | `references/accounts/xls-0007.md` |

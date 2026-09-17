@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
 	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
 	"github.com/stretchr/testify/require"
@@ -239,6 +240,171 @@ func TestInvalidHexInputs(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			require.ErrorIs(t, tc.fn(), tc.wantErr)
+		})
+	}
+}
+
+// TestAddAndSubtract covers the homomorphic arithmetic a client uses to predict the balance a
+// confidential transaction leaves behind: the ledger stores ciphertexts, and the transactors
+// credit and debit them without ever decrypting, so a prediction has to do the same.
+func TestAddAndSubtract(t *testing.T) {
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	encrypt := func(amount uint64) string {
+		bf, err := elgamal.GenerateBlindingFactor()
+		require.NoError(t, err)
+		ciphertext, err := elgamal.Encrypt(amount, kp.PubKeyHex, bf)
+		require.NoError(t, err)
+		return ciphertext
+	}
+
+	tests := []struct {
+		name  string
+		left  uint64
+		right uint64
+		want  uint64
+		op    func(first, second string) (string, error)
+	}{
+		{name: "add", left: 40, right: 15, want: 55, op: elgamal.Add},
+		{name: "add zero", left: 40, right: 0, want: 40, op: elgamal.Add},
+		{name: "subtract", left: 40, right: 15, want: 25, op: elgamal.Subtract},
+		{name: "subtract to zero", left: 40, right: 40, want: 0, op: elgamal.Subtract},
+		{name: "subtract zero", left: 40, right: 0, want: 40, op: elgamal.Subtract},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.op(encrypt(tt.left), encrypt(tt.right))
+			require.NoError(t, err)
+			require.Len(t, result, mptsizes.CiphertextSize*2)
+
+			decrypted, err := elgamal.Decrypt(result, kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 100})
+			require.NoError(t, err)
+			require.Equal(t, tt.want, decrypted)
+		})
+	}
+}
+
+// TestAddAndSubtractErrors covers the inputs that have no ciphertext result. Hex that does not
+// decode to a ciphertext's length reports ErrInvalidCiphertext. Everything that decodes but fails
+// in the native arithmetic reports ErrCiphertextArithmetic: an operand whose bytes are not two
+// curve points, and a ciphertext subtracted from itself, whose difference is the curve's identity
+// element and has no encoding as a ciphertext.
+func TestAddAndSubtractErrors(t *testing.T) {
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	bf, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	ciphertext, err := elgamal.Encrypt(7, kp.PubKeyHex, bf)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		first   string
+		second  string
+		op      func(first, second string) (string, error)
+		wantErr error
+	}{
+		{name: "add first not hex", first: "zz", second: ciphertext, op: elgamal.Add, wantErr: elgamal.ErrInvalidCiphertext},
+		{name: "add second wrong length", first: ciphertext, second: "00", op: elgamal.Add, wantErr: elgamal.ErrInvalidCiphertext},
+		{name: "subtract first empty", first: "", second: ciphertext, op: elgamal.Subtract, wantErr: elgamal.ErrInvalidCiphertext},
+		{name: "add second not curve points", first: ciphertext, second: strings.Repeat("00", mptsizes.CiphertextSize), op: elgamal.Add, wantErr: elgamal.ErrCiphertextArithmetic},
+		{name: "subtract identical ciphertexts", first: ciphertext, second: ciphertext, op: elgamal.Subtract, wantErr: elgamal.ErrCiphertextArithmetic},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := tt.op(tt.first, tt.second)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
+// TestAddIsHomomorphicAcrossKeys pins that the arithmetic is per key: a mirror balance held
+// under the issuer's key tracks the holder's own balance only because the same amount is
+// encrypted separately to each key, never because the ciphertexts are interchangeable.
+func TestAddIsHomomorphicAcrossKeys(t *testing.T) {
+	holder, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+	issuer, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	bf, err := elgamal.GenerateBlindingFactor()
+	require.NoError(t, err)
+	holderCt, err := elgamal.Encrypt(12, holder.PubKeyHex, bf)
+	require.NoError(t, err)
+	issuerCt, err := elgamal.Encrypt(12, issuer.PubKeyHex, bf)
+	require.NoError(t, err)
+
+	holderSum, err := elgamal.Add(holderCt, holderCt)
+	require.NoError(t, err)
+	issuerSum, err := elgamal.Add(issuerCt, issuerCt)
+	require.NoError(t, err)
+
+	bounds := elgamal.AmountRange{Low: 0, High: 100}
+	holderAmount, err := elgamal.Decrypt(holderSum, holder.PrivKeyHex, bounds)
+	require.NoError(t, err)
+	issuerAmount, err := elgamal.Decrypt(issuerSum, issuer.PrivKeyHex, bounds)
+	require.NoError(t, err)
+
+	require.Equal(t, uint64(24), holderAmount)
+	require.Equal(t, uint64(24), issuerAmount)
+	require.NotEqual(t, holderSum, issuerSum, "the same amount under two keys is two ciphertexts")
+}
+
+// TestEncryptCanonicalZero pins that the canonical zero is deterministic, decrypts to zero, and
+// is the same for an account's classic and X-address forms, which share one AccountID.
+func TestEncryptCanonicalZero(t *testing.T) {
+	const (
+		classicAddress = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+		issuanceID     = "000004C463C52827307480341E3CB23A0710CC839EB58A0A"
+	)
+	xAddress, err := addresscodec.ClassicAddressToXAddress(classicAddress, 0, false, false)
+	require.NoError(t, err)
+
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	zero, err := elgamal.EncryptCanonicalZero(kp.PubKeyHex, classicAddress, issuanceID)
+	require.NoError(t, err)
+	require.Len(t, zero, mptsizes.CiphertextSize*2)
+
+	again, err := elgamal.EncryptCanonicalZero(kp.PubKeyHex, xAddress, strings.ToLower(issuanceID))
+	require.NoError(t, err)
+	require.Equal(t, zero, again)
+
+	decrypted, err := elgamal.Decrypt(zero, kp.PrivKeyHex, elgamal.AmountRange{Low: 0, High: 10})
+	require.NoError(t, err)
+	require.Zero(t, decrypted)
+}
+
+func TestEncryptCanonicalZeroErrors(t *testing.T) {
+	const (
+		account    = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+		issuanceID = "000004C463C52827307480341E3CB23A0710CC839EB58A0A"
+	)
+
+	kp, err := elgamal.GenerateKeypair()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		pubkey     string
+		account    string
+		issuanceID string
+		wantErr    error
+	}{
+		{name: "malformed key", pubkey: "zz", account: account, issuanceID: issuanceID, wantErr: elgamal.ErrInvalidKey},
+		{name: "key off the curve", pubkey: strings.Repeat("00", mptsizes.PubKeySize), account: account, issuanceID: issuanceID, wantErr: elgamal.ErrEncryptFailed},
+		{name: "malformed account", pubkey: kp.PubKeyHex, account: "not-an-address", issuanceID: issuanceID, wantErr: elgamal.ErrInvalidAddress},
+		{name: "malformed issuance", pubkey: kp.PubKeyHex, account: account, issuanceID: "00", wantErr: elgamal.ErrInvalidIssuanceID},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := elgamal.EncryptCanonicalZero(tt.pubkey, tt.account, tt.issuanceID)
+			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }

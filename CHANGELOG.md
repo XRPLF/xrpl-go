@@ -13,13 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added single-sign and multisign encoders for counterparty and sponsor roles using the `fixCleanup3_4_0` signing prefixes.
 
+#### confidential
+
+- Added `elgamal.Add()` and `elgamal.Subtract()`, hex-string wrappers over new `mptcrypto.AddCiphertexts()` and `mptcrypto.SubtractCiphertexts()` bindings for the native homomorphic ElGamal group operations. They reproduce the credits and debits the confidential MPT transactors apply to a stored balance, which is what lets a client predict the state a transaction leaves behind. Subtracting a ciphertext from itself has no ciphertext result and reports `elgamal.ErrCiphertextArithmetic`.
+- Added `elgamal.EncryptCanonicalZero()` over a new `mptcrypto.CanonicalEncryptedZero()` binding. It reproduces the deterministic encrypted zero xrpld writes when a confidential transactor initializes or resets a balance, derived from the encryption key, the holder account, and the issuance. Invalid inputs report `elgamal.ErrInvalidKey`, the new `elgamal.ErrInvalidAddress` or `elgamal.ErrInvalidIssuanceID`, or `elgamal.ErrEncryptFailed` for a key that is not a curve point.
+
 #### confidential/builder
 
+- Added `BuildBatch()`, which assembles two to eight ordered confidential operations into one XLS-56 `Batch`. Calling the standalone builders in a row cannot produce one, because each reads the ledger and an earlier inner changes the balance and version a later inner's proof binds. See the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders) for the full reference.
+- `BuildBatch()` validates every operation's inputs before any ledger query or proof work, with the same checks and sentinels as the standalone builder it mirrors, including its `TxOptions` rules.
+- `BuildBatch()` reads every `MPToken` and `MPTokenIssuance` from one validated ledger and threads predicted state through the inners in order, keyed by the decoded holder `AccountID` and issuance ID: spending and inbox ciphertexts, issuer and auditor mirror balances, holder keys, balance versions, and public amounts. Each is advanced exactly as the transactor advances it, including the re-randomization a send applies to the credits it posts to its destination and the canonical encrypted zero a merge, a clawback, or a first-time convert writes, so later inners can spend from those balances. An open-ledger balance version change rejects the `Batch` with `ErrStaleBalanceVersion` only for a holder whose version a send or convert-back proof binds, as the standalone builders do.
+- Every inner nonce is resolved before any proof is generated, so a later autofill cannot invalidate a proof. An account's inners take consecutive sequences, and the outer `Batch` account's start one past the sequence the `Batch` spends, or at its current sequence when the `Batch` spends a `Ticket`. A `TicketCreate` inner moves its account's later sequences past every `Ticket` it creates. A confidential operation may spend a `Ticket`, which its proof then binds, and reports `ErrBatchInnerSequenceSet` if it sets its own `Sequence`. A `TransactionOp` may carry its own `Sequence`, which must be the one its position requires for its account or `ErrBatchInnerSequenceMismatch` is reported. Setting both nonces on one inner reports `ErrConflictingNonce`, and spending one sequence or `Ticket` twice for one account, including the outer `Batch`'s own `Ticket`, reports `ErrBatchDuplicateNonce`.
+- Inners are shaped for XLS-56 with `tfInnerBatchTxn`, a zero `Fee`, an empty `SigningPubKey`, and no individual signature. `Fee` and `LastLedgerSequence` are left to the client's own autofill, which prices the `Batch` by summing its inners, and signing stays with the caller through `wallet.SignMultiBatch()` and `wallet.CombineBatchSigners()`.
+- Added `ConvertOp`, `ConvertBackOp`, `SendOp`, `MergeInboxOp`, and `ClawbackOp`, each wrapping the parameters of the standalone builder it mirrors, plus `TransactionOp` for a ready-made ordinary transaction and `IsSupportedInnerTransactionType()` for the types it accepts. Each operation is accepted as a value or as a non-nil pointer, and a nil one reports `ErrBatchMissingOperation`. Types that could change a confidential balance, an `MPToken`'s existence, or an issuance are rejected with `ErrBatchInnerNotSupported`.
+- `BuildBatch()` defaults to `tfAllOrNothing` and rejects every other mode with `ErrBatchModeNotSupported`, because an inner that can be skipped or fail leaves every later prediction describing a ledger that never happened.
 - Added `GetSpendingBalance()`, which reads a holder's `ConfidentialBalanceSpending` and decrypts it with that holder's ElGamal private key. It takes the same `LedgerQuerier` the builders do, so `rpc.Client` and `websocket.Client` share one reader. Both reads come from one validated ledger, no account sequence is queried, the unspendable `ConfidentialBalanceInbox` is excluded, a missing `MPToken` reports `ErrMPTokenNotFound`, and an `MPToken` with no spending ciphertext reads as zero without decrypting. The search is bounded by the caller's `BalanceRange`, capped at the issuance `ConfidentialOutstandingAmount` as `BuildClawback` already does.
 
 #### docs
 
 - Documented `GetSpendingBalance()` in the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders).
+- Documented `BuildBatch()` in the [confidential builders guide](https://xrplf.github.io/xrpl-go/docs/confidential/builders), covering the operation types, validation, nonce and inner shaping, the autofill and signing flow, and the chains the assembler refuses to assemble.
 
 #### xrpl/flag
 
@@ -44,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/rpc
 
 - Added X-address normalization for `Sponsor`, `Sponsee`, and `CounterpartySponsor`, with embedded tags rejected.
+
+#### xrpl/rpc, xrpl/websocket
+
+- Added `ValidateSponsorship` and `ValidateSponsorshipContext`, an opt-in online check of sponsorship signature requirements and fee budgets against the current ledger. The sponsorship fields are first checked with the same rules as `BaseTx.Validate`, returning its `xrpl/transaction` errors. Only the sponsor and resolved sponsee addresses are normalized for lookup, without checking unrelated addresses or tags or modifying the transaction. `SponsorshipValidation` reports the outcome, entry, and fee checked. Only `entryNotFound` is treated as an absent entry. Other lookup and decoding failures, and an entry for a different sponsor or sponsee (`ErrSponsorshipEntryMismatch`), are returned as errors. Autofill and submission are unchanged.
 
 #### xrpl/transaction
 
@@ -71,6 +88,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated binary definitions from a rippled 3.4.0 development build (`21890d9d`), including new protocol fields and removal of unused Hook field definitions.
 - `FeeAmountDelta` now accepts negative XRP strings and rejects non-string values, including IOU and MPT objects. Ordinary amount encoding is unchanged.
 
+#### xrpl
+
+- RPC and WebSocket `Simulate` now delegate request validation to the server, including input selection, signatures, blob syntax, and `NetworkID`. Simulation no longer discovers network identity. Nil-request protection and response validation remain enabled.
+- Deprecated `SimulateRequest.ValidateNetworkID` and the simulation request-preflight error values, retaining them for source compatibility. `Validate` and `ValidateNetworkID` now only reject nil requests.
+
 #### xrpl/transaction
 
 - Transaction multisigner validation now rejects more than 32 signers, duplicate accounts, and lists not ordered by decoded AccountID. Validation does not reorder signers.
@@ -84,9 +106,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/ledger-entry-types
 
 - Fixed `Check.SendMax` JSON decoding to select the concrete amount type and preserve all other fields. Failed decoding leaves the receiver unchanged. Successful object decoding replaces its contents, while top-level `null` remains a no-op.
+- Fixed JSON decoding to preserve `index` in `Offer` and `NFTokenOffer`.
+- Fixed failed JSON decoding to leave existing `Escrow`, `NFTokenOffer`, `Offer`, and `PriceData` values unchanged.
+
+#### xrpl/rpc
+
+- Fixed AccountDelete autofill to reject outstanding sponsorship obligations with `ErrAccountHasSponsorshipObligations` and a supplied destination that does not identify the account's sponsor with `ErrAccountDeleteSponsorMismatch`.
 
 #### xrpl/transaction
 
+- Fixed failed JSON decoding to leave an existing `EscrowCreate` value unchanged.
 - Reject zero `DomainID` references in Payment, OfferCreate, MPTokenIssuanceCreate, and VaultCreate. Preserve zero-domain clearing in MPTokenIssuanceSet and VaultSet.
 - Reject an empty `MPTokenIssuanceSet.DomainID` during validation instead of failing later during binary encoding. Use 64 zero digits to request domain removal.
 - Compare decoded account identities in DepositPreauth, NFTokenCreateOffer, SetRegularKey, DelegateSet, NFTokenMint, NFTokenModify, MPTokenAuthorize, and MPTokenIssuanceSet self-reference checks, so equivalent classic and X-addresses cannot bypass them. AMMClawback now accepts equivalent address forms in its asset issuer/account check.
@@ -95,6 +124,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction/types
 
 - Fixed `CredentialIDs.IsValid()` to require one to eight distinct, nonzero 256-bit hexadecimal IDs across all transaction and confidential builder callers. This tightens validation of previously accepted lists. Zero IDs are rejected offline without checking `fixCleanup3_4_0` activation.
+
+#### xrpl/websocket
+
+- Fixed AccountDelete autofill to reject outstanding sponsorship obligations with `ErrAccountHasSponsorshipObligations` and a supplied destination that does not identify the account's sponsor with `ErrAccountDeleteSponsorMismatch`.
 
 ## [v0.3.1-mpt.0]
 

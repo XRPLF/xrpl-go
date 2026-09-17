@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/confidential/mptcrypto"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 	"github.com/Peersyst/xrpl-go/pkg/mptsizes"
@@ -105,4 +106,64 @@ func Decrypt(ciphertextHex, privateKeyHex string, amountRange AmountRange) (uint
 		return 0, fmt.Errorf("%w: %w", ErrDecryptFailed, err)
 	}
 	return result, nil
+}
+
+// Add homomorphically adds two ciphertexts encrypted under the same public key, returning an
+// encryption of the sum of their plaintexts.
+func Add(firstHex, secondHex string) (string, error) {
+	return combine(firstHex, secondHex, mptcrypto.AddCiphertexts)
+}
+
+// Subtract homomorphically subtracts the second ciphertext from the first, both encrypted under
+// the same public key, returning an encryption of the difference of their plaintexts.
+func Subtract(firstHex, secondHex string) (string, error) {
+	return combine(firstHex, secondHex, mptcrypto.SubtractCiphertexts)
+}
+
+// combine decodes both hex operands, applies one of the native group operations, and re-encodes
+// the result.
+func combine(firstHex, secondHex string, op func(a, b mptcrypto.Ciphertext) (mptcrypto.Ciphertext, error)) (string, error) {
+	first, err := hexutil.DecodeFixedHex(firstHex, mptsizes.CiphertextSize)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
+	}
+	second, err := hexutil.DecodeFixedHex(secondHex, mptsizes.CiphertextSize)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalidCiphertext, err)
+	}
+
+	result, err := op(mptcrypto.Ciphertext(first), mptcrypto.Ciphertext(second))
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrCiphertextArithmetic, err)
+	}
+	return hex.EncodeToString(result[:]), nil
+}
+
+// EncryptCanonicalZero returns the deterministic encryption of zero that xrpld stores when a
+// confidential transactor initializes or resets a balance, such as the inbox a merge clears.
+// pubkeyHex: 66 hex chars (33 bytes), the key the balance is encrypted under. account is the
+// holder as a classic or X-address; both forms produce the same result. issuanceIDHex: 48 hex
+// chars (24 bytes). Returns 132 hex chars (66-byte ciphertext).
+func EncryptCanonicalZero(pubkeyHex, account, issuanceIDHex string) (string, error) {
+	pubBytes, err := hexutil.DecodeFixedHex(pubkeyHex, mptsizes.PubKeySize)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalidKey, err)
+	}
+	decoded, err := addresscodec.DecodeAddress(account)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalidAddress, err)
+	}
+	issuanceBytes, err := hexutil.DecodeFixedHex(issuanceIDHex, mptsizes.IssuanceIDSize)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalidIssuanceID, err)
+	}
+
+	var accountID [mptsizes.AccountIDSize]byte
+	copy(accountID[:], decoded.AccountID[:])
+
+	ct, err := mptcrypto.CanonicalEncryptedZero(mptcrypto.PublicKey(pubBytes), accountID, [mptsizes.IssuanceIDSize]byte(issuanceBytes))
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrEncryptFailed, err)
+	}
+	return hex.EncodeToString(ct[:]), nil
 }

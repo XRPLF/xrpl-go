@@ -184,7 +184,9 @@ if err != nil {
 fmt.Println(response.EngineResult, response.Applied)
 ```
 
-JSON input supports server autofill and client NetworkID checks. It may contain a non-empty `SigningPubKey` or unsigned `Signers` entries, but it must not contain transaction signatures. Blob input is checked for hexadecimal syntax and stays opaque so the server can validate it with its own definitions. A simulated result is not a submission guarantee because open-ledger state can change.
+The server validates all request fields, including transaction signatures, blob syntax, and `NetworkID`. The clients do not perform simulation request preflight or discover network identity for simulation. Nil requests are still rejected locally, and response validation remains enabled. `SimulateRequest.ValidateNetworkID` is deprecated and now performs only the same nil-request check as `Validate`.
+
+Supply an unsigned transaction, as required by the server. The client does not remove signatures or prevent signed input from being sent, so do not send signed transactions to an untrusted node. A simulated result is not a submission guarantee because open-ledger state can change.
 
 #### Usage
 
