@@ -61,7 +61,7 @@
 | 39 | Clawback Support | Final | `references/accounts/xls-0039.md` |
 | 49 | Multiple Signer Lists | Draft | `references/accounts/xls-0049.md` |
 | 64 | Pseudo-Account | Draft | `references/accounts/xls-0064.md` |
-| 68 | Sponsored Fees and Reserves | Draft | `references/accounts/xls-0068.md` |
+| 68 | Sponsored Fees and Reserves | Final | `references/accounts/xls-0068.md` |
 | 71 | Initial Owner Reserve Exemption | Stagnant | `references/accounts/xls-0071.md` |
 | 74 | Account Permissions | Final | `references/accounts/xls-0074.md` |
 | 75 | Permission Delegation | Final | `references/accounts/xls-0075.md` |
@@ -119,3 +119,8 @@
 | 3 | Sharing and deeplinking signed transactions | Stagnant | `references/ecosystem/xls-0003.md` |
 | 4 | Trustline Add URI | Stagnant | `references/ecosystem/xls-0004.md` |
 | 6 | Standard for Visual Account Icons | Final | `references/ecosystem/xls-0006.md` |
+
+## UNCLASSIFIED
+| XLS | Title | Status | File |
+| ----- | ------- | -------- | ------ |
+| 103 | On-Chain Cosigner | Draft | `references/UNCLASSIFIED/xls-0103.md` |
