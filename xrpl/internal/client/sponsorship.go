@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -27,14 +28,15 @@ type SponsorshipValidation struct {
 	Fee currency.Drops
 }
 
-// FetchSponsorshipEntry performs the client-specific ledger_entry lookup for the Sponsorship entry
-// between a sponsor and a sponsee.
-type FetchSponsorshipEntry func(sponsor, sponsee types.Address) (*ledgerentry.Sponsorship, error)
-
-// SponsorshipEntryRequest builds the ledger_entry request for the Sponsorship entry between a
-// sponsor and a sponsee.
-func SponsorshipEntryRequest(sponsor, sponsee types.Address) *ledgerquery.EntryRequest {
-	return &ledgerquery.EntryRequest{
+// fetchSponsorshipEntry looks up and decodes the Sponsorship entry for a sponsor and sponsee.
+// Only an error recognized by the transport's isNotFound classifier means the entry is absent.
+func fetchSponsorshipEntry(
+	ctx context.Context,
+	request RequestResultFunc,
+	isNotFound func(error) bool,
+	sponsor, sponsee types.Address,
+) (*ledgerentry.Sponsorship, error) {
+	req := &ledgerquery.EntryRequest{
 		Sponsorship: ledgerquery.SponsorshipSelector{
 			Object: &ledgerquery.SponsorshipSelectorFields{
 				Sponsor: sponsor,
@@ -46,10 +48,18 @@ func SponsorshipEntryRequest(sponsor, sponsee types.Address) *ledgerquery.EntryR
 		// ledger rippled's ledger_entry defaults to.
 		LedgerIndex: common.Current,
 	}
+	var response ledgerquery.EntryResponse
+	if err := request(ctx, req, &response); err != nil {
+		if isNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return decodeSponsorshipEntry(response.Node)
 }
 
-// DecodeSponsorshipEntry converts a ledger_entry node into a typed Sponsorship entry.
-func DecodeSponsorshipEntry(node ledgerentry.FlatLedgerObject) (*ledgerentry.Sponsorship, error) {
+// decodeSponsorshipEntry converts a ledger_entry node into a typed Sponsorship entry.
+func decodeSponsorshipEntry(node ledgerentry.FlatLedgerObject) (*ledgerentry.Sponsorship, error) {
 	entryType, _ := typecheck.ToString(node["LedgerEntryType"])
 	if ledgerentry.EntryType(entryType) != ledgerentry.SponsorshipEntry {
 		return nil, fmt.Errorf("%w: got %q", ErrSponsorshipEntryUnexpectedType, entryType)
@@ -69,10 +79,13 @@ func DecodeSponsorshipEntry(node ledgerentry.FlatLedgerObject) (*ledgerentry.Spo
 // ValidateSponsorship runs an online preflight of a sponsored transaction against the Sponsorship
 // ledger entry between its sponsor and sponsee. The sponsorship fields are first checked by the
 // same rules BaseTx.Validate applies, so this helper only adds the checks that need the ledger.
+// request and isNotFound adapt the client's transport and entryNotFound error to the shared lookup.
 func ValidateSponsorship(
+	ctx context.Context,
+	request RequestResultFunc,
+	isNotFound func(error) bool,
 	tx map[string]any,
 	estimatedFee string,
-	fetchSponsorship FetchSponsorshipEntry,
 ) (SponsorshipValidation, error) {
 	_, hasSponsor := tx["Sponsor"]
 	_, hasFlags := tx["SponsorFlags"]
@@ -96,7 +109,7 @@ func ValidateSponsorship(
 	// The shared rules above already accepted SponsorFlags as a uint32.
 	sponsorFlags, _ := typecheck.ToUint32(tx["SponsorFlags"])
 
-	entry, err := fetchSponsorship(sponsor, sponsee)
+	entry, err := fetchSponsorshipEntry(ctx, request, isNotFound, sponsor, sponsee)
 	if err != nil {
 		return SponsorshipValidation{}, err
 	}

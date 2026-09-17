@@ -5,10 +5,7 @@ import (
 	"errors"
 
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
-	ledgerentry "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
-	ledgerquery "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
-	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
 // SponsorshipValidation reports the outcome of an online sponsorship preflight.
@@ -30,26 +27,7 @@ func (c *Client) ValidateSponsorshipContext(
 	tx transaction.FlatTransaction,
 	estimatedFee string,
 ) (SponsorshipValidation, error) {
-	return clientinternal.ValidateSponsorship(tx, estimatedFee,
-		func(sponsor, sponsee types.Address) (*ledgerentry.Sponsorship, error) {
-			return c.fetchSponsorshipEntry(ctx, sponsor, sponsee)
-		},
-	)
-}
-
-// fetchSponsorshipEntry looks up the Sponsorship entry for a sponsor and sponsee.
-func (c *Client) fetchSponsorshipEntry(
-	ctx context.Context,
-	sponsor, sponsee types.Address,
-) (*ledgerentry.Sponsorship, error) {
-	var response ledgerquery.EntryResponse
-	if err := c.requestResult(ctx, clientinternal.SponsorshipEntryRequest(sponsor, sponsee), &response); err != nil {
-		if isEntryNotFoundError(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return clientinternal.DecodeSponsorshipEntry(response.Node)
+	return clientinternal.ValidateSponsorship(ctx, c.requestResultFunc(), isEntryNotFoundError, tx, estimatedFee)
 }
 
 // isEntryNotFoundError reports whether a ledger_entry request failed because the ledger has no

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -23,6 +24,9 @@ const (
 // errSponsorshipQuery stands in for a transport or permission failure raised by the client-
 // specific ledger_entry lookup.
 var errSponsorshipQuery = errors.New("ledger_entry request failed")
+
+// errSponsorshipEntryAbsent stands in for a transport's entryNotFound error.
+var errSponsorshipEntryAbsent = errors.New("entryNotFound")
 
 func sponsoredTx(sponsorFlags uint32) map[string]any {
 	return map[string]any{
@@ -88,10 +92,17 @@ func xAddress(t *testing.T, classic string, tag uint32, hasTag bool) string {
 	return address
 }
 
-func staticSponsorship(entry *ledgerentry.Sponsorship) FetchSponsorshipEntry {
-	return func(_, _ types.Address) (*ledgerentry.Sponsorship, error) {
-		return entry, nil
+func staticSponsorship(entry *ledgerentry.Sponsorship) RequestResultFunc {
+	return func(_ context.Context, _ Request, result any) error {
+		if entry == nil {
+			return errSponsorshipEntryAbsent
+		}
+		return DecodeResultInto(map[string]any{"node": entry}, result)
 	}
+}
+
+func isSponsorshipEntryAbsent(err error) bool {
+	return errors.Is(err, errSponsorshipEntryAbsent)
 }
 
 func TestValidateSponsorship(t *testing.T) {
@@ -290,7 +301,7 @@ func TestValidateSponsorship(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ValidateSponsorship(tt.tx, tt.estimatedFee, staticSponsorship(tt.entry))
+			result, err := ValidateSponsorship(t.Context(), staticSponsorship(tt.entry), isSponsorshipEntryAbsent, tt.tx, tt.estimatedFee)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectValid, result.Valid)
 			if tt.expectReason == nil {
@@ -298,7 +309,7 @@ func TestValidateSponsorship(t *testing.T) {
 			} else {
 				require.ErrorIs(t, result.Reason, tt.expectReason)
 			}
-			require.Same(t, tt.entry, result.Sponsorship)
+			require.Equal(t, tt.entry, result.Sponsorship)
 
 			expectedFee := tt.estimatedFee
 			if expectedFee == "" {
@@ -505,10 +516,11 @@ func TestValidateSponsorshipInputErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ValidateSponsorship(tt.tx, "", func(_, _ types.Address) (*ledgerentry.Sponsorship, error) {
+			request := func(context.Context, Request, any) error {
 				t.Fatal("sponsorship lookup must not run for unusable inputs")
-				return nil, nil
-			})
+				return nil
+			}
+			result, err := ValidateSponsorship(t.Context(), request, isSponsorshipEntryAbsent, tt.tx, "")
 			require.ErrorIs(t, err, tt.expectedErr)
 			require.False(t, result.Valid)
 		})
@@ -522,10 +534,13 @@ func TestValidateSponsorshipUsesDelegateAsSponsee(t *testing.T) {
 	var gotSponsor, gotSponsee types.Address
 	entry := sponsorshipEntry(0, xrpAmount(1000000), nil, nil)
 	entry.Sponsee = delegateAddress
-	result, err := ValidateSponsorship(tx, "", func(sponsor, sponsee types.Address) (*ledgerentry.Sponsorship, error) {
-		gotSponsor, gotSponsee = sponsor, sponsee
-		return entry, nil
-	})
+	request := func(ctx context.Context, req Request, result any) error {
+		entryRequest, ok := req.(*ledgerquery.EntryRequest)
+		require.True(t, ok)
+		gotSponsor, gotSponsee = entryRequest.Sponsorship.Object.Sponsor, entryRequest.Sponsorship.Object.Sponsee
+		return staticSponsorship(entry)(ctx, req, result)
+	}
+	result, err := ValidateSponsorship(t.Context(), request, isSponsorshipEntryAbsent, tx, "")
 
 	require.NoError(t, err)
 	require.True(t, result.Valid)
@@ -544,10 +559,13 @@ func TestValidateSponsorshipLooksUpClassicAddresses(t *testing.T) {
 	tx["Sponsor"] = sponsor
 
 	var gotSponsor, gotSponsee types.Address
-	result, err := ValidateSponsorship(tx, "", func(sponsor, sponsee types.Address) (*ledgerentry.Sponsorship, error) {
-		gotSponsor, gotSponsee = sponsor, sponsee
-		return sponsorshipEntry(0, xrpAmount(1000000), nil, nil), nil
-	})
+	request := func(ctx context.Context, req Request, result any) error {
+		entryRequest, ok := req.(*ledgerquery.EntryRequest)
+		require.True(t, ok)
+		gotSponsor, gotSponsee = entryRequest.Sponsorship.Object.Sponsor, entryRequest.Sponsorship.Object.Sponsee
+		return staticSponsorship(sponsorshipEntry(0, xrpAmount(1000000), nil, nil))(ctx, req, result)
+	}
+	result, err := ValidateSponsorship(t.Context(), request, isSponsorshipEntryAbsent, tx, "")
 
 	require.NoError(t, err)
 	require.True(t, result.Valid)
@@ -583,7 +601,7 @@ func TestValidateSponsorshipRejectsMismatchedEntry(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ValidateSponsorship(sponsoredTx(types.SpfSponsorFee), "", staticSponsorship(tt.entry))
+			result, err := ValidateSponsorship(t.Context(), staticSponsorship(tt.entry), isSponsorshipEntryAbsent, sponsoredTx(types.SpfSponsorFee), "")
 
 			require.ErrorIs(t, err, ErrSponsorshipEntryMismatch)
 			require.False(t, result.Valid)
@@ -593,28 +611,46 @@ func TestValidateSponsorshipRejectsMismatchedEntry(t *testing.T) {
 }
 
 func TestValidateSponsorshipPropagatesQueryErrors(t *testing.T) {
-	result, err := ValidateSponsorship(sponsoredTx(types.SpfSponsorFee), "", func(_, _ types.Address) (*ledgerentry.Sponsorship, error) {
-		return nil, errSponsorshipQuery
-	})
+	request := func(context.Context, Request, any) error {
+		return errSponsorshipQuery
+	}
+	result, err := ValidateSponsorship(t.Context(), request, isSponsorshipEntryAbsent, sponsoredTx(types.SpfSponsorFee), "")
 
 	require.ErrorIs(t, err, errSponsorshipQuery)
 	require.False(t, result.Valid)
 	require.Nil(t, result.Sponsorship)
 }
 
-func TestSponsorshipEntryRequest(t *testing.T) {
-	request := SponsorshipEntryRequest(sponsorAddress, sponseeAddress)
+// The shared lookup must preserve the caller's context and current-ledger selector.
+func TestValidateSponsorshipRequest(t *testing.T) {
+	ctx := t.Context()
+	var gotContext context.Context
+	var gotRequest Request
+	entry := sponsorshipEntry(0, xrpAmount(1000000), nil, nil)
+	request := func(ctx context.Context, req Request, result any) error {
+		gotContext, gotRequest = ctx, req
+		return staticSponsorship(entry)(ctx, req, result)
+	}
 
-	require.NoError(t, request.Validate())
-	require.Equal(t, "ledger_entry", request.Method())
-	require.Equal(t, common.Current, request.LedgerIndex)
+	result, err := ValidateSponsorship(ctx, request, isSponsorshipEntryAbsent, sponsoredTx(types.SpfSponsorFee), "")
+
+	require.NoError(t, err)
+	require.True(t, result.Valid)
+	require.Equal(t, entry, result.Sponsorship)
+	require.Same(t, ctx, gotContext)
+	entryRequest, ok := gotRequest.(*ledgerquery.EntryRequest)
+	require.True(t, ok)
+	require.NoError(t, entryRequest.Validate())
+	require.Equal(t, "ledger_entry", entryRequest.Method())
+	require.Equal(t, common.Current, entryRequest.LedgerIndex)
 	require.Equal(t, &ledgerquery.SponsorshipSelectorFields{
 		Sponsor: sponsorAddress,
 		Sponsee: sponseeAddress,
-	}, request.Sponsorship.Object)
+	}, entryRequest.Sponsorship.Object)
 }
 
-func TestDecodeSponsorshipEntry(t *testing.T) {
+// A successful transport request must still fail when its node cannot be decoded.
+func TestFetchSponsorshipEntryDecoding(t *testing.T) {
 	tests := []struct {
 		name        string
 		node        ledgerentry.FlatLedgerObject
@@ -698,7 +734,13 @@ func TestDecodeSponsorshipEntry(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			entry, err := DecodeSponsorshipEntry(tt.node)
+			request := func(_ context.Context, _ Request, result any) error {
+				response, ok := result.(*ledgerquery.EntryResponse)
+				require.True(t, ok)
+				response.Node = tt.node
+				return nil
+			}
+			entry, err := fetchSponsorshipEntry(t.Context(), request, isSponsorshipEntryAbsent, sponsorAddress, sponseeAddress)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				require.Nil(t, entry)
@@ -712,10 +754,10 @@ func TestDecodeSponsorshipEntry(t *testing.T) {
 
 func TestValidateSponsorshipReportsTheCheckedFee(t *testing.T) {
 	entry := sponsorshipEntry(0, xrpAmount(1000000), nil, nil)
-	result, err := ValidateSponsorship(sponsoredTx(types.SpfSponsorFee), "12", staticSponsorship(entry))
+	result, err := ValidateSponsorship(t.Context(), staticSponsorship(entry), isSponsorshipEntryAbsent, sponsoredTx(types.SpfSponsorFee), "12")
 
 	require.NoError(t, err)
 	require.True(t, result.Valid)
-	require.Same(t, entry, result.Sponsorship)
+	require.Equal(t, entry, result.Sponsorship)
 	require.Equal(t, 0, result.Fee.Cmp(currency.DropsFromUint64(12)))
 }

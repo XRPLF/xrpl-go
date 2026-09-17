@@ -17,20 +17,6 @@ import (
 // extra multiplier of nine, so the combined factor is ten.
 const confidentialFeeMultiplier uint64 = 10
 
-// Request is the minimal request contract the fee queries need. Its method set
-// is the union of the RPC and WebSocket client request interfaces, so a value of
-// this type is assignable to either client's request parameter.
-type Request interface {
-	Method() string
-	Validate() error
-	APIVersion() int
-	SetAPIVersion(apiVersion int)
-}
-
-// RequestResultFunc issues a request over a client's transport and decodes the
-// response result into result.
-type RequestResultFunc func(ctx context.Context, req Request, result any) error
-
 // FeeSettings carries the client fee configuration that autofill applies.
 type FeeSettings struct {
 	// Cushion multiplies the load-adjusted network fee so a transaction stays

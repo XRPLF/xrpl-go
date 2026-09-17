@@ -1,9 +1,25 @@
 package client
 
 import (
+	"context"
+
 	"github.com/Peersyst/xrpl-go/pkg/decodehook"
 	"github.com/go-viper/mapstructure/v2"
 )
+
+// Request is the request contract shared client helpers need. Its method set
+// is the union of the RPC and WebSocket client request interfaces, so a value of
+// this type is assignable to either client's request parameter.
+type Request interface {
+	Method() string
+	Validate() error
+	APIVersion() int
+	SetAPIVersion(apiVersion int)
+}
+
+// RequestResultFunc issues a request over a client's transport and decodes the
+// response result into result.
+type RequestResultFunc func(ctx context.Context, req Request, result any) error
 
 // ResponseDecoder decodes a transport response payload into a typed result.
 // Both the RPC and WebSocket client responses satisfy it.
