@@ -109,9 +109,9 @@ make test-integration-confidential-devnet
 
 [Core CI](.github/workflows/ci-core.yml) and [Confidential CI](.github/workflows/ci-confidential.yml) use GitHub's native path filters. Each workflow runs its module's tests, lint, vulnerability scan, API check, and localnet suite. Confidential also runs its four-platform native test matrix.
 
-- Core changes run core checks only.
+- Core changes run core checks only, except for the shared inputs below.
 - Confidential changes run confidential checks only. Core is built as a dependency, but its tests do not run.
-- Shared build inputs, such as `Makefile`, `.golangci.yml`, or localnet configuration, run both.
+- Shared build inputs, such as `Makefile`, `.golangci.yml`, or localnet configuration, run both. Changes to the wire-size constants in `pkg/mptsizes/` also run both, so the native bindings are checked against their headers.
 - Documentation-only changes skip Go CI. Markdown under `testdata/` is treated as a test fixture.
 
 Each workflow has a manual trigger. Run **Confidential CI** manually to check a core change against the optional helpers. Weekly vulnerability scans still check both modules.
