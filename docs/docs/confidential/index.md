@@ -7,7 +7,9 @@ sectionTopLabel: Packages
 
 ## Overview
 
-The `confidential` packages add support for XLS-96 confidential MPT workflows in `xrpl-go`.
+The optional `github.com/Peersyst/xrpl-go/confidential` module provides XLS-96 confidential MPT builders and cryptographic helpers. It depends on the core `xrpl-go` module, but core does not depend on it.
+
+See [installation and versions](/docs/confidential/installation) to choose between core-only transaction support and the optional native helpers.
 
 They cover three layers:
 
@@ -17,13 +19,16 @@ They cover three layers:
 
 ## Build requirements
 
-Confidential MPT support depends on CGo-enabled builds.
+The cryptographic helpers require cgo and a supported native toolchain. Core transaction models, codecs, and wallet signing do not require the optional module.
+
+To test the helpers from a repository checkout:
 
 ```bash
-CGO_ENABLED=1 go test ./confidential/...
+make workspace
+make test-confidential
 ```
 
-If CGo is disabled, `confidential/mptcrypto` returns `ErrCgoRequired`, which means the builder and proof helpers cannot perform the underlying cryptographic operations.
+If cgo is disabled, `confidential/mptcrypto` returns `ErrCgoRequired` for cryptographic operations. See the [native build requirements](/docs/confidential/installation#native-build-requirements) for supported platforms and the fallback behavior.
 
 ## Package map
 
@@ -101,7 +106,7 @@ Drop down to `elgamal`, `commitment`, and `proof` when you need custom transacti
 
 ## Examples
 
-`examples/confidential` in the repository holds three runnable programs:
+`confidential/examples` in the optional module holds three runnable programs:
 
 - `offline`: assembles an opt-in and an inbox merge from explicit inputs, without connecting, signing, or submitting. Use it to see what the `Prepare*` helpers produce.
 - `rpc` and `ws`: run a full lifecycle against devnet over each transport. They create a confidential-capable issuance, register the issuer key, opt two holders in, then convert, merge, send, convert back, and claw back, printing the decrypted balances at each step.

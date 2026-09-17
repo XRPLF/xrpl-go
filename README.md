@@ -15,8 +15,16 @@ See the [xrpl-go documentation](https://xrplf.github.io/xrpl-go/docs/installatio
 `xrpl-go` requires Go `1.25.13` or later.
 
 ```bash
-go get github.com/Peersyst/xrpl-go
+go get github.com/Peersyst/xrpl-go@latest
 ```
+
+Starting with core `v0.3.1`, confidential crypto helpers are an optional module. Core-only downloads exclude their native headers and libraries. Confidential transaction types, codecs, clients, and normal wallet signing remain in core.
+
+```bash
+go get github.com/Peersyst/xrpl-go/confidential@v0.1.0
+```
+
+This also selects the required core dependency. Native helpers need cgo and a supported C/C++ toolchain. See [confidential installation and versions](https://xrplf.github.io/xrpl-go/docs/confidential/installation), or [CONTRIBUTING.md](CONTRIBUTING.md) for an unreleased checkout.
 
 ## Quickstart
 
@@ -120,7 +128,7 @@ See [`examples/send-xrp/rpc`](examples/send-xrp/rpc) for a longer payment exampl
 | --- | --- |
 | `address-codec` | Encode and decode XRPL classic addresses and X-addresses |
 | `binary-codec` | Encode and decode XRPL objects and transactions in canonical binary format |
-| `confidential` | Build XLS-96 confidential MPT transactions and use CGo-backed cryptographic primitives |
+| `confidential` (optional module) | Build XLS-96 confidential MPT transactions and use cgo-backed cryptographic primitives |
 | `keypairs` | Generate seeds, derive keypairs, sign payloads, and verify signatures |
 | `xrpl/rpc` | Send JSON-RPC requests, autofill transactions, submit transactions, and fund Testnet or Devnet wallets |
 | `xrpl/websocket` | Connect to WebSocket servers, make requests, submit transactions, and subscribe to ledger streams |
@@ -142,7 +150,7 @@ The signing functionality in this repository has not been independently audited.
 
 ## Contributing
 
-Development setup, test commands, docs-site commands, and pull request guidance are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Development setup, test commands, docs-site commands, and pull request guidance are in [CONTRIBUTING.md](CONTRIBUTING.md). Independent module releases and the release picker are described in [RELEASING.md](RELEASING.md).
 
 ## Report an issue
 

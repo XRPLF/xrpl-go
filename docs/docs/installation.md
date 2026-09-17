@@ -16,20 +16,35 @@ The minimum version of Go required to use `xrpl-go` is:
 |------------|---------|
 | Go | >= 1.25.13 |
 
-## Download package
+## Install the core module
 
-Once you have Go installed and you have a Go workspace, you can download the package with the following command:
+Run this command in your application directory, which must contain a `go.mod` file. For a new application, create one with `go mod init <your-module-path>` first.
 
 ```bash
-go get github.com/Peersyst/xrpl-go
+go get github.com/Peersyst/xrpl-go@latest
 ```
 
-By running this command, the latest version of the `xrpl-go` package will be downloaded and added to your Go workspace.
+This adds the core SDK to your application's module dependencies. Core includes transactions, codecs, clients, ledger types, and wallet signing.
+
+Starting with core `v0.3.1`, confidential cryptographic helpers are a separate, optional Go module. Core-only module downloads do not contain their native headers or libraries. Confidential transaction models and normal transaction signing remain in core.
+
+## Optional confidential helpers
+
+After confidential `v0.1.0` is published, install it with:
+
+```bash
+go get github.com/Peersyst/xrpl-go/confidential@v0.1.0
+```
+
+Go also selects its required core dependency. Use this module for encryption, proof generation, confidential balance decryption, and transaction builders. It requires cgo and a supported native toolchain for cryptographic operations.
+
+See [Install confidential helpers](/docs/confidential/installation) for build requirements, version selection, updates, and migration from the combined module.
 
 ## Import and start using the SDK
 
-Once you have the package downloaded, you can import any `xrpl-go` package in your project and start working with it.
-The following example shows how to import the `xrpl` package and create a new WebSocket client to connect to the XRPL testnet chain:
+Import the packages provided by the module you selected. After adding imports, run `go mod tidy` to record the dependencies and checksums your application uses.
+
+The following example uses core packages to create a WebSocket client for XRPL testnet:
 
 ```go
 package main

@@ -1,6 +1,6 @@
 # mptcrypto
 
-`mptcrypto` is the low-level Go binding for the [XRPLF/mpt-crypto](https://github.com/XRPLF/mpt-crypto) C library used by XLS-96 Confidential MPT Transfers. It exposes EC-ElGamal encryption, Pedersen commitments, transaction context hashes, and the proof generation and verification routines required by confidential MPT transactions.
+`mptcrypto` is the low-level Go binding for the [XRPLF/mpt-crypto](https://github.com/XRPLF/mpt-crypto) C library used by XLS-96 Confidential MPT Transfers. It is part of the optional `github.com/Peersyst/xrpl-go/confidential` module. See the [module README](../README.md) for installation. It exposes EC-ElGamal encryption, Pedersen commitments, transaction context hashes, and the proof generation and verification routines required by confidential MPT transactions.
 
 This is the only package in this repository that imports `"C"`. Higher-level packages such as `confidential/elgamal`, `confidential/commitment`, and `confidential/proof` are pure Go wrappers that handle hex encoding, address decoding, and domain-specific errors.
 
@@ -26,12 +26,17 @@ Vendored headers and static libraries live under `confidential/deps/`:
 
 All other builds select `mptcrypto_nocgo.go`. The package still compiles and exposes the same API, but every operation immediately returns `ErrCgoRequired` without validating or processing its inputs. This includes builds with cgo enabled on an unsupported OS or architecture.
 
+From a repository checkout, create the local workspace before testing:
+
 ```bash
+make workspace
+cd confidential
+
 # Exercise the native implementation on a supported host.
-go test ./confidential/mptcrypto
+CGO_ENABLED=1 go test ./mptcrypto
 
 # Exercise the fallback implementation.
-CGO_ENABLED=0 go test ./confidential/mptcrypto
+CGO_ENABLED=0 go test ./mptcrypto
 ```
 
 ## Package layout

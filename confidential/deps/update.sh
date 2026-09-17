@@ -450,6 +450,7 @@ echo "Headers:"
 find "$INCLUDE_DIR" -type f -print | sort
 echo ""
 echo "Next steps:"
-echo "  go build ./confidential/mptcrypto  # fails if pkg/mptsizes drifts from the new headers"
+echo "  make workspace"
+echo "  (cd confidential && go build ./mptcrypto)  # checks core pkg/mptsizes against the new headers"
 echo "  git add -f confidential/deps/libs/ confidential/deps/include/ confidential/deps/VERSION"
 echo "  git commit -m 'feat(confidential): update vendored mpt-crypto to $VERSION'"
