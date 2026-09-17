@@ -123,7 +123,7 @@ func (tx *VaultCreate) Validate() (bool, error) {
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
-		if !ValidateHexMetadata(tx.Data.Value(), VaultCreateMaxDataLength) {
+		if !typecheck.IsHexBlob(tx.Data.Value()) || !ValidateHexMetadata(tx.Data.Value(), VaultCreateMaxDataLength) {
 			return false, ErrVaultCreateDataInvalid
 		}
 	}
@@ -153,7 +153,7 @@ func (tx *VaultCreate) Validate() (bool, error) {
 		if !flag.Contains(tx.Flags, TfVaultPrivate) {
 			return false, ErrVaultCreateDomainIDRequiresPrivateFlag
 		}
-		if !IsDomainID(*tx.DomainID) {
+		if !IsNonZeroDomainID(*tx.DomainID) {
 			return false, ErrVaultCreateDomainIDInvalid
 		}
 	}

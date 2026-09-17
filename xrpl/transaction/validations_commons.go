@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bytes"
 	"encoding/hex"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -11,13 +12,23 @@ import (
 // decodeAddressAccountID returns the AccountID represented by a classic or
 // X-address and reports whether the X-address carries a tag.
 func decodeAddressAccountID(address types.Address) (accountID []byte, hasTag bool, err error) {
-	_, accountID, err = addresscodec.DecodeClassicAddressToAccountID(address.String())
-	if err == nil {
-		return accountID, false, nil
+	decoded, err := addresscodec.DecodeAddress(address.String())
+	if err != nil {
+		return nil, false, err
 	}
+	return decoded.AccountID[:], decoded.HasTag, nil
+}
 
-	accountID, _, hasTag, _, err = addresscodec.DecodeXAddress(address.String())
-	return accountID, hasTag, err
+// sameAccountAddress compares account identity, ignoring X-address tags and network
+// prefixes. Invalid addresses are not equal. Callers retain field-specific address
+// validation and tag policies.
+func sameAccountAddress(a, b types.Address) bool {
+	aID, _, err := decodeAddressAccountID(a)
+	if err != nil {
+		return false
+	}
+	bID, _, err := decodeAddressAccountID(b)
+	return err == nil && bytes.Equal(aID, bID)
 }
 
 func decodeMPTIssuanceID(issuanceID string) ([]byte, bool) {
@@ -26,6 +37,17 @@ func decodeMPTIssuanceID(issuanceID string) ([]byte, bool) {
 		return nil, false
 	}
 	return idBytes, true
+}
+
+// mptIssuerAccountID returns the issuer AccountID encoded in the trailing bytes of
+// issuanceID. It reports false when issuanceID is not a well-formed MPT issuance ID.
+func mptIssuerAccountID(issuanceID string) ([]byte, bool) {
+	issuanceIDBytes, ok := decodeMPTIssuanceID(issuanceID)
+	if !ok {
+		return nil, false
+	}
+
+	return issuanceIDBytes[len(issuanceIDBytes)-addresscodec.AccountAddressLength:], true
 }
 
 // ValidateOptionalField validates an optional field in the transaction map.
@@ -57,15 +79,32 @@ func validateMemos(memoWrapper []types.MemoWrapper) error {
 	return nil
 }
 
-// validateSigners validates the Signers field in the transaction map.
+// maxTransactionSigners is STTx::kMaxMultiSigners in rippled 21890d9d.
+// This bounds transaction signatures, independently of SignerListSet entries.
+const maxTransactionSigners = 32
+
+// validateSigners checks entries and strict ascending decoded AccountID order.
+// Nil and empty lists are allowed here. Callers enforce required list presence.
+// Validation never sorts or otherwise changes the supplied signers.
 func validateSigners(signers []types.Signer) error {
-	// loop through each signer and validate it
+	if len(signers) > maxTransactionSigners {
+		return errTooManyTransactionSigners
+	}
+	var previous []byte
 	for _, signer := range signers {
-		isSigner, err := IsSigner(signer.SignerData)
-		if !isSigner {
+		accountID, err := validateSignerData(signer.SignerData)
+		if err != nil {
 			return err
 		}
+		if previous != nil {
+			switch bytes.Compare(previous, accountID) {
+			case 0:
+				return errDuplicateTransactionSigner
+			case 1:
+				return errUnsortedTransactionSigners
+			}
+		}
+		previous = accountID
 	}
-
 	return nil
 }

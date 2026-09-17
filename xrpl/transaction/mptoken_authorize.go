@@ -77,7 +77,7 @@ func (m *MPTokenAuthorize) Validate() (bool, error) {
 	}
 
 	// check account is not the same as the holder
-	if m.Holder != nil && m.Account.String() == m.Holder.String() {
+	if m.Holder != nil && sameAccountAddress(m.Account, *m.Holder) {
 		return false, ErrHolderAccountConflict
 	}
 

@@ -1332,10 +1332,17 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 
 // Helper function to setup test RPC client for autofill tests
 func setupTestRPCClientForAutofill(t *testing.T, mockResponses []string) *Client {
+	client, _ := setupTestRPCClientForAutofillWithRequestCount(t, mockResponses)
+	return client
+}
+
+func setupTestRPCClientForAutofillWithRequestCount(t *testing.T, mockResponses []string) (*Client, func() int) {
 	mc := &testutil.JSONRPCMockClient{}
 	responseIndex := 0
+	requestCount := 0
 
 	mc.DoFunc = func(req *http.Request) (*http.Response, error) {
+		requestCount++
 		if responseIndex < len(mockResponses) {
 			response := mockResponses[responseIndex]
 			responseIndex++
@@ -1351,7 +1358,7 @@ func setupTestRPCClientForAutofill(t *testing.T, mockResponses []string) *Client
 		WithNetworkIdentity(0, "1.12.0"),
 	)
 	require.NoError(t, err)
-	return NewClient(cfg)
+	return NewClient(cfg), func() int { return requestCount }
 }
 
 // mockFaucetProvider is a test double for common.FaucetProvider.

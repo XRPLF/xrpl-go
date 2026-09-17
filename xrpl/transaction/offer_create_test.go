@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
@@ -183,9 +184,10 @@ func TestOfferCreateFlatten(t *testing.T) {
 
 func TestOfferCreate_Validate(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    OfferCreate
-		expected bool
+		name        string
+		input       OfferCreate
+		expected    bool
+		expectedErr error
 	}{
 		{
 			name: "pass - valid OfferCreate",
@@ -222,7 +224,8 @@ func TestOfferCreate_Validate(t *testing.T) {
 					Value:    "2",
 				},
 			},
-			expected: false,
+			expected:    false,
+			expectedErr: ErrInvalidAccount,
 		},
 		{
 			name: "fail - invalid TakerGets",
@@ -245,7 +248,8 @@ func TestOfferCreate_Validate(t *testing.T) {
 					Value:    "2",
 				},
 			},
-			expected: false,
+			expected:    false,
+			expectedErr: ErrInvalidTokenFields,
 		},
 		{
 			name: "fail - invalid TakerPays",
@@ -264,7 +268,8 @@ func TestOfferCreate_Validate(t *testing.T) {
 					Value:    "",
 				},
 			},
-			expected: false,
+			expected:    false,
+			expectedErr: ErrInvalidTokenFields,
 		},
 		{
 			name: "pass - valid OfferCreate with DomainID",
@@ -304,7 +309,19 @@ func TestOfferCreate_Validate(t *testing.T) {
 					Value:    "2",
 				},
 			},
-			expected: false,
+			expected:    false,
+			expectedErr: ErrTfHybridCannotBeSetWithoutDomainID,
+		},
+		{
+			name: "fail - zero DomainID",
+			input: OfferCreate{
+				BaseTx:    BaseTx{Account: "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1", TransactionType: OfferCreateTx},
+				TakerGets: types.XRPCurrencyAmount(6000000),
+				TakerPays: types.IssuedCurrencyAmount{Issuer: "ruazs5h1qEsqpke88pcqnaseXdm6od2xc", Currency: "GKO", Value: "2"},
+				DomainID:  types.DomainID(strings.Repeat("0", 64)),
+			},
+			expected:    false,
+			expectedErr: ErrInvalidDomainID,
 		},
 		{
 			name: "fail - invalid DomainID length",
@@ -324,7 +341,8 @@ func TestOfferCreate_Validate(t *testing.T) {
 				},
 				DomainID: types.DomainID("invalid_length"),
 			},
-			expected: false,
+			expected:    false,
+			expectedErr: ErrInvalidDomainID,
 		},
 		{
 			name: "pass - hybrid flag with valid DomainID",
@@ -352,8 +370,11 @@ func TestOfferCreate_Validate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			valid, err := tt.input.Validate()
-			if valid != tt.expected {
-				t.Errorf("expected %v, got %v, error: %v", tt.expected, valid, err)
+			assert.Equal(t, tt.expected, valid)
+			if tt.expectedErr != nil {
+				assert.ErrorIs(t, err, tt.expectedErr)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}

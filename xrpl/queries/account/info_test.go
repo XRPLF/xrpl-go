@@ -1,6 +1,7 @@
 package account
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
@@ -8,7 +9,50 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/stretchr/testify/require"
 )
+
+func TestAccountInfoSponsorshipFields(t *testing.T) {
+	zero, one, maximum := uint32(0), uint32(1), uint32(4294967295)
+	tests := []struct {
+		name                            string
+		fields                          string
+		sponsored, sponsoring, accounts *uint32
+	}{
+		{name: "absent", fields: `{}`},
+		{name: "sponsored zero", fields: `{"SponsoredOwnerCount":0}`, sponsored: &zero},
+		{name: "sponsoring zero", fields: `{"SponsoringOwnerCount":0}`, sponsoring: &zero},
+		{name: "accounts zero", fields: `{"SponsoringAccountCount":0}`, accounts: &zero},
+		{name: "all counts", fields: `{"SponsoredOwnerCount":1,"SponsoringOwnerCount":4294967295,"SponsoringAccountCount":0}`, sponsored: &one, sponsoring: &maximum, accounts: &zero},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var data map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal([]byte(tt.fields), &data))
+			data["Sponsor"] = json.RawMessage(`"rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"`)
+			data["Account"] = json.RawMessage(`"r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"`)
+			data["Balance"] = json.RawMessage(`"1000000"`)
+			data["LedgerEntryType"] = json.RawMessage(`"AccountRoot"`)
+			fixture, err := json.Marshal(map[string]any{"account_data": data, "validated": true})
+			require.NoError(t, err)
+			var response InfoResponse
+			require.NoError(t, json.Unmarshal(fixture, &response))
+			require.Equal(t, types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"), response.AccountData.Sponsor)
+			require.Equal(t, tt.sponsored, response.AccountData.SponsoredOwnerCount)
+			require.Equal(t, tt.sponsoring, response.AccountData.SponsoringOwnerCount)
+			require.Equal(t, tt.accounts, response.AccountData.SponsoringAccountCount)
+			encoded, err := json.Marshal(response)
+			require.NoError(t, err)
+			var roundtrip struct {
+				AccountData map[string]json.RawMessage `json:"account_data"`
+			}
+			require.NoError(t, json.Unmarshal(encoded, &roundtrip))
+			for _, field := range []string{"Sponsor", "SponsoredOwnerCount", "SponsoringOwnerCount", "SponsoringAccountCount"} {
+				require.Equal(t, data[field], roundtrip.AccountData[field], field)
+			}
+		})
+	}
+}
 
 func TestAccountInfoRequest(t *testing.T) {
 	s := InfoRequest{
@@ -28,6 +72,41 @@ func TestAccountInfoRequest(t *testing.T) {
 }`
 	if err := testutil.Serialize(t, s, j); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestAccountInfoResponsePseudoAccountLinks(t *testing.T) {
+	const id = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+	tests := []struct {
+		name                         string
+		ammID, vaultID, loanBrokerID types.Hash256
+		linkJSON                     string
+	}{
+		{name: "ordinary account"},
+		{name: "AMM account", ammID: id, linkJSON: `,"AMMID":"` + id + `"`},
+		{name: "vault account", vaultID: id, linkJSON: `,"VaultID":"` + id + `"`},
+		{name: "loan broker account", loanBrokerID: id, linkJSON: `,"LoanBrokerID":"` + id + `"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := InfoResponse{
+				AccountData: ledger.AccountRoot{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					LedgerEntryType: ledger.AccountRootEntry,
+					AMMID:           tt.ammID,
+					VaultID:         tt.vaultID,
+					LoanBrokerID:    tt.loanBrokerID,
+				},
+				Validated: true,
+			}
+			j := `{"account_data":{"Account":"rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD","LedgerEntryType":"AccountRoot","Flags":0,"OwnerCount":0,"PreviousTxnID":"","PreviousTxnLgrSeq":0,"Sequence":0` + tt.linkJSON + `},"validated":true}`
+			encoded, err := json.Marshal(s)
+			require.NoError(t, err)
+			require.JSONEq(t, j, string(encoded))
+			var decoded InfoResponse
+			require.NoError(t, json.Unmarshal([]byte(j), &decoded))
+			require.Equal(t, s, decoded)
+		})
 	}
 }
 

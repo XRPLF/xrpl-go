@@ -48,6 +48,8 @@ type DepositPreauthObj struct {
 	PreviousTxnID types.Hash256
 	// The index of the ledger that contains the transaction that most recently modified this object.
 	PreviousTxnLgrSeq uint32
+	// The account paying this object's owner reserve. Requires the Sponsor amendment.
+	Sponsor types.Address `json:",omitempty"`
 }
 
 // EntryType returns the ledger entry type for DepositPreauthObj.

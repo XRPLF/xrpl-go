@@ -13,10 +13,15 @@ func TestLoadDefinitions(t *testing.T) {
 	require.Equal(t, int32(22), definitions.Types["Hash384"])
 	require.Equal(t, int32(23), definitions.Types["Hash512"])
 	require.Equal(t, int32(97), definitions.LedgerEntryTypes["AccountRoot"])
+	require.Equal(t, int32(144), definitions.LedgerEntryTypes["Sponsorship"])
 	require.Equal(t, int32(-399), definitions.TransactionResults["telLOCAL_ERROR"])
 	require.Equal(t, int32(-249), definitions.TransactionResults["temBAD_MPT"])
+	require.Equal(t, int32(-248), definitions.TransactionResults["temBAD_CIPHERTEXT"])
+	require.Equal(t, int32(199), definitions.TransactionResults["tecBAD_PROOF"])
 	require.Equal(t, int32(-84), definitions.TransactionResults["terLOCKED"])
+	require.Equal(t, int32(-83), definitions.TransactionResults["terNO_PERMISSION"])
 	require.Equal(t, int32(1), definitions.TransactionTypes["EscrowCreate"])
+	require.Equal(t, int32(91), definitions.TransactionTypes["SponsorshipSet"])
 	require.Equal(t, &FieldInfo{Nth: 0, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "Unknown"}, definitions.Fields["Generic"].FieldInfo)
 	require.Equal(t, &FieldInfo{Nth: 28, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "Hash256"}, definitions.Fields["NFTokenBuyOffer"].FieldInfo)
 	require.Equal(t, &FieldInfo{Nth: 16, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "UInt8"}, definitions.Fields["TickSize"].FieldInfo)
@@ -33,7 +38,7 @@ func TestLoadDefinitions(t *testing.T) {
 	require.Equal(t, int32(65537), definitions.GranularPermissions["TrustlineAuthorize"])
 	require.Equal(t, int32(1), definitions.DelegatablePermissions["Payment"])
 
-	mptFields := []struct {
+	fields := []struct {
 		name    string
 		info    *FieldInfo
 		header  *FieldHeader
@@ -63,8 +68,38 @@ func TestLoadDefinitions(t *testing.T) {
 			header:  &FieldHeader{TypeCode: 21, FieldCode: 4},
 			ordinal: 1376260,
 		},
+		{
+			name:    "BlindingFactor",
+			info:    &FieldInfo{Nth: 40, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "Hash256"},
+			header:  &FieldHeader{TypeCode: 5, FieldCode: 40},
+			ordinal: 327720,
+		},
+		{
+			name:    "AmountCommitment",
+			info:    &FieldInfo{Nth: 45, IsVLEncoded: true, IsSerialized: true, IsSigningField: true, Type: "Blob"},
+			header:  &FieldHeader{TypeCode: 7, FieldCode: 45},
+			ordinal: 458797,
+		},
+		{
+			name:    "BalanceCommitment",
+			info:    &FieldInfo{Nth: 46, IsVLEncoded: true, IsSerialized: true, IsSigningField: true, Type: "Blob"},
+			header:  &FieldHeader{TypeCode: 7, FieldCode: 46},
+			ordinal: 458798,
+		},
+		{
+			name:    "ObjectID",
+			info:    &FieldInfo{Nth: 41, IsVLEncoded: false, IsSerialized: true, IsSigningField: true, Type: "Hash256"},
+			header:  &FieldHeader{TypeCode: 5, FieldCode: 41},
+			ordinal: 327721,
+		},
+		{
+			name:    "Sponsor",
+			info:    &FieldInfo{Nth: 27, IsVLEncoded: true, IsSerialized: true, IsSigningField: true, Type: "AccountID"},
+			header:  &FieldHeader{TypeCode: 8, FieldCode: 27},
+			ordinal: 524315,
+		},
 	}
-	for _, field := range mptFields {
+	for _, field := range fields {
 		t.Run(field.name, func(t *testing.T) {
 			require.Equal(t, field.info, definitions.Fields[field.name].FieldInfo)
 			require.Equal(t, field.header, definitions.Fields[field.name].FieldHeader)

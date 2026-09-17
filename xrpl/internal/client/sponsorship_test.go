@@ -490,6 +490,21 @@ func TestDecodeSponsorshipEntry(t *testing.T) {
 			},
 		},
 		{
+			name: "reserve-only entry preserves the count without fee budget fields",
+			node: ledgerentry.FlatLedgerObject{
+				"LedgerEntryType":     "Sponsorship",
+				"Owner":               sponsorAddress,
+				"Sponsee":             sponseeAddress,
+				"RemainingOwnerCount": float64(5),
+			},
+			expected: &ledgerentry.Sponsorship{
+				LedgerEntryType:     ledgerentry.SponsorshipEntry,
+				Owner:               sponsorAddress,
+				Sponsee:             sponseeAddress,
+				RemainingOwnerCount: ownerCount(5),
+			},
+		},
+		{
 			name: "entry without optional budget fields",
 			node: ledgerentry.FlatLedgerObject{
 				"LedgerEntryType": "Sponsorship",

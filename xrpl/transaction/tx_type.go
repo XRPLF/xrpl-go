@@ -19,6 +19,11 @@ const (
 	CheckCashTx                         TxType = "CheckCash"
 	CheckCreateTx                       TxType = "CheckCreate"
 	ClawbackTx                          TxType = "Clawback"
+	ConfidentialMPTClawbackTx           TxType = "ConfidentialMPTClawback"
+	ConfidentialMPTConvertTx            TxType = "ConfidentialMPTConvert"
+	ConfidentialMPTConvertBackTx        TxType = "ConfidentialMPTConvertBack"
+	ConfidentialMPTMergeInboxTx         TxType = "ConfidentialMPTMergeInbox"
+	ConfidentialMPTSendTx               TxType = "ConfidentialMPTSend"
 	CredentialAcceptTx                  TxType = "CredentialAccept" //nolint:gosec // G101 false positive, not credentials
 	CredentialCreateTx                  TxType = "CredentialCreate" //nolint:gosec // G101 false positive, not credentials
 	CredentialDeleteTx                  TxType = "CredentialDelete" //nolint:gosec // G101 false positive, not credentials
@@ -30,6 +35,7 @@ const (
 	EscrowCreateTx                      TxType = "EscrowCreate"
 	EscrowFinishTx                      TxType = "EscrowFinish"
 	EnableAmendmentTx                   TxType = "EnableAmendment"
+	LedgerStateFixTx                    TxType = "LedgerStateFix"
 	MPTokenAuthorizeTx                  TxType = "MPTokenAuthorize"
 	MPTokenIssuanceCreateTx             TxType = "MPTokenIssuanceCreate"  //nolint:gosec // G101 false positive, not credentials
 	MPTokenIssuanceDestroyTx            TxType = "MPTokenIssuanceDestroy" //nolint:gosec // G101 false positive, not credentials
@@ -53,6 +59,8 @@ const (
 	SetFeeTx                            TxType = "SetFee"
 	SetRegularKeyTx                     TxType = "SetRegularKey"
 	SignerListSetTx                     TxType = "SignerListSet"
+	SponsorshipSetTx                    TxType = "SponsorshipSet"
+	SponsorshipTransferTx               TxType = "SponsorshipTransfer"
 	TrustSetTx                          TxType = "TrustSet"
 	TicketCreateTx                      TxType = "TicketCreate"
 	UNLModifyTx                         TxType = "UNLModify"

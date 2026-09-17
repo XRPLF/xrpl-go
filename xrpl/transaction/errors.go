@@ -3,9 +3,15 @@ package transaction
 import (
 	"errors"
 	"fmt"
+
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 )
 
 var (
+	errTooManyTransactionSigners  = errors.New("signers: at most 32 transaction signers are allowed")
+	errDuplicateTransactionSigner = errors.New("signers: duplicate account")
+	errUnsortedTransactionSigners = errors.New("signers: accounts must be sorted ascending by AccountID")
+
 	// ErrDestinationAccountConflict is returned when the Destination matches the Account.
 	ErrDestinationAccountConflict = errors.New("destination cannot be the same as the Account")
 	// ErrTransactionTypeMissing is returned when the TransactionType field is absent
@@ -16,10 +22,59 @@ var (
 	ErrInvalidFlagsValue = errors.New("invalid Flags: must be a non-negative integer that fits in uint32 ([0, 4294967295])")
 	// ErrInvalidAccount is returned when the Account field does not meet XRPL address standards.
 	ErrInvalidAccount = errors.New("invalid xrpl address for Account")
+	// ErrZeroAccountID is wrapped by the field-specific error when an address decodes to
+	// ACCOUNT_ZERO. The address is well-formed in either form, but no keypair can produce
+	// it, so the account it names can never sign.
+	ErrZeroAccountID = errors.New("address decodes to ACCOUNT_ZERO")
+	// ErrAccountZero is returned when Account decodes to ACCOUNT_ZERO. It wraps both
+	// ErrInvalidAccount and ErrZeroAccountID so a caller can match the field or the condition.
+	ErrAccountZero = fmt.Errorf("%w: %w", ErrInvalidAccount, ErrZeroAccountID)
 	// ErrInvalidDelegate is returned when the Delegate field does not meet XRPL address standards.
 	ErrInvalidDelegate = errors.New("invalid xrpl address for Delegate")
+	// ErrDelegateZero is returned when Delegate decodes to ACCOUNT_ZERO. It wraps both
+	// ErrInvalidDelegate and ErrZeroAccountID so a caller can match the field or the condition.
+	ErrDelegateZero = fmt.Errorf("%w: %w", ErrInvalidDelegate, ErrZeroAccountID)
+	// ErrDelegateTagNotAllowed is returned when Delegate is an X-address with an embedded
+	// tag. Delegate has no companion tag field to carry it. It wraps ErrInvalidDelegate and
+	// ErrAccountIDTagNotAllowed so a caller can match the field or the condition.
+	ErrDelegateTagNotAllowed = fmt.Errorf("%w: %w", ErrInvalidDelegate, ErrAccountIDTagNotAllowed)
 	// ErrDelegateAccountConflict is returned when the Delegate matches the Account.
 	ErrDelegateAccountConflict = errors.New("addresses for Account and Delegate cannot be the same")
+	// ErrPseudoTransactionSponsorship is returned when client validation rejects
+	// sponsorship fields on a consensus-generated pseudo-transaction.
+	ErrPseudoTransactionSponsorship = errors.New("pseudo-transactions cannot be sponsored")
+	// ErrSponsorFieldsMissing is returned when sponsorship fields are incomplete.
+	ErrSponsorFieldsMissing = errors.New("sponsor and nonzero SponsorFlags must be supplied together")
+	// ErrInvalidSponsor is returned when Sponsor is not a valid account address.
+	ErrInvalidSponsor = errors.New("invalid xrpl address for Sponsor")
+	// ErrSponsorZero identifies both the Sponsor field and the zero-account condition.
+	ErrSponsorZero = fmt.Errorf("%w: %w", ErrInvalidSponsor, ErrZeroAccountID)
+	// ErrSponsorTagNotAllowed identifies both the Sponsor field and the forbidden tag.
+	ErrSponsorTagNotAllowed = fmt.Errorf("%w: %w", ErrInvalidSponsor, ErrAccountIDTagNotAllowed)
+	// ErrSponsorAccountConflict is returned when Sponsor and Account identify the same account.
+	ErrSponsorAccountConflict = errors.New("sponsor and Account must be different accounts")
+	// ErrInvalidSponsorFlags is returned for malformed or unsupported sponsor flags.
+	ErrInvalidSponsorFlags = errors.New("SponsorFlags must be a nonzero uint32 containing only fee and reserve flags")
+	// ErrReserveSponsorshipNotAllowed is returned for a transaction outside the reserve allow-list.
+	ErrReserveSponsorshipNotAllowed = errors.New("reserve sponsorship is not allowed for this transaction type")
+	// ErrSponsorDelegateConflict is returned for reserve sponsorship with Delegate.
+	ErrSponsorDelegateConflict = errors.New("reserve sponsorship cannot be combined with Delegate")
+	// ErrInnerBatchFeeSponsorship is returned for fee sponsorship on an inner Batch transaction.
+	ErrInnerBatchFeeSponsorship = errors.New("inner Batch transactions cannot use fee sponsorship")
+	// ErrInvalidSponsorSignature is returned for a malformed sponsor authorization object.
+	ErrInvalidSponsorSignature = errors.New("invalid SponsorSignature")
+	// ErrInnerBatchSponsorSignature is returned when an inner sponsor signature has
+	// fields other than an optional empty SigningPubKey.
+	// It also matches ErrInvalidSponsorSignature.
+	ErrInnerBatchSponsorSignature = fmt.Errorf("%w: inner transaction permits only an optional empty SigningPubKey", ErrInvalidSponsorSignature)
+	// ErrAccountIDTagNotAllowed is returned when a tagged X-address is used in a field
+	// that has no companion tag field to carry the tag. It aliases the binary-codec
+	// sentinel so preflight and encoding report one error identity for this condition.
+	ErrAccountIDTagNotAllowed = bctypes.ErrAccountIDTagNotAllowed
+	// ErrDuplicateXAddressTag is returned when an X-address carries a tag and the matching
+	// explicit tag field is also present. It aliases the binary-codec sentinel so preflight
+	// and encoding report one error identity for this condition.
+	ErrDuplicateXAddressTag = bctypes.ErrDuplicateXAddressTag
 	// ErrInvalidCheckID is returned when the CheckID is not a valid 64-character hexadecimal string.
 	ErrInvalidCheckID = errors.New("invalid CheckID, must be a valid 64-character hexadecimal string")
 	// ErrInvalidCredentialIDs is returned when the CredentialIDs field is empty or not a valid hexadecimal string array.
@@ -114,6 +169,13 @@ var (
 	ErrSignerShouldHaveThreeFields = errors.New("signers: Signer should have 3 fields: Account, TxnSignature, SigningPubKey")
 	// ErrSignerAccountShouldBeString is returned when the Account field in a Signer is not a valid string.
 	ErrSignerAccountShouldBeString = errors.New("signers: Account should be a string")
+	// ErrSignerAccountZero is returned when the Account field in a Signer decodes to
+	// ACCOUNT_ZERO. It wraps ErrZeroAccountID so a caller can match the field or the condition.
+	ErrSignerAccountZero = fmt.Errorf("signers: Account cannot be ACCOUNT_ZERO: %w", ErrZeroAccountID)
+	// ErrSignerAccountTagNotAllowed is returned when the Account field in a Signer is an
+	// X-address with an embedded tag. It wraps ErrAccountIDTagNotAllowed so a caller can
+	// match the field or the condition.
+	ErrSignerAccountTagNotAllowed = fmt.Errorf("signers: Account X-address cannot contain a tag: %w", ErrAccountIDTagNotAllowed)
 	// ErrSignerTxnSignatureShouldBeNonEmpty is returned when TxnSignature in a Signer is empty.
 	ErrSignerTxnSignatureShouldBeNonEmpty = errors.New("signers: TxnSignature should be a non-empty string")
 	// ErrSignerSigningPubKeyShouldBeNonEmpty is returned when SigningPubKey in a Signer is empty.
@@ -157,6 +219,12 @@ var (
 
 	// ErrPartialPaymentFlagRequired is returned when the TfPartialPayment flag is required but not set.
 	ErrPartialPaymentFlagRequired = errors.New("flag TfPartialPayment required with DeliverMin")
+	// ErrSponsorCreatedAccountInvalidFlags is returned for incompatible sponsored account creation flags.
+	ErrSponsorCreatedAccountInvalidFlags = errors.New("TfSponsorCreatedAccount cannot be combined with TfRippleNotDirect, TfPartialPayment, or TfLimitQuality")
+	// ErrSponsorCreatedAccountInvalidFields is returned when sponsored account creation includes SendMax or Paths.
+	ErrSponsorCreatedAccountInvalidFields = errors.New("TfSponsorCreatedAccount cannot be combined with SendMax or Paths")
+	// ErrSponsorCreatedAccountRequiresXRP is returned when sponsored account creation uses a non-XRP Amount.
+	ErrSponsorCreatedAccountRequiresXRP = errors.New("TfSponsorCreatedAccount requires a native XRP Amount")
 
 	// ErrInvalidExpiration indicates the expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel.
 	ErrInvalidExpiration = errors.New("expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel")
@@ -235,7 +303,7 @@ var (
 	// ErrMPTIssuanceSetInvalidFlags is returned when Flags contains unsupported bits.
 	ErrMPTIssuanceSetInvalidFlags = errors.New("mptoken issuance set: Flags contains unsupported flags")
 	// ErrMPTIssuanceSetEmpty is returned when no operation is specified.
-	ErrMPTIssuanceSetEmpty = errors.New("mptoken issuance set: at least one of Flags, ImmutableFlags, MPTokenMetadata, TransferFee, or DomainID must be set")
+	ErrMPTIssuanceSetEmpty = errors.New("mptoken issuance set: at least one of Flags, ImmutableFlags, MPTokenMetadata, TransferFee, DomainID, IssuerEncryptionKey, or AuditorEncryptionKey must be set")
 	// ErrMPTIssuanceSetHolderMutuallyExclusive is returned when Holder is set together with a mutation or DomainID.
 	ErrMPTIssuanceSetHolderMutuallyExclusive = errors.New("mptoken issuance set: Holder is mutually exclusive with capability flags/ImmutableFlags/MPTokenMetadata/TransferFee/DomainID")
 	// ErrMPTIssuanceSetFlagsMutuallyExclusive is returned when lock or unlock is set together with a mutation.
@@ -246,8 +314,14 @@ var (
 	ErrMPTIssuanceSetInvalidImmutableFlags = errors.New("mptoken issuance set: ImmutableFlags contains unsupported flags")
 	// ErrMPTIssuanceSetTransferFeeWithConfidentialBalance is returned when a non-zero transfer fee is enabled with confidential balances.
 	ErrMPTIssuanceSetTransferFeeWithConfidentialBalance = errors.New("mptoken issuance set: TransferFee cannot be non-zero when TfMPTSetCanHoldConfidentialBalance is set")
-	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string (and not empty).
-	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string or empty")
+	// ErrMPTIssuanceSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
+	ErrMPTIssuanceSetDomainIDInvalid = errors.New("mptoken issuance set: DomainID must be a valid 64-character hexadecimal string")
+	// ErrMPTIssuanceSetKeyConflict is returned when encryption keys are set together with Holder.
+	ErrMPTIssuanceSetKeyConflict = errors.New("mptoken issuance set: encryption keys cannot be set together with Holder")
+	// ErrMPTIssuanceSetAuditorRequiresIssuerKey is returned when AuditorEncryptionKey is set without IssuerEncryptionKey.
+	ErrMPTIssuanceSetAuditorRequiresIssuerKey = errors.New("mptoken issuance set: AuditorEncryptionKey requires IssuerEncryptionKey to be set")
+	// ErrMPTIssuanceSetInvalidEncryptionKey is returned when an encryption key is not a valid compressed secp256k1 point.
+	ErrMPTIssuanceSetInvalidEncryptionKey = errors.New("mptoken issuance set: encryption key must be a valid 33-byte compressed secp256k1 point")
 
 	// escrow
 
@@ -331,7 +405,8 @@ var (
 	// ErrClawbackInvalidHolder is returned when Holder is not a valid XRPL address.
 	ErrClawbackInvalidHolder = errors.New("clawback: invalid Holder")
 	// ErrClawbackHolderTagNotAllowed is returned when Holder is an X-address with an embedded tag.
-	ErrClawbackHolderTagNotAllowed = errors.New("clawback: Holder X-address cannot contain a tag")
+	// It wraps ErrAccountIDTagNotAllowed so a caller can match the field or the condition.
+	ErrClawbackHolderTagNotAllowed = fmt.Errorf("clawback: Holder X-address cannot contain a tag: %w", ErrAccountIDTagNotAllowed)
 	// ErrClawbackSameAccount is returned when an IOU clawback issuer targets itself as the holder.
 	ErrClawbackSameAccount = errors.New("clawback: Account and Amount.issuer cannot be the same")
 	// ErrClawbackSameHolder is returned when an MPT clawback issuer targets itself as the holder.
@@ -569,6 +644,66 @@ var (
 	ErrVaultClawbackHolderRequired = errors.New("vaultClawback: Holder is required")
 	// ErrVaultClawbackHolderInvalid is returned when Holder is not a valid XRPL address.
 	ErrVaultClawbackHolderInvalid = errors.New("vaultClawback: Holder must be a valid XRPL address")
+
+	// confidential mpt
+
+	// ErrConfidentialMPTInvalidIssuanceID is returned when MPTokenIssuanceID is not an exact 24-byte hexadecimal value.
+	ErrConfidentialMPTInvalidIssuanceID = errors.New("confidential MPT: MPTokenIssuanceID must be exactly 48 hex characters")
+	// ErrConfidentialMPTInvalidFlags is returned when a confidential MPT transaction sets transaction-specific flags.
+	// XLS-96 defines no transaction-specific flags for these transaction types.
+	ErrConfidentialMPTInvalidFlags = errors.New("confidential MPT: unsupported transaction flags")
+	// ErrConfidentialMPTInvalidAmount is returned when MPTAmount exceeds the protocol maximum.
+	ErrConfidentialMPTInvalidAmount = errors.New("confidential MPT: MPTAmount must not exceed 9223372036854775807")
+	// ErrConfidentialMPTIssuerNotAllowed is returned when the issuance issuer occupies a holder role.
+	// XLS-96 forbids the issuer from holding a confidential balance of its own issuance.
+	ErrConfidentialMPTIssuerNotAllowed = errors.New("confidential MPT: account cannot be the issuance issuer")
+	// ErrConfidentialMPTIssuerRequired is returned when an issuer-only confidential MPT transaction is submitted by another account.
+	ErrConfidentialMPTIssuerRequired = errors.New("confidential MPT: Account must be the issuance issuer")
+	// ErrConfidentialClawbackInvalidHolder is returned when the Holder address is invalid on a confidential MPT clawback.
+	ErrConfidentialClawbackInvalidHolder = errors.New("confidential MPT clawback: invalid Holder address")
+	// ErrConfidentialClawbackSelfClawback is returned when the Holder is the same as the Account on a confidential MPT clawback.
+	ErrConfidentialClawbackSelfClawback = errors.New("confidential MPT clawback: Holder cannot be the same as Account")
+	// ErrConfidentialClawbackHolderTagNotAllowed is returned when Holder is an X-address with an embedded tag.
+	// It wraps ErrAccountIDTagNotAllowed so a caller can match the field or the condition.
+	ErrConfidentialClawbackHolderTagNotAllowed = fmt.Errorf("confidential MPT clawback: Holder X-address cannot contain a tag: %w", ErrAccountIDTagNotAllowed)
+	// ErrConfidentialClawbackInvalidAmount is returned when MPTAmount is outside the valid non-zero protocol range.
+	ErrConfidentialClawbackInvalidAmount = errors.New("confidential MPT clawback: MPTAmount must be between 1 and 9223372036854775807")
+	// ErrConfidentialClawbackBadProof is returned when ZKProof does not match the required clawback proof length.
+	ErrConfidentialClawbackBadProof = errors.New("confidential MPT clawback: ZKProof must be 128 hex characters (64-byte compact clawback proof)")
+
+	// ErrConfidentialConvertKeyProofMismatch is returned when HolderEncryptionKey and ZKProof are not both present or both absent.
+	ErrConfidentialConvertKeyProofMismatch = errors.New("confidential MPT convert: HolderEncryptionKey and ZKProof must both be present or both absent")
+	// ErrConfidentialConvertInvalidEncryptionKey is returned when HolderEncryptionKey is not a valid compressed secp256k1 point.
+	ErrConfidentialConvertInvalidEncryptionKey = errors.New("confidential MPT convert: HolderEncryptionKey must be a valid 33-byte compressed secp256k1 point")
+	// ErrConfidentialConvertInvalidProofLength is returned when ZKProof is not 128 hex characters.
+	ErrConfidentialConvertInvalidProofLength = errors.New("confidential MPT convert: ZKProof must be 128 hex characters (64-byte Schnorr PoK)")
+	// ErrConfidentialConvertInvalidBlindingFactor is returned when BlindingFactor is not 64 hex characters.
+	ErrConfidentialConvertInvalidBlindingFactor = errors.New("confidential MPT convert: BlindingFactor must be 64 hex characters (32 bytes)")
+	// ErrConfidentialConvertInvalidCiphertext is returned when a convert ciphertext is not valid.
+	ErrConfidentialConvertInvalidCiphertext = errors.New("confidential MPT convert: encrypted amounts must be valid 66-byte ElGamal ciphertexts with two compressed secp256k1 points")
+	// ErrConfidentialConvertBackInvalidAmount is returned when MPTAmount is outside the valid non-zero protocol range.
+	ErrConfidentialConvertBackInvalidAmount = errors.New("confidential MPT convert back: MPTAmount must be between 1 and 9223372036854775807")
+	// ErrConfidentialConvertBackInvalidBlindingFactor is returned when BlindingFactor is not 64 hex characters on a convert back.
+	ErrConfidentialConvertBackInvalidBlindingFactor = errors.New("confidential MPT convert back: BlindingFactor must be 64 hex characters (32 bytes)")
+	// ErrConfidentialConvertBackInvalidCiphertext is returned when a ciphertext field is not valid on a convert back.
+	ErrConfidentialConvertBackInvalidCiphertext = errors.New("confidential MPT convert back: encrypted amounts must be valid 66-byte ElGamal ciphertexts with two compressed secp256k1 points")
+	// ErrConfidentialConvertBackInvalidCommitment is returned when BalanceCommitment is not valid on a convert back.
+	ErrConfidentialConvertBackInvalidCommitment = errors.New("confidential MPT convert back: BalanceCommitment must be a valid 33-byte compressed secp256k1 point")
+	// ErrConfidentialConvertBackInvalidProof is returned when ZKProof does not match the required convert-back proof length.
+	ErrConfidentialConvertBackInvalidProof = errors.New("confidential MPT convert back: ZKProof must be 1632 hex characters (816-byte proof bundle)")
+	// ErrConfidentialSendInvalidDestination is returned when the Destination address is invalid.
+	ErrConfidentialSendInvalidDestination = errors.New("confidential MPT send: invalid Destination address")
+	// ErrConfidentialSendSelfSend is returned when Destination is the same as Account.
+	ErrConfidentialSendSelfSend = errors.New("confidential MPT send: Destination cannot be the same as Account")
+	// ErrConfidentialSendDestinationIsIssuer is returned when Destination is the issuance issuer.
+	// XLS-96 forbids the issuer from holding a confidential balance of its own issuance.
+	ErrConfidentialSendDestinationIsIssuer = errors.New("confidential MPT send: Destination cannot be the issuance issuer")
+	// ErrConfidentialSendInvalidCiphertext is returned when a send ciphertext is not valid.
+	ErrConfidentialSendInvalidCiphertext = errors.New("confidential MPT send: encrypted amounts must be valid 66-byte ElGamal ciphertexts with two compressed secp256k1 points")
+	// ErrConfidentialSendInvalidCommitment is returned when a send commitment is not valid.
+	ErrConfidentialSendInvalidCommitment = errors.New("confidential MPT send: commitments must be valid 33-byte compressed secp256k1 points")
+	// ErrConfidentialSendInvalidProof is returned when ZKProof does not match the required send proof length.
+	ErrConfidentialSendInvalidProof = errors.New("confidential MPT send: ZKProof must be 1892 hex characters (946-byte proof bundle)")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.

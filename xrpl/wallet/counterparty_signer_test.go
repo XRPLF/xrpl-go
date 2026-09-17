@@ -2,11 +2,14 @@ package wallet
 
 import (
 	"bytes"
+	"encoding/hex"
 	"maps"
 	"testing"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
+	"github.com/Peersyst/xrpl-go/keypairs"
+	"github.com/Peersyst/xrpl-go/xrpl/hash"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,9 +17,11 @@ import (
 
 // Fixed seeds used across all counterparty tests.
 const (
-	brokerSeed        = "sEdTCFHBquP36KursdZ17ZiuZenJZHg" // rPZsMhM7jNaixFiiipWUuDPifUXCVNYfb6
-	counterpartySeed  = "sEd7HmQFsoyj5TAm6d98gytM9LJA1MF" // rJCxK2hX9tDMzbnn3cg1GU2g19Kfmhzxkp
-	counterparty2Seed = "sEdStM1pngFcLQqVfH3RQcg2Qr6ov9e" // rwRNeznwHzdfYeKWpevYmax2NSDioyeEtT
+	brokerSeed                  = "sEdTCFHBquP36KursdZ17ZiuZenJZHg" // rPZsMhM7jNaixFiiipWUuDPifUXCVNYfb6
+	counterpartySeed            = "sEd7HmQFsoyj5TAm6d98gytM9LJA1MF" // rJCxK2hX9tDMzbnn3cg1GU2g19Kfmhzxkp
+	counterparty2Seed           = "sEdStM1pngFcLQqVfH3RQcg2Qr6ov9e" // rwRNeznwHzdfYeKWpevYmax2NSDioyeEtT
+	counterpartySecp256k1Seed   = "snoPBrXtMeMyMHUVTgbuqAfg1SUTb"
+	counterpartyOverrideAccount = "rwRNeznwHzdfYeKWpevYmax2NSDioyeEtT"
 )
 
 // buildBrokerSignedLoanSet returns a minimal LoanSet already signed by the broker (single-sign).
@@ -311,4 +316,109 @@ func TestCombineLoanSetCounterpartySignersBlob(t *testing.T) {
 		_, _, err := CombineLoanSetCounterpartySignersBlob([]string{"not-valid-hex"})
 		require.Error(t, err)
 	})
+}
+
+// Role-specific signatures require fixCleanup3_4_0 on the target network.
+func TestCounterpartySingleSigningRole(t *testing.T) {
+	tests := []struct {
+		name string
+		seed string
+	}{
+		{name: "ed25519", seed: counterpartySeed},
+		{name: "secp256k1", seed: counterpartySecp256k1Seed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			counterparty, err := FromSeed(tt.seed, "")
+			require.NoError(t, err)
+			brokerTx := buildBrokerSignedLoanSet(t)
+			brokerBlob, err := binarycodec.Encode(brokerTx)
+			require.NoError(t, err)
+
+			signedTx, blob, txHash, err := SignLoanSetByCounterpartyBlob(counterparty, brokerBlob, nil)
+			require.NoError(t, err)
+
+			counterpartySignature := signedTx["CounterpartySignature"].(map[string]any)
+			require.Equal(t, counterparty.PublicKey, counterpartySignature["SigningPubKey"])
+			rolePayload, err := binarycodec.EncodeForSigningCounterparty(signedTx)
+			require.NoError(t, err)
+			transactionPayload, err := binarycodec.EncodeForSigning(signedTx)
+			require.NoError(t, err)
+			requireCounterpartySignatureRole(t, counterparty.PublicKey, counterpartySignature["TxnSignature"].(string), rolePayload, transactionPayload)
+			requireCounterpartySigningResult(t, brokerTx, signedTx, blob, txHash)
+		})
+	}
+}
+
+func TestCounterpartyMultisigningRole(t *testing.T) {
+	tests := []struct {
+		name            string
+		seed            string
+		overrideAccount string
+	}{
+		{name: "ed25519", seed: counterpartySeed},
+		{name: "secp256k1", seed: counterpartySecp256k1Seed},
+		{name: "ed25519 account override", seed: counterpartySeed, overrideAccount: counterpartyOverrideAccount},
+		{name: "secp256k1 account override", seed: counterpartySecp256k1Seed, overrideAccount: counterpartyOverrideAccount},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			counterparty, err := FromSeed(tt.seed, "")
+			require.NoError(t, err)
+			signerAccount := counterparty.ClassicAddress.String()
+			if tt.overrideAccount != "" {
+				signerAccount = tt.overrideAccount
+			}
+			brokerTx := buildBrokerSignedLoanSet(t)
+			brokerBlob, err := binarycodec.Encode(brokerTx)
+			require.NoError(t, err)
+			options := &SignLoanSetByCounterpartyOptions{
+				Multisign:        true,
+				MultisignAccount: tt.overrideAccount,
+			}
+
+			signedTx, blob, txHash, err := SignLoanSetByCounterpartyBlob(counterparty, brokerBlob, options)
+			require.NoError(t, err)
+
+			counterpartySignature := signedTx["CounterpartySignature"].(map[string]any)
+			signers := counterpartySignature["Signers"].([]any)
+			require.Len(t, signers, 1)
+			signer := signers[0].(map[string]any)["Signer"].(map[string]any)
+			require.Equal(t, signerAccount, signer["Account"])
+			require.Equal(t, counterparty.PublicKey, signer["SigningPubKey"])
+			rolePayload, err := binarycodec.EncodeForMultisigningCounterparty(signedTx, signerAccount)
+			require.NoError(t, err)
+			transactionPayload, err := binarycodec.EncodeForMultisigning(signedTx, signerAccount)
+			require.NoError(t, err)
+			requireCounterpartySignatureRole(t, counterparty.PublicKey, signer["TxnSignature"].(string), rolePayload, transactionPayload)
+			requireCounterpartySigningResult(t, brokerTx, signedTx, blob, txHash)
+		})
+	}
+}
+
+func requireCounterpartySignatureRole(t *testing.T, publicKey, signature, rolePayload, transactionPayload string) {
+	t.Helper()
+	roleBytes, err := hex.DecodeString(rolePayload)
+	require.NoError(t, err)
+	valid, err := keypairs.Validate(string(roleBytes), publicKey, signature)
+	require.NoError(t, err)
+	require.True(t, valid, "signature must verify for the counterparty role")
+
+	transactionBytes, err := hex.DecodeString(transactionPayload)
+	require.NoError(t, err)
+	valid, err = keypairs.Validate(string(transactionBytes), publicKey, signature)
+	require.NoError(t, err)
+	require.False(t, valid, "counterparty signature must not verify as an ordinary transaction signature")
+}
+
+func requireCounterpartySigningResult(t *testing.T, brokerTx, signedTx transaction.FlatTransaction, blob, txHash string) {
+	t.Helper()
+	require.Equal(t, brokerTx["SigningPubKey"], signedTx["SigningPubKey"])
+	require.Equal(t, brokerTx["TxnSignature"], signedTx["TxnSignature"])
+	encoded, err := binarycodec.Encode(signedTx)
+	require.NoError(t, err)
+	require.Equal(t, blob, encoded)
+	expectedHash, err := hash.SignTxBlob(blob)
+	require.NoError(t, err)
+	require.Equal(t, expectedHash, txHash)
 }
