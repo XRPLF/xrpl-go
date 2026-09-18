@@ -1,16 +1,16 @@
-# queries
+# Request and response types
 
-## Overview
+The Go package is named `xrpl/queries`, but it does not send network requests itself. It defines the types you pass to client methods and the responses those methods return.
 
-The `queries` package contains mainly request and response types for the [XRPL methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods). This package is used by the package clients [`rpc`](/docs/xrpl/rpc) and [`websocket`](/docs/xrpl/websocket) to send client queries to the ledger.
+- **Request types** specify what to ask the server, such as an account address and ledger version.
+- **Response types** describe the returned data, such as account details or transaction results.
+- **Clients** send the request and decode the response. Choose [JSON-RPC](/docs/xrpl/rpc) or [WebSocket](/docs/xrpl/websocket) for the connection.
 
-:::info
+For example, pass an `account.InfoRequest` to `client.GetAccountInfo()` to receive an `account.InfoResponse`. The types belong to `xrpl/queries/account`, while the method belongs to the client.
 
-As a developer, you may be interested in calling the queries using the [`websocket`](/docs/xrpl/websocket) or [`rpc`](/docs/xrpl/rpc) clients. Both clients expose methods to call each query exposed by the `queries` package.
+## Package categories
 
-:::
-
-Queries are grouped by different categories or packages:
+Request and response types are grouped by [XRPL API](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods) category:
 
 - `account`: Methods to work with account info.
 - `channel`: Methods to work with channels.
