@@ -1,8 +1,3 @@
----
-sidebar_position: 8
-sectionTopLabel: Migration
----
-
 # Upgrade from v0.1.x to v0.2.0
 
 This guide covers the source changes most likely to affect applications upgrading from `v0.1.x` to `v0.2.0`.

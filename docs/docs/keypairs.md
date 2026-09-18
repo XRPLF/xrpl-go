@@ -1,10 +1,4 @@
----
-sidebar_position: 5
-pagination_next: xrpl/currency
-sectionTopLabel: Packages
----
-
-# keypairs
+# Keypairs
 
 ## Introduction
 

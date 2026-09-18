@@ -1,7 +1,3 @@
----
-sidebar_position: 9
----
-
 # Upgrade from v0.2.0 to v0.3.0
 
 This guide covers the source and behavior changes that are most likely to affect applications that upgrade from `v0.2.0` to `v0.3.0`. See the [v0.3.0 changelog](/changelog/v0.3.x/v0_3_0) for the complete list.
