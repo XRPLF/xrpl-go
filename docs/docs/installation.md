@@ -1,7 +1,3 @@
----
-sidebar_position: 2
----
-
 # Installation
 
 Install the core SDK for transactions, queries, and wallet signing. Add the optional confidential module only when you need its builders or cryptographic helpers.

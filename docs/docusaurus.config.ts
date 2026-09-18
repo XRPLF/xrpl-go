@@ -46,9 +46,6 @@ const config: Config = {
 				docs: {
 					sidebarPath: require.resolve("./sidebars.ts"),
 					editUrl: "https://github.com/XRPLF/xrpl-go/tree/main/docs",
-
-					// Custom sidebar items generator check /src/theme/sidebar/sidebarLabelGenerator.ts
-					sidebarItemsGenerator: sidebarLabelGenerator,
 				},
 				blog: false,
 				theme: {
@@ -139,10 +136,10 @@ const config: Config = {
 			style: "dark",
 			links: [
 				{
-					title: "Docs",
+					title: "Learn",
 					items: [
 						{
-							label: "Getting Started",
+							label: "Getting started",
 							to: "/docs/intro",
 						},
 						{
@@ -150,12 +147,21 @@ const config: Config = {
 							to: "/docs/installation",
 						},
 						{
-							label: "keypairs",
-							to: "/docs/keypairs",
+							label: "Wallets and signing",
+							to: "/docs/xrpl/wallet",
 						},
 						{
-							label: "xrpl",
-							to: "/docs/xrpl/currency",
+							label: "Confidential transfers",
+							to: "/docs/confidential",
+						},
+					],
+				},
+				{
+					title: "Reference",
+					items: [
+						{
+							label: "Go API",
+							href: "https://pkg.go.dev/github.com/Peersyst/xrpl-go",
 						},
 						{
 							label: "Core changelog",
@@ -168,15 +174,15 @@ const config: Config = {
 					],
 				},
 				{
-					title: "More",
+					title: "Project",
 					items: [
 						{
 							label: "GitHub",
 							href: "https://github.com/XRPLF/xrpl-go",
 						},
 						{
-							label: "Reference",
-							href: "https://pkg.go.dev/github.com/Peersyst/xrpl-go",
+							label: "Contributing",
+							href: "https://github.com/XRPLF/xrpl-go/blob/main/CONTRIBUTING.md",
 						},
 					],
 				},

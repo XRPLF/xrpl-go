@@ -1,7 +1,3 @@
----
-sidebar_position: 2
----
-
 # Install confidential helpers
 
 Starting with core `v0.3.1`, `xrpl-go` has two Go modules in one repository. The optional confidential module starts at `v0.1.0`. Their versions and releases are independent.

@@ -1,8 +1,3 @@
----
-sidebar_position: 1
-sectionTopLabel: Introduction
----
-
 # Getting started
 
 Build Go applications on the [XRP Ledger](https://xrpl.org/). Query the ledger, manage wallets, and sign and submit transactions with typed Go models.
