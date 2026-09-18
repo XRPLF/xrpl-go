@@ -22,6 +22,7 @@ func main() {
 
 	client := rpc.NewClient(cfg)
 
+	fmt.Println("⏳ Fetching account transactions...")
 	txs, err := client.GetAccountTransactions(&account.TransactionsRequest{
 		Account:     "rMCcNuTcajgw7YTgBy1sys3b89QqjUrMpH",
 		LedgerIndex: common.LedgerIndex(4976692),
@@ -31,6 +32,6 @@ func main() {
 		return
 	}
 
-	fmt.Println("Number of transactions:", len(txs.Transactions))
+	fmt.Println("✅ Number of transactions:", len(txs.Transactions))
 	fmt.Println(txs.Transactions[0].Tx)
 }

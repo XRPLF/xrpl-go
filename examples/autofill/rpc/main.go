@@ -78,12 +78,13 @@ func main() {
 
 	tx := payment.Flatten()
 
-	fmt.Println("Transaction before autofill", tx)
+	fmt.Println("📄 Transaction before autofill:", tx)
+	fmt.Println("⏳ Autofilling transaction...")
 
 	err = client.Autofill(&tx)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Transaction after autofill", tx)
+	fmt.Println("✅ Transaction after autofill:", tx)
 }

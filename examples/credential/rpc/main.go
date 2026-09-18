@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Peersyst/xrpl-go/examples/clients"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	"github.com/Peersyst/xrpl-go/xrpl/rpc"
+	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	rippleTime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -16,7 +18,15 @@ import (
 
 func main() {
 	// As of February 2025, Credential is only available on Devnet.
-	client := clients.GetDevnetRPCClient()
+	cfg, err := rpc.NewClientConfig(
+		"https://s.devnet.rippletest.net:51234",
+		rpc.WithFaucetProvider(faucet.NewDevnetFaucetProvider()),
+	)
+	if err != nil {
+		fmt.Println("❌ Error configuring client:", err)
+		return
+	}
+	client := rpc.NewClient(cfg)
 
 	// Configure wallets
 
@@ -80,7 +90,10 @@ func main() {
 		URI:            hex.EncodeToString([]byte("https://example.com")),
 	}
 
-	clients.SubmitTxBlobAndWait(client, txn, issuer)
+	if err := submitAndWait(client, txn.Flatten(), issuer); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
 
 	// -----------------------------------------------------
 
@@ -95,7 +108,10 @@ func main() {
 		Issuer:         types.Address(issuer.ClassicAddress),
 	}
 
-	clients.SubmitTxBlobAndWait(client, acceptTxn, subjectWallet)
+	if err := submitAndWait(client, acceptTxn.Flatten(), subjectWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
 
 	// -----------------------------------------------------
 
@@ -111,5 +127,27 @@ func main() {
 		Subject:        types.Address(subjectWallet.ClassicAddress),
 	}
 
-	clients.SubmitTxBlobAndWait(client, deleteTxn, issuer)
+	if err := submitAndWait(client, deleteTxn.Flatten(), issuer); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+}
+
+// submitAndWait autofills, signs, and submits one transaction.
+func submitAndWait(client *rpc.Client, tx transaction.FlatTransaction, signer wallet.Wallet) error {
+	fmt.Printf("⏳ Submitting %s transaction...\n", tx["TransactionType"])
+	response, err := client.SubmitTxAndWait(tx, &rpctypes.SubmitOptions{
+		Autofill: true,
+		Wallet:   &signer,
+	})
+	if err != nil {
+		return fmt.Errorf("submit %s: %w", tx["TransactionType"], err)
+	}
+	if !response.Validated || response.Meta.TransactionResult != transaction.TesSUCCESS.String() {
+		return fmt.Errorf("%s: validated=%t, result=%s", tx["TransactionType"], response.Validated, response.Meta.TransactionResult)
+	}
+	fmt.Printf("✅ %s transaction submitted\n", tx["TransactionType"])
+	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
+	fmt.Println()
+	return nil
 }

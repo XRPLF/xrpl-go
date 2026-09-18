@@ -25,13 +25,13 @@ func main() {
 		}
 	}()
 
-	fmt.Println("Connecting to server...")
+	fmt.Println("⏳ Connecting to server...")
 	if err := client.Connect(); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Println("Setting up wallet...")
+	fmt.Println("⏳ Setting up wallet...")
 	w, err := wallet.New(crypto.ED25519())
 	if err != nil {
 		fmt.Printf("Error creating wallet: %s\n", err)
@@ -41,8 +41,8 @@ func main() {
 		fmt.Printf("Error funding wallet: %s\n", err)
 		return
 	}
-	fmt.Println("Wallet funded!")
-	fmt.Println("Wallet:", w.ClassicAddress)
+	fmt.Println("💸 Wallet funded!")
+	fmt.Println("💳 Wallet:", w.ClassicAddress)
 	fmt.Println()
 
 	submitOpts := &wstypes.SubmitOptions{
@@ -53,7 +53,7 @@ func main() {
 	//
 	// Create an XRP vault
 	//
-	fmt.Println("Creating XRP vault...")
+	fmt.Println("⏳ Creating XRP vault...")
 	vaultCreate := &transactions.VaultCreate{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
@@ -74,7 +74,7 @@ func main() {
 		return
 	}
 
-	fmt.Println("Vault created!")
+	fmt.Println("✅ Vault created!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
@@ -91,13 +91,13 @@ func main() {
 		fmt.Println("Vault ID not found in metadata")
 		return
 	}
-	fmt.Printf("VaultID: %s\n", vaultID)
+	fmt.Printf("🌐 VaultID: %s\n", vaultID)
 	fmt.Println()
 
 	//
 	// Deposit into the vault
 	//
-	fmt.Println("Depositing 1000000 drops into vault...")
+	fmt.Println("⏳ Depositing 1000000 drops into vault...")
 	vaultDeposit := &transactions.VaultDeposit{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
@@ -117,14 +117,14 @@ func main() {
 		return
 	}
 
-	fmt.Println("Deposit successful!")
+	fmt.Println("✅ Deposit successful!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
 	//
 	// Update vault settings
 	//
-	fmt.Println("Updating vault settings...")
+	fmt.Println("⏳ Updating vault settings...")
 	data := types.Data("DEADBEEF")
 	vaultSet := &transactions.VaultSet{
 		BaseTx: transactions.BaseTx{
@@ -145,14 +145,14 @@ func main() {
 		return
 	}
 
-	fmt.Println("Vault settings updated!")
+	fmt.Println("✅ Vault settings updated!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
 	//
 	// Withdraw from the vault
 	//
-	fmt.Println("Withdrawing 1000000 drops from vault...")
+	fmt.Println("⏳ Withdrawing 1000000 drops from vault...")
 	vaultWithdraw := &transactions.VaultWithdraw{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
@@ -172,14 +172,14 @@ func main() {
 		return
 	}
 
-	fmt.Println("Withdrawal successful!")
+	fmt.Println("✅ Withdrawal successful!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
 	//
 	// Delete the vault
 	//
-	fmt.Println("Deleting vault...")
+	fmt.Println("⏳ Deleting vault...")
 	vaultDelete := &transactions.VaultDelete{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
@@ -198,7 +198,7 @@ func main() {
 		return
 	}
 
-	fmt.Println("Vault deleted!")
+	fmt.Println("✅ Vault deleted!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 }
