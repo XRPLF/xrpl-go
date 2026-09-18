@@ -34,7 +34,7 @@ If cgo is disabled, `confidential/mptcrypto` returns `ErrCgoRequired` for crypto
 | `confidential/elgamal` | Generate encryption keys and encrypt or decrypt amounts |
 | `confidential/commitment` | Create Pedersen commitments |
 | `confidential/proof` | Generate and verify proofs and transaction context hashes |
-| [`confidential/mptcrypto`](https://github.com/XRPLF/xrpl-go/blob/main/confidential/mptcrypto/README.md) | Low-level cgo bindings to `XRPLF/mpt-crypto` |
+| [`confidential/mptcrypto`](/docs/confidential/mptcrypto) | Low-level native API, data types, proof contracts, and errors |
 
 ### `confidential/elgamal`
 

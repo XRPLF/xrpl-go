@@ -32,7 +32,7 @@ Confidential transaction models and ledger fields remain in core. Your applicati
 
 ## Optional confidential helpers
 
-The first independent confidential release is `v0.1.0` and requires core `v0.3.1` or later. Once both releases are published, install it with:
+The first independent confidential release is `v0.1.0` and requires core `v0.3.1` or later.
 
 ```bash
 go get github.com/Peersyst/xrpl-go/confidential@v0.1.0
@@ -42,7 +42,7 @@ Go also selects the required core dependency. Package import paths remain unchan
 
 Native operations require cgo and a C/C++ toolchain on Linux or macOS with amd64 or arm64. Linux also needs the zlib development library. With cgo disabled or on unsupported targets, packages compile but native operations return `mptcrypto.ErrCgoRequired`.
 
-See [Install confidential helpers](/docs/confidential/installation) for build requirements, version selection, updates, and migration from the combined module. Before the release tags are available, use the [development workspace](/docs/confidential/installation#development-workspace).
+See [Install confidential helpers](/docs/confidential/installation) for build requirements, version selection, updates, and migration from the combined module.
 
 ## Import and start using the SDK
 
@@ -77,7 +77,7 @@ func main() {
 
 ## Next steps
 
-- Follow the [core quickstart](https://github.com/XRPLF/xrpl-go#quickstart) to create a wallet and submit a Testnet payment.
+- Follow the [quick start](/docs/intro#quick-start) to make your first Testnet request, or use the [payment example](https://github.com/XRPLF/xrpl-go/tree/main/examples/send-xrp/rpc) to send test XRP.
 - Learn about [wallets and signing](/docs/xrpl/wallet), [RPC](/docs/xrpl/rpc), and [WebSocket](/docs/xrpl/websocket) clients.
 - Use the optional [confidential builders](/docs/confidential/builders) or run their [offline example](/docs/confidential#examples).
 - For a repository checkout, use the [contributor guide](https://github.com/XRPLF/xrpl-go/blob/main/CONTRIBUTING.md). Root `./...` commands do not include the confidential module.
