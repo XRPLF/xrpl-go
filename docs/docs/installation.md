@@ -77,7 +77,9 @@ func main() {
 
 ## Next steps
 
-- Follow the [quick start](/docs/intro#quick-start) to make your first Testnet request, or use the [payment example](https://github.com/XRPLF/xrpl-go/tree/main/examples/send-xrp/rpc) to send test XRP.
-- Learn about [wallets and signing](/docs/xrpl/wallet), [RPC](/docs/xrpl/rpc), and [WebSocket](/docs/xrpl/websocket) clients.
-- Use the optional [confidential builders](/docs/confidential/builders) or run their [offline example](/docs/confidential#examples).
-- For a repository checkout, use the [contributor guide](https://github.com/XRPLF/xrpl-go/blob/main/CONTRIBUTING.md). Root `./...` commands do not include the confidential module.
+The SDK is installed. Choose what you want to build:
+
+- **Read ledger data:** use the [RPC client](/docs/xrpl/rpc) for queries. No wallet is needed.
+- **Receive live updates:** use the [WebSocket client](/docs/xrpl/websocket) for subscriptions and event handlers.
+- **Send transactions:** start with [wallets and signing](/docs/xrpl/wallet), then [build transactions](/docs/xrpl/transaction) to submit through your client.
+- **Build confidential transfers:** if you installed the optional helpers, continue to the [builder guide](/docs/confidential/builders).
