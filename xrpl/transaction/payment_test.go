@@ -10,6 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPayment_FlattenPathsEncodeForSigning(t *testing.T) {
+	payment := Payment{
+		Paths: [][]PathStep{{{Currency: "USD"}}},
+	}
+
+	_, err := binarycodec.EncodeForSigning(payment.Flatten())
+	require.NoError(t, err)
+}
+
 func TestPayment_TxType(t *testing.T) {
 	tx := &Payment{}
 	assert.Equal(t, PaymentTx, tx.TxType())
@@ -819,8 +828,8 @@ func TestPayment_Flatten(t *testing.T) {
 				"Destination":    "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 				"DestinationTag": uint32(12345),
 				"InvoiceID":      "ABC123",
-				"Paths": [][]any{
-					{
+				"Paths": []any{
+					[]any{
 						map[string]any{
 							"account":  "r3dFAtNXwRFCyBGz5BcWhMj9a4cm7qkzzn",
 							"currency": "USD",
