@@ -114,7 +114,7 @@ All checks are offline structural checks. They do not establish cryptographic va
 
 Submit the final blob without modifying it or autofilling again.
 
-See the [runnable sponsor example](https://github.com/XRPLF/xrpl-go/tree/main/examples/sponsor-signing) for complete co-signed, multisigned, and pre-funded flows. Its README includes instructions for devnet and localnet.
+See the runnable sponsor examples for [RPC](https://github.com/XRPLF/xrpl-go/tree/main/examples/sponsor-signing/rpc) and [WebSocket](https://github.com/XRPLF/xrpl-go/tree/main/examples/sponsor-signing/ws) for complete co-signed, multisigned, and pre-funded flows.
 
 ## Signing a batch transaction
 

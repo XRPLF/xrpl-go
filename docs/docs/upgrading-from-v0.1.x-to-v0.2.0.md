@@ -1,5 +1,6 @@
 ---
-sidebar_position: 3
+sidebar_position: 8
+sectionTopLabel: Migration
 ---
 
 # Upgrade from v0.1.x to v0.2.0

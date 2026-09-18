@@ -3,72 +3,72 @@ sidebar_position: 1
 sectionTopLabel: Introduction
 ---
 
-# Getting Started
+# Get started with xrpl-go
 
-[`xrpl-go`](https://github.com/XRPLF/xrpl-go) is a Go SDK for the [XRP Ledger](https://xrpl.org/). It provides address codecs, key management, binary serialization, typed transaction and ledger models, RPC and WebSocket clients, and local wallet signing.
+Build Go applications on the [XRP Ledger](https://xrpl.org/). Query the ledger, manage wallets, and sign and submit transactions with typed Go models.
 
-## Choose a module
+## Quick start
 
-The repository contains two independently versioned Go modules:
+Requires **Go 1.25.13 or later**. The core SDK is pure Go and does not require a C/C++ toolchain.
 
-| Module | Provides | Native toolchain |
-| --- | --- | --- |
-| `github.com/Peersyst/xrpl-go` | Transaction and ledger models, codecs, clients, key management, and wallet signing | Not required |
-| [`github.com/Peersyst/xrpl-go/confidential`](/docs/confidential) | Confidential MPT builders, encryption, balance decryption, commitments, and proofs | Required for cryptographic operations |
+From your application's Go module, install the SDK:
 
-Core includes the confidential transaction models and ledger fields. It can encode, sign, and submit these transactions when your application supplies the ciphertexts and proofs. Install the optional module when you want the SDK to generate those fields or decrypt balances.
+```bash
+go get github.com/Peersyst/xrpl-go@latest
+```
 
-The dependency goes from confidential to core only. Starting with core `v0.3.1`, core Go module downloads exclude the confidential module and its native bundles. Repository clones and GitHub source archives still contain both modules.
+For a new application, run `go mod init example.com/my-xrpl-app` first. See [Installation](/docs/installation) for more setup details.
 
-Both modules require Go `1.25.13` or later. See [Installation](/docs/installation) for core setup, or [Install confidential helpers](/docs/confidential/installation) for the native toolchain, module versions, and migration steps.
+Save this as `main.go` to query a Testnet server. No wallet or funds are needed.
 
-## Core packages
+```go
+package main
 
-| Package | Use it for |
-| --- | --- |
-| `address-codec` | Encode and decode XRPL classic addresses and X-addresses |
-| `binary-codec` | Encode and decode XRPL objects and transactions in canonical binary format |
-| [`keypairs`](/docs/keypairs) | Generate seeds, derive keypairs, sign payloads, and verify signatures |
-| [`xrpl/rpc`](/docs/xrpl/rpc) | Send JSON-RPC requests, autofill transactions, submit transactions, and fund test wallets |
-| [`xrpl/websocket`](/docs/xrpl/websocket) | Connect to WebSocket servers, make requests, submit transactions, and subscribe to ledger streams |
-| [`xrpl/transaction`](/docs/xrpl/transaction) | Build typed XRPL transaction models |
-| [`xrpl/ledger-entry-types`](/docs/xrpl/ledger-entry-types) | Read typed ledger state |
-| [`xrpl/wallet`](/docs/xrpl/wallet) | Create wallets, sign transactions locally, multisign transactions, and authorize payment channels |
+import (
+	"fmt"
+	"log"
 
-The optional module has a separate [package guide](/docs/confidential#package-map) and [builder guide](/docs/confidential/builders).
+	"github.com/Peersyst/xrpl-go/xrpl/queries/server"
+	"github.com/Peersyst/xrpl-go/xrpl/rpc"
+)
 
-## Transaction lifecycle
+func main() {
+	cfg, err := rpc.NewClientConfig("https://s.altnet.rippletest.net:51234/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	client := rpc.NewClient(cfg)
 
-The usual write path is:
+	info, err := client.GetServerInfo(&server.InfoRequest{})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-1. Build a typed transaction, such as `transaction.Payment`.
-2. Call `Flatten()` to get a `transaction.FlatTransaction`.
-3. Call `client.Autofill()` to add network fields such as `Fee`, `Sequence`, and `LastLedgerSequence`.
-4. Sign locally with `wallet.Sign()`.
-5. Submit with `client.SubmitTxBlobAndWait()`, or use `client.SubmitTxAndWait()` to autofill, sign, submit, and wait in one call.
+	fmt.Printf("Connected to Testnet. Server version: %s\n", info.Info.BuildVersion)
+}
+```
 
-Autofill requires network access. Wallet signing only needs the transaction data and wallet credentials, and does not require the confidential module.
+Run it with:
 
-A transaction is a command you submit. Ledger entries are the state you query after validation. Transaction metadata describes the ledger entries that changed.
+```bash
+go run .
+```
 
-For confidential transactions, the optional builders generate the encrypted fields and proofs before this normal signing and submission flow. Core field validation does not verify the cryptographic validity of a ZK proof.
+With network access, it prints the server's software version. You have now made your first XRPL request.
 
-## Examples and development
+## What next?
 
-- [Core quickstart](https://github.com/XRPLF/xrpl-go#quickstart) and [core examples](https://github.com/XRPLF/xrpl-go/tree/main/examples).
-- [Confidential examples](/docs/confidential#examples), including an offline walkthrough and RPC/WebSocket devnet programs.
-- [Contributor guide](https://github.com/XRPLF/xrpl-go/blob/main/CONTRIBUTING.md) for tests and documentation development.
+- **Query ledger data** with the [JSON-RPC client](/docs/xrpl/rpc), or subscribe to live updates with [WebSocket](/docs/xrpl/websocket).
+- **Create a wallet and sign locally** with the [wallet guide](/docs/xrpl/wallet).
+- **Build and send transactions** with [typed transaction models](/docs/xrpl/transaction) and the complete [Testnet payment example](https://github.com/XRPLF/xrpl-go/tree/main/examples/send-xrp/rpc).
+- **Explore more use cases** in the [examples directory](https://github.com/XRPLF/xrpl-go/tree/main/examples), or look up types and methods in the [Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go).
 
-Root `go test ./...` only tests core. Use the [development workspace](/docs/confidential/installation#development-workspace) and separate module test targets when working on both modules.
+## Optional confidential helpers
 
-## Versions and release notes
-
-Core releases use tags such as `v0.3.1`. Confidential releases use tags such as `confidential/v0.1.0`. A core update does not automatically update the optional module.
-
-See the [core changelog](https://github.com/XRPLF/xrpl-go/blob/main/CHANGELOG.md), [confidential changelog](https://github.com/XRPLF/xrpl-go/blob/main/confidential/CHANGELOG.md), and [release guide](https://github.com/XRPLF/xrpl-go/blob/main/RELEASING.md).
+Most applications only need core. Add the separate confidential module when you need confidential MPT builders, encryption, balance decryption, or proofs. Its cryptographic operations require cgo and a supported native toolchain. Start with the [confidential guide](/docs/confidential) and [installation requirements](/docs/confidential/installation).
 
 ## Security
 
-Never print, log, commit, or send real seeds, private keys, or mnemonics to telemetry. Protect confidential encryption private keys as well as wallet signing keys.
+The signing functionality has **not been independently audited**. Test with non-production funds on Testnet or Devnet and review signing behavior before production use.
 
-The signing functionality has not been independently audited. Test with non-production funds on a compatible test network and review signing behavior before production use.
+Never print, log, commit, or send real seeds, private keys, or mnemonics to telemetry. Protect confidential encryption private keys as well as wallet signing keys.

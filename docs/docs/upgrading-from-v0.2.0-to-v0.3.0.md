@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 9
 ---
 
 # Upgrade from v0.2.0 to v0.3.0

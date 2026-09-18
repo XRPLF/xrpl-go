@@ -1,14 +1,10 @@
 # Contributing to xrpl-go
 
-## How to contribute
+Help improve the SDK with bug reports, fixes, features, tests, or documentation.
 
-You can contribute by:
+[Development setup](#development-setup) · [Tests](#focused-tests) · [Documentation](#documentation) · [Pull requests](#pull-requests)
 
-- Reporting bugs
-- Suggesting enhancements
-- Implementing features
-- Writing documentation
-- Writing tests
+Run commands from the repository root unless a section says otherwise.
 
 ## Reporting bugs
 
@@ -18,7 +14,9 @@ Before opening an issue, check whether it has already been reported. Include:
 - Steps to reproduce
 - Expected and actual behavior
 - Environment details, including Go version and OS
-- Relevant logs, screenshots, or transaction data
+- Relevant logs or transaction data, with secrets removed
+
+Never include seeds, private keys, or mnemonics in an issue.
 
 ## Suggesting enhancements
 
@@ -28,10 +26,15 @@ Before opening an enhancement request, check for duplicates. Include the use cas
 
 ### Prerequisites
 
-- Go `1.25.13` or later, matching `go.mod`
-- `make`
-- Docker, for localnet integration tests
-- Yarn, for the documentation site
+For core development, install **Go 1.25.13 or later** and `make`.
+
+Additional tools depend on your work:
+
+| Work | Requirements |
+| --- | --- |
+| Confidential cryptography | [Native toolchain](confidential/README.md#installation) and cgo |
+| Localnet integration tests | Docker |
+| Documentation site | Node.js 20 or later and Yarn |
 
 `make lint` installs the pinned `golangci-lint` version from the [`Makefile`](Makefile).
 
@@ -41,12 +44,6 @@ Before opening an enhancement request, check for duplicates. Include the use cas
 git clone https://github.com/XRPLF/xrpl-go
 cd xrpl-go
 go mod tidy
-```
-
-If you need vendored dependencies:
-
-```bash
-go mod vendor
 ```
 
 ### Lint and test core
@@ -77,7 +74,7 @@ Confidential examples live in `confidential/examples/`, and their integration te
 
 ### Focused tests
 
-Useful focused checks:
+Run the checks for the packages you change:
 
 ```bash
 go test ./xrpl/transaction
@@ -88,7 +85,9 @@ make test-keypairs
 make test-xrpl
 ```
 
-Integration tests require a target network. For localnet:
+### Integration tests
+
+Integration tests require a running ledger. For localnet:
 
 ```bash
 make workspace
@@ -116,20 +115,27 @@ make test-integration-confidential-devnet
 
 Each workflow has a manual trigger. Run **Confidential CI** manually to check a core change against the optional helpers. Weekly vulnerability scans still check both modules.
 
-There are no custom change-detection scripts or aggregate status jobs. Do not require these path-filtered checks on every PR: GitHub can leave skipped workflows pending. Update any existing branch-protection rules that require the old checks. Native path filters also have GitHub's changed-file limits, so run the relevant workflows manually for large changes that GitHub skips.
+For maintainers: do not require path-filtered checks on every PR. GitHub can leave skipped workflows pending, and there is no aggregate status job. Review branch-protection rules when changing these workflows. GitHub also limits the files evaluated by path filters, so run checks manually when a large change is skipped.
 
 ## Documentation
 
-The documentation site lives in [`docs/`](docs/).
+The site lives in [`docs/`](docs/) and is published at <https://xrplf.github.io/xrpl-go/>.
+
+Install dependencies and start a local preview:
 
 ```bash
 cd docs
-yarn
+yarn install --frozen-lockfile
 yarn start
+```
+
+Stop the preview before checking the production build, or run this in a second terminal from `docs/`:
+
+```bash
 yarn build
 ```
 
-Published docs are hosted at <https://xrplf.github.io/xrpl-go/>.
+The [deployment workflow](.github/workflows/docs-deploy.yml) publishes relevant changes pushed to `main`. README and package-guide changes do not require building the site.
 
 ## Pull requests
 
@@ -138,8 +144,10 @@ Published docs are hosted at <https://xrplf.github.io/xrpl-go/>.
 3. Make the smallest focused change that solves the issue.
 4. Add or update tests for code changes.
 5. Update documentation when behavior or user-facing APIs change.
-6. Update the affected module's changelog: `CHANGELOG.md` for core or `confidential/CHANGELOG.md` for the optional helpers. Use `[Unreleased]` for pending changes, creating the section when needed. During release preparation, update the target version section instead. Omit `[Unreleased]` when it is empty.
-7. Run the relevant checks before opening the pull request.
+6. Add a changelog entry when the final diff has a user-facing change worth recording. Use `CHANGELOG.md` for core or `confidential/CHANGELOG.md` for the optional helpers.
+7. Run the relevant checks. In the PR, list the commands you ran and any checks you could not run.
+
+Use `[Unreleased]` for pending changelog entries, or the target version section during release preparation. Describe the final effect relative to the base branch, not intermediate changes. Omit empty `[Unreleased]` sections.
 
 Use conventional commits, for example:
 
@@ -147,10 +155,6 @@ Use conventional commits, for example:
 docs: update contributing guide
 fix: validate account delete metadata
 ```
-
-## Releases
-
-See [RELEASING.md](RELEASING.md) for independent versioning, the first-release order, and the GitHub Actions module picker. Release checks use `GOWORK=off` to verify the declared published dependencies rather than the local workspace.
 
 ## Code style
 

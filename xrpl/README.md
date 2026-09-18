@@ -1,160 +1,136 @@
-# xrpl
+# XRPL clients, wallets, and transactions
 
-This is the core package of the SDK. It contains everything needed to construct, sign, and submit transactions to the XRP Ledger, query ledger state, and manage accounts — built on top of the lower-level `address-codec`, `keypairs`, and `binary-codec` packages.
+Use these packages to query the XRP Ledger, subscribe to ledger events, and build, sign, and submit transactions.
 
-## Package Structure
+[Installation and quick start](../README.md#quick-start) · [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl) · [Examples](../examples)
 
+## Choose a client
+
+Both clients support ledger queries, transaction autofill, and submission. Choose based on how your application uses the network:
+
+| Client | Use it when |
+| --- | --- |
+| [`rpc`](rpc) | You need HTTP requests for queries or transaction submission. |
+| [`websocket`](websocket) | You also need a persistent connection and event subscriptions. |
+
+Start with the [JSON-RPC example](../README.md#quick-start) for a single request. For live ledger updates, use the WebSocket example below.
+
+## Read and write paths
+
+**Ledger entries describe stored state. Transactions request changes to that state.** Use either client for both paths.
+
+```text
+READ: typed account query
+  client.GetAccountInfo() -> ledger -> response.AccountData (AccountRoot)
+
+READ: generic ledger entry query
+  queries/ledger.EntryRequest -> client.GetLedgerEntry() -> ledger
+    response -> EntryResponse
+      Node (JSON fields) -----------------------> map
+      NodeBinary (hex) -> binarycodec.Decode() --> map
+    map -> JSON marshal/unmarshal -> ledger-entry-types struct
+
+WRITE: submit a transaction
+  transaction struct -> Flatten() -> client.Autofill()
+    -> wallet.Sign() [signing payload -> signature -> encoded blob]
+    -> client.SubmitTxBlobAndWait() -> validated result + metadata
+    -> query the ledger again to read the resulting state
 ```
-xrpl/
-├── transaction/        # All transaction types and shared transaction logic
-├── wallet/             # Wallet creation, derivation, and offline signing
-├── rpc/                # Synchronous JSON-RPC client
-├── websocket/          # Asynchronous WebSocket client
-├── queries/            # Request/response types for all rippled API methods
-├── ledger-entry-types/ # Structs for ledger objects (Offer, AccountRoot, etc.)
-├── currency/           # Currency amount utilities
-├── hash/               # Transaction hash utilities
-├── common/             # Shared constants and helpers
-├── flag/               # Transaction flag definitions
-├── time/               # XRPL epoch time utilities
-├── multisign.go        # Multi-signature aggregation utility
-└── interfaces/         # Shared interfaces (CryptoImplementation, etc.)
-```
 
----
+**Typed queries decode for you.** For example, `GetAccountInfo()` returns `AccountData` as a [`ledger.AccountRoot`](ledger-entry-types/account_root.go). No manual conversion is needed.
 
-## transaction/
+**`GetLedgerEntry()` is generic.** Its `EntryResponse.Node` is a `FlatLedgerObject` map, even when you request an AccountRoot. You can use the map directly or select the matching [`ledger-entry-types`](ledger-entry-types) struct from `LedgerEntryType`, then marshal the map and unmarshal into it. With `Binary: true`, decode `NodeBinary` with `binarycodec.Decode()` first to obtain the map.
 
-All XRPL transaction types live here, one file per type. Every transaction embeds `BaseTx` and implements the `Tx` interface:
+Set the request's `LedgerIndex` to `"validated"` when you need validated state.
+
+For writes, `wallet.Sign()` uses `EncodeForSigning()` to prepare the signing payload and `Encode()` to produce the signed blob. Check the transaction result, not just whether it was validated: a validated transaction can have failed.
+
+## Subscribe to ledger updates
+
+This example connects to Testnet and prints closed ledger indexes for 30 seconds, then disconnects. It needs network access, but no wallet or funds.
+
+After [installing the SDK](../README.md#quick-start), save this as `main.go` in your application and run `go run .`:
 
 ```go
-type Tx interface {
-    TxType() TxType
+package main
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	subscribe "github.com/Peersyst/xrpl-go/xrpl/queries/subscription"
+	streamtypes "github.com/Peersyst/xrpl-go/xrpl/queries/subscription/types"
+	"github.com/Peersyst/xrpl-go/xrpl/websocket"
+)
+
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
+	client := websocket.NewClient(
+		websocket.NewClientConfig().
+			WithHost("wss://s.altnet.rippletest.net:51233"),
+	)
+	if err := client.Connect(); err != nil {
+		return err
+	}
+	defer func() {
+		if err := client.Disconnect(); err != nil {
+			log.Printf("disconnect: %v", err)
+		}
+	}()
+
+	client.OnError(func(err error) {
+		log.Printf("stream: %v", err)
+	})
+	client.OnLedgerClosed(func(ledger *streamtypes.LedgerStream) {
+		fmt.Printf("Ledger closed: %d\n", ledger.LedgerIndex)
+	})
+
+	if _, err := client.Subscribe(&subscribe.Request{
+		Streams: []string{"ledger"},
+	}); err != nil {
+		return err
+	}
+
+	time.Sleep(30 * time.Second)
+	return nil
 }
 ```
 
-`BaseTx` contains the fields common to every transaction:
+Register handlers before subscribing so they are ready for incoming events. Keep handlers short: a slow handler can delay other messages on the connection.
 
-| Field | Description |
-|---|---|
-| `Account` | Sender's classic address |
-| `TransactionType` | e.g. `Payment`, `OfferCreate`, `TrustSet` |
-| `Fee` | Cost in drops (must be set before signing) |
-| `Sequence` | Account sequence number (0 if using a Ticket) |
-| `LastLedgerSequence` | Expiry ledger — always set to avoid stuck transactions |
-| `SigningPubKey` | Public key of the signer, included in the signed blob produced by `wallet.Sign` |
-| `TxnSignature` | Signature, included in the signed blob produced by `wallet.Sign` |
-| `Signers` | Multi-signature entries |
-| `Memos` | Arbitrary attached data |
-| `Flags` | Bitmask of transaction-specific flags |
+For more subscription options, see the [WebSocket guide](https://xrplf.github.io/xrpl-go/docs/xrpl/websocket) and [subscription example](../examples/subscription/ws).
 
-Each transaction type has a `Flatten() FlatTransaction` method that converts the struct to a `map[string]any` for JSON-RPC submission.
+## Build and send transactions
 
-Available transaction types include: `Payment`, `AccountSet`, `AccountDelete`, `TrustSet`, `OfferCreate`, `OfferCancel`, `EscrowCreate/Finish/Cancel`, `PaymentChannelCreate/Fund/Claim`, `NFTokenMint/Burn/CreateOffer/CancelOffer/AcceptOffer`, `AMMCreate/Deposit/Withdraw/Vote/Bid/Delete`, `CheckCreate/Cash/Cancel`, `TicketCreate`, `SignerListSet`, `SetRegularKey`, `DepositPreauth`, `DIDSet/Delete`, `OracleSet/Delete`, `XChain*`, `Batch`, and more.
+Use [`transaction`](transaction) for typed transaction models and [`wallet`](wallet) for local signing, following the [write path above](#read-and-write-paths). Autofill sets network fields such as the fee and sequence. Signing returns the signed blob and transaction hash.
 
----
+Both clients also provide `SubmitTxAndWait()` to autofill, sign, submit, and wait in one call. For offline signing, prepare the network fields first. Signing itself does not need a network connection.
 
-## wallet/
+Start with a complete payment example for [JSON-RPC](../examples/send-xrp/rpc) or [WebSocket](../examples/send-xrp/ws). See the [transaction guide](https://xrplf.github.io/xrpl-go/docs/xrpl/transaction) for more transaction types.
 
-Provides the `Wallet` struct for key management and offline signing.
+## Wallets and multisigning
 
-```go
-type Wallet struct {
-    PublicKey      string
-    PrivateKey     string
-    ClassicAddress types.Address
-    Seed           string
-}
-```
+The [`wallet`](wallet) package creates wallets and derives them from seeds or mnemonics. Use the [wallet example](../examples/wallet) and [wallet guide](https://xrplf.github.io/xrpl-go/docs/xrpl/wallet) to get started.
 
-### Creation
+For multisigning, each wallet produces a signed blob with `Multisign()`. The top-level `xrpl.Multisign()` function combines those blobs. See the complete [multisigning example](../examples/multisigning/rpc).
 
-```go
-// Random wallet (ED25519 or SECP256K1)
-w, err := wallet.New(crypto.ED25519())
+**Protect wallet secrets.** Never print, log, or commit real seeds, private keys, or mnemonics. Test with non-production funds and read the [security and audit notice](../README.md#security-and-audits) before production use.
 
-// From an existing seed
-w, err := wallet.FromSeed(seed, "")
-w, err := wallet.FromSecret(seed) // alias
+## Find a package
 
-// From a BIP-39 mnemonic (derives via m/44'/144'/0'/0/0)
-w, err := wallet.FromMnemonic("word1 word2 ...")
-```
+| Package | Purpose |
+| --- | --- |
+| [`queries`](queries) | Request and response types for ledger APIs |
+| [`ledger-entry-types`](ledger-entry-types) | Typed ledger objects |
+| [`transaction/types`](transaction/types) | Amounts, addresses, and other transaction field types |
+| [`currency`](currency) | Convert XRP and drops |
+| [`hash`](hash) | Compute XRPL hashes |
+| [`time`](time) | Convert XRPL timestamps |
 
-### Signing
-
-```go
-// Single signature — returns the signed blob and its hash; flatTx is not mutated
-txBlob, txHash, err := w.Sign(flatTx)
-
-// Multi-signature — returns the signed blob and its hash; flatTx is not mutated
-txBlob, txHash, err := w.Multisign(flatTx)
-```
-
-`Sign` internally calls `binarycodec.EncodeForSigning` to get the signing payload, signs it with `keypairs.Sign`, then calls `binarycodec.Encode` to produce the final blob.
-
----
-
-## rpc/
-
-A synchronous HTTP JSON-RPC client. Best for one-off queries and simple transaction submission.
-
-```go
-cfg := rpc.NewConfig("https://s.altnet.rippletest.net:51234")
-client := rpc.NewClient(cfg)
-
-// Submit a pre-signed blob
-resp, err := client.SubmitTxBlob(txBlob, false)
-
-// Submit and wait for ledger confirmation
-txResp, err := client.SubmitTxBlobAndWait(txBlob, false)
-```
-
-The client automatically retries on HTTP 503 (up to 3 times with exponential backoff) and validates that submitted blobs contain a signature before sending.
-
----
-
-## websocket/
-
-An asynchronous WebSocket client. Best for subscriptions, real-time monitoring, and applications that need to react to ledger events.
-
-```go
-cfg := websocket.NewConfig("wss://s.altnet.rippletest.net:51233")
-client, err := websocket.NewClient(cfg)
-
-// Subscribe to ledger close events
-err = client.SubscribeLedger()
-
-// Read events from channels
-ledger := <-client.GetLedgerClosedChannel()
-tx     := <-client.GetTransactionChannel()
-```
-
-The WebSocket client manages connection lifecycle, request/response correlation by ID, and exposes typed channels for each stream type (ledger, transaction, validation, etc.).
-
----
-
-## queries/
-
-Typed request and response structs for every rippled API method, organized by category:
-
-| Subdirectory | Methods |
-|---|---|
-| `account/` | `account_info`, `account_lines`, `account_offers`, `account_tx`, etc. |
-| `ledger/` | `ledger`, `ledger_closed`, `ledger_current`, `ledger_data`, `ledger_entry` |
-| `transactions/` | `submit`, `submit_multisigned`, `tx`, `transaction_entry` |
-| `server/` | `server_info`, `server_state`, `fee` |
-| `subscription/` | Stream types for ledger, transaction, and validation subscriptions |
-
----
-
-## multisign.go
-
-Top-level utility for combining multiple individual multi-signature blobs into a single transaction ready for submission:
-
-```go
-// Each blob must be produced by wallet.Multisign
-finalBlob, err := xrpl.Multisign(blob1, blob2, blob3)
-```
-
-Signers are sorted by account ID bytes (ascending) as required by the XRPL protocol before the final blob is encoded.
+For low-level encoding and key operations, see the [address codec](../address-codec), [binary codec](../binary-codec), and [keypairs](../keypairs) packages.

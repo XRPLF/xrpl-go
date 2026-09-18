@@ -1,145 +1,90 @@
-# Binary Codec
+# Binary codec
 
-This package contains functions to encode/decode to/from the [ripple binary serialization format](https://xrpl.org/serialization.html).
+Encode and decode XRP Ledger objects in the canonical binary format. Use this package for transaction serialization, signing payloads, and binary ledger data.
 
-## Overview
+[Installation](../README.md#quick-start) · [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/binary-codec) · [Serialization format](https://xrpl.org/serialization.html)
 
-XRPL nodes communicate using a compact binary format rather than JSON. Before a transaction can be signed or submitted, it must be serialized into this format. The `binarycodec` package handles that transformation in both directions.
+For normal transaction signing and submission, start with [`xrpl/wallet` and the clients](../xrpl/README.md#build-and-send-transactions). They call the codec for you.
 
-**Encoding** converts a JSON transaction object into a canonical binary blob:
-- Fields are sorted by a protocol-defined ordinal (type code + field code).
-- Each field is prefixed with a compact header identifying its type and position.
-- Variable-length fields (blobs, account IDs) are preceded by a length prefix.
-- The resulting hex string is what gets signed and submitted to the network.
+## Encode and decode an object
 
-**Decoding** reverses the process, turning a hex-encoded binary blob back into a JSON object.
+This offline example encodes an object containing a sequence number, then decodes it. It demonstrates serialization, not a complete transaction.
 
-There are several encoding variants depending on the use case:
-
-| Function | Use case |
-|---|---|
-| `Encode` | Produce the full transaction blob for submission |
-| `Decode` | Parse a binary blob back to JSON |
-| `EncodeForSigning` | Produce the payload that the private key signs (excludes `TxnSignature`) |
-| `EncodeForMultisigning` | Like `EncodeForSigning` but appends the signing account ID |
-| `EncodeForSigningClaim` | For payment channel claims |
-| `EncodeQuality` / `DecodeQuality` | Encode offer quality (exchange rate) values |
-| `DecodeLedgerData` | Parse raw ledger state data |
-
-## Package Structure
-
-The codec is split into three sub-packages, each with a distinct responsibility:
-
-### `definitions/`
-
-The schema registry for the entire codec. At startup it embeds and parses `definitions.json`, the authoritative XRPL protocol document, into a singleton `Definitions` struct.
-
-The embedded copy is a verbatim snapshot of the `server_definitions` response of a xrpld node. Its top-level `hash` identifies that snapshot. Refresh it with the maintainer target instead of editing entries by hand, so the document keeps matching the network:
-
-```bash
-make update-definitions                                     # mainnet
-make update-definitions NODE_URL=http://127.0.0.1:5005/     # localnet
-```
-
-The target re-fetches `server_definitions`, unwraps the JSON-RPC `result` envelope, drops the request-scoped `status` key, and rewrites the file with sorted keys and two-space indentation, so re-running it against an unchanged node produces no diff. It also reports the version of the node it fetched from, so the snapshot can be traced back to a build.
-
-The response covers everything the node's build can parse, not what its network has activated. Field and type definitions therefore land in the codec ahead of mainnet activation.
-
-Everything the serializer and parser need to know about a field lives here:
-
-- **`Types`** — maps type names (e.g. `"UInt32"`, `"Amount"`) to their numeric type codes.
-- **`Fields`** — maps field names (e.g. `"Fee"`, `"Destination"`) to a `FieldInstance`, which contains:
-  - `FieldHeader` (`TypeCode` + `FieldCode`): the binary identity of the field written into the encoded stream.
-  - `Ordinal` (`TypeCode<<16 | FieldCode`): used to sort fields into canonical order before encoding.
-  - `IsVLEncoded`: whether the field value is preceded by a variable-length prefix.
-  - `IsSerialized`: whether the field is included in the encoded blob at all.
-  - `IsSigningField`: whether the field is included when computing the signing payload (`EncodeForSigning`). Fields like `TxnSignature` are excluded here.
-- **`TransactionTypes`**, **`TransactionResults`**, **`LedgerEntryTypes`** — numeric code mappings for each category.
-- **`DelegatablePermissions`** / **`GranularPermissions`** — permission value mappings used for account delegation features.
-
-### `serdes/`
-
-Contains the low-level binary read/write primitives:
-
-- **`BinarySerializer`** — accumulates bytes into a sink. For each field it writes the field header (via `FieldIDCodec`), an optional variable-length prefix (for VL-encoded fields), and then the raw value bytes. Appends `0xE1` as the `STObject` end marker when needed.
-- **`BinaryParser`** — the inverse: reads a hex-encoded stream, decodes field headers back to field names, and hands off to the appropriate type deserializer.
-- **`FieldIDCodec`** — encodes/decodes the compact field header bytes that prefix every field in the binary format.
-
-### `types/`
-
-One file per XRPL serialization type. Each type implements the `SerializedType` interface:
+Save it as `main.go` in your application after installing the SDK, then run `go run .`:
 
 ```go
-type SerializedType interface {
-    FromJSON(json any) ([]byte, error)
-    ToJSON(parser BinaryParser, opts ...int) (any, error)
+package main
+
+import (
+	"fmt"
+	"log"
+
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
+)
+
+func main() {
+	object := map[string]any{"Sequence": uint32(1)}
+
+	blob, err := binarycodec.Encode(object)
+	if err != nil {
+		log.Fatal(err)
+	}
+	decoded, err := binarycodec.Decode(blob)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Encoded:", blob)
+	fmt.Println("Sequence:", decoded["Sequence"])
 }
 ```
 
-| Type | Description |
-|------|-------------|
-| `UInt8`, `UInt16`, `UInt32`, `UInt64` | Fixed-width unsigned integers |
-| `Int32` | Fixed-width signed integer |
-| `Hash128`, `Hash160`, `Hash192`, `Hash256` | Fixed-length byte arrays for hashes and addresses |
-| `AccountID` | 20-byte account address (Base58Check encoded in JSON, raw bytes in binary) |
-| `Amount` | XRP drops (64-bit) or issued currency amounts (special 64-bit float encoding) |
-| `Blob` | Variable-length byte array (VL-encoded) |
-| `Currency` | 160-bit currency representation |
-| `Issue` | Currency + issuer pair |
-| `STObject` | Nested object; fields sorted by ordinal, terminated with `0xE1` |
-| `STArray` | Array of `STObject` entries, terminated with `0xF1` |
-| `PathSet` | Payment path data |
-| `Vector256` | Array of `Hash256` values |
-| `XChainBridge` | Cross-chain bridge descriptor |
-| `Number` | Arbitrary-precision number (STNumber) |
+Expected output:
 
-`GetSerializedType(typeName string)` acts as the factory, returning the right implementation for a given type name from the definitions.
-
-## API
-
-### Encode
-
-```go
-encoded, err := binarycodec.Encode(jsonObject)
+```text
+Encoded: 2400000001
+Sequence: 1
 ```
 
-### Decode
+## Choose an encoding
 
-```go
-json, err := binarycodec.Decode(hexEncodedString)
+| Task | Function |
+| --- | --- |
+| Serialize a full object or transaction | `Encode` |
+| Decode a serialized object | `Decode` |
+| Prepare a single-signing payload | `EncodeForSigning` |
+| Prepare a multisigning payload | `EncodeForMultisigning` |
+| Prepare a payment-channel claim payload | `EncodeForSigningClaim` |
+| Convert offer-quality values | `EncodeQuality`, `DecodeQuality` |
+| Decode binary ledger state | `DecodeLedgerData` |
+
+A signing payload is not the final transaction blob. Use the appropriate signing encoder to prepare the payload, then `Encode` to serialize the transaction with its signature fields. Successful encoding alone does not mean a transaction is valid for submission.
+
+See the [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/binary-codec) for all encoders, including sponsor, counterparty, and batch signing.
+
+## How the codec is organized
+
+Encoding sorts fields by their protocol-defined order, adds field headers and length prefixes where required, and serializes each value. Decoding reverses that process.
+
+| Package | Responsibility |
+| --- | --- |
+| [`definitions`](definitions) | Field and type codes, canonical ordering, and serialization flags |
+| [`serdes`](serdes) | Binary parsing, serialization, and field headers |
+| [`types`](types) | Conversion between JSON values and individual XRPL binary types |
+
+The definitions include transaction types, result codes, ledger entry types, and delegation permissions. Field metadata determines whether a field is serialized, used for signing, or length-prefixed. The serializer and parser use this metadata to select the appropriate type implementation.
+
+## Update protocol definitions
+
+For maintainers: the embedded [`definitions.json`](definitions/definitions.json) is a snapshot of a node's `server_definitions` response. Do not edit individual entries by hand.
+
+From the repository root:
+
+```bash
+make update-definitions                                  # Mainnet
+make update-definitions NODE_URL=http://127.0.0.1:5005/    # Localnet
 ```
-### EncodeForMultisigning
 
-```go
-encoded, err := binarycodec.EncodeForMultisigning(jsonObject, xrpAccountID)
-```
+The target fetches the response, removes the JSON-RPC envelope and request-scoped `status`, and writes sorted keys with two-space indentation. It reports the node version, and the response's `hash` identifies the snapshot. Fetching the same definitions again should produce no diff.
 
-### EncodeForSigning
-
-```go
-encoded, err := binarycodec.EncodeForSigning(jsonObject)
-```
-
-### EncodeForSigningClaim
-
-```go
-encoded, err := binarycodec.EncodeForSigningClaim(jsonObject)
-```
-
-### EncodeQuality
-
-```go
-encoded, err := binarycodec.EncodeQuality(amountString)
-```
-
-### DecodeQuality
-
-```go
-decoded, err := binarycodec.DecodeQuality(encoded)
-```
-
-### DecodeLedgerData
-
-```go
-ledgerData, err := binarycodec.DecodeLedgerData(hexEncodedString)
-```
+Definitions describe what the node's build can parse, not which amendments its network has activated. A field appearing here does not establish that it can be used on Mainnet.
