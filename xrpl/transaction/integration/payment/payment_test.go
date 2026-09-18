@@ -203,6 +203,65 @@ func testIntegrationPayment(t *testing.T, client integration.Client) {
 	})
 }
 
+func testIntegrationPaymentPaths(t *testing.T, client integration.Client) {
+	runner := integration.NewRunner(t, client, &integration.RunnerConfig{WalletCount: 3})
+	require.NoError(t, runner.Setup())
+	defer runner.Teardown()
+
+	issuer, sender, receiver := runner.GetWallet(0), runner.GetWallet(1), runner.GetWallet(2)
+	accountSet := transaction.AccountSet{
+		BaseTx:  transaction.BaseTx{Account: issuer.GetAddress()},
+		SetFlag: transaction.AsfDefaultRipple,
+	}
+	flat := accountSet.Flatten()
+	_, err := runner.TestSuccessfulTransactionAndWait(&flat, issuer, nil)
+	require.NoError(t, err)
+
+	usd := types.IssuedCurrencyAmount{Currency: "USD", Issuer: issuer.GetAddress(), Value: "10"}
+	for _, holder := range runner.GetWallets()[1:] {
+		trustSet := transaction.TrustSet{
+			BaseTx:      transaction.BaseTx{Account: holder.GetAddress()},
+			LimitAmount: usd,
+		}
+		flat = trustSet.Flatten()
+		_, err = runner.TestSuccessfulTransactionAndWait(&flat, holder, nil)
+		require.NoError(t, err)
+	}
+
+	payment := transaction.Payment{
+		BaseTx:      transaction.BaseTx{Account: issuer.GetAddress()},
+		Amount:      usd,
+		Destination: sender.GetAddress(),
+	}
+	flat = payment.Flatten()
+	_, err = runner.TestSuccessfulTransactionAndWait(&flat, issuer, nil)
+	require.NoError(t, err)
+
+	payment = transaction.Payment{
+		BaseTx:      transaction.BaseTx{Account: sender.GetAddress(), Flags: transaction.TfRippleNotDirect},
+		Amount:      usd,
+		Destination: receiver.GetAddress(),
+		Paths:       [][]transaction.PathStep{{{Account: issuer.GetAddress()}}},
+	}
+	flat = payment.Flatten()
+	_, err = runner.TestSuccessfulTransactionAndWait(&flat, sender, nil)
+	require.NoError(t, err)
+}
+
+func TestIntegrationPaymentPaths_Websocket(t *testing.T) {
+	env := integration.GetWebsocketEnv(t)
+	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))
+	testIntegrationPaymentPaths(t, client)
+}
+
+func TestIntegrationPaymentPaths_RPCClient(t *testing.T) {
+	env := integration.GetRPCEnv(t)
+	clientCfg, err := rpc.NewClientConfig(env.Host, rpc.WithFaucetProvider(env.FaucetProvider))
+	require.NoError(t, err)
+	client := rpc.NewClient(clientCfg)
+	testIntegrationPaymentPaths(t, client)
+}
+
 func TestIntegrationPayment_Websocket(t *testing.T) {
 	env := integration.GetWebsocketEnv(t)
 	client := websocket.NewClient(websocket.NewClientConfig().WithHost(env.Host).WithFaucetProvider(env.FaucetProvider))

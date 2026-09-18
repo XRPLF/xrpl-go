@@ -6,6 +6,14 @@ See the [confidential module changelog](confidential/CHANGELOG.md) for cryptogra
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+#### xrpl/transaction
+
+- Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
+
 ## [v0.3.1]
 
 Core-library changes since `v0.3.0`, including the core changes from `v0.3.1-mpt.0`. The original [pre-release notes](https://xrplf.github.io/xrpl-go/changelog/v0.3.x/v0_3_1_mpt_0) remain available.
