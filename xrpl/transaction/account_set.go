@@ -132,7 +132,7 @@ func (*AccountSet) TxType() TxType {
 func (s *AccountSet) Flatten() FlatTransaction {
 	flattened := s.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "AccountSet"
+	flattened["TransactionType"] = s.TxType().String()
 
 	if s.ClearFlag != 0 {
 		flattened["ClearFlag"] = s.ClearFlag

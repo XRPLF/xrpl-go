@@ -27,7 +27,7 @@ func TestXChainClaim_Flatten(t *testing.T) {
 			},
 			expected: FlatTransaction{
 				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-				"TransactionType": XChainClaimTx,
+				"TransactionType": XChainClaimTx.String(),
 			},
 		},
 		{
@@ -48,7 +48,7 @@ func TestXChainClaim_Flatten(t *testing.T) {
 				XChainClaimID: "1234567890",
 			},
 			expected: FlatTransaction{
-				"TransactionType": XChainClaimTx,
+				"TransactionType": XChainClaimTx.String(),
 				"Account":         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"Amount":          types.XRPCurrencyAmount(1000000000).Flatten(),
 				"Destination":     "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",

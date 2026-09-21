@@ -44,7 +44,7 @@ func (*NFTokenCancelOffer) TxType() TxType {
 func (n *NFTokenCancelOffer) Flatten() FlatTransaction {
 	flattened := n.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "NFTokenCancelOffer"
+	flattened["TransactionType"] = n.TxType().String()
 
 	if len(n.NFTokenOffers) > 0 {
 		flattenedOffers := make([]string, len(n.NFTokenOffers))

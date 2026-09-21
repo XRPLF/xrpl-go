@@ -70,7 +70,7 @@ func (a *AMMBid) Flatten() FlatTransaction {
 	flattened := a.BaseTx.Flatten()
 
 	// Add AMMBid-specific fields
-	flattened["TransactionType"] = AMMBidTx.String()
+	flattened["TransactionType"] = a.TxType().String()
 
 	flattened["Asset"] = a.Asset.Flatten()
 

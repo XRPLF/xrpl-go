@@ -60,7 +60,7 @@ func (*NFTokenAcceptOffer) TxType() TxType {
 func (n *NFTokenAcceptOffer) Flatten() FlatTransaction {
 	flattened := n.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "NFTokenAcceptOffer"
+	flattened["TransactionType"] = n.TxType().String()
 
 	if n.NFTokenSellOffer != "" {
 		flattened["NFTokenSellOffer"] = n.NFTokenSellOffer.String()

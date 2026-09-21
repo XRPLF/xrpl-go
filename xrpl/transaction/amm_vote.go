@@ -49,7 +49,7 @@ func (a *AMMVote) Flatten() FlatTransaction {
 	flattened := a.BaseTx.Flatten()
 
 	// Add AMMDelete-specific fields
-	flattened["TransactionType"] = "AMMVote"
+	flattened["TransactionType"] = a.TxType().String()
 	flattened["Asset"] = a.Asset.Flatten()
 	flattened["Asset2"] = a.Asset2.Flatten()
 	flattened["TradingFee"] = a.TradingFee

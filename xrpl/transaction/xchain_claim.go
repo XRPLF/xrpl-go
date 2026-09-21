@@ -63,7 +63,7 @@ func (x *XChainClaim) TxType() TxType {
 func (x *XChainClaim) Flatten() FlatTransaction {
 	flatTx := x.BaseTx.Flatten()
 
-	flatTx["TransactionType"] = x.TxType()
+	flatTx["TransactionType"] = x.TxType().String()
 
 	if x.Amount != nil {
 		flatTx["Amount"] = x.Amount.Flatten()

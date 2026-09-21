@@ -53,7 +53,7 @@ func (*TrustSet) TxType() TxType {
 func (t *TrustSet) Flatten() FlatTransaction {
 	flattened := t.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "TrustSet"
+	flattened["TransactionType"] = t.TxType().String()
 
 	if t.LimitAmount != nil {
 		flattened["LimitAmount"] = t.LimitAmount.Flatten()

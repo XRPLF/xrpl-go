@@ -88,7 +88,7 @@ func (*PaymentChannelClaim) TxType() TxType {
 func (p *PaymentChannelClaim) Flatten() FlatTransaction {
 	flattened := p.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "PaymentChannelClaim"
+	flattened["TransactionType"] = p.TxType().String()
 
 	if p.Channel != "" {
 		flattened["Channel"] = p.Channel.String()

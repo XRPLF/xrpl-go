@@ -79,7 +79,7 @@ func (*MPTokenIssuanceSet) TxType() TxType {
 func (m *MPTokenIssuanceSet) Flatten() FlatTransaction {
 	flattened := m.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "MPTokenIssuanceSet"
+	flattened["TransactionType"] = m.TxType().String()
 	flattened["MPTokenIssuanceID"] = m.MPTokenIssuanceID
 
 	if m.Holder != nil {

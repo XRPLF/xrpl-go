@@ -98,7 +98,7 @@ func (p *Payment) Flatten() FlatTransaction {
 	flattened := p.BaseTx.Flatten()
 
 	// Add Payment-specific fields
-	flattened["TransactionType"] = "Payment"
+	flattened["TransactionType"] = p.TxType().String()
 
 	if p.Amount != nil {
 		flattened["Amount"] = p.Amount.Flatten()

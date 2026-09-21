@@ -128,7 +128,7 @@ func (*NFTokenMint) TxType() TxType {
 func (n *NFTokenMint) Flatten() FlatTransaction {
 	flattened := n.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "NFTokenMint"
+	flattened["TransactionType"] = n.TxType().String()
 	flattened["NFTokenTaxon"] = n.NFTokenTaxon
 
 	if n.Issuer != "" {

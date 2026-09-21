@@ -39,7 +39,7 @@ func (*SetRegularKey) TxType() TxType {
 func (s *SetRegularKey) Flatten() FlatTransaction {
 	flattened := s.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "SetRegularKey"
+	flattened["TransactionType"] = s.TxType().String()
 
 	if s.RegularKey != "" {
 		flattened["RegularKey"] = s.RegularKey.String()

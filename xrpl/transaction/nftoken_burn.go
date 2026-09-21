@@ -43,7 +43,7 @@ func (*NFTokenBurn) TxType() TxType {
 func (n *NFTokenBurn) Flatten() FlatTransaction {
 	flattened := n.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "NFTokenBurn"
+	flattened["TransactionType"] = n.TxType().String()
 
 	if n.Owner != "" {
 		flattened["Owner"] = n.Owner.String()

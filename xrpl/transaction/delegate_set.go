@@ -88,7 +88,7 @@ func (*DelegateSet) TxType() TxType {
 func (d *DelegateSet) Flatten() FlatTransaction {
 	flattened := d.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "DelegateSet"
+	flattened["TransactionType"] = d.TxType().String()
 
 	if d.Authorize != "" {
 		flattened["Authorize"] = d.Authorize.String()

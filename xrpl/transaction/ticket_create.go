@@ -41,7 +41,7 @@ func (*TicketCreate) TxType() TxType {
 func (t *TicketCreate) Flatten() FlatTransaction {
 	flattened := t.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "TicketCreate"
+	flattened["TransactionType"] = t.TxType().String()
 
 	if t.TicketCount != 0 {
 		flattened["TicketCount"] = t.TicketCount

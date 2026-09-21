@@ -40,7 +40,7 @@ func (*DepositPreauth) TxType() TxType {
 func (d *DepositPreauth) Flatten() FlatTransaction {
 	flattened := d.BaseTx.Flatten()
 
-	flattened["TransactionType"] = DepositPreauthTx.String()
+	flattened["TransactionType"] = d.TxType().String()
 
 	if d.Authorize != "" {
 		flattened["Authorize"] = d.Authorize.String()
