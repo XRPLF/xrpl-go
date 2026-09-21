@@ -55,7 +55,7 @@ The address changes on each run. The example discards the credentials when it ex
 | Sign a message | `Sign` |
 | Verify a signature | `Validate` |
 
-Choose `crypto.ED25519()` or `crypto.SECP256K1()` when generating a seed. `DeriveKeypair` detects the algorithm from the encoded seed. Its `validator` argument is `false` for regular accounts. The result order is **private key, public key, error**.
+Choose `crypto.ED25519()` or `crypto.SECP256K1()` when generating a seed. `DeriveKeypair` detects the algorithm from the encoded seed. Pass `false` for its `validator` argument. Validator keypair derivation is not supported and returns an error. The result order is **private key, public key, error**.
 
 `Sign` and `Validate` select the algorithm from the key encoding. For transactions, use the wallet signing methods rather than signing arbitrary JSON or a submission blob.
 
@@ -67,17 +67,7 @@ Do not pass a passphrase directly. Deterministic derivation belongs outside this
 
 ## Recover a legacy seed
 
-Older versions silently used the first 16 bytes of any non-empty entropy string. To recover the same seed, reproduce that truncation before calling `GenerateSeed`.
-
-For migration code that already has `legacyEntropy` as a byte slice of at least 16 bytes, use:
-
-```go
-seed, err := keypairs.GenerateSeed(legacyEntropy[:addresscodec.FamilySeedLength], crypto.ED25519(), nil)
-```
-
-Import `addresscodec` from `github.com/Peersyst/xrpl-go/address-codec` and use the same algorithm as the original wallet. Check the error before using the seed. Inputs shorter than 16 bytes caused the old function to panic, so there is no deterministic seed from that failed call to recover.
-
-**Use truncation only for recovery, not for new wallets.**
+Follow the [v0.2 migration guide](https://xrplf.github.io/xrpl-go/docs/upgrading-from-v0.1.x-to-v0.2.0#keypairs) to reproduce legacy string-entropy derivation. Recovery rules are not recommendations for new wallets.
 
 ## Security
 

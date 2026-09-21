@@ -1,31 +1,8 @@
 # Install confidential helpers
 
-Starting with core `v0.3.1`, `xrpl-go` has two Go modules in one repository. The optional confidential module starts at `v0.1.0`. Their versions and releases are independent.
+Install this optional module when you need confidential builders or cryptographic helpers. Normal wallet signing and confidential transaction models remain in [core](/docs/installation).
 
-The commands below require those releases to be published. To work on an unreleased checkout, use the [development workspace](#development-workspace).
-
-## Choose a module
-
-| You need | Module |
-| --- | --- |
-| Transactions, ledger types, codecs, clients, and wallet signing | `github.com/Peersyst/xrpl-go` |
-| Confidential builders, encryption, balance decryption, commitments, or proofs | `github.com/Peersyst/xrpl-go/confidential` |
-
-The core module retains confidential transaction models and ledger fields. It can encode, decode, sign, and submit a confidential transaction when the required ciphertexts and proofs are supplied by your application. Transaction validation checks field formats and applicable local rules, not the cryptographic validity of a ZK proof.
-
-Normal wallet signing does not require the confidential module. The optional builders generate encrypted fields and proofs, then return a transaction for the normal signing and submission flow.
-
-## Core only
-
-Run this in your application module:
-
-```bash
-go get github.com/Peersyst/xrpl-go@latest
-```
-
-The core module has no dependency on the confidential module. Its Go module archive excludes the `confidential/` directory, including the native headers and static libraries. Build tags alone would not provide this download separation.
-
-This applies to Go module downloads. A repository clone or a GitHub source archive still contains both modules. Older module releases and existing caches are not changed by the split.
+The versioned commands below use core `v0.3.1` and confidential `v0.1.0`. To work on an unreleased checkout, use the [development workspace](#development-workspace).
 
 ## Add confidential helpers
 
@@ -39,8 +16,8 @@ Package import paths have not changed:
 
 ```go
 import (
-    "github.com/Peersyst/xrpl-go/confidential/builder"
-    "github.com/Peersyst/xrpl-go/xrpl/transaction"
+	"github.com/Peersyst/xrpl-go/confidential/builder"
+	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 )
 ```
 
@@ -65,6 +42,17 @@ The module includes headers and static libraries for all four supported targets.
 
 With cgo disabled, or on an unsupported target, the packages still build. Native cryptographic operations return `mptcrypto.ErrCgoRequired`. This fallback does not provide a pure-Go implementation of the cryptography.
 
+### Troubleshoot the build
+
+| Symptom | Check |
+| --- | --- |
+| `mptcrypto.ErrCgoRequired` | `go env CGO_ENABLED GOOS GOARCH`, supported targets, and build tags |
+| Compiler not found | Install the C/C++ toolchain and check `CC`/`CXX` |
+| Linux linker cannot find zlib | Install the target's zlib development package |
+| Cross-compilation fails | Use a compiler and system libraries for the target, not the host |
+
+`js`, `wasip1`, TinyGo, and go-fuzz builds use the unavailable-backend implementation.
+
 ## Versions and updates
 
 The first confidential release requires core `v0.3.1` or later. Go selects one version of each module for the application:
@@ -75,7 +63,7 @@ The first confidential release requires core `v0.3.1` or later. Go selects one v
 | `v0.3.0` | Upgrades core to `v0.3.1` |
 | A newer compatible core version | Keeps the newer version |
 
-A minimum dependency is not an exact version lock or a guarantee that every future version is compatible. Check the [core changelog](https://github.com/XRPLF/xrpl-go/blob/main/CHANGELOG.md) and [confidential changelog](https://github.com/XRPLF/xrpl-go/blob/main/confidential/CHANGELOG.md) before upgrading.
+A minimum dependency is not an exact version lock or a guarantee that every future version is compatible. Check the [core changelog](/changelog/v0.3.x/changelog) and [confidential changelog](/changelog/confidential/v0.1.x/changelog) before upgrading.
 
 Update the modules separately:
 
@@ -95,7 +83,9 @@ The Go command uses a version without the directory prefix. The Git tag includes
 
 ### Migration from the combined module
 
-Update applications that used confidential packages from `v0.3.1-mpt.0` to core `v0.3.1` and add the confidential module. Once both releases are published, run:
+Starting with core `v0.3.1`, the helpers are a separate module, initially versioned `v0.1.0`. Their versions and releases are independent. Core's Go module archive no longer includes native headers and libraries. A repository clone or GitHub source archive still contains both modules. Older downloads and caches are not changed by the split.
+
+Update applications that used confidential packages from `v0.3.1-mpt.0` to core `v0.3.1` and add the confidential module:
 
 ```bash
 go get github.com/Peersyst/xrpl-go@v0.3.1 github.com/Peersyst/xrpl-go/confidential@v0.1.0
@@ -108,26 +98,4 @@ Do not use a local `replace` directive to force an older combined core release. 
 
 ## Development workspace
 
-From a repository checkout:
-
-```bash
-make workspace
-make test-confidential
-make test-confidential-nocgo
-make lint-confidential
-```
-
-`make workspace` creates an ignored `go.work` file that uses both checked-out modules. It also maps the confidential module's required core version to the local core checkout, so development works before the first core release is published. This local replacement is not part of either published module.
-
-Root `go test ./...` does not test the nested module. Run package commands from `confidential/` to address its packages. To run an example after workspace setup:
-
-```bash
-cd confidential
-CGO_ENABLED=1 go run ./examples/offline
-```
-
-The offline example generates proofs without connecting, signing, or submitting. It still requires the native toolchain. The RPC and WebSocket examples are in `confidential/examples/rpc` and `confidential/examples/ws`. They connect to devnet, fund test wallets, and submit transactions.
-
-Confidential integration tests live in `confidential/integration/` and require a compatible ledger. Keep examples and tests that import the optional helpers inside this module, so root dependency management stays independent.
-
-For contributor checks, see [CONTRIBUTING.md](https://github.com/XRPLF/xrpl-go/blob/main/CONTRIBUTING.md). For release order and the GitHub Actions picker, see [RELEASING.md](https://github.com/XRPLF/xrpl-go/blob/main/RELEASING.md).
+For an unreleased repository checkout, use the [confidential contributor guide](https://github.com/XRPLF/xrpl-go/blob/main/confidential/CONTRIBUTING.md#development-workspace). It covers `make workspace`, local dependency selection, tests, and examples. Published-module users do not need a workspace or a local `replace` directive.

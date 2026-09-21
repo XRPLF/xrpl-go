@@ -1,15 +1,13 @@
 import type {ReactNode} from 'react';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import {LinkButton} from '../components/LinkButton';
 import config from '@site/docusaurus.config';
 
 export default function Home(): ReactNode {
-  const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title="Go SDK for the XRP Ledger"
+      description="Build Go applications on the XRP Ledger. Query ledger data, subscribe to updates, and sign and submit transactions.">
       <main>
         <section className="hero-section">
           <img 
@@ -21,12 +19,11 @@ export default function Home(): ReactNode {
             XRPL GO
           </h1>
           <p className="hero-description">
-            A comprehensive Go library for interacting with the XRP Ledger. 
-            Built with performance and developer experience in mind, XRPL Go provides 
-            all the tools needed to build robust applications on the XRPL ecosystem.
+            Build Go applications on the XRP Ledger. Query ledger data,
+            subscribe to updates, and sign and submit transactions.
           </p>
           <LinkButton href={`${config.baseUrl}/docs/intro`}>
-            Getting Started
+            Get started
           </LinkButton>
         </section>
       </main>

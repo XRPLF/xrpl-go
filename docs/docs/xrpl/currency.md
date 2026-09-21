@@ -1,74 +1,65 @@
-# currency
+# Currency amounts
 
-## Overview
+Use `xrpl/currency` for exact XRP/drop conversions and calculations. **1 XRP is 1,000,000 drops.** Use decimal strings rather than floating-point values when converting user input.
 
-`currency` is a package that provides utility functions to handle XRPL ledger currency types. For **native currency**, it provides XRP and drops conversions. For **IOUs**, it provides utility functions to convert non-standard currency codes (you can learn more about it in the [official documentation](https://xrpl.org/docs/references/protocol/data-types/currency-formats#nonstandard-currency-codes)).
+## Convert XRP and drops
 
-## XRP and drops
-
-The package provides exact string conversions between XRP and drops:
+This example runs offline:
 
 ```go
-func XrpToDrops(value string) (string, error)
-func DropsToXrp(value string) (string, error)
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
+)
+
+func main() {
+	drops, err := currency.XrpToDrops("1.25")
+	if err != nil {
+		log.Fatal(err)
+	}
+	xrp, err := currency.DropsToXrp(drops)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Drops:", drops)
+	fmt.Println("XRP:", xrp)
+}
 ```
 
-Both functions validate the native XRP supply limit. XRP values can have at most six decimal places because one XRP equals `DropsPerXRP`, or 1,000,000 drops.
+It prints `1250000` drops and `1.25` XRP. Both conversion functions validate the native XRP supply limit. XRP inputs can have at most six decimal places.
 
-For calculations, use the exact and immutable `Drops` type. Its zero value is zero drops. Intermediate values can contain a fractional drop, but `WholeString` and `XRPString` require a whole number of drops.
+## Calculate fees without losing precision
+
+The immutable `Drops` type supports exact arithmetic. Its zero value is zero drops. Intermediate calculations can contain a fractional drop, but `WholeString` and `XRPString` require a whole number of drops.
+
+For example, in a function returning an error:
 
 ```go
 base, err := currency.DropsFromXRP("0.000012")
 if err != nil {
- return err
+	return err
 }
-
 adjusted, err := base.MulDecimal("1.2")
 if err != nil {
- return err
+	return err
 }
-
-fee := adjusted.Ceil()
-feeDrops, err := fee.WholeString()
+feeDrops, err := adjusted.Ceil().WholeString()
+if err != nil {
+	return err
+}
+fmt.Println(feeDrops) // 15
 ```
 
-`Drops` supports exact addition, integer and decimal multiplication, rational multiplication, comparison, minimum selection, half-up rounding, and ceiling. Use `MaxNativeDrops` for the maximum native XRP amount in drops.
+Choose rounding deliberately. `Ceil` rounds upward, while `RoundHalfUp` rounds to the nearest whole drop with halves rounded up. `Drops` also supports addition, integer/decimal/rational multiplication, comparison, and minimum selection.
 
-## Usage
+`Drops` constructors do not enforce the protocol supply limit. Check final values against `currency.MaxNativeDrops` before protocol use. Do not confuse an intermediate calculation with an amount accepted by a transaction field.
 
-To import the package, you can use the following code:
+## Other currencies
 
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/currency"
-```
+`ConvertStringToHex` and `ConvertHexToString` handle non-standard currency-code strings. They do not convert balances or exchange rates. See [XRPL currency formats](https://xrpl.org/docs/references/protocol/data-types/currency-formats) for XRP, issued-currency, and MPT representations.
 
-## API
-
-```go
-const DropsPerXRP = 1_000_000
-const MaxNativeDrops uint64 = 100_000_000_000_000_000
-
-// XRP and drops conversions
-func XrpToDrops(value string) (string, error)
-func DropsToXrp(value string) (string, error)
-
-// Exact drops values
-func DropsFromString(value string) (Drops, error)
-func DropsFromUint64(value uint64) Drops
-func DropsFromXRP(value string) (Drops, error)
-func (d Drops) Add(other Drops) Drops
-func (d Drops) Mul(multiplier uint64) Drops
-func (d Drops) MulDecimal(multiplier string) (Drops, error)
-func (d Drops) MulRat(numerator, denominator uint64) (Drops, error)
-func (d Drops) Min(other Drops) Drops
-func (d Drops) Cmp(other Drops) int
-func (d Drops) Ceil() Drops
-func (d Drops) RoundHalfUp() Drops
-func (d Drops) IsWhole() bool
-func (d Drops) WholeString() (string, error)
-func (d Drops) XRPString() (string, error)
-
-// Non-standard currency code conversions
-func ConvertStringToHex(input string) string
-func ConvertHexToString(input string) (string, error)
-```
+For transaction amount structs, use [transaction/types](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/transaction/types). For the complete arithmetic API, use [currency](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/currency).

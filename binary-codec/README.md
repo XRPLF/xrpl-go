@@ -46,21 +46,9 @@ Encoded: 2400000001
 Sequence: 1
 ```
 
-## Choose an encoding
+## Next steps
 
-| Task | Function |
-| --- | --- |
-| Serialize a full object or transaction | `Encode` |
-| Decode a serialized object | `Decode` |
-| Prepare a single-signing payload | `EncodeForSigning` |
-| Prepare a multisigning payload | `EncodeForMultisigning` |
-| Prepare a payment-channel claim payload | `EncodeForSigningClaim` |
-| Convert offer-quality values | `EncodeQuality`, `DecodeQuality` |
-| Decode binary ledger state | `DecodeLedgerData` |
-
-A signing payload is not the final transaction blob. Use the appropriate signing encoder to prepare the payload, then `Encode` to serialize the transaction with its signature fields. Successful encoding alone does not mean a transaction is valid for submission.
-
-See the [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/binary-codec) for all encoders, including sponsor, counterparty, and batch signing.
+See the [binary codec guide](https://xrplf.github.io/xrpl-go/docs/binary-codec) for encoder selection, signing payloads versus submission blobs, and binary responses. Use the [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/binary-codec) for complete signatures.
 
 ## How the codec is organized
 

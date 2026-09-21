@@ -43,9 +43,10 @@ func main() {
 }
 ```
 
-Run it with:
+Resolve its dependencies and run it:
 
 ```bash
+go mod tidy
 go run .
 ```
 

@@ -29,7 +29,10 @@ const sidebars: SidebarsConfig = {
       label: "Wallets and transactions",
       items: [
         { type: "doc", id: "xrpl/wallet", label: "Wallets and signing" },
-        { type: "doc", id: "xrpl/transaction", label: "Transactions" },
+        "xrpl/transaction",
+        "xrpl/submission",
+        "xrpl/sponsorship",
+        "xrpl/mpt",
         { type: "doc", id: "xrpl/faucet", label: "Test funding" },
       ],
     },
@@ -60,6 +63,8 @@ const sidebars: SidebarsConfig = {
     { type: "doc", id: "confidential/index", label: "Overview" },
     { type: "doc", id: "confidential/installation", label: "Installation" },
     { type: "doc", id: "confidential/builders", label: "Builders" },
+    { type: "doc", id: "confidential/batch", label: "Batches" },
+    "confidential/primitives",
     "confidential/mptcrypto",
     {
       type: "html",

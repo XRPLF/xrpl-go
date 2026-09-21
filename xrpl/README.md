@@ -110,7 +110,7 @@ For more subscription options, see the [WebSocket guide](https://xrplf.github.io
 
 Use [`transaction`](transaction) for typed transaction models and [`wallet`](wallet) for local signing, following the [write path above](#read-and-write-paths). Autofill sets network fields such as the fee and sequence. Signing returns the signed blob and transaction hash.
 
-Both clients also provide `SubmitTxAndWait()` to autofill, sign, submit, and wait in one call. For offline signing, prepare the network fields first. Signing itself does not need a network connection.
+Both clients also provide `SubmitTxAndWait()` to prepare and submit in one call. Supply `SubmitOptions.Wallet` for client-side signing and set `Autofill: true` explicitly to fill missing fields. For offline signing, prepare the network fields first. Signing itself does not need a network connection.
 
 Start with a complete payment example for [JSON-RPC](../examples/send-xrp/rpc) or [WebSocket](../examples/send-xrp/ws). See the [transaction guide](https://xrplf.github.io/xrpl-go/docs/xrpl/transaction) for more transaction types.
 

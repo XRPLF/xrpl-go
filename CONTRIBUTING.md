@@ -72,6 +72,8 @@ Native tests need a C/C++ toolchain and cgo on Linux or macOS, with amd64 or arm
 
 Confidential examples live in `confidential/examples/`, and their integration tests live in `confidential/integration/`. Keep code that imports the optional helpers inside this module, including tests and examples. Otherwise, root `go mod tidy` can add the optional module as a core dependency.
 
+See the [confidential contributor notes](confidential/CONTRIBUTING.md) for native library layout and C boundary maintenance.
+
 ### Focused tests
 
 Run the checks for the packages you change:
@@ -111,9 +113,9 @@ make test-integration-confidential-devnet
 - Core changes run core checks only, except for the shared inputs below.
 - Confidential changes run confidential checks only. Core is built as a dependency, but its tests do not run.
 - Shared build inputs, such as `Makefile`, `.golangci.yml`, or localnet configuration, run both. Changes to the wire-size constants in `pkg/mptsizes/` also run both, so the native bindings are checked against their headers.
-- Documentation-only changes skip Go CI. Markdown under `testdata/` is treated as a test fixture.
+- Documentation-only changes skip the module unit-test workflows. The docs workflows build the site on pull requests to `main` that change `docs/**` or a docs workflow file, and build and deploy it on matching pushes to `main`. They do not check Go examples. Markdown under `testdata/` is treated as a test fixture.
 
-Each workflow has a manual trigger. Run **Confidential CI** manually to check a core change against the optional helpers. Weekly vulnerability scans still check both modules.
+Core CI and Confidential CI each have a manual trigger. Run **Confidential CI** manually to check a core change against the optional helpers. Weekly vulnerability scans still check both modules.
 
 For maintainers: do not require path-filtered checks on every PR. GitHub can leave skipped workflows pending, and there is no aggregate status job. Review branch-protection rules when changing these workflows. GitHub also limits the files evaluated by path filters, so run checks manually when a large change is skipped.
 
@@ -121,21 +123,9 @@ For maintainers: do not require path-filtered checks on every PR. GitHub can lea
 
 The site lives in [`docs/`](docs/) and is published at <https://xrplf.github.io/xrpl-go/>.
 
-Install dependencies and start a local preview:
+Follow the [website contributor guide](docs/README.md) for setup, local preview, TypeScript checks, and the production build. Compile changed Go examples separately and run offline examples to check their behavior.
 
-```bash
-cd docs
-yarn install --frozen-lockfile
-yarn start
-```
-
-Stop the preview before checking the production build, or run this in a second terminal from `docs/`:
-
-```bash
-yarn build
-```
-
-The [deployment workflow](.github/workflows/docs-deploy.yml) publishes relevant changes pushed to `main`. README and package-guide changes do not require building the site.
+The [deploy workflow](.github/workflows/docs-deploy.yml) builds and publishes the site when a push to `main` changes `docs/**` or the workflow file. The [pull request workflow](.github/workflows/docs-test-deploy.yml) runs the same production build on pull requests to `main` that change `docs/**` or either docs workflow file, so a broken site link fails the check. Neither workflow runs `yarn typecheck` or compiles Go examples, so run those checks locally before review. Root README and package README changes do not trigger a site build.
 
 ## Pull requests
 

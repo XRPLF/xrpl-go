@@ -53,7 +53,7 @@ The last two arguments to `ClassicAddressToXAddress` mean:
 | `hasTag` | Whether the destination tag is present |
 | `isTestnet` | Whether to use the test-network address format |
 
-A tag of zero and an absent tag are different. Use `hasTag` to distinguish them.
+A tag of zero and an absent tag are different. Use `hasTag` to distinguish them. Pass tag `0` when `hasTag` is false.
 
 ## Choose a function
 
@@ -67,6 +67,23 @@ A tag of zero and an absent tag are different. Use `hasTag` to distinguish them.
 | Encode or decode account public keys | `EncodeAccountPublicKey`, `DecodeAccountPublicKey` |
 | Encode or decode node public keys | `EncodeNodePublicKey`, `DecodeNodePublicKey` |
 | Validate address encodings | `IsValidClassicAddress`, `IsValidXAddress`, `IsValidAddress` |
+| Decode either address format | `DecodeAddress` |
+
+`EncodeSeed` takes the entropy and an algorithm from `pkg/crypto`, such as `crypto.ED25519()`. `DecodeSeed` returns the entropy, the detected algorithm, and an error.
+
+## Type prefixes
+
+Each encoding prepends a type prefix to its payload before adding the checksum.
+
+| Encoding | Prefix | Payload |
+| --- | --- | --- |
+| Classic address | `0x00` | 20-byte account ID |
+| Account public key | `0x23` | 33 bytes |
+| Node public key | `0x1C` | 33 bytes |
+| secp256k1 seed | `0x21` | 16 bytes |
+| Ed25519 seed | `0x01 0xE1 0x4B` | 16 bytes |
+| X-address, Mainnet | `0x05 0x44` | Account ID, tag flag, and tag |
+| X-address, test networks | `0x04 0x93` | Account ID, tag flag, and tag |
 
 ## What validation tells you
 

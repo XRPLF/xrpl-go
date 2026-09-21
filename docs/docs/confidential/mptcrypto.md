@@ -2,7 +2,7 @@
 sidebar_label: Native API reference
 ---
 
-# Native cryptography reference
+# Native API reference
 
 The `confidential/mptcrypto` package provides low-level Go bindings for the [XRPLF/mpt-crypto](https://github.com/XRPLF/mpt-crypto) C library, used by XLS-96 confidential MPT transactions. It exposes encryption, commitments, transaction context hashes, and proof generation and verification.
 
@@ -10,7 +10,7 @@ The `confidential/mptcrypto` package provides low-level Go bindings for the [XRP
 
 ## Choose the right level
 
-Most applications should start with the [builders](/docs/confidential/builders) and [higher-level helpers](/docs/confidential). Use `mptcrypto` when you need direct access to native operations and fixed-size byte types.
+Most applications should start with the [builders](/docs/confidential/builders) and [higher-level helpers](/docs/confidential/primitives). Use `mptcrypto` when you need direct access to native operations and fixed-size byte types.
 
 Only this package imports `"C"`. The higher-level helpers handle hex encoding, address decoding, and domain-specific errors in Go, but their cryptographic operations still require this native backend.
 
@@ -18,31 +18,15 @@ This guide documents input relationships and limits that matter when calling the
 
 ## Native backend availability
 
-The native implementation is selected only when all of the following are true:
+See [native build requirements](/docs/confidential/installation#native-build-requirements) for supported targets and toolchain setup. `js`, `wasip1`, TinyGo, and go-fuzz builds do not select the native backend.
 
-- cgo is enabled (`CGO_ENABLED=1`)
-- the target OS is Linux or macOS (`darwin`)
-- the target architecture is `amd64` or `arm64`
-- the build is not targeting `js`, `wasip1`, TinyGo, or go-fuzz
-
-Building the native implementation also requires the C/C++ compiler and linker toolchain used by cgo (for example, `gcc`/`g++` on Linux or the Xcode command-line tools on macOS). Linux also needs the zlib development library. Enabling cgo alone does not install that toolchain. See [native build requirements](/docs/confidential/installation#native-build-requirements) for setup.
-
-Vendored headers and static libraries live under `confidential/deps/`:
-
-| Target | Library directory |
-| --- | --- |
-| Linux amd64 | `confidential/deps/libs/linux-amd64/` |
-| Linux arm64 | `confidential/deps/libs/linux-arm64/` |
-| macOS amd64 | `confidential/deps/libs/darwin-amd64/` |
-| macOS arm64 | `confidential/deps/libs/darwin-arm64/` |
-
-All other builds select `mptcrypto_nocgo.go`. The package still compiles and exposes the same API, but every operation immediately returns `ErrCgoRequired` without validating or processing its inputs. This includes builds with cgo enabled on an unsupported OS or architecture.
+When the backend is unavailable, every native operation returns `ErrCgoRequired` before validating its inputs. This includes cgo-enabled builds on unsupported targets. There is no pure-Go cryptographic fallback.
 
 ## Data model
 
 ### Size constants
 
-All sizes are in bytes. On native builds, `sizes_cgo.go` checks the shared `pkg/mptsizes` constants against the vendored native headers at compile time.
+All sizes are in bytes. The size constants are exported by the core package `github.com/Peersyst/xrpl-go/pkg/mptsizes`, and only `MaxParticipants` is defined in `mptcrypto`. The snippets on this page omit the `mptsizes.` qualifier. On native builds, `sizes_cgo.go` checks the shared `pkg/mptsizes` constants against the vendored native headers at compile time.
 
 | Constant | Bytes | Meaning |
 | --- | ---: | --- |
@@ -86,16 +70,16 @@ The Go types enforce byte lengths, not cryptographic validity. The native librar
 ```go
 // One encrypted copy of a confidential send amount.
 type Participant struct {
-    PubKey     PublicKey
-    Ciphertext Ciphertext
+	PubKey     PublicKey
+	Ciphertext Ciphertext
 }
 
 // A value represented by both an ElGamal ciphertext and a Pedersen commitment.
 type PedersenProofParams struct {
-    Commitment     Commitment
-    Amount         uint64
-    Ciphertext     Ciphertext
-    BlindingFactor BlindingFactor
+	Commitment     Commitment
+	Amount         uint64
+	Ciphertext     Ciphertext
+	BlindingFactor BlindingFactor
 }
 ```
 
@@ -165,30 +149,30 @@ Context hashes bind proofs to transaction-specific fields. All helpers return `C
 
 ```go
 func ConvertContextHash(
-    account [AccountIDSize]byte,
-    iss [IssuanceIDSize]byte,
-    seq uint32,
+	account [AccountIDSize]byte,
+	iss [IssuanceIDSize]byte,
+	seq uint32,
 ) (ContextHash, error)
 
 func ConvertBackContextHash(
-    account [AccountIDSize]byte,
-    iss [IssuanceIDSize]byte,
-    seq, ver uint32,
+	account [AccountIDSize]byte,
+	iss [IssuanceIDSize]byte,
+	seq, ver uint32,
 ) (ContextHash, error)
 
 func SendContextHash(
-    account [AccountIDSize]byte,
-    iss [IssuanceIDSize]byte,
-    seq uint32,
-    dest [AccountIDSize]byte,
-    ver uint32,
+	account [AccountIDSize]byte,
+	iss [IssuanceIDSize]byte,
+	seq uint32,
+	dest [AccountIDSize]byte,
+	ver uint32,
 ) (ContextHash, error)
 
 func ClawbackContextHash(
-    account [AccountIDSize]byte,
-    iss [IssuanceIDSize]byte,
-    seq uint32,
-    holder [AccountIDSize]byte,
+	account [AccountIDSize]byte,
+	iss [IssuanceIDSize]byte,
+	seq uint32,
+	holder [AccountIDSize]byte,
 ) (ContextHash, error)
 ```
 
@@ -249,34 +233,34 @@ The successful native call currently writes `SendProofSize` bytes. The slice ret
 
 ```go
 func VerifyConvertProof(
-    proof [SchnorrProofSize]byte,
-    pubkey PublicKey,
-    ctxHash ContextHash,
+	proof [SchnorrProofSize]byte,
+	pubkey PublicKey,
+	ctxHash ContextHash,
 ) error
 
 func VerifyConvertBackProof(
-    proof [ConvertBackProofSize]byte,
-    pubkey PublicKey,
-    ciphertext Ciphertext,
-    balanceCommit Commitment,
-    amount uint64,
-    ctxHash ContextHash,
+	proof [ConvertBackProofSize]byte,
+	pubkey PublicKey,
+	ciphertext Ciphertext,
+	balanceCommit Commitment,
+	amount uint64,
+	ctxHash ContextHash,
 ) error
 
 func VerifySendProof(
-    proof []byte,
-    participants []Participant,
-    senderCt Ciphertext,
-    amountCommit, balanceCommit Commitment,
-    ctxHash ContextHash,
+	proof []byte,
+	participants []Participant,
+	senderCt Ciphertext,
+	amountCommit, balanceCommit Commitment,
+	ctxHash ContextHash,
 ) error
 
 func VerifyClawbackProof(
-    proof [CompactClawbackProofSize]byte,
-    amount uint64,
-    pubkey PublicKey,
-    ciphertext Ciphertext,
-    ctxHash ContextHash,
+	proof [CompactClawbackProofSize]byte,
+	amount uint64,
+	pubkey PublicKey,
+	ciphertext Ciphertext,
+	ctxHash ContextHash,
 ) error
 ```
 
@@ -310,10 +294,10 @@ Use `errors.Is` to match these sentinels because errors can include input or ope
 ```go
 amount, err := mptcrypto.DecryptAmount(ciphertext, privateKey, low, high)
 if errors.Is(err, mptcrypto.ErrCgoRequired) {
-    // Confidential cryptography is unavailable in this build.
+	// Confidential cryptography is unavailable in this build.
 }
 if errors.Is(err, mptcrypto.ErrInvalidAmountRange) {
-    // Fix the caller-supplied range.
+	// Fix the caller-supplied range.
 }
 ```
 
@@ -321,23 +305,4 @@ Other validation and native-library failures are returned as descriptive errors.
 
 ## Contributor notes
 
-### Package layout
-
-```text
-mptcrypto/
-  types.go                 # Package documentation, sizes, and value types
-  errors.go                # Shared sentinel errors
-  sizes_cgo.go             # Compile-time checks against native size constants
-  mptcrypto_cgo.go          # Native bindings and native-only validation
-  mptcrypto_nocgo.go        # Unavailable-backend stubs
-  mptcrypto_test.go         # Native cryptographic tests
-  mptcrypto_nocgo_test.go    # Fallback availability contract
-```
-
-See the [package test commands](https://github.com/XRPLF/xrpl-go/blob/main/confidential/mptcrypto/README.md#test-the-package) to check both native and fallback builds. Use the [development workspace](/docs/confidential/installation#development-workspace) to test against the checked-out core module.
-
-### Maintaining the cgo boundary
-
-`mptcrypto_cgo.go` contains the build constraint and per-platform linker flags. It passes fixed-size byte arrays to C through pointers to their first elements and copies Go compound values into their corresponding C structs field by field. Variable participant lists are copied into a contiguous slice of `C.mpt_confidential_participant` values before the native call.
-
-The native routines use these pointers only for the duration of the call. They must not retain Go memory after returning. Keep all `import "C"`, `unsafe`, C layout conversion, and native linker changes inside this package so the higher-level confidential packages remain portable pure Go code.
+Native library paths, workspace checks, and C boundary maintenance are documented in [Contributing to confidential helpers](https://github.com/XRPLF/xrpl-go/blob/main/confidential/CONTRIBUTING.md). Application callers should use the API contracts above.

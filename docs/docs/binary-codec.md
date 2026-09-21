@@ -58,7 +58,7 @@ Sequence: 1
 | Prepare a multisigning payload | `EncodeForMultisigning` |
 | Prepare a payment-channel claim payload | `EncodeForSigningClaim` |
 | Convert offer-quality values | `EncodeQuality`, `DecodeQuality` |
-| Decode binary ledger state | `DecodeLedgerData` |
+| Decode a binary ledger header | `DecodeLedgerData` |
 
 See the [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/binary-codec) for all encoders, including sponsor, counterparty, and batch signing.
 
@@ -71,13 +71,15 @@ transaction fields -> signing encoder -> payload to sign
 transaction fields + signature -> Encode() -> blob to submit
 ```
 
+`EncodeForSigning` prepends the single-signing prefix and serializes only signing fields, so it leaves out `TxnSignature` and `Signers`. `EncodeForMultisigning` uses the multisigning prefix instead and appends the signer's account ID. For regular multisigning, set `SigningPubKey` to an empty string before calling it.
+
 Do not use a full submission blob as the signing payload. Use the encoder for the signing mode, or let the wallet methods handle the complete process.
 
 Successful encoding does not mean a transaction is valid for submission. The codec serializes fields. It does not establish that the transaction can succeed against the current ledger state.
 
 ## Binary responses
 
-Normal JSON responses do not need binary decoding. If you request a binary ledger entry, decode its `node_binary` value with `Decode` to obtain a field map. See [ledger data](/docs/xrpl/ledger-entry-types) for the typed objects those fields describe.
+Normal JSON responses do not need binary decoding. If you request a binary ledger entry, decode its `node_binary` value with `Decode` to obtain a field map. `DecodeLedgerData` is for the fixed-layout ledger header in a binary `ledger` response, not for ledger entries. See [ledger data](/docs/xrpl/ledger-entry-types) for the typed objects those fields describe.
 
 ## Protocol definitions
 

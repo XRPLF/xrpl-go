@@ -30,7 +30,7 @@ The [detailed guide](../../docs/docs/confidential/mptcrypto.md) covers the contr
 - [Data types and sizes](../../docs/docs/confidential/mptcrypto.md#data-model), including participant ordering.
 - [Function behavior](../../docs/docs/confidential/mptcrypto.md#function-reference), including proof inputs, context hashes, and verification requirements.
 - [Errors](../../docs/docs/confidential/mptcrypto.md#error-behavior) and how to match them.
-- [Contributor notes](../../docs/docs/confidential/mptcrypto.md#contributor-notes) on package layout and the cgo boundary.
+- [Contributor notes](../CONTRIBUTING.md#native-package-layout) on package layout and [the cgo boundary](../CONTRIBUTING.md#maintaining-the-cgo-boundary).
 
 Use the [Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/confidential/mptcrypto) for complete function signatures.
 

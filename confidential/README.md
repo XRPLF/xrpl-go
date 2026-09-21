@@ -67,7 +67,7 @@ Builders return core transaction types. Flatten the result, autofill the remaini
 
 ## Migration from the combined module
 
-If you used confidential packages from `v0.3.1-mpt.0`, update core and add the new module once both releases are available. Keep the existing imports:
+If you used confidential packages from `v0.3.1-mpt.0`, update core and add the new module. Keep the existing imports:
 
 ```bash
 go get github.com/Peersyst/xrpl-go@v0.3.1 github.com/Peersyst/xrpl-go/confidential@v0.1.0

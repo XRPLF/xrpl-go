@@ -49,9 +49,10 @@ func main() {
 }
 ```
 
-Run it with:
+Resolve its dependencies and run it:
 
 ```bash
+go mod tidy
 go run .
 ```
 
@@ -73,7 +74,7 @@ The usual transaction flow is:
 3. Sign locally with `wallet.Sign()`.
 4. Submit with `client.SubmitTxBlobAndWait()`.
 
-For the combined flow, use `client.SubmitTxAndWait()` to autofill, sign, submit, and wait in one call. For offline signing, keep autofill and signing separate: autofill needs network access, signing does not.
+For the combined flow, use `client.SubmitTxAndWait()` with `SubmitOptions.Wallet` and explicit `Autofill: true` to autofill, sign, submit, and wait in one call. Autofill is disabled by default. For offline signing, keep autofill and signing separate: autofill needs network access, signing does not.
 
 See the [payment example](examples/send-xrp/rpc) for the complete flow and the [examples directory](examples) for more use cases.
 

@@ -1,6 +1,19 @@
 # Upgrade from v0.1.x to v0.2.0
 
-This guide covers the source changes most likely to affect applications upgrading from `v0.1.x` to `v0.2.0`.
+This guide covers changes from `v0.1.x` to `v0.2.0`, not the current release. For a later upgrade, continue with [v0.2.0 to v0.3.0](/docs/upgrading-from-v0.2.0-to-v0.3.0).
+
+## Upgrade checklist
+
+| Area | Check first |
+| --- | --- |
+| Key derivation | Preserve existing entropy bytes exactly when recovering a wallet |
+| Amounts | Replace floating-point codec inputs with exact representations |
+| Addresses | Handle tag presence separately from tag value |
+| Signers | Handle `SortSigners` errors and use canonical account-ID ordering |
+| Errors | Update moved and removed sentinels |
+| Clients | Check response limits, logging, and handler lifecycle assumptions |
+
+Run your application's tests after each source update, then test signing and submission with non-production funds. Fixed entropy below illustrates compatibility only. Do not use it for a new funded wallet.
 
 ## Keypairs
 
@@ -23,12 +36,14 @@ entropy := []byte{
 seed, err := keypairs.GenerateSeed(entropy, crypto.ED25519(), nil)
 ```
 
-Do not pass passphrases directly. For deterministic passphrase-based seed generation, derive exactly 16 bytes outside `GenerateSeed`:
+Do not pass passphrases directly. New wallets should use cryptographically random entropy. If an existing application deliberately derived entropy with SHA-512, preserve that derivation outside `GenerateSeed` to recover the same wallet:
 
 ```go
 sum := sha512.Sum512([]byte(passphrase))
 seed, err := keypairs.GenerateSeed(sum[:addresscodec.FamilySeedLength], crypto.ED25519(), nil)
 ```
+
+Hashing does not make a weak passphrase safe. This is a compatibility example, not a password-based wallet design. Do not change an existing derivation algorithm while recovering funds.
 
 Migration only: older versions used the first 16 bytes of any non-empty entropy string. If you must recover a legacy seed, reproduce that truncation before calling `GenerateSeed`:
 
@@ -40,6 +55,8 @@ if len(legacyEntropy) < addresscodec.FamilySeedLength {
 
 seed, err := keypairs.GenerateSeed(legacyEntropy[:addresscodec.FamilySeedLength], crypto.ED25519(), nil)
 ```
+
+Use the same algorithm as the original wallet. Inputs shorter than 16 bytes caused the old function to panic, so there is no seed from that failed call to recover. Truncation is for recovery only, not new wallets.
 
 ## X-address Tags
 
@@ -167,7 +184,7 @@ if errors.Is(err, transaction.ErrTransactionTypeMissing) {
 
 ```go
 if errors.Is(err, types.ErrPermissionValueOutOfRange) {
-    // ...
+	// ...
 }
 ```
 
@@ -188,6 +205,6 @@ Canonical zero forms (`"0"`, `"0.0"`, `"-0"`, `"0e5"`, etc.) are accepted as val
 
 ```go
 if errors.Is(err, transaction.ErrInvalidTokenValue) {
-    // ...
+	// ...
 }
 ```
