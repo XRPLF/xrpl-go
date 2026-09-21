@@ -120,8 +120,3 @@
 | 3 | Sharing and deeplinking signed transactions | Stagnant | `references/ecosystem/xls-0003.md` |
 | 4 | Trustline Add URI | Stagnant | `references/ecosystem/xls-0004.md` |
 | 6 | Standard for Visual Account Icons | Final | `references/ecosystem/xls-0006.md` |
-
-## UNCLASSIFIED
-| XLS | Title | Status | File |
-| ----- | ------- | -------- | ------ |
-| 103 | On-Chain Cosigner | Draft | `references/UNCLASSIFIED/xls-0103.md` |
