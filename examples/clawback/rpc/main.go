@@ -204,6 +204,7 @@ func clawBackTokens(client *rpc.Client, coldWallet, hotWallet wallet.Wallet) err
 	return nil
 }
 
+//nolint:unparam // This example always expects success. Keep expected so readers can adapt this starting point to other results.
 func checkResult(response *txrequests.TxResponse, expected transactions.TxResult) error {
 	if !response.Validated || response.Meta.TransactionResult != expected.String() {
 		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
