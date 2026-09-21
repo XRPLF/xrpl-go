@@ -1,4 +1,4 @@
-package flatten
+package types
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestClassicIfTagless(t *testing.T) {
+func TestAddress_Flatten(t *testing.T) {
 	const classic = "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
 
 	xAddress := func(tag uint32, hasTag, testnet bool) string {
@@ -38,7 +38,7 @@ func TestClassicIfTagless(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, ClassicIfTagless(tt.address))
+			require.Equal(t, tt.want, Address(tt.address).Flatten())
 		})
 	}
 }

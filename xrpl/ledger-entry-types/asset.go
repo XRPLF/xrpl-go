@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"github.com/Peersyst/xrpl-go/xrpl/internal/flatten"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -45,7 +44,7 @@ func (a *Asset) Flatten() map[string]any {
 	}
 
 	if a.Issuer.String() != "" {
-		flattened["issuer"] = flatten.ClassicIfTagless(a.Issuer.String())
+		flattened["issuer"] = a.Issuer.Flatten()
 	}
 
 	if a.Currency != "" {

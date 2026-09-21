@@ -3,7 +3,6 @@ package types
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/xrpl/internal/flatten"
 )
 
 // XChainBridge represents the bridge configuration for cross-chain transfers, including door accounts and assets.
@@ -27,10 +26,10 @@ type FlatXChainBridge map[string]string
 func (x *XChainBridge) Flatten() FlatXChainBridge {
 	flat := make(FlatXChainBridge)
 
-	flat["IssuingChainDoor"] = flatten.ClassicIfTagless(x.IssuingChainDoor.String())
-	flat["IssuingChainIssue"] = flatten.ClassicIfTagless(x.IssuingChainIssue.String())
-	flat["LockingChainDoor"] = flatten.ClassicIfTagless(x.LockingChainDoor.String())
-	flat["LockingChainIssue"] = flatten.ClassicIfTagless(x.LockingChainIssue.String())
+	flat["IssuingChainDoor"] = x.IssuingChainDoor.Flatten()
+	flat["IssuingChainIssue"] = x.IssuingChainIssue.Flatten()
+	flat["LockingChainDoor"] = x.LockingChainDoor.Flatten()
+	flat["LockingChainIssue"] = x.LockingChainIssue.Flatten()
 
 	return flat
 }

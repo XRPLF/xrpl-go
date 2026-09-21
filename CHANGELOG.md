@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `types.SerializeIssuedCurrencyCode` for validating and serializing issued-currency codes to their canonical 20-byte representation.
 
+#### xrpl/transaction
+
+- Added `types.Address.Flatten`, which returns the classic form of a tagless X-address for use inside nested objects such as issuers.
+
 ### Changed
 
 #### xrpl/transaction
