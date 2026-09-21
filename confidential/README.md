@@ -89,7 +89,7 @@ make lint-confidential
 
 The ignored workspace links both checked-out modules and replaces the required core version locally. This supports development before the core release is published. Keep replacements out of published `go.mod` files.
 
-Root `go test ./...` skips this module. To run package-level commands, first enter `confidential/`. Keep confidential examples and integration tests in [`examples/`](examples/) and [`integration/`](integration/). Integration tests need a compatible ledger. See [CONTRIBUTING.md](../CONTRIBUTING.md) for network-specific test commands.
+Root `go test ./...` skips this module. To run package-level commands, first enter `confidential/`. Keep confidential examples and integration tests in [`examples/`](examples/) and [`integration/`](integration/). Integration tests need a compatible ledger. See [CONTRIBUTING.md](../CONTRIBUTING.md) for network-specific test commands and the [confidential contributor notes](CONTRIBUTING.md) for the native package layout and cgo boundary.
 
 ## Versions and releases
 

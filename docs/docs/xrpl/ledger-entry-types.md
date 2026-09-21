@@ -70,7 +70,7 @@ The request selects an AccountRoot, so the example knows which struct to use. Fo
 
 ## Select an entry
 
-`EntryRequest` requires exactly one top-level selector. Use `Index` for a known ledger-entry index or a supported typed selector such as `AccountRoot` or `MPToken`. Zero or multiple selectors and invalid object-selector forms fail validation.
+`EntryRequest` requires exactly one top-level selector. `Bridge` is the exception: pair it with `BridgeAccount`. Use `Index` for a known ledger-entry index or a supported typed selector such as `AccountRoot` or `MPToken`. Zero or multiple selectors and invalid object-selector forms fail validation.
 
 See [ledger_entry](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_entry) for protocol selectors and the [Go EntryRequest](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/ledger#EntryRequest) for their SDK forms. [Hash helpers](/docs/xrpl/hash) can derive some indexes offline.
 

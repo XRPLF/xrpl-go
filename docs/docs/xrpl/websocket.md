@@ -69,6 +69,7 @@ configure -> Connect -> register handlers -> Subscribe -> receive events -> Disc
 
 - `Connect` discovers network identity before exposing the connection to requests. Calling it while connected or connecting returns `ErrAlreadyConnected`.
 - `Disconnect` succeeds when no connection is active. Pending requests return `ErrDisconnected` after a manual or unexpected disconnect.
+- `IsConnected` reports whether a connection is currently active.
 - Requests are **not replayed** after reconnection. A failed transaction request may still have reached the server. See [submission recovery](/docs/xrpl/submission#check-the-final-result).
 - Automatic reconnect does **not** replay subscriptions. Your application must subscribe again after reconnecting. Use a ledger query to recover any missed state rather than assuming the stream is continuous.
 - Serialize calls to `Connect` and `Disconnect`. Do not call `Connect` synchronously from a stream or error handler.
@@ -77,7 +78,7 @@ A write or write-deadline failure closes the failed socket. The active read loop
 
 ## Handler behavior
 
-Register one handler per stream with the appropriate `OnXxx` method. A later registration replaces the previous handler. An event already queued can still use the old handler.
+Register one handler per stream with the appropriate `OnXxx` method. A later registration replaces the previous handler. An event already handed off for delivery can still use the old handler.
 
 | Subscription | Handler |
 | --- | --- |

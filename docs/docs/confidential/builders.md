@@ -13,7 +13,7 @@ Each operation comes in two forms:
 2. Use a network that supports the required confidential MPT amendments.
 3. Enable the issuance's confidential capability and register its issuer encryption key. Register an auditor key too if the issuance uses one. See [MPT operations](/docs/xrpl/mpt).
 4. Ensure each holder has an `MPToken` entry, using `MPTokenAuthorize` as required. The first confidential convert does not create that entry.
-5. Keep wallet signing keys separate from ElGamal encryption keys. Builders need encryption keys. Wallets sign the final transaction.
+5. Keep wallet signing keys separate from ElGamal encryption keys. Builders need encryption keys, which `elgamal.GenerateKeypair()` creates. See [Primitives](/docs/confidential/primitives). Wallets sign the final transaction.
 
 ## Typical flow
 

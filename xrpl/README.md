@@ -41,7 +41,7 @@ WRITE: submit a transaction
 
 **`GetLedgerEntry()` is generic.** Its `EntryResponse.Node` is a `FlatLedgerObject` map, even when you request an AccountRoot. You can use the map directly or select the matching [`ledger-entry-types`](ledger-entry-types) struct from `LedgerEntryType`, then marshal the map and unmarshal into it. With `Binary: true`, decode `NodeBinary` with `binarycodec.Decode()` first to obtain the map.
 
-Set the request's `LedgerIndex` to `"validated"` when you need validated state.
+Set the request's `LedgerIndex` to `common.Validated` when you need validated state.
 
 For writes, `wallet.Sign()` uses `EncodeForSigning()` to prepare the signing payload and `Encode()` to produce the signed blob. Check the transaction result, not just whether it was validated: a validated transaction can have failed.
 

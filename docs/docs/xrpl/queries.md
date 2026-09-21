@@ -88,9 +88,9 @@ The links below lead to the Go API, not a second copy of the server method catal
 
 ## API versions and generic requests
 
-The main request packages use API v2. Some packages also provide explicit v1 types, such as `xrpl/queries/account/v1`. A v1 Go type is not interchangeable with the v2 type accepted by `GetAccountInfo`.
+The main request packages use API v2. Some packages also provide explicit v1 types, such as `xrpl/queries/account/v1`. The `amm`, `oracle`, `server`, and `vault` packages have no v1 types. A v1 Go type is not interchangeable with the v2 type accepted by `GetAccountInfo`.
 
-Use the client's lower-level `Request` method when you need an explicit version not exposed by its typed wrappers. Its response form differs by transport. See the [RPC](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/rpc#Client.Request) or [WebSocket](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/websocket#Client.Request) API before decoding it.
+Use the client's lower-level `Request` method when you need an explicit version not exposed by its typed wrappers, or a request type without a typed wrapper, such as `transactions.TxRequest`. Its response form differs by transport. See the [RPC](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/rpc#Client.Request) or [WebSocket](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/websocket#Client.Request) API before decoding it.
 
 SDK type availability, server API version support, and amendment activation are separate questions. A Go struct does not establish that a target network supports the operation.
 
@@ -114,14 +114,14 @@ response, err := client.Simulate(&request)
 if err != nil {
 	return err
 }
-fmt.Println(response.EngineResult, response.Applied)
+fmt.Println(response.EngineResult, response.EngineResultMessage)
 ```
 
 `SimulateRequest.ValidateNetworkID` is deprecated and only performs the same nil-request check as `Validate`. Clients do not strip signatures, so never send signed input to an untrusted simulation endpoint.
 
 ## Cache server definitions
 
-`GetServerDefinitions` accepts `server.DefinitionsRequest{Hash: cachedHash}`. A matching hash allows a hash-only response. Retain the cached definitions when the response has no `Fields`.
+`GetServerDefinitions` accepts `&server.DefinitionsRequest{Hash: cachedHash}`. A matching hash allows a hash-only response. Retain the cached definitions when the response has no `Fields`.
 
 A full response contains the five core sections. Servers implementing XLS-97 can also return transaction formats, ledger formats, and flag maps. The SDK rejects incomplete section groups and mismatched hash-only responses. See [server_definitions](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_definitions) for the protocol response.
 

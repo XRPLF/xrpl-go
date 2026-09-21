@@ -2,7 +2,7 @@
 
 Use ordered batches when several confidential operations must use the state produced by earlier operations in the same transaction. Start with the [builders guide](/docs/confidential/builders) for standalone operations.
 
-## Ordered batches
+## Build a batch
 
 `BuildBatch` assembles several confidential operations into one XLS-56 `Batch` that the
 ledger applies in order. It exists because calling the standalone builders in a row cannot
@@ -74,8 +74,6 @@ Signing stays with the caller. Each participating account signs with
 `wallet.SignMultiBatch`, several signatures are merged with `wallet.CombineBatchSigners`, and
 the outer account signs the `Batch` itself:
 
-This fragment uses `rpctypes` for `xrpl/rpc/types`. For WebSocket, use `xrpl/websocket/types` instead. `senderWallet` and `receiverWallet` are the account-signing wallets, not the encryption keypairs.
-
 ```go
 flat := batch.Flatten()
 if err := client.AutofillMultisigned(&flat, 1); err != nil {
@@ -93,7 +91,9 @@ if response.Meta.TransactionResult != "tesSUCCESS" {
 }
 ```
 
-### Batch limits
+This fragment uses `rpctypes` for `xrpl/rpc/types`. For WebSocket, use `xrpl/websocket/types` instead. `senderWallet` and `receiverWallet` are the account-signing wallets, not the encryption keypairs.
+
+## Batch limits
 
 The assembler refuses to emit a proof it can already tell the network will reject. Each
 refusal has its own sentinel:

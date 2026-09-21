@@ -113,7 +113,7 @@ make test-integration-confidential-devnet
 - Core changes run core checks only, except for the shared inputs below.
 - Confidential changes run confidential checks only. Core is built as a dependency, but its tests do not run.
 - Shared build inputs, such as `Makefile`, `.golangci.yml`, or localnet configuration, run both. Changes to the wire-size constants in `pkg/mptsizes/` also run both, so the native bindings are checked against their headers.
-- Documentation-only changes skip the module unit-test workflows. The docs workflows build the site on pull requests to `main` that change `docs/**` or a docs workflow file, and build and deploy it on matching pushes to `main`. They do not check Go examples. Markdown under `testdata/` is treated as a test fixture.
+- Documentation-only changes skip Core CI and Confidential CI entirely. The docs workflows build the site on pull requests to `main` that change `docs/**` or a docs workflow file, and build and deploy it on matching pushes to `main`. They do not check Go examples. Markdown under `testdata/` is treated as a test fixture.
 
 Core CI and Confidential CI each have a manual trigger. Run **Confidential CI** manually to check a core change against the optional helpers. Weekly vulnerability scans still check both modules.
 
@@ -125,7 +125,7 @@ The site lives in [`docs/`](docs/) and is published at <https://xrplf.github.io/
 
 Follow the [website contributor guide](docs/README.md) for setup, local preview, TypeScript checks, and the production build. Compile changed Go examples separately and run offline examples to check their behavior.
 
-The [deploy workflow](.github/workflows/docs-deploy.yml) builds and publishes the site when a push to `main` changes `docs/**` or the workflow file. The [pull request workflow](.github/workflows/docs-test-deploy.yml) runs the same production build on pull requests to `main` that change `docs/**` or either docs workflow file, so a broken site link fails the check. Neither workflow runs `yarn typecheck` or compiles Go examples, so run those checks locally before review. Root README and package README changes do not trigger a site build.
+The [deploy workflow](.github/workflows/docs-deploy.yml) builds and publishes the site when a push to `main` changes `docs/**` or the workflow file. The [pull request workflow](.github/workflows/docs-test-deploy.yml) runs the same production build on pull requests to `main` that change `docs/**` or either docs workflow file, so a broken site route fails the check. Broken Markdown file links and anchors only warn. Neither workflow runs `yarn typecheck` or compiles Go examples, so run those checks locally before review. Root README and package README changes do not trigger a site build.
 
 ## Pull requests
 
@@ -145,6 +145,10 @@ Use conventional commits, for example:
 docs: update contributing guide
 fix: validate account delete metadata
 ```
+
+## Releases
+
+Maintainers: see [RELEASING.md](RELEASING.md) for versioning, snapshot branches, and the release workflow.
 
 ## Code style
 

@@ -14,7 +14,7 @@ Most applications should start with the [builders](/docs/confidential/builders) 
 
 Only this package imports `"C"`. The higher-level helpers handle hex encoding, address decoding, and domain-specific errors in Go, but their cryptographic operations still require this native backend.
 
-This guide documents input relationships and limits that matter when calling the native library. Use the API reference for complete function signatures.
+This guide documents input relationships and limits that matter when calling the native library. The function reference below lists each signature, and the Go API reference has the full godoc.
 
 ## Native backend availability
 
@@ -33,7 +33,7 @@ All sizes are in bytes. The size constants are exported by the core package `git
 | `PrivKeySize` | 32 | ElGamal private key |
 | `PubKeySize` | 33 | Compressed secp256k1 ElGamal public key |
 | `BlindingFactorSize` | 32 | ElGamal randomness / Pedersen blinding scalar |
-| `CiphertextSize` | 66 | Two compressed EC points (`C1 &#124;&#124; C2`) |
+| `CiphertextSize` | 66 | Two compressed EC points (`C1 \|\| C2`) |
 | `AccountIDSize` | 20 | Decoded XRPL account ID |
 | `IssuanceIDSize` | 24 | MPToken issuance ID |
 | `HashOutputSize` | 32 | Transaction context hash |
@@ -103,17 +103,37 @@ Each participant ciphertext must encrypt the transfer amount under that particip
 
 #### `GenerateKeypair`
 
+```go
+func GenerateKeypair() (PrivateKey, PublicKey, error)
+```
+
 Generates a secp256k1 ElGamal keypair. The public key is a 33-byte compressed point.
 
 #### `GenerateBlindingFactor`
+
+```go
+func GenerateBlindingFactor() (BlindingFactor, error)
+```
 
 Generates a random scalar suitable for ElGamal encryption and Pedersen commitments.
 
 #### `EncryptAmount`
 
+```go
+func EncryptAmount(amount uint64, pubkey PublicKey, bf BlindingFactor) (Ciphertext, error)
+```
+
 Encrypts `amount` under `pubkey` using `bf`. The result is the concatenation of two compressed EC points.
 
 #### `DecryptAmount`
+
+```go
+func DecryptAmount(
+	ciphertext Ciphertext,
+	privateKey PrivateKey,
+	rangeLow, rangeHigh uint64,
+) (uint64, error)
+```
 
 Searches for the plaintext in the inclusive interval `[rangeLow, rangeHigh]`. On a native build, the range must satisfy:
 
@@ -129,15 +149,31 @@ Both operations require ciphertexts encrypted under the same public key. Invalid
 
 #### `AddCiphertexts`
 
+```go
+func AddCiphertexts(a, b Ciphertext) (Ciphertext, error)
+```
+
 Adds two ElGamal ciphertexts and returns an encryption of the sum of their plaintexts.
 
 #### `SubtractCiphertexts`
+
+```go
+func SubtractCiphertexts(a, b Ciphertext) (Ciphertext, error)
+```
 
 Subtracts `b` from `a` and returns an encryption of the difference of their plaintexts. Subtracting a ciphertext from itself returns an error, not an encrypted zero.
 
 ### Canonical encrypted zero
 
 #### `CanonicalEncryptedZero`
+
+```go
+func CanonicalEncryptedZero(
+	pubkey PublicKey,
+	account [AccountIDSize]byte,
+	iss [IssuanceIDSize]byte,
+) (Ciphertext, error)
+```
 
 Returns a deterministic encryption of zero derived from the public key, decoded holder AccountID, and issuance ID. Use it to reproduce a confidential balance that xrpld initializes or resets. No caller-supplied blinding factor is needed.
 
@@ -183,13 +219,23 @@ The fields correspond to the relevant XLS-96 transaction:
 - send: sender, destination, issuance ID, sequence, and sender balance version
 - clawback: issuer account, target holder, issuance ID, and sequence
 
+For a transaction that spends a Ticket, pass the Ticket sequence as `seq`.
+
 ### Pedersen commitments
 
 #### `PedersenCommitment`
 
+```go
+func PedersenCommitment(amount uint64, bf BlindingFactor) (Commitment, error)
+```
+
 Computes a compressed Pedersen commitment to `amount` using `bf`. The operation is deterministic for the same amount and blinding factor.
 
 #### `ComputeConvertBackRemainder`
+
+```go
+func ComputeConvertBackRemainder(commitmentIn Commitment, amount uint64) (Commitment, error)
+```
 
 Subtracts the transparent amount from a balance commitment and returns the commitment to the convert-back remainder.
 
@@ -197,9 +243,29 @@ Subtracts the transparent amount from a balance commitment and returns the commi
 
 #### `GenerateConvertProof`
 
+```go
+func GenerateConvertProof(
+	pubkey PublicKey,
+	privkey PrivateKey,
+	ctxHash ContextHash,
+) ([SchnorrProofSize]byte, error)
+```
+
 Generates the Schnorr proof of private-key knowledge used when a `ConfidentialMPTConvert` transaction registers a holder encryption key.
 
+The public key comes first here. The other generators take the private key first.
+
 #### `GenerateConvertBackProof`
+
+```go
+func GenerateConvertBackProof(
+	privkey PrivateKey,
+	pubkey PublicKey,
+	ctxHash ContextHash,
+	amount uint64,
+	params PedersenProofParams,
+) ([ConvertBackProofSize]byte, error)
+```
 
 Generates an 816-byte proof containing:
 
@@ -210,9 +276,32 @@ Generates an 816-byte proof containing:
 
 #### `GenerateClawbackProof`
 
+```go
+func GenerateClawbackProof(
+	privkey PrivateKey,
+	pubkey PublicKey,
+	ctxHash ContextHash,
+	amount uint64,
+	ciphertext Ciphertext,
+) ([CompactClawbackProofSize]byte, error)
+```
+
 Generates the 64-byte compact sigma proof used by `ConfidentialMPTClawback`. It proves that the issuer-encrypted balance ciphertext contains the revealed clawback amount without exposing the issuer private key.
 
 #### `GenerateSendProof`
+
+```go
+func GenerateSendProof(
+	privkey PrivateKey,
+	pubkey PublicKey,
+	amount uint64,
+	participants []Participant,
+	txBF BlindingFactor,
+	ctxHash ContextHash,
+	amountCommitment Commitment,
+	balanceParams PedersenProofParams,
+) ([]byte, error)
+```
 
 Generates the 946-byte `ConfidentialMPTSend` proof:
 
@@ -274,9 +363,26 @@ Each verifier returns `nil` only when the native proof check succeeds. Additiona
 
 #### `VerifyRevealedAmount`
 
+```go
+func VerifyRevealedAmount(
+	amount uint64,
+	bf BlindingFactor,
+	holder, issuer Participant,
+	auditor *Participant,
+) error
+```
+
 Checks deterministically that the holder, issuer, and optional auditor ciphertexts all encrypt the revealed `amount` using `bf`. This is a direct plaintext/ciphertext consistency check, not a ZK-proof verifier. Pass `nil` when no auditor ciphertext is required.
 
 #### `VerifySendRangeProof`
+
+```go
+func VerifySendRangeProof(
+	proof [DoubleBulletproofSize]byte,
+	amountCommit, balanceCommitment Commitment,
+	ctxHash ContextHash,
+) error
+```
 
 Verifies the 754-byte aggregated range-proof component from a send proof. `balanceCommitment` must be the sender's original balance commitment. The native library derives the post-send remainder from it and `amountCommit`. Do not pass a precomputed remainder commitment.
 

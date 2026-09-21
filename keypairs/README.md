@@ -1,14 +1,14 @@
 # Keypairs
 
-Generate seeds, derive keypairs and addresses, and sign or verify messages for XRP Ledger accounts. The package supports ED25519 and secp256k1.
+Generate seeds, derive keypairs and addresses, and sign or verify messages for XRP Ledger accounts. The package supports Ed25519 and secp256k1.
 
-[Installation](../README.md#quick-start) · [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/keypairs) · [Wallet guide](../xrpl/README.md#wallets-and-multisigning)
+[Installation](../README.md#quick-start) · [Guide](https://xrplf.github.io/xrpl-go/docs/keypairs) · [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/keypairs) · [Wallet guide](../xrpl/README.md#wallets-and-multisigning)
 
 Use [`xrpl/wallet`](../xrpl/wallet) for normal wallet management and transaction signing. Use `keypairs` when you need the lower-level operations directly.
 
 ## Generate a seed and address
 
-This example generates a random ED25519 seed, derives its keypair, and prints only the public address. It runs offline and does not fund an account.
+This example generates a random Ed25519 seed, derives its keypair, and prints only the public address. It runs offline and does not fund an account.
 
 Save it as `main.go` in your application after installing the SDK, then run `go run .`:
 
@@ -51,13 +51,22 @@ The address changes on each run. The example discards the credentials when it ex
 | Generate a seed | `GenerateSeed` |
 | Derive private and public keys from a seed | `DeriveKeypair` |
 | Derive a classic address from a public key | `DeriveClassicAddress` |
-| Derive a node address | `DeriveNodeAddress` |
+| Derive the classic address for a node public key | `DeriveNodeAddress` |
 | Sign a message | `Sign` |
 | Verify a signature | `Validate` |
 
 Choose `crypto.ED25519()` or `crypto.SECP256K1()` when generating a seed. `DeriveKeypair` detects the algorithm from the encoded seed. Pass `false` for its `validator` argument. Validator keypair derivation is not supported and returns an error. The result order is **private key, public key, error**.
 
-`Sign` and `Validate` select the algorithm from the key encoding. For transactions, use the wallet signing methods rather than signing arbitrary JSON or a submission blob.
+`DeriveNodeAddress` takes a Base58 node public key and an algorithm. Pass `crypto.SECP256K1()`, the only algorithm that supports node derivation.
+
+`Sign` and `Validate` select the algorithm from the key's hex prefix and length:
+
+| Algorithm | Public key | Private key |
+| --- | --- | --- |
+| Ed25519 | `ED` + 32 bytes | `ED` + 32 bytes |
+| secp256k1 | 33 bytes starting `02` or `03` | 32 raw bytes, or `00` + 32 bytes |
+
+For transactions, use the wallet signing methods rather than signing arbitrary JSON or a submission blob.
 
 ## Supply your own entropy
 

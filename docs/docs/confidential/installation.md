@@ -98,4 +98,4 @@ Do not use a local `replace` directive to force an older combined core release. 
 
 ## Development workspace
 
-For an unreleased repository checkout, use the [confidential contributor guide](https://github.com/XRPLF/xrpl-go/blob/main/confidential/CONTRIBUTING.md#development-workspace). It covers `make workspace`, local dependency selection, tests, and examples. Published-module users do not need a workspace or a local `replace` directive.
+For an unreleased repository checkout, use the [contributor guide](https://github.com/XRPLF/xrpl-go/blob/main/CONTRIBUTING.md#work-on-confidential-helpers). It covers `make workspace`, local dependency selection, tests, and examples. Published-module users do not need a workspace or a local `replace` directive.

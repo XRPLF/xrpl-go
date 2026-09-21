@@ -17,13 +17,13 @@ The offline example generates proofs without connecting, signing, or submitting.
 
 Confidential integration tests live in `confidential/integration/` and require a compatible ledger. Keep examples and tests that import the optional helpers inside this module, so root dependency management stays independent.
 
-For contributor checks, see [CONTRIBUTING.md](https://github.com/XRPLF/xrpl-go/blob/main/CONTRIBUTING.md). For release order and the GitHub Actions picker, see [RELEASING.md](https://github.com/XRPLF/xrpl-go/blob/main/RELEASING.md).
+For release order and the GitHub Actions picker, see [RELEASING.md](../RELEASING.md).
 
 ## Native package layout
 
 ```text
 mptcrypto/
-  types.go                 # Package documentation, sizes, and value types
+  types.go                 # Package documentation, MaxParticipants, and value types
   errors.go                # Shared sentinel errors
   sizes_cgo.go             # Compile-time checks against native size constants
   mptcrypto_cgo.go          # Native bindings and native-only validation
@@ -32,7 +32,7 @@ mptcrypto/
   mptcrypto_nocgo_test.go    # Fallback availability contract
 ```
 
-See the [package test commands](https://github.com/XRPLF/xrpl-go/blob/main/confidential/mptcrypto/README.md#test-the-package) to check both native and fallback builds. Use the [development workspace](#development-workspace) to test against the checked-out core module.
+See the [package test commands](mptcrypto/README.md#test-the-package) to check both native and fallback builds. Use the [development workspace](#development-workspace) to test against the checked-out core module.
 
 ## Maintaining the cgo boundary
 

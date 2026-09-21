@@ -45,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Connected to Testnet. Server version: %s\n", info.Info.BuildVersion)
+	fmt.Printf("Connected to Testnet. Server version: %s\n", info.Info.ServerVersion())
 }
 ```
 

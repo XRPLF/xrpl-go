@@ -2,7 +2,7 @@
 
 Use `keypairs` for low-level seed generation, key derivation, and message signatures. For account workflows and transaction signing, start with [Wallets and signing](/docs/xrpl/wallet).
 
-[Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/keypairs) · [XRPL cryptographic keys](https://xrpl.org/docs/concepts/accounts/cryptographic-keys)
+[Install the SDK](/docs/installation) · [Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/keypairs) · [XRPL cryptographic keys](https://xrpl.org/docs/concepts/accounts/cryptographic-keys)
 
 ## Generate keys and verify a message
 
@@ -58,7 +58,9 @@ Use `crypto.ED25519()` to generate an Ed25519 seed instead. Protect both the see
 | --- | --- |
 | Seed | XRPL Base58-encoded seed |
 | Supplied seed entropy | Exactly 16 raw bytes, not a hex string or passphrase |
-| Account public/private keys | Hex strings in the supported algorithm's key format |
+| Ed25519 public or private key | Hex, `ED` + 32 bytes |
+| secp256k1 public key | Hex, 33 bytes starting `02` or `03` |
+| secp256k1 private key | Hex, 32 raw bytes or `00` + 32 bytes |
 | Message passed to `Sign` or `Validate` | Raw message bytes carried in a Go string |
 | Signature | Hex string |
 

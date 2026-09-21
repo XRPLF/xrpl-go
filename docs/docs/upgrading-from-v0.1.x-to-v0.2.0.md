@@ -9,7 +9,7 @@ This guide covers changes from `v0.1.x` to `v0.2.0`, not the current release. Fo
 | Key derivation | Preserve existing entropy bytes exactly when recovering a wallet |
 | Amounts | Replace floating-point codec inputs with exact representations |
 | Addresses | Handle tag presence separately from tag value |
-| Signers | Handle `SortSigners` errors and use canonical account-ID ordering |
+| Signers | Expect canonical account-ID signer ordering |
 | Errors | Update moved and removed sentinels |
 | Clients | Check response limits, logging, and handler lifecycle assumptions |
 
@@ -107,7 +107,7 @@ Code that previously passed decimal strings should convert to hex first. `ErrUIn
 
 ## Signers and Multisigning
 
-`xrpl.SortSigners` now returns an error:
+`xrpl.SortSigners` is newly exported and returns an error:
 
 ```go
 if err := xrpl.SortSigners(signers); err != nil {

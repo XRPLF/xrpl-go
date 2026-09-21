@@ -14,8 +14,8 @@ prepare fields -> autofill -> sign -> submit -> wait for validation -> inspect r
 | --- | --- |
 | Signed blob, immediate result | `SubmitTxBlob` |
 | Flat transaction, immediate result | `SubmitTx` |
-| Signed blob, wait for finality | `SubmitTxBlobAndWaitContext` |
-| Flat transaction, wait for finality | `SubmitTxAndWaitContext` |
+| Signed blob, wait for finality | `SubmitTxBlobAndWait`, `SubmitTxBlobAndWaitContext` |
+| Flat transaction, wait for finality | `SubmitTxAndWait`, `SubmitTxAndWaitContext` |
 | Combined multisigned blob, immediate result | `SubmitMultisigned` |
 
 For client-side signing, supply `SubmitOptions.Wallet`. Set `Autofill: true` explicitly if network fields are missing. For offline signing, autofill first and submit the resulting blob unchanged.
@@ -34,7 +34,7 @@ if response.Meta.TransactionResult != "tesSUCCESS" {
 }
 ```
 
-The request may have reached the server even if a timeout or connection failure prevents you from receiving a response. Keep the signed blob and its transaction hash. Check its status before deciding whether to submit again or build a replacement. Do not assume cancellation undoes a submission.
+The request may have reached the server even if a timeout or connection failure prevents you from receiving a response. Keep the signed blob and its transaction hash. Check its status before deciding whether to submit again or build a replacement. The clients have no typed `tx` method, so send a `transactions.TxRequest` through a [generic request](/docs/xrpl/queries#api-versions-and-generic-requests). Do not assume cancellation undoes a submission.
 
 | Outcome | Next action |
 | --- | --- |

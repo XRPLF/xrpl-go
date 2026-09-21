@@ -53,7 +53,7 @@ The last two arguments to `ClassicAddressToXAddress` mean:
 | `hasTag` | Whether the destination tag is present |
 | `isTestnet` | Whether to use the test-network address format |
 
-A tag of zero and an absent tag are different. Use `hasTag` to distinguish them. Pass tag `0` when `hasTag` is false.
+A tag of zero and an absent tag are different. Use `hasTag` to distinguish them. Pass tag `0` when `hasTag` is false. A non-zero tag with `hasTag` false encodes without error, but the resulting X-address fails decoding.
 
 ## Choose a function
 
@@ -68,6 +68,8 @@ A tag of zero and an absent tag are different. Use `hasTag` to distinguish them.
 | Encode or decode node public keys | `EncodeNodePublicKey`, `DecodeNodePublicKey` |
 | Validate address encodings | `IsValidClassicAddress`, `IsValidXAddress`, `IsValidAddress` |
 | Decode either address format | `DecodeAddress` |
+
+`DecodeAddress` reports only whether a tag is present. Use `XAddressToClassicAddress` or `DecodeXAddress` when you need the tag value.
 
 `EncodeSeed` takes the entropy and an algorithm from `pkg/crypto`, such as `crypto.ED25519()`. `DecodeSeed` returns the entropy, the detected algorithm, and an error.
 

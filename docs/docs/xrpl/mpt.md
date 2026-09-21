@@ -1,6 +1,6 @@
 # MPT operations and metadata
 
-Use the core `xrpl/transaction` and `xrpl/transaction/types` packages for MPT transactions. Start with [Transactions](/docs/xrpl/transaction) for the common submission flow. These examples are fragments: supply the account addresses, issuance ID, and client for your application.
+Use the core `xrpl/transaction` and `xrpl/transaction/types` packages for MPT transactions. Start with [Transactions](/docs/xrpl/transaction) for the common submission flow. Most examples are fragments: supply the account addresses, issuance ID, and client for your application.
 
 ## Dynamic MPT
 
@@ -19,7 +19,8 @@ immutableFlags := types.ImmutableFlags(
 
 create := transaction.MPTokenIssuanceCreate{
 	BaseTx: transaction.BaseTx{
-		Account: types.Address(issuer),
+		Account:         types.Address(issuer),
+		TransactionType: transaction.MPTokenIssuanceCreateTx,
 	},
 	MaximumAmount:  &maximumAmount,
 	ImmutableFlags: immutableFlags,
@@ -37,7 +38,8 @@ Use `TfMPTSet*` flags or the matching setters to enable a capability. Use `Immut
 ```go
 set := transaction.MPTokenIssuanceSet{
 	BaseTx: transaction.BaseTx{
-		Account: types.Address(issuer),
+		Account:         types.Address(issuer),
+		TransactionType: transaction.MPTokenIssuanceSetTx,
 	},
 	MPTokenIssuanceID: issuanceID,
 }
@@ -55,7 +57,8 @@ issuerKey := issuerKeypair.PubKeyHex
 
 set := transaction.MPTokenIssuanceSet{
 	BaseTx: transaction.BaseTx{
-		Account: types.Address(issuer),
+		Account:         types.Address(issuer),
+		TransactionType: transaction.MPTokenIssuanceSetTx,
 	},
 	MPTokenIssuanceID:   issuanceID,
 	IssuerEncryptionKey: &issuerKey,
@@ -71,7 +74,8 @@ set := transaction.MPTokenIssuanceSet{
 ```go
 clawback := transaction.Clawback{
 	BaseTx: transaction.BaseTx{
-		Account: types.Address(issuer),
+		Account:         types.Address(issuer),
+		TransactionType: transaction.ClawbackTx,
 	},
 	Amount: types.MPTCurrencyAmount{
 		MPTIssuanceID: issuanceID,

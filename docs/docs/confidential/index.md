@@ -42,7 +42,7 @@ Builders read the needed ledger state, prepare ciphertexts and proofs, and retur
 | `ConfidentialMPTConvertBack` | Return confidential funds to public balance |
 | `ConfidentialMPTClawback` | Let the issuer reclaim a holder's confidential balance |
 
-These transaction models and their ledger fields belong to core. See [MPT operations](/docs/xrpl/mpt) for issuance capabilities and key registration. The [XLS-96 proposal](https://github.com/XRPLF/XRPL-Standards/discussions/372) provides protocol background.
+These transaction models and their ledger fields belong to core. See [MPT operations](/docs/xrpl/mpt) for issuance capabilities and key registration. The [XLS-96 specification](https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0096-confidential-mpt) defines the protocol.
 
 ## Transaction cost
 
@@ -55,7 +55,7 @@ RPC and WebSocket autofill apply this cost only when `Fee` is absent. A manually
 - [Offline example](https://github.com/XRPLF/xrpl-go/tree/main/confidential/examples/offline): prepares an issuance, key registration, a holder conversion, and an inbox merge. It does not connect, sign, or submit. Proof generation still requires the native toolchain.
 - [RPC lifecycle](https://github.com/XRPLF/xrpl-go/tree/main/confidential/examples/rpc) and [WebSocket lifecycle](https://github.com/XRPLF/xrpl-go/tree/main/confidential/examples/ws): fund test wallets, configure an issuance and holders, and submit transactions on Devnet.
 
-Read the examples before running them. For a repository checkout, follow the [workspace instructions](https://github.com/XRPLF/xrpl-go/blob/main/confidential/CONTRIBUTING.md#development-workspace). For version changes, use the [confidential changelog](/changelog/confidential/v0.1.x/changelog).
+Read the examples before running them. For a repository checkout, follow the [workspace instructions](https://github.com/XRPLF/xrpl-go/blob/main/CONTRIBUTING.md#work-on-confidential-helpers). For version changes, use the [confidential changelog](/changelog/confidential/v0.1.x/changelog).
 
 ## Security
 

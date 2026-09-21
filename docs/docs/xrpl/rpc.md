@@ -53,7 +53,7 @@ Pass options to `NewClientConfig`, then pass the configuration to `NewClient`.
 
 | Option | Purpose |
 | --- | --- |
-| `WithTimeout` | Sets the timeout for one request attempt and the default HTTP client's timeout |
+| `WithTimeout` | Sets the timeout for one request attempt and the `*http.Client` timeout. A custom `*http.Client` with its own non-zero timeout takes precedence |
 | `WithHTTPClient` | Supplies a custom `HTTPClient` implementation |
 | `WithFaucetProvider` | Enables [test funding](/docs/xrpl/faucet) through the client |
 | `WithMaxResponseSize` | Caps HTTP response bodies, default 64 MiB |
@@ -67,7 +67,7 @@ The client retries a request that receives HTTP 503 up to 3 times. The backoff s
 
 Fee calculation returns `ErrInvalidFeeValue` for a non-finite, negative, or malformed fee value, and `ErrFeeHasTooManyDecimals` when an XRP fee cannot be represented as whole drops.
 
-Use HTTPS for remote endpoints. The client rejects authorization over plaintext transport and authenticated HTTPS-to-HTTP redirects. A nil custom HTTP client returns `ErrNilHTTPClient`. A custom HTTP client controls its own redirects and credentials.
+Use HTTPS for remote endpoints. The client rejects authorization over plaintext transport and authenticated HTTPS-to-HTTP redirects. A nil custom HTTP client returns `ErrNilHTTPClient`. A custom `*http.Client` keeps the redirect check. Any other `HTTPClient` implementation controls its own redirects and credentials.
 
 `rpc.SetLogger` replaces the logger for SDK warnings, including remote non-TLS URL warnings. Passing nil silences those warnings.
 

@@ -63,7 +63,7 @@ cfg := websocket.NewClientConfig().
 Several response fields changed to preserve protocol precision and field presence:
 
 - `server/types.Info.NetworkID` changed from `uint` to `*uint32`.
-- The normalized load-factor fields on `server/types.Info` changed from `uint` to `float64`.
+- The normalized load-factor fields on `server/types.Info` changed from `uint` to `float64`. A missing `load_factor` now defaults to `1` instead of `0`.
 - `server/types.Info.LoadFactorFeeEscelation` was renamed to `server/types.Info.LoadFactorFeeEscalation`. These changes do not apply to `server/types.State`, whose load-factor fields remain `uint`.
 - `ClosedLedger.BaseFeeXRP` changed from `float32` to `*float64`.
 - `ClosedLedgerState.BaseFee` and `ReserveBase` changed from `float32` to `uint64`.
@@ -83,6 +83,7 @@ The following ledger model changes can require application updates:
 - Oracle `Scale` values through `20` are valid.
 - `Oracle` now includes `LedgerEntryType` and `Flags`.
 - `MPToken.MPTAmount`, `MPToken.LockedAmount`, and MPT issuance amount fields are quoted base-10 strings.
+- `MPTokenIssuance` JSON now omits absent `AssetScale`, `TransferFee`, and `MPTokenMetadata` fields.
 
 For example:
 
@@ -119,6 +120,9 @@ The following errors are new or have new behavior:
 - `ErrPreliminaryResult`, `ErrTransactionExpired`, `ErrFinalityTransport`, `ErrInvalidPollInterval`, `ErrInvalidMaxRetries`, and `ErrInvalidLastLedgerSequence` report reliable-submission failures.
 - `ErrNilTransaction` reports nil client transaction inputs.
 - `ErrLastLedgerSequenceFieldMustBeAbsent` reports an invalid Batch inner transaction.
+- `ErrBatchAccountFieldNotFound`, `ErrBatchSequenceFieldNotFound`, and `ErrBatchSignerAccountWithoutBatchAccount` report missing or inconsistent `EncodeForSigningBatch` inputs.
+- `ErrInvalidSignedTransaction` reports partial signing fields during submit preflight.
+- `ErrInvalidEntryRequest` reports a `ledger_entry` request without exactly one selector.
 
 Shared Batch structure and NetworkID validation errors now use the same sentinel identity in the RPC and WebSocket packages. An `errors.Is` check can match the corresponding sentinel from either package.
 
@@ -187,6 +191,10 @@ RPC and WebSocket submit helpers apply the same checks before submission. `Submi
 `SubmitTx` does not enable autofill by default. Set `SubmitOptions.Autofill` to `true` when the client must fill an unsigned transaction. Client-side signing discovers and validates network identity even when autofill is disabled. Use `wallet.Sign` for fully offline signing.
 
 `DeliverMax` normalization is now limited to Payment transactions.
+
+### Ledger entry requests
+
+`EntryRequest.Validate` now requires exactly one top-level selector. Requests with no selector or several selectors return `ErrInvalidEntryRequest`. `EntryRequest.Index` now omits an empty value from JSON.
 
 ### Reliable submission
 

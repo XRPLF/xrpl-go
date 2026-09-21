@@ -10,6 +10,8 @@ Use this package when you need raw confidential amount encryption helpers.
 - `GenerateBlindingFactor()` creates the shared randomness used across ciphertexts and commitments.
 - `Encrypt(amount, pubKeyHex, bfHex)` encrypts a `uint64` amount to a compressed secp256k1 public key under a given blinding factor. Reusing one blinding factor across the ciphertexts of a single transaction is what lets a proof tie them together.
 - `Decrypt(ciphertextHex, privateKeyHex, amountRange)` decrypts a confidential balance ciphertext with the matching private key by searching an inclusive `AmountRange`.
+- `Add(firstHex, secondHex)` and `Subtract(firstHex, secondHex)` combine two ciphertexts encrypted under the same public key. The result encrypts the sum or difference of their plaintexts.
+- `EncryptCanonicalZero(pubkeyHex, account, issuanceIDHex)` returns the deterministic encryption of zero that xrpld stores when it initializes or resets a balance.
 
 Decryption requires bounds that contain the plaintext amount and satisfy `Low <= High < math.MaxUint64`. Search cost grows linearly with the interval size, so use the narrowest practical range:
 
@@ -36,11 +38,7 @@ Use this package if you want fine-grained control over proof generation or verif
 
 All APIs in this layer operate on hex strings and XRPL addresses in either form, which makes them suitable for transaction assembly. Context hashes bind the decoded AccountID, so a classic address and its X-address form produce the same hash.
 
-Every `Generate*Proof` helper verifies the proof it just produced before returning it, because the native
-generator reports no error for a mismatched amount or key pair. That check costs one verification per
-generation. Include that verification cost when measuring your application. Callers that batch proof generation
-should budget for it. The `Build*` and `Prepare*` helpers inherit the same cost, since they generate
-through these functions.
+Every `Generate*Proof` helper verifies the proof it just produced before returning it, because the native generator reports no error for a mismatched amount or key pair. That check costs one verification per generation, so include it when measuring your application or batching proof generation. The `Build*` and `Prepare*` helpers inherit the same cost, since they generate through these functions.
 
 ## API references
 
