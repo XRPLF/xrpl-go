@@ -183,6 +183,18 @@ func TestVaultCreate_Validate(t *testing.T) {
 			expected: nil,
 		},
 		{
+			name: "fail - unsupported WithdrawalPolicy",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:            ledger.Asset{Currency: "XRP"},
+				WithdrawalPolicy: func() *types.VaultWithdrawalPolicy { v := types.VaultWithdrawalPolicy(0); return &v }(),
+			},
+			expected: ErrVaultCreateWithdrawalPolicyInvalid,
+		},
+		{
 			name: "fail - AssetsMaximum invalid",
 			tx: &VaultCreate{
 				BaseTx: BaseTx{

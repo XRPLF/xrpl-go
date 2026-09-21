@@ -3,6 +3,7 @@ package transaction
 import (
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
@@ -88,6 +89,11 @@ func TestXChainCommit_Flatten(t *testing.T) {
 }
 
 func TestXChainCommit_Validate(t *testing.T) {
+	taglessDestination, err := addresscodec.ClassicAddressToXAddress("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", 0, false, true)
+	require.NoError(t, err)
+	taggedDestination, err := addresscodec.ClassicAddressToXAddress("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh", 42, true, false)
+	require.NoError(t, err)
+
 	testcases := []struct {
 		name        string
 		tx          *XChainCommit
@@ -140,6 +146,65 @@ func TestXChainCommit_Validate(t *testing.T) {
 			},
 			expected:    false,
 			expectedErr: ErrInvalidXChainClaimID,
+		},
+		{
+			name: "fail - malformed other chain destination",
+			tx: &XChainCommit{
+				BaseTx: BaseTx{
+					Account:         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+					TransactionType: XChainCommitTx,
+				},
+				Amount: types.XRPCurrencyAmount(10000),
+				XChainBridge: types.XChainBridge{
+					LockingChainDoor:  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					IssuingChainDoor:  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					LockingChainIssue: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					IssuingChainIssue: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				},
+				XChainClaimID:         "13f",
+				OtherChainDestination: "not-an-address",
+			},
+			expected:    false,
+			expectedErr: ErrInvalidOtherChainDestination,
+		},
+		{
+			name: "fail - tagged X-address other chain destination",
+			tx: &XChainCommit{
+				BaseTx: BaseTx{
+					Account:         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+					TransactionType: XChainCommitTx,
+				},
+				Amount: types.XRPCurrencyAmount(10000),
+				XChainBridge: types.XChainBridge{
+					LockingChainDoor:  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					IssuingChainDoor:  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					LockingChainIssue: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					IssuingChainIssue: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				},
+				XChainClaimID:         "13f",
+				OtherChainDestination: types.Address(taggedDestination),
+			},
+			expected:    false,
+			expectedErr: ErrInvalidOtherChainDestination,
+		},
+		{
+			name: "pass - tagless X-address other chain destination",
+			tx: &XChainCommit{
+				BaseTx: BaseTx{
+					Account:         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59",
+					TransactionType: XChainCommitTx,
+				},
+				Amount: types.XRPCurrencyAmount(10000),
+				XChainBridge: types.XChainBridge{
+					LockingChainDoor:  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					IssuingChainDoor:  "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					LockingChainIssue: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+					IssuingChainIssue: "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
+				},
+				XChainClaimID:         "13f",
+				OtherChainDestination: types.Address(taglessDestination),
+			},
+			expected: true,
 		},
 		{
 			name: "pass - valid tx",

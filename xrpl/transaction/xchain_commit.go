@@ -85,6 +85,14 @@ func (x *XChainCommit) Validate() (bool, error) {
 		return false, err
 	}
 
+	if x.OtherChainDestination != "" {
+		// AccountID fields accept zero and either X-address network prefix, but cannot encode an embedded tag.
+		_, hasTag, err := decodeAddressAccountID(x.OtherChainDestination)
+		if err != nil || hasTag {
+			return false, ErrInvalidOtherChainDestination
+		}
+	}
+
 	if ok, err := IsAmount(x.Amount, "Amount", true); !ok {
 		return false, err
 	}

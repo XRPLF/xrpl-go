@@ -1,7 +1,14 @@
 package transaction
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"strings"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
+	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -43,17 +50,14 @@ type AMMClawback struct {
 	BaseTx
 	// The account holding the asset to be clawed back.
 	Holder string
-	// Specifies the asset that the issuer wants to claw back from the AMM pool.
-	// The asset can be XRP, a token, or an MPT (see: Specifying Without Amounts).
-	// The issuer field must match with Account.
-	Asset types.IssuedCurrency
-	// Specifies the other asset in the AMM's pool. The asset can be XRP, a token,
-	// or an MPT (see: Specifying Without Amounts).
-	Asset2 types.CurrencyAmount `json:",omitempty"`
-	// The maximum amount to claw back from the AMM account. The currency and issuer subfields
-	// should match the Asset subfields. If this field isn't specified, or the value subfield
-	// exceeds the holder's available tokens in the AMM, all of the holder's tokens are clawed back.
-	Amount types.IssuedCurrencyAmount `json:",omitzero"`
+	// The issued token or MPT that the issuer wants to claw back from the AMM pool.
+	// Its issuer must match Account; XRP is not allowed here.
+	Asset ledger.Asset
+	// The other XRP, issued-token, or MPT asset in the AMM pool.
+	Asset2 ledger.Asset
+	// The optional maximum amount to claw back. It must be positive and identify Asset.
+	// Omission claws back all of the holder's available Asset tokens in the AMM.
+	Amount types.CurrencyAmount `json:",omitempty"`
 }
 
 // TxType returns the transaction type for AMMClawback.
@@ -70,19 +74,114 @@ func (a *AMMClawback) Flatten() FlatTransaction {
 		flattened["Holder"] = a.Holder
 	}
 
-	if a.Asset != (types.IssuedCurrency{}) {
-		flattened["Asset"] = a.Asset.Flatten()
-	}
+	flattened["Asset"] = a.Asset.Flatten()
+	flattened["Asset2"] = a.Asset2.Flatten()
 
-	if a.Asset2 != nil {
-		flattened["Asset2"] = a.Asset2.Flatten()
-	}
-
-	if a.Amount != (types.IssuedCurrencyAmount{}) {
+	if a.Amount != nil {
 		flattened["Amount"] = a.Amount.Flatten()
 	}
 
 	return flattened
+}
+
+// UnmarshalJSON implements custom JSON unmarshalling for the optional currency amount.
+func (a *AMMClawback) UnmarshalJSON(data []byte) error {
+	type ammClawbackFields AMMClawback
+	var decoded struct {
+		ammClawbackFields
+		Amount json.RawMessage
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+
+	amount, err := types.UnmarshalCurrencyAmount(decoded.Amount)
+	if err != nil {
+		return err
+	}
+	decoded.ammClawbackFields.Amount = amount
+	*a = AMMClawback(decoded.ammClawbackFields)
+	return nil
+}
+
+func validateAMMClawbackAsset(asset ledger.Asset) error {
+	if ok, err := IsAsset(asset); !ok {
+		return err
+	}
+
+	switch asset.Kind() {
+	case ledger.AssetXRP:
+		if asset.Currency != "XRP" {
+			return ErrInvalidAssetFields
+		}
+	case ledger.AssetIOU:
+		currencyBytes, err := (&bctypes.Currency{}).FromJSON(asset.Currency)
+		if err != nil || len(currencyBytes) != len(bctypes.XRPBytes) || bytes.Equal(currencyBytes, bctypes.XRPBytes) {
+			return ErrInvalidAssetFields
+		}
+		if _, hasTag, err := decodeAddressAccountID(asset.Issuer); err != nil || hasTag {
+			return ErrInvalidAssetIssuer
+		}
+	case ledger.AssetMPT:
+		if _, ok := decodeMPTIssuanceID(asset.MPTIssuanceID); !ok {
+			return ErrInvalidMPTIssuanceIDAsset
+		}
+	}
+
+	return nil
+}
+
+func ammClawbackAssetIssuer(asset ledger.Asset) ([]byte, bool) {
+	switch asset.Kind() {
+	case ledger.AssetIOU:
+		issuer, _, err := decodeAddressAccountID(asset.Issuer)
+		return issuer, err == nil
+	case ledger.AssetMPT:
+		return mptIssuerAccountID(asset.MPTIssuanceID)
+	case ledger.AssetXRP:
+		return nil, false
+	}
+	return nil, false
+}
+
+func ammClawbackCurrenciesEqual(amountCurrency, assetCurrency string) bool {
+	amountCurrencyBytes, amountErr := bctypes.SerializeIssuedCurrencyCode(amountCurrency)
+	assetCurrencyBytes, assetCurrencyErr := (&bctypes.Currency{}).FromJSON(assetCurrency)
+	if amountErr != nil || assetCurrencyErr != nil || len(assetCurrencyBytes) != len(bctypes.XRPBytes) {
+		return false
+	}
+
+	return bytes.Equal(amountCurrencyBytes, assetCurrencyBytes)
+}
+
+func validateAMMClawbackAmount(amount types.CurrencyAmount, asset ledger.Asset) error {
+	switch amount := amount.(type) {
+	case types.IssuedCurrencyAmount:
+		if ok, _ := IsIssuedCurrency(amount); !ok || amount.IsZero() {
+			return ErrAMMClawbackInvalidAmount
+		}
+		_, hasTag, err := decodeAddressAccountID(amount.Issuer)
+		if err != nil || hasTag {
+			return ErrAMMClawbackInvalidAmount
+		}
+		if asset.Kind() != ledger.AssetIOU || !ammClawbackCurrenciesEqual(amount.Currency, asset.Currency) || !sameAccountAddress(amount.Issuer, asset.Issuer) {
+			return ErrAMMClawbackAmountAssetMismatch
+		}
+	case types.MPTCurrencyAmount:
+		if ok, _ := IsMPTCurrency(amount); !ok || amount.IsZero() {
+			return ErrAMMClawbackInvalidAmount
+		}
+		if _, ok := decodeMPTIssuanceID(amount.MPTIssuanceID); !ok {
+			return ErrAMMClawbackInvalidAmount
+		}
+		if asset.Kind() != ledger.AssetMPT || !strings.EqualFold(amount.MPTIssuanceID, asset.MPTIssuanceID) {
+			return ErrAMMClawbackAmountAssetMismatch
+		}
+	default:
+		return ErrAMMClawbackInvalidAmount
+	}
+
+	return nil
 }
 
 // Validate validates the AMMClawback transaction.
@@ -96,17 +195,40 @@ func (a *AMMClawback) Validate() (bool, error) {
 		return false, ErrInvalidHolder
 	}
 
-	// Enforce that the issuer for Asset matches the Account if that is truly required.
-	if a.Asset != (types.IssuedCurrency{}) && !sameAccountAddress(a.Asset.Issuer, a.Account) {
+	if err := validateAMMClawbackAsset(a.Asset); err != nil {
+		return false, fmt.Errorf("%w: %w", ErrAMMClawbackInvalidAsset, err)
+	}
+	if a.Asset.Kind() == ledger.AssetXRP {
+		return false, ErrAMMClawbackAssetCannotBeXRP
+	}
+
+	accountID, _, err := decodeAddressAccountID(a.Account)
+	if err != nil {
+		return false, ErrInvalidAccount
+	}
+	assetIssuer, ok := ammClawbackAssetIssuer(a.Asset)
+	if !ok || !bytes.Equal(assetIssuer, accountID) {
 		return false, ErrInvalidAssetIssuer
 	}
 
-	if a.Amount != (types.IssuedCurrencyAmount{}) {
-		if !addresscodec.IsValidAddress(a.Amount.Issuer.String()) {
-			return false, ErrInvalidAmountIssuer
+	if err := validateAMMClawbackAsset(a.Asset2); err != nil {
+		return false, fmt.Errorf("%w: %w", ErrAMMClawbackInvalidAsset2, err)
+	}
+
+	if a.Flags&TfClawTwoAssets != 0 {
+		asset2Issuer, ok := ammClawbackAssetIssuer(a.Asset2)
+		if !ok || !bytes.Equal(asset2Issuer, accountID) {
+			return false, ErrAMMClawbackAsset2IssuerMismatch
 		}
 	}
 
+	if a.Amount != nil {
+		if err := validateAMMClawbackAmount(a.Amount, a.Asset); err != nil {
+			return false, err
+		}
+	}
+
+	// AMM existence, balances, clawback permissions, and amendment availability require ledger state.
 	return true, nil
 }
 

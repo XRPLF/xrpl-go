@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	rippletime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -95,6 +96,34 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 			wantValid:   true,
 			wantErr:     false,
 			expectedErr: nil,
+		},
+		{
+			name: "fail - zero Amount",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: "ABC123",
+				Amount:  0,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelFundAmountInvalid,
+		},
+		{
+			name: "fail - Amount exceeds native maximum",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: "ABC123",
+				Amount:  types.XRPCurrencyAmount(currency.MaxNativeDrops + 1),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelFundAmountInvalid,
 		},
 		{
 			name: "fail - invalid BaseTx, missing Account",

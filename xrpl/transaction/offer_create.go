@@ -144,5 +144,7 @@ func (o *OfferCreate) Validate() (bool, error) {
 		}
 	}
 
+	// OfferSequence is omitted when zero and any other sequence is well formed.
+	// Whether it names an existing offer needs ledger state.
 	return true, nil
 }

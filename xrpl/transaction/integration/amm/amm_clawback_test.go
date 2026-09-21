@@ -47,13 +47,11 @@ func testIntegrationAMMClawback(t *testing.T, client integration.Client) {
 				Account: pool.issuerWallet.GetAddress(),
 			},
 			Holder: holderWallet.GetAddress().String(),
-			Asset: types.IssuedCurrency{
+			Asset: ledger.Asset{
 				Currency: "USD",
 				Issuer:   pool.issuerWallet.GetAddress(),
 			},
-			// XRP has no issuer/value; IssuedCurrencyAmount with only Currency set
-			// serializes to {"currency":"XRP"}, which is the correct asset specifier.
-			Asset2: types.IssuedCurrencyAmount{Currency: "XRP"},
+			Asset2: ledger.Asset{Currency: "XRP"},
 		}
 		flatAMMClawbackTx := clawbackTx.Flatten()
 		_, err = runner.TestSuccessfulTransactionAndWait(&flatAMMClawbackTx, pool.issuerWallet, nil)
