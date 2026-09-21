@@ -31,7 +31,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 			},
 			expected: true,
 		},
@@ -40,7 +40,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       types.Address(taglessSigner),
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 			},
 			expected: true,
 		},
@@ -49,7 +49,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       types.Address(taggedSigner),
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 			},
 			expected: false,
 			wantErr:  ErrSignerAccountTagNotAllowed,
@@ -59,7 +59,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 			},
 			expected: false,
 			wantErr:  ErrSignerAccountZero,
@@ -68,7 +68,7 @@ func TestIsSigner(t *testing.T) {
 			name: "fail - Signer object with missing fields",
 			input: types.SignerData{
 				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 			},
 			expected: false,
 		},
@@ -76,7 +76,7 @@ func TestIsSigner(t *testing.T) {
 			name: "fail - invalid Signer object with empty XRPL account",
 			input: types.SignerData{
 				Account:       "  ",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 				TxnSignature:  "0123456789abcdef",
 			},
 			expected: false,
@@ -85,7 +85,7 @@ func TestIsSigner(t *testing.T) {
 			name: "fail - invalid Signer object with invalid XRPL account",
 			input: types.SignerData{
 				Account:       "invalid",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 				TxnSignature:  "0123456789abcdef",
 			},
 			expected: false,
@@ -95,7 +95,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 				TxnSignature:  "  ",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 			},
 			expected: false,
 		},
@@ -107,6 +107,16 @@ func TestIsSigner(t *testing.T) {
 				SigningPubKey: "  ",
 			},
 			expected: false,
+		},
+		{
+			name: "fail - SigningPubKey is not a public key",
+			input: types.SignerData{
+				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				TxnSignature:  "0123456789abcdef",
+				SigningPubKey: "abcdef0123456789",
+			},
+			expected: false,
+			wantErr:  ErrSignerSignaturePairMalformed,
 		},
 		{
 			name:     "fail - nil object",
@@ -600,7 +610,7 @@ func TestIsMemo(t *testing.T) {
 func TestIsAsset(t *testing.T) {
 	t.Run("pass - valid Asset object with currency XRP only", func(t *testing.T) {
 		obj := ledger.Asset{
-			Currency: "xrP", // will be converted to XRP in the Validate function
+			Currency: "XRP",
 		}
 
 		ok, err := IsAsset(obj)
@@ -608,6 +618,52 @@ func TestIsAsset(t *testing.T) {
 		if !ok {
 			t.Errorf("Expected IsAsset to return true, but got false with error: %v", err)
 		}
+	})
+
+	t.Run("fail - native currency code must be uppercase XRP", func(t *testing.T) {
+		obj := ledger.Asset{
+			Currency: "xrP", // encodes as an issued code without an issuer, which cannot be decoded
+		}
+
+		ok, err := IsAsset(obj)
+
+		require.False(t, ok)
+		require.ErrorIs(t, err, ErrInvalidAssetCurrency)
+	})
+
+	t.Run("fail - currency is not an encodable code", func(t *testing.T) {
+		obj := ledger.Asset{
+			Currency: "USDX",
+			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+		}
+
+		ok, err := IsAsset(obj)
+
+		require.False(t, ok)
+		require.ErrorIs(t, err, ErrInvalidAssetCurrency)
+	})
+
+	t.Run("fail - issuer is a tagged X-address", func(t *testing.T) {
+		obj := ledger.Asset{
+			Currency: "USD",
+			Issuer:   clawbackTaggedHolder,
+		}
+
+		ok, err := IsAsset(obj)
+
+		require.False(t, ok)
+		require.ErrorIs(t, err, ErrInvalidAssetIssuer)
+	})
+
+	t.Run("fail - MPT issuance ID has the wrong length", func(t *testing.T) {
+		obj := ledger.Asset{
+			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+		}
+
+		ok, err := IsAsset(obj)
+
+		require.False(t, ok)
+		require.ErrorIs(t, err, ErrInvalidMPTIssuanceIDAsset)
 	})
 
 	t.Run("fail - invalid Asset object with currency XRP and an issuer defined", func(t *testing.T) {
@@ -676,7 +732,7 @@ func TestIsAsset(t *testing.T) {
 
 	t.Run("pass - valid MPT asset", func(t *testing.T) {
 		obj := ledger.Asset{
-			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+			MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 		}
 
 		ok, err := IsAsset(obj)
@@ -688,7 +744,7 @@ func TestIsAsset(t *testing.T) {
 
 	t.Run("fail - MPT asset with currency set", func(t *testing.T) {
 		obj := ledger.Asset{
-			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+			MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 			Currency:      "USD",
 		}
 
@@ -701,7 +757,7 @@ func TestIsAsset(t *testing.T) {
 
 	t.Run("fail - MPT asset with issuer set", func(t *testing.T) {
 		obj := ledger.Asset{
-			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+			MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 			Issuer:        "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		}
 

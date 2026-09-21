@@ -1,8 +1,9 @@
 package transaction
 
 import (
+	"fmt"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/keypairs"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -213,21 +214,14 @@ func validateLoanSetCounterpartySignature(signature *CounterpartySignature, inne
 		if signature.SigningPubKey != "" || signature.TxnSignature != "" {
 			return ErrLoanSetCounterpartySignatureInvalid
 		}
+		// Both errors stay matchable so callers can tell which list rule failed.
 		if err := validateSigners(signature.Signers); err != nil {
-			return ErrLoanSetCounterpartySignatureInvalid
-		}
-		for _, signer := range signature.Signers {
-			if _, err := keypairs.DeriveClassicAddress(signer.SignerData.SigningPubKey); err != nil || !typecheck.IsHexBlob(signer.SignerData.TxnSignature) {
-				return ErrLoanSetCounterpartySignatureInvalid
-			}
+			return fmt.Errorf("%w: %w", ErrLoanSetCounterpartySignatureInvalid, err)
 		}
 		return nil
 	}
 
-	if signature.SigningPubKey == "" || signature.TxnSignature == "" {
-		return ErrLoanSetCounterpartySignatureInvalid
-	}
-	if _, err := keypairs.DeriveClassicAddress(signature.SigningPubKey); err != nil || !typecheck.IsHexBlob(signature.TxnSignature) {
+	if !isSignaturePair(signature.SigningPubKey, signature.TxnSignature) {
 		return ErrLoanSetCounterpartySignatureInvalid
 	}
 	return nil

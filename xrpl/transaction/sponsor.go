@@ -119,7 +119,7 @@ func validateSponsorSignature(signature *types.SponsorSignature, inner bool) err
 		return validateSigners(signature.Signers)
 	}
 
-	if signingPubKey == "" || signature.TxnSignature == nil || *signature.TxnSignature == "" {
+	if signature.TxnSignature == nil || !isSignaturePair(signingPubKey, *signature.TxnSignature) {
 		return ErrInvalidSponsorSignature
 	}
 

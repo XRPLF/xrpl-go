@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -87,11 +86,13 @@ func (c *Clawback) Validate() (bool, error) {
 		return false, ErrDuplicateXAddressTag
 	}
 
+	// XRP and any other non-token amount cannot be clawed back.
+	if !isPositiveTokenAmount(c.Amount) {
+		return false, ErrClawbackInvalidAmount
+	}
+
 	switch amount := c.Amount.(type) {
 	case types.IssuedCurrencyAmount:
-		if ok, _ := IsIssuedCurrency(amount); !ok || amount.IsZero() {
-			return false, ErrClawbackInvalidAmount
-		}
 		if c.Holder != "" {
 			return false, ErrClawbackHolderNotAllowed
 		}
@@ -104,16 +105,10 @@ func (c *Clawback) Validate() (bool, error) {
 			return false, ErrClawbackSameAccount
 		}
 	case types.MPTCurrencyAmount:
-		if ok, _ := IsMPTCurrency(amount); !ok || amount.IsZero() {
-			return false, ErrClawbackInvalidAmount
-		}
-
-		issuanceIDBytes, ok := decodeMPTIssuanceID(amount.MPTIssuanceID)
+		issuanceIssuerID, ok := mptIssuerAccountID(amount.MPTIssuanceID)
 		if !ok {
 			return false, ErrClawbackInvalidAmount
 		}
-		// The issuer AccountID occupies the trailing AccountAddressLength bytes of the issuance ID.
-		issuanceIssuerID := issuanceIDBytes[len(issuanceIDBytes)-addresscodec.AccountAddressLength:]
 		if !bytes.Equal(issuanceIssuerID, accountID) {
 			return false, ErrClawbackMPTIssuerMismatch
 		}
@@ -131,9 +126,6 @@ func (c *Clawback) Validate() (bool, error) {
 		if bytes.Equal(accountID, holderID) {
 			return false, ErrClawbackSameHolder
 		}
-	default:
-		// XRP and any other amount kind cannot be clawed back.
-		return false, ErrClawbackInvalidAmount
 	}
 
 	return true, nil

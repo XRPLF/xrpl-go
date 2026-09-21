@@ -21,11 +21,37 @@ func orderedTransactionSigners(t *testing.T, count int) []types.Signer {
 		require.NoError(t, err)
 		signers[i] = types.Signer{SignerData: types.SignerData{
 			Account:       types.Address(address),
-			SigningPubKey: "AB",
+			SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 			TxnSignature:  "CD",
 		}}
 	}
 	return signers
+}
+
+func TestIsSignaturePair(t *testing.T) {
+	const key = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
+
+	tests := []struct {
+		name      string
+		key       string
+		signature string
+		want      bool
+	}{
+		{"pass - ed25519 key and hex signature", key, "ABCD", true},
+		{"pass - secp256k1 key and hex signature", "03ADB44CA8E56F78A0096825E5667C450ABD5C24C34E027BC1AAF7E5BD114CB5B5", "ABCD", true},
+		{"fail - empty key", "", "ABCD", false},
+		{"fail - hex that is not a public key", "ABCD", "ABCD", false},
+		{"fail - secp256k1 key that is not on the curve", "030000000000000000000000000000000000000000000000000000000000000000", "ABCD", false},
+		{"fail - empty signature", key, "", false},
+		{"fail - signature is not hex", key, "not-hex", false},
+		{"fail - signature is not whole bytes", key, "ABC", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isSignaturePair(tt.key, tt.signature))
+		})
+	}
 }
 
 func TestValidateSigners(t *testing.T) {

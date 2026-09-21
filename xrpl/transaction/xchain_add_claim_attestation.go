@@ -170,11 +170,11 @@ func (x *XChainAddClaimAttestation) Validate() (bool, error) {
 		return false, ErrInvalidOtherChainSource
 	}
 
-	if x.PublicKey == "" {
+	if !isPublicKey(x.PublicKey) {
 		return false, ErrInvalidPublicKey
 	}
 
-	if x.Signature == "" {
+	if !typecheck.IsHexBlob(x.Signature) {
 		return false, ErrInvalidSignature
 	}
 

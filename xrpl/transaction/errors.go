@@ -186,6 +186,8 @@ var (
 	ErrInvalidAssetFields = errors.New("asset object should have at least one field 'currency', or two fields 'currency' and 'issuer'")
 	// ErrMissingAssetCurrency is returned when the currency field is missing for an asset.
 	ErrMissingAssetCurrency = errors.New("currency field is required for an asset")
+	// ErrInvalidAssetCurrency is returned when an asset currency is not an encodable currency code.
+	ErrInvalidAssetCurrency = errors.New("currency field must be XRP, a three-character code, or a 160-bit hexadecimal code")
 	// ErrInvalidAssetIssuer is returned when the issuer field is invalid for an asset.
 	ErrInvalidAssetIssuer = errors.New("issuer field must be a valid XRPL classic address")
 	// ErrInvalidMPTIssuanceIDAsset is returned when an MPT asset has invalid fields (non-hex ID, or currency/issuer set).
@@ -216,6 +218,8 @@ var (
 	ErrSignerTxnSignatureShouldBeNonEmpty = errors.New("signers: TxnSignature should be a non-empty string")
 	// ErrSignerSigningPubKeyShouldBeNonEmpty is returned when SigningPubKey in a Signer is empty.
 	ErrSignerSigningPubKeyShouldBeNonEmpty = errors.New("signers: SigningPubKey should be a non-empty string")
+	// ErrSignerSignaturePairMalformed is returned when a Signer's SigningPubKey is not a public key or its TxnSignature is not whole-byte hexadecimal.
+	ErrSignerSignaturePairMalformed = errors.New("signers: SigningPubKey should be a valid public key and TxnSignature a whole-byte hexadecimal string")
 	// ErrInvalidDomainID is returned when the provided DomainID is invalid.
 	ErrInvalidDomainID = errors.New("invalid DomainID value")
 

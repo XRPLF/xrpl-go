@@ -265,6 +265,11 @@ func TestLoanSet_ValidatePaymentTotalAndCounterpartySignature(t *testing.T) {
 			expected:              ErrLoanSetCounterpartySignatureInvalid,
 		},
 		{
+			name:                  "fail - duplicate multisigners",
+			counterpartySignature: &CounterpartySignature{Signers: []types.Signer{validSigner, validSigner}},
+			expected:              errDuplicateTransactionSigner,
+		},
+		{
 			name:     "fail - inner Batch missing Counterparty",
 			flags:    types.TfInnerBatchTxn,
 			expected: ErrLoanSetInnerCounterpartyRequired,
