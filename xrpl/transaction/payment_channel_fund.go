@@ -61,6 +61,10 @@ func (p *PaymentChannelFund) Validate() (bool, error) {
 		return false, err
 	}
 
+	if p.Amount.IsZero() || !p.Amount.IsValid() {
+		return false, ErrPaymentChannelFundAmountInvalid
+	}
+
 	// check the expiration time is in the future. /!\ Incomplete as the channel SettleDelay is not taken into account but it's already a good check.
 	currentRippleTime := rippletime.UnixTimeToRippleTime(time.Now().Unix())
 	if (p.Expiration != 0) && (int64(p.Expiration) < currentRippleTime) {

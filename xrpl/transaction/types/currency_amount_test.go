@@ -5,6 +5,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,6 +84,26 @@ func TestCurrencyAmount_IsZero(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, tt.amount.IsZero())
+		})
+	}
+}
+
+func TestXRPCurrencyAmount_IsValid(t *testing.T) {
+	tests := []struct {
+		name   string
+		amount XRPCurrencyAmount
+		want   bool
+	}{
+		{name: "zero", amount: 0, want: true},
+		{name: "one drop", amount: 1, want: true},
+		{name: "maximum", amount: XRPCurrencyAmount(currency.MaxNativeDrops), want: true},
+		{name: "one drop over the maximum", amount: XRPCurrencyAmount(currency.MaxNativeDrops + 1), want: false},
+		{name: "uint64 maximum", amount: math.MaxUint64, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, tt.amount.IsValid())
 		})
 	}
 }

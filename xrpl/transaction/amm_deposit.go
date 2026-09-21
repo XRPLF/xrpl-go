@@ -146,6 +146,17 @@ func (a *AMMDeposit) Validate() (bool, error) {
 		return false, err
 	}
 
+	if a.TradingFee > AmmMaxTradingFee {
+		return false, ErrAMMTradingFeeTooHigh{
+			Value: a.TradingFee,
+			Limit: AmmMaxTradingFee,
+		}
+	}
+
+	if a.TradingFee != 0 && !types.IsFlagEnabled(a.Flags, TfTwoAssetIfEmpty) {
+		return false, ErrAMMDepositTradingFeeRequiresEmptyPool
+	}
+
 	switch {
 	case a.Amount2 != nil && a.Amount == nil:
 		return false, ErrAMMMustSetAmountWithAmount2

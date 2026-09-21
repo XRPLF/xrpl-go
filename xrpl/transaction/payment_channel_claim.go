@@ -156,6 +156,23 @@ func (p *PaymentChannelClaim) Validate() (bool, error) {
 		return false, ErrInvalidHexPublicKey
 	}
 
+	if !p.Balance.IsValid() {
+		return false, ErrPaymentChannelClaimBalanceInvalid
+	}
+
+	if !p.Amount.IsValid() {
+		return false, ErrPaymentChannelClaimAmountInvalid
+	}
+
+	if p.Balance != 0 && p.Amount != 0 && p.Balance > p.Amount {
+		return false, ErrPaymentChannelClaimBalanceExceedsAmount
+	}
+
+	// Amount may be omitted from a signed claim; in that case Balance is the authorized amount.
+	if p.Signature != "" && (p.Balance == 0 || p.PublicKey == "") {
+		return false, ErrPaymentChannelClaimSignatureFieldsRequired
+	}
+
 	if p.CredentialIDs != nil && !p.CredentialIDs.IsValid() {
 		return false, ErrInvalidCredentialIDs
 	}
