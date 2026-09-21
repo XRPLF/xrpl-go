@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -104,81 +102,13 @@ func (a *AMMClawback) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func validateAMMClawbackAsset(asset ledger.Asset) error {
-	if ok, err := IsAsset(asset); !ok {
-		return err
-	}
-
-	switch asset.Kind() {
-	case ledger.AssetXRP:
-		if asset.Currency != "XRP" {
-			return ErrInvalidAssetFields
-		}
-	case ledger.AssetIOU:
-		currencyBytes, err := (&bctypes.Currency{}).FromJSON(asset.Currency)
-		if err != nil || len(currencyBytes) != len(bctypes.XRPBytes) || bytes.Equal(currencyBytes, bctypes.XRPBytes) {
-			return ErrInvalidAssetFields
-		}
-		if _, hasTag, err := decodeAddressAccountID(asset.Issuer); err != nil || hasTag {
-			return ErrInvalidAssetIssuer
-		}
-	case ledger.AssetMPT:
-		if _, ok := decodeMPTIssuanceID(asset.MPTIssuanceID); !ok {
-			return ErrInvalidMPTIssuanceIDAsset
-		}
-	}
-
-	return nil
-}
-
-func ammClawbackAssetIssuer(asset ledger.Asset) ([]byte, bool) {
-	switch asset.Kind() {
-	case ledger.AssetIOU:
-		issuer, _, err := decodeAddressAccountID(asset.Issuer)
-		return issuer, err == nil
-	case ledger.AssetMPT:
-		return mptIssuerAccountID(asset.MPTIssuanceID)
-	case ledger.AssetXRP:
-		return nil, false
-	}
-	return nil, false
-}
-
-func ammClawbackCurrenciesEqual(amountCurrency, assetCurrency string) bool {
-	amountCurrencyBytes, amountErr := bctypes.SerializeIssuedCurrencyCode(amountCurrency)
-	assetCurrencyBytes, assetCurrencyErr := (&bctypes.Currency{}).FromJSON(assetCurrency)
-	if amountErr != nil || assetCurrencyErr != nil || len(assetCurrencyBytes) != len(bctypes.XRPBytes) {
-		return false
-	}
-
-	return bytes.Equal(amountCurrencyBytes, assetCurrencyBytes)
-}
-
 func validateAMMClawbackAmount(amount types.CurrencyAmount, asset ledger.Asset) error {
-	switch amount := amount.(type) {
-	case types.IssuedCurrencyAmount:
-		if ok, _ := IsIssuedCurrency(amount); !ok || amount.IsZero() {
-			return ErrAMMClawbackInvalidAmount
-		}
-		_, hasTag, err := decodeAddressAccountID(amount.Issuer)
-		if err != nil || hasTag {
-			return ErrAMMClawbackInvalidAmount
-		}
-		if asset.Kind() != ledger.AssetIOU || !ammClawbackCurrenciesEqual(amount.Currency, asset.Currency) || !sameAccountAddress(amount.Issuer, asset.Issuer) {
-			return ErrAMMClawbackAmountAssetMismatch
-		}
-	case types.MPTCurrencyAmount:
-		if ok, _ := IsMPTCurrency(amount); !ok || amount.IsZero() {
-			return ErrAMMClawbackInvalidAmount
-		}
-		if _, ok := decodeMPTIssuanceID(amount.MPTIssuanceID); !ok {
-			return ErrAMMClawbackInvalidAmount
-		}
-		if asset.Kind() != ledger.AssetMPT || !strings.EqualFold(amount.MPTIssuanceID, asset.MPTIssuanceID) {
-			return ErrAMMClawbackAmountAssetMismatch
-		}
-	default:
+	amountKey, ok := amountIssueKey(amount)
+	if !ok || !isPositiveTokenAmount(amount) {
 		return ErrAMMClawbackInvalidAmount
+	}
+	if assetKey, _ := assetIssueKey(asset); !bytes.Equal(amountKey, assetKey) {
+		return ErrAMMClawbackAmountAssetMismatch
 	}
 
 	return nil
@@ -195,7 +125,7 @@ func (a *AMMClawback) Validate() (bool, error) {
 		return false, ErrInvalidHolder
 	}
 
-	if err := validateAMMClawbackAsset(a.Asset); err != nil {
+	if ok, err := IsAsset(a.Asset); !ok {
 		return false, fmt.Errorf("%w: %w", ErrAMMClawbackInvalidAsset, err)
 	}
 	if a.Asset.Kind() == ledger.AssetXRP {
@@ -206,17 +136,17 @@ func (a *AMMClawback) Validate() (bool, error) {
 	if err != nil {
 		return false, ErrInvalidAccount
 	}
-	assetIssuer, ok := ammClawbackAssetIssuer(a.Asset)
+	assetIssuer, ok := assetIssuerAccountID(a.Asset)
 	if !ok || !bytes.Equal(assetIssuer, accountID) {
 		return false, ErrInvalidAssetIssuer
 	}
 
-	if err := validateAMMClawbackAsset(a.Asset2); err != nil {
+	if ok, err := IsAsset(a.Asset2); !ok {
 		return false, fmt.Errorf("%w: %w", ErrAMMClawbackInvalidAsset2, err)
 	}
 
 	if a.Flags&TfClawTwoAssets != 0 {
-		asset2Issuer, ok := ammClawbackAssetIssuer(a.Asset2)
+		asset2Issuer, ok := assetIssuerAccountID(a.Asset2)
 		if !ok || !bytes.Equal(asset2Issuer, accountID) {
 			return false, ErrAMMClawbackAsset2IssuerMismatch
 		}

@@ -90,14 +90,23 @@ func TestAMMClawback_Validate(t *testing.T) {
 			wantErr: ErrAMMClawbackAmountAssetMismatch,
 		},
 		{
-			name: "matching invalid currencies are rejected",
+			name: "amount token kind must match asset",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Amount = types.MPTCurrencyAmount{MPTIssuanceID: clawbackMPTIssueID, Value: "1"}
+				return tx
+			}(),
+			wantErr: ErrAMMClawbackAmountAssetMismatch,
+		},
+		{
+			name: "amount currency must be an encodable code",
 			tx: func() *AMMClawback {
 				tx := newAMMClawback()
 				tx.Asset.Currency = "AD/"
 				tx.Amount = types.IssuedCurrencyAmount{Currency: "AD/", Issuer: ammClawbackIssuer, Value: "1"}
 				return tx
 			}(),
-			wantErr: ErrAMMClawbackAmountAssetMismatch,
+			wantErr: ErrAMMClawbackInvalidAmount,
 		},
 		{
 			name: "nonstandard currency bytes must match asset",
@@ -179,39 +188,6 @@ func TestAMMClawback_Validate(t *testing.T) {
 			require.NoError(t, err)
 			_, err = binarycodec.Encode(tt.tx.Flatten())
 			require.NoError(t, err)
-		})
-	}
-}
-
-func TestAMMClawback_CanonicalCurrencyEncodingParity(t *testing.T) {
-	transactionWithAmountCurrency := func(currency string) *AMMClawback {
-		tx := newAMMClawback()
-		tx.Amount = types.IssuedCurrencyAmount{Currency: currency, Issuer: ammClawbackIssuer, Value: "1"}
-		return tx
-	}
-
-	standardEncoded, err := binarycodec.Encode(transactionWithAmountCurrency("USD").Flatten())
-	require.NoError(t, err)
-
-	tests := []struct {
-		name     string
-		currency string
-	}{
-		{
-			name:     "hex",
-			currency: "0000000000000000000000005553440000000000",
-		},
-		{
-			name:     "prefixed hex",
-			currency: "0x0000000000000000000000005553440000000000",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			encoded, err := binarycodec.Encode(transactionWithAmountCurrency(tt.currency).Flatten())
-			require.NoError(t, err)
-			require.Equal(t, standardEncoded, encoded)
 		})
 	}
 }

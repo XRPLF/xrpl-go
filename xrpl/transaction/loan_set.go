@@ -1,8 +1,9 @@
 package transaction
 
 import (
+	"fmt"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/keypairs"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -203,32 +204,19 @@ func validateLoanSetCounterpartySignature(signature *CounterpartySignature, inne
 	}
 
 	if inner {
-		if signature.SigningPubKey != "" || signature.TxnSignature != "" || len(signature.Signers) > 0 {
+		if signature.SigningPubKey != "" || signature.TxnSignature != "" || signature.Signers != nil {
 			return ErrLoanSetInnerCounterpartySignature
 		}
 		return nil
 	}
 
-	if len(signature.Signers) > 0 {
-		if signature.SigningPubKey != "" || signature.TxnSignature != "" {
-			return ErrLoanSetCounterpartySignatureInvalid
-		}
-		if err := validateSigners(signature.Signers); err != nil {
-			return ErrLoanSetCounterpartySignatureInvalid
-		}
-		for _, signer := range signature.Signers {
-			if _, err := keypairs.DeriveClassicAddress(signer.SignerData.SigningPubKey); err != nil || !typecheck.IsHexBlob(signer.SignerData.TxnSignature) {
-				return ErrLoanSetCounterpartySignatureInvalid
-			}
-		}
-		return nil
+	// Flatten drops an empty TxnSignature, so it is absent on the wire.
+	var txnSignature *string
+	if signature.TxnSignature != "" {
+		txnSignature = &signature.TxnSignature
 	}
-
-	if signature.SigningPubKey == "" || signature.TxnSignature == "" {
-		return ErrLoanSetCounterpartySignatureInvalid
-	}
-	if _, err := keypairs.DeriveClassicAddress(signature.SigningPubKey); err != nil || !typecheck.IsHexBlob(signature.TxnSignature) {
-		return ErrLoanSetCounterpartySignatureInvalid
+	if err := validateSignatureFields(signature.SigningPubKey, txnSignature, signature.Signers); err != nil {
+		return fmt.Errorf("%w: %w", ErrLoanSetCounterpartySignatureInvalid, err)
 	}
 	return nil
 }
