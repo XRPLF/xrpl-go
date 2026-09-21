@@ -99,6 +99,12 @@ func validateSignerData(signerData types.SignerData) ([]byte, error) {
 		return nil, ErrSignerSigningPubKeyShouldBeNonEmpty
 	}
 
+	// Well-formedness belongs to the Signer entry itself, so every Signers list gets it
+	// and no transaction type has to remember to add it.
+	if !isSignaturePair(signerData.SigningPubKey, signerData.TxnSignature) {
+		return nil, ErrSignerSignaturePairMalformed
+	}
+
 	return accountID, nil
 }
 
@@ -255,39 +261,42 @@ func IsPaths(pathsteps [][]PathStep) (bool, error) {
 }
 
 // IsAsset checks if the given object is a valid Asset object.
+// A valid Asset encodes as an Issue. It is native XRP, an issued currency with a
+// tagless issuer, or a well-formed MPT issuance ID.
 func IsAsset(asset ledger.Asset) (bool, error) {
-	// MPT asset: only MPTIssuanceID should be set
-	if asset.MPTIssuanceID != "" {
-		if asset.Currency != "" || asset.Issuer != "" {
+	switch {
+	// MPT: the issuance ID stands alone and must be 24 bytes of hex.
+	case asset.MPTIssuanceID != "":
+		if asset.Currency != "" || asset.Issuer != "" || !IsMPTIssuanceID(asset.MPTIssuanceID) {
 			return false, ErrInvalidMPTIssuanceIDAsset
 		}
-		if !typecheck.IsHex(asset.MPTIssuanceID) {
-			return false, ErrInvalidMPTIssuanceIDAsset
-		}
-		return true, nil
-	}
-
-	// Get the size of the Asset object.
-	lenKeys := len(maputils.GetKeys(asset.Flatten()))
-
-	if lenKeys == 0 {
+	case asset.Currency == "" && asset.Issuer == "":
 		return false, ErrInvalidAssetFields
-	}
-
-	if strings.TrimSpace(asset.Currency) == "" {
+	// Issuer without a currency.
+	case strings.TrimSpace(asset.Currency) == "":
 		return false, ErrMissingAssetCurrency
-	}
-
-	if strings.ToUpper(asset.Currency) == currency.NativeCurrencySymbol && strings.TrimSpace(asset.Issuer.String()) == "" {
-		return true, nil
-	}
-
-	if strings.ToUpper(asset.Currency) == currency.NativeCurrencySymbol && asset.Issuer != "" {
-		return false, ErrInvalidAssetIssuer
-	}
-
-	if asset.Currency != "" && !addresscodec.IsValidAddress(asset.Issuer.String()) {
-		return false, ErrInvalidAssetIssuer
+	// XRP: only the exact code "XRP" encodes as the native asset, and it never has an issuer.
+	case strings.ToUpper(asset.Currency) == currency.NativeCurrencySymbol:
+		if asset.Issuer != "" {
+			return false, ErrInvalidAssetIssuer
+		}
+		if asset.Currency != currency.NativeCurrencySymbol {
+			return false, ErrInvalidAssetCurrency
+		}
+	// Issued currency: needs a tagless issuer, because the Issue codec has nowhere to put
+	// a tag, and a currency code that encodes to 20 non-XRP bytes.
+	default:
+		if _, hasTag, err := decodeAddressAccountID(asset.Issuer); err != nil || hasTag {
+			return false, ErrInvalidAssetIssuer
+		}
+		currencyBytes, err := (&bctypes.Currency{}).FromJSON(asset.Currency)
+		// The length check borrows XRPBytes only because it is a valid byte representation
+		// of a currency code, so every other code must be the same size. It says nothing about XRP.
+		// The last check catches XRP spelled as its all-zero hex form. This branch always
+		// has an issuer and XRP never does, so the pair would encode to an undecodable blob.
+		if err != nil || len(currencyBytes) != len(bctypes.XRPBytes) || bytes.Equal(currencyBytes, bctypes.XRPBytes) {
+			return false, ErrInvalidAssetCurrency
+		}
 	}
 
 	return true, nil

@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -155,11 +156,11 @@ func (x *XChainAddAccountCreateAttestation) Validate() (bool, error) {
 		return false, ErrInvalidOtherChainSource
 	}
 
-	if x.PublicKey == "" {
+	if !isPublicKey(x.PublicKey) {
 		return false, ErrInvalidPublicKey
 	}
 
-	if x.Signature == "" {
+	if !typecheck.IsHexBlob(x.Signature) {
 		return false, ErrInvalidSignature
 	}
 
