@@ -107,6 +107,8 @@ var (
 	// explicit tag field is also present. It aliases the binary-codec sentinel so preflight
 	// and encoding report one error identity for this condition.
 	ErrDuplicateXAddressTag = bctypes.ErrDuplicateXAddressTag
+	// ErrInvalidInvoiceID is returned when the InvoiceID is not a valid 64-character hexadecimal string.
+	ErrInvalidInvoiceID = errors.New("invalid InvoiceID, must be a valid 64-character hexadecimal string")
 	// ErrInvalidCheckID is returned when the CheckID is not a valid 64-character hexadecimal string.
 	ErrInvalidCheckID = errors.New("invalid CheckID, must be a valid 64-character hexadecimal string")
 	// ErrInvalidCredentialIDs is returned when CredentialIDs does not contain one to eight distinct, nonzero 256-bit hexadecimal IDs.

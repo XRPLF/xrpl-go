@@ -82,5 +82,9 @@ func (c *CheckCreate) Validate() (bool, error) {
 		return false, ErrInvalidDestination
 	}
 
+	if c.InvoiceID != "" && !IsHex256(c.InvoiceID.String()) {
+		return false, ErrInvalidInvoiceID
+	}
+
 	return true, nil
 }
