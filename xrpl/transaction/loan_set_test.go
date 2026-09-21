@@ -30,6 +30,18 @@ func TestLoanSet_Flatten(t *testing.T) {
 			},
 		},
 		{
+			name: "explicit zero PaymentTotal preserves presence",
+			tx: &LoanSet{
+				PaymentTotal: func() *types.PaymentTotal { value := types.PaymentTotal(0); return &value }(),
+			},
+			expected: FlatTransaction{
+				"TransactionType":    LoanSetTx.String(),
+				"LoanBrokerID":       "",
+				"PrincipalRequested": "",
+				"PaymentTotal":       uint32(0),
+			},
+		},
+		{
 			name: "pass - complete",
 			tx: &LoanSet{
 				BaseTx: BaseTx{
@@ -191,6 +203,109 @@ func TestLoanSet_Validate(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestLoanSet_ValidatePaymentTotalAndCounterpartySignature(t *testing.T) {
+	const validPublicKey = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
+	counterparty := types.Address("rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds")
+	paymentTotalZero := types.PaymentTotal(0)
+	validSigner := types.Signer{SignerData: types.SignerData{
+		Account:       counterparty,
+		TxnSignature:  "ABCD",
+		SigningPubKey: validPublicKey,
+	}}
+	malformedSigner := validSigner
+	malformedSigner.SignerData.TxnSignature = "not-hex"
+
+	testcases := []struct {
+		name                  string
+		paymentTotal          *types.PaymentTotal
+		counterparty          *types.Address
+		counterpartySignature *CounterpartySignature
+		flags                 uint32
+		expected              error
+	}{
+		{
+			name:         "fail - explicit zero PaymentTotal",
+			paymentTotal: &paymentTotalZero,
+			expected:     ErrLoanSetPaymentTotalInvalid,
+		},
+		{
+			name:                  "pass - single counterparty signature",
+			counterpartySignature: &CounterpartySignature{SigningPubKey: validPublicKey, TxnSignature: "ABCD"},
+		},
+		{
+			name:                  "fail - incomplete counterparty signature",
+			counterpartySignature: &CounterpartySignature{SigningPubKey: validPublicKey},
+			expected:              ErrLoanSetCounterpartySignatureInvalid,
+		},
+		{
+			name:                  "fail - malformed counterparty public key",
+			counterpartySignature: &CounterpartySignature{SigningPubKey: "ABCD", TxnSignature: "ABCD"},
+			expected:              ErrLoanSetCounterpartySignatureInvalid,
+		},
+		{
+			name: "fail - mixed counterparty signature forms",
+			counterpartySignature: &CounterpartySignature{
+				SigningPubKey: validPublicKey,
+				TxnSignature:  "ABCD",
+				Signers:       []types.Signer{validSigner},
+			},
+			expected: ErrLoanSetCounterpartySignatureInvalid,
+		},
+		{
+			name:                  "pass - multisigned counterparty signature",
+			counterpartySignature: &CounterpartySignature{Signers: []types.Signer{validSigner}},
+		},
+		{
+			name:                  "fail - malformed multisigner signature",
+			counterpartySignature: &CounterpartySignature{Signers: []types.Signer{malformedSigner}},
+			expected:              ErrLoanSetCounterpartySignatureInvalid,
+		},
+		{
+			name:     "fail - inner Batch missing Counterparty",
+			flags:    types.TfInnerBatchTxn,
+			expected: ErrLoanSetInnerCounterpartyRequired,
+		},
+		{
+			name:                  "fail - inner Batch has counterparty signature fields",
+			flags:                 types.TfInnerBatchTxn,
+			counterparty:          &counterparty,
+			counterpartySignature: &CounterpartySignature{SigningPubKey: validPublicKey, TxnSignature: "ABCD"},
+			expected:              ErrLoanSetInnerCounterpartySignature,
+		},
+		{
+			name:         "pass - unsigned inner Batch with Counterparty",
+			flags:        types.TfInnerBatchTxn,
+			counterparty: &counterparty,
+		},
+	}
+
+	for _, testcase := range testcases {
+		t.Run(testcase.name, func(t *testing.T) {
+			tx := &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+					Flags:           testcase.flags,
+				},
+				LoanBrokerID:          "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested:    types.XRPLNumber("100000"),
+				PaymentTotal:          testcase.paymentTotal,
+				Counterparty:          testcase.counterparty,
+				CounterpartySignature: testcase.counterpartySignature,
+			}
+
+			ok, err := tx.Validate()
+			if testcase.expected == nil {
+				require.True(t, ok)
+				require.NoError(t, err)
+				return
+			}
+			require.False(t, ok)
+			require.ErrorIs(t, err, testcase.expected)
 		})
 	}
 }

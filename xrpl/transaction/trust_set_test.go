@@ -1,11 +1,18 @@
 package transaction
 
 import (
+	"encoding/json"
+	"math"
 	"reflect"
 	"testing"
 
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
+
+func trustSetQuality(value uint32) *uint32 {
+	return &value
+}
 
 func TestTrustSetFlatten(t *testing.T) {
 	s := TrustSet{
@@ -43,6 +50,39 @@ func TestTrustSetFlatten(t *testing.T) {
 	// Existing DeepEqual check
 	if !reflect.DeepEqual(flattened, expected) {
 		t.Errorf("Flatten result differs from expected: %v, %v", flattened, expected)
+	}
+}
+
+func TestTrustSetFlattenQualityPresence(t *testing.T) {
+	tx := TrustSet{
+		QualityIn:  trustSetQuality(0),
+		QualityOut: trustSetQuality(math.MaxUint32),
+	}
+	flattened := tx.Flatten()
+
+	if value, ok := flattened["QualityIn"]; !ok || value != uint32(0) {
+		t.Fatalf("expected explicit QualityIn zero, got %#v", value)
+	}
+	if value, ok := flattened["QualityOut"]; !ok || value != uint32(math.MaxUint32) {
+		t.Fatalf("expected explicit maximum QualityOut, got %#v", value)
+	}
+	if _, err := binarycodec.Encode(flattened); err != nil {
+		t.Fatalf("encode quality fields: %v", err)
+	}
+
+	data, err := json.Marshal(tx)
+	if err != nil {
+		t.Fatalf("marshal quality fields: %v", err)
+	}
+	var decoded TrustSet
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("unmarshal quality fields: %v", err)
+	}
+	if decoded.QualityIn == nil || *decoded.QualityIn != 0 {
+		t.Fatalf("explicit QualityIn zero was not preserved: %#v", decoded.QualityIn)
+	}
+	if decoded.QualityOut == nil || *decoded.QualityOut != math.MaxUint32 {
+		t.Fatalf("maximum QualityOut was not preserved: %#v", decoded.QualityOut)
 	}
 }
 
@@ -152,8 +192,8 @@ func TestTrustSetValidate(t *testing.T) {
 					Currency: "USD",
 					Value:    "100",
 				},
-				QualityIn:  100,
-				QualityOut: 200,
+				QualityIn:  trustSetQuality(100),
+				QualityOut: trustSetQuality(200),
 			},
 			valid: true,
 		},
@@ -168,8 +208,8 @@ func TestTrustSetValidate(t *testing.T) {
 					Sequence:           12,
 					LastLedgerSequence: 8007750,
 				},
-				QualityIn:  100,
-				QualityOut: 200,
+				QualityIn:  trustSetQuality(100),
+				QualityOut: trustSetQuality(200),
 			},
 			valid: false,
 		},
@@ -188,8 +228,8 @@ func TestTrustSetValidate(t *testing.T) {
 					Issuer:   "r123",
 					Currency: "USD",
 				},
-				QualityIn:  100,
-				QualityOut: 200,
+				QualityIn:  trustSetQuality(100),
+				QualityOut: trustSetQuality(200),
 			},
 			valid: false,
 		},

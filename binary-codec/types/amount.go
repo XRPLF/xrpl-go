@@ -508,9 +508,9 @@ func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
 	return serialReturn, nil
 }
 
-// serializeIssuedCurrencyCode serializes an issued currency code to its bytes representation.
+// SerializeIssuedCurrencyCode serializes an issued currency code to its bytes representation.
 // The currency code can be 3 allowed string characters, or 20 bytes of hex.
-func serializeIssuedCurrencyCode(currency string) ([]byte, error) {
+func SerializeIssuedCurrencyCode(currency string) ([]byte, error) {
 	currency = strings.TrimPrefix(currency, "0x")                                    // remove the 0x prefix if it exists
 	if currency == "XRP" || currency == "0000000000000000000000005852500000000000" { // if the currency code is uppercase XRP, return an error
 		return nil, &InvalidCodeError{Disallowed: "XRP uppercase"}
@@ -589,7 +589,7 @@ func serializeIssuedCurrencyAmount(value, currency, issuer string) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	currencyBytes, err := serializeIssuedCurrencyCode(currency) // serialize the currency code
+	currencyBytes, err := SerializeIssuedCurrencyCode(currency) // serialize the currency code
 	if err != nil {
 		return nil, err
 	}

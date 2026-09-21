@@ -2,6 +2,7 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	"github.com/Peersyst/xrpl-go/keypairs"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -181,7 +182,7 @@ func (tx *LoanSet) Flatten() FlatTransaction {
 		flattened["OverpaymentInterestRate"] = uint32(*tx.OverpaymentInterestRate)
 	}
 
-	if tx.PaymentTotal != nil && *tx.PaymentTotal != 0 {
+	if tx.PaymentTotal != nil {
 		flattened["PaymentTotal"] = uint32(*tx.PaymentTotal)
 	}
 
@@ -194,6 +195,42 @@ func (tx *LoanSet) Flatten() FlatTransaction {
 	}
 
 	return flattened
+}
+
+func validateLoanSetCounterpartySignature(signature *CounterpartySignature, inner bool) error {
+	if signature == nil {
+		return nil
+	}
+
+	if inner {
+		if signature.SigningPubKey != "" || signature.TxnSignature != "" || len(signature.Signers) > 0 {
+			return ErrLoanSetInnerCounterpartySignature
+		}
+		return nil
+	}
+
+	if len(signature.Signers) > 0 {
+		if signature.SigningPubKey != "" || signature.TxnSignature != "" {
+			return ErrLoanSetCounterpartySignatureInvalid
+		}
+		if err := validateSigners(signature.Signers); err != nil {
+			return ErrLoanSetCounterpartySignatureInvalid
+		}
+		for _, signer := range signature.Signers {
+			if _, err := keypairs.DeriveClassicAddress(signer.SignerData.SigningPubKey); err != nil || !typecheck.IsHexBlob(signer.SignerData.TxnSignature) {
+				return ErrLoanSetCounterpartySignatureInvalid
+			}
+		}
+		return nil
+	}
+
+	if signature.SigningPubKey == "" || signature.TxnSignature == "" {
+		return ErrLoanSetCounterpartySignatureInvalid
+	}
+	if _, err := keypairs.DeriveClassicAddress(signature.SigningPubKey); err != nil || !typecheck.IsHexBlob(signature.TxnSignature) {
+		return ErrLoanSetCounterpartySignatureInvalid
+	}
+	return nil
 }
 
 // Validate checks LoanSet transaction fields and returns false with an error if invalid.
@@ -230,6 +267,15 @@ func (tx *LoanSet) Validate() (bool, error) {
 		}
 	}
 
+	inner := tx.Flags&types.TfInnerBatchTxn != 0
+	if inner && tx.Counterparty == nil {
+		return false, ErrLoanSetInnerCounterpartyRequired
+	}
+	// A non-inner signature may be absent while the first party constructs and signs the transaction.
+	if err := validateLoanSetCounterpartySignature(tx.CounterpartySignature, inner); err != nil {
+		return false, err
+	}
+
 	if tx.OverpaymentFee != nil && *tx.OverpaymentFee > LoanSetMaxOverPaymentFeeRate {
 		return false, ErrLoanSetOverpaymentFeeInvalid
 	}
@@ -248,6 +294,10 @@ func (tx *LoanSet) Validate() (bool, error) {
 
 	if tx.OverpaymentInterestRate != nil && *tx.OverpaymentInterestRate > LoanSetMaxOverPaymentInterestRate {
 		return false, ErrLoanSetOverpaymentInterestRateInvalid
+	}
+
+	if tx.PaymentTotal != nil && *tx.PaymentTotal == 0 {
+		return false, ErrLoanSetPaymentTotalInvalid
 	}
 
 	if tx.PaymentInterval != nil && *tx.PaymentInterval != 0 && *tx.PaymentInterval < LoanSetMinPaymentInterval {

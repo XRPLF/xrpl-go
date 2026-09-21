@@ -146,6 +146,18 @@ func (a *AMMDeposit) Validate() (bool, error) {
 		return false, err
 	}
 
+	if a.TradingFee > AmmMaxTradingFee {
+		return false, ErrAMMTradingFeeTooHigh{
+			Value: a.TradingFee,
+			Limit: AmmMaxTradingFee,
+		}
+	}
+
+	const depositModeMask = TfLPToken | TfSingleAsset | TfTwoAsset | TfOneAssetLPToken | TfLimitLPToken | TfTwoAssetIfEmpty
+	if a.TradingFee != 0 && a.Flags&depositModeMask != TfTwoAssetIfEmpty {
+		return false, ErrTransactionInvalidField{Type: AMMDepositTx.String(), Field: "TradingFee"}
+	}
+
 	switch {
 	case a.Amount2 != nil && a.Amount == nil:
 		return false, ErrAMMMustSetAmountWithAmount2

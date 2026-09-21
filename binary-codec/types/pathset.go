@@ -18,12 +18,12 @@ const (
 )
 
 // serializePathCurrency serializes a currency code for use in path steps.
-// Unlike serializeIssuedCurrencyCode, this allows "XRP" which serializes to 20 zero bytes.
+// Unlike SerializeIssuedCurrencyCode, this allows "XRP" which serializes to 20 zero bytes.
 func serializePathCurrency(currency string) ([]byte, error) {
 	if currency == "XRP" {
 		return make([]byte, 20), nil
 	}
-	return serializeIssuedCurrencyCode(currency)
+	return SerializeIssuedCurrencyCode(currency)
 }
 
 // PathSet type declaration

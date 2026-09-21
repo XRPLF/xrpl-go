@@ -3,6 +3,7 @@ package transaction
 import (
 	"time"
 
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	rippletime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -59,6 +60,10 @@ func (p *PaymentChannelFund) Validate() (bool, error) {
 	ok, err := p.BaseTx.Validate()
 	if err != nil || !ok {
 		return false, err
+	}
+
+	if p.Amount.IsZero() || p.Amount.Uint64() > currency.MaxNativeDrops {
+		return false, ErrPaymentChannelFundAmountInvalid
 	}
 
 	// check the expiration time is in the future. /!\ Incomplete as the channel SettleDelay is not taken into account but it's already a good check.

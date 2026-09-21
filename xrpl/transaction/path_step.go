@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"github.com/Peersyst/xrpl-go/xrpl/internal/flatten"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -16,7 +17,7 @@ func (p *PathStep) Flatten() map[string]any {
 	flattened := make(map[string]any)
 
 	if p.Account != "" {
-		flattened["account"] = p.Account.String()
+		flattened["account"] = flatten.ClassicIfTagless(p.Account.String())
 	}
 
 	if p.Currency != "" {
@@ -24,7 +25,7 @@ func (p *PathStep) Flatten() map[string]any {
 	}
 
 	if p.Issuer != "" {
-		flattened["issuer"] = p.Issuer.String()
+		flattened["issuer"] = flatten.ClassicIfTagless(p.Issuer.String())
 	}
 
 	return flattened

@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### binary-codec
+
+- Added `types.SerializeIssuedCurrencyCode` for validating and serializing issued-currency codes to their canonical 20-byte representation.
+
+### Changed
+
+#### xrpl/transaction
+
+- Corrected the `AMMClawback` model to use issue-shaped `Asset` and `Asset2` fields and an optional issued-token or MPT `Amount`.
+- Changed `TrustSet.QualityIn` and `QualityOut` to optional pointers so callers can distinguish omission from an explicit zero that clears a quality.
+
 ### Fixed
 
 #### xrpl/transaction
@@ -15,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed `Payment.Validate()` and `CheckCreate.Validate()` to reject malformed non-empty `InvoiceID` values with `ErrInvalidInvoiceID`.
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
+- Normalized tagless X-addresses to classic addresses when flattening assets, issued-currency amounts, payment path steps, and cross-chain bridges, while preserving tagged and malformed addresses for encoding errors.
+- Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel claims and funding, VaultCreate, and XChainCommit transactions.
 
 ## [v0.3.1]
 

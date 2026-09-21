@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"math/big"
 	"strconv"
+
+	"github.com/Peersyst/xrpl-go/xrpl/internal/flatten"
 )
 
 // CurrencyKind indicates the type of a currency amount (XRP, ISSUED, MPT).
@@ -87,7 +89,7 @@ func (i IssuedCurrencyAmount) Flatten() any {
 	json := make(map[string]any)
 
 	if i.Issuer != "" {
-		json["issuer"] = i.Issuer.String()
+		json["issuer"] = flatten.ClassicIfTagless(i.Issuer.String())
 	}
 
 	if i.Currency != "" {
