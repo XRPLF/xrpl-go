@@ -94,8 +94,8 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Println("❌ MPToken issuance transaction failed to validate!")
+	if !response.Validated || response.Meta.TransactionResult != transactions.TesSUCCESS.String() {
+		fmt.Printf("❌ MPToken issuance failed: validated=%t, result=%s\n", response.Validated, response.Meta.TransactionResult)
 		return
 	}
 

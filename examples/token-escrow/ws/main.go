@@ -12,6 +12,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	rippleTime "github.com/Peersyst/xrpl-go/xrpl/time"
 	transactions "github.com/Peersyst/xrpl-go/xrpl/transaction"
 	txnTypes "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -52,13 +53,22 @@ func main() {
 	issuerWallet, holderWallet, holderWallet2 := createWallets(client)
 
 	// Configure issuer wallet to allow trust line locking
-	configureIssuerWallet(client, issuerWallet)
+	if err := configureIssuerWallet(client, issuerWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
 
 	// Create trust line from holder to issuer
-	createTrustLine(client, issuerWallet, holderWallet, holderWallet2)
+	if err := createTrustLine(client, issuerWallet, holderWallet, holderWallet2); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
 
 	// Mint token from issuer to holder
-	mintToken(client, issuerWallet, holderWallet)
+	if err := mintToken(client, issuerWallet, holderWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
 
 	// Create escrow, the holder will escrow 100 tokens to holder 2.
 	offerSequence, finishAfter, err := createEscrow(client, issuerWallet, holderWallet, holderWallet2)
@@ -125,7 +135,7 @@ func createWallets(client *websocket.Client) (issuerWallet, holderWallet, holder
 }
 
 // configureIssuerWallet configures the issuer wallet to allow trust line locking.
-func configureIssuerWallet(client *websocket.Client, issuerWallet wallet.Wallet) {
+func configureIssuerWallet(client *websocket.Client, issuerWallet wallet.Wallet) error {
 	fmt.Println("⏳ Configuring issuer wallet...")
 	accountSet := &transactions.AccountSet{
 		BaseTx: transactions.BaseTx{
@@ -138,16 +148,19 @@ func configureIssuerWallet(client *websocket.Client, issuerWallet wallet.Wallet)
 		Wallet:   &issuerWallet,
 	})
 	if err != nil {
-		fmt.Printf("❌ Error configuring issuer wallet: %s\n", err)
-		return
+		return err
+	}
+	if err := checkResult(accountSetResponse, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 	fmt.Println("✅ Issuer wallet configured!")
 	fmt.Printf("🌐 Hash: %s\n", accountSetResponse.Hash.String())
 	fmt.Println()
+	return nil
 }
 
 // createTrustLine creates a trust line for the holder wallet.
-func createTrustLine(client *websocket.Client, issuerWallet, holderWallet, holderWallet2 wallet.Wallet) {
+func createTrustLine(client *websocket.Client, issuerWallet, holderWallet, holderWallet2 wallet.Wallet) error {
 	fmt.Println("⏳ Creating trust line for holder wallet...")
 	trustLine := &transactions.TrustSet{
 		BaseTx: transactions.BaseTx{
@@ -165,8 +178,10 @@ func createTrustLine(client *websocket.Client, issuerWallet, holderWallet, holde
 		Wallet:   &holderWallet,
 	})
 	if err != nil {
-		fmt.Printf("❌ Error creating trust line: %s\n", err)
-		return
+		return err
+	}
+	if err := checkResult(trustLineResponse, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 	fmt.Println("✅ Trust line created for holder wallet!")
 	fmt.Printf("🌐 Hash: %s\n", trustLineResponse.Hash.String())
@@ -189,16 +204,19 @@ func createTrustLine(client *websocket.Client, issuerWallet, holderWallet, holde
 		Wallet:   &holderWallet2,
 	})
 	if err != nil {
-		fmt.Printf("❌ Error creating trust line: %s\n", err)
-		return
+		return err
+	}
+	if err := checkResult(trustLineResponse, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 	fmt.Println("✅ Trust line created for holder wallet 2!")
 	fmt.Printf("🌐 Hash: %s\n", trustLineResponse.Hash.String())
 	fmt.Println()
+	return nil
 }
 
 // mintToken mints a token for the holder wallet.
-func mintToken(client *websocket.Client, issuerWallet, holderWallet wallet.Wallet) {
+func mintToken(client *websocket.Client, issuerWallet, holderWallet wallet.Wallet) error {
 	fmt.Println("⏳ Minting token to holder wallet...")
 	token := &transactions.Payment{
 		BaseTx: transactions.BaseTx{
@@ -216,12 +234,15 @@ func mintToken(client *websocket.Client, issuerWallet, holderWallet wallet.Walle
 		Wallet:   &issuerWallet,
 	})
 	if err != nil {
-		fmt.Printf("❌ Error minting token: %s\n", err)
-		return
+		return err
+	}
+	if err := checkResult(tokenResponse, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 	fmt.Println("✅ Token minted!")
 	fmt.Printf("🌐 Hash: %s\n", tokenResponse.Hash.String())
 	fmt.Println()
+	return nil
 }
 
 // createEscrow creates an escrow for the holder wallet.
@@ -255,8 +276,8 @@ func createEscrow(client *websocket.Client, issuerWallet, holderWallet, holderWa
 	if err != nil {
 		return 0, 0, fmt.Errorf("create escrow: %w", err)
 	}
-	if !escrowResponse.Validated || escrowResponse.Meta.TransactionResult != transactions.TesSUCCESS.String() {
-		return 0, 0, fmt.Errorf("escrow creation failed: validated=%t, result=%s", escrowResponse.Validated, escrowResponse.Meta.TransactionResult)
+	if err := checkResult(escrowResponse, transactions.TesSUCCESS); err != nil {
+		return 0, 0, err
 	}
 	fmt.Println("✅ Escrow created!")
 	fmt.Printf("🌐 Hash: %s\n", escrowResponse.Hash.String())
@@ -299,11 +320,19 @@ func finishEscrow(client *websocket.Client, holderWallet, holderWallet2 wallet.W
 	if err != nil {
 		return fmt.Errorf("finish escrow: %w", err)
 	}
-	if !escrowResponse.Validated || escrowResponse.Meta.TransactionResult != transactions.TesSUCCESS.String() {
-		return fmt.Errorf("escrow finish failed: validated=%t, result=%s", escrowResponse.Validated, escrowResponse.Meta.TransactionResult)
+	if err := checkResult(escrowResponse, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 	fmt.Println("✅ Escrow finished!")
 	fmt.Printf("🌐 Hash: %s\n", escrowResponse.Hash.String())
 	fmt.Println()
+	return nil
+}
+
+//nolint:unparam // Keep the expected result explicit so readers can adapt the example.
+func checkResult(response *txrequests.TxResponse, expected transactions.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
 	return nil
 }

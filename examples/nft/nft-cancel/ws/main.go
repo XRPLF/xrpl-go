@@ -5,6 +5,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	txnTypes "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
@@ -75,8 +76,8 @@ func main() {
 		fmt.Println("❌ Error minting first NFT:", err)
 		return
 	}
-	if !responseMint.Validated || responseMint.Meta.TransactionResult != transaction.TesSUCCESS.String() {
-		fmt.Println("❌ First NFTokenMint failed:", responseMint.Meta.TransactionResult)
+	if err := checkResult(responseMint, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 	fmt.Println("✅ First NFT minted successfully! - 🌎 Hash: ", responseMint.Hash)
@@ -117,8 +118,8 @@ func main() {
 		fmt.Println("❌ Error minting second NFT:", err)
 		return
 	}
-	if !responseMint2.Validated || responseMint2.Meta.TransactionResult != transaction.TesSUCCESS.String() {
-		fmt.Println("❌ Second NFTokenMint failed:", responseMint2.Meta.TransactionResult)
+	if err := checkResult(responseMint2, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 	fmt.Println("✅ Second NFT minted successfully! - 🌎 Hash: ", responseMint2.Hash)
@@ -158,9 +159,16 @@ func main() {
 		fmt.Println("❌ Error canceling NFT offers:", err)
 		return
 	}
-	if !response.Validated || response.Meta.TransactionResult != transaction.TesSUCCESS.String() {
-		fmt.Println("❌ NFTokenCancelOffer failed:", response.Meta.TransactionResult)
+	if err := checkResult(response, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 	fmt.Println("✅ NFT offers canceled successfully! - 🌎 Hash: ", response.Hash)
+}
+
+func checkResult(response *txrequests.TxResponse, expected transaction.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

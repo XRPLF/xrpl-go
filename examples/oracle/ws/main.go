@@ -11,6 +11,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
@@ -119,14 +120,14 @@ func main() {
 		return
 	}
 
+	if err := checkResult(response, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ Oracle set transaction submitted")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Printf("🌐 Validated: %t\n", response.Validated)
-
-	if !response.Validated {
-		fmt.Println("❌ Oracle set transaction failed")
-		return
-	}
 	fmt.Println()
 
 	// Delete oracle
@@ -154,7 +155,19 @@ func main() {
 		return
 	}
 
+	if err := checkResult(responseDelete, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ Oracle deleted")
 	fmt.Printf("🌐 Hash: %s\n", responseDelete.Hash.String())
 	fmt.Printf("🌐 Validated: %t\n", responseDelete.Validated)
+}
+
+func checkResult(response *txrequests.TxResponse, expected transaction.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

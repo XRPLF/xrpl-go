@@ -6,6 +6,7 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -84,10 +85,8 @@ func main() {
 		return
 	}
 
-	if !res.Validated {
-		fmt.Println("❌ Check creation failed!")
-		fmt.Println("Try again!")
-		fmt.Println()
+	if err := checkResult(res, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
@@ -144,7 +143,19 @@ func main() {
 		return
 	}
 
+	if err := checkResult(res, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ Check cashed out!")
 	fmt.Printf("🌐 Hash: %s\n", res.Hash.String())
 	fmt.Println()
+}
+
+func checkResult(response *txrequests.TxResponse, expected transaction.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

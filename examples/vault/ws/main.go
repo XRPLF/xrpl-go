@@ -6,6 +6,7 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	transactions "github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
@@ -69,8 +70,8 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultCreate failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
@@ -112,8 +113,8 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultDeposit failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
@@ -140,8 +141,8 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultSet failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
@@ -167,8 +168,8 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultWithdraw failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
@@ -193,12 +194,20 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultDelete failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
 	fmt.Println("✅ Vault deleted!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
+}
+
+//nolint:unparam // Keep the expected result explicit so readers can adapt the example.
+func checkResult(response *txrequests.TxResponse, expected transactions.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

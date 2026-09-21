@@ -5,6 +5,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	transactions "github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
@@ -101,6 +102,11 @@ func main() {
 		return
 	}
 
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ DelegateSet transaction submitted")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash)
 	fmt.Printf("🌐 Validated: %t\n", response.Validated)
@@ -135,6 +141,11 @@ func main() {
 		return
 	}
 
+	if err := checkResult(response2, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ Delegated payment submitted")
 	fmt.Printf("🌐 Hash: %s\n", response2.Hash)
 	fmt.Printf("🌐 Validated: %t\n", response2.Validated)
@@ -152,4 +163,11 @@ func main() {
 
 	fmt.Printf("💳 Delegator final balance: %s XRP\n", finalDelegatorBalance)
 	fmt.Printf("💳 Delegatee final balance: %s XRP\n", finalDelegateeBalance)
+}
+
+func checkResult(response *txrequests.TxResponse, expected transactions.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

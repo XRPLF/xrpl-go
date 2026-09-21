@@ -5,6 +5,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	rpctypes "github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	transactions "github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -106,8 +107,8 @@ func configureColdWallet(client *rpc.Client, coldWallet wallet.Wallet) error {
 		return err
 	}
 
-	if !response.Validated {
-		return fmt.Errorf("cold wallet unfreezing failed")
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 
 	fmt.Println("✅ Cold address settings configured!")
@@ -134,8 +135,8 @@ func createTrustLine(client *rpc.Client, coldWallet, hotWallet wallet.Wallet) er
 		return err
 	}
 
-	if !response.Validated {
-		return fmt.Errorf("trust line from hot to cold address creation failed")
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 
 	fmt.Println("✅ Trust line from hot to cold address created!")
@@ -164,8 +165,8 @@ func issueTokens(client *rpc.Client, coldWallet, hotWallet wallet.Wallet) error 
 		return err
 	}
 
-	if !response.Validated {
-		return fmt.Errorf("tokens not sent from cold wallet to hot wallet")
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 
 	fmt.Println("✅ Tokens sent from cold wallet to hot wallet!")
@@ -193,12 +194,19 @@ func clawBackTokens(client *rpc.Client, coldWallet, hotWallet wallet.Wallet) err
 		return err
 	}
 
-	if !response.Validated {
-		return fmt.Errorf("tokens not clawed back from customer one")
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 
 	fmt.Println("✅ Tokens clawed back from customer one!")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Println()
+	return nil
+}
+
+func checkResult(response *txrequests.TxResponse, expected transactions.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
 	return nil
 }

@@ -115,6 +115,11 @@ func main() {
 		return
 	}
 
+	if !res.Validated || res.Meta.TransactionResult != transaction.TesSUCCESS.String() {
+		fmt.Printf("❌ SignerListSet failed: validated=%t, result=%s\n", res.Validated, res.Meta.TransactionResult)
+		return
+	}
+
 	fmt.Println("✅ SignerListSet transaction submitted!")
 	fmt.Printf("🌐 Hash: %s\n", res.Hash.String())
 	fmt.Println()
@@ -163,6 +168,7 @@ func main() {
 		return
 	}
 
-	fmt.Println("✅ Multisigned transaction submitted!")
-	fmt.Printf("🌐 Result: %s\n", mRes.EngineResult)
+	// SubmitMultisigned returns a preliminary result, not a validated outcome.
+	fmt.Printf("🌐 Preliminary multisigned result: %s\n", mRes.EngineResult)
+	fmt.Println("Wait for a validated transaction result before treating it as successful.")
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -91,6 +92,11 @@ func main() {
 		return
 	}
 
+	if err := checkResult(res, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	metadata := res.Meta.AsPaymentMetadata()
 
 	fmt.Println("✅ Payment submitted")
@@ -113,6 +119,11 @@ func main() {
 		return
 	}
 
+	if err := checkResult(resp, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	metadata = resp.Meta.AsPaymentMetadata()
 
 	fmt.Println("✅ Payment submitted via SubmitTxAndWait")
@@ -120,4 +131,11 @@ func main() {
 	fmt.Printf("🌐 Validated: %t\n", resp.Validated)
 	fmt.Printf("🌐 DeliveredAmount (drops): %s\n", metadata.DeliveredAmount)
 	fmt.Printf("⏱️  Took: %s\n", time.Since(start))
+}
+
+func checkResult(response *txrequests.TxResponse, expected transaction.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }
