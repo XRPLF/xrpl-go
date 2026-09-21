@@ -31,7 +31,7 @@ func main() {
 	fmt.Println()
 
 	ledger, err := client.GetLedger(&ledgerqueries.Request{
-		LedgerIndex: common.LedgerIndex(5115183),
+		LedgerIndex: common.Validated,
 	})
 	if err != nil {
 		fmt.Println(err)

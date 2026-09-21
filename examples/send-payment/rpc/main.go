@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
@@ -14,15 +15,13 @@ import (
 )
 
 func main() {
-	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
-	w, err := wallet.FromSeed("sEdSMVV4dJ1JbdBxmakRR4Puu3XVZz2", "")
+	w, err := wallet.New(crypto.ED25519())
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
-	receiverWallet, err := wallet.FromSeed("sEd7d8Ci9nevdLCeUMctF3uGXp9WQqJ", "")
+	receiverWallet, err := wallet.New(crypto.ED25519())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -38,19 +37,18 @@ func main() {
 
 	client := rpc.NewClient(cfg)
 
-	balance, err := client.GetXrpBalance(w.GetAddress())
-
-	if err != nil || balance == "0" {
-		fmt.Println("⏳ Funding wallet...")
-		err = client.FundWallet(&w)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		fmt.Println("💸 Wallet funded")
+	fmt.Println("⏳ Funding wallet...")
+	if err := client.FundWallet(&w); err != nil {
+		fmt.Println(err)
+		return
 	}
+	fmt.Println("💸 Wallet funded")
 
-	balance, _ = client.GetXrpBalance(w.GetAddress())
+	balance, err := client.GetXrpBalance(w.GetAddress())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	fmt.Printf("💸 Balance: %s\n", balance)
 

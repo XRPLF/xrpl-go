@@ -9,6 +9,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
+	wstypes "github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 )
 
 const (
@@ -22,7 +23,7 @@ func main() {
 	fmt.Println("⏳ Setting up client...")
 	client := websocket.NewClient(
 		websocket.NewClientConfig().
-			WithHost("wss://s.altnet.rippletest.net").
+			WithHost("wss://s.altnet.rippletest.net:51233").
 			WithFaucetProvider(faucet.NewTestnetFaucetProvider()),
 	)
 
@@ -91,9 +92,58 @@ func main() {
 	fmt.Println("💳 Customer one wallet:", customerOneWallet.ClassicAddress)
 	fmt.Println()
 
-	//
-	// Configure cold address settings
-	//
+	if err := configureColdWallet(client, coldWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := configureHotWallet(client, hotWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := createHotTrustLine(client, coldWallet, hotWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := createCustomerTrustLine(client, coldWallet, customerOneWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := issueToHotWallet(client, coldWallet, hotWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := issueToCustomer(client, coldWallet, customerOneWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := freezeColdWallet(client, coldWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := tryFrozenPayment(client, coldWallet, hotWallet, customerOneWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := unfreezeColdWallet(client, coldWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := sendAfterUnfreeze(client, coldWallet, hotWallet, customerOneWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+}
+
+func configureColdWallet(client *websocket.Client, coldWallet wallet.Wallet) error {
 	fmt.Println("⏳ Configuring cold address settings...")
 	coldWalletAccountSet := &transactions.AccountSet{
 		BaseTx: transactions.BaseTx{
@@ -109,40 +159,10 @@ func main() {
 
 	coldWalletAccountSet.SetRequireDestTag()
 
-	flattenedTx := coldWalletAccountSet.Flatten()
+	return submitAndWait(client, coldWalletAccountSet.Flatten(), coldWallet, transactions.TesSUCCESS)
+}
 
-	err = client.Autofill(&flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
-	}
-
-	txBlob, _, err := coldWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err := client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Cold address settings configuration failed!")
-		fmt.Println("Try again!")
-		fmt.Println()
-		return
-	}
-
-	fmt.Println("✅ Cold address settings configured!")
-	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-	fmt.Println()
-
-	//
-	// Configure hot address settings
-	//
+func configureHotWallet(client *websocket.Client, hotWallet wallet.Wallet) error {
 	fmt.Println("⏳ Configuring hot address settings...")
 	hotWalletAccountSet := &transactions.AccountSet{
 		BaseTx: transactions.BaseTx{
@@ -155,39 +175,10 @@ func main() {
 	hotWalletAccountSet.SetDisallowXRP()
 	hotWalletAccountSet.SetRequireDestTag()
 
-	flattenedTx = hotWalletAccountSet.Flatten()
-	err = client.Autofill(&flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
-	}
+	return submitAndWait(client, hotWalletAccountSet.Flatten(), hotWallet, transactions.TesSUCCESS)
+}
 
-	txBlob, _, err = hotWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Hot address settings configuration failed!")
-		fmt.Println("Try again!")
-		fmt.Println()
-		return
-	}
-
-	fmt.Println("✅ Hot address settings configured!")
-	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-	fmt.Println()
-
-	//
-	// Create trust line from hot to cold address
-	//
+func createHotTrustLine(client *websocket.Client, coldWallet, hotWallet wallet.Wallet) error {
 	fmt.Println("⏳ Creating trust line from hot to cold address...")
 	hotColdTrustSet := &transactions.TrustSet{
 		BaseTx: transactions.BaseTx{
@@ -200,39 +191,10 @@ func main() {
 		},
 	}
 
-	flattenedTx = hotColdTrustSet.Flatten()
-	err = client.Autofill(&flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
-	}
+	return submitAndWait(client, hotColdTrustSet.Flatten(), hotWallet, transactions.TesSUCCESS)
+}
 
-	txBlob, _, err = hotWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Trust line from hot to cold address creation failed!")
-		fmt.Println("Try again!")
-		fmt.Println()
-		return
-	}
-
-	fmt.Println("✅ Trust line from hot to cold address created!")
-	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-	fmt.Println()
-
-	//
-	// Create trust line from costumer one to cold address
-	//
+func createCustomerTrustLine(client *websocket.Client, coldWallet, customerOneWallet wallet.Wallet) error {
 	fmt.Println("⏳ Creating trust line from customer one to cold address...")
 	customerOneColdTrustSet := &transactions.TrustSet{
 		BaseTx: transactions.BaseTx{
@@ -245,39 +207,10 @@ func main() {
 		},
 	}
 
-	flattenedTx = customerOneColdTrustSet.Flatten()
-	err = client.Autofill(&flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
-	}
+	return submitAndWait(client, customerOneColdTrustSet.Flatten(), customerOneWallet, transactions.TesSUCCESS)
+}
 
-	txBlob, _, err = customerOneWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Trust line from customer one to cold address creation failed!")
-		fmt.Println("Try again!")
-		fmt.Println()
-		return
-	}
-
-	fmt.Println("✅ Trust line from customer one to cold address created!")
-	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-	fmt.Println()
-
-	//
-	// Send tokens from cold wallet to hot wallet
-	//
+func issueToHotWallet(client *websocket.Client, coldWallet, hotWallet wallet.Wallet) error {
 	fmt.Println("⏳ Sending tokens from cold wallet to hot wallet...")
 	coldToHotPayment := &transactions.Payment{
 		BaseTx: transactions.BaseTx{
@@ -292,39 +225,10 @@ func main() {
 		DestinationTag: types.DestinationTag(1),
 	}
 
-	flattenedTx = coldToHotPayment.Flatten()
-	err = client.Autofill(&flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
-	}
+	return submitAndWait(client, coldToHotPayment.Flatten(), coldWallet, transactions.TesSUCCESS)
+}
 
-	txBlob, _, err = coldWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Tokens not sent from cold wallet to hot wallet!")
-		fmt.Println("Try again!")
-		fmt.Println()
-		return
-	}
-
-	fmt.Println("✅ Tokens sent from cold wallet to hot wallet!")
-	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-	fmt.Println()
-
-	//
-	// Send tokens from hot wallet to customer one
-	//
+func issueToCustomer(client *websocket.Client, coldWallet, customerOneWallet wallet.Wallet) error {
 	fmt.Println("⏳ Sending tokens from cold wallet to customer one...")
 	coldToCustomerOnePayment := &transactions.Payment{
 		BaseTx: transactions.BaseTx{
@@ -338,38 +242,10 @@ func main() {
 		Destination: types.Address(customerOneWallet.ClassicAddress),
 	}
 
-	flattenedTx = coldToCustomerOnePayment.Flatten()
-	err = client.Autofill(&flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
-	}
+	return submitAndWait(client, coldToCustomerOnePayment.Flatten(), coldWallet, transactions.TesSUCCESS)
+}
 
-	txBlob, _, err = coldWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Tokens not sent from cold wallet to customer one!")
-		fmt.Println()
-		return
-	}
-
-	fmt.Println("✅ Tokens sent from cold wallet to customer one!")
-	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-	fmt.Println()
-
-	//
-	// Freeze cold wallet
-	//
+func freezeColdWallet(client *websocket.Client, coldWallet wallet.Wallet) error {
 	fmt.Println("⏳ Freezing cold wallet...")
 	freezeColdWallet := &transactions.AccountSet{
 		BaseTx: transactions.BaseTx{
@@ -379,39 +255,10 @@ func main() {
 
 	freezeColdWallet.SetAsfGlobalFreeze()
 
-	flattenedTx = freezeColdWallet.Flatten()
-	err = client.Autofill(&flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
-	}
+	return submitAndWait(client, freezeColdWallet.Flatten(), coldWallet, transactions.TesSUCCESS)
+}
 
-	txBlob, _, err = coldWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Cold wallet freezing failed!")
-		fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-		fmt.Println()
-		return
-	}
-
-	fmt.Println("✅ Cold wallet frozen!")
-	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-	fmt.Println()
-
-	//
-	// Try to send tokens from hot wallet to customer one
-	//
+func tryFrozenPayment(client *websocket.Client, coldWallet, hotWallet, customerOneWallet wallet.Wallet) error {
 	fmt.Println("⏳ Trying to send tokens from hot wallet to customer one...")
 	hotToCustomerOnePayment := &transactions.Payment{
 		BaseTx: transactions.BaseTx{
@@ -425,30 +272,11 @@ func main() {
 		Destination: types.Address(customerOneWallet.ClassicAddress),
 	}
 
-	flattenedTx = hotToCustomerOnePayment.Flatten()
-	err = client.Autofill(&flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
-	}
+	// Global freeze blocks holder-to-holder payments with tecPATH_DRY.
+	return submitAndWait(client, hotToCustomerOnePayment.Flatten(), hotWallet, transactions.TecPATH_DRY)
+}
 
-	txBlob, _, err = hotWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	_, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err == nil {
-		return
-	}
-
-	fmt.Println("❌ Tokens not sent from hot wallet to customer one!")
-	fmt.Println()
-
-	// //
-	// // Unfreeze cold wallet
-	// //
+func unfreezeColdWallet(client *websocket.Client, coldWallet wallet.Wallet) error {
 	fmt.Println("⏳ Unfreezing cold wallet...")
 	unfreezeColdWallet := &transactions.AccountSet{
 		BaseTx: transactions.BaseTx{
@@ -458,41 +286,12 @@ func main() {
 
 	unfreezeColdWallet.ClearAsfGlobalFreeze()
 
-	flattenedTx = unfreezeColdWallet.Flatten()
-	err = client.Autofill(&flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
-	}
+	return submitAndWait(client, unfreezeColdWallet.Flatten(), coldWallet, transactions.TesSUCCESS)
+}
 
-	txBlob, _, err = coldWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Cold wallet unfreezing failed!")
-		fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-		fmt.Println()
-		return
-	}
-
-	fmt.Println("✅ Cold wallet unfrozen!")
-	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
-	fmt.Println()
-
-	//
-	// Try to send tokens from hot wallet to customer one
-	//
+func sendAfterUnfreeze(client *websocket.Client, coldWallet, hotWallet, customerOneWallet wallet.Wallet) error {
 	fmt.Println("⏳ Trying to send tokens from hot wallet to customer one...")
-	hotToCustomerOnePayment = &transactions.Payment{
+	hotToCustomerOnePayment := &transactions.Payment{
 		BaseTx: transactions.BaseTx{
 			Account: types.Address(hotWallet.ClassicAddress),
 		},
@@ -504,32 +303,24 @@ func main() {
 		Destination: types.Address(customerOneWallet.ClassicAddress),
 	}
 
-	flattenedTx = hotToCustomerOnePayment.Flatten()
-	err = client.Autofill(&flattenedTx)
+	return submitAndWait(client, hotToCustomerOnePayment.Flatten(), hotWallet, transactions.TesSUCCESS)
+}
+
+// submitAndWait requires the expected result in a validated ledger.
+func submitAndWait(client *websocket.Client, tx transactions.FlatTransaction, signer wallet.Wallet, expected transactions.TxResult) error {
+	fmt.Printf("⏳ Submitting %s transaction...\n", tx["TransactionType"])
+	response, err := client.SubmitTxAndWait(tx, &wstypes.SubmitOptions{
+		Autofill: true,
+		Wallet:   &signer,
+	})
 	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
+		return fmt.Errorf("submit %s: %w", tx["TransactionType"], err)
 	}
-
-	txBlob, _, err = hotWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("%s: validated=%t, result=%s, expected=%s", tx["TransactionType"], response.Validated, response.Meta.TransactionResult, expected)
 	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Tokens not sent from hot wallet to customer one!")
-		fmt.Println("Try again!")
-		return
-	}
-
-	fmt.Println("✅ Tokens sent from hot wallet to customer one!")
+	fmt.Printf("✅ %s validated with expected result %s\n", tx["TransactionType"], expected)
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Println()
+	return nil
 }

@@ -62,8 +62,8 @@ func main() {
 		fmt.Println("❌ Error minting NFT:", err)
 		return
 	}
-	if !responseMint.Validated {
-		fmt.Println("❌ NFTokenMint txn is not in a validated ledger", responseMint)
+	if !responseMint.Validated || responseMint.Meta.TransactionResult != transaction.TesSUCCESS.String() {
+		fmt.Println("❌ NFTokenMint failed:", responseMint.Meta.TransactionResult)
 		return
 	}
 	fmt.Println("✅ NFT minted successfully! - 🌎 Hash: ", responseMint.Hash)
@@ -74,7 +74,7 @@ func main() {
 
 	metadata := responseMint.Meta.AsNFTokenMintMetadata()
 
-	if metadata.NFTokenID != nil {
+	if metadata.NFTokenID == nil {
 		fmt.Println("❌ nftoken_id not found or not a string")
 		return
 	}
@@ -88,7 +88,7 @@ func main() {
 	nftBurn := transaction.NFTokenBurn{
 		BaseTx: transaction.BaseTx{
 			Account:         nftMinter.ClassicAddress,
-			TransactionType: transaction.NFTokenAcceptOfferTx,
+			TransactionType: transaction.NFTokenBurnTx,
 		},
 		NFTokenID: txnTypes.NFTokenID(metadata.NFTokenID.String()),
 	}
@@ -101,8 +101,8 @@ func main() {
 		fmt.Println("❌ Error burning NFT:", err)
 		return
 	}
-	if !responseBurn.Validated {
-		fmt.Println("❌ NFTokenBurn transactiob is not in a validated ledger", responseBurn)
+	if !responseBurn.Validated || responseBurn.Meta.TransactionResult != transaction.TesSUCCESS.String() {
+		fmt.Println("❌ NFTokenBurn failed:", responseBurn.Meta.TransactionResult)
 		return
 	}
 	fmt.Println("✅ NFT burned successfully! - 🌎 Hash: ", responseBurn.Hash)

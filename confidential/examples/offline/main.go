@@ -8,7 +8,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/Peersyst/xrpl-go/confidential/builder"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
@@ -27,16 +26,22 @@ const (
 )
 
 func main() {
+	fmt.Println("⏳ Generating encryption keys...")
 	issuerKey, err := elgamal.GenerateKeypair()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("❌ Error generating issuer keypair:", err)
+		return
 	}
 	holderKey, err := elgamal.GenerateKeypair()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("❌ Error generating holder keypair:", err)
+		return
 	}
+	fmt.Println("✅ Encryption keys generated!")
+	fmt.Println()
 	// Back up the private keys. Do not print them or send them to the ledger.
 
+	// Create the confidential issuance
 	create := &transaction.MPTokenIssuanceCreate{
 		BaseTx: transaction.BaseTx{
 			Account:  types.Address(issuerAddress),
@@ -46,6 +51,7 @@ func main() {
 	create.SetMPTCanHoldConfidentialBalanceFlag()
 	create.SetMPTCanTransferFlag()
 
+	// Register the issuer encryption key
 	issuerPublicKey := issuerKey.PubKeyHex
 	setKeys := &transaction.MPTokenIssuanceSet{
 		BaseTx: transaction.BaseTx{
@@ -73,7 +79,8 @@ func main() {
 		FirstTime:    true,
 	})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("❌ Error preparing convert:", err)
+		return
 	}
 
 	// Merge the inbox and wait for validation before a spend. The merge is the one step here
@@ -93,19 +100,34 @@ func main() {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("❌ Error preparing merge inbox:", err)
+		return
 	}
 
-	printTransaction("1. Create the confidential issuance", create.Flatten())
-	printTransaction("2. Register the issuer key", setKeys.Flatten())
-	printTransaction("3. Convert public value", convert.Flatten())
-	printTransaction("4. Merge the inbox", merge.Flatten())
+	if err := printTransaction("1. Create the confidential issuance", create.Flatten()); err != nil {
+		fmt.Println("❌ Error printing issuance:", err)
+		return
+	}
+	if err := printTransaction("2. Register the issuer key", setKeys.Flatten()); err != nil {
+		fmt.Println("❌ Error printing issuer key registration:", err)
+		return
+	}
+	if err := printTransaction("3. Convert public value", convert.Flatten()); err != nil {
+		fmt.Println("❌ Error printing convert:", err)
+		return
+	}
+	if err := printTransaction("4. Merge the inbox", merge.Flatten()); err != nil {
+		fmt.Println("❌ Error printing merge inbox:", err)
+		return
+	}
+	fmt.Println("✅ Offline transactions prepared. Not signed or submitted.")
 }
 
-func printTransaction(label string, value transaction.FlatTransaction) {
+func printTransaction(label string, value transaction.FlatTransaction) error {
 	encoded, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	fmt.Printf("%s\n%s\n", label, encoded)
+	fmt.Printf("%s\n%s\n\n", label, encoded)
+	return nil
 }

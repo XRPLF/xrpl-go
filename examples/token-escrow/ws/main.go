@@ -10,6 +10,8 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	rippleTime "github.com/Peersyst/xrpl-go/xrpl/time"
 	transactions "github.com/Peersyst/xrpl-go/xrpl/transaction"
 	txnTypes "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -58,11 +60,18 @@ func main() {
 	// Mint token from issuer to holder
 	mintToken(client, issuerWallet, holderWallet)
 
-	// Create escrow, the holder will escrow 100 tokens to the issuer
-	offerSequence := createEscrow(client, issuerWallet, holderWallet, holderWallet2)
+	// Create escrow, the holder will escrow 100 tokens to holder 2.
+	offerSequence, finishAfter, err := createEscrow(client, issuerWallet, holderWallet, holderWallet2)
+	if err != nil {
+		fmt.Println("❌", err)
+		return
+	}
 
-	// Finish escrow
-	finishEscrow(client, holderWallet, holderWallet2, offerSequence)
+	// Finish escrow after the ledger's close time passes FinishAfter.
+	if err := finishEscrow(client, holderWallet, holderWallet2, offerSequence, finishAfter); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
 }
 
 // createWallets configures the issuer and holder wallets.
@@ -216,17 +225,15 @@ func mintToken(client *websocket.Client, issuerWallet, holderWallet wallet.Walle
 }
 
 // createEscrow creates an escrow for the holder wallet.
-func createEscrow(client *websocket.Client, issuerWallet, holderWallet, holderWallet2 wallet.Wallet) (offerSequence uint32) {
+func createEscrow(client *websocket.Client, issuerWallet, holderWallet, holderWallet2 wallet.Wallet) (uint32, uint32, error) {
 	fmt.Println("⏳ Creating escrow...")
 	cancelAfter, ok := typecheck.ToUint32(rippleTime.UnixTimeToRippleTime(time.Now().Unix()) + 4000)
 	if !ok {
-		fmt.Println("❌ CancelAfter is out of uint32 range")
-		return
+		return 0, 0, fmt.Errorf("CancelAfter is out of uint32 range")
 	}
 	finishAfter, ok := typecheck.ToUint32(rippleTime.UnixTimeToRippleTime(time.Now().Unix() + 5))
 	if !ok {
-		fmt.Println("❌ FinishAfter is out of uint32 range")
-		return
+		return 0, 0, fmt.Errorf("FinishAfter is out of uint32 range")
 	}
 	escrow := &transactions.EscrowCreate{
 		BaseTx: transactions.BaseTx{
@@ -246,19 +253,37 @@ func createEscrow(client *websocket.Client, issuerWallet, holderWallet, holderWa
 		Wallet:   &holderWallet,
 	})
 	if err != nil {
-		fmt.Printf("❌ Error creating escrow: %s\n", err)
-		return
+		return 0, 0, fmt.Errorf("create escrow: %w", err)
+	}
+	if !escrowResponse.Validated || escrowResponse.Meta.TransactionResult != transactions.TesSUCCESS.String() {
+		return 0, 0, fmt.Errorf("escrow creation failed: validated=%t, result=%s", escrowResponse.Validated, escrowResponse.Meta.TransactionResult)
 	}
 	fmt.Println("✅ Escrow created!")
 	fmt.Printf("🌐 Hash: %s\n", escrowResponse.Hash.String())
 	fmt.Printf("🌐 Sequence: %d\n", escrowResponse.TxJSON.Sequence())
 	fmt.Println()
 
-	return escrowResponse.TxJSON.Sequence()
+	return escrowResponse.TxJSON.Sequence(), finishAfter, nil
 }
 
 // finishEscrow finishes the escrow for the holder wallet 2.
-func finishEscrow(client *websocket.Client, holderWallet, holderWallet2 wallet.Wallet, offerSequence uint32) {
+func finishEscrow(client *websocket.Client, holderWallet, holderWallet2 wallet.Wallet, offerSequence, finishAfter uint32) error {
+	fmt.Println("⏳ Waiting for the validated ledger to pass FinishAfter...")
+	deadline := time.Now().Add(time.Minute)
+	for {
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timed out waiting for FinishAfter")
+		}
+		response, err := client.GetLedger(&ledger.Request{LedgerIndex: common.Validated})
+		if err != nil {
+			return fmt.Errorf("get validated ledger: %w", err)
+		}
+		if int64(response.Ledger.CloseTime) > int64(finishAfter) {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
 	fmt.Println("⏳ Finishing escrow...")
 	escrow := &transactions.EscrowFinish{
 		BaseTx: transactions.BaseTx{
@@ -272,10 +297,13 @@ func finishEscrow(client *websocket.Client, holderWallet, holderWallet2 wallet.W
 		Wallet:   &holderWallet2,
 	})
 	if err != nil {
-		fmt.Printf("❌ Error finishing escrow: %s\n", err)
-		return
+		return fmt.Errorf("finish escrow: %w", err)
+	}
+	if !escrowResponse.Validated || escrowResponse.Meta.TransactionResult != transactions.TesSUCCESS.String() {
+		return fmt.Errorf("escrow finish failed: validated=%t, result=%s", escrowResponse.Validated, escrowResponse.Meta.TransactionResult)
 	}
 	fmt.Println("✅ Escrow finished!")
 	fmt.Printf("🌐 Hash: %s\n", escrowResponse.Hash.String())
 	fmt.Println()
+	return nil
 }

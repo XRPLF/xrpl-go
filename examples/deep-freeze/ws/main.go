@@ -10,22 +10,24 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
+	wstypes "github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 )
 
 const (
 	currencyCode = "USDA"
 )
 
-type submittableTransaction interface {
-	TxType() transactions.TxType
-	Flatten() transactions.FlatTransaction // Ensures all transactions can be flattened
-}
-
 func main() {
 	fmt.Println("⏳ Setting up client...")
 
 	client := getClient()
-	fmt.Println("Connecting to server...")
+	defer func() {
+		if err := client.Disconnect(); err != nil {
+			fmt.Println("❌ Error disconnecting:", err)
+		}
+	}()
+
+	fmt.Println("⏳ Connecting to server...")
 	if err := client.Connect(); err != nil {
 		fmt.Println(err)
 		return
@@ -94,6 +96,36 @@ func main() {
 
 	// -----------------------------------------------------
 
+	if err := configureTrustLines(client, issuer, holderWallet1, holderWallet2); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+	if err := mintAndTransferTokens(client, issuer, holderWallet1, holderWallet2); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+	if err := freezeAndTryTransfers(client, issuer, holderWallet1, holderWallet2); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+	if err := unfreezeAndTransferTokens(client, issuer, holderWallet1, holderWallet2); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+}
+
+// getClient returns a new websocket client
+func getClient() *websocket.Client {
+	client := websocket.NewClient(
+		websocket.NewClientConfig().
+			WithHost("wss://s.devnet.rippletest.net:51233").
+			WithFaucetProvider(faucet.NewDevnetFaucetProvider()),
+	)
+
+	return client
+}
+
+func configureTrustLines(client *websocket.Client, issuer, holderWallet1, holderWallet2 wallet.Wallet) error {
 	// Configuring Issuing account
 	fmt.Println("⏳ Configuring issuer address settings...")
 	accountSet := &transactions.AccountSet{
@@ -104,7 +136,9 @@ func main() {
 	}
 
 	accountSet.SetAsfDefaultRipple()
-	submitAndWait(client, accountSet, issuer)
+	if err := submitAndWait(client, accountSet.Flatten(), issuer, transactions.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -121,7 +155,9 @@ func main() {
 		},
 	}
 	trustSet.SetSetNoRippleFlag()
-	submitAndWait(client, trustSet, holderWallet1)
+	if err := submitAndWait(client, trustSet.Flatten(), holderWallet1, transactions.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -138,10 +174,10 @@ func main() {
 		},
 	}
 	trustSet.SetSetNoRippleFlag()
-	submitAndWait(client, trustSet, holderWallet2)
+	return submitAndWait(client, trustSet.Flatten(), holderWallet2, transactions.TesSUCCESS)
+}
 
-	// -----------------------------------------------------
-
+func mintAndTransferTokens(client *websocket.Client, issuer, holderWallet1, holderWallet2 wallet.Wallet) error {
 	// Minting to Holder 1
 	fmt.Println("⏳ Minting to Holder 1...")
 	payment := &transactions.Payment{
@@ -155,7 +191,9 @@ func main() {
 			Value:    "50000",
 		},
 	}
-	submitAndWait(client, payment, issuer)
+	if err := submitAndWait(client, payment.Flatten(), issuer, transactions.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -172,7 +210,9 @@ func main() {
 			Value:    "40000",
 		},
 	}
-	submitAndWait(client, payment, issuer)
+	if err := submitAndWait(client, payment.Flatten(), issuer, transactions.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -189,13 +229,13 @@ func main() {
 			Value:    "20",
 		},
 	}
-	submitAndWait(client, payment, holderWallet1)
+	return submitAndWait(client, payment.Flatten(), holderWallet1, transactions.TesSUCCESS)
+}
 
-	// -----------------------------------------------------
-
+func freezeAndTryTransfers(client *websocket.Client, issuer, holderWallet1, holderWallet2 wallet.Wallet) error {
 	// Freezing and Deep Freezing holder1
 	fmt.Println("⏳ Freezing and Deep Freezing holder 1 trustline...")
-	trustSet = &transactions.TrustSet{
+	trustSet := &transactions.TrustSet{
 		BaseTx: transactions.BaseTx{
 			Account: types.Address(issuer.ClassicAddress),
 		},
@@ -208,13 +248,15 @@ func main() {
 	trustSet.SetSetFreezeFlag()
 	trustSet.SetSetDeepFreezeFlag()
 
-	submitAndWait(client, trustSet, issuer)
+	if err := submitAndWait(client, trustSet.Flatten(), issuer, transactions.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// ------------------- SHOULD FAIL ⬇️ ------------------
 
 	// Sending payment from Holder 1 to Holder 2 (which should fail), Holder 1 can't decrease its balance
 	fmt.Println("⏳ Sending payment from Holder 1 to Holder 2 (which should fail). Holder 1 can't decrease its balance...")
-	payment = &transactions.Payment{
+	payment := &transactions.Payment{
 		BaseTx: transactions.BaseTx{
 			Account: types.Address(holderWallet1.ClassicAddress),
 		},
@@ -225,7 +267,9 @@ func main() {
 			Value:    "10",
 		},
 	}
-	submitAndWait(client, payment, holderWallet1)
+	if err := submitAndWait(client, payment.Flatten(), holderWallet1, transactions.TecPATH_DRY); err != nil {
+		return err
+	}
 
 	// ------------------- SHOULD FAIL ⬇️ ------------------
 
@@ -242,7 +286,9 @@ func main() {
 			Value:    "10",
 		},
 	}
-	submitAndWait(client, payment, holderWallet2)
+	if err := submitAndWait(client, payment.Flatten(), holderWallet2, transactions.TecPATH_DRY); err != nil {
+		return err
+	}
 
 	// ------------------- SHOULD FAIL ⬇️ ------------------
 
@@ -259,13 +305,13 @@ func main() {
 		},
 		TakerGets: types.XRPCurrencyAmount(10),
 	}
-	submitAndWait(client, offerCreate, holderWallet1)
+	return submitAndWait(client, offerCreate.Flatten(), holderWallet1, transactions.TecFROZEN)
+}
 
-	// -----------------------------------------------------
-
+func unfreezeAndTransferTokens(client *websocket.Client, issuer, holderWallet1, holderWallet2 wallet.Wallet) error {
 	// Unfreezing and Deep Unfreezing holder 1
 	fmt.Println("⏳ Unfreezing and Deep Unfreezing holder 1 trustline...")
-	trustSet = &transactions.TrustSet{
+	trustSet := &transactions.TrustSet{
 		BaseTx: transactions.BaseTx{
 			Account: types.Address(issuer.ClassicAddress),
 		},
@@ -277,13 +323,15 @@ func main() {
 	}
 	trustSet.SetClearFreezeFlag()
 	trustSet.SetClearDeepFreezeFlag()
-	submitAndWait(client, trustSet, issuer)
+	if err := submitAndWait(client, trustSet.Flatten(), issuer, transactions.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
 	// Sending payment from Holder 1 to Holder 2 (which should succeed), Holder 1 can decrease its balance
 	fmt.Println("⏳ Sending payment from Holder 1 to Holder 2 (which should succeed). Holder 1 can decrease its balance...")
-	payment = &transactions.Payment{
+	payment := &transactions.Payment{
 		BaseTx: transactions.BaseTx{
 			Account: types.Address(holderWallet1.ClassicAddress),
 		},
@@ -294,7 +342,9 @@ func main() {
 			Value:    "10",
 		},
 	}
-	submitAndWait(client, payment, holderWallet1)
+	if err := submitAndWait(client, payment.Flatten(), holderWallet1, transactions.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -311,48 +361,24 @@ func main() {
 			Value:    "10",
 		},
 	}
-	submitAndWait(client, payment, holderWallet2)
+	return submitAndWait(client, payment.Flatten(), holderWallet2, transactions.TesSUCCESS)
 }
 
-// getClient returns a new websocket client
-func getClient() *websocket.Client {
-	client := websocket.NewClient(
-		websocket.NewClientConfig().
-			WithHost("wss://s.devnet.rippletest.net:51233").
-			WithFaucetProvider(faucet.NewDevnetFaucetProvider()),
-	)
-
-	return client
-}
-
-// submitAndWait submits a transaction and waits for it to be included in a validated ledger
-func submitAndWait(client *websocket.Client, txn submittableTransaction, wallet wallet.Wallet) {
-	fmt.Printf("⏳ Submitting %s transaction...\n", txn.TxType())
-
-	flattenedTx := txn.Flatten()
-
-	err := client.Autofill(&flattenedTx)
+// submitAndWait requires the expected result in a validated ledger.
+func submitAndWait(client *websocket.Client, tx transactions.FlatTransaction, signer wallet.Wallet, expected transactions.TxResult) error {
+	fmt.Printf("⏳ Submitting %s transaction...\n", tx["TransactionType"])
+	response, err := client.SubmitTxAndWait(tx, &wstypes.SubmitOptions{
+		Autofill: true,
+		Wallet:   &signer,
+	})
 	if err != nil {
-		fmt.Printf("❌ Error autofilling %s transaction: %s\n", txn.TxType(), err)
-		fmt.Println()
-		return
+		return fmt.Errorf("submit %s: %w", tx["TransactionType"], err)
 	}
-
-	txBlob, _, err := wallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing %s transaction: %s\n", txn.TxType(), err)
-		fmt.Println()
-		return
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("%s: validated=%t, result=%s, expected=%s", tx["TransactionType"], response.Validated, response.Meta.TransactionResult, expected)
 	}
-
-	response, err := client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting %s transaction: %s\n", txn.TxType(), err)
-		fmt.Println()
-		return
-	}
-
-	fmt.Printf("✅ %s transaction submitted\n", txn.TxType())
+	fmt.Printf("✅ %s validated with expected result %s\n", tx["TransactionType"], expected)
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Println()
+	return nil
 }

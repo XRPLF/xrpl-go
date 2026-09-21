@@ -1,19 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
-)
-
-const (
-	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
-	walletSeed = "sn3nxiW7v8KXzPzAqzyHXbSSKNuN9"
 )
 
 func main() {
@@ -42,7 +38,7 @@ func main() {
 	fmt.Println("✅ Connected to testnet")
 	fmt.Println()
 
-	w, err := wallet.FromSeed(walletSeed, "")
+	w, err := wallet.New(crypto.ED25519())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -103,31 +99,30 @@ func main() {
 
 	objects, err := client.GetAccountObjects(&account.ObjectsRequest{
 		Account: w.GetAddress(),
+		Type:    "ticket",
 	})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Println("🌐 Account objects:", objects.AccountObjects[0]["TicketSequence"])
-
-	seq, err := objects.AccountObjects[0]["TicketSequence"].(json.Number).Int64()
-	if err != nil {
-		fmt.Println(err)
+	if len(objects.AccountObjects) == 0 {
+		fmt.Println("❌ No tickets found")
 		return
 	}
-
-	if seq < 0 || seq > 0xFFFFFFFF {
-		fmt.Printf("❌ Ticket sequence %d is out of uint32 range\n", seq)
+	seq, ok := typecheck.ToUint32(objects.AccountObjects[0]["TicketSequence"])
+	if !ok {
+		fmt.Println("❌ Invalid ticket sequence")
 		return
 	}
+	fmt.Println("🌐 Ticket sequence:", seq)
 
 	fmt.Println("⏳ Submitting AccountSet transaction...")
 	as := &transaction.AccountSet{
 		BaseTx: transaction.BaseTx{
 			Account:        w.GetAddress(),
 			Sequence:       0,
-			TicketSequence: uint32(seq),
+			TicketSequence: seq,
 		},
 	}
 

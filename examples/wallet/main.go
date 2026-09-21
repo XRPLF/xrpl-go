@@ -25,7 +25,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println("Wallet generated from mnemonic")
+	fmt.Println("✅ Wallet generated from mnemonic")
 
 	fmt.Printf("Private key: %s\n", mnemonicWallet.PrivateKey)
 	fmt.Printf("Public 	key: %s\n", mnemonicWallet.PublicKey)
@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Wallet generated from random seed")
+	fmt.Println("✅ Wallet generated from random seed")
 
 	fmt.Printf("Private key: %s\n", w.PrivateKey)
 	fmt.Printf("Public 	key: %s\n", w.PublicKey)
@@ -91,7 +91,7 @@ func main() {
 
 	fmt.Println(tx.Flatten())
 
-	fmt.Println("\nSigning a transaction with wallet generated from seed")
+	fmt.Println("\n⏳ Signing a transaction with wallet generated from seed...")
 
 	txBlob, hash, err := w.Sign(tx.Flatten())
 	if err != nil {
@@ -99,9 +99,9 @@ func main() {
 	}
 
 	fmt.Printf("txBlob: %s\n", txBlob)
-	fmt.Printf("hash: %s\n", hash)
+	fmt.Printf("🌐 Hash: %s\n", hash)
 
-	fmt.Println("\nSigning a transaction with wallet generated from mnemonic")
+	fmt.Println("\n⏳ Signing a transaction with wallet generated from mnemonic...")
 
 	mnemonicTx := transactions.Payment{
 		BaseTx: transactions.BaseTx{
@@ -122,5 +122,5 @@ func main() {
 	}
 
 	fmt.Printf("txBlob: %s\n", mnemonicTxBlob)
-	fmt.Printf("hash: %s\n", mnemonicHash)
+	fmt.Printf("🌐 Hash: %s\n", mnemonicHash)
 }
