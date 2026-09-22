@@ -5,19 +5,30 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Peersyst/xrpl-go/examples/clients"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	rippleTime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
+	"github.com/Peersyst/xrpl-go/xrpl/websocket"
+	wstypes "github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 )
 
 func main() {
 	fmt.Println("⏳ Setting up client...")
 
-	client := clients.GetDevnetWebsocketClient()
+	client := websocket.NewClient(
+		websocket.NewClientConfig().
+			WithHost("wss://s.devnet.rippletest.net:51233").
+			WithFaucetProvider(faucet.NewDevnetFaucetProvider()),
+	)
+	defer func() {
+		if err := client.Disconnect(); err != nil {
+			fmt.Println("❌ Error disconnecting:", err)
+		}
+	}()
 	fmt.Println("Connecting to server...")
 	if err := client.Connect(); err != nil {
 		fmt.Println(err)
@@ -93,7 +104,10 @@ func main() {
 		URI:            hex.EncodeToString([]byte("https://example.com")),
 	}
 
-	clients.SubmitTxBlobAndWait(client, txn, issuer)
+	if err := submitAndWait(client, txn.Flatten(), issuer); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
 
 	// -----------------------------------------------------
 
@@ -108,7 +122,10 @@ func main() {
 		Issuer:         types.Address(issuer.ClassicAddress),
 	}
 
-	clients.SubmitTxBlobAndWait(client, acceptTxn, subjectWallet)
+	if err := submitAndWait(client, acceptTxn.Flatten(), subjectWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
 
 	// -----------------------------------------------------
 
@@ -124,5 +141,27 @@ func main() {
 		Subject:        types.Address(subjectWallet.ClassicAddress),
 	}
 
-	clients.SubmitTxBlobAndWait(client, deleteTxn, issuer)
+	if err := submitAndWait(client, deleteTxn.Flatten(), issuer); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+}
+
+// submitAndWait autofills, signs, and submits one transaction.
+func submitAndWait(client *websocket.Client, tx transaction.FlatTransaction, signer wallet.Wallet) error {
+	fmt.Printf("⏳ Submitting %s transaction...\n", tx["TransactionType"])
+	response, err := client.SubmitTxAndWait(tx, &wstypes.SubmitOptions{
+		Autofill: true,
+		Wallet:   &signer,
+	})
+	if err != nil {
+		return fmt.Errorf("submit %s: %w", tx["TransactionType"], err)
+	}
+	if !response.Validated || response.Meta.TransactionResult != transaction.TesSUCCESS.String() {
+		return fmt.Errorf("%s: validated=%t, result=%s", tx["TransactionType"], response.Validated, response.Meta.TransactionResult)
+	}
+	fmt.Printf("✅ %s transaction submitted\n", tx["TransactionType"])
+	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
+	fmt.Println()
+	return nil
 }

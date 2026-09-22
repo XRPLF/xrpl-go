@@ -5,21 +5,32 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Peersyst/xrpl-go/examples/clients"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
 	rippletime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
+	"github.com/Peersyst/xrpl-go/xrpl/websocket"
+	wstypes "github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 )
 
 func main() {
 	fmt.Println("⏳ Setting up client...")
 
-	client := clients.GetDevnetWebsocketClient()
+	client := websocket.NewClient(
+		websocket.NewClientConfig().
+			WithHost("wss://s.devnet.rippletest.net:51233").
+			WithFaucetProvider(faucet.NewDevnetFaucetProvider()),
+	)
+	defer func() {
+		if err := client.Disconnect(); err != nil {
+			fmt.Println("❌ Error disconnecting:", err)
+		}
+	}()
 	fmt.Println("Connecting to server...")
 	if err := client.Connect(); err != nil {
 		fmt.Println(err)
@@ -68,6 +79,23 @@ func main() {
 
 	// -----------------------------------------------------
 
+	credentialType := types.CredentialType("6D795F63726564656E7469616C") // my_credential
+	if err := configureCredentialAuthorization(client, issuer, holderWallet1, credentialType); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+	credentialID, err := getCredentialID(client, holderWallet1)
+	if err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+	if err := sendPaymentsAndRevokeAuthorization(client, issuer, holderWallet1, credentialType, credentialID); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+}
+
+func configureCredentialAuthorization(client *websocket.Client, issuer, holderWallet1 wallet.Wallet, credentialType types.CredentialType) error {
 	// Enabling DepositAuth on the issuer account with an AccountSet transaction
 	fmt.Println("⏳ Enabling DepositAuth on the issuer account...")
 	accountSetTx := &transaction.AccountSet{
@@ -78,7 +106,9 @@ func main() {
 	}
 	accountSetTx.SetAsfDepositAuth()
 
-	clients.SubmitTxBlobAndWait(client, accountSetTx, issuer)
+	if err := submitAndWait(client, accountSetTx.Flatten(), issuer, transaction.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -87,14 +117,11 @@ func main() {
 
 	expiration, err := rippletime.IsoTimeToRippleTime(time.Now().Add(time.Hour * 24).Format(time.RFC3339))
 	if err != nil {
-		fmt.Printf("❌ Error converting expiration to ripple time: %s\n", err)
-		return
+		return fmt.Errorf("error converting expiration to ripple time: %w", err)
 	}
-	credentialType := types.CredentialType("6D795F63726564656E7469616C") // my_credential
 	expirationUint32, ok := typecheck.ToUint32(expiration)
 	if !ok {
-		fmt.Printf("❌ Expiration time %d is out of uint32 range\n", expiration)
-		return
+		return fmt.Errorf("expiration time %d is out of uint32 range", expiration)
 	}
 
 	credentialCreateTx := &transaction.CredentialCreate{
@@ -108,7 +135,9 @@ func main() {
 		URI:            hex.EncodeToString([]byte("https://example.com")),
 	}
 
-	clients.SubmitTxBlobAndWait(client, credentialCreateTx, issuer)
+	if err := submitAndWait(client, credentialCreateTx.Flatten(), issuer, transaction.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -124,7 +153,9 @@ func main() {
 		Issuer:         types.Address(issuer.ClassicAddress),
 	}
 
-	clients.SubmitTxBlobAndWait(client, credentialAcceptTx, holderWallet1)
+	if err := submitAndWait(client, credentialAcceptTx.Flatten(), holderWallet1, transaction.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -146,10 +177,10 @@ func main() {
 		},
 	}
 
-	clients.SubmitTxBlobAndWait(client, depositPreauthTx, issuer)
+	return submitAndWait(client, depositPreauthTx.Flatten(), issuer, transaction.TesSUCCESS)
+}
 
-	// -----------------------------------------------------
-
+func getCredentialID(client *websocket.Client, holderWallet1 wallet.Wallet) (string, error) {
 	// Get the credential ID
 	fmt.Println("⏳ Getting the credential ID from the holder 1 account...")
 
@@ -161,28 +192,26 @@ func main() {
 
 	objectsResponse, err := client.GetAccountObjects(objectsRequest)
 	if err != nil {
-		fmt.Printf("❌ Error getting the credential ID: %s\n", err)
-		return
+		return "", fmt.Errorf("error getting the credential ID: %w", err)
 	}
 
 	// Check if we have any credential objects
 	if len(objectsResponse.AccountObjects) == 0 {
-		fmt.Println("❌ No credential objects found")
-		return
+		return "", fmt.Errorf("no credential objects found")
 	}
 
 	// Extract the credential ID
 	credentialID, ok := objectsResponse.AccountObjects[0]["index"].(string)
 	if !ok {
-		fmt.Println("❌ Could not extract credential ID from response")
-		return
+		return "", fmt.Errorf("could not extract credential ID from response")
 	}
 
 	fmt.Printf("✅ Credential ID: %s\n", credentialID)
 	fmt.Println()
+	return credentialID, nil
+}
 
-	// -----------------------------------------------------
-
+func sendPaymentsAndRevokeAuthorization(client *websocket.Client, issuer, holderWallet1 wallet.Wallet, credentialType types.CredentialType, credentialID string) error {
 	// Sending XRP to the holder 1 account
 	fmt.Println("⏳ Sending XRP to the issuer account, should succeed...")
 
@@ -196,7 +225,9 @@ func main() {
 		CredentialIDs: types.CredentialIDs{credentialID},
 	}
 
-	clients.SubmitTxBlobAndWait(client, sendTx, holderWallet1)
+	if err := submitAndWait(client, sendTx.Flatten(), holderWallet1, transaction.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -218,7 +249,9 @@ func main() {
 		},
 	}
 
-	clients.SubmitTxBlobAndWait(client, unauthorizeTx, issuer)
+	if err := submitAndWait(client, unauthorizeTx.Flatten(), issuer, transaction.TesSUCCESS); err != nil {
+		return err
+	}
 
 	// -----------------------------------------------------
 
@@ -235,5 +268,24 @@ func main() {
 		CredentialIDs: types.CredentialIDs{credentialID},
 	}
 
-	clients.SubmitTxBlobAndWait(client, sendTx2, holderWallet1)
+	return submitAndWait(client, sendTx2.Flatten(), holderWallet1, transaction.TecNO_PERMISSION)
+}
+
+// submitAndWait requires the expected result in a validated ledger.
+func submitAndWait(client *websocket.Client, tx transaction.FlatTransaction, signer wallet.Wallet, expected transaction.TxResult) error {
+	fmt.Printf("⏳ Submitting %s transaction...\n", tx["TransactionType"])
+	response, err := client.SubmitTxAndWait(tx, &wstypes.SubmitOptions{
+		Autofill: true,
+		Wallet:   &signer,
+	})
+	if err != nil {
+		return fmt.Errorf("submit %s: %w", tx["TransactionType"], err)
+	}
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("%s: validated=%t, result=%s, expected=%s", tx["TransactionType"], response.Validated, response.Meta.TransactionResult, expected)
+	}
+	fmt.Printf("✅ %s validated with expected result %s\n", tx["TransactionType"], expected)
+	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
+	fmt.Println()
+	return nil
 }

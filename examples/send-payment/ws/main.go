@@ -105,6 +105,11 @@ func main() {
 		return
 	}
 
+	if !response.Validated || response.Meta.TransactionResult != transactions.TesSUCCESS.String() {
+		fmt.Printf("❌ Payment failed: validated=%t, result=%s\n", response.Validated, response.Meta.TransactionResult)
+		return
+	}
+
 	fmt.Println("✅ Payment submitted")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Printf("🌐 Validated: %t\n", response.Validated)

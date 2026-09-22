@@ -12,6 +12,8 @@ import (
 func main() {
 	fmt.Println("⏳ Funding wallet on testnet...")
 
+	// For devnet, use https://s.devnet.rippletest.net:51234/ and
+	// faucet.NewDevnetFaucetProvider() instead.
 	cfg, err := rpc.NewClientConfig(
 		"https://s.altnet.rippletest.net:51234/",
 		rpc.WithFaucetProvider(faucet.NewTestnetFaucetProvider()),
@@ -50,28 +52,4 @@ func main() {
 	}
 	fmt.Println("💳 Balance", balance)
 	fmt.Println()
-
-	fmt.Println("⏳ Funding wallet on devnet...")
-
-	balance, err = client.GetXrpBalance(wallet.ClassicAddress)
-	if err != nil {
-		balance = "0"
-	}
-
-	fmt.Println("💳 Balance", balance)
-	fmt.Println()
-
-	fmt.Println("⏳ Funding wallet...")
-	err = client.FundWallet(&wallet)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	balance, err = client.GetXrpBalance(wallet.ClassicAddress)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("💳 Balance", balance)
 }

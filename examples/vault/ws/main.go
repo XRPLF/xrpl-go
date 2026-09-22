@@ -6,6 +6,7 @@ import (
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	transactions "github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
@@ -25,13 +26,13 @@ func main() {
 		}
 	}()
 
-	fmt.Println("Connecting to server...")
+	fmt.Println("⏳ Connecting to server...")
 	if err := client.Connect(); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Println("Setting up wallet...")
+	fmt.Println("⏳ Setting up wallet...")
 	w, err := wallet.New(crypto.ED25519())
 	if err != nil {
 		fmt.Printf("Error creating wallet: %s\n", err)
@@ -41,8 +42,8 @@ func main() {
 		fmt.Printf("Error funding wallet: %s\n", err)
 		return
 	}
-	fmt.Println("Wallet funded!")
-	fmt.Println("Wallet:", w.ClassicAddress)
+	fmt.Println("💸 Wallet funded!")
+	fmt.Println("💳 Wallet:", w.ClassicAddress)
 	fmt.Println()
 
 	submitOpts := &wstypes.SubmitOptions{
@@ -53,7 +54,7 @@ func main() {
 	//
 	// Create an XRP vault
 	//
-	fmt.Println("Creating XRP vault...")
+	fmt.Println("⏳ Creating XRP vault...")
 	vaultCreate := &transactions.VaultCreate{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
@@ -69,12 +70,12 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultCreate failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
-	fmt.Println("Vault created!")
+	fmt.Println("✅ Vault created!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
@@ -91,13 +92,13 @@ func main() {
 		fmt.Println("Vault ID not found in metadata")
 		return
 	}
-	fmt.Printf("VaultID: %s\n", vaultID)
+	fmt.Printf("🌐 VaultID: %s\n", vaultID)
 	fmt.Println()
 
 	//
 	// Deposit into the vault
 	//
-	fmt.Println("Depositing 1000000 drops into vault...")
+	fmt.Println("⏳ Depositing 1000000 drops into vault...")
 	vaultDeposit := &transactions.VaultDeposit{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
@@ -112,19 +113,19 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultDeposit failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
-	fmt.Println("Deposit successful!")
+	fmt.Println("✅ Deposit successful!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
 	//
 	// Update vault settings
 	//
-	fmt.Println("Updating vault settings...")
+	fmt.Println("⏳ Updating vault settings...")
 	data := types.Data("DEADBEEF")
 	vaultSet := &transactions.VaultSet{
 		BaseTx: transactions.BaseTx{
@@ -140,19 +141,19 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultSet failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
-	fmt.Println("Vault settings updated!")
+	fmt.Println("✅ Vault settings updated!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
 	//
 	// Withdraw from the vault
 	//
-	fmt.Println("Withdrawing 1000000 drops from vault...")
+	fmt.Println("⏳ Withdrawing 1000000 drops from vault...")
 	vaultWithdraw := &transactions.VaultWithdraw{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
@@ -167,19 +168,19 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultWithdraw failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
-	fmt.Println("Withdrawal successful!")
+	fmt.Println("✅ Withdrawal successful!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
 
 	//
 	// Delete the vault
 	//
-	fmt.Println("Deleting vault...")
+	fmt.Println("⏳ Deleting vault...")
 	vaultDelete := &transactions.VaultDelete{
 		BaseTx: transactions.BaseTx{
 			Account: w.GetAddress(),
@@ -193,12 +194,20 @@ func main() {
 		return
 	}
 
-	if !response.Validated {
-		fmt.Printf("VaultDelete failed! Response: %+v\n", response)
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
-	fmt.Println("Vault deleted!")
+	fmt.Println("✅ Vault deleted!")
 	fmt.Printf("Hash: %s\n", response.Hash.String())
 	fmt.Println()
+}
+
+//nolint:unparam // Keep the expected result explicit so readers can adapt the example.
+func checkResult(response *txrequests.TxResponse, expected transactions.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

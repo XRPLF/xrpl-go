@@ -6,13 +6,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Peersyst/xrpl-go/examples/clients"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
+	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
+	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 	wstypes "github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 )
 
@@ -28,7 +30,11 @@ func printJSON(data any) {
 func main() {
 	// Setup client
 	fmt.Println("⏳ Setting up testnet WebSocket client...")
-	client := clients.GetTestnetWebsocketClient()
+	client := websocket.NewClient(
+		websocket.NewClientConfig().
+			WithHost("wss://s.altnet.rippletest.net:51233").
+			WithFaucetProvider(faucet.NewTestnetFaucetProvider()),
+	)
 	defer func() {
 		if err := client.Disconnect(); err != nil {
 			fmt.Printf("Error disconnecting: %s\n", err)
@@ -114,14 +120,14 @@ func main() {
 		return
 	}
 
+	if err := checkResult(response, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ Oracle set transaction submitted")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Printf("🌐 Validated: %t\n", response.Validated)
-
-	if !response.Validated {
-		fmt.Println("❌ Oracle set transaction failed")
-		return
-	}
 	fmt.Println()
 
 	// Delete oracle
@@ -149,7 +155,19 @@ func main() {
 		return
 	}
 
+	if err := checkResult(responseDelete, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ Oracle deleted")
 	fmt.Printf("🌐 Hash: %s\n", responseDelete.Hash.String())
 	fmt.Printf("🌐 Validated: %t\n", responseDelete.Validated)
+}
+
+func checkResult(response *txrequests.TxResponse, expected transaction.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

@@ -11,6 +11,8 @@ import (
 
 func main() {
 	fmt.Println("⏳ Connecting to testnet...")
+	// For devnet, use wss://s.devnet.rippletest.net:51233 and
+	// faucet.NewDevnetFaucetProvider() instead.
 	client := websocket.NewClient(
 		websocket.NewClientConfig().
 			WithHost("wss://s.altnet.rippletest.net:51233").
@@ -63,28 +65,4 @@ func main() {
 	}
 	fmt.Println("💳 Balance", balance)
 	fmt.Println()
-
-	fmt.Println("⏳ Funding wallet on devnet...")
-
-	balance, err = client.GetXrpBalance(wallet.ClassicAddress)
-	if err != nil {
-		balance = "0"
-	}
-
-	fmt.Println("💳 Balance", balance)
-	fmt.Println()
-
-	fmt.Println("⏳ Funding wallet...")
-	err = client.FundWallet(&wallet)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	balance, err = client.GetXrpBalance(wallet.ClassicAddress)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("💳 Balance", balance)
 }

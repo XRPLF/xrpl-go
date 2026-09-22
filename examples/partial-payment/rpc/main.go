@@ -6,6 +6,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -83,6 +84,11 @@ func main() {
 		return
 	}
 
+	if err := checkResult(res, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ TrustSet transaction submitted!")
 	fmt.Printf("🌐 Hash: %s\n", res.Hash.String())
 	fmt.Printf("🌐 Validated: %t\n", res.Validated)
@@ -118,6 +124,11 @@ func main() {
 	res, err = client.SubmitTxBlobAndWait(blob, false)
 	if err != nil {
 		fmt.Println(err)
+		return
+	}
+
+	if err := checkResult(res, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 
@@ -161,8 +172,20 @@ func main() {
 		return
 	}
 
+	if err := checkResult(res, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ Partial Payment transaction submitted!")
 	fmt.Printf("🌐 Hash: %s\n", res.Hash.String())
 	fmt.Printf("🌐 Validated: %t\n", res.Validated)
 	fmt.Println()
+}
+
+func checkResult(response *txrequests.TxResponse, expected transaction.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

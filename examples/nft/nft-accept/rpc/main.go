@@ -5,6 +5,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -76,8 +77,8 @@ func main() {
 		fmt.Println("❌ Error minting NFT:", err)
 		return
 	}
-	if !responseMint.Validated {
-		fmt.Println("❌ NFTokenMint txn is not in a validated ledger", responseMint)
+	if err := checkResult(responseMint, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 	fmt.Println("✅ NFT minted successfully! - 🌎 Hash: ", responseMint.Hash)
@@ -115,9 +116,16 @@ func main() {
 		fmt.Println("❌ Error accepting NFT offer:", err)
 		return
 	}
-	if !response.Validated {
-		fmt.Println("❌ NFTokenAcceptOffer txn is not in a validated ledger", response)
+	if err := checkResult(response, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 	fmt.Println("✅ NFT offer accepted successfully! - 🌎 Hash: ", response.Hash)
+}
+
+func checkResult(response *txrequests.TxResponse, expected transaction.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

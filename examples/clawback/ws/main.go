@@ -5,10 +5,12 @@ import (
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	transactions "github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
+	wstypes "github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 )
 
 const (
@@ -22,13 +24,19 @@ func main() {
 	fmt.Println("⏳ Setting up client...")
 	client := websocket.NewClient(
 		websocket.NewClientConfig().
-			WithHost("wss://s.altnet.rippletest.net").
+			WithHost("wss://s.altnet.rippletest.net:51233").
 			WithFaucetProvider(faucet.NewTestnetFaucetProvider()),
 	)
+	defer func() {
+		if err := client.Disconnect(); err != nil {
+			fmt.Println("❌ Error disconnecting:", err)
+		}
+	}()
+
 	fmt.Println("✅ Client configured!")
 	fmt.Println()
 
-	fmt.Println("Connecting to server...")
+	fmt.Println("⏳ Connecting to server...")
 	if err := client.Connect(); err != nil {
 		fmt.Println(err)
 		return
@@ -70,9 +78,28 @@ func main() {
 	fmt.Println("💳 Hot wallet:", hotWallet.ClassicAddress)
 	fmt.Println()
 
-	//
-	// Configure cold address settings
-	//
+	if err := configureColdWallet(client, coldWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := createTrustLine(client, coldWallet, hotWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := issueTokens(client, coldWallet, hotWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
+	if err := clawBackTokens(client, coldWallet, hotWallet); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+}
+
+func configureColdWallet(client *websocket.Client, coldWallet wallet.Wallet) error {
 	fmt.Println("⏳ Configuring cold address settings...")
 	coldWalletAccountSet := &transactions.AccountSet{
 		BaseTx: transactions.BaseTx{
@@ -88,40 +115,22 @@ func main() {
 
 	coldWalletAccountSet.SetRequireDestTag()
 
-	flattenedTx := coldWalletAccountSet.Flatten()
-
-	err = client.Autofill(&flattenedTx)
+	response, err := client.SubmitTxAndWait(coldWalletAccountSet.Flatten(), &wstypes.SubmitOptions{Autofill: true, Wallet: &coldWallet})
 	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
+		return err
 	}
 
-	txBlob, _, err := coldWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err := client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Cold wallet unfreezing failed!")
-		fmt.Println("Try again!")
-		fmt.Println()
-		return
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 
 	fmt.Println("✅ Cold address settings configured!")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Println()
+	return nil
+}
 
-	//
-	// Create trust line from hot to cold address
-	//
+func createTrustLine(client *websocket.Client, coldWallet, hotWallet wallet.Wallet) error {
 	fmt.Println("⏳ Creating trust line from hot to cold address...")
 	hotColdTrustSet := &transactions.TrustSet{
 		BaseTx: transactions.BaseTx{
@@ -134,39 +143,22 @@ func main() {
 		},
 	}
 
-	flattenedTx = hotColdTrustSet.Flatten()
-	err = client.Autofill(&flattenedTx)
+	response, err := client.SubmitTxAndWait(hotColdTrustSet.Flatten(), &wstypes.SubmitOptions{Autofill: true, Wallet: &hotWallet})
 	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
+		return err
 	}
 
-	txBlob, _, err = hotWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Trust line from hot to cold address creation failed!")
-		fmt.Println("Try again!")
-		fmt.Println()
-		return
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 
 	fmt.Println("✅ Trust line from hot to cold address created!")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Println()
+	return nil
+}
 
-	//
-	// Send tokens from cold wallet to hot wallet
-	//
+func issueTokens(client *websocket.Client, coldWallet, hotWallet wallet.Wallet) error {
 	fmt.Println("⏳ Sending tokens from cold wallet to hot wallet...")
 	coldToHotPayment := &transactions.Payment{
 		BaseTx: transactions.BaseTx{
@@ -181,39 +173,22 @@ func main() {
 		DestinationTag: types.DestinationTag(1),
 	}
 
-	flattenedTx = coldToHotPayment.Flatten()
-	err = client.Autofill(&flattenedTx)
+	response, err := client.SubmitTxAndWait(coldToHotPayment.Flatten(), &wstypes.SubmitOptions{Autofill: true, Wallet: &coldWallet})
 	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
+		return err
 	}
 
-	txBlob, _, err = coldWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Tokens not sent from cold wallet to hot wallet!")
-		fmt.Println("Try again!")
-		fmt.Println()
-		return
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 
 	fmt.Println("✅ Tokens sent from cold wallet to hot wallet!")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Println()
+	return nil
+}
 
-	//
-	// Claw back tokens from customer one
-	//
+func clawBackTokens(client *websocket.Client, coldWallet, hotWallet wallet.Wallet) error {
 	fmt.Println("⏳ Clawing back tokens from hot wallet...")
 
 	coldWalletClawback := &transactions.Clawback{
@@ -227,32 +202,25 @@ func main() {
 		},
 	}
 
-	flattenedTx = coldWalletClawback.Flatten()
-	err = client.Autofill(&flattenedTx)
+	response, err := client.SubmitTxAndWait(coldWalletClawback.Flatten(), &wstypes.SubmitOptions{Autofill: true, Wallet: &coldWallet})
 	if err != nil {
-		fmt.Printf("❌ Error autofilling transaction: %s\n", err)
-		return
+		return err
 	}
 
-	txBlob, _, err = coldWallet.Sign(flattenedTx)
-	if err != nil {
-		fmt.Printf("❌ Error signing transaction: %s\n", err)
-		return
-	}
-
-	response, err = client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Printf("❌ Error submitting transaction: %s\n", err)
-		return
-	}
-
-	if !response.Validated {
-		fmt.Println("❌ Tokens not clawed back from customer one!")
-		fmt.Println("Try again!")
-		return
+	if err := checkResult(response, transactions.TesSUCCESS); err != nil {
+		return err
 	}
 
 	fmt.Println("✅ Tokens clawed back from customer one!")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Println()
+	return nil
+}
+
+//nolint:unparam // Keep the expected result explicit so readers can adapt the example.
+func checkResult(response *txrequests.TxResponse, expected transactions.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

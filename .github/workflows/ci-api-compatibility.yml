@@ -78,7 +78,10 @@ jobs:
           export_api() {
             local ref=$1 destination=$2 worktree workfile=off
             worktree=$(mktemp -d "$RUNNER_TEMP/api-tree-XXXXXX")
-            git archive "$ref" | tar -x -C "$worktree"
+            # Examples are runnable documentation, not supported library API.
+            # Exclude commands and helper packages from every compared snapshot.
+            git archive "$ref" -- . ':(exclude)examples' ':(exclude)confidential/examples' |
+              tar -x -C "$worktree"
             if [[ "$MODULE_DIRECTORY" == confidential ]]; then
               (cd "$worktree" && make workspace)
               workfile="$worktree/go.work"
@@ -99,12 +102,7 @@ jobs:
 
           export_api "$baseline_ref" "$baseline_api"
           export_api "$BASE_SHA" "$base_api"
-          workfile=off
-          if [[ "$MODULE_DIRECTORY" == confidential ]]; then
-            make workspace
-            workfile="$PWD/go.work"
-          fi
-          (cd "$MODULE_DIRECTORY" && GOWORK="$workfile" apidiff -m -w "$head_api" "$MODULE_PATH")
+          export_api HEAD "$head_api"
 
           apidiff -m "$base_api" "$head_api" > "$api_changes"
           apidiff -m -incompatible "$baseline_api" "$base_api" | sort > "$baseline_to_base"

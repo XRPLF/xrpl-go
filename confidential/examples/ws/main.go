@@ -11,7 +11,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/Peersyst/xrpl-go/confidential/builder"
 	"github.com/Peersyst/xrpl-go/confidential/elgamal"
@@ -39,56 +38,78 @@ const (
 var balanceSearch = elgamal.AmountRange{Low: 0, High: issuedAmount}
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func run() error {
+	// Configure the client
+	fmt.Println("⏳ Setting up client...")
 	client := websocket.NewClient(
 		websocket.NewClientConfig().
 			WithHost("wss://s.devnet.rippletest.net:51233").
 			WithFaucetProvider(faucet.NewDevnetFaucetProvider()),
 	)
 	if err := client.Connect(); err != nil {
-		return fmt.Errorf("connect: %w", err)
+		fmt.Println("❌ Error: connect:", err)
+		return
 	}
 	defer func() {
 		if err := client.Disconnect(); err != nil {
-			fmt.Println("disconnect:", err)
+			fmt.Println("❌ Error disconnecting:", err)
 		}
 	}()
-	fmt.Println("🔌 Connected to devnet")
+	fmt.Println("✅ Connected to devnet!")
+	fmt.Println()
 
 	// Every account that touches a confidential balance needs an ElGamal keypair, which is
 	// unrelated to the XRPL keypair that signs. The private keys never reach the ledger.
 	issuerKey, err := elgamal.GenerateKeypair()
 	if err != nil {
-		return fmt.Errorf("issuer keypair: %w", err)
+		fmt.Println("❌ Error: issuer keypair:", err)
+		return
 	}
 	holderKey, err := elgamal.GenerateKeypair()
 	if err != nil {
-		return fmt.Errorf("holder keypair: %w", err)
+		fmt.Println("❌ Error: holder keypair:", err)
+		return
 	}
 	receiverKey, err := elgamal.GenerateKeypair()
 	if err != nil {
-		return fmt.Errorf("receiver keypair: %w", err)
+		fmt.Println("❌ Error: receiver keypair:", err)
+		return
 	}
 
 	fmt.Println("⏳ Funding wallets...")
-	issuer, err := fundedWallet(client)
+	// Create and fund the issuer wallet
+	issuer, err := wallet.New(crypto.ED25519())
 	if err != nil {
-		return fmt.Errorf("issuer wallet: %w", err)
+		fmt.Println("❌ Error creating issuer wallet:", err)
+		return
 	}
-	holder, err := fundedWallet(client)
+	if err := client.FundWallet(&issuer); err != nil {
+		fmt.Println("❌ Error funding issuer wallet:", err)
+		return
+	}
+	fmt.Println("💸 Issuer wallet funded!")
+	// Create and fund the holder wallet
+	holder, err := wallet.New(crypto.ED25519())
 	if err != nil {
-		return fmt.Errorf("holder wallet: %w", err)
+		fmt.Println("❌ Error creating holder wallet:", err)
+		return
 	}
-	receiver, err := fundedWallet(client)
+	if err := client.FundWallet(&holder); err != nil {
+		fmt.Println("❌ Error funding holder wallet:", err)
+		return
+	}
+	fmt.Println("💸 Holder wallet funded!")
+	// Create and fund the receiver wallet
+	receiver, err := wallet.New(crypto.ED25519())
 	if err != nil {
-		return fmt.Errorf("receiver wallet: %w", err)
+		fmt.Println("❌ Error creating receiver wallet:", err)
+		return
 	}
-	fmt.Println("💸 Wallets funded")
+	if err := client.FundWallet(&receiver); err != nil {
+		fmt.Println("❌ Error funding receiver wallet:", err)
+		return
+	}
+	fmt.Println("💸 Receiver wallet funded!")
+	fmt.Println()
 
 	// 1. Create an issuance that can hold confidential balances. The capability has to be
 	// set here or by a later MPTokenIssuanceSet, and it can never be cleared once set.
@@ -101,14 +122,16 @@ func run() error {
 	create.SetMPTCanHoldConfidentialBalanceFlag()
 	create.SetMPTCanClawbackFlag()
 	if err := submit(client, &issuer, create.Flatten(), "MPTokenIssuanceCreate"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// The issuance ID only exists once the create is validated, so it is read back rather
 	// than predicted.
 	issuanceID, err := issuanceID(client, issuer.GetAddress())
 	if err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 	fmt.Println("🆔 Issuance:", issuanceID)
 
@@ -121,7 +144,8 @@ func run() error {
 		IssuerEncryptionKey: &issuerKey.PubKeyHex,
 	}
 	if err := submit(client, &issuer, setKeys.Flatten(), "MPTokenIssuanceSet"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// 3. Both holders need an MPToken before they can hold anything, confidential or not.
@@ -132,7 +156,8 @@ func run() error {
 			MPTokenIssuanceID: issuanceID,
 		}
 		if err := submit(client, w, authorize.Flatten(), "MPTokenAuthorize"); err != nil {
-			return err
+			fmt.Println("❌ Error:", err)
+			return
 		}
 	}
 
@@ -146,7 +171,8 @@ func run() error {
 		},
 	}
 	if err := submit(client, &issuer, payment.Flatten(), "Payment"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// 5. Convert the public balance into confidential form. The first convert also registers
@@ -160,26 +186,31 @@ func run() error {
 		HolderPubKey:  holderKey.PubKeyHex,
 	})
 	if err != nil {
-		return fmt.Errorf("build convert: %w", err)
+		fmt.Println("❌ Error: build convert:", err)
+		return
 	}
 	if err := submit(client, &holder, convert.Flatten(), "ConfidentialMPTConvert"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// A convert credits the inbox, not the spending balance, so the holder cannot spend it
 	// yet. The split is what keeps an incoming credit from invalidating a proof already in
 	// flight against the spending balance.
 	if err := report(client, holder.GetAddress(), holderKey, "holder after convert"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// 6. Merge the inbox into the spending balance. This carries no proof and no ciphertext,
 	// so it is the cheapest confidential transaction, but it does bump the balance version.
 	if err := mergeInbox(client, &holder, issuanceID); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 	if err := report(client, holder.GetAddress(), holderKey, "holder after merge"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// 7. The receiver registers its own encryption key with a zero-value convert. A send
@@ -193,10 +224,12 @@ func run() error {
 		HolderPubKey:  receiverKey.PubKeyHex,
 	})
 	if err != nil {
-		return fmt.Errorf("build receiver opt-in: %w", err)
+		fmt.Println("❌ Error: build receiver opt-in:", err)
+		return
 	}
 	if err := submit(client, &receiver, optIn.Flatten(), "ConfidentialMPTConvert (opt-in)"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// 8. Send confidentially. BuildSend reads and decrypts the holder's current spending
@@ -212,21 +245,26 @@ func run() error {
 		BalanceRange:  balanceSearch,
 	})
 	if err != nil {
-		return fmt.Errorf("build send: %w", err)
+		fmt.Println("❌ Error: build send:", err)
+		return
 	}
 	if err := submit(client, &holder, send.Flatten(), "ConfidentialMPTSend"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// 9. The receiver merges what it was sent before it can spend or convert it back.
 	if err := mergeInbox(client, &receiver, issuanceID); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 	if err := report(client, holder.GetAddress(), holderKey, "holder after send"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 	if err := report(client, receiver.GetAddress(), receiverKey, "receiver after merge"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// 10. Convert the holder's remainder back into a public balance. The amount becomes
@@ -240,13 +278,16 @@ func run() error {
 		BalanceRange:  balanceSearch,
 	})
 	if err != nil {
-		return fmt.Errorf("build convert back: %w", err)
+		fmt.Println("❌ Error: build convert back:", err)
+		return
 	}
 	if err := submit(client, &holder, convertBack.Flatten(), "ConfidentialMPTConvertBack"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 	if err := report(client, holder.GetAddress(), holderKey, "holder after convert back"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	// 11. Claw back the receiver's whole confidential balance. The issuer never learns the
@@ -260,17 +301,19 @@ func run() error {
 		BalanceRange:  balanceSearch,
 	})
 	if err != nil {
-		return fmt.Errorf("build clawback: %w", err)
+		fmt.Println("❌ Error: build clawback:", err)
+		return
 	}
 	if err := submit(client, &issuer, clawback.Flatten(), "ConfidentialMPTClawback"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 	if err := report(client, receiver.GetAddress(), receiverKey, "receiver after clawback"); err != nil {
-		return err
+		fmt.Println("❌ Error:", err)
+		return
 	}
 
 	fmt.Println("🎉 Confidential lifecycle complete")
-	return nil
 }
 
 // mergeInbox moves a holder's confidential inbox balance into its spending balance.
@@ -374,23 +417,12 @@ func issuanceID(client *websocket.Client, issuer types.Address) (string, error) 
 	return id, nil
 }
 
-// fundedWallet creates a wallet and funds it from the devnet faucet.
-func fundedWallet(client *websocket.Client) (wallet.Wallet, error) {
-	w, err := wallet.New(crypto.ED25519())
-	if err != nil {
-		return wallet.Wallet{}, err
-	}
-	if err := client.FundWallet(&w); err != nil {
-		return wallet.Wallet{}, err
-	}
-	return w, nil
-}
-
 // submit autofills, signs, and submits a transaction, then waits for it to validate.
 // Autofill is what supplies the ten base fees a confidential transaction owes. It leaves
 // the sequence a builder already resolved alone, which matters because every confidential
 // proof binds that sequence.
 func submit(client *websocket.Client, signer *wallet.Wallet, flat transaction.FlatTransaction, label string) error {
+	fmt.Printf("⏳ Submitting %s...\n", label)
 	if err := client.Autofill(&flat); err != nil {
 		return fmt.Errorf("autofill %s: %w", label, err)
 	}
@@ -408,6 +440,8 @@ func submit(client *websocket.Client, signer *wallet.Wallet, flat transaction.Fl
 		return fmt.Errorf("%s failed with %s", label, response.Meta.TransactionResult)
 	}
 
-	fmt.Printf("✅ %s validated in ledger %d\n", label, response.LedgerIndex)
+	fmt.Printf("✅ %s validated in ledger %d!\n", label, response.LedgerIndex)
+	fmt.Println("🌐 Transaction Hash:", response.Hash.String())
+	fmt.Println()
 	return nil
 }

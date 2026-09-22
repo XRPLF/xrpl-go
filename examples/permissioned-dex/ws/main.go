@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/Peersyst/xrpl-go/examples/clients"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/Peersyst/xrpl-go/xrpl/faucet"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/account"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/path"
 	"github.com/Peersyst/xrpl-go/xrpl/queries/path/types"
@@ -14,6 +14,8 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	txntypes "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
+	"github.com/Peersyst/xrpl-go/xrpl/websocket"
+	wstypes "github.com/Peersyst/xrpl-go/xrpl/websocket/types"
 )
 
 // stringToHex converts a string to its hex representation
@@ -27,7 +29,11 @@ func main() {
 
 	// Setup client
 	fmt.Println("⏳ Setting up devnet WebSocket client...")
-	client := clients.GetDevnetWebsocketClient()
+	client := websocket.NewClient(
+		websocket.NewClientConfig().
+			WithHost("wss://s.devnet.rippletest.net:51233").
+			WithFaucetProvider(faucet.NewDevnetFaucetProvider()),
+	)
 	defer func() {
 		if err := client.Disconnect(); err != nil {
 			fmt.Printf("Error disconnecting: %s\n", err)
@@ -93,6 +99,31 @@ func main() {
 	fmt.Printf("✅ Wallet2 funded: %s\n", wallet2.ClassicAddress)
 	fmt.Println()
 
+	domainID, err := configureDomain(client, issuerWallet, wallet1, wallet2)
+	if err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+	if err := fundDomainTokens(client, issuerWallet, wallet1, wallet2); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+	offerResponse, err := createHybridOffer(client, issuerWallet, wallet1, domainID)
+	if err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+	if err := inspectDomainOffer(client, issuerWallet, wallet2, domainID, offerResponse); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+	if err := crossDomainOffers(client, issuerWallet, wallet1, wallet2, domainID); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+}
+
+func configureDomain(client *websocket.Client, issuerWallet, wallet1, wallet2 wallet.Wallet) (string, error) {
 	// Set the default ripple flag on the issuer's wallet
 	fmt.Println("⏳ Setting default ripple flag on issuer wallet...")
 	accountSetTx := &transaction.AccountSet{
@@ -102,10 +133,8 @@ func main() {
 	}
 	accountSetTx.SetAsfDefaultRipple()
 
-	response := clients.SubmitTxBlobAndWait(client, accountSetTx, issuerWallet)
-	if response == nil {
-		fmt.Println("❌ Failed to set default ripple flag")
-		return
+	if _, err := submitAndWait(client, accountSetTx.Flatten(), issuerWallet); err != nil {
+		return "", fmt.Errorf("set default ripple flag: %w", err)
 	}
 	fmt.Println("✅ Default ripple flag set")
 
@@ -121,10 +150,8 @@ func main() {
 		CredentialType: credentialType,
 	}
 
-	response = clients.SubmitTxBlobAndWait(client, credentialCreateTx1, issuerWallet)
-	if response == nil {
-		fmt.Println("❌ Failed to create credential for wallet1")
-		return
+	if _, err := submitAndWait(client, credentialCreateTx1.Flatten(), issuerWallet); err != nil {
+		return "", fmt.Errorf("create credential for wallet1: %w", err)
 	}
 	fmt.Println("✅ Credential created for wallet1")
 
@@ -137,10 +164,8 @@ func main() {
 		CredentialType: credentialType,
 	}
 
-	response = clients.SubmitTxBlobAndWait(client, credentialCreateTx2, issuerWallet)
-	if response == nil {
-		fmt.Println("❌ Failed to create credential for wallet2")
-		return
+	if _, err := submitAndWait(client, credentialCreateTx2.Flatten(), issuerWallet); err != nil {
+		return "", fmt.Errorf("create credential for wallet2: %w", err)
 	}
 	fmt.Println("✅ Credential created for wallet2")
 
@@ -160,10 +185,8 @@ func main() {
 		},
 	}
 
-	response = clients.SubmitTxBlobAndWait(client, permissionedDomainTx, issuerWallet)
-	if response == nil {
-		fmt.Println("❌ Failed to create PermissionedDomain")
-		return
+	if _, err := submitAndWait(client, permissionedDomainTx.Flatten(), issuerWallet); err != nil {
+		return "", fmt.Errorf("create PermissionedDomain: %w", err)
 	}
 	fmt.Println("✅ PermissionedDomain created")
 
@@ -177,10 +200,8 @@ func main() {
 		CredentialType: credentialType,
 	}
 
-	response = clients.SubmitTxBlobAndWait(client, credentialAcceptTx1, wallet1)
-	if response == nil {
-		fmt.Println("❌ Failed to accept credential from wallet1")
-		return
+	if _, err := submitAndWait(client, credentialAcceptTx1.Flatten(), wallet1); err != nil {
+		return "", fmt.Errorf("accept credential from wallet1: %w", err)
 	}
 	fmt.Println("✅ Credential accepted by wallet1")
 
@@ -193,10 +214,8 @@ func main() {
 		CredentialType: credentialType,
 	}
 
-	response = clients.SubmitTxBlobAndWait(client, credentialAcceptTx2, wallet2)
-	if response == nil {
-		fmt.Println("❌ Failed to accept credential from wallet2")
-		return
+	if _, err := submitAndWait(client, credentialAcceptTx2.Flatten(), wallet2); err != nil {
+		return "", fmt.Errorf("accept credential from wallet2: %w", err)
 	}
 	fmt.Println("✅ Credential accepted by wallet2")
 
@@ -209,23 +228,23 @@ func main() {
 
 	objectsResp, err := client.GetAccountObjects(objectsReq)
 	if err != nil {
-		fmt.Printf("❌ Error fetching account objects: %s\n", err)
-		return
+		return "", fmt.Errorf("error fetching account objects: %w", err)
 	}
 
 	if len(objectsResp.AccountObjects) == 0 {
-		fmt.Println("❌ No PermissionedDomain object found")
-		return
+		return "", fmt.Errorf("no PermissionedDomain object found")
 	}
 
 	permDomainObject := objectsResp.AccountObjects[0]
 	domainID, ok := permDomainObject["index"].(string)
 	if !ok {
-		fmt.Println("❌ Could not extract domain ID")
-		return
+		return "", fmt.Errorf("could not extract domain ID")
 	}
 	fmt.Printf("✅ PermissionedDomain ID: %s\n", domainID)
+	return domainID, nil
+}
 
+func fundDomainTokens(client *websocket.Client, issuerWallet, wallet1, wallet2 wallet.Wallet) error {
 	// Establish trust lines for USD IOU Token
 	fmt.Println("⏳ Creating trust lines for USD...")
 
@@ -241,10 +260,8 @@ func main() {
 		},
 	}
 
-	response = clients.SubmitTxBlobAndWait(client, trustSetTx1, wallet1)
-	if response == nil {
-		fmt.Println("❌ Failed to create trust line for wallet1")
-		return
+	if _, err := submitAndWait(client, trustSetTx1.Flatten(), wallet1); err != nil {
+		return fmt.Errorf("create trust line for wallet1: %w", err)
 	}
 	fmt.Println("✅ Trust line created for wallet1")
 
@@ -260,10 +277,8 @@ func main() {
 		},
 	}
 
-	response = clients.SubmitTxBlobAndWait(client, trustSetTx2, wallet2)
-	if response == nil {
-		fmt.Println("❌ Failed to create trust line for wallet2")
-		return
+	if _, err := submitAndWait(client, trustSetTx2.Flatten(), wallet2); err != nil {
+		return fmt.Errorf("create trust line for wallet2: %w", err)
 	}
 	fmt.Println("✅ Trust line created for wallet2")
 
@@ -283,10 +298,8 @@ func main() {
 		Destination: txntypes.Address(wallet1.ClassicAddress),
 	}
 
-	response = clients.SubmitTxBlobAndWait(client, paymentTx1, issuerWallet)
-	if response == nil {
-		fmt.Println("❌ Failed to send USD to wallet1")
-		return
+	if _, err := submitAndWait(client, paymentTx1.Flatten(), issuerWallet); err != nil {
+		return fmt.Errorf("send USD to wallet1: %w", err)
 	}
 	fmt.Println("✅ USD sent to wallet1")
 
@@ -303,13 +316,14 @@ func main() {
 		Destination: txntypes.Address(wallet2.ClassicAddress),
 	}
 
-	response = clients.SubmitTxBlobAndWait(client, paymentTx2, issuerWallet)
-	if response == nil {
-		fmt.Println("❌ Failed to send USD to wallet2")
-		return
+	if _, err := submitAndWait(client, paymentTx2.Flatten(), issuerWallet); err != nil {
+		return fmt.Errorf("send USD to wallet2: %w", err)
 	}
 	fmt.Println("✅ USD sent to wallet2")
+	return nil
+}
 
+func createHybridOffer(client *websocket.Client, issuerWallet, wallet1 wallet.Wallet, domainID string) (*txrequests.TxResponse, error) {
 	// Create hybrid offer
 	fmt.Println("⏳ Creating hybrid offer...")
 	offerCreateTx := &transaction.OfferCreate{
@@ -326,13 +340,15 @@ func main() {
 	}
 	offerCreateTx.SetHybridFlag()
 
-	offerResponse := clients.SubmitTxBlobAndWait(client, offerCreateTx, wallet1)
-	if offerResponse == nil {
-		fmt.Println("❌ Failed to create hybrid offer")
-		return
+	offerResponse, err := submitAndWait(client, offerCreateTx.Flatten(), wallet1)
+	if err != nil {
+		return nil, fmt.Errorf("create hybrid offer: %w", err)
 	}
 	fmt.Println("✅ Hybrid offer created")
+	return offerResponse, nil
+}
 
+func inspectDomainOffer(client *websocket.Client, issuerWallet, wallet2 wallet.Wallet, domainID string, offerResponse *txrequests.TxResponse) error {
 	// Validate offer characteristics
 	fmt.Println("⏳ Validating offer characteristics...")
 
@@ -343,15 +359,13 @@ func main() {
 
 	txResp, err := client.Request(txReq)
 	if err != nil {
-		fmt.Printf("❌ Error getting transaction: %s\n", err)
-		return
+		return fmt.Errorf("error getting transaction: %w", err)
 	}
 
 	var txResponse txrequests.TxResponse
 	err = txResp.GetResult(&txResponse)
 	if err != nil {
-		fmt.Printf("❌ Error parsing transaction response: %s\n", err)
-		return
+		return fmt.Errorf("error parsing transaction response: %w", err)
 	}
 
 	offerNode := txResponse.TxJSON
@@ -381,8 +395,7 @@ func main() {
 
 	bookOffersResp, err := client.GetBookOffers(bookOffersReq)
 	if err != nil {
-		fmt.Printf("❌ Error getting book offers: %s\n", err)
-		return
+		return fmt.Errorf("error getting book offers: %w", err)
 	}
 
 	fmt.Printf("✅ Book offers retrieved: %d offers found\n", len(bookOffersResp.Offers))
@@ -401,13 +414,15 @@ func main() {
 
 	subscribeResp, err := client.Subscribe(subscribeReq)
 	if err != nil {
-		fmt.Printf("❌ Error subscribing: %s\n", err)
-		return
+		return fmt.Errorf("error subscribing: %w", err)
 	}
 	fmt.Printf("✅ Subscribe request successful\n")
 	fmt.Printf("   📊 Server status: %s\n", subscribeResp.ServerStatus)
 	fmt.Printf("   🔔 Note: Domain-specific book subscriptions would be tested here\n")
+	return nil
+}
 
+func crossDomainOffers(client *websocket.Client, issuerWallet, wallet1, wallet2 wallet.Wallet, domainID string) error {
 	// Test offer crossing within domain
 	fmt.Println("⏳ Testing offer crossing within domain...")
 	crossingOfferTx := &transaction.OfferCreate{
@@ -423,10 +438,8 @@ func main() {
 		DomainID: &domainID,
 	}
 
-	crossingResponse := clients.SubmitTxBlobAndWait(client, crossingOfferTx, wallet2)
-	if crossingResponse == nil {
-		fmt.Println("❌ Failed to create crossing offer")
-		return
+	if _, err := submitAndWait(client, crossingOfferTx.Flatten(), wallet2); err != nil {
+		return fmt.Errorf("create crossing offer: %w", err)
 	}
 	fmt.Println("✅ Crossing offer created")
 
@@ -441,8 +454,7 @@ func main() {
 
 	wallet1ObjectsResp, err := client.GetAccountObjects(wallet1ObjectsReq)
 	if err != nil {
-		fmt.Printf("❌ Error getting wallet1 objects: %s\n", err)
-		return
+		return fmt.Errorf("error getting wallet1 objects: %w", err)
 	}
 
 	fmt.Printf("✅ Wallet1 offers remaining: %d\n", len(wallet1ObjectsResp.AccountObjects))
@@ -455,8 +467,7 @@ func main() {
 
 	wallet2ObjectsResp, err := client.GetAccountObjects(wallet2ObjectsReq)
 	if err != nil {
-		fmt.Printf("❌ Error getting wallet2 objects: %s\n", err)
-		return
+		return fmt.Errorf("error getting wallet2 objects: %w", err)
 	}
 
 	fmt.Printf("✅ Wallet2 offers remaining: %d\n", len(wallet2ObjectsResp.AccountObjects))
@@ -469,4 +480,24 @@ func main() {
 
 	fmt.Println()
 	fmt.Println("🏁 PermissionedDEX example completed successfully!")
+	return nil
+}
+
+// submitAndWait autofills, signs, and submits one transaction.
+func submitAndWait(client *websocket.Client, tx transaction.FlatTransaction, signer wallet.Wallet) (*txrequests.TxResponse, error) {
+	fmt.Printf("⏳ Submitting %s transaction...\n", tx["TransactionType"])
+	response, err := client.SubmitTxAndWait(tx, &wstypes.SubmitOptions{
+		Autofill: true,
+		Wallet:   &signer,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("submit %s: %w", tx["TransactionType"], err)
+	}
+	if !response.Validated || response.Meta.TransactionResult != transaction.TesSUCCESS.String() {
+		return nil, fmt.Errorf("%s: validated=%t, result=%s", tx["TransactionType"], response.Validated, response.Meta.TransactionResult)
+	}
+	fmt.Printf("✅ %s transaction submitted\n", tx["TransactionType"])
+	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
+	fmt.Println()
+	return response, nil
 }

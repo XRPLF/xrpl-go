@@ -5,6 +5,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	txnTypes "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/Peersyst/xrpl-go/xrpl/wallet"
@@ -123,6 +124,11 @@ func main() {
 		return
 	}
 
+	if err := checkResult(response, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ Batch transaction submitted")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Printf("🌐 Validated: %t\n", response.Validated)
@@ -188,6 +194,11 @@ func main() {
 		return
 	}
 
+	if err := checkResult(response, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
+		return
+	}
+
 	fmt.Println("✅ Multisig Batch transaction submitted")
 	fmt.Printf("🌐 Hash: %s\n", response.Hash.String())
 	fmt.Printf("🌐 Validated: %t\n", response.Validated)
@@ -209,4 +220,11 @@ func main() {
 	fmt.Printf("💳 User final balance: %s XRP\n", finalUserBalance)
 	fmt.Printf("💳 User2 final balance: %s XRP\n", finalUser2Balance)
 	fmt.Printf("💳 Receiver final balance: %s XRP\n", finalReceiverBalance)
+}
+
+func checkResult(response *txrequests.TxResponse, expected transaction.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

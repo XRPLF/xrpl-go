@@ -22,13 +22,13 @@ func main() {
 		}
 	}()
 
-	fmt.Println("Connecting to server...")
+	fmt.Println("⏳ Connecting to server...")
 	if err := wsClient.Connect(); err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Println("Connection: ", wsClient.IsConnected())
+	fmt.Println("🌐 Connection:", wsClient.IsConnected())
 
 	// Example-only seed for testnet demos. Do not commit real seeds or use this in production.
 	w, err := wallet.FromSeed("sEdSMVV4dJ1JbdBxmakRR4Puu3XVZz2", "")
@@ -86,12 +86,13 @@ func main() {
 
 	tx := payment.Flatten()
 
-	fmt.Println("Transaction before autofill", tx)
+	fmt.Println("📄 Transaction before autofill:", tx)
+	fmt.Println("⏳ Autofilling transaction...")
 
 	err = wsClient.Autofill(&tx)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Transaction after autofill", tx)
+	fmt.Println("✅ Transaction after autofill:", tx)
 }

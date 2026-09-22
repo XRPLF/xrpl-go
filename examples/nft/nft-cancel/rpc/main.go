@@ -5,6 +5,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
 	"github.com/Peersyst/xrpl-go/xrpl/faucet"
+	txrequests "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc"
 	"github.com/Peersyst/xrpl-go/xrpl/rpc/types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
@@ -40,7 +41,7 @@ func main() {
 	}
 	fmt.Println("💸 NFT minter wallet funded!")
 
-	// Step 2: Mint two NFTs
+	// Step 2: Mint two NFTs with sell offers.
 	fmt.Println("⏳ Minting first NFT...")
 
 	nftMint := transaction.NFTokenMint{
@@ -50,6 +51,7 @@ func main() {
 		},
 		NFTokenTaxon: 0,
 		URI:          txnTypes.NFTokenURI("68747470733A2F2F676F6F676C652E636F6D"), // https://google.com
+		Amount:       txnTypes.XRPCurrencyAmount(1000000),
 	}
 	nftMint.SetTransferableFlag()
 
@@ -61,24 +63,23 @@ func main() {
 		fmt.Println("❌ Error minting first NFT:", err)
 		return
 	}
-	if !responseMint.Validated {
-		fmt.Println("❌ First NFTokenMint transaction is not in a validated ledger", responseMint)
+	if err := checkResult(responseMint, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 	fmt.Println("✅ First NFT minted successfully! - 🌎 Hash: ", responseMint.Hash)
 	fmt.Println()
 
-	// Step 3: Retrieve the NFT token ID
-	fmt.Println("⏳ Retrieving NFT ID...")
+	// Retrieve the offer ID, not the NFT ID.
+	fmt.Println("⏳ Retrieving first NFT offer ID...")
 
 	metaMap := responseMint.Meta.AsNFTokenMintMetadata()
-
-	if metaMap.NFTokenID == nil {
-		fmt.Println("❌ nftoken_id not found or not a string")
+	if metaMap.OfferID == nil {
+		fmt.Println("❌ offer_id not found")
 		return
 	}
 
-	fmt.Println("🌎 nftoken_id:", metaMap.NFTokenID.String())
+	fmt.Println("🌎 offer_id:", metaMap.OfferID.String())
 	fmt.Println()
 
 	// ------
@@ -92,6 +93,7 @@ func main() {
 		},
 		NFTokenTaxon: 0,
 		URI:          txnTypes.NFTokenURI("68747470733A2F2F676F6F676C652E636F6D"), // https://google.com
+		Amount:       txnTypes.XRPCurrencyAmount(1000000),
 	}
 	nftMint2.SetTransferableFlag()
 
@@ -103,24 +105,23 @@ func main() {
 		fmt.Println("❌ Error minting second NFT:", err)
 		return
 	}
-	if !responseMint.Validated {
-		fmt.Println("❌ Second NFTokenMint transaction is not in a validated ledger", responseMint)
+	if err := checkResult(responseMint2, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
-	fmt.Println("✅ Second NFT minted successfully! - 🌎 Hash: ", responseMint.Hash)
+	fmt.Println("✅ Second NFT minted successfully! - 🌎 Hash: ", responseMint2.Hash)
 	fmt.Println()
 
-	// Step 3: Retrieve the second NFT token ID
-	fmt.Println("⏳ Retrieving second NFT ID...")
+	// Retrieve the second offer ID.
+	fmt.Println("⏳ Retrieving second NFT offer ID...")
 
 	metaMap2 := responseMint2.Meta.AsNFTokenMintMetadata()
-
-	if metaMap2.NFTokenID == nil {
-		fmt.Println("❌ nftoken_id not found or not a string")
+	if metaMap2.OfferID == nil {
+		fmt.Println("❌ offer_id not found")
 		return
 	}
 
-	fmt.Println("🌎 nftoken_id:", metaMap2.NFTokenID.String())
+	fmt.Println("🌎 offer_id:", metaMap2.OfferID.String())
 	fmt.Println()
 
 	// Step 4: Cancel the NFT offers
@@ -129,11 +130,11 @@ func main() {
 	nftCancel := transaction.NFTokenCancelOffer{
 		BaseTx: transaction.BaseTx{
 			Account:         nftMinter.ClassicAddress,
-			TransactionType: transaction.NFTokenAcceptOfferTx,
+			TransactionType: transaction.NFTokenCancelOfferTx,
 		},
 		NFTokenOffers: []txnTypes.NFTokenID{
-			txnTypes.NFTokenID(metaMap2.NFTokenID.String()),
-			txnTypes.NFTokenID(metaMap2.NFTokenID.String()),
+			txnTypes.NFTokenID(metaMap.OfferID.String()),
+			txnTypes.NFTokenID(metaMap2.OfferID.String()),
 		},
 	}
 
@@ -145,9 +146,16 @@ func main() {
 		fmt.Println("❌ Error canceling NFT offers:", err)
 		return
 	}
-	if !response.Validated {
-		fmt.Println("❌ NFTokenCancelOffer transaction is not in a validated ledger", response)
+	if err := checkResult(response, transaction.TesSUCCESS); err != nil {
+		fmt.Println("❌", err)
 		return
 	}
 	fmt.Println("✅ NFT offers canceled successfully! - 🌎 Hash: ", response.Hash)
+}
+
+func checkResult(response *txrequests.TxResponse, expected transaction.TxResult) error {
+	if !response.Validated || response.Meta.TransactionResult != expected.String() {
+		return fmt.Errorf("transaction failed: validated=%t, result=%s, expected=%s", response.Validated, response.Meta.TransactionResult, expected)
+	}
+	return nil
 }

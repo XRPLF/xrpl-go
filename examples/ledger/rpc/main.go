@@ -20,12 +20,14 @@ func main() {
 
 	client := rpc.NewClient(cfg)
 
+	fmt.Println("⏳ Fetching ledger...")
 	ledger, err := client.GetLedger(&ledgerqueries.Request{
-		LedgerIndex: common.LedgerIndex(5115183),
+		LedgerIndex: common.Validated,
 	})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(ledger.Ledger.LedgerHash)
-	fmt.Println(ledger.Ledger.LedgerIndex)
+	fmt.Println("✅ Ledger retrieved")
+	fmt.Println("🌐 Hash:", ledger.Ledger.LedgerHash)
+	fmt.Println("🌐 Index:", ledger.Ledger.LedgerIndex)
 }
