@@ -87,5 +87,7 @@ func (p *PaymentChannelCreate) Validate() (bool, error) {
 		return false, ErrInvalidHexPublicKey
 	}
 
+	// SettleDelay accepts the full uint32 range. CancelAfter is omitted when zero and any
+	// other value is a valid Ripple time. Expiry against the ledger close time needs ledger state.
 	return true, nil
 }

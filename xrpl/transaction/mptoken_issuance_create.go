@@ -283,5 +283,6 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 		}
 	}
 
+	// AssetScale accepts the full uint8 range.
 	return true, nil
 }
