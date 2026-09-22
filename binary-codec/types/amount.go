@@ -542,7 +542,7 @@ func serializeIssuedCurrencyAmount(value, currency, issuer string) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	if bytes.Equal(currencyBytes, XRPBytes) {
+	if IsXRPCurrency(currencyBytes) {
 		return nil, &InvalidCodeError{Disallowed: "XRP"}
 	}
 	issuerBytes, err := serializeIssuedCurrencyIssuer(issuer)

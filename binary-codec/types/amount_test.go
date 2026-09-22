@@ -711,6 +711,14 @@ func TestSerializeIssuedCurrencyAmount(t *testing.T) {
 			expectedErr:   &InvalidCodeError{"XRP"},
 		},
 		{
+			name:          "fail - ISO XRP in hex is reserved, not an issued currency",
+			inputValue:    "7072.8",
+			inputCurrency: "0000000000000000000000005852500000000000",
+			inputIssuer:   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+			expected:      nil,
+			expectedErr:   &InvalidCodeError{"XRP"},
+		},
+		{
 			name:          "fail - invalid issuer",
 			inputValue:    "7072.8",
 			inputCurrency: "USD",

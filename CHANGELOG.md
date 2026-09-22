@@ -30,6 +30,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### binary-codec
 
 - Added `types.ParseCurrencyCode`, the currency-code parser behind `Currency`, issued-currency amounts, and path steps.
+- Added `types.IsXRPCurrency`, which reports whether currency bytes are native XRP or the reserved ISO `XRP` code.
 - Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
 - Added `types.ErrBlobNotString`, returned when a `Blob` field receives a non-string JSON value.
 - Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
@@ -118,7 +119,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
 - Normalized tagless X-addresses to classic addresses when flattening assets, issued-currency amounts, payment path steps, and cross-chain bridges, while preserving tagged and malformed addresses for encoding errors.
 - Tightened `IsIssuedCurrency` to reject currency codes the binary codec cannot encode and issuers with an X-address tag. This applies to `IsAmount` and every transaction with an issued-currency amount.
-- Tightened `IsAsset` to reject assets that cannot encode as an Issue: unencodable currency codes, tagged issuers, and MPT issuance IDs that are not 24 bytes. Only the exact code `XRP` is native, other spellings are issued currencies and need an issuer. This also applies to `Validate()` on every AMM transaction and `VaultCreate`.
+- Tightened `IsAsset` to reject assets that cannot encode as an Issue or that the ledger rejects: unencodable currency codes, the reserved ISO `XRP` code, tagged issuers, and MPT issuance IDs that are not 24 bytes. Only the exact code `XRP` is native, other spellings are issued currencies and need an issuer. This also applies to `Validate()` on every AMM transaction and `VaultCreate`.
 - Signer entries now require a well-formed public key and a whole-byte hexadecimal signature. This applies to `IsSigner`, every `Signers` list, single-signed `SponsorSignature` objects, and the `PublicKey` and `Signature` of XChain attestations.
 - `SponsorSignature` and LoanSet `CounterpartySignature` now share one form check: a present but empty `Signers` list is invalid, and `ErrInvalidSponsorSignature` wraps the specific reason so both remain matchable with `errors.Is`.
 - Rejected odd-length hex in the `Data`, `MemoData` and `MPTokenMetadata` fields of LoanSet, LoanBrokerSet, Vault and MPTokenIssuance transactions. It previously passed `Validate()` and failed at encoding.
