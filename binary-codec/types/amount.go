@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -299,10 +298,8 @@ func deserializeCurrencyCode(data []byte) (string, error) {
 	if bytes.Equal(data[0:12], make([]byte, 12)) && bytes.Equal(data[12:15], []byte{0x58, 0x52, 0x50}) && bytes.Equal(data[15:20], make([]byte, 5)) { // XRP in bytes
 		return "", errInvalidCurrencyCode
 	}
-	iso := strings.ToUpper(string(data[12:15]))
-	ok, _ := regexp.MatchString(IOUCodeRegex, iso)
-
-	if !ok {
+	iso := string(data[12:15])
+	if !iouCodeRegex.MatchString(iso) {
 		return hexutil.EncodeToUpperHex(data), nil
 	}
 	return iso, nil
@@ -513,55 +510,13 @@ func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
 }
 
 // SerializeIssuedCurrencyCode serializes an issued currency code to its bytes representation.
-// The currency code can be 3 allowed string characters, or 20 bytes of hex.
+// It accepts what ParseCurrencyCode accepts, except XRP in either spelling, because XRP is
+// not an issued currency.
 func SerializeIssuedCurrencyCode(currency string) ([]byte, error) {
-	currency = strings.TrimPrefix(currency, "0x")                                    // remove the 0x prefix if it exists
-	if currency == "XRP" || currency == "0000000000000000000000005852500000000000" { // if the currency code is uppercase XRP, return an error
+	if currency == "XRP" || currency == "0000000000000000000000005852500000000000" {
 		return nil, &InvalidCodeError{Disallowed: "XRP uppercase"}
 	}
-
-	switch len(currency) {
-	case 3: // if the currency code is 3 characters, it is standard
-		return serializeIssuedCurrencyCodeChars(currency)
-	case 40: // if the currency code is 40 characters, it is hex encoded
-		return serializeIssuedCurrencyCodeHex(currency)
-	}
-
-	return nil, &InvalidCodeError{Disallowed: currency}
-}
-
-func serializeIssuedCurrencyCodeHex(currency string) ([]byte, error) {
-	decodedHex, err := hex.DecodeString(currency)
-	if err != nil {
-		return nil, err
-	}
-
-	if bytes.HasPrefix(decodedHex, []byte{0x00}) {
-
-		if bytes.Equal(decodedHex[12:15], []byte{0x00, 0x00, 0x00}) {
-			return make([]byte, 20), nil
-		}
-
-		if containsInvalidIOUCodeCharactersHex(decodedHex[12:15]) {
-			return nil, errInvalidCurrencyCode
-		}
-		return decodedHex, nil
-
-	}
-	return decodedHex, nil
-}
-
-func serializeIssuedCurrencyCodeChars(currency string) ([]byte, error) {
-	r := regexp.MustCompile(IOUCodeRegex) // regex to check if the currency code is valid
-	m := r.FindAllString(currency, -1)
-
-	if len(m) != 1 {
-		return nil, errInvalidCurrencyCode
-	}
-
-	currencyBytes := make([]byte, 20)
-	copy(currencyBytes[12:], []byte(currency))
-	return currencyBytes, nil
+	return ParseCurrencyCode(currency)
 }
 
 // serializeIssuedCurrencyIssuer decodes an issued-currency issuer into its
@@ -673,13 +628,6 @@ func isNative(value byte) bool {
 func isPositive(value byte) bool {
 	x := value&0x40 > 0
 	return x
-}
-
-func containsInvalidIOUCodeCharactersHex(currency []byte) bool {
-	r := regexp.MustCompile(IOUCodeRegex) // regex to check if the currency code is valid
-	m := r.FindAll(currency, -1)
-
-	return len(m) != 1
 }
 
 // valueToString converts various JSON‐style value types into their string form.

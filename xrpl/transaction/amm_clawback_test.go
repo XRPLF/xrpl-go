@@ -99,10 +99,18 @@ func TestAMMClawback_Validate(t *testing.T) {
 			wantErr: ErrAMMClawbackAmountAssetMismatch,
 		},
 		{
-			name: "amount currency must be an encodable code",
+			name: "asset currency must be an encodable code",
 			tx: func() *AMMClawback {
 				tx := newAMMClawback()
 				tx.Asset.Currency = "AD/"
+				return tx
+			}(),
+			wantErr: ErrAMMClawbackInvalidAsset,
+		},
+		{
+			name: "amount currency must be an encodable code",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
 				tx.Amount = types.IssuedCurrencyAmount{Currency: "AD/", Issuer: ammClawbackIssuer, Value: "1"}
 				return tx
 			}(),
@@ -123,6 +131,19 @@ func TestAMMClawback_Validate(t *testing.T) {
 			wantErr: ErrAMMClawbackAmountAssetMismatch,
 		},
 		{
+			name: "same nonstandard currency bytes match",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Asset.Currency = "0000000000000000000000000000000000000001"
+				tx.Amount = types.IssuedCurrencyAmount{
+					Currency: "0000000000000000000000000000000000000001",
+					Issuer:   ammClawbackIssuer,
+					Value:    "1",
+				}
+				return tx
+			}(),
+		},
+		{
 			name: "canonical currency representations match",
 			tx: func() *AMMClawback {
 				tx := newAMMClawback()
@@ -135,7 +156,7 @@ func TestAMMClawback_Validate(t *testing.T) {
 			}(),
 		},
 		{
-			name: "prefixed canonical currency representations match",
+			name: "prefixed currency is not a currency code",
 			tx: func() *AMMClawback {
 				tx := newAMMClawback()
 				tx.Amount = types.IssuedCurrencyAmount{
@@ -145,6 +166,7 @@ func TestAMMClawback_Validate(t *testing.T) {
 				}
 				return tx
 			}(),
+			wantErr: ErrAMMClawbackInvalidAmount,
 		},
 		{
 			name: "two asset flag requires account issuer",

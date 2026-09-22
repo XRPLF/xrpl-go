@@ -30,6 +30,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### binary-codec
 
 - Added `types.SerializeIssuedCurrencyCode` for validating and serializing issued-currency codes to their canonical 20-byte representation.
+- Added `types.ParseCurrencyCode`, the single currency-code parser behind `Currency` and issued-currency amounts.
 - Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
 - Added `types.ErrBlobNotString`, returned when a `Blob` field receives a non-string JSON value.
 - Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
@@ -65,6 +66,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 #### binary-codec
 
+- Currency codes no longer accept a `0x` prefix, which no XRPL implementation accepts. A code is `XRP`, three characters from the IOU alphabet, or 40 hexadecimal characters.
 - A `PathSet` step that is not an object now returns an error wrapping `types.ErrInvalidPathSet`. Its text gains the `invalid path set: ` prefix.
 - A non-string `AccountID` value now returns `account ID must be a string: got <type>` instead of `expected a string but got <type>`.
 - An unknown field type now returns `unknown field type: type "<type>", field "<field>"` instead of `unknown type "<type>" for field "<field>"`.
@@ -95,6 +97,9 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 #### binary-codec
 
+- Fixed hex currency codes with a `0x00` type byte being rewritten to XRP or rejected on encoding. They now serialize verbatim.
+- Fixed `Currency` accepting three-character codes outside the IOU alphabet, which produced Issue fields the ledger rejects.
+- Fixed decoding uppercasing three-character currency codes. A code like `xrP` now round-trips unchanged.
 - Encode and Decode return an error for fields nested deeper than xrpld's limit of 10.
 - Blob fields return an error for non-string JSON values.
 
@@ -112,6 +117,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
 - Normalized tagless X-addresses to classic addresses when flattening assets, issued-currency amounts, payment path steps, and cross-chain bridges, while preserving tagged and malformed addresses for encoding errors.
+- Tightened `IsIssuedCurrency` to reject currency codes the binary codec cannot encode and issuers with an X-address tag. This applies to `IsAmount` and every transaction with an issued-currency amount.
 - Tightened `IsAsset` to reject assets that cannot encode as an Issue: non-uppercase `XRP`, unencodable currency codes, tagged issuers, and MPT issuance IDs that are not 24 bytes. This also applies to `Validate()` on every AMM transaction and `VaultCreate`.
 - Signer entries now require a well-formed public key and a whole-byte hexadecimal signature. This applies to `IsSigner`, every `Signers` list, single-signed `SponsorSignature` objects, and the `PublicKey` and `Signature` of XChain attestations.
 - `SponsorSignature` and LoanSet `CounterpartySignature` now share one form check: a present but empty `Signers` list is invalid, and `ErrInvalidSponsorSignature` wraps the specific reason so both remain matchable with `errors.Is`.
