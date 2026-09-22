@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -296,9 +295,7 @@ func deserializeCurrencyCode(data []byte) (string, error) {
 		return "", errInvalidCurrencyCode
 	}
 	iso := string(data[12:15])
-	ok, _ := regexp.MatchString(IOUCodeRegex, iso)
-
-	if !ok {
+	if !iouCodeRegex.MatchString(iso) {
 		return hexutil.EncodeToUpperHex(data), nil
 	}
 	return iso, nil
