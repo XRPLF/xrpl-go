@@ -18,11 +18,11 @@ func TestInspectSponsorFieldsRawSignature(t *testing.T) {
 		value any
 		valid bool
 	}{
-		{"single", map[string]any{"SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A", "TxnSignature": "CD"}, true},
+		{"single", map[string]any{"SigningPubKey": testPublicKey, "TxnSignature": "CD"}, true},
 		{"multi decoded", map[string]any{"Signers": []any{validSigner}}, true},
 		{"multi flattened", map[string]any{"Signers": []map[string]any{validSigner}}, true},
 		{"multi empty key", map[string]any{"SigningPubKey": "", "Signers": []any{validSigner}}, true},
-		{"multi nonempty key", map[string]any{"SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A", "Signers": []any{validSigner}}, false},
+		{"multi nonempty key", map[string]any{"SigningPubKey": testPublicKey, "Signers": []any{validSigner}}, false},
 		{"multi null key", map[string]any{"SigningPubKey": nil, "Signers": []any{validSigner}}, false},
 		{"multi null signature", map[string]any{"TxnSignature": nil, "Signers": []any{validSigner}}, false},
 		{"multi empty signature", map[string]any{"TxnSignature": "", "Signers": []any{validSigner}}, false},
@@ -33,12 +33,12 @@ func TestInspectSponsorFieldsRawSignature(t *testing.T) {
 		{"empty signers", map[string]any{"Signers": []any{}}, false},
 		{"null signers", map[string]any{"Signers": nil}, false},
 		{"typed nil signers", map[string]any{"Signers": []any(nil)}, false},
-		{"null signature", map[string]any{"SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A", "TxnSignature": nil}, false},
-		{"unknown member", map[string]any{"SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A", "TxnSignature": "CD", "Account": "bad"}, false},
+		{"null signature", map[string]any{"SigningPubKey": testPublicKey, "TxnSignature": nil}, false},
+		{"unknown member", map[string]any{"SigningPubKey": testPublicKey, "TxnSignature": "CD", "Account": "bad"}, false},
 		{"wrong wrapper", map[string]any{"Signers": []any{"bad"}}, false},
 		{"unknown wrapper member", map[string]any{"Signers": []any{map[string]any{"Signer": validSigner["Signer"], "Extra": true}}}, false},
-		{"unknown signer member", map[string]any{"Signers": []any{map[string]any{"Signer": map[string]any{"Account": signer.SignerData.Account.String(), "SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A", "TxnSignature": "CD", "Extra": true}}}}, false},
-		{"null signer field", map[string]any{"Signers": []any{map[string]any{"Signer": map[string]any{"Account": nil, "SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A", "TxnSignature": "CD"}}}}, false},
+		{"unknown signer member", map[string]any{"Signers": []any{map[string]any{"Signer": map[string]any{"Account": signer.SignerData.Account.String(), "SigningPubKey": testPublicKey, "TxnSignature": "CD", "Extra": true}}}}, false},
+		{"null signer field", map[string]any{"Signers": []any{map[string]any{"Signer": map[string]any{"Account": nil, "SigningPubKey": testPublicKey, "TxnSignature": "CD"}}}}, false},
 	}
 
 	for _, tt := range tests {
@@ -68,7 +68,7 @@ func TestInspectSponsorFieldsRawSignature(t *testing.T) {
 
 // Inspection retains the typed result without losing field presence or aliasing raw input.
 func TestInspectSponsorFields(t *testing.T) {
-	key, sig, empty := "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A", "CD", ""
+	key, sig, empty := testPublicKey, "CD", ""
 	signers := orderedTransactionSigners(t, 1)
 	tests := []struct {
 		name      string

@@ -121,8 +121,8 @@ var (
 	ErrInvalidIssuer = errors.New("invalid xrpl address for Issuer")
 	// ErrInvalidOwner is returned when the Owner field does not meet XRPL address standards.
 	ErrInvalidOwner = errors.New("invalid xrpl address for Owner")
-	// ErrInvalidHexPublicKey is returned when the PublicKey is not a valid hexadecimal string.
-	ErrInvalidHexPublicKey = errors.New("invalid PublicKey, must be a valid hexadecimal string")
+	// ErrInvalidHexPublicKey is returned when the PublicKey is not a well-formed public key.
+	ErrInvalidHexPublicKey = errors.New("invalid PublicKey, must be a well-formed public key")
 	// ErrInvalidTransactionType is returned when the TransactionType field is invalid or missing.
 	ErrInvalidTransactionType = errors.New("invalid or missing TransactionType")
 	// ErrInvalidSubject is returned when the Subject field is an invalid xrpl address.
@@ -273,6 +273,8 @@ var (
 
 	// ErrInvalidChannel is returned when the Channel is not a valid 64-character hexadecimal string.
 	ErrInvalidChannel = errors.New("invalid Channel, must be a valid 64-character hexadecimal string")
+	// ErrPaymentChannelCreateAmountInvalid is returned when Amount is outside the valid native XRP range.
+	ErrPaymentChannelCreateAmountInvalid = errors.New("paymentChannelCreate: Amount must be between 1 and 100000000000000000 drops")
 	// ErrPaymentChannelFundAmountInvalid is returned when Amount is outside the valid native XRP range.
 	ErrPaymentChannelFundAmountInvalid = errors.New("paymentChannelFund: Amount must be between 1 and 100000000000000000 drops")
 	// ErrPaymentChannelClaimBalanceInvalid is returned when a supplied Balance exceeds the native XRP maximum.

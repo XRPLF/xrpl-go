@@ -31,7 +31,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey: testPublicKey,
 			},
 			expected: true,
 		},
@@ -40,7 +40,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       types.Address(taglessSigner),
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey: testPublicKey,
 			},
 			expected: true,
 		},
@@ -49,7 +49,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       types.Address(taggedSigner),
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey: testPublicKey,
 			},
 			expected: false,
 			wantErr:  ErrSignerAccountTagNotAllowed,
@@ -59,7 +59,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey: testPublicKey,
 			},
 			expected: false,
 			wantErr:  ErrSignerAccountZero,
@@ -68,7 +68,7 @@ func TestIsSigner(t *testing.T) {
 			name: "fail - Signer object with missing fields",
 			input: types.SignerData{
 				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
-				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey: testPublicKey,
 			},
 			expected: false,
 		},
@@ -76,7 +76,7 @@ func TestIsSigner(t *testing.T) {
 			name: "fail - invalid Signer object with empty XRPL account",
 			input: types.SignerData{
 				Account:       "  ",
-				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey: testPublicKey,
 				TxnSignature:  "0123456789abcdef",
 			},
 			expected: false,
@@ -85,7 +85,7 @@ func TestIsSigner(t *testing.T) {
 			name: "fail - invalid Signer object with invalid XRPL account",
 			input: types.SignerData{
 				Account:       "invalid",
-				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey: testPublicKey,
 				TxnSignature:  "0123456789abcdef",
 			},
 			expected: false,
@@ -95,7 +95,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 				TxnSignature:  "  ",
-				SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey: testPublicKey,
 			},
 			expected: false,
 		},
