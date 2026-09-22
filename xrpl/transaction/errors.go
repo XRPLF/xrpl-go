@@ -499,6 +499,9 @@ var (
 	// ErrInvalidHolder is returned when the holder is invalid.
 	ErrInvalidHolder = errors.New("invalid holder")
 	// ErrInvalidAmountIssuer is returned when the amount issuer is invalid.
+	//
+	// Deprecated: no validator returns it. AMMClawback reports ErrAMMClawbackInvalidAmount or
+	// ErrAMMClawbackAmountAssetMismatch instead.
 	ErrInvalidAmountIssuer = errors.New("invalid amount issuer")
 	// ErrAMMClawbackSameHolder is returned when Holder is the issuing Account.
 	ErrAMMClawbackSameHolder = errors.New("ammClawback: Account and Holder cannot be the same")

@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Deprecated `ValidateHexMetadata` in favour of `IsBoundedHexBlob`, which takes the same arguments. It now rejects odd-length hex, which the binary codec cannot encode.
+- Deprecated `ErrInvalidAmountIssuer`. `AMMClawback.Validate` reports `ErrAMMClawbackInvalidAmount` or `ErrAMMClawbackAmountAssetMismatch` instead.
 - `OracleSet.Provider`, `URI` and `AssetClass` must now be hex-encoded, matching their ledger blob format. `ErrOracleProviderLength.Length` reports decoded bytes.
 
 ### Fixed
