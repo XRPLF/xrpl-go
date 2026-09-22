@@ -57,13 +57,12 @@ func mptIssuerAccountID(issuanceID string) ([]byte, bool) {
 // assetIssuerAccountID returns the AccountID that issues asset. It reports false for
 // XRP, which has no issuer, and for an asset whose issuer cannot be decoded.
 func assetIssuerAccountID(asset ledger.Asset) ([]byte, bool) {
-	switch asset.Kind() {
+	switch asset.Kind() { //nolint:exhaustive // XRP has no issuer.
 	case ledger.AssetIOU:
 		issuerID, _, err := decodeAddressAccountID(asset.Issuer)
 		return issuerID, err == nil
 	case ledger.AssetMPT:
 		return mptIssuerAccountID(asset.MPTIssuanceID)
-	case ledger.AssetXRP:
 	}
 	return nil, false
 }
