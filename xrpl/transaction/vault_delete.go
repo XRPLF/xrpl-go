@@ -1,7 +1,6 @@
 package transaction
 
 import (
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -63,7 +62,7 @@ func (tx *VaultDelete) Validate() (bool, error) {
 		return false, ErrVaultDeleteVaultIDInvalid
 	}
 
-	if tx.MemoData != nil && (!typecheck.IsHexBlob(*tx.MemoData) || len(*tx.MemoData) > VaultDeleteMaxMemoDataLength) {
+	if tx.MemoData != nil && !ValidateHexMetadata(*tx.MemoData, VaultDeleteMaxMemoDataLength) {
 		return false, ErrVaultDeleteMemoDataInvalid
 	}
 

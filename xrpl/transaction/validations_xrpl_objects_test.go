@@ -1019,6 +1019,29 @@ func TestIsDomainID(t *testing.T) {
 	}
 }
 
+func TestValidateHexMetadata(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		maxHexLength int
+		want         bool
+	}{
+		{"pass - exactly at the limit", "ABCD", 4, true},
+		{"pass - under the limit", "AB", 4, true},
+		{"pass - lowercase hex", "abcd", 4, true},
+		{"fail - empty", "", 4, false},
+		{"fail - odd length is not whole bytes", "ABC", 4, false},
+		{"fail - one byte over the limit", "ABCDEF", 4, false},
+		{"fail - not hex", "ZZ", 4, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, ValidateHexMetadata(tt.input, tt.maxHexLength))
+		})
+	}
+}
+
 func TestIsHex256(t *testing.T) {
 	tests := []struct {
 		name     string

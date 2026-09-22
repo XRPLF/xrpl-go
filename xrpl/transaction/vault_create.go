@@ -144,7 +144,7 @@ func (tx *VaultCreate) Validate() (bool, error) {
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
-		if !typecheck.IsHexBlob(tx.Data.Value()) || !ValidateHexMetadata(tx.Data.Value(), VaultCreateMaxDataLength) {
+		if !ValidateHexMetadata(tx.Data.Value(), VaultCreateMaxDataLength) {
 			return false, ErrVaultCreateDataInvalid
 		}
 	}
