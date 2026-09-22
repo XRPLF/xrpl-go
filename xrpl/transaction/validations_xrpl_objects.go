@@ -350,10 +350,11 @@ func IsMPTokenIssuer(issuanceID string, address types.Address) bool {
 	return bytes.Equal(issuerID, accountID)
 }
 
-// ValidateHexMetadata validates input is non-empty hex string of up to a certain length.
-// Returns true if the input is a valid non-empty hex string up to the specified length.
+// ValidateHexMetadata reports whether input is non-empty, whole-byte hexadecimal of at most
+// maxLength hex characters. A limit declared in decoded bytes must be doubled, because
+// each byte encodes as two hex characters.
 func ValidateHexMetadata(input string, maxLength int) bool {
-	return len(input) > 0 && len(input) <= maxLength && typecheck.IsHex(input)
+	return typecheck.IsHexBlob(input) && len(input) <= maxLength
 }
 
 // IsTokenAmount checks if the given amount is a token amount (IssuedCurrencyAmount or MPTCurrencyAmount).

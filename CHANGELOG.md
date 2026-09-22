@@ -86,6 +86,11 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - `DefinitionFormatField.Validate` errors now start with `server_definitions: invalid format field: `.
 
+#### xrpl/transaction
+
+- `ValidateHexMetadata` now rejects odd-length hex, which the binary codec cannot encode.
+- `OracleSet.Provider`, `URI` and `AssetClass` must now be hex-encoded, matching their ledger blob format. `ErrOracleProviderLength.Length` reports decoded bytes.
+
 ### Fixed
 
 #### binary-codec
@@ -110,6 +115,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - Tightened `IsAsset` to reject assets that cannot encode as an Issue: non-uppercase `XRP`, unencodable currency codes, tagged issuers, and MPT issuance IDs that are not 24 bytes. This also applies to `Validate()` on every AMM transaction and `VaultCreate`.
 - Signer entries now require a well-formed public key and a whole-byte hexadecimal signature. This applies to `IsSigner`, every `Signers` list, single-signed `SponsorSignature` objects, and the `PublicKey` and `Signature` of XChain attestations.
 - `SponsorSignature` and LoanSet `CounterpartySignature` now share one form check: a present but empty `Signers` list is invalid, and `ErrInvalidSponsorSignature` wraps the specific reason so both remain matchable with `errors.Is`.
+- Rejected odd-length hex in the `Data`, `MemoData` and `MPTokenMetadata` fields of LoanSet, LoanBrokerSet, Vault and MPTokenIssuance transactions. It previously passed `Validate()` and failed at encoding.
 - Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel claims and funding, VaultCreate, and XChainCommit transactions.
 
 #### xrpl/websocket
