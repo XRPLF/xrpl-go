@@ -193,7 +193,7 @@ func IsMPTCurrency(input types.CurrencyAmount) (bool, error) {
 		return false, ErrMissingMPTIssuanceID
 	}
 
-	if !typecheck.IsHex(mptAmount.MPTIssuanceID) {
+	if !IsMPTIssuanceID(mptAmount.MPTIssuanceID) {
 		return false, ErrInvalidMPTIssuanceID
 	}
 

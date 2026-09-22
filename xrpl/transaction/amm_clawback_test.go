@@ -45,6 +45,15 @@ func TestAMMClawback_Validate(t *testing.T) {
 			tx:   newAMMClawback(),
 		},
 		{
+			name: "holder cannot be the account",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Holder = ammClawbackIssuer.String()
+				return tx
+			}(),
+			wantErr: ErrAMMClawbackSameHolder,
+		},
+		{
 			name: "asset2 is required",
 			tx: func() *AMMClawback {
 				tx := newAMMClawback()

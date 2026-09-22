@@ -500,6 +500,8 @@ var (
 	ErrInvalidHolder = errors.New("invalid holder")
 	// ErrInvalidAmountIssuer is returned when the amount issuer is invalid.
 	ErrInvalidAmountIssuer = errors.New("invalid amount issuer")
+	// ErrAMMClawbackSameHolder is returned when Holder is the issuing Account.
+	ErrAMMClawbackSameHolder = errors.New("ammClawback: Account and Holder cannot be the same")
 	// ErrAMMClawbackInvalidAsset is returned when Asset is not a valid Issue.
 	ErrAMMClawbackInvalidAsset = errors.New("ammClawback: Asset must be a valid issued or MPT Issue")
 	// ErrAMMClawbackAssetCannotBeXRP is returned when Asset identifies XRP.

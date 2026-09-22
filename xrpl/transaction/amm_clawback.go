@@ -123,6 +123,9 @@ func (a *AMMClawback) Validate() (bool, error) {
 	if !addresscodec.IsValidAddress(a.Holder) {
 		return false, ErrInvalidHolder
 	}
+	if sameAccountAddress(types.Address(a.Holder), a.Account) {
+		return false, ErrAMMClawbackSameHolder
+	}
 
 	if ok, err := IsAsset(a.Asset); !ok {
 		return false, fmt.Errorf("%w: %w", ErrAMMClawbackInvalidAsset, err)
