@@ -10,6 +10,8 @@ import (
 var (
 	errTooManyTransactionSigners  = errors.New("signers: at most 32 transaction signers are allowed")
 	errDuplicateTransactionSigner = errors.New("signers: duplicate account")
+	errMixedSignatureForms        = errors.New("signature: Signers cannot be combined with SigningPubKey or TxnSignature")
+	errMalformedSignaturePair     = errors.New("signature: SigningPubKey and TxnSignature must form a well-formed pair")
 	errUnsortedTransactionSigners = errors.New("signers: accounts must be sorted ascending by AccountID")
 
 	// ErrDestinationAccountConflict is returned when the Destination matches the Account.

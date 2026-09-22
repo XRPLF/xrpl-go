@@ -54,6 +54,42 @@ func TestIsSignaturePair(t *testing.T) {
 	}
 }
 
+func TestValidateSignatureFields(t *testing.T) {
+	const key = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
+	sig := "ABCD"
+	empty := ""
+	signers := orderedTransactionSigners(t, 2)
+
+	tests := []struct {
+		name          string
+		signingPubKey string
+		txnSignature  *string
+		signers       []types.Signer
+		expected      error
+	}{
+		{"pass - single-sign pair", key, &sig, nil, nil},
+		{"pass - signers list", "", nil, signers, nil},
+		{"fail - nothing present", "", nil, nil, errMalformedSignaturePair},
+		{"fail - key without signature", key, nil, nil, errMalformedSignaturePair},
+		{"fail - present but empty signature", key, &empty, nil, errMalformedSignaturePair},
+		{"fail - empty signers list is present", "", nil, []types.Signer{}, errMixedSignatureForms},
+		{"fail - signers with key", key, nil, signers, errMixedSignatureForms},
+		{"fail - signers with signature", "", &sig, signers, errMixedSignatureForms},
+		{"fail - signer list rule", "", nil, orderedTransactionSigners(t, 33), errTooManyTransactionSigners},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSignatureFields(tt.signingPubKey, tt.txnSignature, tt.signers)
+			if tt.expected == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, tt.expected)
+		})
+	}
+}
+
 func TestValidateSigners(t *testing.T) {
 	sorted := orderedTransactionSigners(t, 33)
 	mainnet, err := addresscodec.ClassicAddressToXAddress(sorted[0].SignerData.Account.String(), 0, false, false)

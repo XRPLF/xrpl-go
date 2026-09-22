@@ -151,6 +151,25 @@ func isSignaturePair(signingPubKey, txnSignature string) bool {
 	return isPublicKey(signingPubKey) && typecheck.IsHexBlob(txnSignature)
 }
 
+// validateSignatureFields checks a SigningPubKey, TxnSignature and Signers trio carried by
+// a nested signature object such as SponsorSignature or CounterpartySignature.
+// Exactly one form is accepted: a non-empty Signers list with no single-sign fields,
+// or a well-formed SigningPubKey and TxnSignature pair.
+// An empty Signers list is present and therefore invalid. txnSignature is a pointer because
+// presence is what rippled tests. Callers own the inner Batch rule and error wrapping.
+func validateSignatureFields(signingPubKey string, txnSignature *string, signers []types.Signer) error {
+	if signers != nil {
+		if len(signers) == 0 || signingPubKey != "" || txnSignature != nil {
+			return errMixedSignatureForms
+		}
+		return validateSigners(signers)
+	}
+	if txnSignature == nil || !isSignaturePair(signingPubKey, *txnSignature) {
+		return errMalformedSignaturePair
+	}
+	return nil
+}
+
 // maxTransactionSigners is STTx::kMaxMultiSigners in rippled 21890d9d.
 // This bounds transaction signatures, independently of SignerListSet entries.
 const maxTransactionSigners = 32

@@ -204,25 +204,19 @@ func validateLoanSetCounterpartySignature(signature *CounterpartySignature, inne
 	}
 
 	if inner {
-		if signature.SigningPubKey != "" || signature.TxnSignature != "" || len(signature.Signers) > 0 {
+		if signature.SigningPubKey != "" || signature.TxnSignature != "" || signature.Signers != nil {
 			return ErrLoanSetInnerCounterpartySignature
 		}
 		return nil
 	}
 
-	if len(signature.Signers) > 0 {
-		if signature.SigningPubKey != "" || signature.TxnSignature != "" {
-			return ErrLoanSetCounterpartySignatureInvalid
-		}
-		// Both errors stay matchable so callers can tell which list rule failed.
-		if err := validateSigners(signature.Signers); err != nil {
-			return fmt.Errorf("%w: %w", ErrLoanSetCounterpartySignatureInvalid, err)
-		}
-		return nil
+	// Flatten drops an empty TxnSignature, so it is absent on the wire.
+	var txnSignature *string
+	if signature.TxnSignature != "" {
+		txnSignature = &signature.TxnSignature
 	}
-
-	if !isSignaturePair(signature.SigningPubKey, signature.TxnSignature) {
-		return ErrLoanSetCounterpartySignatureInvalid
+	if err := validateSignatureFields(signature.SigningPubKey, txnSignature, signature.Signers); err != nil {
+		return fmt.Errorf("%w: %w", ErrLoanSetCounterpartySignatureInvalid, err)
 	}
 	return nil
 }

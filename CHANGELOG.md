@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tightened `IsIssuedCurrency` to reject currency codes the binary codec cannot encode and issuers with an X-address tag. This applies to `IsAmount` and every transaction with an issued-currency amount.
 - Tightened `IsAsset` to reject assets that cannot encode as an Issue: non-uppercase `XRP`, unencodable currency codes, tagged issuers, and MPT issuance IDs that are not 24 bytes. This also applies to `Validate()` on every AMM transaction and `VaultCreate`.
 - Signer entries now require a well-formed public key and a whole-byte hexadecimal signature. This applies to `IsSigner`, every `Signers` list, single-signed `SponsorSignature` objects, and the `PublicKey` and `Signature` of XChain attestations.
+- `SponsorSignature` and LoanSet `CounterpartySignature` now share one form check: a present but empty `Signers` list is invalid, and `ErrInvalidSponsorSignature` wraps the specific reason so both remain matchable with `errors.Is`.
 - Rejected odd-length hex in the `Data`, `MemoData` and `MPTokenMetadata` fields of LoanSet, LoanBrokerSet, Vault and MPTokenIssuance transactions. It previously passed `Validate()` and failed at encoding.
 - Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel claims and funding, VaultCreate, and XChainCommit transactions.
 
