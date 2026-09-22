@@ -68,7 +68,8 @@ type PaymentChannelClaim struct {
 	// Must be more than the total amount delivered by the channel so far, but not greater than the Amount of the signed claim. Must be provided except when closing the channel.
 	Balance types.XRPCurrencyAmount `json:",omitempty"`
 	// (Optional) The amount of XRP, in drops, authorized by the Signature. This must match the amount in the signed message.
-	// This is the cumulative amount of XRP that can be dispensed by the channel, including XRP previously redeemed. Must be provided except when closing the channel.
+	// This is the cumulative amount of XRP that can be dispensed by the channel, including XRP previously redeemed.
+	// Optional even for a signed claim. When omitted, Balance is the amount the Signature authorizes.
 	Amount types.XRPCurrencyAmount `json:",omitempty"`
 	// (Optional) The signature of this claim, as hexadecimal. The signed message contains the channel ID and the amount of the claim.
 	// Required unless the sender of the transaction is the source address of the channel.
