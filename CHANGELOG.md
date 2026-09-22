@@ -674,7 +674,7 @@ Core-library changes since `v0.3.0`, including the core changes from `v0.3.1-mpt
 
 #### keypairs
 
-- `GenerateSeed` now rejects non-empty entropy whose length is not exactly 16 bytes, removing silent truncation of longer inputs and the panic on shorter inputs.
+- `GenerateSeed` now rejects non-empty entropy whose length is not exactly 16 bytes, removing silent truncation of longer inputs. Shorter inputs previously panicked at 1 to 8 bytes or returned a zero-padded seed at 9 to 15 bytes.
 - `GenerateSeed` returns `ErrRandomizerRequired` instead of panicking when called with empty entropy and a nil randomizer.
 - `GenerateSeed` no longer wraps unsupported algorithm errors with `ErrInvalidEntropyLength` when caller-supplied entropy has the correct length.
 - Keypair signing and validation now reject keys shorter than the crypto prefix before slicing, preventing panics on empty or one-character keys.

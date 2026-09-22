@@ -2,7 +2,7 @@
 
 Low-level Go bindings for the [XRPLF/mpt-crypto](https://github.com/XRPLF/mpt-crypto) C library. This package provides encryption, commitments, context hashes, and proofs for XLS-96 confidential MPT transactions.
 
-[Installation](../README.md#installation) · [Native API guide](../../docs/docs/confidential/mptcrypto.md) · [Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/confidential/mptcrypto)
+[Installation](../README.md#installation) · [Native API guide](https://xrplf.github.io/xrpl-go/docs/confidential/mptcrypto) · [Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/confidential/mptcrypto)
 
 ## Choose the right level
 
@@ -25,11 +25,11 @@ Headers and static libraries for the supported platforms are included in [`../de
 
 ## Read the native API guide
 
-The [detailed guide](../../docs/docs/confidential/mptcrypto.md) covers the contracts you need when calling these low-level functions:
+The [detailed guide](https://xrplf.github.io/xrpl-go/docs/confidential/mptcrypto) covers the contracts you need when calling these low-level functions:
 
-- [Data types and sizes](../../docs/docs/confidential/mptcrypto.md#data-model), including participant ordering.
-- [Function behavior](../../docs/docs/confidential/mptcrypto.md#function-reference), including proof inputs, context hashes, and verification requirements.
-- [Errors](../../docs/docs/confidential/mptcrypto.md#error-behavior) and how to match them.
+- [Data types and sizes](https://xrplf.github.io/xrpl-go/docs/confidential/mptcrypto#data-model), including participant ordering.
+- [Function behavior](https://xrplf.github.io/xrpl-go/docs/confidential/mptcrypto#function-reference), including proof inputs, context hashes, and verification requirements.
+- [Errors](https://xrplf.github.io/xrpl-go/docs/confidential/mptcrypto#error-behavior) and how to match them.
 - [Contributor notes](../CONTRIBUTING.md#native-package-layout) on package layout and [the cgo boundary](../CONTRIBUTING.md#maintaining-the-cgo-boundary).
 
 Use the [Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/confidential/mptcrypto) for complete function signatures.

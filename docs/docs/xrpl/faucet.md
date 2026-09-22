@@ -39,7 +39,7 @@ func main() {
 }
 ```
 
-For Devnet, use `https://s.devnet.rippletest.net:51234/` and `faucet.NewDevnetFaucetProvider()`. The WebSocket configuration also accepts `WithFaucetProvider`. `FundWallet` on a client requires this option. Without a provider the call panics instead of returning an error.
+For Devnet, use `https://s.devnet.rippletest.net:51234/` and `faucet.NewDevnetFaucetProvider()`. The WebSocket configuration also accepts `WithFaucetProvider`. `FundWallet` on a client requires this option. Without a provider the call panics instead of returning an error. After requesting funds, `FundWallet` blocks while it polls the validated ledger for a balance increase. If the balance does not update in time, it returns `ErrFundWalletBalanceNotUpdated`.
 
 Faucets are external services and can be unavailable or rate-limited. Handle errors rather than assuming every new wallet is funded. Public test networks can reset their state.
 

@@ -101,7 +101,7 @@ if issuance.ImmutableFlags&ledger.LsifMPTMetadata != 0 {
 
 ## Encode, validate, and decode metadata
 
-Use `types.ParsedMPTokenMetadata` to construct metadata. Encoding serializes it to hex. **Encoding is not validation**: call `ValidateMPTokenMetadata` to check the schema before attaching it to a transaction.
+Use `types.ParsedMPTokenMetadata` to construct metadata. The required fields are `Ticker`, `Name`, `Icon`, `AssetClass`, and `IssuerName`. Encoding serializes it to hex. **Encoding is not validation**: call `ValidateMPTokenMetadata` to check the schema before attaching it to a transaction.
 
 This offline round-trip uses real encoded output, not a truncated placeholder:
 

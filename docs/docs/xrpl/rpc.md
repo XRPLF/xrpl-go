@@ -53,7 +53,7 @@ Pass options to `NewClientConfig`, then pass the configuration to `NewClient`.
 
 | Option | Purpose |
 | --- | --- |
-| `WithTimeout` | Sets the timeout for one request attempt and the `*http.Client` timeout. A custom `*http.Client` with its own non-zero timeout takes precedence |
+| `WithTimeout` | Sets the timeout for one request attempt and the `*http.Client` timeout. A custom `*http.Client` with its own non-zero timeout takes precedence only when `WithTimeout` comes before `WithHTTPClient`. Otherwise, `WithTimeout` overwrites the custom client's timeout |
 | `WithHTTPClient` | Supplies a custom `HTTPClient` implementation |
 | `WithFaucetProvider` | Enables [test funding](/docs/xrpl/faucet) through the client |
 | `WithMaxResponseSize` | Caps HTTP response bodies, default 64 MiB |

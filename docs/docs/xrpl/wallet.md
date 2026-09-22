@@ -81,7 +81,7 @@ Configure the account's signer list and quorum on the ledger first. Autofill the
 ## Sponsor and Batch signatures
 
 - [Sponsorship](/docs/xrpl/sponsorship) documents co-signed and pre-funded flows. Sponsor fields must be prepared before account signing.
-- `wallet.SignMultiBatch` signs Batch authorization, not each inner transaction as an ordinary signed transaction. Combine fragments with `wallet.CombineBatchSigners`, then sign the outer transaction. See the [Go API](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/wallet#SignMultiBatch), [Batch protocol](https://xrpl.org/docs/references/protocol/transactions/types/batch), and [confidential batch guide](/docs/confidential/batch).
+- `wallet.SignMultiBatch` signs Batch authorization, not each inner transaction as an ordinary signed transaction. With one inner-account signer, submit the map that `SignMultiBatch` filled in. To merge several signers, use `wallet.CombineBatchSigners`. It takes `[]transaction.Batch`, not the flat maps that `SignMultiBatch` fills in, so convert each signed map to a `transaction.Batch` first. It returns an encoded blob with the combined `BatchSigners`, which the submitting account then signs. See the [Go API](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/wallet#SignMultiBatch), [Batch protocol](https://xrpl.org/docs/references/protocol/transactions/types/batch), and [confidential batch guide](/docs/confidential/batch).
 
 ## Authorize a payment-channel claim
 

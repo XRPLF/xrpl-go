@@ -46,7 +46,7 @@ func main() {
 }
 ```
 
-Pass `index` as `ledger.EntryRequest.Index` to `GetLedgerEntry`. See [Ledger data](/docs/xrpl/ledger-entry-types) for the complete read and decode flow.
+Pass `index` as `ledgerquery.EntryRequest.Index` to `GetLedgerEntry`. See [Ledger data](/docs/xrpl/ledger-entry-types) for the complete read and decode flow.
 
 `MPTID` produces a 48-character issuance ID, not a ledger-entry index. Use `MPTokenIssuance(issuanceID)` for the issuance entry index or `MPToken(issuanceID, holder)` for the holder entry index. That holder entry carries the confidential balance fields that the [confidential builders](/docs/confidential/builders) read. Other helpers include `Vault`, `LoanBroker`, `Loan`, and `PaymentChannel`.
 

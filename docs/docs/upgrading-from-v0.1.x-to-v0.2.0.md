@@ -45,18 +45,19 @@ seed, err := keypairs.GenerateSeed(sum[:addresscodec.FamilySeedLength], crypto.E
 
 Hashing does not make a weak passphrase safe. This is a compatibility example, not a password-based wallet design. Do not change an existing derivation algorithm while recovering funds.
 
-Migration only: older versions used the first 16 bytes of any non-empty entropy string. If you must recover a legacy seed, reproduce that truncation before calling `GenerateSeed`:
+Migration only: older versions used the first 16 bytes of any non-empty entropy string. Strings of 9 to 15 bytes did not fail. They returned a seed zero-padded to 16 bytes, which could have been funded. Strings of 1 to 8 bytes caused the old function to panic, so no seed exists for them. If you must recover a legacy seed, reproduce that behavior before calling `GenerateSeed`:
 
 ```go
-legacyEntropy := []byte(oldEntropy)
-if len(legacyEntropy) < addresscodec.FamilySeedLength {
-	return errors.New("legacy entropy was shorter than 16 bytes")
+legacyEntropy := make([]byte, addresscodec.FamilySeedLength)
+n := copy(legacyEntropy, oldEntropy)
+if n <= 8 {
+	return errors.New("legacy entropy of 8 bytes or fewer never produced a seed")
 }
 
-seed, err := keypairs.GenerateSeed(legacyEntropy[:addresscodec.FamilySeedLength], crypto.ED25519(), nil)
+seed, err := keypairs.GenerateSeed(legacyEntropy, crypto.ED25519(), nil)
 ```
 
-Use the same algorithm as the original wallet. Inputs shorter than 16 bytes caused the old function to panic, so there is no seed from that failed call to recover. Truncation is for recovery only, not new wallets.
+Use the same algorithm as the original wallet. This conversion is for recovery only, not new wallets.
 
 ## X-address Tags
 
