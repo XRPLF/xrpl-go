@@ -164,7 +164,7 @@ func (p *PaymentChannelClaim) Validate() (bool, error) {
 		return false, ErrPaymentChannelClaimAmountInvalid
 	}
 
-	if p.Balance != 0 && p.Amount != 0 && p.Balance > p.Amount {
+	if p.Amount != 0 && p.Balance > p.Amount {
 		return false, ErrPaymentChannelClaimBalanceExceedsAmount
 	}
 
