@@ -33,7 +33,7 @@ func signersOf(account types.Address) []types.Signer {
 	return []types.Signer{{SignerData: types.SignerData{
 		Account:       account,
 		TxnSignature:  "0123456789abcdef",
-		SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+		SigningPubKey: testPublicKey,
 	}}}
 }
 
@@ -53,7 +53,7 @@ func TestTx_Validate(t *testing.T) {
 				AccountTxnID:       "abcdef123456",
 				LastLedgerSequence: 100,
 				SourceTag:          123,
-				SigningPubKey:      "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey:      testPublicKey,
 				TicketSequence:     2,
 				TxnSignature:       "AABBCC",
 				NetworkID:          1,
@@ -78,7 +78,7 @@ func TestTx_Validate(t *testing.T) {
 						SignerData: types.SignerData{
 							Account:       "rDqbKhee18wUCnvjPjZA5Kgpe4zeubLQUC",
 							TxnSignature:  "abc123",
-							SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+							SigningPubKey: testPublicKey,
 						},
 					},
 				},
@@ -109,7 +109,7 @@ func TestTx_Validate(t *testing.T) {
 				AccountTxnID:       "abcdef123456",
 				LastLedgerSequence: 100,
 				SourceTag:          123,
-				SigningPubKey:      "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey:      testPublicKey,
 				TicketSequence:     2,
 				TxnSignature:       "AABBCC",
 				Memos: []types.MemoWrapper{
@@ -134,7 +134,7 @@ func TestTx_Validate(t *testing.T) {
 				AccountTxnID:       "abcdef123456",
 				LastLedgerSequence: 100,
 				SourceTag:          123,
-				SigningPubKey:      "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey:      testPublicKey,
 				TicketSequence:     2,
 				TxnSignature:       "AABBCC",
 				Signers: []types.Signer{
@@ -485,9 +485,9 @@ func TestBaseTx_Flatten(t *testing.T) {
 					},
 				},
 				NetworkID:      1,
-				Signers:        []types.Signer{{SignerData: types.SignerData{Account: "rDqbKhee18wUCnvjPjZA5Kgpe4zeubLQUC", TxnSignature: "abc123", SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"}}},
+				Signers:        []types.Signer{{SignerData: types.SignerData{Account: "rDqbKhee18wUCnvjPjZA5Kgpe4zeubLQUC", TxnSignature: "abc123", SigningPubKey: testPublicKey}}},
 				SourceTag:      123,
-				SigningPubKey:  "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				SigningPubKey:  testPublicKey,
 				TicketSequence: 2,
 				TxnSignature:   "AABBCC",
 			},

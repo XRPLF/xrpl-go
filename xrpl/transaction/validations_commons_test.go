@@ -21,15 +21,18 @@ func orderedTransactionSigners(t *testing.T, count int) []types.Signer {
 		require.NoError(t, err)
 		signers[i] = types.Signer{SignerData: types.SignerData{
 			Account:       types.Address(address),
-			SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+			SigningPubKey: testPublicKey,
 			TxnSignature:  "CD",
 		}}
 	}
 	return signers
 }
 
+// testPublicKey is a well-formed ed25519 public key shared by tests that need one.
+const testPublicKey = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
+
 func TestIsSignaturePair(t *testing.T) {
-	const key = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
+	const key = testPublicKey
 
 	tests := []struct {
 		name      string
@@ -55,7 +58,7 @@ func TestIsSignaturePair(t *testing.T) {
 }
 
 func TestValidateSignatureFields(t *testing.T) {
-	const key = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
+	const key = testPublicKey
 	sig := "ABCD"
 	empty := ""
 	signers := orderedTransactionSigners(t, 2)

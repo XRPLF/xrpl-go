@@ -221,12 +221,11 @@ func TestLoanSet_Validate(t *testing.T) {
 }
 
 func TestLoanSet_ValidateCounterpartySignature(t *testing.T) {
-	const validPublicKey = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
 	counterparty := types.Address("rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds")
 	validSigner := types.Signer{SignerData: types.SignerData{
 		Account:       counterparty,
 		TxnSignature:  "ABCD",
-		SigningPubKey: validPublicKey,
+		SigningPubKey: testPublicKey,
 	}}
 	malformedSigner := validSigner
 	malformedSigner.SignerData.TxnSignature = "not-hex"
@@ -240,11 +239,11 @@ func TestLoanSet_ValidateCounterpartySignature(t *testing.T) {
 	}{
 		{
 			name:                  "pass - single counterparty signature",
-			counterpartySignature: &CounterpartySignature{SigningPubKey: validPublicKey, TxnSignature: "ABCD"},
+			counterpartySignature: &CounterpartySignature{SigningPubKey: testPublicKey, TxnSignature: "ABCD"},
 		},
 		{
 			name:                  "fail - incomplete counterparty signature",
-			counterpartySignature: &CounterpartySignature{SigningPubKey: validPublicKey},
+			counterpartySignature: &CounterpartySignature{SigningPubKey: testPublicKey},
 			expected:              ErrLoanSetCounterpartySignatureInvalid,
 		},
 		{
@@ -255,7 +254,7 @@ func TestLoanSet_ValidateCounterpartySignature(t *testing.T) {
 		{
 			name: "fail - mixed counterparty signature forms",
 			counterpartySignature: &CounterpartySignature{
-				SigningPubKey: validPublicKey,
+				SigningPubKey: testPublicKey,
 				TxnSignature:  "ABCD",
 				Signers:       []types.Signer{validSigner},
 			},
@@ -284,7 +283,7 @@ func TestLoanSet_ValidateCounterpartySignature(t *testing.T) {
 			name:                  "fail - inner Batch has counterparty signature fields",
 			flags:                 types.TfInnerBatchTxn,
 			counterparty:          &counterparty,
-			counterpartySignature: &CounterpartySignature{SigningPubKey: validPublicKey, TxnSignature: "ABCD"},
+			counterpartySignature: &CounterpartySignature{SigningPubKey: testPublicKey, TxnSignature: "ABCD"},
 			expected:              ErrLoanSetInnerCounterpartySignature,
 		},
 		{
