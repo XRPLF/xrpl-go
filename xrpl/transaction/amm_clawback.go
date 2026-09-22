@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -102,26 +101,23 @@ func (a *AMMClawback) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func validateAMMClawbackAmount(amount types.CurrencyAmount, asset ledger.Asset) error {
-	if !isPositiveTokenAmount(amount) {
-		return ErrAMMClawbackInvalidAmount
-	}
-	if !sameIssue(amount, asset) {
-		return ErrAMMClawbackAmountAssetMismatch
-	}
-
-	return nil
-}
-
 // Validate validates the AMMClawback transaction.
 func (a *AMMClawback) Validate() (bool, error) {
 	_, err := a.BaseTx.Validate()
 	if err != nil {
 		return false, err
 	}
+	accountID, _, err := decodeAddressAccountID(a.Account)
+	if err != nil {
+		return false, ErrInvalidAccount
+	}
 
-	if !addresscodec.IsValidAddress(a.Holder) {
+	holderID, _, err := decodeAddressAccountID(types.Address(a.Holder))
+	if err != nil {
 		return false, ErrInvalidHolder
+	}
+	if bytes.Equal(holderID, accountID) {
+		return false, ErrAMMClawbackSameHolder
 	}
 
 	if ok, err := IsAsset(a.Asset); !ok {
@@ -130,30 +126,23 @@ func (a *AMMClawback) Validate() (bool, error) {
 	if a.Asset.Kind() == ledger.AssetXRP {
 		return false, ErrAMMClawbackAssetCannotBeXRP
 	}
-
-	accountID, _, err := decodeAddressAccountID(a.Account)
-	if err != nil {
-		return false, ErrInvalidAccount
-	}
-	assetIssuer, ok := assetIssuerAccountID(a.Asset)
-	if !ok || !bytes.Equal(assetIssuer, accountID) {
+	if !assetIssuedBy(a.Asset, accountID) {
 		return false, ErrInvalidAssetIssuer
 	}
 
 	if ok, err := IsAsset(a.Asset2); !ok {
 		return false, fmt.Errorf("%w: %w", ErrAMMClawbackInvalidAsset2, err)
 	}
-
-	if a.Flags&TfClawTwoAssets != 0 {
-		asset2Issuer, ok := assetIssuerAccountID(a.Asset2)
-		if !ok || !bytes.Equal(asset2Issuer, accountID) {
-			return false, ErrAMMClawbackAsset2IssuerMismatch
-		}
+	if a.Flags&TfClawTwoAssets != 0 && !assetIssuedBy(a.Asset2, accountID) {
+		return false, ErrAMMClawbackAsset2IssuerMismatch
 	}
 
 	if a.Amount != nil {
-		if err := validateAMMClawbackAmount(a.Amount, a.Asset); err != nil {
-			return false, err
+		if !isPositiveTokenAmount(a.Amount) {
+			return false, ErrAMMClawbackInvalidAmount
+		}
+		if !sameIssue(a.Amount, a.Asset) {
+			return false, ErrAMMClawbackAmountAssetMismatch
 		}
 	}
 
