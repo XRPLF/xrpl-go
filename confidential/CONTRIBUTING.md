@@ -45,6 +45,18 @@ Vendored headers are under `confidential/deps/include/`. Static libraries are se
 | macOS amd64 | `darwin-amd64/` |
 | macOS arm64 | `darwin-arm64/` |
 
+The `Build mpt-crypto` workflow refreshes these bundles every Monday and opens a pull request when a new version is available. You can also run it manually from GitHub Actions and optionally pin a version.
+
+To refresh them locally, install Conan 2, add the `xrplf` remote, and run the update script:
+
+```bash
+pip install conan
+conan remote add --index 0 xrplf https://conan.ripplex.io
+make update-mpt-crypto
+```
+
+The script fetches the bundle for the current platform. See `confidential/deps/update.sh` for version and platform options.
+
 `mptcrypto_cgo.go` contains the build constraint and per-platform linker flags. It passes fixed-size byte arrays to C through pointers to their first elements and copies Go compound values into their corresponding C structs field by field. Variable participant lists are copied into a contiguous slice of `C.mpt_confidential_participant` values before the native call.
 
 The native routines use these pointers only for the duration of the call. They must not retain Go memory after returning. Keep all `import "C"`, `unsafe`, C layout conversion, and native linker changes inside this package so the higher-level confidential packages remain portable pure Go code.

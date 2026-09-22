@@ -30,7 +30,7 @@ func main() {
 }
 ```
 
-It prints `1250000` drops and `1.25` XRP. Both conversion functions validate the native XRP supply limit. XRP inputs can have at most six decimal places.
+It prints `1250000` drops and `1.25` XRP. Both conversion functions validate the native XRP supply limit. XRP inputs must convert to a whole number of drops.
 
 ## Calculate fees without losing precision
 

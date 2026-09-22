@@ -29,7 +29,7 @@ Use [Ledger data](/docs/xrpl/ledger-entry-types) when you need generic `GetLedge
 
 ## Choose a ledger
 
-Use `common.Validated` for validated state. When several requests must describe the same snapshot, take the returned ledger hash and use it as `LedgerHash` on subsequent requests. Do not keep asking for the latest validated ledger if the results must agree on one snapshot.
+Use `common.Validated` for validated state. When several requests must describe the same snapshot, take the ledger hash or index from the first response, where the response includes it, and pass it on subsequent requests. Do not keep asking for the latest validated ledger if the results must agree on one snapshot.
 
 Ledger selectors vary by request type. See [ledger index](https://xrpl.org/docs/references/protocol/data-types/basic-data-types#ledger-index) and the relevant method's XRPL reference for server behavior.
 
