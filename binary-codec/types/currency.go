@@ -5,10 +5,16 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"regexp"
 	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 )
+
+// CurrencyCodeByteLength is the length of a currency code on the ledger.
+const CurrencyCodeByteLength = 20
+
+var iouCodeRegex = regexp.MustCompile("^" + IOUCodeRegex + "$")
 
 var (
 	// ErrMissingCurrencyLengthOption is returned when no length option is
@@ -24,7 +30,7 @@ type Currency struct{}
 // FromJSON parses a JSON value into its binary currency representation.
 func (c *Currency) FromJSON(json any) ([]byte, error) {
 	if str, ok := json.(string); ok {
-		return c.fromString(str)
+		return ParseCurrencyCode(str)
 	}
 	return nil, ErrInvalidCurrency
 }
@@ -69,20 +75,24 @@ func (c *Currency) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 	return hex.EncodeToString(currencyBytes), nil
 }
 
-func (c *Currency) fromString(str string) ([]byte, error) {
-	if len(str) == 3 {
-		var bytes [20]byte
-		if str != "XRP" {
-			isoBytes := []byte(str)
-			copy(bytes[12:], isoBytes)
+// ParseCurrencyCode converts a JSON currency code to its 20-byte form, following
+// rippled's to_currency. "XRP" is the native currency and encodes as 20 zero bytes.
+// A 3-character code must use the IOU code alphabet and is placed at bytes 12 to 14.
+// A 40-character hexadecimal code is taken verbatim. Anything else is an error.
+func ParseCurrencyCode(code string) ([]byte, error) {
+	switch len(code) {
+	case 3:
+		if code == "XRP" {
+			return make([]byte, CurrencyCodeByteLength), nil
 		}
-		return bytes[:], nil
+		if !iouCodeRegex.MatchString(code) {
+			return nil, errInvalidCurrencyCode
+		}
+		currencyBytes := make([]byte, CurrencyCodeByteLength)
+		copy(currencyBytes[12:], code)
+		return currencyBytes, nil
+	case 2 * CurrencyCodeByteLength:
+		return hex.DecodeString(code)
 	}
-
-	bytes, err := hex.DecodeString(str)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
+	return nil, &InvalidCodeError{Disallowed: code}
 }
