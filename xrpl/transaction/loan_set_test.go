@@ -179,6 +179,19 @@ func TestLoanSet_Validate(t *testing.T) {
 			expected: ErrLoanSetPaymentIntervalInvalid,
 		},
 		{
+			name: "fail - explicit zero PaymentTotal",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				PaymentTotal:       func() *types.PaymentTotal { v := types.PaymentTotal(0); return &v }(),
+			},
+			expected: ErrLoanSetPaymentTotalInvalid,
+		},
+		{
 			name: "pass - complete",
 			tx: &LoanSet{
 				BaseTx: BaseTx{
@@ -207,10 +220,9 @@ func TestLoanSet_Validate(t *testing.T) {
 	}
 }
 
-func TestLoanSet_ValidatePaymentTotalAndCounterpartySignature(t *testing.T) {
+func TestLoanSet_ValidateCounterpartySignature(t *testing.T) {
 	const validPublicKey = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
 	counterparty := types.Address("rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds")
-	paymentTotalZero := types.PaymentTotal(0)
 	validSigner := types.Signer{SignerData: types.SignerData{
 		Account:       counterparty,
 		TxnSignature:  "ABCD",
@@ -221,17 +233,11 @@ func TestLoanSet_ValidatePaymentTotalAndCounterpartySignature(t *testing.T) {
 
 	testcases := []struct {
 		name                  string
-		paymentTotal          *types.PaymentTotal
 		counterparty          *types.Address
 		counterpartySignature *CounterpartySignature
 		flags                 uint32
 		expected              error
 	}{
-		{
-			name:         "fail - explicit zero PaymentTotal",
-			paymentTotal: &paymentTotalZero,
-			expected:     ErrLoanSetPaymentTotalInvalid,
-		},
 		{
 			name:                  "pass - single counterparty signature",
 			counterpartySignature: &CounterpartySignature{SigningPubKey: validPublicKey, TxnSignature: "ABCD"},
@@ -298,7 +304,6 @@ func TestLoanSet_ValidatePaymentTotalAndCounterpartySignature(t *testing.T) {
 				},
 				LoanBrokerID:          "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
 				PrincipalRequested:    types.XRPLNumber("100000"),
-				PaymentTotal:          testcase.paymentTotal,
 				Counterparty:          testcase.counterparty,
 				CounterpartySignature: testcase.counterpartySignature,
 			}
