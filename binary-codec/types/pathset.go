@@ -17,15 +17,6 @@ const (
 	pathSeparatorByte = 0xFF
 )
 
-// serializePathCurrency serializes a currency code for use in path steps.
-// Unlike SerializeIssuedCurrencyCode, this allows "XRP" which serializes to 20 zero bytes.
-func serializePathCurrency(currency string) ([]byte, error) {
-	if currency == "XRP" {
-		return make([]byte, 20), nil
-	}
-	return SerializeIssuedCurrencyCode(currency)
-}
-
 // PathSet type declaration
 type PathSet struct{}
 
@@ -134,7 +125,7 @@ func newPathStep(v map[string]any) ([]byte, error) {
 		if !ok {
 			return nil, fmt.Errorf("%w: currency is not a string", ErrInvalidPathSet)
 		}
-		currency, err := serializePathCurrency(curStr)
+		currency, err := ParseCurrencyCode(curStr)
 		if err != nil {
 			return nil, fmt.Errorf("%w: invalid currency path step: %w", ErrInvalidPathSet, err)
 		}

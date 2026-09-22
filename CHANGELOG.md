@@ -19,8 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### binary-codec
 
-- Added `types.SerializeIssuedCurrencyCode` for validating and serializing issued-currency codes to their canonical 20-byte representation.
-- Added `types.ParseCurrencyCode`, the single currency-code parser behind `Currency` and issued-currency amounts.
+- Added `types.ParseCurrencyCode`, the currency-code parser behind `Currency`, issued-currency amounts, and path steps.
 
 #### xrpl/transaction
 

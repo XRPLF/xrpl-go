@@ -73,14 +73,27 @@ func assetIssuedBy(asset ledger.Asset, accountID []byte) bool {
 	return ok && bytes.Equal(issuerID, accountID)
 }
 
+// issuedCurrencyBytes parses an issued currency code. XRP, in any spelling that encodes
+// to the native currency, is not an issued currency.
+func issuedCurrencyBytes(code string) ([]byte, error) {
+	currencyBytes, err := bctypes.ParseCurrencyCode(code)
+	if err != nil {
+		return nil, err
+	}
+	if bytes.Equal(currencyBytes, bctypes.XRPBytes) {
+		return nil, ErrInvalidTokenCurrency
+	}
+	return currencyBytes, nil
+}
+
 // sameIssue reports whether amount is denominated in asset. Currency codes are compared
 // as codec bytes so "USD" equals its hex spelling, and issuers as AccountIDs so a classic
 // address equals its X-address. Both inputs must already be validated.
 func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
 	switch amount := amount.(type) {
 	case types.IssuedCurrencyAmount:
-		amountCurrency, err := bctypes.SerializeIssuedCurrencyCode(amount.Currency)
-		assetCurrency, assetErr := bctypes.SerializeIssuedCurrencyCode(asset.Currency)
+		amountCurrency, err := issuedCurrencyBytes(amount.Currency)
+		assetCurrency, assetErr := issuedCurrencyBytes(asset.Currency)
 		return asset.Kind() == ledger.AssetIOU && err == nil && assetErr == nil &&
 			bytes.Equal(amountCurrency, assetCurrency) && sameAccountAddress(amount.Issuer, asset.Issuer)
 	case types.MPTCurrencyAmount:

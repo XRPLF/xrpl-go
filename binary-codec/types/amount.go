@@ -508,16 +508,6 @@ func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
 	return serialReturn, nil
 }
 
-// SerializeIssuedCurrencyCode serializes an issued currency code to its bytes representation.
-// It accepts what ParseCurrencyCode accepts, except XRP in either spelling, because XRP is
-// not an issued currency.
-func SerializeIssuedCurrencyCode(currency string) ([]byte, error) {
-	if currency == "XRP" || currency == "0000000000000000000000005852500000000000" {
-		return nil, &InvalidCodeError{Disallowed: "XRP uppercase"}
-	}
-	return ParseCurrencyCode(currency)
-}
-
 // serializeIssuedCurrencyIssuer decodes an issued-currency issuer into its
 // 20-byte AccountID. Tagless mainnet X-addresses and testnet T-addresses are
 // normalized to the same AccountID as their classic address. Tagged addresses
@@ -547,9 +537,12 @@ func serializeIssuedCurrencyAmount(value, currency, issuer string) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	currencyBytes, err := SerializeIssuedCurrencyCode(currency) // serialize the currency code
+	currencyBytes, err := ParseCurrencyCode(currency)
 	if err != nil {
 		return nil, err
+	}
+	if bytes.Equal(currencyBytes, XRPBytes) {
+		return nil, &InvalidCodeError{Disallowed: "XRP"}
 	}
 	issuerBytes, err := serializeIssuedCurrencyIssuer(issuer)
 	if err != nil {
