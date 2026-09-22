@@ -114,6 +114,19 @@ func TestPathSet_FromJson(t *testing.T) {
 			},
 		},
 		{
+			name: "fail - ISO XRP in hex is reserved",
+			input: []any{
+				[]any{
+					map[string]any{"currency": "0000000000000000000000005852500000000000"},
+				},
+			},
+			err: ErrInvalidPathSet,
+			innerCheck: func(t *testing.T, err error) {
+				var codeErr *InvalidCodeError
+				require.ErrorAs(t, err, &codeErr)
+			},
+		},
+		{
 			name: "fail - invalid issuer decode",
 			input: []any{
 				[]any{
