@@ -157,8 +157,7 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 	if strings.TrimSpace(issuedAmount.Currency) == "" {
 		return false, ErrMissingTokenCurrency
 	}
-	if _, err := bctypes.SerializeIssuedCurrencyCode(issuedAmount.Currency); err != nil ||
-		strings.ToUpper(issuedAmount.Currency) == currency.NativeCurrencySymbol {
+	if _, err := bctypes.SerializeIssuedCurrencyCode(issuedAmount.Currency); err != nil {
 		return false, ErrInvalidTokenCurrency
 	}
 
@@ -266,28 +265,23 @@ func IsPaths(pathsteps [][]PathStep) (bool, error) {
 // A valid Asset encodes as an Issue. It is native XRP, an issued currency with a
 // tagless issuer, or a well-formed MPT issuance ID.
 func IsAsset(asset ledger.Asset) (bool, error) {
-	switch {
-	// MPT: the issuance ID stands alone and must be 24 bytes of hex.
-	case asset.MPTIssuanceID != "":
+	switch asset.Kind() {
+	case ledger.AssetMPT:
 		if asset.Currency != "" || asset.Issuer != "" || !IsMPTIssuanceID(asset.MPTIssuanceID) {
 			return false, ErrInvalidMPTIssuanceIDAsset
 		}
-	case asset.Currency == "" && asset.Issuer == "":
-		return false, ErrInvalidAssetFields
-	// Issuer without a currency.
-	case strings.TrimSpace(asset.Currency) == "":
-		return false, ErrMissingAssetCurrency
-	// XRP: only the exact code "XRP" encodes as the native asset, and it never has an issuer.
-	case strings.ToUpper(asset.Currency) == currency.NativeCurrencySymbol:
-		if asset.Issuer != "" {
-			return false, ErrInvalidAssetIssuer
-		}
-		if asset.Currency != currency.NativeCurrencySymbol {
+	case ledger.AssetXRP:
+		switch asset.Currency {
+		case "":
+			return false, ErrInvalidAssetFields
+		case currency.NativeCurrencySymbol:
+		default:
 			return false, ErrInvalidAssetCurrency
 		}
-	// Issued currency: needs a tagless issuer, because the Issue codec has nowhere to put
-	// a tag, and a currency code that encodes to 20 non-XRP bytes.
-	default:
+	case ledger.AssetIOU:
+		if strings.TrimSpace(asset.Currency) == "" {
+			return false, ErrMissingAssetCurrency
+		}
 		if _, hasTag, err := decodeAddressAccountID(asset.Issuer); err != nil || hasTag {
 			return false, ErrInvalidAssetIssuer
 		}
