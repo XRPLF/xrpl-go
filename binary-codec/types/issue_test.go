@@ -189,3 +189,24 @@ func TestIssue_ToJson(t *testing.T) {
 		})
 	}
 }
+
+func TestIsXRPCurrency(t *testing.T) {
+	tt := []struct {
+		name     string
+		code     string
+		expected bool
+	}{
+		{name: "native XRP", code: "XRP", expected: true},
+		{name: "reserved ISO XRP layout", code: "0000000000000000000000005852500000000000", expected: true},
+		{name: "issued currency", code: "USD", expected: false},
+		{name: "lowercase xrP is an issued currency", code: "xrP", expected: false},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			currencyBytes, err := ParseCurrencyCode(tc.code)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, IsXRPCurrency(currencyBytes))
+		})
+	}
+}

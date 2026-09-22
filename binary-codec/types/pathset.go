@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -128,6 +129,9 @@ func newPathStep(v map[string]any) ([]byte, error) {
 		currency, err := ParseCurrencyCode(curStr)
 		if err != nil {
 			return nil, fmt.Errorf("%w: invalid currency path step: %w", ErrInvalidPathSet, err)
+		}
+		if bytes.Equal(currency, isoXRPBytes) {
+			return nil, fmt.Errorf("%w: invalid currency path step: %w", ErrInvalidPathSet, &InvalidCodeError{Disallowed: curStr})
 		}
 		b = append(b, currency...)
 		dataType |= typeCurrency
