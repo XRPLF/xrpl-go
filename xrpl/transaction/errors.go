@@ -786,6 +786,15 @@ var (
 	ErrConfidentialSendInvalidCommitment = errors.New("confidential MPT send: commitments must be valid 33-byte compressed secp256k1 points")
 	// ErrConfidentialSendInvalidProof is returned when ZKProof does not match the required send proof length.
 	ErrConfidentialSendInvalidProof = errors.New("confidential MPT send: ZKProof must be 1892 hex characters (946-byte proof bundle)")
+
+	// ErrOracleProviderInvalid is returned when Provider is not whole-byte hexadecimal data.
+	ErrOracleProviderInvalid = errors.New("oracleSet: Provider must be whole-byte hexadecimal data")
+	// ErrOracleURIInvalid is returned when URI is not whole-byte hexadecimal data within its decoded byte limit.
+	ErrOracleURIInvalid = errors.New("oracleSet: URI must be whole-byte hexadecimal data of at most 256 bytes")
+	// ErrOracleAssetClassInvalid is returned when AssetClass is not whole-byte hexadecimal data within its decoded byte limit.
+	ErrOracleAssetClassInvalid = errors.New("oracleSet: AssetClass must be whole-byte hexadecimal data of at most 16 bytes")
+	// ErrOracleLastUpdateTimeInvalid is returned when LastUpdateTime predates the Ripple epoch.
+	ErrOracleLastUpdateTimeInvalid = errors.New("oracleSet: LastUpdateTime must be at least 946684800")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.
@@ -798,18 +807,6 @@ type ErrAMMTradingFeeTooHigh struct {
 func (e ErrAMMTradingFeeTooHigh) Error() string {
 	return fmt.Sprintf("AMM trading fee exceeds maximum allowed: got %d, must be less or equal than %d", e.Value, e.Limit)
 }
-
-// ErrOracleProviderInvalid is returned when Provider is not whole-byte hexadecimal data.
-var ErrOracleProviderInvalid = errors.New("oracleSet: Provider must be whole-byte hexadecimal data")
-
-// ErrOracleURIInvalid is returned when URI is not whole-byte hexadecimal data within its decoded byte limit.
-var ErrOracleURIInvalid = errors.New("oracleSet: URI must be whole-byte hexadecimal data of at most 256 bytes")
-
-// ErrOracleAssetClassInvalid is returned when AssetClass is not whole-byte hexadecimal data within its decoded byte limit.
-var ErrOracleAssetClassInvalid = errors.New("oracleSet: AssetClass must be whole-byte hexadecimal data of at most 16 bytes")
-
-// ErrOracleLastUpdateTimeInvalid is returned when LastUpdateTime predates the Ripple epoch.
-var ErrOracleLastUpdateTimeInvalid = errors.New("oracleSet: LastUpdateTime must be at least 946684800")
 
 // ErrOracleProviderLength is returned when the Provider field exceeds OracleSetProviderMaxLength decoded bytes.
 type ErrOracleProviderLength struct {

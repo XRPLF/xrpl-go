@@ -1019,6 +1019,29 @@ func TestIsDomainID(t *testing.T) {
 	}
 }
 
+func TestIsHexBlobWithin(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		maxBytes int
+		want     bool
+	}{
+		{"pass - exactly at the limit", "ABCD", 2, true},
+		{"pass - under the limit", "AB", 2, true},
+		{"pass - lowercase hex", "abcd", 2, true},
+		{"fail - empty", "", 2, false},
+		{"fail - odd length is not whole bytes", "ABC", 2, false},
+		{"fail - one byte over the limit", "ABCDEF", 2, false},
+		{"fail - not hex", "ZZ", 2, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, IsHexBlobWithin(tt.input, tt.maxBytes))
+		})
+	}
+}
+
 func TestIsHex256(t *testing.T) {
 	tests := []struct {
 		name     string
