@@ -112,8 +112,7 @@ func (tx *OracleSet) Validate() (bool, error) {
 		return false, err
 	}
 
-	// Same rule as IsHexBlobWithin, spelled out because Provider predates the helper and
-	// keeps its two public errors: one for bad hex and one carrying the length and limit.
+	// Provider keeps two errors: one for bad hex and one carrying the length and limit.
 	if tx.Provider != "" {
 		if !typecheck.IsHexBlob(tx.Provider) {
 			return false, ErrOracleProviderInvalid
@@ -126,11 +125,11 @@ func (tx *OracleSet) Validate() (bool, error) {
 		}
 	}
 
-	if tx.URI != "" && !IsHexBlobWithin(tx.URI, OracleSetURIMaxLength) {
+	if tx.URI != "" && !IsBoundedHexBlob(tx.URI, 2*OracleSetURIMaxLength) {
 		return false, ErrOracleURIInvalid
 	}
 
-	if tx.AssetClass != "" && !IsHexBlobWithin(tx.AssetClass, OracleSetAssetClassMaxLength) {
+	if tx.AssetClass != "" && !IsBoundedHexBlob(tx.AssetClass, 2*OracleSetAssetClassMaxLength) {
 		return false, ErrOracleAssetClassInvalid
 	}
 

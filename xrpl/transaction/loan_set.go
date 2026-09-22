@@ -250,7 +250,7 @@ func (tx *LoanSet) Validate() (bool, error) {
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
-		if !ValidateHexMetadata(tx.Data.Value(), LoanSetMaxDataLength) {
+		if !IsBoundedHexBlob(tx.Data.Value(), LoanSetMaxDataLength) {
 			return false, ErrLoanSetDataInvalid
 		}
 	}

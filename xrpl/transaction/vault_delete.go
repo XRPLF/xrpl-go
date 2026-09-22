@@ -62,7 +62,7 @@ func (tx *VaultDelete) Validate() (bool, error) {
 		return false, ErrVaultDeleteVaultIDInvalid
 	}
 
-	if tx.MemoData != nil && !ValidateHexMetadata(*tx.MemoData, VaultDeleteMaxMemoDataLength) {
+	if tx.MemoData != nil && !IsBoundedHexBlob(*tx.MemoData, VaultDeleteMaxMemoDataLength) {
 		return false, ErrVaultDeleteMemoDataInvalid
 	}
 

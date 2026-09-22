@@ -260,7 +260,7 @@ func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 	}
 
 	// Validate MPTokenMetadata: ensure it's in hex format and at most 1024 bytes (2048 chars).
-	if m.MPTokenMetadata != nil && !ValidateHexMetadata(*m.MPTokenMetadata, 2*types.MaxMPTokenMetadataByteLength) {
+	if m.MPTokenMetadata != nil && !IsBoundedHexBlob(*m.MPTokenMetadata, 2*types.MaxMPTokenMetadataByteLength) {
 		return false, ErrInvalidMPTokenMetadata
 	}
 

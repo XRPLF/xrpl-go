@@ -352,19 +352,19 @@ func IsMPTokenIssuer(issuanceID string, address types.Address) bool {
 	return bytes.Equal(issuerID, accountID)
 }
 
+// IsBoundedHexBlob reports whether s is non-empty, whole-byte hexadecimal of at most
+// maxHexLength hex characters. A limit declared in decoded bytes must be doubled, because
+// each byte encodes as two hex characters.
+func IsBoundedHexBlob(s string, maxHexLength int) bool {
+	return typecheck.IsHexBlob(s) && len(s) <= maxHexLength
+}
+
 // ValidateHexMetadata reports whether input is non-empty, whole-byte hexadecimal of at
 // most maxLength hex characters.
 //
-// Deprecated: use IsHexBlobWithin, which takes the limit in decoded bytes rather than hex
-// characters. This wrapper now rejects odd-length hex, which the binary codec cannot
-// encode, so it is stricter than its earlier versions.
-//
-// Callers in this package still use it on purpose. Their exported Max*Length constants are
-// in hex characters, and switching them to IsHexBlobWithin would either halve those
-// constants, a second API change, or scatter "/2" conversions through the validators.
-// That migration is a follow-up. The division below is the only place the two units meet.
+// Deprecated: use IsBoundedHexBlob, which takes the same arguments.
 func ValidateHexMetadata(input string, maxLength int) bool {
-	return IsHexBlobWithin(input, maxLength/2)
+	return IsBoundedHexBlob(input, maxLength)
 }
 
 // IsTokenAmount checks if the given amount is a token amount (IssuedCurrencyAmount or MPTCurrencyAmount).
@@ -375,12 +375,6 @@ func IsTokenAmount(amount types.CurrencyAmount) bool {
 	}
 	kind := amount.Kind()
 	return kind == types.ISSUED || kind == types.MPT
-}
-
-// IsHexBlobWithin reports whether s is non-empty, whole-byte hexadecimal of at most
-// maxBytes decoded bytes.
-func IsHexBlobWithin(s string, maxBytes int) bool {
-	return typecheck.IsHexBlob(s) && len(s)/2 <= maxBytes
 }
 
 // isValidFixedHexBlob reports whether s is hexadecimal with the exact encoded length.

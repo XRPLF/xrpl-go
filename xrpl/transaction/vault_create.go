@@ -144,7 +144,7 @@ func (tx *VaultCreate) Validate() (bool, error) {
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
-		if !ValidateHexMetadata(tx.Data.Value(), VaultCreateMaxDataLength) {
+		if !IsBoundedHexBlob(tx.Data.Value(), VaultCreateMaxDataLength) {
 			return false, ErrVaultCreateDataInvalid
 		}
 	}
@@ -154,7 +154,7 @@ func (tx *VaultCreate) Validate() (bool, error) {
 	}
 
 	if tx.MPTokenMetadata != nil && *tx.MPTokenMetadata != "" {
-		if !ValidateHexMetadata(*tx.MPTokenMetadata, VaultCreateMaxMPTokenMetadataLength) {
+		if !IsBoundedHexBlob(*tx.MPTokenMetadata, VaultCreateMaxMPTokenMetadataLength) {
 			return false, ErrVaultCreateMPTokenMetadataInvalid
 		}
 	}
