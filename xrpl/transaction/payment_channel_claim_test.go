@@ -11,6 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testChannelID is a well-formed 256-bit payment channel ID.
+const testChannelID = "C1AE6DDDEEC05CF2978C0BAD6FE302948E9533691DC749DCDD3B9E5992CA6198"
+
 func TestPaymentChannelClaim_TxType(t *testing.T) {
 	tx := &PaymentChannelClaim{}
 	assert.Equal(t, PaymentChannelClaimTx, tx.TxType())
@@ -101,13 +104,13 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Signature: "ABCDEF",
-				PublicKey: "123456",
+				PublicKey: testPublicKey,
 			},
 			expected: `{
 				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PaymentChannelClaim",
 				"Signature": "ABCDEF",
-				"PublicKey": "123456"
+				"PublicKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
 			}`,
 		},
 		{
@@ -121,7 +124,7 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 				Balance:       types.XRPCurrencyAmount(1000),
 				Amount:        types.XRPCurrencyAmount(2000),
 				Signature:     "ABCDEF",
-				PublicKey:     "123456",
+				PublicKey:     testPublicKey,
 				CredentialIDs: types.CredentialIDs{"1234567890abcdef"},
 			},
 			expected: `{
@@ -131,7 +134,7 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 				"Balance": "1000",
 				"Amount": "2000",
 				"Signature": "ABCDEF",
-				"PublicKey": "123456",
+				"PublicKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 				"CredentialIDs": ["1234567890abcdef"]
 			}`,
 		},
@@ -161,9 +164,9 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Balance:       types.XRPCurrencyAmount(1000),
-				Channel:       "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:       testChannelID,
 				Signature:     "ABCDEF",
-				PublicKey:     "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				PublicKey:     testPublicKey,
 				CredentialIDs: types.CredentialIDs{"1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"},
 			},
 			wantValid: true,
@@ -176,7 +179,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel: testChannelID,
 				Balance: types.XRPCurrencyAmount(currency.MaxNativeDrops + 1),
 			},
 			wantValid:   false,
@@ -190,7 +193,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel: testChannelID,
 				Amount:  types.XRPCurrencyAmount(currency.MaxNativeDrops + 1),
 			},
 			wantValid:   false,
@@ -204,7 +207,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel: testChannelID,
 				Balance: 2,
 				Amount:  1,
 			},
@@ -219,9 +222,9 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:   testChannelID,
 				Signature: "ABCDEF",
-				PublicKey: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				PublicKey: testPublicKey,
 			},
 			wantValid:   false,
 			wantErr:     true,
@@ -234,7 +237,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:   testChannelID,
 				Balance:   1,
 				Signature: "ABCDEF",
 			},
@@ -249,9 +252,9 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Balance:   types.XRPCurrencyAmount(1000),
-				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:   testChannelID,
 				Signature: "ABCDEF",
-				PublicKey: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				PublicKey: testPublicKey,
 			},
 			wantValid:   false,
 			wantErr:     true,
@@ -276,8 +279,22 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:   testChannelID,
 				Signature: "INVALID_SIGNATURE",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidSignature,
+		},
+		{
+			name: "fail - odd-length Signature is not whole bytes",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   testChannelID,
+				Signature: "ABC",
 			},
 			wantValid:   false,
 			wantErr:     true,
@@ -290,7 +307,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel: testChannelID,
 			},
 			wantValid: true,
 			wantErr:   false,
@@ -302,7 +319,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:   testChannelID,
 				PublicKey: "INVALID",
 			},
 			wantValid:   false,
@@ -316,7 +333,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel:       "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:       testChannelID,
 				CredentialIDs: types.CredentialIDs{"invalid"},
 			},
 			wantValid:   false,

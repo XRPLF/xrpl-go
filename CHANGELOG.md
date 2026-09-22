@@ -124,8 +124,9 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - `SponsorSignature` and LoanSet `CounterpartySignature` now share one form check: a present but empty `Signers` list is invalid, and `ErrInvalidSponsorSignature` wraps the specific reason so both remain matchable with `errors.Is`.
 - Rejected odd-length hex in the `Data`, `MemoData` and `MPTokenMetadata` fields of LoanSet, LoanBrokerSet, Vault and MPTokenIssuance transactions. It previously passed `Validate()` and failed at encoding.
 - `AMMClawback.Validate` no longer accepts a `Holder` equal to `Account`.
+- `PaymentChannelCreate` and `PaymentChannelClaim` now require `PublicKey` to be a well-formed public key rather than any hexadecimal string, and `PaymentChannelClaim.Signature` must be whole-byte hexadecimal.
 - Fixed `IsMPTCurrency` accepting an `MPTIssuanceID` that is not 24 bytes, so amounts and assets agree on the same ID.
-- Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel claims and funding, VaultCreate, and XChainCommit transactions.
+- Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel creation, claims and funding, VaultCreate, and XChainCommit transactions.
 
 #### xrpl/websocket
 
