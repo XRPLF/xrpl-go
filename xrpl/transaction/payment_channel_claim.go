@@ -148,7 +148,7 @@ func (p *PaymentChannelClaim) Validate() (bool, error) {
 		return false, ErrInvalidChannel
 	}
 
-	if p.Signature != "" && !typecheck.IsHex(p.Signature) {
+	if p.Signature != "" && !typecheck.IsHexBlob(p.Signature) {
 		return false, ErrInvalidSignature
 	}
 

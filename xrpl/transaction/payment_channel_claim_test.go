@@ -284,6 +284,20 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			expectedErr: ErrInvalidSignature,
 		},
 		{
+			name: "fail - odd-length Signature is not whole bytes",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+				Signature: "ABC",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidSignature,
+		},
+		{
 			name: "pass - no Signature",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
