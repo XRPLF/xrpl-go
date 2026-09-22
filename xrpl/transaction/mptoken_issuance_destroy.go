@@ -30,7 +30,7 @@ func (*MPTokenIssuanceDestroy) TxType() TxType {
 func (m *MPTokenIssuanceDestroy) Flatten() FlatTransaction {
 	flattened := m.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "MPTokenIssuanceDestroy"
+	flattened["TransactionType"] = m.TxType().String()
 
 	flattened["MPTokenIssuanceID"] = m.MPTokenIssuanceID
 

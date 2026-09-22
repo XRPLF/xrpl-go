@@ -32,7 +32,7 @@ func (*Clawback) TxType() TxType {
 func (c *Clawback) Flatten() FlatTransaction {
 	flattened := c.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "Clawback"
+	flattened["TransactionType"] = c.TxType().String()
 
 	if c.Amount != nil {
 		flattened["Amount"] = c.Amount.Flatten()

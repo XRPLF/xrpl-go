@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
+- Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
 
 ## [v0.3.1]
 

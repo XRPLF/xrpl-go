@@ -55,7 +55,7 @@ func (*EscrowCreate) TxType() TxType {
 func (e *EscrowCreate) Flatten() FlatTransaction {
 	flattened := e.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "EscrowCreate"
+	flattened["TransactionType"] = e.TxType().String()
 
 	if e.Amount != nil {
 		flattened["Amount"] = e.Amount.Flatten()

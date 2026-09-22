@@ -36,7 +36,7 @@ func (*EscrowCancel) TxType() TxType {
 func (e *EscrowCancel) Flatten() FlatTransaction {
 	flattened := e.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "EscrowCancel"
+	flattened["TransactionType"] = e.TxType().String()
 
 	if e.Owner != "" {
 		flattened["Owner"] = e.Owner.String()

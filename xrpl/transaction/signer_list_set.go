@@ -72,7 +72,7 @@ func (*SignerListSet) TxType() TxType {
 func (s *SignerListSet) Flatten() FlatTransaction {
 	flattened := s.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "SignerListSet"
+	flattened["TransactionType"] = s.TxType().String()
 
 	if s.SignerQuorum != nil {
 		flattened["SignerQuorum"] = s.SignerQuorum

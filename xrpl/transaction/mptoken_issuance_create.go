@@ -119,7 +119,7 @@ func (*MPTokenIssuanceCreate) TxType() TxType {
 func (m *MPTokenIssuanceCreate) Flatten() FlatTransaction {
 	flattened := m.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "MPTokenIssuanceCreate"
+	flattened["TransactionType"] = m.TxType().String()
 
 	if m.AssetScale != nil {
 		flattened["AssetScale"] = *m.AssetScale

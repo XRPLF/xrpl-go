@@ -103,7 +103,7 @@ func (a *AMMDeposit) Flatten() FlatTransaction {
 	flattened := a.BaseTx.Flatten()
 
 	// Add AMMDeposit-specific fields
-	flattened["TransactionType"] = AMMDepositTx.String()
+	flattened["TransactionType"] = a.TxType().String()
 
 	flattened["Asset"] = a.Asset.Flatten()
 	flattened["Asset2"] = a.Asset2.Flatten()

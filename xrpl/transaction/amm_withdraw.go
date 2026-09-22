@@ -106,7 +106,7 @@ func (a *AMMWithdraw) Flatten() FlatTransaction {
 	flattened := a.BaseTx.Flatten()
 
 	// Add AMMWithdraw-specific fields
-	flattened["TransactionType"] = "AMMWithdraw"
+	flattened["TransactionType"] = a.TxType().String()
 
 	flattened["Asset"] = a.Asset.Flatten()
 	flattened["Asset2"] = a.Asset2.Flatten()

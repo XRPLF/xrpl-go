@@ -41,7 +41,7 @@ func (m *MPTokenAuthorize) Flatten() FlatTransaction {
 	// Add BaseTx fields
 	flattened := m.BaseTx.Flatten()
 
-	flattened["TransactionType"] = "MPTokenAuthorize"
+	flattened["TransactionType"] = m.TxType().String()
 
 	flattened["Account"] = m.Account.String()
 
