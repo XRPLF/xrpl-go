@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### BREAKING CHANGES
+
+#### xrpl/transaction
+
+- Corrected the `AMMClawback` model to use issue-shaped `Asset` and `Asset2` fields and an optional issued-token or MPT `Amount`.
+- Changed `TrustSet.QualityIn` and `QualityOut` to optional pointers so callers can distinguish omission from an explicit zero that clears a quality.
+
 ### Added
 
 #### binary-codec
@@ -29,8 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- Corrected the `AMMClawback` model to use issue-shaped `Asset` and `Asset2` fields and an optional issued-token or MPT `Amount`.
-- Changed `TrustSet.QualityIn` and `QualityOut` to optional pointers so callers can distinguish omission from an explicit zero that clears a quality.
 - Deprecated `ValidateHexMetadata` in favour of `IsBoundedHexBlob`, which takes the same arguments. It now rejects odd-length hex, which the binary codec cannot encode.
 
 ### Fixed
