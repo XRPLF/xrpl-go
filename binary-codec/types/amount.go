@@ -509,34 +509,13 @@ func SerializeIssuedCurrencyValue(value string) ([]byte, error) {
 }
 
 // SerializeIssuedCurrencyCode serializes an issued currency code to its bytes representation.
-// The currency code can be 3 allowed string characters, or 20 bytes of hex.
+// It accepts what ParseCurrencyCode accepts, except XRP in either spelling, because XRP is
+// not an issued currency.
 func SerializeIssuedCurrencyCode(currency string) ([]byte, error) {
-	currency = strings.TrimPrefix(currency, "0x")                                    // remove the 0x prefix if it exists
-	if currency == "XRP" || currency == "0000000000000000000000005852500000000000" { // if the currency code is uppercase XRP, return an error
+	if currency == "XRP" || currency == "0000000000000000000000005852500000000000" {
 		return nil, &InvalidCodeError{Disallowed: "XRP uppercase"}
 	}
-
-	switch len(currency) {
-	case 3: // if the currency code is 3 characters, it is standard
-		return serializeIssuedCurrencyCodeChars(currency)
-	case 40: // a hex code is taken verbatim, as rippled's to_currency does
-		return hex.DecodeString(currency)
-	}
-
-	return nil, &InvalidCodeError{Disallowed: currency}
-}
-
-func serializeIssuedCurrencyCodeChars(currency string) ([]byte, error) {
-	r := regexp.MustCompile(IOUCodeRegex) // regex to check if the currency code is valid
-	m := r.FindAllString(currency, -1)
-
-	if len(m) != 1 {
-		return nil, errInvalidCurrencyCode
-	}
-
-	currencyBytes := make([]byte, 20)
-	copy(currencyBytes[12:], []byte(currency))
-	return currencyBytes, nil
+	return ParseCurrencyCode(currency)
 }
 
 // serializeIssuedCurrencyIssuer decodes an issued-currency issuer into its

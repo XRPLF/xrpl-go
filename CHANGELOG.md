@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### binary-codec
 
 - Added `types.SerializeIssuedCurrencyCode` for validating and serializing issued-currency codes to their canonical 20-byte representation.
+- Added `types.ParseCurrencyCode`, the single currency-code parser behind `Currency` and issued-currency amounts.
 
 #### xrpl/transaction
 
@@ -21,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `types.Address.Flatten`, which returns the classic form of a tagless X-address for use inside nested objects such as issuers.
 
 ### Changed
+
+#### binary-codec
+
+- Currency codes no longer accept a `0x` prefix, which no XRPL implementation accepts. A code is `XRP`, three characters from the IOU alphabet, or 40 hexadecimal characters.
 
 #### xrpl/transaction
 
@@ -33,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### binary-codec
 
 - Fixed hex currency codes with a `0x00` type byte being rewritten to XRP or rejected on encoding. They now serialize verbatim.
+- Fixed `Currency` accepting three-character codes outside the IOU alphabet, which produced Issue fields the ledger rejects.
 
 #### xrpl/transaction
 

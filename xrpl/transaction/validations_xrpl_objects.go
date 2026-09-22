@@ -291,12 +291,7 @@ func IsAsset(asset ledger.Asset) (bool, error) {
 		if _, hasTag, err := decodeAddressAccountID(asset.Issuer); err != nil || hasTag {
 			return false, ErrInvalidAssetIssuer
 		}
-		currencyBytes, err := (&bctypes.Currency{}).FromJSON(asset.Currency)
-		// The length check borrows XRPBytes only because it is a valid byte representation
-		// of a currency code, so every other code must be the same size. It says nothing about XRP.
-		// The last check catches XRP spelled as its all-zero hex form. This branch always
-		// has an issuer and XRP never does, so the pair would encode to an undecodable blob.
-		if err != nil || len(currencyBytes) != len(bctypes.XRPBytes) || bytes.Equal(currencyBytes, bctypes.XRPBytes) {
+		if _, err := bctypes.SerializeIssuedCurrencyCode(asset.Currency); err != nil {
 			return false, ErrInvalidAssetCurrency
 		}
 	}

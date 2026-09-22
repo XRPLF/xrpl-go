@@ -74,8 +74,8 @@ func assetIssuerAccountID(asset ledger.Asset) ([]byte, bool) {
 func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
 	switch amount := amount.(type) {
 	case types.IssuedCurrencyAmount:
-		amountCurrency, err := (&bctypes.Currency{}).FromJSON(strings.TrimPrefix(amount.Currency, "0x"))
-		assetCurrency, assetErr := (&bctypes.Currency{}).FromJSON(asset.Currency)
+		amountCurrency, err := bctypes.SerializeIssuedCurrencyCode(amount.Currency)
+		assetCurrency, assetErr := bctypes.SerializeIssuedCurrencyCode(asset.Currency)
 		return asset.Kind() == ledger.AssetIOU && err == nil && assetErr == nil &&
 			bytes.Equal(amountCurrency, assetCurrency) && sameAccountAddress(amount.Issuer, asset.Issuer)
 	case types.MPTCurrencyAmount:

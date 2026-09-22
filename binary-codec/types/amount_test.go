@@ -571,10 +571,10 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:        "pass - valid standard currency - ISO4217 - USD - hex",
+			name:        "fail - 0x prefix is not a currency code",
 			input:       "0x0000000000000000000000005553440000000000",
-			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55, 0x53, 0x44, 0x00, 0x00, 0x00, 0x00, 0x00},
-			expectedErr: nil,
+			expected:    nil,
+			expectedErr: &InvalidCodeError{"0x0000000000000000000000005553440000000000"},
 		},
 		{
 			name:        "pass - valid standard currency - ISO4217 - USD - unprefixed hex",
@@ -590,7 +590,7 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 		},
 		{
 			name:        "pass - valid standard currency - non ISO4217 - BTC - hex",
-			input:       "0x0000000000000000000000004254430000000000",
+			input:       "0000000000000000000000004254430000000000",
 			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42, 0x54, 0x43, 0x00, 0x00, 0x00, 0x00, 0x00},
 			expectedErr: nil,
 		},
@@ -614,13 +614,13 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 		},
 		{
 			name:        "pass - valid non-standard currency - 4 characters - hex",
-			input:       "0x4142434400000000000000000000000000000000",
+			input:       "4142434400000000000000000000000000000000",
 			expected:    []byte{0x41, 0x42, 0x43, 0x44, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 			expectedErr: nil,
 		},
 		{
 			name:        "pass - special case - XRP - hex",
-			input:       "0x0000000000000000000000000000000000000000",
+			input:       "0000000000000000000000000000000000000000",
 			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 			expectedErr: nil,
 		},
@@ -632,7 +632,7 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 		},
 		{
 			name:        "pass - standard currency - valid symbols in currency code - 3 characters - hex",
-			input:       "0x000000000000000000000000412a420000000000",
+			input:       "000000000000000000000000412a420000000000",
 			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0x2a, 0x42, 0x00, 0x00, 0x00, 0x00, 0x00},
 			expectedErr: nil,
 		},
@@ -644,7 +644,7 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 		},
 		{
 			name:        "pass - non-standard currency - hex is taken verbatim even with a standard type byte",
-			input:       "0x00000000000000000000000041442f0000000000",
+			input:       "00000000000000000000000041442f0000000000",
 			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0x44, 0x2f, 0x00, 0x00, 0x00, 0x00, 0x00},
 			expectedErr: nil,
 		},
