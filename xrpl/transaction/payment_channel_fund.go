@@ -3,7 +3,6 @@ package transaction
 import (
 	"time"
 
-	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	rippletime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -62,7 +61,7 @@ func (p *PaymentChannelFund) Validate() (bool, error) {
 		return false, err
 	}
 
-	if p.Amount.IsZero() || p.Amount.Uint64() > currency.MaxNativeDrops {
+	if p.Amount.IsZero() || !p.Amount.IsValid() {
 		return false, ErrPaymentChannelFundAmountInvalid
 	}
 

@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### xrpl/transaction
 
 - Added `IsHexBlobWithin` for checking hex fields against a decoded byte limit.
+- Added `types.XRPCurrencyAmount.IsValid`, which reports whether an amount fits the native XRP range.
 - Added `types.Address.Flatten`, which returns the classic form of a tagless X-address for use inside nested objects such as issuers.
 
 ### Changed

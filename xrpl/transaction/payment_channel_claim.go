@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
-	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -157,11 +156,11 @@ func (p *PaymentChannelClaim) Validate() (bool, error) {
 		return false, ErrInvalidHexPublicKey
 	}
 
-	if p.Balance.Uint64() > currency.MaxNativeDrops {
+	if !p.Balance.IsValid() {
 		return false, ErrPaymentChannelClaimBalanceInvalid
 	}
 
-	if p.Amount.Uint64() > currency.MaxNativeDrops {
+	if !p.Amount.IsValid() {
 		return false, ErrPaymentChannelClaimAmountInvalid
 	}
 
