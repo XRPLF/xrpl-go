@@ -101,17 +101,6 @@ func (a *AMMClawback) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func validateAMMClawbackAmount(amount types.CurrencyAmount, asset ledger.Asset) error {
-	if !isPositiveTokenAmount(amount) {
-		return ErrAMMClawbackInvalidAmount
-	}
-	if !sameIssue(amount, asset) {
-		return ErrAMMClawbackAmountAssetMismatch
-	}
-
-	return nil
-}
-
 // Validate validates the AMMClawback transaction.
 func (a *AMMClawback) Validate() (bool, error) {
 	_, err := a.BaseTx.Validate()
@@ -149,8 +138,11 @@ func (a *AMMClawback) Validate() (bool, error) {
 	}
 
 	if a.Amount != nil {
-		if err := validateAMMClawbackAmount(a.Amount, a.Asset); err != nil {
-			return false, err
+		if !isPositiveTokenAmount(a.Amount) {
+			return false, ErrAMMClawbackInvalidAmount
+		}
+		if !sameIssue(a.Amount, a.Asset) {
+			return false, ErrAMMClawbackAmountAssetMismatch
 		}
 	}
 
