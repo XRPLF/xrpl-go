@@ -152,7 +152,7 @@ var (
 	// ErrInvalidOtherChainSource is returned when OtherChainSource is not a valid address.
 	ErrInvalidOtherChainSource = errors.New("invalid other chain source")
 	// ErrInvalidOtherChainDestination is returned when OtherChainDestination is not an encodable AccountID.
-	ErrInvalidOtherChainDestination = errors.New("xchain commit: invalid other chain destination")
+	ErrInvalidOtherChainDestination = errors.New("invalid other chain destination")
 	// ErrInvalidPublicKey is returned when the PublicKey field is empty or invalid.
 	ErrInvalidPublicKey = errors.New("invalid public key")
 	// ErrInvalidWasLockingChainSend is returned when WasLockingChainSend is not 0 or 1.
