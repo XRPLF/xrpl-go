@@ -99,8 +99,46 @@ func TestCheckCreate_Validate(t *testing.T) {
 				SendMax:        types.XRPCurrencyAmount(10000),
 				DestinationTag: types.DestinationTag(23480),
 				Expiration:     533257958,
-				InvoiceID:      "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855810100",
+				InvoiceID:      "a0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B",
 			},
+		},
+		{
+			name: "pass - empty InvoiceID",
+			tx: &CheckCreate{
+				BaseTx:      BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: CheckCreateTx},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				SendMax:     types.XRPCurrencyAmount(10000),
+			},
+		},
+		{
+			name: "fail - non-hex InvoiceID",
+			tx: &CheckCreate{
+				BaseTx:      BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: CheckCreateTx},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				SendMax:     types.XRPCurrencyAmount(10000),
+				InvoiceID:   "G0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B",
+			},
+			expectedErr: ErrInvalidInvoiceID,
+		},
+		{
+			name: "fail - short InvoiceID",
+			tx: &CheckCreate{
+				BaseTx:      BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: CheckCreateTx},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				SendMax:     types.XRPCurrencyAmount(10000),
+				InvoiceID:   "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991",
+			},
+			expectedErr: ErrInvalidInvoiceID,
+		},
+		{
+			name: "fail - long InvoiceID",
+			tx: &CheckCreate{
+				BaseTx:      BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: CheckCreateTx},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				SendMax:     types.XRPCurrencyAmount(10000),
+				InvoiceID:   "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7",
+			},
+			expectedErr: ErrInvalidInvoiceID,
 		},
 		{
 			name: "fail - BaseTx missing TransactionType",

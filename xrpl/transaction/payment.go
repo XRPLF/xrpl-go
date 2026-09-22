@@ -205,6 +205,10 @@ func (p *Payment) Validate() (bool, error) {
 		return false, ErrInvalidDestination
 	}
 
+	if p.InvoiceID != "" && !IsHex256(p.InvoiceID.String()) {
+		return false, ErrInvalidInvoiceID
+	}
+
 	// Check if the field Paths is valid
 	if p.Paths != nil {
 		if ok, err := IsPaths(p.Paths); !ok {

@@ -122,6 +122,49 @@ func TestPayment_Validate(t *testing.T) {
 		expectedErr error
 	}{
 		{
+			name: "pass - valid InvoiceID",
+			payment: Payment{
+				BaseTx:      BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: PaymentTx},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				Amount:      types.XRPCurrencyAmount(10000),
+				InvoiceID:   "a0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B",
+			},
+			wantValid: true,
+		},
+		{
+			name: "fail - non-hex InvoiceID",
+			payment: Payment{
+				BaseTx:      BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: PaymentTx},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				Amount:      types.XRPCurrencyAmount(10000),
+				InvoiceID:   "G0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B",
+			},
+			wantErr:     true,
+			expectedErr: ErrInvalidInvoiceID,
+		},
+		{
+			name: "fail - short InvoiceID",
+			payment: Payment{
+				BaseTx:      BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: PaymentTx},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				Amount:      types.XRPCurrencyAmount(10000),
+				InvoiceID:   "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991",
+			},
+			wantErr:     true,
+			expectedErr: ErrInvalidInvoiceID,
+		},
+		{
+			name: "fail - long InvoiceID",
+			payment: Payment{
+				BaseTx:      BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: PaymentTx},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				Amount:      types.XRPCurrencyAmount(10000),
+				InvoiceID:   "A0258020E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7",
+			},
+			wantErr:     true,
+			expectedErr: ErrInvalidInvoiceID,
+		},
+		{
 			name: "pass - sponsored account creation without transaction sponsor",
 			payment: Payment{
 				BaseTx: BaseTx{
