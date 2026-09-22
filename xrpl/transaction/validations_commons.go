@@ -67,6 +67,12 @@ func assetIssuerAccountID(asset ledger.Asset) ([]byte, bool) {
 	return nil, false
 }
 
+// assetIssuedBy reports whether asset is issued by accountID. XRP has no issuer.
+func assetIssuedBy(asset ledger.Asset, accountID []byte) bool {
+	issuerID, ok := assetIssuerAccountID(asset)
+	return ok && bytes.Equal(issuerID, accountID)
+}
+
 // sameIssue reports whether amount is denominated in asset. Currency codes are compared
 // as codec bytes so "USD" equals its hex spelling, and issuers as AccountIDs so a classic
 // address equals its X-address. Both inputs must already be validated.

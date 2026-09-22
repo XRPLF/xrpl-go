@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -119,11 +118,16 @@ func (a *AMMClawback) Validate() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	accountID, _, err := decodeAddressAccountID(a.Account)
+	if err != nil {
+		return false, ErrInvalidAccount
+	}
 
-	if !addresscodec.IsValidAddress(a.Holder) {
+	holderID, _, err := decodeAddressAccountID(types.Address(a.Holder))
+	if err != nil {
 		return false, ErrInvalidHolder
 	}
-	if sameAccountAddress(types.Address(a.Holder), a.Account) {
+	if bytes.Equal(holderID, accountID) {
 		return false, ErrAMMClawbackSameHolder
 	}
 
@@ -133,25 +137,15 @@ func (a *AMMClawback) Validate() (bool, error) {
 	if a.Asset.Kind() == ledger.AssetXRP {
 		return false, ErrAMMClawbackAssetCannotBeXRP
 	}
-
-	accountID, _, err := decodeAddressAccountID(a.Account)
-	if err != nil {
-		return false, ErrInvalidAccount
-	}
-	assetIssuer, ok := assetIssuerAccountID(a.Asset)
-	if !ok || !bytes.Equal(assetIssuer, accountID) {
+	if !assetIssuedBy(a.Asset, accountID) {
 		return false, ErrInvalidAssetIssuer
 	}
 
 	if ok, err := IsAsset(a.Asset2); !ok {
 		return false, fmt.Errorf("%w: %w", ErrAMMClawbackInvalidAsset2, err)
 	}
-
-	if a.Flags&TfClawTwoAssets != 0 {
-		asset2Issuer, ok := assetIssuerAccountID(a.Asset2)
-		if !ok || !bytes.Equal(asset2Issuer, accountID) {
-			return false, ErrAMMClawbackAsset2IssuerMismatch
-		}
+	if a.Flags&TfClawTwoAssets != 0 && !assetIssuedBy(a.Asset2, accountID) {
+		return false, ErrAMMClawbackAsset2IssuerMismatch
 	}
 
 	if a.Amount != nil {
