@@ -153,9 +153,8 @@ func (a *AMMDeposit) Validate() (bool, error) {
 		}
 	}
 
-	const depositModeMask = TfLPToken | TfSingleAsset | TfTwoAsset | TfOneAssetLPToken | TfLimitLPToken | TfTwoAssetIfEmpty
-	if a.TradingFee != 0 && a.Flags&depositModeMask != TfTwoAssetIfEmpty {
-		return false, ErrTransactionInvalidField{Type: AMMDepositTx.String(), Field: "TradingFee"}
+	if a.TradingFee != 0 && !types.IsFlagEnabled(a.Flags, TfTwoAssetIfEmpty) {
+		return false, ErrAMMDepositTradingFeeRequiresEmptyPool
 	}
 
 	switch {

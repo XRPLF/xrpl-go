@@ -515,6 +515,8 @@ var (
 	// ErrAMMClawbackAsset2IssuerMismatch is returned when tfClawTwoAssets is used with another issuer or XRP.
 	ErrAMMClawbackAsset2IssuerMismatch = errors.New("ammClawback: tfClawTwoAssets requires Asset2 to have the Account issuer")
 
+	// ErrAMMDepositTradingFeeRequiresEmptyPool is returned when TradingFee is set without tfTwoAssetIfEmpty.
+	ErrAMMDepositTradingFeeRequiresEmptyPool = errors.New("ammDeposit: TradingFee is only allowed with tfTwoAssetIfEmpty")
 	// ErrAMMAtLeastOneAssetMustBeNonXRP is returned when both assets are XRP; at least one asset must be non-XRP.
 	ErrAMMAtLeastOneAssetMustBeNonXRP = errors.New("at least one of the assets must be non-XRP")
 	// ErrAMMAuthAccountsTooMany is returned when more than four AuthAccount objects are provided.
