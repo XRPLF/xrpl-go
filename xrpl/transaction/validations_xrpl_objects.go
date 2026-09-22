@@ -276,7 +276,7 @@ func IsAsset(asset ledger.Asset) (bool, error) {
 			return false, ErrInvalidAssetFields
 		case currency.NativeCurrencySymbol:
 		default:
-			return false, ErrInvalidAssetCurrency
+			return false, ErrInvalidAssetIssuer
 		}
 	case ledger.AssetIOU:
 		if strings.TrimSpace(asset.Currency) == "" {

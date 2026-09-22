@@ -628,15 +628,15 @@ func TestIsAsset(t *testing.T) {
 		}
 	})
 
-	t.Run("fail - native currency code must be uppercase XRP", func(t *testing.T) {
+	t.Run("fail - only uppercase XRP is native, any other code needs an issuer", func(t *testing.T) {
 		obj := ledger.Asset{
-			Currency: "xrP", // encodes as an issued code without an issuer, which cannot be decoded
+			Currency: "xrP",
 		}
 
 		ok, err := IsAsset(obj)
 
 		require.False(t, ok)
-		require.ErrorIs(t, err, ErrInvalidAssetCurrency)
+		require.ErrorIs(t, err, ErrInvalidAssetIssuer)
 	})
 
 	t.Run("fail - currency is not an encodable code", func(t *testing.T) {
