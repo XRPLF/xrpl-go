@@ -2,7 +2,6 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -84,7 +83,7 @@ func (p *PaymentChannelCreate) Validate() (bool, error) {
 	}
 
 	// check PublicKey is valid hexademical string
-	if p.PublicKey == "" || !typecheck.IsHex(p.PublicKey) {
+	if !isPublicKey(p.PublicKey) {
 		return false, ErrInvalidHexPublicKey
 	}
 

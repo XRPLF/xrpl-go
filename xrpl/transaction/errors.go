@@ -121,8 +121,8 @@ var (
 	ErrInvalidIssuer = errors.New("invalid xrpl address for Issuer")
 	// ErrInvalidOwner is returned when the Owner field does not meet XRPL address standards.
 	ErrInvalidOwner = errors.New("invalid xrpl address for Owner")
-	// ErrInvalidHexPublicKey is returned when the PublicKey is not a valid hexadecimal string.
-	ErrInvalidHexPublicKey = errors.New("invalid PublicKey, must be a valid hexadecimal string")
+	// ErrInvalidHexPublicKey is returned when the PublicKey is not a well-formed public key.
+	ErrInvalidHexPublicKey = errors.New("invalid PublicKey, must be a well-formed public key")
 	// ErrInvalidTransactionType is returned when the TransactionType field is invalid or missing.
 	ErrInvalidTransactionType = errors.New("invalid or missing TransactionType")
 	// ErrInvalidSubject is returned when the Subject field is an invalid xrpl address.

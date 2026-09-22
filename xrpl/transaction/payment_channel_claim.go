@@ -152,7 +152,7 @@ func (p *PaymentChannelClaim) Validate() (bool, error) {
 		return false, ErrInvalidSignature
 	}
 
-	if p.PublicKey != "" && !typecheck.IsHex(p.PublicKey) {
+	if p.PublicKey != "" && !isPublicKey(p.PublicKey) {
 		return false, ErrInvalidHexPublicKey
 	}
 
