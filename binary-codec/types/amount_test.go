@@ -557,7 +557,7 @@ func TestSerializeIssuedCurrencyValue(t *testing.T) {
 	}
 }
 
-func TestSerializeIssuedCurrencyCode(t *testing.T) {
+func TestParseCurrencyCode(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       string
@@ -595,16 +595,16 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name:        "fail - disallowed standard currency - XRP",
+			name:        "pass - XRP is the native currency",
 			input:       "XRP",
-			expected:    nil,
-			expectedErr: &InvalidCodeError{"XRP uppercase"},
+			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
 		},
 		{
-			name:        "fail - disallowed standard currency - XRP - hex",
+			name:        "pass - ISO XRP in hex is taken verbatim",
 			input:       "0000000000000000000000005852500000000000",
-			expected:    nil,
-			expectedErr: &InvalidCodeError{"XRP uppercase"},
+			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x58, 0x52, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
 		},
 		{
 			name:        "fail - invalid standard currency - 4 characters",
@@ -657,7 +657,7 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := SerializeIssuedCurrencyCode(tt.input)
+			got, err := ParseCurrencyCode(tt.input)
 
 			if tt.expectedErr != nil {
 				require.EqualError(t, tt.expectedErr, err.Error())
@@ -693,6 +693,22 @@ func TestSerializeIssuedCurrencyAmount(t *testing.T) {
 			inputIssuer:   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
 			expected:      nil,
 			expectedErr:   &InvalidCodeError{"USDD"},
+		},
+		{
+			name:          "fail - XRP is not an issued currency",
+			inputValue:    "7072.8",
+			inputCurrency: "XRP",
+			inputIssuer:   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+			expected:      nil,
+			expectedErr:   &InvalidCodeError{"XRP"},
+		},
+		{
+			name:          "fail - all-zero hex is XRP, not an issued currency",
+			inputValue:    "7072.8",
+			inputCurrency: "0000000000000000000000000000000000000000",
+			inputIssuer:   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+			expected:      nil,
+			expectedErr:   &InvalidCodeError{"XRP"},
 		},
 		{
 			name:          "fail - invalid issuer",

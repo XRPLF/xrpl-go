@@ -157,7 +157,7 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 	if strings.TrimSpace(issuedAmount.Currency) == "" {
 		return false, ErrMissingTokenCurrency
 	}
-	if _, err := bctypes.SerializeIssuedCurrencyCode(issuedAmount.Currency); err != nil {
+	if _, err := issuedCurrencyBytes(issuedAmount.Currency); err != nil {
 		return false, ErrInvalidTokenCurrency
 	}
 
@@ -285,7 +285,7 @@ func IsAsset(asset ledger.Asset) (bool, error) {
 		if _, hasTag, err := decodeAddressAccountID(asset.Issuer); err != nil || hasTag {
 			return false, ErrInvalidAssetIssuer
 		}
-		if _, err := bctypes.SerializeIssuedCurrencyCode(asset.Currency); err != nil {
+		if _, err := issuedCurrencyBytes(asset.Currency); err != nil {
 			return false, ErrInvalidAssetCurrency
 		}
 	}
