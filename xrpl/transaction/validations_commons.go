@@ -105,10 +105,13 @@ func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
 // isPositiveTokenAmount reports whether amount is a well-formed issued or MPT amount
 // greater than zero. XRP is not a token amount.
 func isPositiveTokenAmount(amount types.CurrencyAmount) bool {
-	if !IsTokenAmount(amount) {
-		return false
+	var ok bool
+	switch amount.(type) {
+	case types.IssuedCurrencyAmount:
+		ok, _ = IsIssuedCurrency(amount)
+	case types.MPTCurrencyAmount:
+		ok, _ = IsMPTCurrency(amount)
 	}
-	ok, _ := IsAmount(amount, "Amount", true)
 	return ok && !amount.IsZero()
 }
 
