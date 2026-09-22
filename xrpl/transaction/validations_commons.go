@@ -92,10 +92,18 @@ func issuedCurrencyBytes(code string) ([]byte, error) {
 func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
 	switch amount := amount.(type) {
 	case types.IssuedCurrencyAmount:
+		if asset.Kind() != ledger.AssetIOU {
+			return false
+		}
 		amountCurrency, err := issuedCurrencyBytes(amount.Currency)
-		assetCurrency, assetErr := issuedCurrencyBytes(asset.Currency)
-		return asset.Kind() == ledger.AssetIOU && err == nil && assetErr == nil &&
-			bytes.Equal(amountCurrency, assetCurrency) && sameAccountAddress(amount.Issuer, asset.Issuer)
+		if err != nil {
+			return false
+		}
+		assetCurrency, err := issuedCurrencyBytes(asset.Currency)
+		if err != nil {
+			return false
+		}
+		return bytes.Equal(amountCurrency, assetCurrency) && sameAccountAddress(amount.Issuer, asset.Issuer)
 	case types.MPTCurrencyAmount:
 		return asset.Kind() == ledger.AssetMPT && strings.EqualFold(amount.MPTIssuanceID, asset.MPTIssuanceID)
 	}
