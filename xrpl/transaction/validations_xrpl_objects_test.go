@@ -315,10 +315,18 @@ func TestIsIssuedCurrency(t *testing.T) {
 			name: "fail - issuedCurrency object with XRP currency",
 			input: types.IssuedCurrencyAmount{
 				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
-				Currency: "XRp", // will be uppercased during validation
+				Currency: "XRP",
 				Value:    "100",
 			},
 			expectedErr: ErrInvalidTokenCurrency,
+		},
+		{
+			name: "pass - lowercase xrp is an issued currency, not XRP",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "XRp",
+				Value:    "100",
+			},
 		},
 		{
 			name: "fail - issuedCurrency object with empty value",
@@ -620,15 +628,15 @@ func TestIsAsset(t *testing.T) {
 		}
 	})
 
-	t.Run("fail - native currency code must be uppercase XRP", func(t *testing.T) {
+	t.Run("fail - only uppercase XRP is native, any other code needs an issuer", func(t *testing.T) {
 		obj := ledger.Asset{
-			Currency: "xrP", // encodes as an issued code without an issuer, which cannot be decoded
+			Currency: "xrP",
 		}
 
 		ok, err := IsAsset(obj)
 
 		require.False(t, ok)
-		require.ErrorIs(t, err, ErrInvalidAssetCurrency)
+		require.ErrorIs(t, err, ErrInvalidAssetIssuer)
 	})
 
 	t.Run("fail - currency is not an encodable code", func(t *testing.T) {
@@ -668,13 +676,26 @@ func TestIsAsset(t *testing.T) {
 
 	t.Run("fail - invalid Asset object with currency XRP and an issuer defined", func(t *testing.T) {
 		obj := ledger.Asset{
-			Currency: "xrP", // will be converted to XRP in the Validate function
+			Currency: "XRP",
 			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		}
 
 		ok, err := IsAsset(obj)
 
 		if ok {
+			t.Errorf("Expected IsAsset to return false, but got true with error: %v", err)
+		}
+	})
+
+	t.Run("pass - lowercase xrP with an issuer is an issued currency", func(t *testing.T) {
+		obj := ledger.Asset{
+			Currency: "xrP",
+			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+		}
+
+		ok, err := IsAsset(obj)
+
+		if !ok {
 			t.Errorf("Expected IsAsset to return true, but got false with error: %v", err)
 		}
 	})
