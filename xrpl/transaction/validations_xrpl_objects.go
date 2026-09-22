@@ -157,11 +157,13 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 	if strings.TrimSpace(issuedAmount.Currency) == "" {
 		return false, ErrMissingTokenCurrency
 	}
-	if strings.ToUpper(issuedAmount.Currency) == currency.NativeCurrencySymbol {
+	if _, err := bctypes.SerializeIssuedCurrencyCode(issuedAmount.Currency); err != nil ||
+		strings.ToUpper(issuedAmount.Currency) == currency.NativeCurrencySymbol {
 		return false, ErrInvalidTokenCurrency
 	}
 
-	if !addresscodec.IsValidAddress(issuedAmount.Issuer.String()) {
+	// The issuer must be tagless, because an Amount has nowhere to encode a tag.
+	if _, hasTag, err := decodeAddressAccountID(issuedAmount.Issuer); err != nil || hasTag {
 		return false, ErrInvalidIssuer
 	}
 

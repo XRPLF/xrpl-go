@@ -103,11 +103,10 @@ func (a *AMMClawback) UnmarshalJSON(data []byte) error {
 }
 
 func validateAMMClawbackAmount(amount types.CurrencyAmount, asset ledger.Asset) error {
-	amountKey, ok := amountIssueKey(amount)
-	if !ok || !isPositiveTokenAmount(amount) {
+	if !isPositiveTokenAmount(amount) {
 		return ErrAMMClawbackInvalidAmount
 	}
-	if assetKey, _ := assetIssueKey(asset); !bytes.Equal(amountKey, assetKey) {
+	if !sameIssue(amount, asset) {
 		return ErrAMMClawbackAmountAssetMismatch
 	}
 

@@ -3,6 +3,7 @@ package transaction
 import (
 	"bytes"
 	"encoding/hex"
+	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
@@ -67,45 +68,20 @@ func assetIssuerAccountID(asset ledger.Asset) ([]byte, bool) {
 	return nil, false
 }
 
-// Issue keys exist because one token has several spellings. "USD" and its hex form
-// are the same currency, and a classic address and an X-address are the same issuer,
-// so tokens are compared as canonical bytes and never as strings. The parts are joined
-// into one key so a single comparison also tells token kinds apart, because an issued
-// key is 40 bytes and an MPT key is 24. Failing to build a key means the token is
-// malformed, which callers report separately from a mismatch.
-
-// assetIssueKey returns the issue key of asset, which must already satisfy IsAsset.
-func assetIssueKey(asset ledger.Asset) ([]byte, bool) {
-	switch asset.Kind() {
-	case ledger.AssetIOU:
-		currencyBytes, err := (&bctypes.Currency{}).FromJSON(asset.Currency)
-		issuerID, ok := assetIssuerAccountID(asset)
-		if err != nil || !ok {
-			return nil, false
-		}
-		return append(currencyBytes, issuerID...), true
-	case ledger.AssetMPT:
-		return decodeMPTIssuanceID(asset.MPTIssuanceID)
-	case ledger.AssetXRP:
-	}
-	return bctypes.XRPBytes, true
-}
-
-// amountIssueKey returns the issue key of the token that amount is denominated in.
-// XRP amounts have no key here because no caller matches them against an asset.
-func amountIssueKey(amount types.CurrencyAmount) ([]byte, bool) {
+// sameIssue reports whether amount is denominated in asset. Currency codes are compared
+// as codec bytes so "USD" equals its hex spelling, and issuers as AccountIDs so a classic
+// address equals its X-address. Both inputs must already be validated.
+func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
 	switch amount := amount.(type) {
 	case types.IssuedCurrencyAmount:
-		currencyBytes, err := bctypes.SerializeIssuedCurrencyCode(amount.Currency)
-		issuerID, hasTag, issuerErr := decodeAddressAccountID(amount.Issuer)
-		if err != nil || issuerErr != nil || hasTag {
-			return nil, false
-		}
-		return append(currencyBytes, issuerID...), true
+		amountCurrency, err := (&bctypes.Currency{}).FromJSON(strings.TrimPrefix(amount.Currency, "0x"))
+		assetCurrency, assetErr := (&bctypes.Currency{}).FromJSON(asset.Currency)
+		return asset.Kind() == ledger.AssetIOU && err == nil && assetErr == nil &&
+			bytes.Equal(amountCurrency, assetCurrency) && sameAccountAddress(amount.Issuer, asset.Issuer)
 	case types.MPTCurrencyAmount:
-		return decodeMPTIssuanceID(amount.MPTIssuanceID)
+		return asset.Kind() == ledger.AssetMPT && strings.EqualFold(amount.MPTIssuanceID, asset.MPTIssuanceID)
 	}
-	return nil, false
+	return false
 }
 
 // isPositiveTokenAmount reports whether amount is a well-formed issued or MPT amount

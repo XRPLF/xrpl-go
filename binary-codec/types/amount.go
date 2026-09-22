@@ -519,32 +519,11 @@ func SerializeIssuedCurrencyCode(currency string) ([]byte, error) {
 	switch len(currency) {
 	case 3: // if the currency code is 3 characters, it is standard
 		return serializeIssuedCurrencyCodeChars(currency)
-	case 40: // if the currency code is 40 characters, it is hex encoded
-		return serializeIssuedCurrencyCodeHex(currency)
+	case 40: // a hex code is taken verbatim, as rippled's to_currency does
+		return hex.DecodeString(currency)
 	}
 
 	return nil, &InvalidCodeError{Disallowed: currency}
-}
-
-func serializeIssuedCurrencyCodeHex(currency string) ([]byte, error) {
-	decodedHex, err := hex.DecodeString(currency)
-	if err != nil {
-		return nil, err
-	}
-
-	if bytes.HasPrefix(decodedHex, []byte{0x00}) {
-
-		if bytes.Equal(decodedHex[12:15], []byte{0x00, 0x00, 0x00}) {
-			return make([]byte, 20), nil
-		}
-
-		if containsInvalidIOUCodeCharactersHex(decodedHex[12:15]) {
-			return nil, errInvalidCurrencyCode
-		}
-		return decodedHex, nil
-
-	}
-	return decodedHex, nil
 }
 
 func serializeIssuedCurrencyCodeChars(currency string) ([]byte, error) {
@@ -669,13 +648,6 @@ func isNative(value byte) bool {
 func isPositive(value byte) bool {
 	x := value&0x40 > 0
 	return x
-}
-
-func containsInvalidIOUCodeCharactersHex(currency []byte) bool {
-	r := regexp.MustCompile(IOUCodeRegex) // regex to check if the currency code is valid
-	m := r.FindAll(currency, -1)
-
-	return len(m) != 1
 }
 
 // valueToString converts various JSON‐style value types into their string form.

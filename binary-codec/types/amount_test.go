@@ -643,10 +643,16 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 			expectedErr: errInvalidCurrencyCode,
 		},
 		{
-			name:        "fail - standard currency - invalid characters in currency code - hex",
+			name:        "pass - non-standard currency - hex is taken verbatim even with a standard type byte",
 			input:       "0x00000000000000000000000041442f0000000000",
-			expected:    nil,
-			expectedErr: errInvalidCurrencyCode,
+			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0x44, 0x2f, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - non-standard currency - empty ISO slot is not collapsed to XRP",
+			input:       "0000000000000000000000000000000000000001",
+			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+			expectedErr: nil,
 		},
 	}
 	for _, tt := range tests {
