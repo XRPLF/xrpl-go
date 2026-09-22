@@ -29,8 +29,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 #### binary-codec
 
-- Added `types.SerializeIssuedCurrencyCode` for validating and serializing issued-currency codes to their canonical 20-byte representation.
-- Added `types.ParseCurrencyCode`, the single currency-code parser behind `Currency` and issued-currency amounts.
+- Added `types.ParseCurrencyCode`, the currency-code parser behind `Currency`, issued-currency amounts, and path steps.
 - Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
 - Added `types.ErrBlobNotString`, returned when a `Blob` field receives a non-string JSON value.
 - Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
