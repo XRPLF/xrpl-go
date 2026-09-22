@@ -290,6 +290,7 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
+				LastUpdateTime:  1724871860,
 				PriceDataSeries: make([]ledger.PriceDataWrapper, 100),
 			},
 			expected: ErrOraclePriceDataSeriesItems{
@@ -304,6 +305,7 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
+				LastUpdateTime: 1724871860,
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{
@@ -321,6 +323,7 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
+				LastUpdateTime: 1724871860,
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{
@@ -344,6 +347,7 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
+				LastUpdateTime: 1724871860,
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{

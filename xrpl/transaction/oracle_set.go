@@ -133,6 +133,12 @@ func (tx *OracleSet) Validate() (bool, error) {
 		return false, ErrOracleAssetClassInvalid
 	}
 
+	// Only the epoch lower bound is stateless. The ledger-time window and update
+	// monotonicity of tecINVALID_UPDATE_TIME need ledger state and stay server-side.
+	if int64(tx.LastUpdateTime) < rippletime.RippleEpochDiff {
+		return false, ErrOracleLastUpdateTimeInvalid
+	}
+
 	if len(tx.PriceDataSeries) > OracleSetMaxPriceDataSeriesItems {
 		return false, ErrOraclePriceDataSeriesItems{
 			Length: len(tx.PriceDataSeries),
@@ -144,11 +150,6 @@ func (tx *OracleSet) Validate() (bool, error) {
 		if err := priceDataWrapper.PriceData.Validate(); err != nil {
 			return false, err
 		}
-	}
-
-	// The ledger-time window and update monotonicity require ledger state and remain server-side.
-	if int64(tx.LastUpdateTime) < rippletime.RippleEpochDiff {
-		return false, ErrOracleLastUpdateTimeInvalid
 	}
 
 	return true, nil
