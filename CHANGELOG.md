@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed hex currency codes with a `0x00` type byte being rewritten to XRP or rejected on encoding. They now serialize verbatim.
 - Fixed `Currency` accepting three-character codes outside the IOU alphabet, which produced Issue fields the ledger rejects.
+- Fixed decoding uppercasing three-character currency codes. A code like `xrP` now round-trips unchanged.
 
 #### xrpl/transaction
 
