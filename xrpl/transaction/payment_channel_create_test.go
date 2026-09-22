@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
@@ -129,6 +130,37 @@ func TestPaymentChannelCreate_Validate(t *testing.T) {
 			},
 			wantValid: true,
 			wantErr:   false,
+		},
+		{
+			name: "fail - Amount is zero",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Destination: types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
+				SettleDelay: 86400,
+				PublicKey:   testPublicKey,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelCreateAmountInvalid,
+		},
+		{
+			name: "fail - Amount exceeds native maximum",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(currency.MaxNativeDrops + 1),
+				Destination: types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
+				SettleDelay: 86400,
+				PublicKey:   testPublicKey,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelCreateAmountInvalid,
 		},
 		{
 			name: "fail - Invalid BaseTx, missing TransactionType",

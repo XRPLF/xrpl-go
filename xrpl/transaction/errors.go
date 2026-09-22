@@ -273,6 +273,8 @@ var (
 
 	// ErrInvalidChannel is returned when the Channel is not a valid 64-character hexadecimal string.
 	ErrInvalidChannel = errors.New("invalid Channel, must be a valid 64-character hexadecimal string")
+	// ErrPaymentChannelCreateAmountInvalid is returned when Amount is outside the valid native XRP range.
+	ErrPaymentChannelCreateAmountInvalid = errors.New("paymentChannelCreate: Amount must be between 1 and 100000000000000000 drops")
 	// ErrPaymentChannelFundAmountInvalid is returned when Amount is outside the valid native XRP range.
 	ErrPaymentChannelFundAmountInvalid = errors.New("paymentChannelFund: Amount must be between 1 and 100000000000000000 drops")
 	// ErrPaymentChannelClaimBalanceInvalid is returned when a supplied Balance exceeds the native XRP maximum.

@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AMMClawback.Validate` no longer accepts a `Holder` equal to `Account`.
 - `PaymentChannelCreate` and `PaymentChannelClaim` now require `PublicKey` to be a well-formed public key rather than any hexadecimal string, and `PaymentChannelClaim.Signature` must be whole-byte hexadecimal.
 - Fixed `IsMPTCurrency` accepting an `MPTIssuanceID` that is not 24 bytes, so amounts and assets agree on the same ID.
-- Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel claims and funding, VaultCreate, and XChainCommit transactions.
+- Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel creation, claims and funding, VaultCreate, and XChainCommit transactions.
 
 ## [v0.3.1]
 
