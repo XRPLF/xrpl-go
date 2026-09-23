@@ -36,7 +36,7 @@ Core has no dependency on confidential. A core release does not need a matching 
 
 `main` contains ongoing development and normal release preparation. Release branches are low-activity snapshots, not parallel development branches. For normal releases, prepare code, dependencies, and changelog entries on `main`, then update the snapshot.
 
-**Backports and hotfixes for an older release line are the exception.** Prepare them from that line's branch, not from the current `main`, which may contain incompatible changes.
+**Backports and hotfixes for an older release line are the exception.** Prepare them from that line's branch, not from the current `main`, which may contain incompatible changes. Use a backport only after `main` has moved to a newer line. While `main` still targets a line, land the fix on `main` and make a normal release, so the snapshot branch can still fast-forward.
 
 | Module line | Snapshot branch | Release tags |
 | --- | --- | --- |

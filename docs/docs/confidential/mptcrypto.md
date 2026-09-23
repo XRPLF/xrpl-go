@@ -26,7 +26,7 @@ When the backend is unavailable, every native operation returns `ErrCgoRequired`
 
 ### Size constants
 
-All sizes are in bytes. The size constants are exported by the core package `github.com/Peersyst/xrpl-go/pkg/mptsizes`, and only `MaxParticipants` is defined in `mptcrypto`. The snippets on this page omit the `mptsizes.` qualifier. On native builds, `sizes_cgo.go` checks the shared `pkg/mptsizes` constants against the vendored native headers at compile time.
+All sizes are in bytes. The size constants are exported by the core package `github.com/Peersyst/xrpl-go/pkg/mptsizes`. The snippets on this page omit the `mptsizes.` qualifier. On native builds, `sizes_cgo.go` checks the shared `pkg/mptsizes` constants against the vendored native headers at compile time.
 
 | Constant | Bytes | Meaning |
 | --- | ---: | --- |
@@ -46,7 +46,8 @@ All sizes are in bytes. The size constants are exported by the core package `git
 | `CompactSendProofSize` | 192 | Send compact sigma proof |
 | `ConvertBackProofSize` | 816 | `128 + 688` bytes |
 | `SendProofSize` | 946 | `192 + 754` bytes |
-| `MaxParticipants` | 255 | Maximum representable participant count in the verification C API |
+
+`mptcrypto` also defines `MaxParticipants` (255), a participant count rather than a size. It is the maximum count representable in the verification C API.
 
 ### Defined byte-array types
 
