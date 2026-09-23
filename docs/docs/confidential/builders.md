@@ -1,10 +1,4 @@
----
-sidebar_position: 3
----
-
-# builders
-
-## Overview
+# Confidential builders
 
 The `confidential/builder` package is the high-level entry point for XLS-96 transaction construction. It is part of the [optional confidential module](/docs/confidential/installation), not the core module.
 
@@ -13,14 +7,69 @@ Each operation comes in two forms:
 - `Build*`: queries live ledger state through a `LedgerQuerier`.
 - `Prepare*`: builds the same transaction from explicit inputs, which is useful for offline signing or test fixtures.
 
-The `LedgerQuerier` interface is intentionally small, and both `rpc.Client` and `websocket.Client` satisfy it:
+## Before you build
+
+1. [Install confidential helpers](/docs/confidential/installation) with the native toolchain.
+2. Use a network that supports the required confidential MPT amendments.
+3. Enable the issuance's confidential capability and register its issuer encryption key. Register an auditor key too if the issuance uses one. See [MPT operations](/docs/xrpl/mpt).
+4. Ensure each holder has an `MPToken` entry, using `MPTokenAuthorize` as required. The first confidential convert does not create that entry.
+5. Keep wallet signing keys separate from ElGamal encryption keys. Builders need encryption keys, which `elgamal.GenerateKeypair()` creates. See [Primitives](/docs/confidential/primitives). Wallets sign the final transaction.
+
+## Typical flow
+
+```text
+issuance setup -> holder authorization -> convert/opt in -> merge inbox -> send
+                                                                         |
+receive <- confidential inbox <-------------------------------------------+
+   -> merge inbox -> spend or convert back
+```
+
+`BuildConvert` with `Amount: 0` registers a holder key without converting public MPT. A positive convert credits the inbox, so merge before spending those funds. The recipient must opt in before a send. Received funds also need an inbox merge before they become spendable.
+
+## Build, sign, and submit
+
+This fragment runs inside a function returning an error. `client` is a configured RPC client, `signingWallet` is the sender's core wallet, and `params` is a populated `builder.BuildSendParams` with the sender's encryption keys and a balance range. The imports are `confidential/builder` plus `fmt` and your client/wallet packages.
 
 ```go
-type LedgerQuerier interface {
-    GetAccountInfo(req *account.InfoRequest) (*account.InfoResponse, error)
-    GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse, error)
+tx, err := builder.BuildSend(client, params)
+if err != nil {
+	return err
 }
+flat := tx.Flatten()
+if err := client.Autofill(&flat); err != nil {
+	return err
+}
+blob, _, err := signingWallet.Sign(flat)
+if err != nil {
+	return err
+}
+response, err := client.SubmitTxBlobAndWait(blob, false)
+if err != nil {
+	return err
+}
+if response.Meta.TransactionResult != "tesSUCCESS" {
+	return fmt.Errorf("transaction result: %s", response.Meta.TransactionResult)
+}
+return nil
 ```
+
+Builders return transaction structs, not signed blobs. Keep the prepared sequence or Ticket unchanged: proofs bind that nonce. See [Submission and finality](/docs/xrpl/submission) for timeouts and uncertain outcomes.
+
+For complete application setup, use the [RPC example](https://github.com/XRPLF/xrpl-go/tree/main/confidential/examples/rpc) or [WebSocket example](https://github.com/XRPLF/xrpl-go/tree/main/confidential/examples/ws). For offline input assembly, use the [offline example](https://github.com/XRPLF/xrpl-go/tree/main/confidential/examples/offline).
+
+## Choose an operation
+
+| Goal | Helpers |
+| --- | --- |
+| Opt in or convert public MPT | `BuildConvert`, `PrepareConvert` |
+| Send confidential MPT | `BuildSend`, `PrepareSend` |
+| Convert back to public MPT | `BuildConvertBack`, `PrepareConvertBack` |
+| Reclaim a holder's confidential balance | `BuildClawback`, `PrepareClawback` |
+| Make inbox funds spendable | `BuildMergeInbox`, `PrepareMergeInbox` |
+| Read a spendable balance | `GetSpendingBalance` |
+| Combine ordered operations | [Confidential batches](/docs/confidential/batch) |
+
+The operation examples below are fragments. Supply the named addresses, keys, issuance ID, and client. Check each returned error before using the result. Use the [Go builder reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/confidential/builder) for full parameter types.
 
 ## Builder families
 
@@ -43,11 +92,11 @@ taking the first-time path.
 
 ```go
 tx, err := builder.BuildConvert(client, builder.BuildConvertParams{
-    Account:       holderAddress,
-    IssuanceID:    issuanceID,
-    Amount:        100,
-    HolderPrivKey: holderPrivKeyHex,
-    HolderPubKey:  holderPubKeyHex,
+	Account:       holderAddress,
+	IssuanceID:    issuanceID,
+	Amount:        100,
+	HolderPrivKey: holderPrivKeyHex,
+	HolderPubKey:  holderPubKeyHex,
 })
 ```
 
@@ -66,20 +115,20 @@ This path requires the destination holder to already be initialized to receive: 
 implies. A destination missing any of them, or with no `MPToken` at all, reports
 `ErrReceiverNotOptedIn`.
 
-`DestinationTag` and `CredentialIDs` are optional and forwarded to the transaction unchanged. Set `DestinationTag` when the destination is a hosted account, and `CredentialIDs` when the destination sits behind a permissioned domain.
+`DestinationTag` and `CredentialIDs` are optional and forwarded to the transaction unchanged. Set `DestinationTag` when the destination is a hosted account, and `CredentialIDs` when the destination requires credential-based deposit authorization.
 
 ```go
 tx, err := builder.BuildSend(client, builder.BuildSendParams{
-    Account:       senderAddress,
-    Destination:   receiverAddress,
-    IssuanceID:    issuanceID,
-    Amount:        25,
-    SenderPrivKey: senderPrivKeyHex,
-    SenderPubKey:  senderPubKeyHex,
-    BalanceRange: elgamal.AmountRange{
-        Low:  0,
-        High: 1_000_000,
-    },
+	Account:       senderAddress,
+	Destination:   receiverAddress,
+	IssuanceID:    issuanceID,
+	Amount:        25,
+	SenderPrivKey: senderPrivKeyHex,
+	SenderPubKey:  senderPubKeyHex,
+	BalanceRange: elgamal.AmountRange{
+		Low:  0,
+		High: 1_000_000,
+	},
 })
 ```
 
@@ -94,15 +143,15 @@ Use these for `ConfidentialMPTConvertBack`.
 
 ```go
 tx, err := builder.BuildConvertBack(client, builder.BuildConvertBackParams{
-    Account:       holderAddress,
-    IssuanceID:    issuanceID,
-    Amount:        10,
-    HolderPrivKey: holderPrivKeyHex,
-    HolderPubKey:  holderPubKeyHex,
-    BalanceRange: elgamal.AmountRange{
-        Low:  0,
-        High: 1_000_000,
-    },
+	Account:       holderAddress,
+	IssuanceID:    issuanceID,
+	Amount:        10,
+	HolderPrivKey: holderPrivKeyHex,
+	HolderPubKey:  holderPubKeyHex,
+	BalanceRange: elgamal.AmountRange{
+		Low:  0,
+		High: 1_000_000,
+	},
 })
 ```
 
@@ -132,11 +181,11 @@ Supply the amount yourself only on the offline `PrepareClawback` path, via `Claw
 
 ```go
 tx, err := builder.BuildClawback(client, builder.BuildClawbackParams{
-    Account:       issuerAddress,
-    Holder:        holderAddress,
-    IssuanceID:    issuanceID,
-    IssuerPrivKey: issuerPrivKeyHex,
-    BalanceRange:  elgamal.AmountRange{Low: 0, High: 1_000},
+	Account:       issuerAddress,
+	Holder:        holderAddress,
+	IssuanceID:    issuanceID,
+	IssuerPrivKey: issuerPrivKeyHex,
+	BalanceRange:  elgamal.AmountRange{Low: 0, High: 1_000},
 })
 ```
 
@@ -154,8 +203,8 @@ Use these for `ConfidentialMPTMergeInbox`.
 
 ```go
 tx, err := builder.BuildMergeInbox(client, builder.BuildMergeInboxParams{
-    Account:    holderAddress,
-    IssuanceID: issuanceID,
+	Account:    holderAddress,
+	IssuanceID: issuanceID,
 })
 ```
 
@@ -168,10 +217,10 @@ read spends none.
 
 ```go
 balance, err := builder.GetSpendingBalance(client, builder.SpendingBalanceParams{
-    Holder:        holderAddress,
-    IssuanceID:    issuanceID,
-    HolderPrivKey: holderPrivKeyHex,
-    BalanceRange:  elgamal.AmountRange{Low: 0, High: 1_000},
+	Holder:        holderAddress,
+	IssuanceID:    issuanceID,
+	HolderPrivKey: holderPrivKeyHex,
+	BalanceRange:  elgamal.AmountRange{Low: 0, High: 1_000},
 })
 ```
 
@@ -194,131 +243,6 @@ balance, err := builder.GetSpendingBalance(client, builder.SpendingBalanceParams
 Like every other decryption in this package, it needs a CGo-enabled build. The zero-balance
 case above is the one answer it can give without one.
 
-## Ordered batches
-
-`BuildBatch` assembles several confidential operations into one XLS-56 `Batch` that the
-ledger applies in order. It exists because calling the standalone builders in a row cannot
-produce one: each of them reads the ledger, and inside a `Batch` the ledger does not yet show
-what an earlier inner leaves behind, so every proof after the first would bind a balance and
-a version the transaction will no longer find when it applies.
-
-```go
-batch, err := builder.BuildBatch(client, builder.BuildBatchParams{
-    Account: senderAddress,
-    Operations: []builder.BatchOperation{
-        builder.SendOp{BuildSendParams: builder.BuildSendParams{
-            Account:       senderAddress,
-            Destination:   receiverAddress,
-            IssuanceID:    issuanceID,
-            Amount:        30,
-            SenderPrivKey: senderKey.PrivKeyHex,
-            SenderPubKey:  senderKey.PubKeyHex,
-            BalanceRange:  elgamal.AmountRange{Low: 0, High: 1_000},
-        }},
-        builder.MergeInboxOp{BuildMergeInboxParams: builder.BuildMergeInboxParams{
-            Account:    receiverAddress,
-            IssuanceID: issuanceID,
-        }},
-    },
-})
-```
-
-Each of the five confidential operations wraps the parameters of the standalone builder it
-mirrors, so an inner reads the same as the call it replaces: `ConvertOp`, `ConvertBackOp`,
-`SendOp`, `MergeInboxOp`, and `ClawbackOp`. `TransactionOp` carries a ready-made ordinary
-transaction, which the assembler only shapes as an inner. Each operation can be passed as a
-value or as a non-nil pointer.
-
-The assembler owns five things:
-
-- **Up-front validation.** Every operation's inputs are checked before the first ledger query,
-  by the same validator and with the same sentinels as the standalone builder it mirrors,
-  including the `TxOptions` rules. An invalid later operation costs no ledger read and no
-  proof for the operations before it.
-- **One validated ledger.** Every `MPToken` and `MPTokenIssuance` the `Batch` touches is read
-  from a single snapshot, pinned by hash after the first read, so no inner's proof mixes state
-  from two ledgers.
-- **Predicted state.** A map keyed by the decoded holder `AccountID` and the issuance ID
-  carries the spending and inbox ciphertexts, the issuer and auditor mirror balances, the
-  holder keys, the balance versions, and the public amounts. After each inner it is advanced
-  by exactly what the transactor does, including the re-randomization the network applies to a
-  send's credited ciphertexts and the canonical encrypted zero it writes when it resets a
-  balance: a merge resets the inbox, a holder's first convert starts its spending balance at
-  zero, and a clawback resets every balance of its holder. `elgamal.EncryptCanonicalZero`
-  derives that ciphertext from the key, the holder account, and the issuance the same way the
-  network does, so a later inner can spend from a reset balance within the same `Batch`. As in
-  the standalone builders, an open-ledger version change rejects the build with
-  `ErrStaleBalanceVersion` only for a holder whose version a send or convert-back proof binds.
-- **Final nonces.** Each inner's `Sequence`, or the `TicketSequence` it spends instead, is
-  resolved before any proof is generated, because a confidential context hash commits to the
-  nonce and no later autofill can repair a proof. An account's inners take consecutive
-  sequences; the outer `Batch` account's start one past the sequence the `Batch` itself spends,
-  or at its current sequence when the `Batch` spends a `Ticket`. A `TicketCreate` inner moves
-  its account's later sequences past every `Ticket` it creates.
-- **Inner shape.** Every inner carries `tfInnerBatchTxn`, a zero `Fee`, an empty
-  `SigningPubKey`, and no signature of its own.
-
-`Fee` and `LastLedgerSequence` are left unset, so the returned `Batch` goes through the
-client's own autofill, which prices a `Batch` by summing its inners and charges each
-confidential inner the multiplier the network applies. Autofill cannot disturb a proof: every
-nonce the proofs bind is already set, and autofill assigns only nonces that are missing.
-Signing stays with the caller — each participating account signs with
-`wallet.SignMultiBatch`, several signatures are merged with `wallet.CombineBatchSigners`, and
-the outer account signs the `Batch` itself:
-
-```go
-flat := batch.Flatten()
-if err := client.AutofillMultisigned(&flat, 1); err != nil {
-    return err
-}
-if err := wallet.SignMultiBatch(receiverWallet, &flat, nil); err != nil {
-    return err
-}
-_, err = client.SubmitTxAndWait(flat, &types.SubmitOptions{Wallet: &senderWallet})
-```
-
-### Batch limits
-
-The assembler refuses to emit a proof it can already tell the network will reject. Each
-refusal has its own sentinel:
-
-- `ErrBatchOperationCount`: a `Batch` holds between two and eight inners. The check runs
-  before any ledger read, so an impossible size costs nothing.
-- `ErrBatchModeNotSupported`: only `tfAllOrNothing`, the default, is supported. Under any
-  other mode an inner can be skipped or fail while later inners still apply, and every
-  prediction after it would describe a ledger that never happened.
-- `ErrBatchMissingOperation`: an operation is nil, as an interface or as a pointer, or a
-  `TransactionOp` carries no transaction.
-- `ErrBatchInnerNotSupported`: a `TransactionOp` of a type the assembler does not accept.
-  `IsSupportedInnerTransactionType` reports the allowlist: `AccountSet`, `SetRegularKey`,
-  `SignerListSet`, `TicketCreate`, `TrustSet`, `DepositPreauth`, `DelegateSet`,
-  `CredentialCreate`, `CredentialAccept`, and `CredentialDelete`. Anything that could change a
-  confidential balance, an `MPToken`'s existence or authorization, or an issuance is kept out,
-  because the assembler would have to predict its effect to keep the later proofs valid:
-  `MPTokenAuthorize` creates and deletes the `MPToken` the predictions are keyed by,
-  `MPTokenIssuanceSet` can lock an issuance or change its keys, and `Payment` and `Clawback`
-  can move the public MPT a convert is funded from. Submit those before or after the `Batch`.
-- `ErrBatchInnerSequenceSet`: a confidential operation set its own `Sequence`. The assembler
-  derives every inner sequence from the operation's position, so a caller-set one describes an
-  order it cannot honor. A `TicketSequence` is accepted, and the proof binds it in place of
-  the sequence.
-- `ErrBatchInnerSequenceMismatch`: a `TransactionOp` carries a `Sequence` that is not the one
-  its position in the `Batch` requires for its account, such as the outer `Batch`'s own
-  sequence, one past an allocated inner, or one a `TicketCreate` earlier in the `Batch` turned
-  into a `Ticket`. This holds for every account, so a caller-set sequence of an account other
-  than the outer one is checked against that account's current sequence.
-- `ErrConflictingNonce`: an inner, confidential or ready-made, sets both `Sequence` and
-  `TicketSequence`. The network requires exactly one.
-- `ErrBatchDuplicateNonce`: two inners of one account spend the same sequence or `Ticket`, or
-  an inner spends the `Ticket` the outer `Batch` itself spends. The network rejects an
-  all-or-nothing `Batch` that repeats a nonce.
-
-Everything the standalone builders reject, a `Batch` inner rejects too, with the same
-sentinel: the issuance capability checks, the locked and authorized preflights, the key
-mismatches, and the balance bounds. The bounds are checked against the running state rather
-than the pre-batch ledger, so a convert earlier in the same `Batch` funds a later convert-back
-and widens the decryption bound a later spend searches under.
-
 ## `Build*` vs `Prepare*`
 
 Choose `Build*` when you have access to a live ledger connection and want the SDK to resolve:
@@ -327,7 +251,7 @@ Choose `Build*` when you have access to a live ledger connection and want the SD
 - issuer and auditor encryption keys;
 - holder `MPToken` fields such as `HolderEncryptionKey`, `ConfidentialBalanceSpending`, `IssuerEncryptedBalance`, and `ConfidentialBalanceVersion`.
 
-Choose `Prepare*` when you already have those values and want deterministic, offline transaction assembly.
+Choose `Prepare*` when you already have those values and want offline transaction assembly. Offline does not mean deterministic: proof and ciphertext construction can use fresh randomness.
 
 Each proof commits to the nonce the transaction spends, so a `Prepare*` helper that emits a proof
 rejects options carrying neither `Sequence` nor `TicketSequence` with `ErrMissingSequence` rather
@@ -335,9 +259,7 @@ than produce a proof a later autofill would invalidate. The two proof-free forms
 `PrepareMergeInbox`, and `PrepareConvert` for a holder whose encryption key is already registered.
 Both accept a zero nonce and can be autofilled.
 
-`Build*` also preflights what the network enforces, so a transaction it would reject never costs
-a fee and a sequence: the issuance capabilities, and the ledger state each transactor requires
-of the accounts it touches.
+`Build*` checks issuance capabilities and required confidential state before submission. These checks catch some failures early, but they do not guarantee success: ledger state can change between construction and validation.
 
 Some conditions the network enforces are left to it. A destination that requires a destination
 tag (`tecDST_TAG_NEEDED`), a destination behind deposit authorization (`tecNO_PERMISSION`), and
@@ -352,9 +274,9 @@ rather than the confidential operation: which nonce authorizes it, and who submi
 
 ```go
 type TxOptions struct {
-    Sequence       uint32
-    TicketSequence uint32
-    Delegate       string
+	Sequence       uint32
+	TicketSequence uint32
+	Delegate       string
 }
 ```
 
@@ -394,12 +316,12 @@ the build off the account query entirely:
 
 ```go
 tx, err := builder.BuildMergeInbox(client, builder.BuildMergeInboxParams{
-    TxOptions: builder.TxOptions{
-        TicketSequence: ticketSequence,
-        Delegate:       delegateAddress,
-    },
-    Account:    holderAddress,
-    IssuanceID: issuanceID,
+	TxOptions: builder.TxOptions{
+		TicketSequence: ticketSequence,
+		Delegate:       delegateAddress,
+	},
+	Account:    holderAddress,
+	IssuanceID: issuanceID,
 })
 ```
 
@@ -418,44 +340,16 @@ sets them there:
 
 ```go
 params := builder.MergeInboxParams{
-    BuildMergeInboxParams: builder.BuildMergeInboxParams{
-        TxOptions:  builder.TxOptions{Sequence: sequence},
-        Account:    holderAddress,
-        IssuanceID: issuanceID,
-    },
+	BuildMergeInboxParams: builder.BuildMergeInboxParams{
+		TxOptions:  builder.TxOptions{Sequence: sequence},
+		Account:    holderAddress,
+		IssuanceID: issuanceID,
+	},
 }
 ```
 
 The promoted selectors, such as `params.Sequence` and `params.Delegate`, stay available after
 construction and reach that same value.
-
-## Typical flow
-
-1. Enable confidential transfers on the issuance with `MPTokenIssuanceCreate` or `MPTokenIssuanceSet`, then register `IssuerEncryptionKey` and optionally `AuditorEncryptionKey` with an `MPTokenIssuanceSet`. Only the set transaction carries the keys, so an issuance created with the capability still needs a second transaction to become usable.
-2. Generate a holder keypair with `confidential/elgamal.GenerateKeypair()`.
-3. Opt the holder in with `BuildConvert` or `PrepareConvert`, optionally with `Amount: 0` for key registration only.
-4. Use `BuildSend` for confidential transfers between opted-in holders.
-5. Use `BuildMergeInbox` after receiving confidential transfers, if the holder wants to spend the received balance.
-6. Use `BuildConvertBack` to move confidential balance back into public MPT balance.
-
-## Signing and submission
-
-Builders return concrete transaction structs from `xrpl/transaction`, so the rest of the flow is the same as other XRPL transactions: autofill any remaining fields if needed, sign with a wallet, then submit through RPC or WebSocket.
-
-```go
-tx, err := builder.BuildSend(client, params)
-if err != nil {
-    return err
-}
-
-signed, err := wallet.Sign(tx)
-if err != nil {
-    return err
-}
-
-_, err = client.SubmitTx(signed, nil)
-return err
-```
 
 ## Address forms
 
@@ -477,6 +371,17 @@ ACCOUNT_ZERO is rejected in every address field. It decodes cleanly in either fo
 keypair can produce it, so it can never sign a transaction nor hold an `MPToken`.
 
 ## Common failure cases
+
+| Cause | Recovery |
+| --- | --- |
+| Missing issuance, holder entry, or registered key | Complete issuance setup, holder authorization, or opt-in before rebuilding |
+| Insufficient spendable funds | Check the spending balance separately from the inbox, then merge if needed |
+| Invalid or too-narrow balance range | Supply bounds that contain the current balance, not just the transfer amount |
+| Stale balance version | Wait for the earlier transaction to validate, read fresh state, and rebuild the proof |
+| Invalid nonce or address | Correct the input before rebuilding, do not patch a signed/proven transaction |
+| Cryptographic failure | Check key/state consistency and the decryption range before retrying |
+
+Match sentinel errors with `errors.Is`, not error-message text. The following details describe the SDK preflight boundary, not a complete list of server result codes.
 
 Most builder errors are explicit and map to missing ledger state or invalid inputs:
 
@@ -542,3 +447,14 @@ The issuance capability checks mirror the conditions the network enforces:
   to the network, because the credentials that path accepts are not read here.
 - `ErrAmountExceedsOutstanding`: a convert-back `Amount` exceeds the issuance
   `ConfidentialOutstandingAmount`.
+
+## Custom ledger access
+
+The `LedgerQuerier` interface is intentionally small, and both `rpc.Client` and `websocket.Client` satisfy it:
+
+```go
+type LedgerQuerier interface {
+	GetAccountInfo(req *account.InfoRequest) (*account.InfoResponse, error)
+	GetLedgerEntry(req *ledger.EntryRequest) (*ledger.EntryResponse, error)
+}
+```

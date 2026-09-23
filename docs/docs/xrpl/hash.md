@@ -1,73 +1,53 @@
-# hash
+# Hashes
 
-## Overview
+Use `xrpl/hash` for two tasks: calculating transaction hashes and deriving ledger-entry indexes. These operations run offline.
 
-The `hash` package contains functions for hashing XRPL transactions and for computing ledger-entry indexes.
+**The `SignTx` and `SignTxBlob` names refer to hashing signed transactions. They do not create or verify signatures.** Use [wallets](/docs/xrpl/wallet) for signing.
 
-- `SignTxBlob`: Hashes a signed transaction blob. It accepts a signed transaction blob as input and returns the transaction's hash. This is mainly used for verifying transaction integrity, including multisigned transactions.
+## Transaction hashes
 
-- `SignTx`: Hashes a signed transaction provided as a decoded map object. Primarily used internally for batch transactions within the wallet.
+`hash.SignTxBlob(blob)` returns the transaction hash as an uppercase hex string. `hash.SignTx(flat)` accepts a decoded transaction map and does not modify it. Wallet signing already returns the hash, so you usually do not need to calculate it again.
 
-- Ledger-entry index helpers: `MPToken`, `MPTokenIssuance`, `MPTID`, `Vault`, `LoanBroker`, `Loan`, and `PaymentChannel`. Each computes the index of a ledger entry so it can be read with a `ledger_entry` request.
+Both functions check the signing structure:
 
-## Usage
+- Single-signed transactions need `SigningPubKey` and `TxnSignature`.
+- Multisigned transactions need `Signers` and an explicitly empty top-level `SigningPubKey`.
+- Partial, empty, or mixed signing structures return an error.
+- Inner Batch transactions are hashable in canonical unsigned form: empty `SigningPubKey`, no `TxnSignature`, and no `Signers`.
+- Consensus-generated `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions can be hashed without account signatures.
 
-To import the package, you can use the following code:
+These checks do not establish cryptographic validity, signer authorization, or quorum.
 
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/hash"
-```
+## Derive a ledger-entry index
 
-## API
-
-### SignTxBlob
-
-```go
-func SignTxBlob(txBlob string) (string, error)
-```
-
-Hashes a signed transaction blob and returns the transaction hash as an uppercase hexadecimal string, or an error if the blob is invalid.
-
-The transaction must use one complete signing form. A single-signed transaction requires `SigningPubKey` and `TxnSignature`. A multisigned transaction requires `Signers` and an explicitly empty top-level `SigningPubKey`. Partial, empty, or mixed signing structures return an error.
-
-Inner Batch transactions are hashable only in their canonical unsigned form with an explicitly empty `SigningPubKey` and no `TxnSignature` or `Signers`. Consensus-generated `EnableAmendment`, `SetFee`, and `UNLModify` pseudo-transactions can be hashed without account signatures.
-
-### SignTx
+This offline example derives an MPT issuance ID from an issuer and creation sequence, then derives the index of a holder's MPToken entry. The values are illustrative. Computing an index does not prove the entry exists.
 
 ```go
-func SignTx(tx map[string]any) (string, error)
-```
+package main
 
-Hashes a signed transaction provided as a decoded map and returns the transaction hash or an error if the transaction object is invalid. It applies the same canonical signing-form checks as `SignTxBlob` and does not modify the input map.
+import (
+	"fmt"
+	"log"
 
-## Ledger entry indexes
+	"github.com/Peersyst/xrpl-go/xrpl/hash"
+)
 
-These helpers compute the index of a ledger entry from the values that identify it, so an entry can be read without first searching for it.
-
-### MPTokenIssuance
-
-```go
-func MPTokenIssuance(issuanceIDHex string) (string, error)
-```
-
-Computes the index of an `MPTokenIssuance` entry from its 48-character hexadecimal issuance ID. Use `MPTID` to derive that ID from the issuer address and the sequence of the `MPTokenIssuanceCreate` that produced it.
-
-### MPToken
-
-```go
-func MPToken(issuanceIDHex string, holder string) (string, error)
-```
-
-Computes the index of the `MPToken` entry a holder owns for an issuance. This is the entry that carries a holder's confidential balance fields, so it is what the [confidential builders](/docs/confidential/builders) read.
-
-```go
-index, err := hash.MPToken(issuanceID, holderAddress)
-if err != nil {
- return err
+func main() {
+	issuanceID, err := hash.MPTID(1, "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh")
+	if err != nil {
+		log.Fatal(err)
+	}
+	index, err := hash.MPToken(issuanceID, "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Issuance ID:", issuanceID)
+	fmt.Println("Holder entry index:", index)
 }
-
-response, err := client.GetLedgerEntry(&ledger.EntryRequest{
- Index:       index,
- LedgerIndex: common.Validated,
-})
 ```
+
+Pass `index` as `ledgerquery.EntryRequest.Index` to `GetLedgerEntry`. See [Ledger data](/docs/xrpl/ledger-entry-types) for the complete read and decode flow.
+
+`MPTID` produces a 48-character issuance ID, not a ledger-entry index. Use `MPTokenIssuance(issuanceID)` for the issuance entry index or `MPToken(issuanceID, holder)` for the holder entry index. That holder entry carries the confidential balance fields that the [confidential builders](/docs/confidential/builders) read. Other helpers include `Vault`, `LoanBroker`, `Loan`, and `PaymentChannel`.
+
+Use the [Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/hash) for the helper arguments and the [XRPL ledger-entry reference](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types) for protocol definitions.

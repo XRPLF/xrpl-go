@@ -1,65 +1,90 @@
-# ledger-entry-types
+# Ledger data
 
-## Overview
+Ledger entries describe stored state. Transactions request changes to that state. The `xrpl/ledger-entry-types` package provides Go structs for ledger entries. Its Go package name is `ledger`, so use an import alias when also importing ledger query types.
 
-The `ledger-entry-types` package contains types and functions to handle ledger objects. They are used by other packages, like [`transaction`](/docs/xrpl/transaction) to type the transaction's fields.
+[Go ledger types](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types) · [XRPL ledger-entry reference](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types)
 
-- [`AccountRoot`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/accountroot)
-- [`Amendments`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/amendments)
-- [`AMM`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/amm)
-- [`Bridge`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/bridge)
-- [`Check`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/check)
-- [`Credential`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/credential)
-- `Delegate`
-- [`DepositPreauth`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/depositpreauth)
-- [`Did`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/did)
-- [`DirectoryNode`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/directorynode)
-- [`Escrow`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/escrow)
-- [`FeeSettings`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/feesettings)
-- [`Hashes`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/ledgerhashes)
-- [`Loan`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/loan)
-- [`LoanBroker`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/loanbroker)
-- [`MPToken`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/mptoken)
-- [`MPTokenIssuance`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/mptokenissuance)
-- [`NegativeUNL`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/negativeunl)
-- [`NFTokenOffer`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/nftokenoffer)
-- [`NFTokenPage`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/nftokenpage)
-- [`Offer`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/offer)
-- [`Oracle`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/oracle)
-- [`PayChannel`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/paychannel)
-- [`PermissionedDomain`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/permissioneddomain)
-- [`RippleState`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/ripplestate)
-- [`SignerList`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/signerlist)
-- [`Sponsorship`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/sponsorship)
-- [`Ticket`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/ticket)
-- [`Vault`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/vault)
-- [`XChainOwnedClaimID`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/xchainownedclaimid)
-- [`XChainOwnedCreateAccountClaimID`](https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/xchainownedcreateaccountclaimid)
+## Typed and generic reads
 
-## MPT and Oracle values
+| Query | Result | What you do |
+| --- | --- | --- |
+| `GetAccountInfo` | `AccountData` is a `ledger.AccountRoot` | Access typed fields directly |
+| `GetLedgerEntry`, JSON | `Node` is a `FlatLedgerObject` map | Read the map, or decode it into the appropriate struct |
+| `GetLedgerEntry`, binary | `NodeBinary` is a hex string | Call `binarycodec.Decode`, then use the resulting map |
 
-MPT ledger amount fields use quoted base-10 strings. This includes `MPToken.MPTAmount`, `MPToken.LockedAmount`, and the `MaximumAmount`, `OutstandingAmount`, and `LockedAmount` fields on `MPTokenIssuance`. `OwnerNode` fields are hexadecimal strings.
+```text
+specific query -> typed response
+ledger_entry JSON -> map -> optional struct conversion
+ledger_entry binary -> binarycodec.Decode -> map -> optional struct conversion
+```
 
-`MPTokenIssuance.ImmutableFlags` contains permanent restrictions and uses the `LsifMPT*` constants.
+Do not manually convert a response that is already typed. See the [account query example](/docs/xrpl/rpc#read-an-account).
+
+## Read a generic ledger entry
+
+This complete Testnet example requests an AccountRoot and converts the generic response to the corresponding struct. Save it as `main.go` and run `go run .`. Use a funded Testnet address if the example account is unavailable after a network reset.
 
 ```go
-if issuance.ImmutableFlags&ledger.LsifMPTMetadata != 0 {
- // Metadata can no longer change.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+
+	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	"github.com/Peersyst/xrpl-go/xrpl/queries/common"
+	ledgerquery "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
+	"github.com/Peersyst/xrpl-go/xrpl/rpc"
+)
+
+func main() {
+	cfg, err := rpc.NewClientConfig("https://s.altnet.rippletest.net:51234/")
+	if err != nil {
+		log.Fatal(err)
+	}
+	client := rpc.NewClient(cfg)
+	response, err := client.GetLedgerEntry(&ledgerquery.EntryRequest{
+		AccountRoot: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+		LedgerIndex: common.Validated,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if response.Node == nil {
+		log.Fatal("response contains no JSON ledger entry")
+	}
+	data, err := json.Marshal(response.Node)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var account ledger.AccountRoot
+	if err := json.Unmarshal(data, &account); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Balance in drops:", account.Balance)
 }
 ```
 
-`PriceData.AssetPrice` is a pointer so absent and explicit zero prices stay distinct. Oracle prices accept the XLS-47 `Scale` range from `0` through `20`. `Flatten` omits `Scale` when `AssetPrice` is absent, and `Validate` rejects a nonzero `Scale` without a price.
+The request selects an AccountRoot, so the example knows which struct to use. For an arbitrary index, inspect `LedgerEntryType` before choosing a struct. Do not decode every node into `AccountRoot`.
 
-### Confidential MPT fields
+## Select an entry
 
-XLS-96 adds confidential state to both MPT entries. `MPTokenIssuance` carries `IssuerEncryptionKey`, the optional `AuditorEncryptionKey`, and `ConfidentialOutstandingAmount`, the confidential supply, which is a quoted base-10 string like the other issuance amounts. `MPToken` carries `HolderEncryptionKey`, the `ConfidentialBalanceSpending` and `ConfidentialBalanceInbox` ciphertexts, the `IssuerEncryptedBalance` and optional `AuditorEncryptedBalance` mirror ciphertexts, and `ConfidentialBalanceVersion`.
+`EntryRequest` requires exactly one top-level selector. `Bridge` is the exception: pair it with `BridgeAccount`. Use `Index` for a known ledger-entry index or a supported typed selector such as `AccountRoot` or `MPToken`. Zero or multiple selectors and invalid object-selector forms fail validation.
 
-`LsfMPTCanHoldConfidentialBalance` on `MPTokenIssuance.Flags` reports whether the issuance allows confidential balances, and `LsifMPTCanHoldConfidentialBalance` on `ImmutableFlags` reports whether that setting can still change. See the [confidential guide](/docs/confidential) for how these fields are produced and consumed.
+See [ledger_entry](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_entry) for protocol selectors and the [Go EntryRequest](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/ledger#EntryRequest) for their SDK forms. [Hash helpers](/docs/xrpl/hash) can derive some indexes offline.
 
-## Usage
+## Binary and deleted entries
 
-To import the package, you can use the following code:
+With `Binary: true`, decode `response.NodeBinary` using `binarycodec.Decode`. Its returned map can be converted through JSON in the same way as `Node`. See [Binary codec](/docs/binary-codec).
 
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
-```
+Clio deleted-entry responses can also include `DeletedLedgerIndex` and `LedgerHash`. JSON and binary response forms remain separate. Do not treat the absence of `Node` alone as proof that an entry does not exist.
+
+## Field representation
+
+- MPT ledger amounts are quoted base-10 strings, and `OwnerNode` fields are hexadecimal strings. See [MPT ledger values](/docs/xrpl/mpt#ledger-values).
+- `PriceData.AssetPrice` is a pointer so absent and explicit zero prices remain distinct. Use `ledger.AssetPrice(value)` to construct it. Oracle `Scale` supports `0` through `20`. `Flatten` omits `Scale` when the price is absent, and `Validate` rejects a nonzero scale without a price.
+- `MPTokenIssuance` holds issuer/auditor encryption keys and `ConfidentialOutstandingAmount`. `MPToken` holds the holder key, spending/inbox ciphertexts, issuer/auditor mirror ciphertexts, and `ConfidentialBalanceVersion`. Use [confidential builders](/docs/confidential/builders) to work with this state.
+- `LsfMPTCanHoldConfidentialBalance` describes the issuance capability. `LsifMPTCanHoldConfidentialBalance` on `ImmutableFlags` describes its immutability restriction.
+
+Keep protocol field descriptions in the XRPL reference. The Go API reference documents available structs and their field types.

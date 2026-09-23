@@ -1,10 +1,19 @@
----
-sidebar_position: 3
----
-
 # Upgrade from v0.1.x to v0.2.0
 
-This guide covers the source changes most likely to affect applications upgrading from `v0.1.x` to `v0.2.0`.
+This guide covers changes from `v0.1.x` to `v0.2.0`, not the current release. For a later upgrade, continue with [v0.2.0 to v0.3.0](/docs/upgrading-from-v0.2.0-to-v0.3.0).
+
+## Upgrade checklist
+
+| Area | Check first |
+| --- | --- |
+| Key derivation | Preserve existing entropy bytes exactly when recovering a wallet |
+| Amounts | Replace floating-point codec inputs with exact representations |
+| Addresses | Handle tag presence separately from tag value |
+| Signers | Expect canonical account-ID signer ordering |
+| Errors | Update moved and removed sentinels |
+| Clients | Check response limits, logging, and handler lifecycle assumptions |
+
+Run your application's tests after each source update, then test signing and submission with non-production funds. Fixed entropy below illustrates compatibility only. Do not use it for a new funded wallet.
 
 ## Keypairs
 
@@ -27,23 +36,28 @@ entropy := []byte{
 seed, err := keypairs.GenerateSeed(entropy, crypto.ED25519(), nil)
 ```
 
-Do not pass passphrases directly. For deterministic passphrase-based seed generation, derive exactly 16 bytes outside `GenerateSeed`:
+Do not pass passphrases directly. New wallets should use cryptographically random entropy. If an existing application deliberately derived entropy with SHA-512, preserve that derivation outside `GenerateSeed` to recover the same wallet:
 
 ```go
 sum := sha512.Sum512([]byte(passphrase))
 seed, err := keypairs.GenerateSeed(sum[:addresscodec.FamilySeedLength], crypto.ED25519(), nil)
 ```
 
-Migration only: older versions used the first 16 bytes of any non-empty entropy string. If you must recover a legacy seed, reproduce that truncation before calling `GenerateSeed`:
+Hashing does not make a weak passphrase safe. This is a compatibility example, not a password-based wallet design. Do not change an existing derivation algorithm while recovering funds.
+
+Migration only: older versions used the first 16 bytes of any non-empty entropy string. Strings of 9 to 15 bytes did not fail. They returned a seed zero-padded to 16 bytes, which could have been funded. Strings of 1 to 8 bytes caused the old function to panic, so no seed exists for them. If you must recover a legacy seed, reproduce that behavior before calling `GenerateSeed`:
 
 ```go
-legacyEntropy := []byte(oldEntropy)
-if len(legacyEntropy) < addresscodec.FamilySeedLength {
-	return errors.New("legacy entropy was shorter than 16 bytes")
+legacyEntropy := make([]byte, addresscodec.FamilySeedLength)
+n := copy(legacyEntropy, oldEntropy)
+if n <= 8 {
+	return errors.New("legacy entropy of 8 bytes or fewer never produced a seed")
 }
 
-seed, err := keypairs.GenerateSeed(legacyEntropy[:addresscodec.FamilySeedLength], crypto.ED25519(), nil)
+seed, err := keypairs.GenerateSeed(legacyEntropy, crypto.ED25519(), nil)
 ```
+
+Use the same algorithm as the original wallet. This conversion is for recovery only, not new wallets.
 
 ## X-address Tags
 
@@ -94,7 +108,7 @@ Code that previously passed decimal strings should convert to hex first. `ErrUIn
 
 ## Signers and Multisigning
 
-`xrpl.SortSigners` now returns an error:
+`xrpl.SortSigners` is newly exported and returns an error:
 
 ```go
 if err := xrpl.SortSigners(signers); err != nil {
@@ -171,7 +185,7 @@ if errors.Is(err, transaction.ErrTransactionTypeMissing) {
 
 ```go
 if errors.Is(err, types.ErrPermissionValueOutOfRange) {
-    // ...
+	// ...
 }
 ```
 
@@ -192,6 +206,6 @@ Canonical zero forms (`"0"`, `"0.0"`, `"-0"`, `"0e5"`, etc.) are accepted as val
 
 ```go
 if errors.Is(err, transaction.ErrInvalidTokenValue) {
-    // ...
+	// ...
 }
 ```

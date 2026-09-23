@@ -33,7 +33,7 @@ func RippleTimeToUnixSeconds(rpepoch int64) int64 {
 
 // UnixTimeToRippleTime converts a unix timestamp to a ripple timestamp.
 //
-// timestamp is the number of milliseconds since the Unix epoch (January 1, 1970 00:00 UTC).
+// timestamp is the number of seconds since the Unix epoch (January 1, 1970 00:00 UTC).
 //
 // It returns the number of seconds since the Ripple epoch (January 1, 2000 00:00 UTC).
 func UnixTimeToRippleTime(timestamp int64) int64 {
