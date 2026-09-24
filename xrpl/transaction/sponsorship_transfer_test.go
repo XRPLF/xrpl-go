@@ -23,7 +23,7 @@ func TestSponsorshipTransfer_Validate(t *testing.T) {
 	emptyObject, shortObject := types.Hash256(""), types.Hash256("ABC")
 	longObject, nonHexObject := types.Hash256(strings.Repeat("A", 66)), types.Hash256(strings.Repeat("G", 64))
 	zeroObject, lowerObject := types.Hash256(strings.Repeat("0", 64)), types.Hash256(strings.Repeat("ab", 32))
-	key, sig := "AB", "CD"
+	key, sig := testPublicKey, "CD"
 	single := &types.SponsorSignature{SigningPubKey: &key, TxnSignature: &sig}
 	multi := &types.SponsorSignature{Signers: []types.Signer{{SignerData: types.SignerData{
 		Account: account, SigningPubKey: key, TxnSignature: sig,
@@ -181,7 +181,7 @@ func TestSponsorshipTransfer_CodecRoundTrip(t *testing.T) {
 	const account = "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
 	const sponsor = "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59"
 	object := types.Hash256(strings.Repeat("AB", 32))
-	key, signature := "AB", "CD"
+	key, signature := testPublicKey, "CD"
 	tests := []struct {
 		name string
 		tx   SponsorshipTransfer
@@ -201,7 +201,7 @@ func TestSponsorshipTransfer_CodecRoundTrip(t *testing.T) {
 			SponsorSignature: &types.SponsorSignature{SigningPubKey: &key, TxnSignature: &signature},
 		}}, map[string]any{
 			"TransactionType": "SponsorshipTransfer", "Account": account, "Flags": uint32(0x00040000), "Sponsor": sponsor, "SponsorFlags": uint32(2),
-			"SponsorSignature": map[string]any{"SigningPubKey": "AB", "TxnSignature": "CD"},
+			"SponsorSignature": map[string]any{"SigningPubKey": testPublicKey, "TxnSignature": "CD"},
 		}},
 		{"inner account placeholder", SponsorshipTransfer{BaseTx: BaseTx{
 			Flags: TfSponsorshipCreate | types.TfInnerBatchTxn, Sponsor: sponsor, SponsorFlags: types.SpfSponsorReserve,

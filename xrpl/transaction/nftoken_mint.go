@@ -210,5 +210,6 @@ func (n *NFTokenMint) Validate() (bool, error) {
 		return false, ErrInvalidDestination
 	}
 
+	// NFTokenTaxon accepts the full uint32 range.
 	return true, nil
 }

@@ -2,7 +2,6 @@ package transaction
 
 import (
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -78,15 +77,21 @@ func (p *PaymentChannelCreate) Validate() (bool, error) {
 		return false, err
 	}
 
+	if p.Amount.IsZero() || !p.Amount.IsValid() {
+		return false, ErrPaymentChannelCreateAmountInvalid
+	}
+
 	// check valid xrpl address for Destination
 	if !addresscodec.IsValidAddress(p.Destination.String()) {
 		return false, ErrInvalidDestination
 	}
 
 	// check PublicKey is valid hexademical string
-	if p.PublicKey == "" || !typecheck.IsHex(p.PublicKey) {
+	if !isPublicKey(p.PublicKey) {
 		return false, ErrInvalidHexPublicKey
 	}
 
+	// SettleDelay accepts the full uint32 range. CancelAfter is omitted when zero and any
+	// other value is a valid Ripple time. Expiry against the ledger close time needs ledger state.
 	return true, nil
 }

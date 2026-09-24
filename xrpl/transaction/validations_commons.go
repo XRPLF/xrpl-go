@@ -3,9 +3,13 @@ package transaction
 import (
 	"bytes"
 	"encoding/hex"
+	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
+	"github.com/Peersyst/xrpl-go/keypairs"
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -50,6 +54,75 @@ func mptIssuerAccountID(issuanceID string) ([]byte, bool) {
 	return issuanceIDBytes[len(issuanceIDBytes)-addresscodec.AccountAddressLength:], true
 }
 
+// assetIssuerAccountID returns the AccountID that issues asset. It reports false for
+// XRP, which has no issuer, and for an asset whose issuer cannot be decoded.
+func assetIssuerAccountID(asset ledger.Asset) ([]byte, bool) {
+	switch asset.Kind() { //nolint:exhaustive // XRP has no issuer.
+	case ledger.AssetIOU:
+		issuerID, _, err := decodeAddressAccountID(asset.Issuer)
+		return issuerID, err == nil
+	case ledger.AssetMPT:
+		return mptIssuerAccountID(asset.MPTIssuanceID)
+	}
+	return nil, false
+}
+
+// assetIssuedBy reports whether asset is issued by accountID. XRP has no issuer.
+func assetIssuedBy(asset ledger.Asset, accountID []byte) bool {
+	issuerID, ok := assetIssuerAccountID(asset)
+	return ok && bytes.Equal(issuerID, accountID)
+}
+
+// issuedCurrencyBytes parses an issued currency code. XRP, in any spelling that encodes
+// to the native currency, is not an issued currency.
+func issuedCurrencyBytes(code string) ([]byte, error) {
+	currencyBytes, err := bctypes.ParseCurrencyCode(code)
+	if err != nil {
+		return nil, err
+	}
+	if bytes.Equal(currencyBytes, bctypes.XRPBytes) {
+		return nil, ErrInvalidTokenCurrency
+	}
+	return currencyBytes, nil
+}
+
+// sameIssue reports whether amount is denominated in asset. Currency codes are compared
+// as codec bytes so "USD" equals its hex spelling, and issuers as AccountIDs so a classic
+// address equals its X-address. Both inputs must already be validated.
+func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
+	switch amount := amount.(type) {
+	case types.IssuedCurrencyAmount:
+		if asset.Kind() != ledger.AssetIOU {
+			return false
+		}
+		amountCurrency, err := issuedCurrencyBytes(amount.Currency)
+		if err != nil {
+			return false
+		}
+		assetCurrency, err := issuedCurrencyBytes(asset.Currency)
+		if err != nil {
+			return false
+		}
+		return bytes.Equal(amountCurrency, assetCurrency) && sameAccountAddress(amount.Issuer, asset.Issuer)
+	case types.MPTCurrencyAmount:
+		return asset.Kind() == ledger.AssetMPT && strings.EqualFold(amount.MPTIssuanceID, asset.MPTIssuanceID)
+	}
+	return false
+}
+
+// isPositiveTokenAmount reports whether amount is a well-formed issued or MPT amount
+// greater than zero. XRP is not a token amount.
+func isPositiveTokenAmount(amount types.CurrencyAmount) bool {
+	var ok bool
+	switch amount.(type) {
+	case types.IssuedCurrencyAmount:
+		ok, _ = IsIssuedCurrency(amount)
+	case types.MPTCurrencyAmount:
+		ok, _ = IsMPTCurrency(amount)
+	}
+	return ok && !amount.IsZero()
+}
+
 // decodeCounterparty decodes a nonzero counterparty AccountID and compares it
 // with accountID. Callers own tag restrictions, self-reference rules, and
 // field-specific error wrapping. Identity ignores X-address tags and networks.
@@ -91,6 +164,38 @@ func validateMemos(memoWrapper []types.MemoWrapper) error {
 		}
 	}
 
+	return nil
+}
+
+// isPublicKey reports whether signingPubKey is a well-formed public key. An empty value fails.
+func isPublicKey(signingPubKey string) bool {
+	_, err := keypairs.DeriveClassicAddress(signingPubKey)
+	return err == nil
+}
+
+// isSignaturePair reports whether a public key and signature are well formed.
+// It never verifies the signature, because the signed payload is not available
+// during field validation. An empty value fails either check.
+func isSignaturePair(signingPubKey, txnSignature string) bool {
+	return isPublicKey(signingPubKey) && typecheck.IsHexBlob(txnSignature)
+}
+
+// validateSignatureFields checks a SigningPubKey, TxnSignature and Signers trio carried by
+// a nested signature object such as SponsorSignature or CounterpartySignature.
+// Exactly one form is accepted: a non-empty Signers list with no single-sign fields,
+// or a well-formed SigningPubKey and TxnSignature pair.
+// An empty Signers list is present and therefore invalid. txnSignature is a pointer because
+// presence is what rippled tests. Callers own the inner Batch rule and error wrapping.
+func validateSignatureFields(signingPubKey string, txnSignature *string, signers []types.Signer) error {
+	if signers != nil {
+		if len(signers) == 0 || signingPubKey != "" || txnSignature != nil {
+			return errMixedSignatureForms
+		}
+		return validateSigners(signers)
+	}
+	if txnSignature == nil || !isSignaturePair(signingPubKey, *txnSignature) {
+		return errMalformedSignaturePair
+	}
 	return nil
 }
 

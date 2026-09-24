@@ -121,6 +121,18 @@ func TestVaultSet_Validate(t *testing.T) {
 			expected: ErrVaultSetDataInvalid,
 		},
 		{
+			name: "fail - Data odd-length hex",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID: types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				Data:    func() *types.Data { v := types.Data("ABC"); return &v }(),
+			},
+			expected: ErrVaultSetDataInvalid,
+		},
+		{
 			name: "fail - Data too large (> 256 bytes)",
 			tx: &VaultSet{
 				BaseTx: BaseTx{

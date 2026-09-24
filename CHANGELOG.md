@@ -8,13 +8,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### BREAKING CHANGES
+
+#### xrpl/transaction
+
+- Corrected the `AMMClawback` model to use issue-shaped `Asset` and `Asset2` fields and an optional issued-token or MPT `Amount`.
+- Changed `TrustSet.QualityIn` and `QualityOut` to optional pointers so callers can distinguish omission from an explicit zero that clears a quality.
+
+### Added
+
+#### binary-codec
+
+- Added `types.ParseCurrencyCode`, the currency-code parser behind `Currency`, issued-currency amounts, and path steps.
+
+#### xrpl/transaction
+
+- Added `IsBoundedHexBlob` for checking whole-byte hex fields against a hex-character limit.
+- Added `types.XRPCurrencyAmount.IsValid`, which reports whether an amount fits the native XRP range.
+- Added `types.Address.Flatten`, which returns the classic form of a tagless X-address for use inside nested objects such as issuers.
+
+### Changed
+
+#### binary-codec
+
+- Currency codes no longer accept a `0x` prefix, which no XRPL implementation accepts. A code is `XRP`, three characters from the IOU alphabet, or 40 hexadecimal characters.
+
+#### xrpl/transaction
+
+- Deprecated `ValidateHexMetadata` in favour of `IsBoundedHexBlob`, which takes the same arguments. It now rejects odd-length hex, which the binary codec cannot encode.
+- Deprecated `ErrInvalidAmountIssuer`. `AMMClawback.Validate` reports `ErrAMMClawbackInvalidAmount` or `ErrAMMClawbackAmountAssetMismatch` instead.
+- `OracleSet.Provider`, `URI` and `AssetClass` must now be hex-encoded, matching their ledger blob format. `ErrOracleProviderLength.Length` reports decoded bytes.
+
 ### Fixed
+
+#### binary-codec
+
+- Fixed hex currency codes with a `0x00` type byte being rewritten to XRP or rejected on encoding. They now serialize verbatim.
+- Fixed `Currency` accepting three-character codes outside the IOU alphabet, which produced Issue fields the ledger rejects.
+- Fixed decoding uppercasing three-character currency codes. A code like `xrP` now round-trips unchanged.
 
 #### xrpl/transaction
 
 - Fixed `Payment.Validate()` and `CheckCreate.Validate()` to reject malformed non-empty `InvoiceID` values with `ErrInvalidInvoiceID`.
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
+- Normalized tagless X-addresses to classic addresses when flattening assets, issued-currency amounts, payment path steps, and cross-chain bridges, while preserving tagged and malformed addresses for encoding errors.
+- Tightened `IsIssuedCurrency` to reject currency codes the binary codec cannot encode and issuers with an X-address tag. This applies to `IsAmount` and every transaction with an issued-currency amount.
+- Tightened `IsAsset` to reject assets that cannot encode as an Issue: unencodable currency codes, tagged issuers, and MPT issuance IDs that are not 24 bytes. Only the exact code `XRP` is native, other spellings are issued currencies and need an issuer. This also applies to `Validate()` on every AMM transaction and `VaultCreate`.
+- Signer entries now require a well-formed public key and a whole-byte hexadecimal signature. This applies to `IsSigner`, every `Signers` list, single-signed `SponsorSignature` objects, and the `PublicKey` and `Signature` of XChain attestations.
+- `SponsorSignature` and LoanSet `CounterpartySignature` now share one form check: a present but empty `Signers` list is invalid, and `ErrInvalidSponsorSignature` wraps the specific reason so both remain matchable with `errors.Is`.
+- Rejected odd-length hex in the `Data`, `MemoData` and `MPTokenMetadata` fields of LoanSet, LoanBrokerSet, Vault and MPTokenIssuance transactions. It previously passed `Validate()` and failed at encoding.
+- `AMMClawback.Validate` no longer accepts a `Holder` equal to `Account`.
+- `PaymentChannelCreate` and `PaymentChannelClaim` now require `PublicKey` to be a well-formed public key rather than any hexadecimal string, and `PaymentChannelClaim.Signature` must be whole-byte hexadecimal.
+- Fixed `IsMPTCurrency` accepting an `MPTIssuanceID` that is not 24 bytes, so amounts and assets agree on the same ID.
+- Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel creation, claims and funding, VaultCreate, and XChainCommit transactions.
 
 ## [v0.3.1]
 

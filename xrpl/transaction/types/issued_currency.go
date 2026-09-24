@@ -11,6 +11,6 @@ type IssuedCurrency struct {
 func (i *IssuedCurrency) Flatten() map[string]any {
 	flattened := make(map[string]any)
 	flattened["currency"] = i.Currency
-	flattened["issuer"] = i.Issuer.String()
+	flattened["issuer"] = i.Issuer.Flatten()
 	return flattened
 }

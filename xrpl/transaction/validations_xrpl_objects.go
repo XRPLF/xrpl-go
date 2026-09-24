@@ -99,6 +99,12 @@ func validateSignerData(signerData types.SignerData) ([]byte, error) {
 		return nil, ErrSignerSigningPubKeyShouldBeNonEmpty
 	}
 
+	// Well-formedness belongs to the Signer entry itself, so every Signers list gets it
+	// and no transaction type has to remember to add it.
+	if !isSignaturePair(signerData.SigningPubKey, signerData.TxnSignature) {
+		return nil, ErrSignerSignaturePairMalformed
+	}
+
 	return accountID, nil
 }
 
@@ -151,11 +157,12 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 	if strings.TrimSpace(issuedAmount.Currency) == "" {
 		return false, ErrMissingTokenCurrency
 	}
-	if strings.ToUpper(issuedAmount.Currency) == currency.NativeCurrencySymbol {
+	if _, err := issuedCurrencyBytes(issuedAmount.Currency); err != nil {
 		return false, ErrInvalidTokenCurrency
 	}
 
-	if !addresscodec.IsValidAddress(issuedAmount.Issuer.String()) {
+	// The issuer must be tagless, because an Amount has nowhere to encode a tag.
+	if _, hasTag, err := decodeAddressAccountID(issuedAmount.Issuer); err != nil || hasTag {
 		return false, ErrInvalidIssuer
 	}
 
@@ -185,7 +192,7 @@ func IsMPTCurrency(input types.CurrencyAmount) (bool, error) {
 		return false, ErrMissingMPTIssuanceID
 	}
 
-	if !typecheck.IsHex(mptAmount.MPTIssuanceID) {
+	if !IsMPTIssuanceID(mptAmount.MPTIssuanceID) {
 		return false, ErrInvalidMPTIssuanceID
 	}
 
@@ -255,39 +262,32 @@ func IsPaths(pathsteps [][]PathStep) (bool, error) {
 }
 
 // IsAsset checks if the given object is a valid Asset object.
+// A valid Asset encodes as an Issue. It is native XRP, an issued currency with a
+// tagless issuer, or a well-formed MPT issuance ID.
 func IsAsset(asset ledger.Asset) (bool, error) {
-	// MPT asset: only MPTIssuanceID should be set
-	if asset.MPTIssuanceID != "" {
-		if asset.Currency != "" || asset.Issuer != "" {
+	switch asset.Kind() {
+	case ledger.AssetMPT:
+		if asset.Currency != "" || asset.Issuer != "" || !IsMPTIssuanceID(asset.MPTIssuanceID) {
 			return false, ErrInvalidMPTIssuanceIDAsset
 		}
-		if !typecheck.IsHex(asset.MPTIssuanceID) {
-			return false, ErrInvalidMPTIssuanceIDAsset
+	case ledger.AssetXRP:
+		switch asset.Currency {
+		case "":
+			return false, ErrInvalidAssetFields
+		case currency.NativeCurrencySymbol:
+		default:
+			return false, ErrInvalidAssetIssuer
 		}
-		return true, nil
-	}
-
-	// Get the size of the Asset object.
-	lenKeys := len(maputils.GetKeys(asset.Flatten()))
-
-	if lenKeys == 0 {
-		return false, ErrInvalidAssetFields
-	}
-
-	if strings.TrimSpace(asset.Currency) == "" {
-		return false, ErrMissingAssetCurrency
-	}
-
-	if strings.ToUpper(asset.Currency) == currency.NativeCurrencySymbol && strings.TrimSpace(asset.Issuer.String()) == "" {
-		return true, nil
-	}
-
-	if strings.ToUpper(asset.Currency) == currency.NativeCurrencySymbol && asset.Issuer != "" {
-		return false, ErrInvalidAssetIssuer
-	}
-
-	if asset.Currency != "" && !addresscodec.IsValidAddress(asset.Issuer.String()) {
-		return false, ErrInvalidAssetIssuer
+	case ledger.AssetIOU:
+		if strings.TrimSpace(asset.Currency) == "" {
+			return false, ErrMissingAssetCurrency
+		}
+		if _, hasTag, err := decodeAddressAccountID(asset.Issuer); err != nil || hasTag {
+			return false, ErrInvalidAssetIssuer
+		}
+		if _, err := issuedCurrencyBytes(asset.Currency); err != nil {
+			return false, ErrInvalidAssetCurrency
+		}
 	}
 
 	return true, nil
@@ -341,10 +341,19 @@ func IsMPTokenIssuer(issuanceID string, address types.Address) bool {
 	return bytes.Equal(issuerID, accountID)
 }
 
-// ValidateHexMetadata validates input is non-empty hex string of up to a certain length.
-// Returns true if the input is a valid non-empty hex string up to the specified length.
+// IsBoundedHexBlob reports whether s is non-empty, whole-byte hexadecimal of at most
+// maxHexLength hex characters. A limit declared in decoded bytes must be doubled, because
+// each byte encodes as two hex characters.
+func IsBoundedHexBlob(s string, maxHexLength int) bool {
+	return typecheck.IsHexBlob(s) && len(s) <= maxHexLength
+}
+
+// ValidateHexMetadata reports whether input is non-empty, whole-byte hexadecimal of at
+// most maxLength hex characters.
+//
+// Deprecated: use IsBoundedHexBlob, which takes the same arguments.
 func ValidateHexMetadata(input string, maxLength int) bool {
-	return len(input) > 0 && len(input) <= maxLength && typecheck.IsHex(input)
+	return IsBoundedHexBlob(input, maxLength)
 }
 
 // IsTokenAmount checks if the given amount is a token amount (IssuedCurrencyAmount or MPTCurrencyAmount).

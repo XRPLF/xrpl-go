@@ -112,13 +112,13 @@ func TestVaultCreate_Flatten(t *testing.T) {
 					Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				},
 				Asset: ledger.Asset{
-					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+					MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 				},
 			},
 			expected: FlatTransaction{
 				"TransactionType": VaultCreateTx.String(),
 				"Account":         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
-				"Asset":           map[string]any{"mpt_issuance_id": "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF"},
+				"Asset":           map[string]any{"mpt_issuance_id": "00002403C84A0A28E0190E208E982C352BBD5006600555CF"},
 			},
 		},
 	}
@@ -163,7 +163,7 @@ func TestVaultCreate_Validate(t *testing.T) {
 					TransactionType: VaultCreateTx,
 				},
 				Asset: ledger.Asset{
-					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+					MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 				},
 			},
 			expected: nil,
@@ -181,6 +181,18 @@ func TestVaultCreate_Validate(t *testing.T) {
 				},
 			},
 			expected: nil,
+		},
+		{
+			name: "fail - unsupported WithdrawalPolicy",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:            ledger.Asset{Currency: "XRP"},
+				WithdrawalPolicy: func() *types.VaultWithdrawalPolicy { v := types.VaultWithdrawalPolicy(0); return &v }(),
+			},
+			expected: ErrVaultCreateWithdrawalPolicyInvalid,
 		},
 		{
 			name: "fail - AssetsMaximum invalid",
@@ -322,7 +334,7 @@ func TestVaultCreate_Validate(t *testing.T) {
 					TransactionType: VaultCreateTx,
 				},
 				Asset: ledger.Asset{
-					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+					MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 				},
 				Scale: func() *uint8 { v := uint8(5); return &v }(),
 			},

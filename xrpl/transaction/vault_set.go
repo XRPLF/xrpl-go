@@ -77,7 +77,7 @@ func (tx *VaultSet) Validate() (bool, error) {
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
-		if !ValidateHexMetadata(tx.Data.Value(), VaultSetMaxDataLength) {
+		if !IsBoundedHexBlob(tx.Data.Value(), VaultSetMaxDataLength) {
 			return false, ErrVaultSetDataInvalid
 		}
 	}

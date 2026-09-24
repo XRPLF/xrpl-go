@@ -1,14 +1,20 @@
 package transaction
 
 import (
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	rippletime "github.com/Peersyst/xrpl-go/xrpl/time"
 )
 
 const (
 	// OracleSetMaxPriceDataSeriesItems is the maximum number of PriceData objects allowed in a PriceDataSeries array.
 	OracleSetMaxPriceDataSeriesItems int = 10
-	// OracleSetProviderMaxLength is the maximum length in bytes for the Provider field.
+	// OracleSetProviderMaxLength is the maximum decoded length in bytes for the Provider field.
 	OracleSetProviderMaxLength int = 256
+	// OracleSetURIMaxLength is the maximum decoded length in bytes for the URI field.
+	OracleSetURIMaxLength int = 256
+	// OracleSetAssetClassMaxLength is the maximum decoded length in bytes for the AssetClass field.
+	OracleSetAssetClassMaxLength int = 16
 )
 
 // OracleSet creates a new Oracle ledger entry or updates the fields of an existing one using the Oracle ID.
@@ -45,14 +51,14 @@ type OracleSet struct {
 	// A unique identifier of the price oracle for the Account. It is 0 by default.
 	OracleDocumentID uint32
 	// The time the data was last updated, in seconds since the UNIX Epoch.
-	// It is 0 by default.
+	// It must be at or after the Ripple epoch (2000-01-01T00:00:00Z).
 	LastUpdateTime uint32
-	// (Variable) An arbitrary value that identifies an oracle provider, such as Chainlink, Band, or DIA. This field is a string, up to 256 ASCII hex encoded characters (0x20-0x7E).
+	// (Variable) Hex-encoded data that identifies an oracle provider, limited to 256 decoded bytes.
 	// This field is required when creating a new Oracle ledger entry, but is optional for updates.
 	Provider string `json:",omitempty"`
-	// (Optional) An optional Universal Resource Identifier to reference price data off-chain. This field is limited to 256 bytes.
+	// (Optional) Hex-encoded URI data that references price data off-chain, limited to 256 decoded bytes.
 	URI string `json:",omitempty"`
-	// (Variable) Describes the type of asset, such as "currency", "commodity", or "index". This field is a string, up to 16 ASCII hex encoded characters (0x20-0x7E).
+	// (Variable) Hex-encoded asset classification data, limited to 16 decoded bytes.
 	// This field is required when creating a new Oracle ledger entry, but is optional for updates.
 	AssetClass string `json:",omitempty"`
 	// An array of up to 10 PriceData objects, each representing the price information for a token pair. More than five PriceData objects require two owner reserves.
@@ -106,11 +112,31 @@ func (tx *OracleSet) Validate() (bool, error) {
 		return false, err
 	}
 
-	if len([]byte(tx.Provider)) > OracleSetProviderMaxLength {
-		return false, ErrOracleProviderLength{
-			Length: len([]byte(tx.Provider)),
-			Limit:  OracleSetProviderMaxLength,
+	// Provider keeps two errors: one for bad hex and one carrying the length and limit.
+	if tx.Provider != "" {
+		if !typecheck.IsHexBlob(tx.Provider) {
+			return false, ErrOracleProviderInvalid
 		}
+		if decodedLength := len(tx.Provider) / 2; decodedLength > OracleSetProviderMaxLength {
+			return false, ErrOracleProviderLength{
+				Length: decodedLength,
+				Limit:  OracleSetProviderMaxLength,
+			}
+		}
+	}
+
+	if tx.URI != "" && !IsBoundedHexBlob(tx.URI, 2*OracleSetURIMaxLength) {
+		return false, ErrOracleURIInvalid
+	}
+
+	if tx.AssetClass != "" && !IsBoundedHexBlob(tx.AssetClass, 2*OracleSetAssetClassMaxLength) {
+		return false, ErrOracleAssetClassInvalid
+	}
+
+	// Only the epoch lower bound is stateless. The ledger-time window and update
+	// monotonicity of tecINVALID_UPDATE_TIME need ledger state and stay server-side.
+	if int64(tx.LastUpdateTime) < rippletime.RippleEpochDiff {
+		return false, ErrOracleLastUpdateTimeInvalid
 	}
 
 	if len(tx.PriceDataSeries) > OracleSetMaxPriceDataSeriesItems {

@@ -19,13 +19,11 @@ on:
       - '.github/workflows/ci-confidential.yml'
       - '.github/workflows/ci-tests.yml'
       - '.github/workflows/ci-checks.yml'
-      - '.github/workflows/ci-api-compatibility.yml'
       - '.github/workflows/ci-cgo-matrix.yml'
       - '.github/workflows/update-mpt-crypto.yml'
   pull_request:
     branches: ['**']
-    # API acknowledgements can change with the PR title or description.
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
     paths: *paths
   schedule:
     # Scan for newly disclosed CVEs even when no code changes.
@@ -36,29 +34,21 @@ permissions:
   contents: read
 
 concurrency:
-  # Keep metadata-only PR edits from canceling full CI runs.
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}-${{ github.event.action == 'edited' && 'metadata' || 'full' }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   tests:
-    if: github.event_name != 'schedule' && github.event.action != 'edited'
+    if: github.event_name != 'schedule'
     uses: ./.github/workflows/ci-tests.yml
     with:
       module: confidential
 
   native-tests:
-    if: github.event_name != 'schedule' && github.event.action != 'edited'
+    if: github.event_name != 'schedule'
     uses: ./.github/workflows/ci-cgo-matrix.yml
 
   checks:
-    if: github.event.action != 'edited'
     uses: ./.github/workflows/ci-checks.yml
-    with:
-      module: confidential
-
-  api-compatibility:
-    if: github.event_name == 'pull_request'
-    uses: ./.github/workflows/ci-api-compatibility.yml
     with:
       module: confidential

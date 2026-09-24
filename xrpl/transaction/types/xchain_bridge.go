@@ -26,10 +26,10 @@ type FlatXChainBridge map[string]string
 func (x *XChainBridge) Flatten() FlatXChainBridge {
 	flat := make(FlatXChainBridge)
 
-	flat["IssuingChainDoor"] = x.IssuingChainDoor.String()
-	flat["IssuingChainIssue"] = x.IssuingChainIssue.String()
-	flat["LockingChainDoor"] = x.LockingChainDoor.String()
-	flat["LockingChainIssue"] = x.LockingChainIssue.String()
+	flat["IssuingChainDoor"] = x.IssuingChainDoor.Flatten()
+	flat["IssuingChainIssue"] = x.IssuingChainIssue.Flatten()
+	flat["LockingChainDoor"] = x.LockingChainDoor.Flatten()
+	flat["LockingChainIssue"] = x.LockingChainIssue.Flatten()
 
 	return flat
 }
