@@ -73,14 +73,14 @@ func assetIssuedBy(asset ledger.Asset, accountID []byte) bool {
 	return ok && bytes.Equal(issuerID, accountID)
 }
 
-// issuedCurrencyBytes parses an issued currency code. XRP, in any spelling that encodes
-// to the native currency, is not an issued currency.
+// issuedCurrencyBytes parses an issued currency code. XRP is not an issued currency,
+// whether spelled as the native code or the reserved standard-currency layout.
 func issuedCurrencyBytes(code string) ([]byte, error) {
 	currencyBytes, err := bctypes.ParseCurrencyCode(code)
 	if err != nil {
 		return nil, err
 	}
-	if bytes.Equal(currencyBytes, bctypes.XRPBytes) {
+	if bctypes.IsXRPCurrency(currencyBytes) {
 		return nil, ErrInvalidTokenCurrency
 	}
 	return currencyBytes, nil

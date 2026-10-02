@@ -321,6 +321,15 @@ func TestIsIssuedCurrency(t *testing.T) {
 			expectedErr: ErrInvalidTokenCurrency,
 		},
 		{
+			name: "fail - issuedCurrency object with reserved ISO XRP currency",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "0000000000000000000000005852500000000000",
+				Value:    "100",
+			},
+			expectedErr: ErrInvalidTokenCurrency,
+		},
+		{
 			name: "pass - lowercase xrp is an issued currency, not XRP",
 			input: types.IssuedCurrencyAmount{
 				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
@@ -642,6 +651,18 @@ func TestIsAsset(t *testing.T) {
 	t.Run("fail - currency is not an encodable code", func(t *testing.T) {
 		obj := ledger.Asset{
 			Currency: "USDX",
+			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+		}
+
+		ok, err := IsAsset(obj)
+
+		require.False(t, ok)
+		require.ErrorIs(t, err, ErrInvalidAssetCurrency)
+	})
+
+	t.Run("fail - currency is the reserved ISO XRP code", func(t *testing.T) {
+		obj := ledger.Asset{
+			Currency: "0000000000000000000000005852500000000000",
 			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		}
 
