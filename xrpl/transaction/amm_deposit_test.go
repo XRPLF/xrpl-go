@@ -182,6 +182,56 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			expected: true,
 		},
 		{
+			name: "fail - TradingFee exceeds maximum",
+			tx: &AMMDeposit{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: "AMMDeposit",
+					Fee:             types.XRPCurrencyAmount(10),
+					Flags:           TfTwoAssetIfEmpty,
+					Sequence:        7,
+				},
+				Asset: ledger.Asset{
+					Currency: "TST",
+					Issuer:   "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd",
+				},
+				Asset2: ledger.Asset{Currency: "XRP"},
+				Amount: types.IssuedCurrencyAmount{
+					Value:    "2.5",
+					Currency: "TST",
+					Issuer:   "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd",
+				},
+				Amount2:    types.XRPCurrencyAmount(30000000),
+				TradingFee: AmmMaxTradingFee + 1,
+			},
+			expected: false,
+		},
+		{
+			name: "fail - TradingFee set outside two asset if empty mode",
+			tx: &AMMDeposit{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: "AMMDeposit",
+					Fee:             types.XRPCurrencyAmount(10),
+					Flags:           TfTwoAsset,
+					Sequence:        7,
+				},
+				Asset: ledger.Asset{
+					Currency: "TST",
+					Issuer:   "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd",
+				},
+				Asset2: ledger.Asset{Currency: "XRP"},
+				Amount: types.IssuedCurrencyAmount{
+					Value:    "2.5",
+					Currency: "TST",
+					Issuer:   "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd",
+				},
+				Amount2:    types.XRPCurrencyAmount(30000000),
+				TradingFee: 1,
+			},
+			expected: false,
+		},
+		{
 			name: "fail - invalid AMMDeposit BaseTx without TransactionType",
 			tx: &AMMDeposit{
 				BaseTx: BaseTx{

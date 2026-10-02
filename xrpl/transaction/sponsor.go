@@ -112,17 +112,9 @@ func validateSponsorSignature(signature *types.SponsorSignature, inner bool) err
 		return nil
 	}
 
-	if signature.Signers != nil {
-		if len(signature.Signers) == 0 || signingPubKey != "" || signature.TxnSignature != nil {
-			return ErrInvalidSponsorSignature
-		}
-		return validateSigners(signature.Signers)
+	if err := validateSignatureFields(signingPubKey, signature.TxnSignature, signature.Signers); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidSponsorSignature, err)
 	}
-
-	if signingPubKey == "" || signature.TxnSignature == nil || *signature.TxnSignature == "" {
-		return ErrInvalidSponsorSignature
-	}
-
 	return nil
 }
 

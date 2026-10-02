@@ -139,8 +139,12 @@ func (tx *VaultCreate) Validate() (bool, error) {
 		return false, err
 	}
 
+	if tx.WithdrawalPolicy != nil && *tx.WithdrawalPolicy != types.VaultStrategyFirstComeFirstServe {
+		return false, ErrVaultCreateWithdrawalPolicyInvalid
+	}
+
 	if tx.Data != nil && *tx.Data != "" {
-		if !typecheck.IsHexBlob(tx.Data.Value()) || !ValidateHexMetadata(tx.Data.Value(), VaultCreateMaxDataLength) {
+		if !IsBoundedHexBlob(tx.Data.Value(), VaultCreateMaxDataLength) {
 			return false, ErrVaultCreateDataInvalid
 		}
 	}
@@ -150,7 +154,7 @@ func (tx *VaultCreate) Validate() (bool, error) {
 	}
 
 	if tx.MPTokenMetadata != nil && *tx.MPTokenMetadata != "" {
-		if !ValidateHexMetadata(*tx.MPTokenMetadata, VaultCreateMaxMPTokenMetadataLength) {
+		if !IsBoundedHexBlob(*tx.MPTokenMetadata, VaultCreateMaxMPTokenMetadataLength) {
 			return false, ErrVaultCreateMPTokenMetadataInvalid
 		}
 	}

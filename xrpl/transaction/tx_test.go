@@ -33,7 +33,7 @@ func signersOf(account types.Address) []types.Signer {
 	return []types.Signer{{SignerData: types.SignerData{
 		Account:       account,
 		TxnSignature:  "0123456789abcdef",
-		SigningPubKey: "abcdef0123456789",
+		SigningPubKey: testPublicKey,
 	}}}
 }
 
@@ -53,9 +53,9 @@ func TestTx_Validate(t *testing.T) {
 				AccountTxnID:       "abcdef123456",
 				LastLedgerSequence: 100,
 				SourceTag:          123,
-				SigningPubKey:      "abcdefg",
+				SigningPubKey:      testPublicKey,
 				TicketSequence:     2,
-				TxnSignature:       "xyz123",
+				TxnSignature:       "AABBCC",
 				NetworkID:          1,
 				Memos: []types.MemoWrapper{
 					{
@@ -78,7 +78,7 @@ func TestTx_Validate(t *testing.T) {
 						SignerData: types.SignerData{
 							Account:       "rDqbKhee18wUCnvjPjZA5Kgpe4zeubLQUC",
 							TxnSignature:  "abc123",
-							SigningPubKey: "def456",
+							SigningPubKey: testPublicKey,
 						},
 					},
 				},
@@ -109,9 +109,9 @@ func TestTx_Validate(t *testing.T) {
 				AccountTxnID:       "abcdef123456",
 				LastLedgerSequence: 100,
 				SourceTag:          123,
-				SigningPubKey:      "abcdefg",
+				SigningPubKey:      testPublicKey,
 				TicketSequence:     2,
-				TxnSignature:       "xyz123",
+				TxnSignature:       "AABBCC",
 				Memos: []types.MemoWrapper{
 					{
 						Memo: types.Memo{
@@ -134,9 +134,9 @@ func TestTx_Validate(t *testing.T) {
 				AccountTxnID:       "abcdef123456",
 				LastLedgerSequence: 100,
 				SourceTag:          123,
-				SigningPubKey:      "abcdefg",
+				SigningPubKey:      testPublicKey,
 				TicketSequence:     2,
-				TxnSignature:       "xyz123",
+				TxnSignature:       "AABBCC",
 				Signers: []types.Signer{
 					{
 						SignerData: types.SignerData{
@@ -485,11 +485,11 @@ func TestBaseTx_Flatten(t *testing.T) {
 					},
 				},
 				NetworkID:      1,
-				Signers:        []types.Signer{{SignerData: types.SignerData{Account: "rDqbKhee18wUCnvjPjZA5Kgpe4zeubLQUC", TxnSignature: "abc123", SigningPubKey: "def456"}}},
+				Signers:        []types.Signer{{SignerData: types.SignerData{Account: "rDqbKhee18wUCnvjPjZA5Kgpe4zeubLQUC", TxnSignature: "abc123", SigningPubKey: testPublicKey}}},
 				SourceTag:      123,
-				SigningPubKey:  "abcdefg",
+				SigningPubKey:  testPublicKey,
 				TicketSequence: 2,
-				TxnSignature:   "xyz123",
+				TxnSignature:   "AABBCC",
 			},
 			expected: `{
 				"Account": "rhbi7TGHknHCsRrVYmW57tQHmHjmFgjEpU",
@@ -515,14 +515,14 @@ func TestBaseTx_Flatten(t *testing.T) {
 						"Signer": {
 							"Account": "rDqbKhee18wUCnvjPjZA5Kgpe4zeubLQUC",
 							"TxnSignature": "abc123",
-							"SigningPubKey": "def456"
+							"SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
 						}
 					}
 				],
 				"SourceTag": 123,
-				"SigningPubKey": "abcdefg",
+				"SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 				"TicketSequence": 2,
-				"TxnSignature": "xyz123"
+				"TxnSignature": "AABBCC"
 			}`,
 		},
 		{

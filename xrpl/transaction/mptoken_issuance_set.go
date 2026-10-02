@@ -266,7 +266,7 @@ func (m *MPTokenIssuanceSet) Validate() (bool, error) {
 			return false, ErrMPTIssuanceSetTransferFeeWithConfidentialBalance
 		}
 	}
-	if m.MPTokenMetadata != nil && *m.MPTokenMetadata != "" && !ValidateHexMetadata(*m.MPTokenMetadata, 2*types.MaxMPTokenMetadataByteLength) {
+	if m.MPTokenMetadata != nil && *m.MPTokenMetadata != "" && !IsBoundedHexBlob(*m.MPTokenMetadata, 2*types.MaxMPTokenMetadataByteLength) {
 		return false, ErrInvalidMPTokenMetadata
 	}
 	if m.DomainID != nil && !IsDomainID(*m.DomainID) {

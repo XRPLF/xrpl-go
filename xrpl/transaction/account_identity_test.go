@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
+	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
+	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
 )
@@ -123,17 +125,22 @@ func TestAMMClawbackAccountIdentity(t *testing.T) {
 			tx := AMMClawback{
 				BaseTx: BaseTx{Account: pair.account, TransactionType: AMMClawbackTx, Fee: 12},
 				Holder: "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
-				Asset:  types.IssuedCurrency{Currency: "USD", Issuer: pair.other},
-				Asset2: types.XRPCurrencyAmount(1),
+				Asset:  ledger.Asset{Currency: "USD", Issuer: pair.other},
+				Asset2: ledger.Asset{Currency: "XRP"},
 			}
+			_, assetIssuerHasTag, _ := decodeAddressAccountID(pair.other)
 			var wantErr error
-			if !pair.same {
+			if !pair.same || assetIssuerHasTag {
 				wantErr = ErrInvalidAssetIssuer
 			}
 			before := tx
 			ok, err := tx.Validate()
 			require.ErrorIs(t, err, wantErr)
 			require.Equal(t, wantErr == nil, ok)
+			if wantErr == nil {
+				_, encodeErr := binarycodec.Encode(tx.Flatten())
+				require.NoError(t, encodeErr)
+			}
 			require.Equal(t, before, tx)
 		})
 	}

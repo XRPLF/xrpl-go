@@ -1,6 +1,8 @@
 package transaction
 
 import (
+	"fmt"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -181,7 +183,7 @@ func (tx *LoanSet) Flatten() FlatTransaction {
 		flattened["OverpaymentInterestRate"] = uint32(*tx.OverpaymentInterestRate)
 	}
 
-	if tx.PaymentTotal != nil && *tx.PaymentTotal != 0 {
+	if tx.PaymentTotal != nil {
 		flattened["PaymentTotal"] = uint32(*tx.PaymentTotal)
 	}
 
@@ -194,6 +196,29 @@ func (tx *LoanSet) Flatten() FlatTransaction {
 	}
 
 	return flattened
+}
+
+func validateLoanSetCounterpartySignature(signature *CounterpartySignature, inner bool) error {
+	if signature == nil {
+		return nil
+	}
+
+	if inner {
+		if signature.SigningPubKey != "" || signature.TxnSignature != "" || signature.Signers != nil {
+			return ErrLoanSetInnerCounterpartySignature
+		}
+		return nil
+	}
+
+	// Flatten drops an empty TxnSignature, so it is absent on the wire.
+	var txnSignature *string
+	if signature.TxnSignature != "" {
+		txnSignature = &signature.TxnSignature
+	}
+	if err := validateSignatureFields(signature.SigningPubKey, txnSignature, signature.Signers); err != nil {
+		return fmt.Errorf("%w: %w", ErrLoanSetCounterpartySignatureInvalid, err)
+	}
+	return nil
 }
 
 // Validate checks LoanSet transaction fields and returns false with an error if invalid.
@@ -219,7 +244,7 @@ func (tx *LoanSet) Validate() (bool, error) {
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
-		if !ValidateHexMetadata(tx.Data.Value(), LoanSetMaxDataLength) {
+		if !IsBoundedHexBlob(tx.Data.Value(), LoanSetMaxDataLength) {
 			return false, ErrLoanSetDataInvalid
 		}
 	}
@@ -228,6 +253,15 @@ func (tx *LoanSet) Validate() (bool, error) {
 		if !addresscodec.IsValidAddress(tx.Counterparty.String()) {
 			return false, ErrInvalidAccount
 		}
+	}
+
+	inner := tx.Flags&types.TfInnerBatchTxn != 0
+	if inner && tx.Counterparty == nil {
+		return false, ErrLoanSetInnerCounterpartyRequired
+	}
+	// A non-inner signature may be absent while the first party constructs and signs the transaction.
+	if err := validateLoanSetCounterpartySignature(tx.CounterpartySignature, inner); err != nil {
+		return false, err
 	}
 
 	if tx.OverpaymentFee != nil && *tx.OverpaymentFee > LoanSetMaxOverPaymentFeeRate {
@@ -248,6 +282,10 @@ func (tx *LoanSet) Validate() (bool, error) {
 
 	if tx.OverpaymentInterestRate != nil && *tx.OverpaymentInterestRate > LoanSetMaxOverPaymentInterestRate {
 		return false, ErrLoanSetOverpaymentInterestRateInvalid
+	}
+
+	if tx.PaymentTotal != nil && *tx.PaymentTotal == 0 {
+		return false, ErrLoanSetPaymentTotalInvalid
 	}
 
 	if tx.PaymentInterval != nil && *tx.PaymentInterval != 0 && *tx.PaymentInterval < LoanSetMinPaymentInterval {

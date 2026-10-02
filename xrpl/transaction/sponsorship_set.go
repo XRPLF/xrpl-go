@@ -123,7 +123,7 @@ func (tx *SponsorshipSet) Validate() (bool, error) {
 			return false, ErrSponsorshipSetFeeAmountDelta
 		}
 	}
-	if tx.MaxFee != nil && tx.MaxFee.Uint64() > currency.MaxNativeDrops {
+	if tx.MaxFee != nil && !tx.MaxFee.IsValid() {
 		return false, ErrSponsorshipSetMaxFee
 	}
 	if tx.RemainingOwnerCountDelta != nil && *tx.RemainingOwnerCountDelta == 0 {

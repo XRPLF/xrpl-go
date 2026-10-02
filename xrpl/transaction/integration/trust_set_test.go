@@ -17,6 +17,10 @@ type TrustSetTest struct {
 	TrustSet *transaction.TrustSet
 }
 
+func trustSetQuality(value uint32) *uint32 {
+	return &value
+}
+
 func testIntegrationTrustSet(t *testing.T, client integration.Client) {
 	runner := integration.NewRunner(t, client, &integration.RunnerConfig{
 		WalletCount: 2,
@@ -55,8 +59,8 @@ func testIntegrationTrustSet(t *testing.T, client integration.Client) {
 					Issuer:   receiver.GetAddress(),
 					Value:    "100000000000000",
 				},
-				QualityIn:  990000000,
-				QualityOut: 990000000,
+				QualityIn:  trustSetQuality(990000000),
+				QualityOut: trustSetQuality(990000000),
 			},
 		},
 		{
@@ -70,8 +74,8 @@ func testIntegrationTrustSet(t *testing.T, client integration.Client) {
 					Issuer:   receiver.GetAddress(),
 					Value:    "100000000000000",
 				},
-				QualityOut: 1010000000,
-				QualityIn:  1010000000,
+				QualityOut: trustSetQuality(1010000000),
+				QualityIn:  trustSetQuality(1010000000),
 			},
 		},
 	}
