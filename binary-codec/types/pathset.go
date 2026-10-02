@@ -185,7 +185,7 @@ func (p PathSet) ToJSON(parser interfaces.BinaryParser, _ ...int) (any, error) {
 			for i, step := range path {
 				stepMap, ok := step.(map[string]any)
 				if !ok {
-					return nil, fmt.Errorf("step is not of type map[string]any")
+					return nil, fmt.Errorf("%w: step is not of type map[string]any", ErrInvalidPathSet)
 				}
 				// Calculate type by combining flags
 				stepType := 0

@@ -1569,7 +1569,7 @@ func TestAmount_FromJson_Errors(t *testing.T) {
 		{
 			name:   "fail - unsupported value type",
 			input:  map[string]any{"value": []int{1}, "currency": currency, "issuer": issuer},
-			expErr: "invalid amount value: unsupported type \\[\\]int for amount value",
+			expErr: "invalid amount value: unsupported amount value type: \\[\\]int",
 		},
 		{
 			name:   "fail - missing currency",
@@ -1584,7 +1584,7 @@ func TestAmount_FromJson_Errors(t *testing.T) {
 		{
 			name:   "fail - unsupported mpt_issuance_id type",
 			input:  map[string]any{"value": "1", "mpt_issuance_id": []int{1}},
-			expErr: "invalid mpt_issuance_id: unsupported type \\[\\]int for amount value",
+			expErr: "invalid mpt_issuance_id: unsupported amount value type: \\[\\]int",
 		},
 		{
 			name:   "fail - invalid mpt_issuance_id hex",

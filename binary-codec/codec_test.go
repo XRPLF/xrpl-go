@@ -408,7 +408,7 @@ func TestEncode(t *testing.T) {
 			description: "reject Generic field with unsupported Unknown type",
 			input:       map[string]any{"Generic": "value"},
 			output:      "",
-			expectedErr: errors.New(`unknown type "Unknown" for field "Generic"`),
+			expectedErr: errors.New(`unknown field type: type "Unknown", field "Generic"`),
 		},
 		{
 			description: "invalid pathset",
@@ -998,7 +998,7 @@ func TestEncodeForSigning(t *testing.T) {
 			description: "reject Generic signing field with unsupported Unknown type",
 			input:       map[string]any{"Generic": "value"},
 			output:      "",
-			expectedErr: errors.New(`unknown type "Unknown" for field "Generic"`),
+			expectedErr: errors.New(`unknown field type: type "Unknown", field "Generic"`),
 		},
 		{
 			description: "serialize STObject for signing correctly",

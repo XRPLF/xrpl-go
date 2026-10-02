@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"bytes"
-	"errors"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
@@ -228,7 +227,7 @@ func (tx *BaseTx) Validate() (bool, error) {
 	}
 
 	if !typecheck.IsStringNumericUint(tx.Fee.String(), 10, 64) {
-		return false, errors.New("invalid fee amount, not a uint")
+		return false, ErrInvalidFee
 	}
 
 	err = ValidateOptionalField(flattenTx, "Sequence", typecheck.IsUint32)

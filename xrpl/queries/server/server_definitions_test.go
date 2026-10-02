@@ -88,6 +88,23 @@ func TestDefinitionTypesMarshalIncompleteValues(t *testing.T) {
 	})
 }
 
+func TestDefinitionFormatFieldValidate(t *testing.T) {
+	tests := []struct {
+		name  string
+		field server.DefinitionFormatField
+	}{
+		{name: "empty name", field: server.DefinitionFormatField{Optionality: 0}},
+		{name: "optionality below range", field: server.DefinitionFormatField{Name: "Account", Optionality: -2}},
+		{name: "optionality above range", field: server.DefinitionFormatField{Name: "Account", Optionality: 3}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.ErrorIs(t, tt.field.Validate(), server.ErrInvalidDefinitionFormatField)
+		})
+	}
+}
+
 func definitionsResponseFullFixture() (server.DefinitionsResponse, string) {
 	expected := server.DefinitionsResponse{
 		Fields: []server.DefinitionField{

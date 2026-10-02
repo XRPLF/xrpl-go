@@ -149,7 +149,7 @@ func TestMPTokenIssuance(t *testing.T) {
 		name       string
 		issuanceID string
 		want       string
-		wantError  bool
+		wantErr    error
 	}{
 		{
 			name:       "pass - valid issuance ID",
@@ -159,15 +159,20 @@ func TestMPTokenIssuance(t *testing.T) {
 		{
 			name:       "fail - wrong length",
 			issuanceID: "0001",
-			wantError:  true,
+			wantErr:    ErrInvalidMPTokenIssuanceID,
+		},
+		{
+			name:       "fail - 48 characters that are not hex",
+			issuanceID: "zz0000000000000000000000000000000000000000000001",
+			wantErr:    ErrInvalidMPTokenIssuanceID,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := MPTokenIssuance(tt.issuanceID)
-			if tt.wantError {
-				require.Error(t, err)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
 				require.Empty(t, got)
 			} else {
 				require.NoError(t, err)

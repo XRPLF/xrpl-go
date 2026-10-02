@@ -84,6 +84,10 @@ var (
 	errInvalidIssuerFormat           = errors.New("invalid issuer")
 	errInvalidAmountType             = errors.New("invalid amount type")
 	errFloat64AmountValue            = errors.New("float64 not allowed for amount value, string or json.Number must be used")
+	// errUnsupportedAmountValueType is returned when an amount value has a Go type the codec cannot read.
+	// Invariant failures are not part of the caller's errors.Is contract.
+	// Export a sentinel when callers are expected to branch on it.
+	errUnsupportedAmountValueType = errors.New("unsupported amount value type")
 
 	maxDropsBig = new(big.Int).SetUint64(maxNativeDrops)
 )
@@ -688,6 +692,6 @@ func valueToString(v any) (string, error) {
 	case float64:
 		return "", errFloat64AmountValue
 	default:
-		return "", fmt.Errorf("unsupported type %T for amount value", x)
+		return "", fmt.Errorf("%w: %T", errUnsupportedAmountValueType, x)
 	}
 }

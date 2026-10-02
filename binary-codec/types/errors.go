@@ -7,11 +7,17 @@ var (
 	errNotValidJSON         = errors.New("not a valid json")
 	errDecodeClassicAddress = errors.New("unable to decode classic address")
 	errReadBytes            = errors.New("read bytes error")
+	// errUnknownFieldType is returned when a field definition names a type with no serializer.
+	// Invariant failures are not part of the caller's errors.Is contract.
+	// Export a sentinel when callers are expected to branch on it.
+	errUnknownFieldType = errors.New("unknown field type")
 	// ErrDuplicateXAddressTag is returned when an X-address contains a tag and the transaction also defines the matching tag field.
 	ErrDuplicateXAddressTag = errors.New("duplicate X-address tag")
 	// ErrAccountIDTagNotAllowed is returned when an AccountID-typed field receives an X-address that carries an embedded tag.
 	// Only top-level Account and Destination can carry an embedded tag (promoted to SourceTag/DestinationTag).
 	ErrAccountIDTagNotAllowed = errors.New("AccountID field cannot have an associated tag")
+	// ErrAccountIDNotString is returned when an AccountID field receives a non-string JSON value.
+	ErrAccountIDNotString = errors.New("account ID must be a string")
 	// ErrUInt8OutOfRange is returned when a value is outside the uint8 range (0-255).
 	ErrUInt8OutOfRange = errors.New("value out of uint8 range (0-255)")
 	// ErrUInt16OutOfRange is returned when a value is outside the uint16 range (0-65535).

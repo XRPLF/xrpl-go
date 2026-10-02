@@ -19,4 +19,9 @@ var (
 	// ErrInvalidSignedTransaction is returned when signing fields are incomplete, empty,
 	// malformed, or mixed between single-sign and multisign forms.
 	ErrInvalidSignedTransaction = clientinternal.ErrInvalidSignedTransaction
+
+	// ledger objects
+
+	// ErrInvalidMPTokenIssuanceID is returned when an MPTokenIssuanceID is not 48 hex characters.
+	ErrInvalidMPTokenIssuanceID = errors.New("issuance ID must be 48 hex chars (24 bytes)")
 )

@@ -20,6 +20,8 @@ var (
 	// ErrInvalidFlagsValue is returned when the Flags field is present but cannot
 	// be coerced to a uint32.
 	ErrInvalidFlagsValue = errors.New("invalid Flags: must be a non-negative integer that fits in uint32 ([0, 4294967295])")
+	// ErrInvalidFee is returned when the Fee field is not an unsigned integer amount of drops.
+	ErrInvalidFee = errors.New("invalid fee amount, not a uint")
 	// ErrInvalidAccount is returned when the Account field does not meet XRPL address standards.
 	ErrInvalidAccount = errors.New("invalid xrpl address for Account")
 	// ErrZeroAccountID is wrapped by the field-specific error when an address decodes to

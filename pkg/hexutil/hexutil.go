@@ -3,9 +3,13 @@ package hexutil
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 )
+
+// ErrInvalidHexLength is returned when a hex string does not decode to the expected number of bytes.
+var ErrInvalidHexLength = errors.New("invalid hex length")
 
 // EncodeToUpperHex encodes bytes to an uppercase hexadecimal string.
 func EncodeToUpperHex(b []byte) string {
@@ -19,7 +23,7 @@ func DecodeFixedHex(hexStr string, size int) ([]byte, error) {
 		return nil, fmt.Errorf("invalid hex: %w", err)
 	}
 	if len(b) != size {
-		return nil, fmt.Errorf("expected %d bytes, got %d", size, len(b))
+		return nil, fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidHexLength, size, len(b))
 	}
 	return b, nil
 }
