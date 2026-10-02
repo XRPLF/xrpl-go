@@ -1,96 +1,87 @@
 # Keypairs
 
-This package handles cryptographic key pair generation, derivation, signing, and verification for XRP Ledger accounts. It supports both **ED25519** and **secp256k1** algorithms.
+Generate seeds, derive keypairs and addresses, and sign or verify messages for XRP Ledger accounts. The package supports Ed25519 and secp256k1.
 
-## Overview
+[Installation](../README.md#quick-start) · [Guide](https://xrplf.github.io/xrpl-go/docs/keypairs) · [API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/keypairs) · [Wallet guide](../xrpl/README.md#wallets-and-multisigning)
 
-An XRPL account is ultimately derived from a cryptographic key pair. The lifecycle looks like this:
+Use [`xrpl/wallet`](../xrpl/wallet) for normal wallet management and transaction signing. Use `keypairs` when you need the lower-level operations directly.
 
-```
-entropy (random bytes)
-    → seed (Base58Check encoded, algorithm-specific prefix)
-    → private key + public key  (via DeriveKeypair)
-    → account ID (SHA-256 → RIPEMD-160 of public key)
-    → classic address (Base58Check encoded account ID)
-```
+## Generate a seed and address
 
-The algorithm used (ED25519 or secp256k1) is embedded in the seed's prefix, so `DeriveKeypair` can automatically detect which one to use.
+This example generates a random Ed25519 seed, derives its keypair, and prints only the public address. It runs offline and does not fund an account.
 
-## Supported Algorithms
-
-| Algorithm | Key prefix | Use case |
-|---|---|---|
-| **ED25519** | `0xED` | Default for new accounts; faster, smaller signatures |
-| **secp256k1** | `0x00` | Bitcoin-compatible; required for some hardware wallets and validators |
-
-The algorithm is detected automatically from the first byte of the private or public key hex string.
-
-## API
-
-### Generate a Seed
+Save it as `main.go` in your application after installing the SDK, then run `go run .`:
 
 ```go
+package main
+
 import (
-    addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-    "github.com/Peersyst/xrpl-go/keypairs"
-    "github.com/Peersyst/xrpl-go/pkg/crypto"
-    "github.com/Peersyst/xrpl-go/pkg/random"
+	"fmt"
+	"log"
+
+	"github.com/Peersyst/xrpl-go/keypairs"
+	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/Peersyst/xrpl-go/pkg/random"
 )
 
-// Random seed (recommended)
-seed, err := keypairs.GenerateSeed(nil, crypto.ED25519(), random.NewRandomizer())
+func main() {
+	seed, err := keypairs.GenerateSeed(nil, crypto.ED25519(), random.NewRandomizer())
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, publicKey, err := keypairs.DeriveKeypair(seed, false)
+	if err != nil {
+		log.Fatal(err)
+	}
+	address, err := keypairs.DeriveClassicAddress(publicKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Classic address:", address)
+}
 ```
 
-Caller-supplied entropy must be exactly 16 raw bytes. Do not pass passphrases directly. If you need deterministic passphrase-based generation, derive 16 bytes before calling this function, for example with SHA-512 and the first 16 bytes, HKDF, or a password KDF. The resulting seed is still limited by the real entropy of the input.
+The address changes on each run. The example discards the credentials when it exits, so **do not send funds to this address**.
 
-Migration only: older versions silently used the first 16 bytes of any non-empty string passed to `GenerateSeed`. If you need to recover the exact same seed from a legacy input, reproduce that truncation before calling this function:
+## Choose an operation
 
-```go
-legacyEntropy := []byte("setPasswordOverLen16")
-seed, err := keypairs.GenerateSeed(legacyEntropy[:addresscodec.FamilySeedLength], crypto.ED25519(), nil)
-```
+| Task | Function |
+| --- | --- |
+| Generate a seed | `GenerateSeed` |
+| Derive private and public keys from a seed | `DeriveKeypair` |
+| Derive a classic address from a public key | `DeriveClassicAddress` |
+| Derive the classic address for a node public key | `DeriveNodeAddress` |
+| Sign a message | `Sign` |
+| Verify a signature | `Validate` |
 
-If your legacy input was shorter than 16 bytes the old `GenerateSeed` would have panicked, so there is no deterministic seed to recover.
+Choose `crypto.ED25519()` or `crypto.SECP256K1()` when generating a seed. `DeriveKeypair` detects the algorithm from the encoded seed. Pass `false` for its `validator` argument. Validator keypair derivation is not supported and returns an error. The result order is **private key, public key, error**.
 
-Do not use this pattern for new wallets. New code should provide 16 bytes generated from a cryptographically secure random source, or 16 bytes derived deliberately outside this function.
+`DeriveNodeAddress` takes a Base58 node public key and an algorithm. Pass `crypto.SECP256K1()`, the only algorithm that supports node derivation.
 
-### Derive a Key Pair
+`Sign` and `Validate` select the algorithm from the key's hex prefix and length:
 
-```go
-// validator=false for regular accounts, true for validator nodes
-privateKey, publicKey, err := keypairs.DeriveKeypair(seed, false)
-```
+| Algorithm | Public key | Private key |
+| --- | --- | --- |
+| Ed25519 | `ED` + 32 bytes | `ED` + 32 bytes |
+| secp256k1 | 33 bytes starting `02` or `03` | 32 raw bytes, or `00` + 32 bytes |
 
-After derivation, the pair is automatically verified by signing and validating a test message — `DeriveKeypair` returns an error if the pair is inconsistent.
+For transactions, use the wallet signing methods rather than signing arbitrary JSON or a submission blob.
 
-### Derive an Address
+## Supply your own entropy
 
-```go
-// Classic address from a public key
-classicAddress, err := keypairs.DeriveClassicAddress(publicKey)
+Prefer the random seed generation shown above. If you supply entropy, it must be exactly 16 raw bytes. The randomizer is not used in that case.
 
-// Node/validator address from a node public key
-nodeAddress, err := keypairs.DeriveNodeAddress(nodePublicKey, crypto.SECP256K1())
-```
+Do not pass a passphrase directly. Deterministic derivation belongs outside this function, and a derived seed is only as strong as its input and derivation method. Hashing a weak password does not make it a strong secret.
 
-### Sign and Verify
+## Recover a legacy seed
 
-```go
-// Sign a hex-encoded message with a private key
-signature, err := keypairs.Sign(messageHex, privateKey)
+Follow the [v0.2 migration guide](https://xrplf.github.io/xrpl-go/docs/upgrading-from-v0.1.x-to-v0.2.0#keypairs) to reproduce legacy string-entropy derivation. Recovery rules are not recommendations for new wallets.
 
-// Verify a signature
-valid, err := keypairs.Validate(messageHex, publicKey, signature)
-```
+## Security
 
-The algorithm is inferred automatically from the key prefix — no need to specify it explicitly.
+Never print, log, commit, or send real seeds or private keys to telemetry. Use secure storage for credentials that must survive a process exit. Read the [security and audit notice](../README.md#security-and-audits) before using the SDK with production funds.
 
-## Interfaces
+## Package internals
 
-The package is built around two interfaces in `interfaces/`, enabling testing with mocks and supporting future algorithm additions:
-
-- **`KeypairCryptoAlg`** — `DeriveKeypair`, `Sign`, `Validate`
-- **`NodeDerivationCryptoAlg`** — `DerivePublicKeyFromPublicGenerator` (secp256k1 only, used for validator node address derivation)
-- **`Randomizer`** — `GenerateBytes` (used by `GenerateSeed` for entropy)
-
-Concrete implementations live in `pkg/crypto/` (`ed25519.go`, `secp256k1.go`).
+The [interfaces package](interfaces) defines the keypair, node-derivation, and randomizer contracts. Algorithm implementations live in [`pkg/crypto`](../pkg/crypto). `DeriveKeypair` checks the derived pair by signing and verifying a test message before returning it.

@@ -1,366 +1,128 @@
-# queries
+# Request and response types
 
-## Overview
+The Go package is named `xrpl/queries`, but it does not send network requests itself. It defines the types you pass to client methods and the responses those methods return.
 
-The `queries` package contains mainly request and response types for the [XRPL methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods). This package is used by the package clients [`rpc`](/docs/xrpl/rpc) and [`websocket`](/docs/xrpl/websocket) to send client queries to the ledger.
-
-:::info
-
-As a developer, you may be interested in calling the queries using the [`websocket`](/docs/xrpl/websocket) or [`rpc`](/docs/xrpl/rpc) clients. Both clients expose methods to call each query exposed by the `queries` package.
-
-:::
-
-Queries are grouped by different categories or packages:
-
-- `account`: Methods to work with account info.
-- `channel`: Methods to work with channels.
-- `ledger`: Methods to retrieve ledger info.
-- `transaction`: Submit and query ledger transactions.
-- `path`: Methods to use paths and order books.
-- `nft`: Methods to work with NFTs.
-- `oracle`: Methods to work with oracles.
-- `vault`: Methods to work with vaults.
-- `clio`: Methods to use the Clio API, not [`rippled`](https://github.com/XRPLF/rippled).
-- `server`: Methods to retrieve information about the current state of the [`rippled`](https://github.com/XRPLF/rippled) server.
-- `utility`: Perform convenient tasks, such as ping and random number generation.
-
-### API version
-
-By default, all queries are meant to be used with the latest XRPL API version (currently `v2`). If you want to use a specific version, you will need to import the specific version queries package from each subpackage.
-
-For example, if you want to use the XRPL API version `v1` queries of the `account` subpackage, you will need to import it this way:
-
-```go
-import accountv1 "github.com/Peersyst/xrpl-go/xrpl/queries/account/v1"
+```text
+request struct -> client method -> XRPL server -> response struct
 ```
 
-## Categories
+Use [JSON-RPC](/docs/xrpl/rpc) or [WebSocket](/docs/xrpl/websocket) for the connection. The [XRPL API reference](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods) defines server methods, fields, and errors. This guide explains their Go usage.
 
-### account
+## Make a typed query
 
-The `account` package contains methods to interact with XRPL accounts. These methods allow you to:
-
-- Retrieve account information like balances, settings, and objects.
-- Get account transaction history.
-- Query account channels and escrows.
-- Check account offers and payment channels.
-
-The available methods correspond to the [Account Methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods#account-methods) in the XRPL API.
-
-The account subpackage provides the following queries requests:
-
-| Request                  | Method name                                                                                                                      | V1 support | V2 support |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `ChannelsRequest`        | [account_channels](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_channels)     | ✅         | ✅         |
-| `CurrenciesRequest`      | [account_currencies](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_currencies) | ✅         | ✅         |
-| `GatewayBalancesRequest` | [gateway_balances](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/gateway_balances)     | ❌         | ✅         |
-| `InfoRequest`            | [account_info](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_info)             | ✅         | ✅         |
-| `LinesRequest`           | [account_lines](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_lines)           | ✅         | ✅         |
-| `NFTsRequest`            | [account_nfts](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_nfts)             | ✅         | ✅         |
-| `NoRippleCheckRequest`   | [noripple_check](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/noripple_check)         | ✅         | ✅         |
-| `ObjectsRequest`         | [account_objects](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_objects)       | ✅         | ✅         |
-| `OffersRequest`          | [account_offers](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_offers)         | ✅         | ✅         |
-| `TransactionsRequest`    | [account_tx](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_tx)                 | ✅         | ✅         |
-
-#### Usage
-
-To use the `account` package, you need to import it in your project:
+With a connected or configured `client`, in a function that returns an error:
 
 ```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/account"
-```
-
-### channel
-
-The `channel` package contains methods to interact with XRPL channels. These methods allow you to:
-
-- Verify the channel's state.
-
-The available methods correspond to the [Payment Channel Methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/payment-channel-methods) in the XRPL API.
-
-The `channel` subpackage provides the following queries requests:
-
-| Request         | Method name                                                                                                                      | V1 support | V2 support |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `VerifyRequest` | [channel_verify](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/payment-channel-methods/channel_verify) | ✅         | ✅         |
-
-#### Usage
-
-To use the `channel` package, you need to import it in your project:
-
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/channel"
-```
-
-### ledger
-
-The `ledger` package contains methods to interact with XRPL ledgers. These methods allow you to:
-
-- Retrieve specific, current or closed ledger information.
-
-The available methods correspond to the [Ledger Methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods) in the XRPL API.
-
-The `ledger` subpackage provides the following queries requests:
-
-| Request          | Method name                                                                                                             | V1 support | V2 support |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `Request`        | [ledger](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger)                 | ✅         | ✅         |
-| `ClosedRequest`  | [ledger_closed](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_closed)   | ✅         | ✅         |
-| `CurrentRequest` | [ledger_current](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_current) | ✅         | ✅         |
-| `DataRequest`    | [ledger_data](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_data)       | ✅         | ✅         |
-| `EntryRequest`   | [ledger_entry](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/ledger-methods/ledger_entry)     | ❌         | ✅         |
-
-#### `ledger_entry` selectors
-
-`EntryRequest` requires exactly one top-level selector. Most ledger object types accept either a direct ledger-entry index or a typed object selector. The response keeps validated JSON and binary forms separate:
-
-```go
-request := ledger.EntryRequest{
- AccountRoot: types.Address(account),
- LedgerIndex: common.Validated,
-}
-
-response, err := client.GetLedgerEntry(&request)
+response, err := client.GetAccountInfo(&account.InfoRequest{
+	Account:     address,
+	LedgerIndex: common.Validated,
+})
 if err != nil {
- return err
+	return err
 }
-
-if response.Node != nil {
- // Validated JSON ledger object.
-}
-if response.NodeBinary != "" {
- // Binary ledger object.
-}
+fmt.Println(response.AccountData.Balance)
 ```
 
-Clio deleted-entry responses can also populate `DeletedLedgerIndex` and `LedgerHash`. Validation rejects requests with zero or multiple top-level selectors and invalid object selector forms.
+Import `account` from `xrpl/queries/account` and `common` from `xrpl/queries/common`. `AccountData` is already an `AccountRoot` from [`xrpl/ledger-entry-types`](/docs/xrpl/ledger-entry-types). For a complete program, see [Read an account](/docs/xrpl/rpc#read-an-account).
 
-#### Usage
+Use [Ledger data](/docs/xrpl/ledger-entry-types) when you need generic `GetLedgerEntry()` results or binary responses instead of a dedicated typed query.
 
-To use the `ledger` package, you need to import it in your project:
+## Choose a ledger
+
+Use `common.Validated` for validated state. When several requests must describe the same snapshot, take the ledger hash or index from the first response, where the response includes it, and pass it on subsequent requests. Do not keep asking for the latest validated ledger if the results must agree on one snapshot.
+
+Ledger selectors vary by request type. See [ledger index](https://xrpl.org/docs/references/protocol/data-types/basic-data-types#ledger-index) and the relevant method's XRPL reference for server behavior.
+
+## Read multiple pages
+
+A `Marker` is an opaque continuation value. Pass it back unchanged with the same query parameters. Stop when the response has no marker.
+
+This fragment reads trust lines through either client. It pins the ledger after the first response. Supply `address` as a `types.Address` and call it inside a function returning an error:
 
 ```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
+request := account.LinesRequest{
+	Account:     address,
+	LedgerIndex: common.Validated,
+}
+for {
+	response, err := client.GetAccountLines(&request)
+	if err != nil {
+		return err
+	}
+	for _, line := range response.Lines {
+		fmt.Println(line.Currency, line.Balance)
+	}
+	if response.Marker == nil {
+		break
+	}
+	if response.LedgerHash == "" {
+		return fmt.Errorf("response omitted the ledger hash needed for pagination")
+	}
+	request.LedgerHash = response.LedgerHash
+	request.LedgerIndex = nil
+	request.Marker = response.Marker
+}
 ```
 
-### transactions
+The example follows [account_lines](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_lines). Other methods can use different marker types or pagination rules. Do not decode or invent a marker.
 
-The `transactions` package contains methods to interact with XRPL transactions. These methods allow you to:
+## Find request types
 
-- Submit ledger transactions.
-- Query ledger transactions.
+The links below lead to the Go API, not a second copy of the server method catalogue.
 
-The available methods correspond to the [Transaction Methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods) in the XRPL API.
+| Package | Use it for |
+| --- | --- |
+| [account](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/account) | Account data, trust lines, objects, offers, and transaction history |
+| [ledger](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/ledger) | Ledgers and individual ledger entries |
+| [transactions](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/transactions) | Submission, transaction lookup, and simulation |
+| [subscription](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/subscription) | WebSocket subscriptions |
+| [path](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/path) | Paths, order books, and deposit authorization |
+| [channel](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/channel) | Payment-channel signature verification |
+| [nft](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/nft) | NFT offers |
+| [amm](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/amm) | AMM information |
+| [oracle](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/oracle) | Aggregated prices |
+| [vault](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/vault) | Vault information |
+| [clio](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/clio) | Clio-specific queries |
+| [server](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/server) | Server state, fees, features, and definitions |
+| [utility](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/utility) | Ping and random values |
 
-The `transactions` subpackage provides the following query requests:
+## API versions and generic requests
 
-| Request                    | Method name                                                                                                                          | V1 support | V2 support |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ---------- |
-| `SubmitRequest`            | [submit](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/submit)                         | ✅         | ✅         |
-| `SubmitMultisignedRequest` | [submit_multisigned](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/submit_multisigned) | ✅         | ✅         |
-| `EntryRequest`             | [transaction_entry](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/transaction_entry)   | ✅         | ✅         |
-| `TxRequest`                | [tx](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/tx)                                 | ✅         | ✅         |
-| `SimulateRequest`          | [simulate](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/transaction-methods/simulate)                     | ❌         | ✅         |
+The main request packages use API v2. Some packages also provide explicit v1 types, such as `xrpl/queries/account/v1`. The `amm`, `oracle`, `server`, and `vault` packages have no v1 types. Some requests have no v1 type even in packages with a `v1` directory, such as `account.GatewayBalancesRequest`, `ledger.EntryRequest`, and `transactions.SimulateRequest`. A v1 Go type is not interchangeable with the v2 type accepted by `GetAccountInfo`.
 
-#### Simulate
+Use the client's lower-level `Request` method when you need an explicit version not exposed by its typed wrappers, or a request type without a typed wrapper, such as `transactions.TxRequest`. Its response form differs by transport. See the [RPC](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/rpc#Client.Request) or [WebSocket](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/websocket#Client.Request) API before decoding it.
 
-`SimulateRequest` performs an XLS-69 dry run against the current open-ledger state. Supply exactly one of `TxJSON` or `TxBlob`. Set `Binary` to request hexadecimal transaction and metadata blobs instead of decoded objects.
+SDK type availability, server API version support, and amendment activation are separate questions. A Go struct does not establish that a target network supports the operation.
+
+## Simulate before submitting
+
+Use `transactions.SimulateRequest` with exactly one of `TxJSON` or `TxBlob`. `Binary` requests hex transaction and metadata output. Supply an unsigned transaction. See [simulation](/docs/xrpl/submission#simulate) for the SDK's validation boundary and the server reference.
+
+In a function returning an error, with `transactions` imported from `xrpl/queries/transactions` and `transaction` from `xrpl/transaction`:
 
 ```go
 request := transactions.SimulateRequest{
- TxJSON: transaction.FlatTransaction{
-  "TransactionType": "Payment",
-  "Account":         account,
-  "Destination":     destination,
-  "Amount":          "1000000",
- },
+	TxJSON: transaction.FlatTransaction{
+		"TransactionType": "Payment",
+		"Account":         sender,
+		"Destination":     destination,
+		"Amount":          "1000000",
+	},
 }
 
 response, err := client.Simulate(&request)
 if err != nil {
- return err
+	return err
 }
-
-fmt.Println(response.EngineResult, response.Applied)
+fmt.Println(response.EngineResult, response.EngineResultMessage)
 ```
 
-The server validates all request fields, including transaction signatures, blob syntax, and `NetworkID`. The clients do not perform simulation request preflight or discover network identity for simulation. Nil requests are still rejected locally, and response validation remains enabled. `SimulateRequest.ValidateNetworkID` is deprecated and now performs only the same nil-request check as `Validate`.
+`SimulateRequest.ValidateNetworkID` is deprecated and only performs the same nil-request check as `Validate`. Clients do not strip signatures, so never send signed input to an untrusted simulation endpoint.
 
-Supply an unsigned transaction, as required by the server. The client does not remove signatures or prevent signed input from being sent, so do not send signed transactions to an untrusted node. A simulated result is not a submission guarantee because open-ledger state can change.
+## Cache server definitions
 
-#### Usage
+`GetServerDefinitions` accepts `&server.DefinitionsRequest{Hash: cachedHash}`. A matching hash allows a hash-only response. Retain the cached definitions when the response has no `Fields`.
 
-To use the `transactions` package, import it as follows:
+A full response contains the five core sections. Servers implementing XLS-97 can also return transaction formats, ledger formats, and flag maps. The SDK rejects incomplete section groups and mismatched hash-only responses. See [server_definitions](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_definitions) for the protocol response.
 
-```go
-import transactions "github.com/Peersyst/xrpl-go/xrpl/queries/transactions"
-```
-
-### path, nft and oracle
-
-The `path`, `nft` and `oracle` packages contain methods to interact with XRPL paths, NFTs and oracles. These methods allow you to:
-
-- Retrieve paths and order books.
-- Get NFTs buy and sell offers.
-
-The available methods correspond to the [Path and Order Book Methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/path-and-order-book-methods) in the XRPL API.
-
-The `path` subpackage provides the following queries requests:
-
-| Request                                                      | Method name                                                                                                                                  | V1 support | V2 support |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `BookOffersRequest`                                          | [book_offers](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/path-and-order-book-methods/book_offers)               | ✅         | ✅         |
-| `DepositAuthorizedRequest`                                   | [deposit_authorized](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/path-and-order-book-methods/deposit_authorized) | ✅         | ✅         |
-| `FindCreateRequest`, `FindCloseRequest`, `FindStatusRequest` | [path_find](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/path-and-order-book-methods/path_find)                   | ✅         | ✅         |
-| `RipplePathFindRequest`                                      | [ripple_path_find](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/path-and-order-book-methods/ripple_path_find)     | ✅         | ✅         |
-
-The `nft` subpackage provides the following queries requests:
-
-| Request                    | Method name                                                                                                                            | V1 support | V2 support |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `NFTokenBuyOffersRequest`  | [nft_buy_offers](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/path-and-order-book-methods/nft_buy_offers)   | ✅         | ✅         |
-| `NFTokenSellOffersRequest` | [nft_sell_offers](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/path-and-order-book-methods/nft_sell_offers) | ✅         | ✅         |
-
-The `oracle` subpackage provides the following queries requests:
-
-| Request                    | Method name                                                                                                                       | V1 support | V2 support |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `GetAggregatePriceRequest` | [get_aggregate_price](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/oracle-methods/get_aggregate_price) | ❌         | ✅         |
-
-#### Usage
-
-To use the `path` package, you need to import it in your project:
-
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/path"
-```
-
-To use the `oracle` package, you need to import it in your project:
-
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/oracle"
-```
-
-To use the `nft` package, you need to import it in your project:
-
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/nft"
-```
-
-### vault
-
-The `vault` package contains methods to interact with XRPL vaults. These methods allow you to:
-
-- Retrieve vault information by vault ID or owner and sequence number.
-
-The `vault` subpackage provides the following queries requests:
-
-| Request       | Method name                                                                                                                  | V1 support | V2 support |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `InfoRequest` | [vault_info](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/vault-methods/vault_info)               | ❌         | ✅         |
-
-#### Usage
-
-To use the `vault` package, you need to import it in your project:
-
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/vault"
-```
-
-### clio
-
-The `clio` package contains methods to interact with the Clio API, not [`rippled`](https://github.com/XRPLF/rippled). These methods allow you to:
-
-- Retrieve NFT history.
-- Retrieve NFts information.
-
-The available methods correspond to the [Clio Methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/clio-methods) in the XRPL API.
-
-The `clio` subpackage provides the following queries requests:
-
-| Request               | Method name                                                                                                           | V1 support | V2 support |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `NFTHistoryRequest`   | [nft_history](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/clio-methods/nft_history)       | ✅         | ✅         |
-| `NFTInfoRequest`      | [nft_info](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/clio-methods/nft_info)             | ✅         | ✅         |
-| `NFTsByIssuerRequest` | [nfts_by_issuer](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/clio-methods/nfts_by_issuer) | ❌         | ✅         |
-
-#### Usage
-
-To use the `clio` package, you need to import it in your project:
-
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/clio"
-```
-
-### server
-
-The `server` package contains methods to interact with the [`rippled`](https://github.com/XRPLF/rippled) server. These methods allow you to:
-
-- Retrieve server information.
-- Get fee information.
-- Get the manifest.
-
-The available methods correspond to the [Server Info Methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods) in the XRPL API.
-
-The `server` subpackage provides the following queries requests:
-
-| Request              | Method name                                                                                                                  | V1 support | V2 support |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `FeatureAllRequest`  | [feature](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/feature)                 | ❌         | ✅         |
-| `FeatureOneRequest`  | [feature](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/feature)                 | ❌         | ✅         |
-| `FeeRequest`         | [fee](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/fee)                         | ❌         | ✅         |
-| `ManifestRequest`    | [manifest](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/manifest)               | ❌         | ✅         |
-| `InfoRequest`        | [server_info](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_info)         | ❌         | ✅         |
-| `StateRequest`       | [server_state](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_state)       | ❌         | ✅         |
-| `DefinitionsRequest` | [server_definitions](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/server-info-methods/server_definitions) | ❌         | ✅         |
-
-#### Server definitions
-
-`DefinitionsRequest` retrieves the protocol definitions used by the server. Its optional `Hash` requests a hash-only response when the server definition hash is unchanged.
-
-```go
-response, err := client.GetServerDefinitions(&server.DefinitionsRequest{
- Hash: cachedHash,
-})
-if err != nil {
- return err
-}
-
-if len(response.Fields) == 0 {
- // The hash matched and the definitions are unchanged.
-}
-```
-
-A full `DefinitionsResponse` contains the five core sections. Servers that implement the enhanced XLS-97 form can also return transaction and ledger formats and flag maps. Response validation rejects incomplete section groups and mismatched hash-only responses.
-
-#### Usage
-
-To use the `server` package, import it as follows:
-
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/server"
-```
-
-### utility
-
-The `utility` package contains methods to interact with the XRPL utility. These methods allow you to:
-
-- Retrieve a random number.
-- Ping the server.
-
-The available methods correspond to the [Utility Methods](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/utility-methods) in the XRPL API.
-
-The `utility` subpackage provides the following queries requests:
-
-| Request         | Method name                                                                                              | V1 support | V2 support |
-| --------------- | -------------------------------------------------------------------------------------------------------- | ---------- | ---------- |
-| `RandomRequest` | [random](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/utility-methods/random) | ✅         | ✅         |
-| `PingRequest`   | [ping](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/utility-methods/ping)     | ✅         | ✅         |
-
-#### Usage
-
-To use the `utility` package, you need to import it in your project:
-
-```go
-import "github.com/Peersyst/xrpl-go/xrpl/queries/utility"
-```
+Fetching definitions does not replace the binary codec's embedded definitions automatically. See [Binary codec](/docs/binary-codec#protocol-definitions).

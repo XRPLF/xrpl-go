@@ -1,361 +1,128 @@
-# websocket
+# WebSocket
 
-## Overview
+Use the WebSocket client for live ledger updates as well as queries and transaction submission. Unlike [JSON-RPC](/docs/xrpl/rpc), it maintains a connection that you must open and close.
 
-The `websocket` package provides a WebSocket client for interacting with the XRPL network via its WebSocket API. This client handles the communication with XRPL nodes, allowing you to:
+[Go API reference](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/websocket) · [XRPL subscribe API](https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/subscription-methods/subscribe)
 
-- Send requests to query the ledger state.
-- Submit transactions to the network.
-- Receive responses and handle errors.
-- Manage the connections configuration.
+## Subscribe to ledger updates
 
-## Config
-
-The `websocket` package provides a `ClientConfig` struct that allows you to configure the WebSocket client. Every time you create a new `Client`, you need to pass a `ClientConfig` value as an argument. You can initialize it with the `NewClientConfig` function.
-
-`ClientConfig` follows the options pattern, so you can apply different options before you create the client:
-
-### Host
-
-The `WithHost` option allows you to set the host of the WebSocket client.
-
-```go
-func (wc ClientConfig) WithHost(host string) ClientConfig
-```
-
-### FaucetProvider
-
-The `WithFaucetProvider` option sets the faucet provider of the WebSocket client. The predefined providers are `TestnetFaucetProvider` and `DevnetFaucetProvider`. You can also implement the `FaucetProvider` interface.
-
-```go
-func (wc ClientConfig) WithFaucetProvider(fp common.FaucetProvider) ClientConfig
-```
-
-### MaxRetries
-
-`WithMaxRetries` limits consecutive incomplete reliable-submission monitoring rounds caused by query or transport errors. A complete round resets the count. It does not limit successful finality polling. The value must be positive. A reliable-submission method returns `ErrInvalidMaxRetries` before it sends the transaction when the value is zero or negative.
-
-```go
-func (wc ClientConfig) WithMaxRetries(maxRetries int) ClientConfig
-```
-
-### MaxReconnects
-
-`WithMaxReconnects` limits reconnection attempts after a WebSocket read error. The reconnect count resets after the client receives a message successfully.
-
-```go
-func (wc ClientConfig) WithMaxReconnects(maxReconnects int) ClientConfig
-```
-
-### RetryDelay
-
-The `WithRetryDelay` option sets the delay between reliable-submission polling rounds. The delay can be zero, but it must not be negative. A reliable-submission method returns `ErrInvalidPollInterval` before it sends the transaction when the delay is negative.
-
-```go
-func (wc ClientConfig) WithRetryDelay(retryDelay time.Duration) ClientConfig
-```
-
-### FeeCushion
-
-The `WithFeeCushion` option allows you to set the fee cushion for a transaction.
-
-```go
-func (wc ClientConfig) WithFeeCushion(feeCushion float64) ClientConfig
-```
-
-### MaxFeeXRP
-
-The `WithMaxFeeXRP` option allows you to set the maximum fee in XRP that the WebSocket client will use. Use a decimal string to preserve the exact limit.
-
-```go
-func (wc ClientConfig) WithMaxFeeXRP(maxFeeXRP string) ClientConfig
-```
-
-Fee calculation returns `ErrInvalidFeeValue` for a non-finite, negative, or malformed fee value. It returns `ErrFeeHasTooManyDecimals` when an XRP fee cannot be represented as a whole number of drops.
-
-### MaxResponseSize
-
-The `WithMaxResponseSize` option caps inbound WebSocket messages. The default is 16 MiB per message. Set it to `0` to disable the limit. A negative value restores the default.
-
-```go
-func (wc ClientConfig) WithMaxResponseSize(maxResponseSize int64) ClientConfig
-```
-
-### Logger
-
-The `SetLogger` function overrides the logger used for SDK warnings, such as remote non-TLS URL warnings. Pass `nil` to silence these warnings.
-
-```go
-func SetLogger(l *log.Logger)
-```
-
-### Network identity
-
-By default, `Connect` gets the network ID and rippled build version from
-`server_info` before it makes the connection available to requests. Use
-`Client.NetworkIdentity()` to read the result. A nil returned network ID means
-that the identity is not known. The client uses this identity to apply the
-correct `NetworkID` transaction policy.
-
-```go
-networkID, buildVersion := client.NetworkIdentity()
-```
-
-`WithNetworkIdentity` bypasses discovery when `buildVersion` is non-empty. An
-empty build version leaves the identity incomplete, so the client performs
-discovery. Use trusted deployment configuration for both values.
-
-Each automatic or explicit reconnect repeats identity discovery unless a trusted identity is configured. A reconnect rejects a server network ID that differs from the previously discovered network ID.
-
-```go
-func (wc ClientConfig) WithNetworkIdentity(networkID uint32, buildVersion string) ClientConfig
-```
-
-### Timeout
-
-The `WithTimeout` option sets the timeout for a complete request, including the write and the response wait.
-
-```go
-func (wc ClientConfig) WithTimeout(timeout time.Duration) ClientConfig
-```
-
-## Connection
-
-As the `websocket` package is a WebSocket client, it needs to be connected to a WebSocket server. Pending requests return `ErrDisconnected` as soon as a manual or unexpected disconnect occurs. The client does not replay these requests after reconnection. Calling `Disconnect` when no connection is active succeeds without an error.
-
-Callers must serialize concurrent `Connect` and `Disconnect` calls. Do not call `Connect` synchronously from a stream or error handler. The `Client` type exposes the following connection methods:
-
-```go
-// Connection methods
-func (c *Client) Connect() error
-func (c *Client) Disconnect() error
-
-// Connection status
-func (c *Client) IsConnected() bool
-```
-
-So, for example, if you want to connect to the `devnet` ledger, you can do it this way:
-
-```go
-client := websocket.NewClient(websocket.NewClientConfig().WithHost("wss://s.altnet.rippletest.net:51233"))
-defer client.Disconnect()
-
-err := client.Connect()
-if err != nil {
- // ...
-}
-
-if !client.IsConnected() {
- // ...
-}
-```
-
-## Methods
-
-The `Client` type exposes the following methods to interact with the XRPL network:
-
-### Request
-
-The `Request` method is used to send a request to the server and returns the response. This method is mostly used to send client [`queries`](/docs/xrpl/queries) to the server.
-
-```go
-func (c *Client) Request(reqParams interfaces.Request) (*ClientResponse, error)
-```
-
-### Autofill/AutofillMultisigned
-
-The `Autofill` method is used to autofill fields in a flat transaction. This method adds dynamic fields such as `LastLedgerSequence` and `Fee`, and it applies the network `NetworkID` policy. It returns an error if the transaction is not valid or an internal request fails. The `AutofillMultisigned` method provides the same behavior for multisigned transactions.
-
-Both methods support `Batch` transactions and fill the inner `RawTransactions` and the outer `Batch` transaction. They convert X-addresses in `Account`, `Destination`, `Authorize`, `Unauthorize`, `Owner`, `RegularKey`, `Delegate`, `NFTokenMinter`, `Subject`, `Issuer`, and `Holder` to classic addresses. Embedded tags in `Account` and `Destination` populate `SourceTag` and `DestinationTag`. A conflicting explicit tag returns `ErrMismatchedTag`.
-
-```go
-func (c *Client) Autofill(tx *transaction.FlatTransaction) error
-func (c *Client) AutofillMultisigned(tx *transaction.FlatTransaction, nSigners uint64) error
-```
-
-Autofill sets `Fee` only when the transaction has none. Transaction types with a special cost carry it automatically, including the ten base fees a confidential MPT transaction owes, which also applies to a confidential transaction nested inside a `Batch`. A hand-set `Fee` is submitted unchanged, so a value sized for an ordinary transaction underpays and the submission fails with `telINSUF_FEE_P`. See the [confidential guide](/docs/confidential) for the full cost breakdown.
-
-### Submit
-
-The `SubmitTx` and `SubmitTxBlob` methods submit a transaction to the XRPL network. They return a `SubmitResponse` with the immediate submission result. `SubmitTxBlob` requires a signed transaction blob. `SubmitTx` accepts a signed flat transaction, or it can sign an unsigned transaction when `SubmitOptions.Wallet` is set. It enables autofill only when `SubmitOptions.Autofill` is true.
-
-Submission rejects incomplete, empty, or mixed signing fields before it sends the request. `SubmitMultisigned` requires a structurally complete multisigned transaction blob.
-
-```go
-func (c *Client) SubmitTx(tx transaction.FlatTransaction, opts *wstypes.SubmitOptions) (*requests.SubmitResponse, error)
-func (c *Client) SubmitTxBlob(txBlob string, failHard bool) (*requests.SubmitResponse, error)
-func (c *Client) SubmitMultisigned(txBlob string, failHard bool) (*requests.SubmitMultisignedResponse, error)
-```
-
-### SubmitTxAndWait/SubmitTxBlobAndWait
-
-The reliable-submission methods require `LastLedgerSequence` before they send the `submit` request. The Go SDK does not enable autofill by default. Provide `LastLedgerSequence` directly or set `Autofill: true` when you submit a transaction that the client can sign.
-
-A missing `engine_result` or a preliminary `tem` result returns `ErrPreliminaryResult` immediately. The error message includes the engine result and its message. The client monitors `tes`, `ter`, `tec`, `tef`, `tel`, and non-empty unknown preliminary results. An exact `txnNotFound` response is inconclusive and the client retries it.
-
-Each polling round waits for the configured interval, requests the latest validated ledger, and then looks up the transaction. The transaction expires only when the validated ledger is strictly greater than `LastLedgerSequence` and the final transaction lookup does not return a validated result. Validation exactly at `LastLedgerSequence` is accepted. The final lookup reduces a race with lagging read backends, but without `searched_all` it does not prove absence from history that the endpoint does not provide.
-
-```go
-func (c *Client) SubmitTxAndWait(tx transaction.FlatTransaction, opts *wstypes.SubmitOptions) (*requests.TxResponse, error)
-func (c *Client) SubmitTxAndWaitContext(ctx context.Context, tx transaction.FlatTransaction, opts *wstypes.SubmitOptions) (*requests.TxResponse, error)
-func (c *Client) SubmitTxBlobAndWait(txBlob string, failHard bool) (*requests.TxResponse, error)
-func (c *Client) SubmitTxBlobAndWaitContext(ctx context.Context, txBlob string, failHard bool) (*requests.TxResponse, error)
-```
-
-Every validated transaction response returns with a nil error, including validated `tec` results. Inspect `TxResponse.Meta.TransactionResult` to determine the validated engine result. `ErrTransactionExpired` reports the preliminary engine result and ledger expiry details. `ErrFinalityTransport` reports repeated query or transport failure and wraps the last failure. Context-aware methods propagate caller cancellation through transaction preparation queries, submission, and finality monitoring, and return `ctx.Err()` directly on cancellation or deadline.
-
-The client verifies that each validated-ledger response is marked as validated and contains a ledger index. A negative polling interval returns `ErrInvalidPollInterval` before submission. A zero or negative maximum retry value returns `ErrInvalidMaxRetries` before submission. A zero `LastLedgerSequence` returns `ErrInvalidLastLedgerSequence` before submission.
-
-A WebSocket write or write-deadline failure invalidates and closes the failed socket. The active client read loop can then reconnect before a later request.
-
-### Simulate
-
-`Simulate` runs an XLS-69 dry run against the current open-ledger state. It sends JSON transaction input or a blob without local request preflight or NetworkID checks. The server validates the input. Nil-request protection and response validation remain enabled. It returns either decoded or binary transaction and metadata output. Supply an unsigned transaction, and do not send signed transactions to an untrusted node. A simulation does not guarantee the result of a later submission.
-
-```go
-func (c *Client) Simulate(req *transactions.SimulateRequest) (*transactions.SimulateResponse, error)
-```
-
-### Sponsorship preflight
-
-`ValidateSponsorship` checks a sponsored transaction (XLS-68) against the `Sponsorship` ledger entry between its sponsor and its sponsee, reading the current ledger. The check is explicit and optional: autofill and submission never query sponsorship on their own.
-
-The transaction must carry `Sponsor` and a valid `SponsorFlags`, and either a `Fee` or a nonempty `estimatedFee` in drops. Before any lookup, the sponsorship fields are checked with the same rules `BaseTx.Validate` applies, and a failure is returned as the matching `xrpl/transaction` error: for example `ErrSponsorFieldsMissing`, `ErrInvalidSponsorFlags`, `ErrSponsorAccountConflict`, `ErrSponsorDelegateConflict` for reserve sponsorship on a delegated transaction, `ErrReserveSponsorshipNotAllowed`, `ErrInnerBatchFeeSponsorship`, or `ErrInvalidSponsorSignature`. A present `SponsorSignature` must hold `SigningPubKey` with `TxnSignature` or a `Signers` array, except on an inner Batch transaction (`tfInnerBatchTxn`), where it may hold at most an empty `SigningPubKey` because the sponsor signs the outer `Batch`.
-
-The sponsee is the transaction's `Delegate` when present and its `Account` otherwise. Only the sponsor and resolved sponsee addresses are converted to classic addresses for the lookup, because xrpld accepts only classic addresses in the `sponsorship` selector. Unrelated addresses, explicit tags, and Batch inner transactions are outside this lookup's validation scope. The caller's transaction is not modified.
-
-Without a `Sponsorship` entry, only a sponsor co-signature (`SponsorSignature`) authorizes the sponsorship. With an entry, its budget always applies, even to a co-signed transaction, because rippled prefers the pre-funded fee payer whenever the entry exists: a sponsored fee must fit within `FeeAmount` and any `MaxFee` cap. Pre-funded use is additionally rejected when the entry sets `lsfSponsorshipRequireSignForFee` or `lsfSponsorshipRequireSignForReserve` for the requested sponsorship type. A zero fee draws nothing from the entry.
-
-A nil error means the preflight completed; read `SponsorshipValidation.Valid` and `SponsorshipValidation.Reason`, which wraps an `ErrSponsorship*` sentinel. A non-nil error means the preflight could not run, because the transaction inputs were unusable or the `ledger_entry` lookup failed. Only `entryNotFound` counts as an absent entry; transport, permission, and decoding failures, and an entry whose `Owner` or `Sponsee` differs from the requested pair (`ErrSponsorshipEntryMismatch`), are returned as errors.
-
-The check does not confirm that the sponsor account exists, which rippled requires even for a co-signed transaction, or that a co-signing sponsor's balance minus its reserve covers the fee when no entry pays it. It does not check that the fee includes the extra base fee rippled charges for each `SponsorSignature.Signers` entry, nor, for a co-signed inner Batch transaction, that the sponsor also signs the outer `Batch` through `BatchSigners`, which the inner transaction alone cannot show. It does not check `RemainingOwnerCount` either, because the client cannot know how many reserved objects the transaction creates; the entry is returned in `SponsorshipValidation.Sponsorship` for callers that do. rippled remains authoritative.
-
-```go
-func (c *Client) ValidateSponsorship(tx transaction.FlatTransaction, estimatedFee string) (SponsorshipValidation, error)
-func (c *Client) ValidateSponsorshipContext(ctx context.Context, tx transaction.FlatTransaction, estimatedFee string) (SponsorshipValidation, error)
-```
-
-### Server definitions
-
-`GetServerDefinitions` retrieves the server protocol definitions. Set `DefinitionsRequest.Hash` to a cached hash to allow a hash-only unchanged response.
-
-```go
-func (c *Client) GetServerDefinitions(req *server.DefinitionsRequest) (*server.DefinitionsResponse, error)
-```
-
-## Stream handlers
-
-Register one handler for each stream with the corresponding `OnXxx` method. A later registration atomically replaces the previous handler for that stream. An event already queued for delivery can still use the old handler.
-
-A handler is serialized with itself, including across manual disconnect and later reconnect lifecycles. Different stream handlers can run concurrently. Unbuffered delivery applies backpressure within each stream. Do not call `Connect` synchronously from a stream or error handler.
-
-The client dispatches typed `bookChanges` notifications through the book-changes handler. Typed updates preserve `validated`, `domain`, `mpt_issuance_id_a`, and `mpt_issuance_id_b` values.
-
-Automatic reconnect does not replay subscriptions. Subscribe again after a reconnect.
-
-## Queries
-
-The `websocket` package provides query wrappers that allow you to send client [`queries`](/docs/xrpl/queries) to the server.
-
-## Examples
-
-### How to send a payment transaction
-
-This example shows how to send a payment transaction to the XRPL testnet with the `websocket` package.
+After [installing the SDK](/docs/installation), save this as `main.go` and run `go run .`. It prints closed ledger indexes from Testnet for 30 seconds, then disconnects. No wallet or funds are needed.
 
 ```go
 package main
 
 import (
 	"fmt"
-	"strconv"
+	"log"
+	"time"
 
-	"github.com/Peersyst/xrpl-go/pkg/crypto"
-	"github.com/Peersyst/xrpl-go/xrpl/currency"
-	"github.com/Peersyst/xrpl-go/xrpl/faucet"
-	"github.com/Peersyst/xrpl-go/xrpl/transaction"
-	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
-	"github.com/Peersyst/xrpl-go/xrpl/wallet"
+	subscribe "github.com/Peersyst/xrpl-go/xrpl/queries/subscription"
+	streamtypes "github.com/Peersyst/xrpl-go/xrpl/queries/subscription/types"
 	"github.com/Peersyst/xrpl-go/xrpl/websocket"
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
 
-	// Create a new websocket client with a testnet faucet provider
+func run() error {
 	client := websocket.NewClient(
 		websocket.NewClientConfig().
-			WithHost("wss://s.altnet.rippletest.net:51233").
-			WithFaucetProvider(faucet.NewTestnetFaucetProvider()),
+			WithHost("wss://s.altnet.rippletest.net:51233"),
 	)
-	defer client.Disconnect()
-
-	// Connect to the testnet
 	if err := client.Connect(); err != nil {
-		fmt.Println(err)
-		return
+		return err
+	}
+	defer func() {
+		if err := client.Disconnect(); err != nil {
+			log.Printf("disconnect: %v", err)
+		}
+	}()
+
+	client.OnError(func(err error) {
+		log.Printf("stream: %v", err)
+	})
+	client.OnLedgerClosed(func(ledger *streamtypes.LedgerStream) {
+		fmt.Printf("Ledger closed: %d\n", ledger.LedgerIndex)
+	})
+
+	if _, err := client.Subscribe(&subscribe.Request{
+		Streams: []string{"ledger"},
+	}); err != nil {
+		return err
 	}
 
-	// Check if the client is connected
-	if !client.IsConnected() {
-		return
-	}
-
-	// Create a new wallet with the ed25519 algorithm
-	w, err := wallet.New(crypto.ED25519())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Fund the wallet with the testnet faucet
-	if err := client.FundWallet(&w); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Convert the amount to drops
-	xrpAmount, err := currency.XrpToDrops("1")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	xrpAmountInt, err := strconv.ParseInt(xrpAmount, 10, 64)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	p := &transaction.Payment{
-		BaseTx: transaction.BaseTx{
-			Account: types.Address(w.GetAddress()),
-		},
-		Destination: "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
-		Amount:      types.XRPCurrencyAmount(xrpAmountInt),
-		DeliverMax:  types.XRPCurrencyAmount(xrpAmountInt),
-	}
-
-	flattenedTx := p.Flatten()
-
-	// Autofill the transaction with the client's config
-	if err := client.Autofill(&flattenedTx); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Sign the transaction with the wallet
-	txBlob, _, err := w.Sign(flattenedTx)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Submit the transaction to the network and wait for it to be included in a ledger
-	res, err := client.SubmitTxBlobAndWait(txBlob, false)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(res)
+	time.Sleep(30 * time.Second)
+	return nil
 }
 ```
+
+Register handlers before subscribing. Keep handlers short so they do not delay message processing. This bounded example does not implement recovery after a disconnect.
+
+## Connection lifecycle
+
+```text
+configure -> Connect -> register handlers -> Subscribe -> receive events -> Disconnect
+```
+
+- `Connect` discovers network identity before exposing the connection to requests. Calling it while connected or connecting returns `ErrAlreadyConnected`.
+- `Disconnect` succeeds when no connection is active. Pending requests return `ErrDisconnected` after a manual or unexpected disconnect.
+- `IsConnected` reports whether a connection is currently active.
+- Requests are **not replayed** after reconnection. A failed transaction request may still have reached the server. See [submission recovery](/docs/xrpl/submission#check-the-final-result).
+- Automatic reconnect does **not** replay subscriptions. Your application must subscribe again after reconnecting. Use a ledger query to recover any missed state rather than assuming the stream is continuous.
+- Serialize calls to `Connect` and `Disconnect`. Do not call `Connect` synchronously from a stream or error handler.
+
+A write or write-deadline failure closes the failed socket. The active read loop can reconnect before a later request. `WithMaxReconnects` limits reconnection attempts, and receiving a message successfully resets that count. `ErrMaxReconnectionAttemptsReached` unwraps the last connection error. It is delivered only to the `OnError` handler, and the client stops reconnecting after it.
+
+## Handler behavior
+
+Register one handler per stream with the appropriate `OnXxx` method. A later registration replaces the previous handler. An event already handed off for delivery can still use the old handler.
+
+| Subscription | Handler |
+| --- | --- |
+| `ledger` | `OnLedgerClosed` |
+| `transactions`, `transactions_proposed`, `accounts`, `accounts_proposed`, `books` | `OnTransactions` |
+| `validations` | `OnValidationReceived` |
+| `peer_status` | `OnPeerStatusChange` |
+| `consensus` | `OnConsensusPhase` |
+| `book_changes` | `OnBookChanges` |
+
+Order-book subscriptions arrive as transaction messages, so handle them with `OnTransactions`. The client does not call `OnOrderBook` for server messages. The `server` and `manifests` streams have no handler, and their messages reach `OnError` as `ErrUnknownStreamType`.
+
+A handler is serialized with itself, even across disconnect/reconnect lifecycles. Different handlers can run concurrently, so protect application state shared between them. Delivery is unbuffered within each stream and applies backpressure.
+
+Typed `bookChanges` updates preserve `validated`, `domain`, `mpt_issuance_id_a`, and `mpt_issuance_id_b`. See the [subscription types](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/queries/subscription/types) for notification fields.
+
+## Configuration
+
+Chain options on `websocket.NewClientConfig()` before calling `NewClient`.
+
+| Option | Purpose |
+| --- | --- |
+| `WithHost` | Sets the `wss://` endpoint |
+| `WithTimeout` | Limits a complete request, including its write and response wait |
+| `WithMaxReconnects` | Limits reconnection attempts after read failures |
+| `WithMaxResponseSize` | Caps each inbound message, default 16 MiB |
+| `WithFaucetProvider` | Enables [test funding](/docs/xrpl/faucet) |
+| `WithMaxFeeXRP`, `WithFeeCushion` | Set an exact XRP fee limit string and a fee multiplier |
+| `WithMaxRetries`, `WithRetryDelay` | Configure [reliable-submission monitoring](/docs/xrpl/submission#wait-for-validation), not connection retries |
+
+For response limits, `0` disables the cap and a negative value restores the default. Fee calculation returns `ErrInvalidFeeValue` for non-finite, negative, or malformed values, and `ErrFeeHasTooManyDecimals` for XRP fees that cannot be represented as whole drops.
+
+`websocket.SetLogger` replaces the SDK warning logger. Passing nil silences warnings, including remote non-TLS URL warnings.
+
+## Network identity
+
+`Connect` gets the network ID and build version from `server_info`. `client.NetworkIdentity()` returns a snapshot. A nil network ID means it is not known.
+
+`WithNetworkIdentity(networkID, buildVersion)` bypasses discovery only when the build version is non-empty. Both values must come from trusted deployment configuration.
+
+Every reconnect repeats discovery unless an identity override is configured. A reconnect rejects a network ID different from the previously discovered one.
+
+## Queries and transactions
+
+Use the same [request and response types](/docs/xrpl/queries) as JSON-RPC. The clients share [submission and finality](/docs/xrpl/submission) behavior, but WebSocket submission options come from `xrpl/websocket/types`.
+
+For sponsor signing and optional preflight, see [Sponsorship](/docs/xrpl/sponsorship).

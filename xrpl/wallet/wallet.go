@@ -136,7 +136,7 @@ func FromMnemonic(mnemonic string) (*Wallet, error) {
 	}, nil
 }
 
-// Sign signs a transaction offline, returning the transaction blob and its signature.
+// Sign signs a transaction offline, returning the signed transaction blob and its transaction hash.
 // The transaction is signed using an internal copy and the provided map is not mutated.
 // TODO: Refactor to accept a `Transaction` object instead of a map.
 func (w *Wallet) Sign(tx map[string]any) (string, string, error) {

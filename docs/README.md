@@ -1,41 +1,41 @@
-# Website
+# Documentation website
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+The SDK documentation uses [Docusaurus](https://docusaurus.io/). Run commands below from `docs/`.
 
-### Installation
+## Local setup
 
-```
-$ yarn
-```
+Use Node.js 20 or later and Yarn Classic (1.x).
 
-### Local Development
-
-```
-$ yarn start
+```bash
+yarn install --frozen-lockfile
+yarn start
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+Open `http://localhost:3000/xrpl-go/`. Most content changes reload automatically. Restart the server after changing configuration if needed.
 
-### Build
+## Check changes
 
-```
-$ yarn build
-```
-
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-### Deployment
-
-Using SSH:
-
-```
-$ USE_SSH=true yarn deploy
+```bash
+yarn typecheck
+yarn build
 ```
 
-Not using SSH:
+`yarn build` checks internal page links and generates `build/`. Preview it with `yarn serve`. A successful site build does not validate Go examples.
 
-```
-$ GIT_USER=<Your GitHub username> yarn deploy
-```
+## Content ownership
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+- `docs/`: application guides and migration instructions.
+- `sidebars.ts`: explicit guide order and task groups. Add new pages here without changing existing document IDs or URLs unnecessarily.
+- `changelog/`: historical release notes. Follow the repository's changelog guidance before changing them.
+- `src/pages/index.tsx`: site homepage.
+- `docusaurus.config.ts`: navigation, footer, site metadata, and deployment paths.
+
+Teach Go workflows and SDK-specific contracts here. Link protocol fields and server behavior to XRPL documentation. Link full signatures, structs, constants, and error inventories to the Go API reference. Keep contributor and release procedures in the repository guides.
+
+Each guide should identify its audience, show a useful example early, label fragments and prerequisites, and explain expected results. Do not copy a second protocol or API catalogue into a guide.
+
+## Deployment
+
+`.github/workflows/docs-deploy.yml` installs dependencies, builds the site, and deploys the build artifact to GitHub Pages when a push to `main` changes `docs/**` or the workflow file. `.github/workflows/docs-test-deploy.yml` runs the same build, without deploying, on pull requests to `main` that change `docs/**` or either docs workflow file. Neither workflow runs `yarn typecheck` or checks Go examples. Run the checks above locally before review and verify changed Go examples separately.
+
+Do not use the generic `yarn deploy` command for the normal repository workflow. The production base path is `/xrpl-go`.
