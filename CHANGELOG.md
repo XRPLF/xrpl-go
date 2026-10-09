@@ -30,6 +30,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Added `ErrInvalidMPTokenIssuanceID`, returned by `MPTokenIssuance` for an ID that is not 48 hex characters.
 
+#### xrpl/rpc and xrpl/websocket
+
+- Added `RequestContext` for caller cancellation and deadlines, preserving standard context errors alongside custom WebSocket cancellation causes. `Request` delegates with `context.Background()`. WebSocket caller cancellation leaves an active shared-socket write bounded by the configured timeout and ignores late replies without closing the socket solely because the caller canceled.
+
 #### xrpl/queries/common
 
 - Added `ErrInvalidLedgerSpecifier`, returned by `UnmarshalLedgerSpecifier` for an unknown ledger name.
