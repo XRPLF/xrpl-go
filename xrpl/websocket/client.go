@@ -458,7 +458,17 @@ func isFundWalletActNotFound(err error) bool {
 // This function is used to send requests to the server.
 // It returns the response from the server.
 func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
-	return c.request(context.Background(), req)
+	return c.RequestContext(context.Background(), req)
+}
+
+// RequestContext sends a request with caller cancellation and deadline support.
+// ctx must be non-nil. Canceling the local wait does not cancel work already
+// accepted by the server, including a submitted transaction.
+// Cancellation stops waiting for this request without closing the shared socket.
+// An already-started write may finish after cancellation; its late reply is ignored.
+// A transport write failure or configured write timeout can still close the socket.
+func (c *Client) RequestContext(ctx context.Context, req interfaces.Request) (*ClientResponse, error) {
+	return c.request(ctx, req)
 }
 
 func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientResponse, error) {
@@ -469,7 +479,8 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 		return nil, err
 	}
 
-	requestCtx, cancel := context.WithTimeoutCause(ctx, c.cfg.timeout, ErrRequestTimedOut)
+	writeDeadline := time.Now().Add(c.cfg.timeout)
+	requestCtx, cancel := context.WithDeadlineCause(ctx, writeDeadline, errConfiguredRequestTimeout)
 	defer cancel()
 
 	id := c.idCounter.Add(1)
@@ -479,7 +490,7 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 	}
 
 	c.connectionHandshakeMu.RLock()
-	if cause := context.Cause(requestCtx); cause != nil {
+	if cause := requestContextError(requestCtx); cause != nil {
 		c.connectionHandshakeMu.RUnlock()
 		return nil, cause
 	}
@@ -494,11 +505,16 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 		c.unregisterPendingResponse(id)
 	}()
 
-	err = c.conn.writeMessageTo(requestCtx, socket, msg, 0)
+	err = c.conn.writeRequestMessageTo(requestCtx, socket, msg, writeDeadline)
 	c.connectionHandshakeMu.RUnlock()
 	if err != nil {
 		if requestCtx.Err() != nil {
-			return nil, context.Cause(requestCtx)
+			return nil, requestContextError(requestCtx)
+		}
+		// The independent writer timer can fire before requestCtx's timer.
+		if !time.Now().Before(writeDeadline) {
+			<-requestCtx.Done()
+			return nil, requestContextError(requestCtx)
 		}
 		c.failPendingResponsesForSocket(socket, ErrDisconnected)
 		return nil, errors.Join(ErrDisconnected, err)
@@ -925,7 +941,7 @@ func (c *Client) awaitResponse(ctx context.Context, response *pendingResponse) (
 		return result.response, result.err
 	case <-ctx.Done():
 		response.cancel()
-		return nil, context.Cause(ctx)
+		return nil, requestContextError(ctx)
 	}
 }
 
