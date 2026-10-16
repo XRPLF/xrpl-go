@@ -269,7 +269,45 @@ func (c *Connection) writeMessageTo(
 		return err
 	}
 	defer c.releaseWrite()
+	return c.writeMessageLocked(ctx, conn, message, timeout)
+}
 
+// writeRequestMessageTo separates a caller's wait from the shared socket write.
+// Only the writer-token owner starts a goroutine. Cancellation while queued does
+// not write anything; cancellation after dispatch must not corrupt a shared frame.
+// The configured absolute deadline still bounds the writer and releases the token.
+func (c *Connection) writeRequestMessageTo(
+	ctx context.Context, conn websocketConnection, message []byte, deadline time.Time,
+) error {
+	if err := c.acquireWrite(ctx); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		c.releaseWrite()
+		return err
+	}
+	writeCtx, cancel := context.WithDeadline(context.Background(), deadline)
+	done := make(chan error, 1)
+	go func() {
+		defer cancel()
+		defer c.releaseWrite()
+		done <- c.writeMessageLocked(writeCtx, conn, message, 0)
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return requestContextError(ctx)
+	}
+}
+
+// writeMessageLocked requires ownership of writeToken through deadline cleanup.
+func (c *Connection) writeMessageLocked(
+	ctx context.Context, conn websocketConnection, message []byte, timeout time.Duration,
+) (resultErr error) {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	deadline := time.Time{}
 	if timeout > 0 {
 		deadline = time.Now().Add(timeout)
