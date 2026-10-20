@@ -35,7 +35,7 @@ jobs:
         run: |
           pip install "conan==2.26.2"
           conan profile detect
-          conan remote add --index 0 xrplf https://conan.ripplex.io
+          conan remote add --index 0 --force xrplf https://conan.xrplf.org/repository/conan/
 
       - name: Resolve version and check if update needed
         id: resolve
@@ -58,6 +58,10 @@ jobs:
           import sys
 
           packages = json.load(sys.stdin)
+          for name, remote in packages.items():
+              if "error" in remote:
+                  error = remote["error"]
+                  raise SystemExit(f"conan list failed for remote {name}: {error}")
           versions = [
               reference.split("/", 1)[1]
               for remote in packages.values()
@@ -205,7 +209,7 @@ jobs:
           EOF
           conan profile show -pr:h default >/dev/null
 
-          conan remote add --index 0 xrplf https://conan.ripplex.io
+          conan remote add --index 0 --force xrplf https://conan.xrplf.org/repository/conan/
 
       - name: Build CGO dependency bundle
         env:

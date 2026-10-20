@@ -1,6 +1,6 @@
 module github.com/Peersyst/xrpl-go/confidential
 
-go 1.25.13
+go 1.26.9
 
 require (
 	github.com/Peersyst/xrpl-go v0.3.1
@@ -21,6 +21,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	golang.org/x/crypto v0.54.0 // indirect
+	golang.org/x/crypto v0.56.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

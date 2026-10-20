@@ -1282,7 +1282,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			cl := setupTestRPCClientForAutofill(t, tt.mockResponses)
 
 			// Apply the policy once before this direct raw-transaction helper test.
-			setTestNetworkIdentity(cl, uint32Pointer(tt.networkID), "1.12.0")
+			setTestNetworkIdentity(cl, new(tt.networkID), "1.12.0")
 			identity, err := cl.networkIdentity()
 			if err == nil {
 				err = clientinternal.ApplyNetworkIDPolicy(tt.tx, identity)

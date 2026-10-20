@@ -32,6 +32,10 @@ func batchRange() elgamal.AmountRange {
 	return elgamal.AmountRange{Low: 0, High: batchSearchHigh}
 }
 
+func amountOf(value uint64) *uint64 {
+	return new(value)
+}
+
 // issuanceFixture is one issuance in a batch fixture, together with the keys its mirror balances
 // are encrypted under.
 type issuanceFixture struct {
@@ -213,10 +217,6 @@ func (f *batchFixture) encrypt(amount uint64, pubKey string) string {
 
 func holderKeyID(holder, issuanceID string) string {
 	return holder + ":" + issuanceID
-}
-
-func amountOf(value uint64) *uint64 {
-	return &value
 }
 
 // batchQuerier answers the assembler's reads from a batchFixture.
