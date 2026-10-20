@@ -26,7 +26,7 @@ Before opening an enhancement request, check for duplicates. Include the use cas
 
 ### Prerequisites
 
-For core development, install **Go 1.25.13 or later** and `make`.
+For core development, install **Go 1.26.9 or later** and `make`.
 
 Additional tools depend on your work:
 

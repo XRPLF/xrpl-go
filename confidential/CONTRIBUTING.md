@@ -51,7 +51,7 @@ To refresh them locally, install Conan 2, add the `xrplf` remote, and run the up
 
 ```bash
 pip install conan
-conan remote add --index 0 xrplf https://conan.ripplex.io
+conan remote add --index 0 --force xrplf https://conan.xrplf.org/repository/conan/
 make update-mpt-crypto
 ```
 

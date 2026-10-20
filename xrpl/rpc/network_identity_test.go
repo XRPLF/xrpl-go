@@ -17,11 +17,7 @@ import (
 )
 
 func uint32Pointer(value uint32) *uint32 {
-	return &value
-}
-
-func boolPointer(value bool) *bool {
-	return &value
+	return new(value)
 }
 
 type doneObservedContext struct {
@@ -418,7 +414,7 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			expectedID:                uint32Pointer(21337),
 			expectedBuild:             "1.12.0",
 			expectedRequests:          1,
-			expectedNetworkIDRequired: boolPointer(true),
+			expectedNetworkIDRequired: new(true),
 		},
 		{
 			name:                      "build version preferred over rippled version",
@@ -426,7 +422,7 @@ func TestClientEnsureNetworkIdentity(t *testing.T) {
 			expectedID:                uint32Pointer(21337),
 			expectedBuild:             "1.10.0",
 			expectedRequests:          1,
-			expectedNetworkIDRequired: boolPointer(false),
+			expectedNetworkIDRequired: new(false),
 		},
 		{
 			name:             "missing network ID defaults to zero",

@@ -6,6 +6,20 @@ Core transaction models, codecs, clients, and wallet signing are covered in the 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this module follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### BREAKING CHANGES
+
+#### dependencies
+
+- Raised the minimum Go version from 1.25.13 to 1.26.9 to fix standard-library vulnerabilities in `net/http`, `net/textproto`, and `crypto/tls` (GO-2026-6603, GO-2026-6605, GO-2026-6607, GO-2026-6608, GO-2026-6610, GO-2026-6611, GO-2026-6612, GO-2026-6613, GO-2026-6617). Go 1.25 no longer receives security fixes, and `golang.org/x/crypto` v0.56.0 requires Go 1.26. Modules that build with Go 1.25 must upgrade Go before they use this release.
+
+### Fixed
+
+#### dependencies
+
+- Upgraded `golang.org/x/crypto` from v0.54.0 to v0.56.0 to include upstream security fixes (GO-2026-6303, GO-2026-6354, GO-2026-6355).
+
 ## [v0.1.0]
 
 First independent release of the confidential module, tagged `confidential/v0.1.0`. Requires core `github.com/Peersyst/xrpl-go v0.3.1` or later. Existing package import paths are unchanged.
