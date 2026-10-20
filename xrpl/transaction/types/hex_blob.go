@@ -4,5 +4,5 @@ package types
 // Used as a convenience for setting optional hex blob fields in transactions
 // (e.g. AuditorEncryptedAmount, ZKProof).
 func HexBlob(value string) *string {
-	return &value
+	return new(value)
 }

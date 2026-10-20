@@ -27,7 +27,7 @@ After adding imports, run `go mod tidy` to record the dependencies and checksums
 
 The helpers use cgo to call `XRPLF/mpt-crypto`. Native operations require:
 
-- Go `1.25.13` or later.
+- Go `1.26.9` or later.
 - `CGO_ENABLED=1`.
 - Linux or macOS, on `amd64` or `arm64`.
 - A C/C++ compiler and linker toolchain. On Linux, the linker also needs the system zlib development library.
