@@ -130,6 +130,32 @@ func TestClawback_Flatten(t *testing.T) {
 	}
 }
 
+func TestClawback_TaglessAmountIssuerSerialization(t *testing.T) {
+	taglessHolder, err := addresscodec.ClassicAddressToXAddress(clawbackHolder.String(), 0, false, false)
+	require.NoError(t, err)
+
+	classic := newUnsignedClawbackIOU()
+	withTaglessIssuer := newUnsignedClawbackIOU()
+	withTaglessIssuer.Amount = types.IssuedCurrencyAmount{
+		Issuer:   types.Address(taglessHolder),
+		Currency: "USD",
+		Value:    "1",
+	}
+	before := withTaglessIssuer
+
+	flattened := withTaglessIssuer.Flatten()
+	amount, ok := flattened["Amount"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, clawbackHolder.String(), amount["issuer"])
+	require.Equal(t, before, withTaglessIssuer)
+
+	classicEncoded, err := binarycodec.Encode(classic.Flatten())
+	require.NoError(t, err)
+	taglessEncoded, err := binarycodec.Encode(flattened)
+	require.NoError(t, err)
+	require.Equal(t, classicEncoded, taglessEncoded)
+}
+
 func TestClawback_JSONRoundTrip(t *testing.T) {
 	tests := []struct {
 		name     string

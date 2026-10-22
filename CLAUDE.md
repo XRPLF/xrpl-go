@@ -197,7 +197,7 @@ Before editing either module's changelog, compare the final branch with its base
 - If later work changes the effect of an existing entry, edit that entry to describe the final result; do not add another entry for the intermediate state
 - It is valid to make no changelog change when the branch has no changelog-worthy net difference
 
-Follow the existing format: group entries under `### Added`, `### Changed`, or `### Fixed`, with a `#### <package>` subheading. Keep entries concise but descriptive enough that users understand the impact. Use `confidential/CHANGELOG.md` for changes to the optional module and the root changelog for core changes.
+Follow the existing format: group entries under `### BREAKING CHANGES`, `### Added`, `### Changed`, or `### Fixed`, with a `#### <package>` subheading. Use `### BREAKING CHANGES` for source-incompatible API changes and list it first. Keep entries concise but descriptive enough that users understand the impact. Use `confidential/CHANGELOG.md` for changes to the optional module and the root changelog for core changes.
 
 ### Common Gotchas
 

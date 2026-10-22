@@ -77,7 +77,7 @@ var (
 			TransactionType: PaymentTx,
 			Fee:             types.XRPCurrencyAmount(0),
 			Flags:           types.TfInnerBatchTxn,
-			SigningPubKey:   "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A", // Non-empty signing pub key
+			SigningPubKey:   testPublicKey, // Non-empty signing pub key
 			Sequence:        5,
 		},
 		Amount:      types.XRPCurrencyAmount(6000000),
@@ -208,7 +208,7 @@ func TestBatchFlatten(t *testing.T) {
 					{
 						BatchSigner: types.BatchSignerData{
 							Account:       "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-							SigningPubKey: "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
+							SigningPubKey: testPublicKey,
 							TxnSignature:  "C4E2834B9C0E7519DC47E4C48F19B4B2C5C92FB4F8C5C8F8C8C8C8C8C8C8",
 						},
 					},

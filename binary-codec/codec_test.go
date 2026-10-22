@@ -510,6 +510,32 @@ func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 	}
 }
 
+func TestCurrencyCodeRoundTripPreservesCase(t *testing.T) {
+	tests := []struct {
+		name string
+		code string
+	}{
+		{"uppercase ISO", "USD"},
+		{"mixed-case ISO", "xrP"},
+		{"nonstandard hex", "0000000000000000000000000000000000000001"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := map[string]any{"Amount": map[string]any{
+				"currency": tt.code,
+				"issuer":   "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+				"value":    "1",
+			}}
+			blob, err := Encode(tx)
+			require.NoError(t, err)
+			decoded, err := Decode(blob)
+			require.NoError(t, err)
+			require.Equal(t, tt.code, decoded["Amount"].(map[string]any)["currency"])
+		})
+	}
+}
+
 func TestMPTUInt64FieldsUseDecimalJSON(t *testing.T) {
 	tests := []struct {
 		field  string

@@ -42,10 +42,10 @@ func TestOracleSet_Flatten(t *testing.T) {
 					LastLedgerSequence: 3000000,
 				},
 				OracleDocumentID: 1,
-				Provider:         "Chainlink",
-				URI:              "https://example.com",
+				Provider:         "436861696E6C696E6B",
+				URI:              "68747470733A2F2F6578616D706C652E636F6D",
 				LastUpdateTime:   1715702400,
-				AssetClass:       "currency",
+				AssetClass:       "63757272656E6379",
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{
@@ -64,10 +64,10 @@ func TestOracleSet_Flatten(t *testing.T) {
 				"Sequence":           uint32(1),
 				"LastLedgerSequence": uint32(3000000),
 				"OracleDocumentID":   uint32(1),
-				"Provider":           "Chainlink",
-				"URI":                "https://example.com",
+				"Provider":           "436861696E6C696E6B",
+				"URI":                "68747470733A2F2F6578616D706C652E636F6D",
 				"LastUpdateTime":     uint32(1715702400),
-				"AssetClass":         "currency",
+				"AssetClass":         "63757272656E6379",
 				"PriceDataSeries": []map[string]any{
 					{
 						"PriceData": map[string]any{
@@ -198,12 +198,90 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
-				Provider: strings.Repeat("a", 257),
+				Provider: strings.Repeat("AA", 257),
 			},
 			expected: ErrOracleProviderLength{
 				Length: 257,
 				Limit:  OracleSetProviderMaxLength,
 			},
+		},
+		{
+			name: "fail - provider is not whole-byte hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				Provider: "Chainlink",
+			},
+			expected: ErrOracleProviderInvalid,
+		},
+		{
+			name: "pass - provider decoded length exceeds old encoded-character bound",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				Provider:       strings.Repeat("AA", 129),
+				LastUpdateTime: 946684800,
+			},
+			expected: nil,
+		},
+		{
+			name: "fail - URI is odd-length hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				URI: "ABC",
+			},
+			expected: ErrOracleURIInvalid,
+		},
+		{
+			name: "fail - URI exceeds decoded byte limit",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				URI: strings.Repeat("AA", 257),
+			},
+			expected: ErrOracleURIInvalid,
+		},
+		{
+			name: "fail - AssetClass is not hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				AssetClass: "not-hex",
+			},
+			expected: ErrOracleAssetClassInvalid,
+		},
+		{
+			name: "fail - AssetClass exceeds decoded byte limit",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				AssetClass: strings.Repeat("AA", 17),
+			},
+			expected: ErrOracleAssetClassInvalid,
+		},
+		{
+			name: "fail - LastUpdateTime predates Ripple epoch",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				LastUpdateTime: 946684799,
+			},
+			expected: ErrOracleLastUpdateTimeInvalid,
 		},
 		{
 			name: "fail - price data series items",
@@ -212,6 +290,7 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
+				LastUpdateTime:  1724871860,
 				PriceDataSeries: make([]ledger.PriceDataWrapper, 100),
 			},
 			expected: ErrOraclePriceDataSeriesItems{
@@ -226,6 +305,7 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
+				LastUpdateTime: 1724871860,
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{
@@ -243,6 +323,7 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
+				LastUpdateTime: 1724871860,
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{
@@ -266,6 +347,7 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
+				LastUpdateTime: 1724871860,
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{
@@ -286,10 +368,10 @@ func TestOracleSet_Validate(t *testing.T) {
 					TransactionType: OracleSetTx,
 				},
 				OracleDocumentID: 1,
-				Provider:         "Chainlink",
-				URI:              "https://example.com",
+				Provider:         "436861696E6C696E6B",
+				URI:              "68747470733A2F2F6578616D706C652E636F6D",
 				LastUpdateTime:   1715702400,
-				AssetClass:       "currency",
+				AssetClass:       "63757272656E6379",
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{

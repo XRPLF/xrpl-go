@@ -486,7 +486,7 @@ func TestCombineSponsorSignersListRules(t *testing.T) {
 		address, err := addresscodec.EncodeAccountIDToClassicAddress(id)
 		require.NoError(t, err)
 
-		entries[i] = map[string]any{"Signer": map[string]any{"Account": address, "SigningPubKey": "AB", "TxnSignature": "CD"}}
+		entries[i] = map[string]any{"Signer": map[string]any{"Account": address, "SigningPubKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A", "TxnSignature": "CD"}}
 		fragments[i] = transaction.FlatTransaction(clientinternal.CloneTransaction(base))
 		fragments[i]["SponsorSignature"] = map[string]any{"Signers": []any{entries[i]}}
 	}

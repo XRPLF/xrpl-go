@@ -21,11 +21,76 @@ func orderedTransactionSigners(t *testing.T, count int) []types.Signer {
 		require.NoError(t, err)
 		signers[i] = types.Signer{SignerData: types.SignerData{
 			Account:       types.Address(address),
-			SigningPubKey: "AB",
+			SigningPubKey: testPublicKey,
 			TxnSignature:  "CD",
 		}}
 	}
 	return signers
+}
+
+// testPublicKey is a well-formed ed25519 public key shared by tests that need one.
+const testPublicKey = "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
+
+func TestIsSignaturePair(t *testing.T) {
+	const key = testPublicKey
+
+	tests := []struct {
+		name      string
+		key       string
+		signature string
+		want      bool
+	}{
+		{"pass - ed25519 key and hex signature", key, "ABCD", true},
+		{"pass - secp256k1 key and hex signature", "03ADB44CA8E56F78A0096825E5667C450ABD5C24C34E027BC1AAF7E5BD114CB5B5", "ABCD", true},
+		{"fail - empty key", "", "ABCD", false},
+		{"fail - hex that is not a public key", "ABCD", "ABCD", false},
+		{"fail - secp256k1 key that is not on the curve", "030000000000000000000000000000000000000000000000000000000000000000", "ABCD", false},
+		{"fail - empty signature", key, "", false},
+		{"fail - signature is not hex", key, "not-hex", false},
+		{"fail - signature is not whole bytes", key, "ABC", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isSignaturePair(tt.key, tt.signature))
+		})
+	}
+}
+
+func TestValidateSignatureFields(t *testing.T) {
+	const key = testPublicKey
+	sig := "ABCD"
+	empty := ""
+	signers := orderedTransactionSigners(t, 2)
+
+	tests := []struct {
+		name          string
+		signingPubKey string
+		txnSignature  *string
+		signers       []types.Signer
+		expected      error
+	}{
+		{"pass - single-sign pair", key, &sig, nil, nil},
+		{"pass - signers list", "", nil, signers, nil},
+		{"fail - nothing present", "", nil, nil, errMalformedSignaturePair},
+		{"fail - key without signature", key, nil, nil, errMalformedSignaturePair},
+		{"fail - present but empty signature", key, &empty, nil, errMalformedSignaturePair},
+		{"fail - empty signers list is present", "", nil, []types.Signer{}, errMixedSignatureForms},
+		{"fail - signers with key", key, nil, signers, errMixedSignatureForms},
+		{"fail - signers with signature", "", &sig, signers, errMixedSignatureForms},
+		{"fail - signer list rule", "", nil, orderedTransactionSigners(t, 33), errTooManyTransactionSigners},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSignatureFields(tt.signingPubKey, tt.txnSignature, tt.signers)
+			if tt.expected == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorIs(t, err, tt.expected)
+		})
+	}
 }
 
 func TestValidateSigners(t *testing.T) {

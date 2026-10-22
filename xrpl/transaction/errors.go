@@ -10,6 +10,8 @@ import (
 var (
 	errTooManyTransactionSigners  = errors.New("signers: at most 32 transaction signers are allowed")
 	errDuplicateTransactionSigner = errors.New("signers: duplicate account")
+	errMixedSignatureForms        = errors.New("signature: Signers cannot be combined with SigningPubKey or TxnSignature")
+	errMalformedSignaturePair     = errors.New("signature: SigningPubKey and TxnSignature must form a well-formed pair")
 	errUnsortedTransactionSigners = errors.New("signers: accounts must be sorted ascending by AccountID")
 
 	// ErrDestinationAccountConflict is returned when the Destination matches the Account.
@@ -119,8 +121,8 @@ var (
 	ErrInvalidIssuer = errors.New("invalid xrpl address for Issuer")
 	// ErrInvalidOwner is returned when the Owner field does not meet XRPL address standards.
 	ErrInvalidOwner = errors.New("invalid xrpl address for Owner")
-	// ErrInvalidHexPublicKey is returned when the PublicKey is not a valid hexadecimal string.
-	ErrInvalidHexPublicKey = errors.New("invalid PublicKey, must be a valid hexadecimal string")
+	// ErrInvalidHexPublicKey is returned when the PublicKey is not a well-formed public key.
+	ErrInvalidHexPublicKey = errors.New("invalid PublicKey, must be a well-formed public key")
 	// ErrInvalidTransactionType is returned when the TransactionType field is invalid or missing.
 	ErrInvalidTransactionType = errors.New("invalid or missing TransactionType")
 	// ErrInvalidSubject is returned when the Subject field is an invalid xrpl address.
@@ -149,6 +151,8 @@ var (
 	ErrInvalidAttestationSignerAccount = errors.New("invalid attestation signer account")
 	// ErrInvalidOtherChainSource is returned when OtherChainSource is not a valid address.
 	ErrInvalidOtherChainSource = errors.New("invalid other chain source")
+	// ErrInvalidOtherChainDestination is returned when OtherChainDestination is not an encodable AccountID.
+	ErrInvalidOtherChainDestination = errors.New("invalid other chain destination")
 	// ErrInvalidPublicKey is returned when the PublicKey field is empty or invalid.
 	ErrInvalidPublicKey = errors.New("invalid public key")
 	// ErrInvalidWasLockingChainSend is returned when WasLockingChainSend is not 0 or 1.
@@ -184,6 +188,8 @@ var (
 	ErrInvalidAssetFields = errors.New("asset object should have at least one field 'currency', or two fields 'currency' and 'issuer'")
 	// ErrMissingAssetCurrency is returned when the currency field is missing for an asset.
 	ErrMissingAssetCurrency = errors.New("currency field is required for an asset")
+	// ErrInvalidAssetCurrency is returned when an asset currency is not an encodable currency code.
+	ErrInvalidAssetCurrency = errors.New("currency field must be XRP, a three-character code, or a 160-bit hexadecimal code")
 	// ErrInvalidAssetIssuer is returned when the issuer field is invalid for an asset.
 	ErrInvalidAssetIssuer = errors.New("issuer field must be a valid XRPL classic address")
 	// ErrInvalidMPTIssuanceIDAsset is returned when an MPT asset has invalid fields (non-hex ID, or currency/issuer set).
@@ -214,6 +220,8 @@ var (
 	ErrSignerTxnSignatureShouldBeNonEmpty = errors.New("signers: TxnSignature should be a non-empty string")
 	// ErrSignerSigningPubKeyShouldBeNonEmpty is returned when SigningPubKey in a Signer is empty.
 	ErrSignerSigningPubKeyShouldBeNonEmpty = errors.New("signers: SigningPubKey should be a non-empty string")
+	// ErrSignerSignaturePairMalformed is returned when a Signer's SigningPubKey is not a public key or its TxnSignature is not whole-byte hexadecimal.
+	ErrSignerSignaturePairMalformed = errors.New("signers: SigningPubKey should be a valid public key and TxnSignature a whole-byte hexadecimal string")
 	// ErrInvalidDomainID is returned when the provided DomainID is invalid.
 	ErrInvalidDomainID = errors.New("invalid DomainID value")
 
@@ -265,6 +273,18 @@ var (
 
 	// ErrInvalidChannel is returned when the Channel is not a valid 64-character hexadecimal string.
 	ErrInvalidChannel = errors.New("invalid Channel, must be a valid 64-character hexadecimal string")
+	// ErrPaymentChannelCreateAmountInvalid is returned when Amount is outside the valid native XRP range.
+	ErrPaymentChannelCreateAmountInvalid = errors.New("paymentChannelCreate: Amount must be between 1 and 100000000000000000 drops")
+	// ErrPaymentChannelFundAmountInvalid is returned when Amount is outside the valid native XRP range.
+	ErrPaymentChannelFundAmountInvalid = errors.New("paymentChannelFund: Amount must be between 1 and 100000000000000000 drops")
+	// ErrPaymentChannelClaimBalanceInvalid is returned when a supplied Balance exceeds the native XRP maximum.
+	ErrPaymentChannelClaimBalanceInvalid = errors.New("paymentChannelClaim: Balance must not exceed 100000000000000000 drops")
+	// ErrPaymentChannelClaimAmountInvalid is returned when a supplied Amount exceeds the native XRP maximum.
+	ErrPaymentChannelClaimAmountInvalid = errors.New("paymentChannelClaim: Amount must not exceed 100000000000000000 drops")
+	// ErrPaymentChannelClaimBalanceExceedsAmount is returned when Balance exceeds a supplied Amount.
+	ErrPaymentChannelClaimBalanceExceedsAmount = errors.New("paymentChannelClaim: Balance must not exceed Amount")
+	// ErrPaymentChannelClaimSignatureFieldsRequired is returned when a signature omits Balance or PublicKey.
+	ErrPaymentChannelClaimSignatureFieldsRequired = errors.New("paymentChannelClaim: Signature requires Balance and PublicKey")
 	// ErrInvalidSignature is returned when the Signature is not a valid hexadecimal string.
 	ErrInvalidSignature = errors.New("invalid Signature, must be a valid hexadecimal string")
 
@@ -481,8 +501,27 @@ var (
 	// ErrInvalidHolder is returned when the holder is invalid.
 	ErrInvalidHolder = errors.New("invalid holder")
 	// ErrInvalidAmountIssuer is returned when the amount issuer is invalid.
+	//
+	// Deprecated: no validator returns it. AMMClawback reports ErrAMMClawbackInvalidAmount or
+	// ErrAMMClawbackAmountAssetMismatch instead.
 	ErrInvalidAmountIssuer = errors.New("invalid amount issuer")
+	// ErrAMMClawbackSameHolder is returned when Holder is the issuing Account.
+	ErrAMMClawbackSameHolder = errors.New("ammClawback: Account and Holder cannot be the same")
+	// ErrAMMClawbackInvalidAsset is returned when Asset is not a valid Issue.
+	ErrAMMClawbackInvalidAsset = errors.New("ammClawback: Asset must be a valid issued or MPT Issue")
+	// ErrAMMClawbackAssetCannotBeXRP is returned when Asset identifies XRP.
+	ErrAMMClawbackAssetCannotBeXRP = errors.New("ammClawback: Asset cannot be XRP")
+	// ErrAMMClawbackInvalidAsset2 is returned when Asset2 is not a valid Issue.
+	ErrAMMClawbackInvalidAsset2 = errors.New("ammClawback: Asset2 must be a valid Issue")
+	// ErrAMMClawbackInvalidAmount is returned when a supplied Amount is malformed or not positive.
+	ErrAMMClawbackInvalidAmount = errors.New("ammClawback: Amount must be a positive issued or MPT amount")
+	// ErrAMMClawbackAmountAssetMismatch is returned when Amount does not identify Asset.
+	ErrAMMClawbackAmountAssetMismatch = errors.New("ammClawback: Amount must match Asset")
+	// ErrAMMClawbackAsset2IssuerMismatch is returned when tfClawTwoAssets is used with another issuer or XRP.
+	ErrAMMClawbackAsset2IssuerMismatch = errors.New("ammClawback: tfClawTwoAssets requires Asset2 to have the Account issuer")
 
+	// ErrAMMDepositTradingFeeRequiresEmptyPool is returned when TradingFee is set without tfTwoAssetIfEmpty.
+	ErrAMMDepositTradingFeeRequiresEmptyPool = errors.New("ammDeposit: TradingFee is only allowed with tfTwoAssetIfEmpty")
 	// ErrAMMAtLeastOneAssetMustBeNonXRP is returned when both assets are XRP; at least one asset must be non-XRP.
 	ErrAMMAtLeastOneAssetMustBeNonXRP = errors.New("at least one of the assets must be non-XRP")
 	// ErrAMMAuthAccountsTooMany is returned when more than four AuthAccount objects are provided.
@@ -538,6 +577,14 @@ var (
 	ErrLoanSetOverpaymentInterestRateInvalid = errors.New("loanSet: OverpaymentInterestRate must be between 0 and 100000 inclusive")
 	// ErrLoanSetPaymentIntervalInvalid is returned when PaymentInterval is less than 60.
 	ErrLoanSetPaymentIntervalInvalid = errors.New("loanSet: PaymentInterval must be greater than or equal to 60")
+	// ErrLoanSetPaymentTotalInvalid is returned when an explicit PaymentTotal is zero.
+	ErrLoanSetPaymentTotalInvalid = errors.New("loanSet: PaymentTotal must be greater than zero")
+	// ErrLoanSetCounterpartySignatureInvalid is returned when CounterpartySignature is incomplete, mixed, or malformed.
+	ErrLoanSetCounterpartySignatureInvalid = errors.New("loanSet: CounterpartySignature must contain one valid single-sign or multisign form")
+	// ErrLoanSetInnerCounterpartyRequired is returned when an inner Batch LoanSet omits Counterparty.
+	ErrLoanSetInnerCounterpartyRequired = errors.New("loanSet: inner Batch transaction requires Counterparty")
+	// ErrLoanSetInnerCounterpartySignature is returned when an inner Batch LoanSet contains signature fields.
+	ErrLoanSetInnerCounterpartySignature = fmt.Errorf("%w: inner Batch transaction cannot contain counterparty signature fields", ErrLoanSetCounterpartySignatureInvalid)
 	// ErrLoanSetGracePeriodInvalid is returned when GracePeriod is greater than PaymentInterval.
 	ErrLoanSetGracePeriodInvalid = errors.New("loanSet: GracePeriod must not be greater than PaymentInterval")
 	// ErrLoanSetLoanOriginationFeeInvalid is returned when LoanOriginationFee is not a valid XRPL number.
@@ -637,6 +684,8 @@ var (
 	ErrVaultCreateDataInvalid = errors.New("vaultCreate: Data must be a valid hex string and at most 512 characters (256 bytes)")
 	// ErrVaultCreateMPTokenMetadataInvalid is returned when MPTokenMetadata is not a valid hex string or exceeds 2048 characters (1024 bytes).
 	ErrVaultCreateMPTokenMetadataInvalid = errors.New("vaultCreate: MPTokenMetadata must be a valid hex string and at most 2048 characters (1024 bytes)")
+	// ErrVaultCreateWithdrawalPolicyInvalid is returned when WithdrawalPolicy is not a supported strategy.
+	ErrVaultCreateWithdrawalPolicyInvalid = errors.New("vaultCreate: WithdrawalPolicy must be FirstComeFirstServe")
 	// ErrVaultCreateScaleInvalid is returned when Scale is not between 0 and 18 inclusive.
 	ErrVaultCreateScaleInvalid = errors.New("vaultCreate: Scale must be between 0 and 18 inclusive")
 	// ErrVaultCreateScaleRequiresIOU is returned when Scale is set for a non-IOU asset.
@@ -748,6 +797,15 @@ var (
 	ErrConfidentialSendInvalidCommitment = errors.New("confidential MPT send: commitments must be valid 33-byte compressed secp256k1 points")
 	// ErrConfidentialSendInvalidProof is returned when ZKProof does not match the required send proof length.
 	ErrConfidentialSendInvalidProof = errors.New("confidential MPT send: ZKProof must be 1892 hex characters (946-byte proof bundle)")
+
+	// ErrOracleProviderInvalid is returned when Provider is not whole-byte hexadecimal data.
+	ErrOracleProviderInvalid = errors.New("oracleSet: Provider must be whole-byte hexadecimal data")
+	// ErrOracleURIInvalid is returned when URI is not whole-byte hexadecimal data within its decoded byte limit.
+	ErrOracleURIInvalid = errors.New("oracleSet: URI must be whole-byte hexadecimal data of at most 256 bytes")
+	// ErrOracleAssetClassInvalid is returned when AssetClass is not whole-byte hexadecimal data within its decoded byte limit.
+	ErrOracleAssetClassInvalid = errors.New("oracleSet: AssetClass must be whole-byte hexadecimal data of at most 16 bytes")
+	// ErrOracleLastUpdateTimeInvalid is returned when LastUpdateTime predates the Ripple epoch.
+	ErrOracleLastUpdateTimeInvalid = errors.New("oracleSet: LastUpdateTime must be at least 946684800")
 )
 
 // ErrAMMTradingFeeTooHigh is returned when the AMM trading fee exceeds the maximum allowed.
@@ -761,7 +819,7 @@ func (e ErrAMMTradingFeeTooHigh) Error() string {
 	return fmt.Sprintf("AMM trading fee exceeds maximum allowed: got %d, must be less or equal than %d", e.Value, e.Limit)
 }
 
-// ErrOracleProviderLength is returned when the Provider field exceeds OracleSetProviderMaxLength bytes.
+// ErrOracleProviderLength is returned when the Provider field exceeds OracleSetProviderMaxLength decoded bytes.
 type ErrOracleProviderLength struct {
 	Length int
 	Limit  int

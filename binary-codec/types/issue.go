@@ -28,7 +28,16 @@ var (
 	ErrInvalidIssuer = errors.New("invalid issuer")
 	// XRPBytes is the serialized byte representation for native XRP (zero-value currency issuer).
 	XRPBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	// isoXRPBytes is the standard-currency layout of "XRP". The ledger reserves it, so it is
+	// never a valid issued currency or path step and deserialization rejects it.
+	isoXRPBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x58, 0x52, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00}
 )
+
+// IsXRPCurrency reports whether currencyBytes is native XRP or the reserved
+// standard-currency layout of "XRP". Neither is a valid issued currency.
+func IsXRPCurrency(currencyBytes []byte) bool {
+	return bytes.Equal(currencyBytes, XRPBytes) || bytes.Equal(currencyBytes, isoXRPBytes)
+}
 
 // Issue represents an XRPL Issue, which is essentially an AccountID.
 // It is used to identify the issuer of a currency in the XRPL.
