@@ -461,12 +461,13 @@ func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
 	return c.RequestContext(context.Background(), req)
 }
 
-// RequestContext sends a request with caller cancellation and deadline support.
-// ctx must be non-nil. Canceling the local wait does not cancel work already
-// accepted by the server, including a submitted transaction.
-// Cancellation stops waiting for this request without closing the shared socket.
-// An already-started write may finish after cancellation; its late reply is ignored.
-// A transport write failure or configured write timeout can still close the socket.
+// RequestContext is Request with caller cancellation.
+// The configured timeout still bounds the call and returns ErrRequestTimedOut.
+// A caller cancellation or deadline returns ctx.Err(), without its cause.
+// Cancellation stops the wait without closing the shared connection. It does not
+// interrupt a reconnect that is in progress. A request canceled after its write
+// started can still reach the server, and cancellation does not undo work that the
+// server accepted, such as a submitted transaction.
 func (c *Client) RequestContext(ctx context.Context, req interfaces.Request) (*ClientResponse, error) {
 	return c.request(ctx, req)
 }
@@ -490,9 +491,9 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 	}
 
 	c.connectionHandshakeMu.RLock()
-	if cause := requestContextError(requestCtx); cause != nil {
+	if err := requestContextError(requestCtx); err != nil {
 		c.connectionHandshakeMu.RUnlock()
-		return nil, cause
+		return nil, err
 	}
 	socket := c.conn.currentSocket()
 	if socket == nil {
@@ -505,13 +506,15 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 		c.unregisterPendingResponse(id)
 	}()
 
-	err = c.conn.writeRequestMessageTo(requestCtx, socket, msg, writeDeadline)
+	err = c.conn.writeDetachedMessageTo(requestCtx, socket, msg, writeDeadline)
 	c.connectionHandshakeMu.RUnlock()
 	if err != nil {
 		if requestCtx.Err() != nil {
 			return nil, requestContextError(requestCtx)
 		}
-		// The independent writer timer can fire before requestCtx's timer.
+		// The writer timer and the socket write deadline are not linked to requestCtx,
+		// but they end at the same time, so the write can fail first.
+		// If the deadline has passed, this is a timeout: wait for requestCtx to report it.
 		if !time.Now().Before(writeDeadline) {
 			<-requestCtx.Done()
 			return nil, requestContextError(requestCtx)
@@ -943,6 +946,16 @@ func (c *Client) awaitResponse(ctx context.Context, response *pendingResponse) (
 		response.cancel()
 		return nil, requestContextError(ctx)
 	}
+}
+
+// requestContextError reports the client's own request timer as ErrRequestTimedOut.
+// Any other completion returns ctx.Err().
+func requestContextError(ctx context.Context) error {
+	err := ctx.Err()
+	if err != nil && errors.Is(context.Cause(ctx), errConfiguredRequestTimeout) {
+		return ErrRequestTimedOut
+	}
+	return err
 }
 
 func (c *Client) handleMessage(ctx context.Context, message []byte) {

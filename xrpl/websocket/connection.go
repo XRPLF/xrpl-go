@@ -260,7 +260,7 @@ func (c *Connection) writeMessageTo(
 	conn websocketConnection,
 	message []byte,
 	timeout time.Duration,
-) (resultErr error) {
+) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -272,11 +272,11 @@ func (c *Connection) writeMessageTo(
 	return c.writeMessageLocked(ctx, conn, message, timeout)
 }
 
-// writeRequestMessageTo separates a caller's wait from the shared socket write.
+// writeDetachedMessageTo separates a caller's wait from the shared socket write.
 // Only the writer-token owner starts a goroutine. Cancellation while queued does
 // not write anything; cancellation after dispatch must not corrupt a shared frame.
 // The configured absolute deadline still bounds the writer and releases the token.
-func (c *Connection) writeRequestMessageTo(
+func (c *Connection) writeDetachedMessageTo(
 	ctx context.Context, conn websocketConnection, message []byte, deadline time.Time,
 ) error {
 	if err := c.acquireWrite(ctx); err != nil {
@@ -297,7 +297,7 @@ func (c *Connection) writeRequestMessageTo(
 	case err := <-done:
 		return err
 	case <-ctx.Done():
-		return requestContextError(ctx)
+		return ctx.Err()
 	}
 }
 

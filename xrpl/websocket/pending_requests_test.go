@@ -9,6 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/Peersyst/xrpl-go/xrpl/websocket/testutil"
@@ -233,6 +234,116 @@ func TestPendingResponseContextAndDisconnectRace(t *testing.T) {
 	}
 
 	require.Zero(t, pendingResponseCount(client))
+}
+
+func TestClientRequestContextErrors(t *testing.T) {
+	tests := []struct {
+		name              string
+		callerCancelAfter time.Duration
+		callerDeadline    time.Duration
+		want              error
+	}{
+		{name: "caller cancel returns ctx.Err without its cause", callerCancelAfter: 500 * time.Millisecond, want: context.Canceled},
+		{name: "caller deadline returns ctx.Err", callerDeadline: 500 * time.Millisecond, want: context.DeadlineExceeded},
+		{name: "configured timeout before caller deadline returns ErrRequestTimedOut", callerDeadline: 2 * time.Second, want: ErrRequestTimedOut},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				client := NewClient(NewClientConfig().WithTimeout(time.Second))
+				client.conn.conn = newFakeWebsocketConnection()
+				ctx, cancel := context.WithCancelCause(context.Background())
+				defer cancel(nil)
+				if tc.callerCancelAfter > 0 {
+					time.AfterFunc(tc.callerCancelAfter, func() { cancel(errors.New("caller reason")) })
+				}
+				if tc.callerDeadline > 0 {
+					var stop context.CancelFunc
+					ctx, stop = context.WithTimeout(ctx, tc.callerDeadline)
+					defer stop()
+				}
+
+				_, err := client.RequestContext(ctx, newAccountChannelsRequest())
+				require.Equal(t, tc.want, err)
+			})
+		})
+	}
+}
+
+func TestClientRequestContextCanceledDuringWrite(t *testing.T) {
+	tests := []struct {
+		name          string
+		writeErr      error
+		wantConnected bool
+	}{
+		{name: "completed write keeps the socket", wantConnected: true},
+		{name: "failed write closes the socket", writeErr: errors.New("write failed"), wantConnected: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				client := NewClient(NewClientConfig().WithTimeout(time.Minute))
+				socket := newFakeWebsocketConnection()
+				socket.writeRelease = make(chan struct{})
+				socket.writeErr = tc.writeErr
+				client.conn.conn = socket
+				ctx, cancel := context.WithCancel(context.Background())
+
+				done := make(chan error, 1)
+				go func() {
+					_, err := client.RequestContext(ctx, newAccountChannelsRequest())
+					done <- err
+				}()
+				synctest.Wait()
+				require.Equal(t, int32(1), socket.writeCount.Load())
+				cancel()
+				require.ErrorIs(t, <-done, context.Canceled)
+				require.True(t, client.IsConnected(), "caller cancellation must not close the shared socket")
+
+				close(socket.writeRelease)
+				require.NoError(t, client.conn.acquireWrite(context.Background()))
+				client.conn.releaseWrite()
+				require.Equal(t, tc.wantConnected, client.IsConnected())
+			})
+		})
+	}
+}
+
+func TestClientRequestContextCanceledWhileQueuedDoesNotWrite(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := NewClient(NewClientConfig().WithTimeout(time.Second))
+		socket := newFakeWebsocketConnection()
+		client.conn.conn = socket
+		require.NoError(t, client.conn.acquireWrite(context.Background()))
+		defer client.conn.releaseWrite()
+		ctx, cancel := context.WithCancel(context.Background())
+		time.AfterFunc(500*time.Millisecond, cancel)
+
+		_, err := client.RequestContext(ctx, newAccountChannelsRequest())
+		require.ErrorIs(t, err, context.Canceled)
+		require.Zero(t, socket.writeCount.Load())
+	})
+}
+
+func TestClientRequestTimeoutIncludesQueueTime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := NewClient(NewClientConfig().WithTimeout(time.Second))
+		socket := newFakeWebsocketConnection()
+		socket.writeRelease = make(chan struct{})
+		client.conn.conn = socket
+		start := time.Now()
+		require.NoError(t, client.conn.acquireWrite(context.Background()))
+		time.AfterFunc(600*time.Millisecond, client.conn.releaseWrite)
+
+		_, err := client.Request(newAccountChannelsRequest())
+		require.ErrorIs(t, err, ErrRequestTimedOut)
+
+		<-socket.closed
+		require.Equal(t, start.Add(time.Second), time.Now(), "the blocked write must stop at the request deadline")
+		require.NoError(t, client.conn.acquireWrite(context.Background()))
+		client.conn.releaseWrite()
+		require.False(t, client.IsConnected())
+	})
 }
 
 func newPendingRequestTestClient(t *testing.T, serverURL string, maxReconnects int) *Client {

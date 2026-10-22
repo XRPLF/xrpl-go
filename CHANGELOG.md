@@ -36,10 +36,6 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Added `ErrInvalidMPTokenIssuanceID`, returned by `MPTokenIssuance` for an ID that is not 48 hex characters.
 
-#### xrpl/rpc and xrpl/websocket
-
-- Added `RequestContext` for caller cancellation and deadlines, preserving standard context errors alongside custom WebSocket cancellation causes. `Request` delegates with `context.Background()`. WebSocket caller cancellation leaves an active shared-socket write bounded by the configured timeout and ignores late replies without closing the socket solely because the caller canceled.
-
 #### xrpl/queries/common
 
 - Added `ErrInvalidLedgerSpecifier`, returned by `UnmarshalLedgerSpecifier` for an unknown ledger name.
@@ -47,6 +43,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### xrpl/queries/server
 
 - Added `ErrInvalidDefinitionFormatField`, returned by `DefinitionFormatField.Validate` for an empty name or an out-of-range optionality.
+
+#### xrpl/rpc, xrpl/websocket
+
+- Added `RequestContext`, a `Request` variant with caller cancellation and deadlines.
 
 ### Changed
 
@@ -79,11 +79,20 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Upgraded `golang.org/x/crypto` from v0.54.0 to v0.56.0 to include upstream security fixes (GO-2026-6303, GO-2026-6354, GO-2026-6355).
 
+#### xrpl/rpc
+
+- Context-aware methods return `ctx.Err()` when the caller cancels while the response body is read.
+
 #### xrpl/transaction
 
 - Fixed `Payment.Validate()` and `CheckCreate.Validate()` to reject malformed non-empty `InvoiceID` values with `ErrInvalidInvoiceID`.
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
+
+#### xrpl/websocket
+
+- Canceling a context-aware request no longer closes the shared connection while its write is in progress. The write stays bounded by `WithTimeout`, and a late reply is ignored.
+- Context-aware methods return `ctx.Err()` on cancellation, as documented, instead of a custom cancellation cause.
 
 ## [v0.3.1]
 

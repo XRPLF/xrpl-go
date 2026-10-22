@@ -385,6 +385,24 @@ func TestConnection_CanceledActiveWriteInvalidatesSocket(t *testing.T) {
 	require.GreaterOrEqual(t, socket.closeCount.Load(), int32(1))
 }
 
+func TestConnection_DetachedWriteWithCanceledContextDoesNotWrite(t *testing.T) {
+	connection := newConnection("ws://unused", defaultMaxResponseSize)
+	socket := newFakeWebsocketConnection()
+	connection.conn = socket
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := connection.writeDetachedMessageTo(ctx, socket, []byte("test"), time.Now().Add(time.Second))
+	require.ErrorIs(t, err, context.Canceled)
+	require.Zero(t, socket.writeCount.Load())
+	require.Zero(t, socket.closeCount.Load())
+
+	wait, stop := context.WithTimeout(context.Background(), time.Second)
+	defer stop()
+	require.NoError(t, connection.acquireWrite(wait))
+	connection.releaseWrite()
+}
+
 func TestClient_ActiveWriteInvalidationReconnects(t *testing.T) {
 	var dialCount atomic.Int32
 	upgrader := gorillaws.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
