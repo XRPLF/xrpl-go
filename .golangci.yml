@@ -3,6 +3,8 @@ version: "2"
 linters:
   enable:
     - bodyclose
+    - depguard
+    - err113
     - errcheck
     - errorlint
     - exhaustive
@@ -19,6 +21,46 @@ linters:
     - testifylint
     - unparam
     - unused
+  settings:
+    depguard:
+      # Every rule is a deny list: lax allows any import that is not denied.
+      rules:
+        # The codec and keypair layers sit below xrpl/.
+        low-level:
+          list-mode: lax
+          files:
+            - "**/address-codec/**"
+            - "**/binary-codec/**"
+            - "**/keypairs/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/Peersyst/xrpl-go/xrpl
+              desc: low-level packages must not import xrpl/
+        # pkg/ holds shared utilities with no XRPL-specific dependencies.
+        pkg:
+          list-mode: lax
+          files:
+            - "**/pkg/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/Peersyst/xrpl-go/xrpl
+              desc: pkg/ must not import xrpl/
+            - pkg: github.com/Peersyst/xrpl-go/address-codec
+              desc: pkg/ must not import address-codec/
+            - pkg: github.com/Peersyst/xrpl-go/binary-codec
+              desc: pkg/ must not import binary-codec/
+            - pkg: github.com/Peersyst/xrpl-go/keypairs
+              desc: pkg/ must not import keypairs/
+        # confidential is an optional module that depends on core, never the reverse.
+        # This rule also covers tests: a root test importing confidential pulls it into the root module.
+        core:
+          list-mode: lax
+          files:
+            - $all
+            - "!**/confidential/**"
+          deny:
+            - pkg: github.com/Peersyst/xrpl-go/confidential
+              desc: the core module must not import the optional confidential module
   exclusions:
     rules:
       - linters:
@@ -28,11 +70,20 @@ linters:
         linters:
           - revive
         text: "package-comments"
-      # Only testifylint and modernize run on test files.
+      # Sentinel errors are for library callers. Examples and test helpers may create errors inline.
+      - path: (examples|testutil)/
+        linters:
+          - err113
+      # The optional confidential module still creates errors inline. Remove once it uses sentinels.
+      - path: confidential/
+        linters:
+          - err113
+      # Only testifylint, modernize and depguard run on test files.
       # All other linters are excluded from tests to reduce noise.
       - path: _test\.go
         linters:
           - bodyclose
+          - err113
           - errcheck
           - errorlint
           - exhaustive

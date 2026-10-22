@@ -7,6 +7,10 @@ import (
 )
 
 var (
+	// errDecodeTransactionBlob prefixes a panic recovered while decoding a transaction blob.
+	// It stays unexported: callers match the wrapped panic value, not this stage prefix.
+	errDecodeTransactionBlob = errors.New("decode transaction blob")
+
 	// address
 
 	// ErrAddressFieldIsNotAString indicates that an address-bearing transaction

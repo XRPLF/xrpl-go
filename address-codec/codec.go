@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/subtle"
 	"encoding/hex"
-	"errors"
 
 	"github.com/Peersyst/xrpl-go/address-codec/interfaces"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
@@ -126,7 +125,7 @@ func EncodeSeed(entropy []byte, encodingType interfaces.CryptoImplementation) (s
 	} else if secp256k1 := crypto.SECP256K1(); encodingType == secp256k1 {
 		return Encode(entropy, secp256k1.FamilySeedPrefix(), FamilySeedLength)
 	}
-	return "", errors.New("encoding type must be `ed25519` or `secp256k1`")
+	return "", ErrInvalidEncodingType
 }
 
 // hasPrefixConstantTime reports whether b starts with prefix, comparing the

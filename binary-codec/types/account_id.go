@@ -23,7 +23,7 @@ type AccountID struct{}
 func (a *AccountID) FromJSON(value any) ([]byte, error) {
 	strValue, ok := value.(string)
 	if !ok {
-		return nil, fmt.Errorf("expected a string but got %T", value)
+		return nil, fmt.Errorf("%w: got %T", ErrAccountIDNotString, value)
 	}
 
 	switch {

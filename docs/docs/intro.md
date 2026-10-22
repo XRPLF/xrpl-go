@@ -4,7 +4,7 @@ Build Go applications on the [XRP Ledger](https://xrpl.org/). Query the ledger, 
 
 ## Quick start
 
-Requires **Go 1.25.13 or later**. The core SDK is pure Go and does not require a C/C++ toolchain.
+Requires **Go 1.26.10 or later**. The core SDK is pure Go and does not require a C/C++ toolchain.
 
 From your application's Go module, install the SDK:
 

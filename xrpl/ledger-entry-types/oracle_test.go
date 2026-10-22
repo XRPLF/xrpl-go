@@ -355,3 +355,23 @@ func TestPriceData_Validate(t *testing.T) {
 		})
 	}
 }
+
+func TestAssetPrice(t *testing.T) {
+	tests := []struct {
+		name  string
+		value uint64
+	}{
+		{"zero", 0},
+		{"typical price", 740},
+		{"maximum", 0xFFFFFFFFFFFFFFFF},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := AssetPrice(tt.value)
+			require.NotNil(t, got)
+			require.Equal(t, tt.value, *got)
+			require.NotSame(t, got, AssetPrice(tt.value))
+		})
+	}
+}

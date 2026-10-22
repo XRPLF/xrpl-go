@@ -33,7 +33,7 @@ func UnmarshalLedgerSpecifier(data []byte) (LedgerSpecifier, error) {
 		case Closed.Ledger():
 			return Closed, nil
 		}
-		return nil, fmt.Errorf("decoding LedgerTitle: invalid string %s", s)
+		return nil, fmt.Errorf("%w: %q", ErrInvalidLedgerSpecifier, s)
 	default:
 		var i LedgerIndex
 		if err := json.Unmarshal(data, &i); err != nil {

@@ -26,6 +26,7 @@ var (
 	rangeLog           = 18
 	ErrInvalidNumber   = errors.New("invalid Number string")
 	ErrNumberOverflow  = errors.New("mantissa and exponent are too large")
+	ErrNumberUnderflow = errors.New("underflow: value too small to represent")
 	ErrInvalidExponent = errors.New("exponent out of range")
 )
 
@@ -186,7 +187,7 @@ func normalize(mantissa *big.Int, exponent int32) (*big.Int, int32, error) {
 
 	// Underflow check
 	if exponent < minExponent || m.Cmp(minMantissa) < 0 {
-		return nil, 0, errors.New("underflow: value too small to represent")
+		return nil, 0, ErrNumberUnderflow
 	}
 
 	// Exponent overflow check

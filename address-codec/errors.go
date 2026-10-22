@@ -16,6 +16,8 @@ var (
 	ErrInvalidSeedPrefix = errors.New("invalid seed prefix")
 	// ErrInvalidSeedLength indicates that a seed has an invalid decoded length.
 	ErrInvalidSeedLength = errors.New("invalid seed length")
+	// ErrInvalidEncodingType indicates that a seed encoding type is neither ed25519 nor secp256k1.
+	ErrInvalidEncodingType = errors.New("encoding type must be `ed25519` or `secp256k1`")
 	// ErrInvalidXAddress indicates an invalid x-address.
 	ErrInvalidXAddress = errors.New("invalid X-address: bad prefix")
 	// ErrUnsupportedXAddress indicates an unsupported x-address (e.g., 64-bit tag).

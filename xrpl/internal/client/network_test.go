@@ -8,7 +8,7 @@ import (
 )
 
 func uint32Pointer(value uint32) *uint32 {
-	return &value
+	return new(value)
 }
 
 func TestResolveNetworkIdentity(t *testing.T) {

@@ -624,10 +624,10 @@ func TestEncodeDecodeMPTokenMetadata(t *testing.T) {
 			metadata: ParsedMPTokenMetadata{
 				Ticker:        "TBILL",
 				Name:          "T-Bill Yield Token",
-				Desc:          stringPtr("A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."),
+				Desc:          new("A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."),
 				Icon:          "https://example.org/tbill-icon.png",
 				AssetClass:    "rwa",
-				AssetSubclass: stringPtr("treasury"),
+				AssetSubclass: new("treasury"),
 				IssuerName:    "Example Yield Co.",
 				URIs: []ParsedMPTokenMetadataURI{
 					{URI: "https://exampleyield.co/tbill", Category: "website", Title: "Product Page"},
@@ -648,10 +648,10 @@ func TestEncodeDecodeMPTokenMetadata(t *testing.T) {
 			metadata: ParsedMPTokenMetadata{
 				Ticker:        "TBILL",
 				Name:          "T-Bill Yield Token",
-				Desc:          stringPtr("A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."),
+				Desc:          new("A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."),
 				Icon:          "https://example.org/tbill-icon.png",
 				AssetClass:    "rwa",
-				AssetSubclass: stringPtr("treasury"),
+				AssetSubclass: new("treasury"),
 				IssuerName:    "Example Yield Co.",
 				URIs: []ParsedMPTokenMetadataURI{
 					{URI: "https://exampleyield.co/tbill", Category: "website", Title: "Product Page"},
@@ -672,10 +672,10 @@ func TestEncodeDecodeMPTokenMetadata(t *testing.T) {
 			metadata: ParsedMPTokenMetadata{
 				Ticker:         "CRYPTO",
 				Name:           "Crypto Token",
-				Desc:           stringPtr("A gaming token for virtual worlds."),
+				Desc:           new("A gaming token for virtual worlds."),
 				Icon:           "https://example.org/crypto-icon.png",
 				AssetClass:     "gaming",
-				AssetSubclass:  stringPtr("equity"),
+				AssetSubclass:  new("equity"),
 				IssuerName:     "Gaming Studios Inc.",
 				AdditionalInfo: "Gaming ecosystem token",
 				URIs: []ParsedMPTokenMetadataURI{
@@ -722,9 +722,9 @@ func TestDecodeMPTokenMetadata_EdgeCases(t *testing.T) {
 				Name:           "Crypto Token",
 				Icon:           "https://example.org/crypto-icon.png",
 				AssetClass:     "gaming",
-				AssetSubclass:  stringPtr("equity"),
+				AssetSubclass:  new("equity"),
 				IssuerName:     "Gaming Studios Inc.",
-				Desc:           stringPtr("A gaming token for virtual worlds."),
+				Desc:           new("A gaming token for virtual worlds."),
 				AdditionalInfo: "Gaming ecosystem token",
 				URIs: []ParsedMPTokenMetadataURI{
 					{
@@ -793,10 +793,10 @@ func TestDecodeMPTokenMetadata_NotCompactKeys(t *testing.T) {
 			expected: ParsedMPTokenMetadata{
 				Ticker:        "TBILL",
 				Name:          "T-Bill Yield Token",
-				Desc:          stringPtr("A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."),
+				Desc:          new("A yield-bearing stablecoin backed by short-term U.S. Treasuries and money market instruments."),
 				Icon:          "https://example.org/tbill-icon.png",
 				AssetClass:    "rwa",
-				AssetSubclass: stringPtr("treasury"),
+				AssetSubclass: new("treasury"),
 				IssuerName:    "Example Yield Co.",
 				URIs: []ParsedMPTokenMetadataURI{
 					{
@@ -872,7 +872,21 @@ func extractValidationErrors(err error) []error {
 	return []error{err}
 }
 
-// Helper function to create string pointer
-func stringPtr(s string) *string {
-	return &s
+func TestMPTokenMetadata(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+	}{
+		{"hex metadata", "7B227469636B6572223A22544254494C4C227D"},
+		{"empty", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MPTokenMetadata(tt.value)
+			require.NotNil(t, got)
+			require.Equal(t, tt.value, *got)
+			require.NotSame(t, got, MPTokenMetadata(tt.value))
+		})
+	}
 }

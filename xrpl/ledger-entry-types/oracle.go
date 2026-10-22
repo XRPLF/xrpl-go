@@ -15,7 +15,7 @@ const (
 
 // AssetPrice returns a pointer to an asset price value.
 func AssetPrice(value uint64) *uint64 {
-	return &value
+	return new(value)
 }
 
 // PriceDataWrapper represents a wrapper for the PriceData struct.
@@ -149,7 +149,7 @@ func (priceData *PriceData) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return fmt.Errorf("%w: %q", ErrPriceDataAssetPrice, token)
 		}
-		decoded.priceDataFields.AssetPrice = AssetPrice(value)
+		decoded.priceDataFields.AssetPrice = new(value)
 	}
 	*priceData = PriceData(decoded.priceDataFields)
 	return nil

@@ -1,6 +1,7 @@
 package hexutil
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -52,51 +53,49 @@ func TestDecodeFixedHex(t *testing.T) {
 		name    string
 		hex     string
 		size    int
-		wantErr bool
+		wantErr error
 	}{
 		{
-			name:    "pass - valid 4 bytes",
-			hex:     "deadbeef",
-			size:    4,
-			wantErr: false,
+			name: "pass - valid 4 bytes",
+			hex:  "deadbeef",
+			size: 4,
 		},
 		{
-			name:    "pass - empty string with size 0",
-			hex:     "",
-			size:    0,
-			wantErr: false,
+			name: "pass - empty string with size 0",
+			hex:  "",
+			size: 0,
 		},
 		{
 			name:    "fail - too short",
 			hex:     "0102",
 			size:    32,
-			wantErr: true,
+			wantErr: ErrInvalidHexLength,
 		},
 		{
 			name:    "fail - too long",
 			hex:     "010203",
 			size:    2,
-			wantErr: true,
+			wantErr: ErrInvalidHexLength,
 		},
 		{
 			name:    "fail - invalid hex chars",
 			hex:     "zzzz",
 			size:    2,
-			wantErr: true,
+			wantErr: hex.InvalidByteError('z'),
 		},
 		{
 			name:    "fail - odd length hex",
 			hex:     "012",
 			size:    1,
-			wantErr: true,
+			wantErr: hex.ErrLength,
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := DecodeFixedHex(tc.hex, tc.size)
-			if tc.wantErr {
-				require.Error(t, err)
+			if tc.wantErr != nil {
+				require.ErrorIs(t, err, tc.wantErr)
 				return
 			}
 			require.NoError(t, err)

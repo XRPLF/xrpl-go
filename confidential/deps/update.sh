@@ -4,7 +4,7 @@
 #
 # Prerequisites:
 #   - conan >= 2.0 (pip install conan)
-#   - xrplf remote: conan remote add --index 0 xrplf https://conan.ripplex.io
+#   - xrplf remote: conan remote add --index 0 --force xrplf https://conan.xrplf.org/repository/conan/
 #
 # Usage:
 #   bash confidential/deps/update.sh                        # fetch latest, current platform
@@ -85,11 +85,16 @@ if ! command -v shasum &>/dev/null; then
 	exit 1
 fi
 
-if ! conan remote list 2>/dev/null | grep -q "xrplf"; then
-	echo "ERROR: the 'xrplf' Conan remote is not configured."
+XRPLF_REMOTE_URL="https://conan.xrplf.org/repository/conan/"
+if ! conan remote list --format=json 2>/dev/null | python3 -c '
+import json, sys
+remotes = json.load(sys.stdin)
+sys.exit(0 if any(r.get("name") == "xrplf" and r.get("url") == sys.argv[1] for r in remotes) else 1)
+' "$XRPLF_REMOTE_URL"; then
+	echo "ERROR: the 'xrplf' Conan remote is missing or does not point to $XRPLF_REMOTE_URL."
 	echo ""
-	echo "Add it with:"
-	echo "  conan remote add --index 0 xrplf https://conan.ripplex.io"
+	echo "Add or update it with:"
+	echo "  conan remote add --index 0 --force xrplf $XRPLF_REMOTE_URL"
 	exit 1
 fi
 
@@ -156,6 +161,10 @@ import re
 import sys
 
 packages = json.load(sys.stdin)
+for name, remote in packages.items():
+    if "error" in remote:
+        error = remote["error"]
+        raise SystemExit(f"conan list failed for remote {name}: {error}")
 versions = [
     reference.split("/", 1)[1]
     for remote in packages.values()

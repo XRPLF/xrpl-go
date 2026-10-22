@@ -14,7 +14,7 @@ Only this package imports `"C"`. The higher-level helpers handle hex encoding, a
 
 Native operations require:
 
-- Go 1.25.13 or later and cgo enabled with `CGO_ENABLED=1`.
+- Go 1.26.10 or later and cgo enabled with `CGO_ENABLED=1`.
 - Linux or macOS on `amd64` or `arm64`.
 - A C/C++ compiler and linker, plus the zlib development library on Linux.
 - A build that does not target `js`, `wasip1`, TinyGo, or go-fuzz.

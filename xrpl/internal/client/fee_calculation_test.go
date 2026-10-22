@@ -30,11 +30,11 @@ const (
 var errRequest = errors.New("request failed")
 
 func float64Pointer(value float64) *float64 {
-	return &value
+	return new(value)
 }
 
 func uint64Pointer(value uint64) *uint64 {
-	return &value
+	return new(value)
 }
 
 // signerLists builds the account_info signer list data for an account with the
@@ -123,7 +123,7 @@ func TestCalculateFee(t *testing.T) {
 			name:        "ordinary transaction",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.PaymentTx},
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "10",
 		},
 		{
@@ -131,7 +131,7 @@ func TestCalculateFee(t *testing.T) {
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.PaymentTx},
 			nSigners:    2,
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "30",
 		},
 		{
@@ -141,7 +141,7 @@ func TestCalculateFee(t *testing.T) {
 				"Sponsor":         "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59", "SponsorFlags": uint32(1),
 			},
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "10",
 		},
 		{
@@ -152,14 +152,14 @@ func TestCalculateFee(t *testing.T) {
 			},
 			nSigners:    2 + 3,
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "60",
 		},
 		{
 			name:        "cushion scales the network fee",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.PaymentTx},
 			cushion:     1.2,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "12",
 		},
 		{
@@ -168,14 +168,14 @@ func TestCalculateFee(t *testing.T) {
 			nSigners:    2,
 			cushion:     1,
 			maxFeeXRP:   "0.000015",
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "15",
 		},
 		{
 			name:        "confidential MPT transaction",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.ConfidentialMPTSendTx},
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "100",
 		},
 		{
@@ -183,14 +183,14 @@ func TestCalculateFee(t *testing.T) {
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.ConfidentialMPTSendTx},
 			nSigners:    2,
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "120",
 		},
 		{
 			name:        "fractional network fee rounds once",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.PaymentTx},
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1.24},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1.24},
 			expectedFee: "12",
 		},
 		{
@@ -198,14 +198,14 @@ func TestCalculateFee(t *testing.T) {
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.PaymentTx},
 			nSigners:    2,
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1.24},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1.24},
 			expectedFee: "37",
 		},
 		{
 			name:        "confidential multiplier does not amplify a rounded drop",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.ConfidentialMPTSendTx},
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1.24},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1.24},
 			expectedFee: "124",
 		},
 		{
@@ -213,14 +213,14 @@ func TestCalculateFee(t *testing.T) {
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.ConfidentialMPTSendTx},
 			nSigners:    2,
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1.24},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1.24},
 			expectedFee: "149",
 		},
 		{
 			name:        "EscrowFinish without a fulfillment",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.EscrowFinishTx},
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "10",
 		},
 		{
@@ -230,7 +230,7 @@ func TestCalculateFee(t *testing.T) {
 				"Fulfillment":     "",
 			},
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "330",
 		},
 		{
@@ -240,7 +240,7 @@ func TestCalculateFee(t *testing.T) {
 				"Fulfillment":     sixteenByteFulfillment,
 			},
 			cushion:     1,
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedFee: "340",
 		},
 		{
@@ -248,7 +248,7 @@ func TestCalculateFee(t *testing.T) {
 			tx:      transaction.FlatTransaction{"TransactionType": transaction.AccountDeleteTx},
 			cushion: 1,
 			ledger: feeLedger{
-				baseFeeXRP: float64Pointer(0.00001),
+				baseFeeXRP: new(0.00001),
 				loadFactor: 1,
 				reserveInc: uint64Pointer(5000000),
 			},
@@ -260,7 +260,7 @@ func TestCalculateFee(t *testing.T) {
 			nSigners: 1,
 			cushion:  1,
 			ledger: feeLedger{
-				baseFeeXRP: float64Pointer(0.00001),
+				baseFeeXRP: new(0.00001),
 				loadFactor: 1,
 				reserveInc: uint64Pointer(2000000),
 			},
@@ -271,7 +271,7 @@ func TestCalculateFee(t *testing.T) {
 			tx:      transaction.FlatTransaction{"TransactionType": transaction.AMMCreateTx},
 			cushion: 1,
 			ledger: feeLedger{
-				baseFeeXRP: float64Pointer(0.00001),
+				baseFeeXRP: new(0.00001),
 				loadFactor: 1,
 				reserveInc: uint64Pointer(2000000),
 			},
@@ -285,7 +285,7 @@ func TestCalculateFee(t *testing.T) {
 			},
 			cushion: 1,
 			ledger: feeLedger{
-				baseFeeXRP:         float64Pointer(0.00001),
+				baseFeeXRP:         new(0.00001),
 				loadFactor:         1,
 				accountSignerLists: signerLists(3),
 			},
@@ -299,7 +299,7 @@ func TestCalculateFee(t *testing.T) {
 			},
 			cushion: 1,
 			ledger: feeLedger{
-				baseFeeXRP:      float64Pointer(0.00001),
+				baseFeeXRP:      new(0.00001),
 				loadFactor:      1,
 				loanBrokerOwner: testLoanBrokerOwner,
 			},
@@ -314,7 +314,7 @@ func TestCalculateFee(t *testing.T) {
 			nSigners: 2,
 			cushion:  1,
 			ledger: feeLedger{
-				baseFeeXRP:         float64Pointer(0.00001),
+				baseFeeXRP:         new(0.00001),
 				loadFactor:         1,
 				accountSignerLists: signerLists(3),
 			},
@@ -353,7 +353,7 @@ func TestCalculateFeeBatch(t *testing.T) {
 			{"RawTransaction": map[string]any{"TransactionType": transaction.PaymentTx}},
 		},
 	}
-	data := feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1}
+	data := feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1}
 	settings := FeeSettings{Cushion: 1, MaxFeeXRP: defaultTestMaxFeeXRP}
 
 	_, err := CalculateFee(context.Background(), data.requestFunc(t), &tx, 0, settings)
@@ -387,7 +387,7 @@ func TestCalculateFeeBatchSumsInnerFeesExactly(t *testing.T) {
 		"RawTransactions": rawTransactions,
 	}
 	// A ten drop base fee under this load factor is 10.4 drops per base fee.
-	data := feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1.04}
+	data := feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1.04}
 	settings := FeeSettings{Cushion: 1, MaxFeeXRP: defaultTestMaxFeeXRP}
 
 	_, err := CalculateFee(context.Background(), data.requestFunc(t), &tx, 0, settings)
@@ -410,7 +410,7 @@ func TestCalculateFeeRejectsIncompleteData(t *testing.T) {
 			name:        "invalid maximum fee",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.PaymentTx},
 			maxFeeXRP:   "invalid",
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedErr: ErrInvalidFeeValue,
 		},
 		{
@@ -422,13 +422,13 @@ func TestCalculateFeeRejectsIncompleteData(t *testing.T) {
 		{
 			name:        "absent owner reserve",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.AccountDeleteTx},
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedErr: ErrCouldNotFetchOwnerReserve,
 		},
 		{
 			name:        "LoanSet without a counterparty or a LoanBroker",
 			tx:          transaction.FlatTransaction{"TransactionType": transaction.LoanSetTx},
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedErr: ErrLoanBrokerIDRequired,
 		},
 		{
@@ -437,7 +437,7 @@ func TestCalculateFeeRejectsIncompleteData(t *testing.T) {
 				"TransactionType": transaction.LoanSetTx,
 				"LoanBrokerID":    "ABC",
 			},
-			ledger:      feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger:      feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			expectedErr: ErrCouldNotFetchLoanBrokerOwner,
 		},
 	}
@@ -468,13 +468,13 @@ func TestCalculateFeePropagatesRequestFailures(t *testing.T) {
 		{
 			name:   "server_info",
 			tx:     transaction.FlatTransaction{"TransactionType": transaction.PaymentTx},
-			ledger: feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger: feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			failOn: "server_info",
 		},
 		{
 			name:   "server_state",
 			tx:     transaction.FlatTransaction{"TransactionType": transaction.AccountDeleteTx},
-			ledger: feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger: feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			failOn: "server_state",
 		},
 		{
@@ -484,7 +484,7 @@ func TestCalculateFeePropagatesRequestFailures(t *testing.T) {
 				"LoanBrokerID":    "ABC",
 			},
 			ledger: feeLedger{
-				baseFeeXRP:      float64Pointer(0.00001),
+				baseFeeXRP:      new(0.00001),
 				loadFactor:      1,
 				loanBrokerOwner: testLoanBrokerOwner,
 			},
@@ -496,7 +496,7 @@ func TestCalculateFeePropagatesRequestFailures(t *testing.T) {
 				"TransactionType": transaction.LoanSetTx,
 				"Counterparty":    testCounterparty,
 			},
-			ledger: feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1},
+			ledger: feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1},
 			failOn: "account_info",
 		},
 	}
@@ -527,9 +527,9 @@ func TestNetworkFeeDropsFor(t *testing.T) {
 	}{
 		{name: "absent base fee", loadFactor: 1, cushion: 1, expectedErr: ErrCouldNotGetBaseFeeXrp},
 		{name: "explicit zero base fee", baseFeeXRP: float64Pointer(0), loadFactor: 1, cushion: 1, expectedDrops: "0"},
-		{name: "default base fee", baseFeeXRP: float64Pointer(0.00001), loadFactor: 1, cushion: 1, expectedDrops: "10"},
-		{name: "load factor scales the base fee", baseFeeXRP: float64Pointer(0.00001), loadFactor: 2, cushion: 1, expectedDrops: "20"},
-		{name: "cushion scales the base fee", baseFeeXRP: float64Pointer(0.00001), loadFactor: 1, cushion: 1.2, expectedDrops: "12"},
+		{name: "default base fee", baseFeeXRP: new(0.00001), loadFactor: 1, cushion: 1, expectedDrops: "10"},
+		{name: "load factor scales the base fee", baseFeeXRP: new(0.00001), loadFactor: 2, cushion: 1, expectedDrops: "20"},
+		{name: "cushion scales the base fee", baseFeeXRP: new(0.00001), loadFactor: 1, cushion: 1.2, expectedDrops: "12"},
 		{name: "maximum fee caps the network fee", baseFeeXRP: float64Pointer(1), loadFactor: 1000, cushion: 1, maxFeeXRP: "0.123456", expectedDrops: "123456"},
 	}
 
@@ -559,7 +559,7 @@ func TestNetworkFeeDropsFor(t *testing.T) {
 func TestNetworkFeeDropsForKeepsFractionalDrops(t *testing.T) {
 	t.Parallel()
 
-	data := feeLedger{baseFeeXRP: float64Pointer(0.00001), loadFactor: 1.24}
+	data := feeLedger{baseFeeXRP: new(0.00001), loadFactor: 1.24}
 	maxFee, err := ParseFeeXRP(defaultTestMaxFeeXRP)
 	require.NoError(t, err)
 

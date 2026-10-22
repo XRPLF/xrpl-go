@@ -458,7 +458,18 @@ func isFundWalletActNotFound(err error) bool {
 // This function is used to send requests to the server.
 // It returns the response from the server.
 func (c *Client) Request(req interfaces.Request) (*ClientResponse, error) {
-	return c.request(context.Background(), req)
+	return c.RequestContext(context.Background(), req)
+}
+
+// RequestContext is Request with caller cancellation.
+// The configured timeout still bounds the call and returns ErrRequestTimedOut.
+// A caller cancellation or deadline returns ctx.Err(), without its cause.
+// Cancellation stops the wait without closing the shared connection. It does not
+// interrupt a reconnect that is in progress. A request canceled after its write
+// started can still reach the server, and cancellation does not undo work that the
+// server accepted, such as a submitted transaction.
+func (c *Client) RequestContext(ctx context.Context, req interfaces.Request) (*ClientResponse, error) {
+	return c.request(ctx, req)
 }
 
 func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientResponse, error) {
@@ -469,7 +480,8 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 		return nil, err
 	}
 
-	requestCtx, cancel := context.WithTimeoutCause(ctx, c.cfg.timeout, ErrRequestTimedOut)
+	writeDeadline := time.Now().Add(c.cfg.timeout)
+	requestCtx, cancel := context.WithDeadlineCause(ctx, writeDeadline, errConfiguredRequestTimeout)
 	defer cancel()
 
 	id := c.idCounter.Add(1)
@@ -478,10 +490,12 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 		return nil, err
 	}
 
-	c.connectionHandshakeMu.RLock()
-	if cause := context.Cause(requestCtx); cause != nil {
+	if err := c.rLockConnectionHandshake(requestCtx); err != nil {
+		return nil, err
+	}
+	if err := requestContextError(requestCtx); err != nil {
 		c.connectionHandshakeMu.RUnlock()
-		return nil, cause
+		return nil, err
 	}
 	socket := c.conn.currentSocket()
 	if socket == nil {
@@ -494,11 +508,18 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 		c.unregisterPendingResponse(id)
 	}()
 
-	err = c.conn.writeMessageTo(requestCtx, socket, msg, 0)
+	err = c.conn.writeDetachedMessageTo(requestCtx, socket, msg, writeDeadline)
 	c.connectionHandshakeMu.RUnlock()
 	if err != nil {
 		if requestCtx.Err() != nil {
-			return nil, context.Cause(requestCtx)
+			return nil, requestContextError(requestCtx)
+		}
+		// The writer timer and the socket write deadline are not linked to requestCtx,
+		// but they end at the same time, so the write can fail first.
+		// If the deadline has passed, this is a timeout: wait for requestCtx to report it.
+		if !time.Now().Before(writeDeadline) {
+			<-requestCtx.Done()
+			return nil, requestContextError(requestCtx)
 		}
 		c.failPendingResponsesForSocket(socket, ErrDisconnected)
 		return nil, errors.Join(ErrDisconnected, err)
@@ -514,6 +535,35 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 	}
 
 	return res, nil
+}
+
+// rLockConnectionHandshake acquires connectionHandshakeMu for reading or returns
+// the request context error. A canceled wait does not disturb the connect that
+// holds the lock. The waiter releases the read lock if the caller stopped waiting.
+func (c *Client) rLockConnectionHandshake(ctx context.Context) error {
+	if c.connectionHandshakeMu.TryRLock() {
+		return nil
+	}
+	// acquired is unbuffered: the send completes only if the caller receives it.
+	// If the caller takes ctx.Done instead, it closes abandoned and the waiter
+	// releases the lock. Exactly one side owns the lock in every case.
+	acquired := make(chan struct{})
+	abandoned := make(chan struct{})
+	go func() {
+		c.connectionHandshakeMu.RLock()
+		select {
+		case acquired <- struct{}{}:
+		case <-abandoned:
+			c.connectionHandshakeMu.RUnlock()
+		}
+	}()
+	select {
+	case <-acquired:
+		return nil
+	case <-ctx.Done():
+		close(abandoned)
+		return requestContextError(ctx)
+	}
 }
 
 func (c *Client) requestResult(ctx context.Context, req interfaces.Request, result any) error {
@@ -925,8 +975,18 @@ func (c *Client) awaitResponse(ctx context.Context, response *pendingResponse) (
 		return result.response, result.err
 	case <-ctx.Done():
 		response.cancel()
-		return nil, context.Cause(ctx)
+		return nil, requestContextError(ctx)
 	}
+}
+
+// requestContextError reports the client's own request timer as ErrRequestTimedOut.
+// Any other completion returns ctx.Err().
+func requestContextError(ctx context.Context) error {
+	err := ctx.Err()
+	if err != nil && errors.Is(context.Cause(ctx), errConfiguredRequestTimeout) {
+		return ErrRequestTimedOut
+	}
+	return err
 }
 
 func (c *Client) handleMessage(ctx context.Context, message []byte) {

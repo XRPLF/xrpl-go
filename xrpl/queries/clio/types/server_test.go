@@ -17,7 +17,7 @@ func TestLedgerInfoFeeFieldPresence(t *testing.T) {
 		{name: "missing", input: `{}`},
 		{name: "null", input: `{"base_fee_xrp":null,"reserve_inc_xrp":null}`},
 		{name: "explicit zero", input: `{"base_fee_xrp":0,"reserve_inc_xrp":0}`, wantBaseFee: float64Pointer(0), wantReserveIncXRP: float64Pointer(0)},
-		{name: "non-zero", input: `{"base_fee_xrp":0.00001,"reserve_inc_xrp":2.5}`, wantBaseFee: float64Pointer(0.00001), wantReserveIncXRP: float64Pointer(2.5)},
+		{name: "non-zero", input: `{"base_fee_xrp":0.00001,"reserve_inc_xrp":2.5}`, wantBaseFee: new(0.00001), wantReserveIncXRP: new(2.5)},
 	}
 
 	for _, tt := range tests {
@@ -31,5 +31,5 @@ func TestLedgerInfoFeeFieldPresence(t *testing.T) {
 }
 
 func float64Pointer(value float64) *float64 {
-	return &value
+	return new(value)
 }

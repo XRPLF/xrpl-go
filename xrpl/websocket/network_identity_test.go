@@ -19,11 +19,7 @@ import (
 )
 
 func uint32Pointer(value uint32) *uint32 {
-	return &value
-}
-
-func boolPointer(value bool) *bool {
-	return &value
+	return new(value)
 }
 
 // withReconnectDelays returns a config with test-specific reconnect delays.
@@ -99,7 +95,7 @@ func TestClientNetworkIdentityConcurrentRefresh(t *testing.T) {
 
 func clientNetworkIdentity(networkID uint32, buildVersion string) clientinternal.NetworkIdentity {
 	return clientinternal.NetworkIdentity{
-		NetworkID:    uint32Pointer(networkID),
+		NetworkID:    new(networkID),
 		BuildVersion: buildVersion,
 	}
 }
@@ -108,7 +104,7 @@ func setTrustedTestNetworkIdentity(cl *Client, networkID uint32) {
 	cl.identity.mu.Lock()
 	defer cl.identity.mu.Unlock()
 	cl.identity.current = clientinternal.NetworkIdentity{
-		NetworkID:    uint32Pointer(networkID),
+		NetworkID:    new(networkID),
 		BuildVersion: "1.12.0",
 	}
 	cl.identity.ready = true
@@ -150,7 +146,7 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 			expectedID:                uint32Pointer(21337),
 			expectedBuild:             "1.12.0",
 			expectedRequests:          1,
-			expectedNetworkIDRequired: boolPointer(true),
+			expectedNetworkIDRequired: new(true),
 		},
 		{
 			name: "build version preferred over rippled version",
@@ -162,7 +158,7 @@ func TestClientConnectDiscoversNetworkIdentity(t *testing.T) {
 			expectedID:                uint32Pointer(21337),
 			expectedBuild:             "1.10.0",
 			expectedRequests:          1,
-			expectedNetworkIDRequired: boolPointer(false),
+			expectedNetworkIDRequired: new(false),
 		},
 		{
 			name: "missing network ID defaults to zero",

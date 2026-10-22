@@ -16,6 +16,7 @@ import (
 	"github.com/Peersyst/xrpl-go/xrpl/queries/ledger"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+
 	"github.com/stretchr/testify/require"
 )
 

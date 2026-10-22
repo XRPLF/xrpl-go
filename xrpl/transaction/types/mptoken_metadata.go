@@ -334,7 +334,7 @@ func (u *ParsedMPTokenMetadataURI) UnmarshalJSON(data []byte) error {
 
 // MPTokenMetadata returns a pointer to a string containing metadata for an MPToken.
 func MPTokenMetadata(value string) *string {
-	return &value
+	return new(value)
 }
 
 // UnmarshalJSON implements custom JSON unmarshaling for ParsedMPTokenMetadata.

@@ -19,7 +19,7 @@ func DecodeFixedHex(hexStr string, size int) ([]byte, error) {
 		return nil, fmt.Errorf("invalid hex: %w", err)
 	}
 	if len(b) != size {
-		return nil, fmt.Errorf("expected %d bytes, got %d", size, len(b))
+		return nil, fmt.Errorf("%w: expected %d bytes, got %d", ErrInvalidHexLength, size, len(b))
 	}
 	return b, nil
 }

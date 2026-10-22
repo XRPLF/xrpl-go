@@ -39,6 +39,10 @@ func sponsoredTx(sponsorFlags uint32) map[string]any {
 	}
 }
 
+func ownerCount(count uint32) *uint32 {
+	return new(count)
+}
+
 func sponsorshipEntry(flags uint32, feeAmount, maxFee *types.XRPCurrencyAmount, remaining *uint32) *ledgerentry.Sponsorship {
 	return &ledgerentry.Sponsorship{
 		LedgerEntryType:     ledgerentry.SponsorshipEntry,
@@ -54,10 +58,6 @@ func sponsorshipEntry(flags uint32, feeAmount, maxFee *types.XRPCurrencyAmount, 
 func xrpAmount(drops uint64) *types.XRPCurrencyAmount {
 	amount := types.XRPCurrencyAmount(drops)
 	return &amount
-}
-
-func ownerCount(count uint32) *uint32 {
-	return &count
 }
 
 func sponsorSigners() []any {
