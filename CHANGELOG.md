@@ -93,6 +93,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Canceling a context-aware request no longer closes the shared connection while its write is in progress. The write stays bounded by `WithTimeout`, and a late reply is ignored.
 - Context-aware methods return `ctx.Err()` on cancellation, as documented, instead of a custom cancellation cause.
+- Canceling a context-aware request now stops its wait for a connection that is in progress. The connection attempt continues.
 
 ## [v0.3.1]
 

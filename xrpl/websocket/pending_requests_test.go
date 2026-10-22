@@ -325,6 +325,26 @@ func TestClientRequestContextCanceledWhileQueuedDoesNotWrite(t *testing.T) {
 	})
 }
 
+// Lock() acts as a running Connect. The request (timeout 0) returns at once, and its
+// background waiter blocks in RLock(). After Unlock(), the waiter takes the read lock,
+// sees that the request left, and releases it. TryLock() proves that no lock is left.
+func TestClientRequestTimeoutWhileConnecting(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		client := NewClient(NewClientConfig().WithTimeout(0))
+		socket := newFakeWebsocketConnection()
+		client.conn.conn = socket
+		client.connectionHandshakeMu.Lock()
+
+		_, err := client.RequestContext(context.Background(), newAccountChannelsRequest())
+		require.ErrorIs(t, err, ErrRequestTimedOut)
+
+		client.connectionHandshakeMu.Unlock()
+		synctest.Wait()
+		require.True(t, client.connectionHandshakeMu.TryLock(), "the abandoned read lock must be released")
+		require.Zero(t, socket.writeCount.Load())
+	})
+}
+
 func TestClientRequestTimeoutIncludesQueueTime(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		client := NewClient(NewClientConfig().WithTimeout(time.Second))

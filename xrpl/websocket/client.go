@@ -490,7 +490,9 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 		return nil, err
 	}
 
-	c.connectionHandshakeMu.RLock()
+	if err := c.rLockConnectionHandshake(requestCtx); err != nil {
+		return nil, err
+	}
 	if err := requestContextError(requestCtx); err != nil {
 		c.connectionHandshakeMu.RUnlock()
 		return nil, err
@@ -533,6 +535,35 @@ func (c *Client) request(ctx context.Context, req interfaces.Request) (*ClientRe
 	}
 
 	return res, nil
+}
+
+// rLockConnectionHandshake acquires connectionHandshakeMu for reading or returns
+// the request context error. A canceled wait does not disturb the connect that
+// holds the lock. The waiter releases the read lock if the caller stopped waiting.
+func (c *Client) rLockConnectionHandshake(ctx context.Context) error {
+	if c.connectionHandshakeMu.TryRLock() {
+		return nil
+	}
+	// acquired is unbuffered: the send completes only if the caller receives it.
+	// If the caller takes ctx.Done instead, it closes abandoned and the waiter
+	// releases the lock. Exactly one side owns the lock in every case.
+	acquired := make(chan struct{})
+	abandoned := make(chan struct{})
+	go func() {
+		c.connectionHandshakeMu.RLock()
+		select {
+		case acquired <- struct{}{}:
+		case <-abandoned:
+			c.connectionHandshakeMu.RUnlock()
+		}
+	}()
+	select {
+	case <-acquired:
+		return nil
+	case <-ctx.Done():
+		close(abandoned)
+		return requestContextError(ctx)
+	}
 }
 
 func (c *Client) requestResult(ctx context.Context, req interfaces.Request, result any) error {
