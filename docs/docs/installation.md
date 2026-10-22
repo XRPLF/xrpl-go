@@ -4,7 +4,7 @@ Install the core SDK for queries, transactions, wallets, and codecs. Add confide
 
 ## Requirements
 
-Install [Go 1.25.13 or later](https://go.dev/doc/install). Core is pure Go and does not require cgo or a C/C++ toolchain.
+Install [Go 1.26.10 or later](https://go.dev/doc/install). Core is pure Go and does not require cgo or a C/C++ toolchain.
 
 ## Add the SDK
 

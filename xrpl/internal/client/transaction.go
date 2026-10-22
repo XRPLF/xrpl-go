@@ -287,10 +287,10 @@ func decodeTransactionBlob(
 		if recovered := recover(); recovered != nil {
 			tx = nil
 			if recoveredErr, ok := recovered.(error); ok {
-				err = fmt.Errorf("decode transaction blob: %w", recoveredErr)
+				err = fmt.Errorf("%w: %w", errDecodeTransactionBlob, recoveredErr)
 				return
 			}
-			err = fmt.Errorf("decode transaction blob: %v", recovered)
+			err = fmt.Errorf("%w: %v", errDecodeTransactionBlob, recovered)
 		}
 	}()
 	return decode(txBlob)

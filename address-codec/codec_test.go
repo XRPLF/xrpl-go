@@ -243,20 +243,6 @@ func TestEncodeSeed(t *testing.T) {
 			expectedOutput:    "",
 			expectedErr:       &EncodeLengthError{Instance: "Entropy", Input: len([]byte{0x00}), Expected: FamilySeedLength},
 		},
-		{
-			name:              "fail - unsuccessful encode - invalid encoding type",
-			input:             []byte("testingsomething"),
-			inputEncodingType: nil,
-			expectedOutput:    "",
-			expectedErr:       errors.New("encoding type must be `ed25519` or `secp256k1`"),
-		},
-		{
-			name:              "fail - invalid CryptoAlgorithm Uint type returns err",
-			input:             []byte("testingsomething"),
-			inputEncodingType: nil,
-			expectedOutput:    "",
-			expectedErr:       errors.New("encoding type must be `ed25519` or `secp256k1`"),
-		},
 	}
 
 	for _, tc := range tt {
@@ -270,6 +256,12 @@ func TestEncodeSeed(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEncodeSeed_InvalidEncodingType(t *testing.T) {
+	got, err := EncodeSeed([]byte("testingsomething"), nil)
+	require.ErrorIs(t, err, ErrInvalidEncodingType)
+	require.Empty(t, got)
 }
 
 func TestDecodeSeed(t *testing.T) {

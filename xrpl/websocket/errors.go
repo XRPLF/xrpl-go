@@ -152,6 +152,9 @@ var (
 	ErrRequestTimedOut = errors.New("request timed out")
 	// ErrDisconnected indicates that a pending request could not receive a response because the connection closed.
 	ErrDisconnected = errors.New("websocket disconnected before response")
+	// errConfiguredRequestTimeout is the cause of the client's own request timer.
+	// It separates that timer from a deadline set by the caller.
+	errConfiguredRequestTimeout = errors.New("configured websocket request timeout")
 
 	// wallet
 

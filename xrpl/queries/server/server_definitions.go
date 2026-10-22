@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -159,10 +158,10 @@ func (f *DefinitionFormatField) UnmarshalJSON(data []byte) error {
 // Validate verifies a format field name and SOEStyle optionality value.
 func (f DefinitionFormatField) Validate() error {
 	if f.Name == "" {
-		return errors.New("name must not be empty")
+		return fmt.Errorf("%w: name must not be empty", ErrInvalidDefinitionFormatField)
 	}
 	if f.Optionality < -1 || f.Optionality > 2 {
-		return errors.New("optionality must be between -1 and 2")
+		return fmt.Errorf("%w: optionality must be between -1 and 2", ErrInvalidDefinitionFormatField)
 	}
 	return nil
 }

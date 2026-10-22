@@ -85,7 +85,7 @@ type fieldAwareEncoder interface {
 func encodeFieldValue(fi definitions.FieldInstance, value any) ([]byte, error) {
 	st := GetSerializedType(fi.Type)
 	if st == nil {
-		return nil, fmt.Errorf("unknown type %q for field %q", fi.Type, fi.FieldName)
+		return nil, fmt.Errorf("%w: type %q, field %q", errUnknownFieldType, fi.Type, fi.FieldName)
 	}
 
 	if encoder, ok := st.(fieldAwareEncoder); ok {
@@ -113,7 +113,7 @@ func (t *STObject) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 
 		st := GetSerializedType(fi.Type)
 		if st == nil {
-			return nil, fmt.Errorf("unknown type %q for field %q", fi.Type, fi.FieldName)
+			return nil, fmt.Errorf("%w: type %q, field %q", errUnknownFieldType, fi.Type, fi.FieldName)
 		}
 
 		var res any

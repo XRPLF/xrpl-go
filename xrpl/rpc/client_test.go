@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
@@ -379,6 +380,91 @@ func TestClient_Request(t *testing.T) {
 		_, err = jsonRpcClient.Request(req)
 
 		require.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+
+	t.Run("SendRequest - RequestContext cancel during retry backoff", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			req := &account.ChannelsRequest{
+				Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+			}
+
+			mc := &testutil.JSONRPCMockClient{}
+			mc.DoFunc = func(req *http.Request) (*http.Response, error) {
+				mc.RequestCount++
+				return testutil.MockResponse(`Service Unavailable`, 503, mc)(req)
+			}
+
+			cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc), WithRetryDelay(time.Hour))
+			require.NoError(t, err)
+
+			jsonRpcClient := NewClient(cfg)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			done := make(chan error, 1)
+			go func() {
+				_, err := jsonRpcClient.RequestContext(ctx, req)
+				done <- err
+			}()
+
+			synctest.Wait()
+			require.Equal(t, 1, mc.RequestCount)
+
+			canceledAt := time.Now()
+			cancel()
+			require.ErrorIs(t, <-done, context.Canceled)
+			require.Equal(t, canceledAt, time.Now(), "cancellation must interrupt the retry backoff")
+			require.Equal(t, 1, mc.RequestCount, "cancellation must not start another HTTP attempt")
+		})
+	})
+
+	t.Run("SendRequest - RequestContext cancel while reading response body", func(t *testing.T) {
+		req := &account.ChannelsRequest{
+			Account: "rLHmBn4fT92w4F6ViyYbjoizLTo83tHTHu",
+		}
+
+		responseReturned := make(chan struct{})
+		mc := &testutil.JSONRPCMockClient{}
+		mc.DoFunc = func(req *http.Request) (*http.Response, error) {
+			body, bodyWriter := io.Pipe()
+			go func() {
+				<-req.Context().Done()
+				_ = bodyWriter.CloseWithError(errors.New("body read failed"))
+			}()
+			close(responseReturned)
+			return &http.Response{StatusCode: 200, Body: body}, nil
+		}
+
+		cfg, err := NewClientConfig("http://testnode/", WithHTTPClient(mc), WithTimeout(time.Minute))
+		require.NoError(t, err)
+
+		jsonRpcClient := NewClient(cfg)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		done := make(chan error, 1)
+		go func() {
+			_, err := jsonRpcClient.RequestContext(ctx, req)
+			done <- err
+		}()
+
+		select {
+		case <-responseReturned:
+		case err := <-done:
+			t.Fatalf("request returned before the response body was read: %v", err)
+		case <-time.After(time.Second):
+			t.Fatal("HTTP attempt did not start")
+		}
+		cancel()
+
+		select {
+		case err := <-done:
+			require.ErrorIs(t, err, context.Canceled)
+		case <-time.After(time.Second):
+			t.Fatal("request did not return after cancellation")
+		}
 	})
 }
 
@@ -1282,7 +1368,7 @@ func TestClient_autofillRawTransactions(t *testing.T) {
 			cl := setupTestRPCClientForAutofill(t, tt.mockResponses)
 
 			// Apply the policy once before this direct raw-transaction helper test.
-			setTestNetworkIdentity(cl, uint32Pointer(tt.networkID), "1.12.0")
+			setTestNetworkIdentity(cl, new(tt.networkID), "1.12.0")
 			identity, err := cl.networkIdentity()
 			if err == nil {
 				err = clientinternal.ApplyNetworkIDPolicy(tt.tx, identity)

@@ -21,6 +21,16 @@ func (e *ErrInvalidVector256Type) Error() string {
 	return fmt.Sprintf("Invalid type to construct Vector256 from. Expected []string, got %v", e.Got)
 }
 
+// ErrInvalidVector256Length represents an error when a Vector256 byte length is not a multiple of HashLengthBytes.
+type ErrInvalidVector256Length struct {
+	Got int
+}
+
+// Error implements the error interface, providing a descriptive error message for ErrInvalidVector256Length.
+func (e *ErrInvalidVector256Length) Error() string {
+	return fmt.Sprintf("invalid Vector256 byte length %d: must be a multiple of %d", e.Got, HashLengthBytes)
+}
+
 // Vector256 represents a 256 bit vector.
 type Vector256 struct{}
 
@@ -80,7 +90,7 @@ func (v *Vector256) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) 
 		return nil, err
 	}
 	if len(b)%HashLengthBytes != 0 {
-		return nil, fmt.Errorf("invalid Vector256 byte length %d: must be a multiple of %d", len(b), HashLengthBytes)
+		return nil, &ErrInvalidVector256Length{Got: len(b)}
 	}
 	var value []string
 

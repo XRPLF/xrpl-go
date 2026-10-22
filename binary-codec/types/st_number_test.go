@@ -145,28 +145,39 @@ func TestNumber_FromJSON_ToJSON_Roundtrip(t *testing.T) {
 
 func TestNumber_FromJSON_Errors(t *testing.T) {
 	tt := []struct {
-		name  string
-		input any
+		name        string
+		input       any
+		expectedErr error
 	}{
 		{
-			name:  "Exponent overflow",
-			input: "1e40000",
+			name:        "Exponent overflow",
+			input:       "1e40000",
+			expectedErr: ErrInvalidExponent,
 		},
 		{
-			name:  "Underflow - value too small",
-			input: "1e-40000",
+			name:        "Mantissa and exponent overflow",
+			input:       "99999999999999999999e32768",
+			expectedErr: ErrNumberOverflow,
 		},
 		{
-			name:  "Invalid input - letters",
-			input: "abc123",
+			name:        "Underflow - value too small",
+			input:       "1e-40000",
+			expectedErr: ErrNumberUnderflow,
 		},
 		{
-			name:  "Invalid input - empty string",
-			input: "",
+			name:        "Invalid input - letters",
+			input:       "abc123",
+			expectedErr: ErrInvalidNumber,
 		},
 		{
-			name:  "Invalid type - not a string",
-			input: 12345,
+			name:        "Invalid input - empty string",
+			input:       "",
+			expectedErr: ErrInvalidNumber,
+		},
+		{
+			name:        "Invalid type - not a string",
+			input:       12345,
+			expectedErr: ErrInvalidNumber,
 		},
 	}
 
@@ -174,7 +185,7 @@ func TestNumber_FromJSON_Errors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			n := &Number{}
 			result, err := n.FromJSON(tc.input)
-			require.Error(t, err)
+			require.ErrorIs(t, err, tc.expectedErr)
 			require.Nil(t, result)
 		})
 	}

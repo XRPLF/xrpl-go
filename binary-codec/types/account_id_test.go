@@ -67,7 +67,7 @@ func TestAccountID_FromJson(t *testing.T) {
 			name:        "Invalid input type",
 			input:       1, // should be a string
 			expected:    nil,
-			expectedErr: errors.New("expected a string but got int"),
+			expectedErr: ErrAccountIDNotString,
 		},
 	}
 
@@ -76,7 +76,7 @@ func TestAccountID_FromJson(t *testing.T) {
 			accountID := &AccountID{}
 			actual, err := accountID.FromJSON(tc.input)
 			require.Equal(t, tc.expected, actual)
-			require.Equal(t, tc.expectedErr, err)
+			require.ErrorIs(t, err, tc.expectedErr)
 		})
 	}
 }

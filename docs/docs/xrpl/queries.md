@@ -90,7 +90,7 @@ The links below lead to the Go API, not a second copy of the server method catal
 
 The main request packages use API v2. Some packages also provide explicit v1 types, such as `xrpl/queries/account/v1`. The `amm`, `oracle`, `server`, and `vault` packages have no v1 types. Some requests have no v1 type even in packages with a `v1` directory, such as `account.GatewayBalancesRequest`, `ledger.EntryRequest`, and `transactions.SimulateRequest`. A v1 Go type is not interchangeable with the v2 type accepted by `GetAccountInfo`.
 
-Use the client's lower-level `Request` method when you need an explicit version not exposed by its typed wrappers, or a request type without a typed wrapper, such as `transactions.TxRequest`. Its response form differs by transport. See the [RPC](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/rpc#Client.Request) or [WebSocket](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/websocket#Client.Request) API before decoding it.
+Use the client's lower-level `Request` method when you need an explicit version not exposed by its typed wrappers, or a request type without a typed wrapper, such as `transactions.TxRequest`. Its response form differs by transport. See the [RPC](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/rpc#Client.Request) or [WebSocket](https://pkg.go.dev/github.com/Peersyst/xrpl-go/xrpl/websocket#Client.Request) API before decoding it. Use `RequestContext` for the same request with caller cancellation and deadlines.
 
 SDK type availability, server API version support, and amendment activation are separate questions. A Go struct does not establish that a target network supports the operation.
 

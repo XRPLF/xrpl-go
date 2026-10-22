@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### dependencies
+
+- Raised the minimum Go version from 1.25.13 to 1.26.10 to fix standard-library vulnerabilities in `net/http`, `net/textproto`, and `crypto/tls` (GO-2026-6603, GO-2026-6605, GO-2026-6607, GO-2026-6608, GO-2026-6610, GO-2026-6611, GO-2026-6612, GO-2026-6613, GO-2026-6617). Go 1.25 no longer receives security fixes, and `golang.org/x/crypto` v0.56.0 requires Go 1.26. Modules that build with Go 1.25 must upgrade Go before they use this release.
+
 #### xrpl/transaction
 
 - Corrected the `AMMClawback` model to use issue-shaped `Asset` and `Asset2` fields and an optional issued-token or MPT `Amount`.
@@ -17,10 +21,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+Errors that were created inline now have sentinels or error types, so callers can match them with `errors.Is` or `errors.As`. Unless noted under Changed, the error text is unchanged.
+
+#### address-codec
+
+- Added `ErrInvalidEncodingType`, returned by `EncodeSeed` for an unknown encoding type.
+
 #### binary-codec
 
 - Added `types.ParseCurrencyCode`, the currency-code parser behind `Currency`, issued-currency amounts, and path steps.
 - Added `types.IsXRPCurrency`, which reports whether currency bytes are native XRP or the reserved ISO `XRP` code.
+- Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
+- Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
+- Added `types.ErrNumberUnderflow`, returned when a `Number` value is too small to represent.
+
+#### pkg/hexutil
+
+- Added `ErrInvalidHexLength`, returned by `DecodeFixedHex` when the decoded length does not match.
+
+#### xrpl/hash
+
+- Added `ErrInvalidMPTokenIssuanceID`, returned by `MPTokenIssuance` for an ID that is not 48 hex characters.
+
+#### xrpl/queries/common
+
+- Added `ErrInvalidLedgerSpecifier`, returned by `UnmarshalLedgerSpecifier` for an unknown ledger name.
+
+#### xrpl/queries/server
+
+- Added `ErrInvalidDefinitionFormatField`, returned by `DefinitionFormatField.Validate` for an empty name or an out-of-range optionality.
+
+#### xrpl/rpc, xrpl/websocket
+
+- Added `RequestContext`, a `Request` variant with caller cancellation and deadlines.
 
 #### xrpl/transaction
 
@@ -33,6 +66,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### binary-codec
 
 - Currency codes no longer accept a `0x` prefix, which no XRPL implementation accepts. A code is `XRP`, three characters from the IOU alphabet, or 40 hexadecimal characters.
+- A `PathSet` step that is not an object now returns an error wrapping `types.ErrInvalidPathSet`. Its text gains the `invalid path set: ` prefix.
+- A non-string `AccountID` value now returns `account ID must be a string: got <type>` instead of `expected a string but got <type>`.
+- An unknown field type now returns `unknown field type: type "<type>", field "<field>"` instead of `unknown type "<type>" for field "<field>"`.
+- An unsupported amount value type now returns `unsupported amount value type: <type>` instead of `unsupported type <type> for amount value`.
+
+#### pkg/hexutil
+
+- `DecodeFixedHex` length errors now start with `invalid hex length: `.
+
+#### xrpl/hash
+
+- `MPTokenIssuance` now returns an error wrapping `ErrInvalidMPTokenIssuanceID` for a 48-character ID that is not valid hex, instead of `failed to decode hex payload: ...`.
+
+#### xrpl/queries/common
+
+- `UnmarshalLedgerSpecifier` now returns `invalid ledger specifier: "<name>"` instead of `decoding LedgerTitle: invalid string <name>`.
+
+#### xrpl/queries/server
+
+- `DefinitionFormatField.Validate` errors now start with `server_definitions: invalid format field: `.
 
 #### xrpl/transaction
 
@@ -47,6 +100,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed hex currency codes with a `0x00` type byte being rewritten to XRP or rejected on encoding. They now serialize verbatim.
 - Fixed `Currency` accepting three-character codes outside the IOU alphabet, which produced Issue fields the ledger rejects.
 - Fixed decoding uppercasing three-character currency codes. A code like `xrP` now round-trips unchanged.
+
+#### dependencies
+
+- Upgraded `golang.org/x/crypto` from v0.54.0 to v0.56.0 to include upstream security fixes (GO-2026-6303, GO-2026-6354, GO-2026-6355).
+
+#### xrpl/rpc
+
+- Context-aware methods return `ctx.Err()` when the caller cancels while the response body is read.
 
 #### xrpl/transaction
 
@@ -63,6 +124,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PaymentChannelCreate` and `PaymentChannelClaim` now require `PublicKey` to be a well-formed public key rather than any hexadecimal string, and `PaymentChannelClaim.Signature` must be whole-byte hexadecimal.
 - Fixed `IsMPTCurrency` accepting an `MPTIssuanceID` that is not 24 bytes, so amounts and assets agree on the same ID.
 - Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel creation, claims and funding, VaultCreate, and XChainCommit transactions.
+
+#### xrpl/websocket
+
+- Canceling a context-aware request no longer closes the shared connection while its write is in progress. The write stays bounded by `WithTimeout`, and a late reply is ignored.
+- Context-aware methods return `ctx.Err()` on cancellation, as documented, instead of a custom cancellation cause.
+- Canceling a context-aware request now stops its wait for a connection that is in progress. The connection attempt continues.
 
 ## [v0.3.1]
 

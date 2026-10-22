@@ -64,7 +64,17 @@ func NewClient(cfg *Config) *Client {
 
 // Request sends a request to the XRPL server and returns the response and any error encountered.
 func (c *Client) Request(reqParams XRPLRequest) (XRPLResponse, error) {
-	return c.request(context.Background(), reqParams)
+	return c.RequestContext(context.Background(), reqParams)
+}
+
+// RequestContext is Request with caller cancellation.
+// ctx bounds the whole request, including retry backoff. The configured timeout
+// still bounds each HTTP attempt. A caller cancellation or deadline returns
+// ctx.Err(), without its cause. A request canceled after it was sent can still
+// reach the server, and cancellation does not undo work that the server accepted,
+// such as a submitted transaction.
+func (c *Client) RequestContext(ctx context.Context, reqParams XRPLRequest) (XRPLResponse, error) {
+	return c.request(ctx, reqParams)
 }
 
 func (c *Client) request(ctx context.Context, reqParams XRPLRequest) (XRPLResponse, error) {
@@ -165,6 +175,9 @@ func (c *Client) request(ctx context.Context, reqParams XRPLRequest) (XRPLRespon
 	var jr Response
 	jr, err = checkForError(response, c.cfg.maxResponseSize)
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		return nil, redactAuthorizationError(err, requestURL, headers)
 	}
 

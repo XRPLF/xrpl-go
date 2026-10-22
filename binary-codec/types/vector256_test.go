@@ -67,13 +67,6 @@ func TestVector256_ToJson(t *testing.T) {
 			err: errors.New("read bytes error"),
 		},
 		{
-			name: "fail - invalid byte length",
-			malleate: func(t *testing.T) (interfaces.BinaryParser, []int) {
-				return serdes.NewBinaryParser([]byte{0x00}, defs), []int{1}
-			},
-			err: errors.New("invalid Vector256 byte length 1: must be a multiple of 32"),
-		},
-		{
 			name: "pass - valid vector256",
 			malleate: func(t *testing.T) (interfaces.BinaryParser, []int) {
 				return serdes.NewBinaryParser([]byte{0x73, 0x73, 0x4B, 0x61, 0x1D, 0xDA, 0x23, 0xD3, 0xF5, 0xF6, 0x2E, 0x20, 0xA1, 0x73, 0xB7, 0x8A, 0xB8, 0x40, 0x6A, 0xC5, 0x01, 0x50, 0x94, 0xDA, 0x53, 0xF5, 0x3D, 0x39, 0xB9, 0xED, 0xB0, 0x6C, 0x73, 0x73, 0x4B}, defs), []int{32}
@@ -96,6 +89,15 @@ func TestVector256_ToJson(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestVector256_ToJson_InvalidLength(t *testing.T) {
+	_, err := (&Vector256{}).ToJSON(serdes.NewBinaryParser([]byte{0x00}, definitions.Get()), 1)
+
+	var lengthErr *ErrInvalidVector256Length
+	require.ErrorAs(t, err, &lengthErr)
+	require.Equal(t, 1, lengthErr.Got)
+	require.EqualError(t, err, "invalid Vector256 byte length 1: must be a multiple of 32")
 }
 
 func TestVector256FromValue(t *testing.T) {

@@ -10,7 +10,7 @@ A Go SDK for building applications on the [XRP Ledger](https://xrpl.org/). Query
 
 ## Quick start
 
-Requires **Go 1.25.13 or later**. The core SDK is pure Go and does not require a C/C++ toolchain.
+Requires **Go 1.26.10 or later**. The core SDK is pure Go and does not require a C/C++ toolchain.
 
 From your application's Go module, install the SDK:
 
@@ -84,7 +84,7 @@ Most applications only need the core SDK. For confidential MPT encryption, balan
 
 Core already includes the transaction models and ledger fields. It can encode, sign, and submit confidential transactions when your application supplies the ciphertexts and proofs. The optional module generates these fields and decrypts balances.
 
-The helpers require a native C/C++ toolchain and cgo for cryptographic operations on Linux or macOS with amd64 or arm64. Both modules require Go 1.25.13 or later. They are versioned independently, and core does not depend on the optional module.
+The helpers require a native C/C++ toolchain and cgo for cryptographic operations on Linux or macOS with amd64 or arm64. Both modules require Go 1.26.10 or later. They are versioned independently, and core does not depend on the optional module.
 
 See the [confidential README](confidential/README.md) for release availability, installation, migration, and platform requirements, or start with the [confidential examples](confidential/examples).
 

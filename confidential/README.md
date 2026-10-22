@@ -12,7 +12,7 @@ Install this module when you need the SDK to generate those fields, decrypt bala
 
 ## Installation
 
-Both modules require **Go 1.25.13 or later**. Native cryptographic operations also require:
+Both modules require **Go 1.26.10 or later**. Native cryptographic operations also require:
 
 - Linux or macOS on `amd64` or `arm64`.
 - cgo enabled with `CGO_ENABLED=1`.

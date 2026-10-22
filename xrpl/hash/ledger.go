@@ -124,13 +124,13 @@ func MPToken(issuanceIDHex string, holder string) (string, error) {
 // Returns the computed hash of the MPTokenIssuance object.
 func MPTokenIssuance(issuanceIDHex string) (string, error) {
 	if len(issuanceIDHex) != 48 {
-		return "", fmt.Errorf("issuance ID must be 48 hex chars (24 bytes), got %d", len(issuanceIDHex))
+		return "", fmt.Errorf("%w, got %d", ErrInvalidMPTokenIssuanceID, len(issuanceIDHex))
 	}
 
 	payload := ledgerSpaceMPTokenIssuance + issuanceIDHex
 	payloadBytes, err := hex.DecodeString(payload)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode hex payload: %w", err)
+		return "", fmt.Errorf("%w: %w", ErrInvalidMPTokenIssuanceID, err)
 	}
 
 	return EncodeToHashString(payloadBytes), nil
