@@ -44,6 +44,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Added `ErrInvalidDefinitionFormatField`, returned by `DefinitionFormatField.Validate` for an empty name or an out-of-range optionality.
 
+#### xrpl/rpc, xrpl/websocket
+
+- Added `RequestContext`, a `Request` variant with caller cancellation and deadlines.
+
 ### Changed
 
 #### binary-codec
@@ -75,11 +79,21 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Upgraded `golang.org/x/crypto` from v0.54.0 to v0.56.0 to include upstream security fixes (GO-2026-6303, GO-2026-6354, GO-2026-6355).
 
+#### xrpl/rpc
+
+- Context-aware methods return `ctx.Err()` when the caller cancels while the response body is read.
+
 #### xrpl/transaction
 
 - Fixed `Payment.Validate()` and `CheckCreate.Validate()` to reject malformed non-empty `InvoiceID` values with `ErrInvalidInvoiceID`.
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
+
+#### xrpl/websocket
+
+- Canceling a context-aware request no longer closes the shared connection while its write is in progress. The write stays bounded by `WithTimeout`, and a late reply is ignored.
+- Context-aware methods return `ctx.Err()` on cancellation, as documented, instead of a custom cancellation cause.
+- Canceling a context-aware request now stops its wait for a connection that is in progress. The connection attempt continues.
 
 ## [v0.3.1]
 
