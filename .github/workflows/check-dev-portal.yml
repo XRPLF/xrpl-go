@@ -1,0 +1,105 @@
+name: Check developer portal Go examples
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Monday, 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-portal-check-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    outputs:
+      release: ${{ steps.release.outputs.version }}
+      portal_sha: ${{ steps.portal.outputs.commit }}
+      summary: ${{ steps.summary.outputs.summary }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Resolve latest stable core release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tags=$(gh api --paginate repos/XRPLF/xrpl-go/releases \
+            --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name')
+          # Ignore prereleases and tags for the separate confidential module.
+          version=$(printf '%s\n' "$tags" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Get developer portal default branch
+        id: portal
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: XRPLF/xrpl-dev-portal
+          path: portal
+          persist-credentials: false
+
+      - name: Compile examples without running them
+        env:
+          RELEASE: ${{ steps.release.outputs.version }}
+          PORTAL_SHA: ${{ steps.portal.outputs.commit }}
+        run: |
+          printf 'Portal commit: %s\n' "$PORTAL_SHA" > portal-source.txt
+          python3 scripts/check-dev-portal.py portal "$RELEASE"
+
+      # Base64 keeps compiler text out of the output file syntax. The report job validates it.
+      - name: Export failure summary
+        id: summary
+        if: always()
+        run: |
+          if [ -f portal-summary.json ] && [ "$(stat -c %s portal-summary.json)" -le 500000 ]; then
+            echo "summary=$(base64 -w0 portal-summary.json)" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Do not print raw compiler output into the Actions command channel.
+      - name: Upload build report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dev-portal-build-report
+          path: |
+            portal-build.log
+            portal-source.txt
+            portal-summary.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  report:
+    # Never give manually selected non-default branches issue permission.
+    if: >-
+      always() &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
+      (needs.build.result == 'success' || needs.build.result == 'failure')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CHECK_RESULT: ${{ needs.build.result }}
+          RELEASE: ${{ needs.build.outputs.release }}
+          PORTAL_SHA: ${{ needs.build.outputs.portal_sha }}
+          SUMMARY: ${{ needs.build.outputs.summary }}
+        with:
+          script: |
+            const report = require('./scripts/dev-portal-issue.cjs');
+            await report({ github, context, env: process.env });
