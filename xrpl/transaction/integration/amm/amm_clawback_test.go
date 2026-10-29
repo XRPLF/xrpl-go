@@ -46,7 +46,7 @@ func testIntegrationAMMClawback(t *testing.T, client integration.Client) {
 			BaseTx: transaction.BaseTx{
 				Account: pool.issuerWallet.GetAddress(),
 			},
-			Holder: holderWallet.GetAddress().String(),
+			Holder: holderWallet.GetAddress(),
 			Asset: ledger.Asset{
 				Currency: "USD",
 				Issuer:   pool.issuerWallet.GetAddress(),

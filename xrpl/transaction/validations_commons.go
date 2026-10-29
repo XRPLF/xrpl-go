@@ -86,6 +86,16 @@ func issuedCurrencyBytes(code string) ([]byte, error) {
 	return currencyBytes, nil
 }
 
+func amountAsset(amount types.CurrencyAmount) ledger.Asset {
+	switch amount := amount.(type) {
+	case types.IssuedCurrencyAmount:
+		return ledger.Asset{Currency: amount.Currency, Issuer: amount.Issuer}
+	case types.MPTCurrencyAmount:
+		return ledger.Asset{MPTIssuanceID: amount.MPTIssuanceID}
+	}
+	return ledger.Asset{Currency: "XRP"}
+}
+
 // sameIssue reports whether amount is denominated in asset. Currency codes are compared
 // as codec bytes so "USD" equals its hex spelling, and issuers as AccountIDs so a classic
 // address equals its X-address. Both inputs must already be validated.
@@ -109,6 +119,18 @@ func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
 		return bytes.Equal(amountCurrency, assetCurrency) && sameAccountAddress(amount.Issuer, asset.Issuer)
 	case types.MPTCurrencyAmount:
 		return asset.Kind() == ledger.AssetMPT && strings.EqualFold(amount.MPTIssuanceID, asset.MPTIssuanceID)
+	}
+	return false
+}
+
+func sameAssetIssue(a, b ledger.Asset) bool {
+	switch a.Kind() {
+	case ledger.AssetXRP:
+		return b.Kind() == ledger.AssetXRP
+	case ledger.AssetIOU:
+		return sameIssue(types.IssuedCurrencyAmount{Currency: a.Currency, Issuer: a.Issuer}, b)
+	case ledger.AssetMPT:
+		return sameIssue(types.MPTCurrencyAmount{MPTIssuanceID: a.MPTIssuanceID}, b)
 	}
 	return false
 }

@@ -523,6 +523,8 @@ var (
 
 	// ErrAMMDepositTradingFeeRequiresEmptyPool is returned when TradingFee is set without tfTwoAssetIfEmpty.
 	ErrAMMDepositTradingFeeRequiresEmptyPool = errors.New("ammDeposit: TradingFee is only allowed with tfTwoAssetIfEmpty")
+	// ErrAMMInvalidTokens is returned for duplicate pool assets or amounts with incompatible issues.
+	ErrAMMInvalidTokens = errors.New("amm: assets must differ and amount and EPrice issues must be compatible with the pool")
 	// ErrAMMAtLeastOneAssetMustBeNonXRP is returned when both assets are XRP; at least one asset must be non-XRP.
 	ErrAMMAtLeastOneAssetMustBeNonXRP = errors.New("at least one of the assets must be non-XRP")
 	// ErrAMMAuthAccountsTooMany is returned when more than four AuthAccount objects are provided.

@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- Corrected the `AMMClawback` model to use issue-shaped `Asset` and `Asset2` fields and an optional issued-token or MPT `Amount`.
+- Changed `AMMClawback.Asset` from `types.IssuedCurrency` to `ledger.Asset`, and `Asset2` from `types.CurrencyAmount` to `ledger.Asset`. For an XRP side, use `Asset2: ledger.Asset{Currency: "XRP"}` instead of `types.IssuedCurrencyAmount{Currency: "XRP"}`. `Flatten` now always sends `Asset` and `Asset2`, as the other AMM transactions do. Before, it omitted an empty `Asset` or `Asset2` and the transaction encoded. Now an `AMMClawback` without them fails to encode with `invalid issue object`.
+- Changed `AMMClawback.Amount` from `types.IssuedCurrencyAmount` to optional `types.CurrencyAmount`, and `Holder` from `string` to `types.Address`. For example, use `Holder: holderWallet.GetAddress()` instead of `holderWallet.GetAddress().String()`, or `types.Address("r...")` for an address string. MPT assets and amounts require the `MPTokensV2` amendment.
 - Changed `TrustSet.QualityIn` and `QualityOut` from `uint32` to `*uint32`. A nil pointer omits the field, and a pointer to zero clears the quality. For example, use `QualityIn: new(uint32(990_000_000))`.
 
 ### Added
@@ -61,6 +62,11 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### xrpl/rpc, xrpl/websocket
 
 - Added `RequestContext`, a `Request` variant with caller cancellation and deadlines.
+
+#### xrpl/transaction
+
+- Added `ErrAMMClawback*` errors for holder, asset, amount, and issuer checks, plus `ErrAMMDepositTradingFeeRequiresEmptyPool` and `ErrAMMInvalidTokens`.
+- Added `(*AMMClawback).UnmarshalJSON`, so an `AMMClawback` with its optional `Amount` decodes from JSON.
 
 #### xrpl/transaction/types
 
@@ -137,7 +143,6 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
 - `SponsorSignature` and LoanSet `CounterpartySignature` now share one form check: a present but empty `Signers` list is invalid, and `ErrInvalidSponsorSignature` wraps the specific reason so both remain matchable with `errors.Is`.
-- `AMMClawback.Validate` no longer accepts a `Holder` equal to `Account`.
 - `PaymentChannelCreate` and `PaymentChannelClaim` now require `PublicKey` to be a well-formed public key rather than any hexadecimal string, and `PaymentChannelClaim.Signature` must be whole-byte hexadecimal.
 - `PathStep.Flatten` now writes a tagless X-address `account` or `issuer` in its classic form. A tagged or malformed address stays unchanged, so validation or encoding reports it.
 - Tightened `IsIssuedCurrency` to reject currency codes the binary codec cannot encode as an issued currency, including the hexadecimal forms of XRP, issuers with an X-address tag, and the ACCOUNT_ZERO issuer. An amount with an ACCOUNT_ZERO issuer previously passed `Validate()`, and rippled rejected it when it read the transaction. Spellings of XRP other than the exact code `XRP`, such as `xrp`, are now valid issued currencies, as in rippled. This applies to `IsAmount` and every transaction with an issued-currency amount.
@@ -147,6 +152,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - Rejected odd-length hex in memo `MemoData`, `MemoFormat`, and `MemoType`, `LoanSet.Data`, `LoanBrokerSet.Data`, `VaultSet.Data`, `VaultCreate.MPTokenMetadata`, and the `MPTokenMetadata` of `MPTokenIssuanceCreate` and `MPTokenIssuanceSet`. It previously passed `Validate()` and failed at encoding.
 - Fixed `IsMPTCurrency` accepting an `MPTIssuanceID` that is not 24 bytes, so amounts and assets agree on the same ID.
 - Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel creation, claims and funding, VaultCreate, and XChainCommit transactions.
+- `AMMClawback.Validate` now rejects undefined flag bits (`ErrInvalidFlags`), a `Holder` equal to `Account`, a tagged X-address `Holder` (`ErrInvalidHolder` wrapping `ErrAccountIDTagNotAllowed`), a missing, XRP, or invalid `Asset`, a missing or invalid `Asset2`, `TfClawTwoAssets` with an `Asset2` that `Account` does not issue, and an `Amount` that is not a positive token amount of `Asset`. Universal transaction flags remain valid.
+- `AMMDeposit.Validate` now requires exactly one deposit mode flag and rejects undefined flag bits (`ErrInvalidFlags`). Universal transaction flags remain valid. It applies the rippled per-mode table of required and forbidden fields (`ErrMissingField`, `ErrTransactionInvalidField`). `TradingFee` must be at most 1000 and is allowed only with `TfTwoAssetIfEmpty`. The pool assets must differ, and supplied `Amount` and `Amount2` must match distinct pool assets (`ErrAMMInvalidTokens`). Issue comparisons use canonical currency bytes, issuer AccountIDs and case-insensitive MPT issuance IDs. `LPTokenOut` must be a positive issued-currency amount, and `EPrice` must be a positive XRP or issued-currency amount. Deposit amounts must be positive except that `Amount` can be zero when `EPrice` is supplied (`ErrInvalidTokenValue`). As in xrpl.js, `EPrice` can use any issue. rippled requires `Amount`'s issue until the `MPTokensV2` amendment is enabled.
+- `AMMBid`, `AMMVote`, and `AMMCreate` now reject equal asset issues with `ErrAMMInvalidTokens`, including equivalent currency and issuer spellings. `AMMBid` still returns `ErrAMMAtLeastOneAssetMustBeNonXRP` for two XRP assets. `AMMCreate.Amount` and `Amount2`, and supplied `AMMBid.BidMin` and `BidMax`, must be nonzero (`ErrInvalidTokenValue`). `AMMBid.AuthAccounts` rejects the sender and duplicate AccountIDs, including equivalent classic and X-addresses (`ErrTransactionInvalidField`).
+- `AMMWithdraw.Validate` now accepts all seven withdrawal modes without requiring an omitted `LPTokenIn`. It requires exactly one mode and rejects undefined flags (`ErrInvalidFlags`), missing or forbidden fields (`ErrMissingField`, `ErrTransactionInvalidField`), equal pool assets, and amounts outside distinct pool assets (`ErrAMMInvalidTokens`). Supplied `LPTokenIn` and `EPrice` must be positive. `EPrice` must be an IOU whose issue differs from both pool assets (`ErrAMMInvalidTokens`), because it must name the pool's LP token. `Validate` does not derive the LP-token issue. `Amount` can be zero only with `TfOneAssetWithdrawAll`, `TfOneAssetLPToken`, or `EPrice`. `Amount2` must be positive. Universal flags remain valid.
 - `XChainCommit.Validate` now rejects an `OtherChainDestination` that is not a valid AccountID or that has an X-address tag.
 
 #### xrpl/transaction/types
