@@ -50,6 +50,7 @@ The address changes on each run. The example discards the credentials when it ex
 | --- | --- |
 | Generate a seed | `GenerateSeed` |
 | Derive private and public keys from a seed | `DeriveKeypair` |
+| Check a public key without deriving an address | `IsValidPublicKey` |
 | Derive a classic address from a public key | `DeriveClassicAddress` |
 | Derive the classic address for a node public key | `DeriveNodeAddress` |
 | Sign a message | `Sign` |
@@ -65,6 +66,8 @@ Choose `crypto.ED25519()` or `crypto.SECP256K1()` when generating a seed. `Deriv
 | --- | --- | --- |
 | Ed25519 | `ED` + 32 bytes | `ED` + 32 bytes |
 | secp256k1 | 33 bytes starting `02` or `03` | 32 raw bytes, or `00` + 32 bytes |
+
+`IsValidPublicKey` accepts the same public keys as `DeriveClassicAddress` without hashing or encoding an address. It checks the hex prefix and length for Ed25519 keys and also checks the curve point for secp256k1 keys. It does not verify a signature.
 
 For transactions, use the wallet signing methods rather than signing arbitrary JSON or a submission blob.
 

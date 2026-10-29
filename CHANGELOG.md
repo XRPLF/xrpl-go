@@ -38,6 +38,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - Added `types.ErrMaxNestingDepth`, returned when a serialized field exceeds the maximum nesting depth.
 - Added `types.ErrNumberUnderflow`, returned when a `Number` value is too small to represent.
 
+#### keypairs
+
+- Added `IsValidPublicKey`, which reports whether a string is a well-formed Ed25519 or compressed secp256k1 public key without deriving an address.
+
 #### pkg/hexutil
 
 - Added `ErrInvalidHexLength`, returned by `DecodeFixedHex` when the decoded length does not match.
