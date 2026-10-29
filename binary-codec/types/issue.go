@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
@@ -28,8 +27,8 @@ var (
 	ErrInvalidIssuer = errors.New("invalid issuer")
 	// XRPBytes is the serialized byte representation for native XRP (zero-value currency issuer).
 	XRPBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	// isoXRPBytes is the standard-currency layout of "XRP". The ledger reserves it, so it is
-	// never a valid issued currency or path step and deserialization rejects it.
+	// isoXRPBytes is the reserved standard-currency layout of "XRP". Currency and Issue
+	// decode it as hex, while Amount and PathSet reject it.
 	isoXRPBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x58, 0x52, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00}
 )
 
@@ -165,7 +164,7 @@ func (i *Issue) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 
 	// Step 5: IOU case - decode currency and issuer
 	// currencyOrAccount contains the currency bytes
-	currencyStr := decodeCurrencyBytes(currencyOrAccount)
+	currencyStr := formatCurrencyCode(currencyOrAccount)
 
 	// issuerOrNoAccount contains the issuer bytes
 	address, err := addresscodec.Encode(issuerOrNoAccount, []byte{addresscodec.AccountAddressPrefix}, addresscodec.AccountAddressLength)
@@ -177,35 +176,6 @@ func (i *Issue) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 		"currency": currencyStr,
 		"issuer":   address,
 	}, nil
-}
-
-// decodeCurrencyBytes decodes a 20-byte currency into its string representation.
-func decodeCurrencyBytes(currencyBytes []byte) string {
-	if bytes.Equal(currencyBytes, XRPBytes) {
-		return "XRP"
-	}
-
-	// Check if bytes has exactly 3 non-zero bytes at positions 12-14 (standard currency code)
-	nonZeroCount := 0
-	var currencyStr strings.Builder
-	for i := range currencyBytes {
-		if currencyBytes[i] != 0 {
-			if i >= 12 && i <= 14 {
-				nonZeroCount++
-				currencyStr.WriteString(string(currencyBytes[i]))
-			} else {
-				nonZeroCount = 0
-				break
-			}
-		}
-	}
-
-	if nonZeroCount == 3 {
-		return currencyStr.String()
-	}
-
-	// Return hex-encoded currency for non-standard codes
-	return hexutil.EncodeToUpperHex(currencyBytes)
 }
 
 func (i *Issue) isIssueObject(obj any) bool {

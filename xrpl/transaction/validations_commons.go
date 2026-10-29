@@ -3,6 +3,7 @@ package transaction
 import (
 	"bytes"
 	"encoding/hex"
+	"math/big"
 	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -86,10 +87,37 @@ func issuedCurrencyBytes(code string) ([]byte, error) {
 	return currencyBytes, nil
 }
 
+// isCodecNumber reports whether value is a Number string the binary codec can encode.
+func isCodecNumber(value string) bool {
+	_, err := (&bctypes.Number{}).FromJSON(value)
+	return err == nil
+}
+
+func isNonNegativeCodecNumber(value string) bool {
+	if !isCodecNumber(value) {
+		return false
+	}
+	number, ok := new(big.Rat).SetString(value)
+	return ok && number.Sign() >= 0
+}
+
+func amountAsset(amount types.CurrencyAmount) ledger.Asset {
+	switch amount := amount.(type) {
+	case types.IssuedCurrencyAmount:
+		return ledger.Asset{Currency: amount.Currency, Issuer: amount.Issuer}
+	case types.MPTCurrencyAmount:
+		return ledger.Asset{MPTIssuanceID: amount.MPTIssuanceID}
+	}
+	return ledger.Asset{Currency: "XRP"}
+}
+
 // sameIssue reports whether amount is denominated in asset. Currency codes are compared
 // as codec bytes so "USD" equals its hex spelling, and issuers as AccountIDs so a classic
 // address equals its X-address. Both inputs must already be validated.
 func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
+	if amount.Kind() == types.XRP {
+		return asset.Kind() == ledger.AssetXRP
+	}
 	switch amount := amount.(type) {
 	case types.IssuedCurrencyAmount:
 		if asset.Kind() != ledger.AssetIOU {
@@ -106,6 +134,18 @@ func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
 		return bytes.Equal(amountCurrency, assetCurrency) && sameAccountAddress(amount.Issuer, asset.Issuer)
 	case types.MPTCurrencyAmount:
 		return asset.Kind() == ledger.AssetMPT && strings.EqualFold(amount.MPTIssuanceID, asset.MPTIssuanceID)
+	}
+	return false
+}
+
+func sameAssetIssue(a, b ledger.Asset) bool {
+	switch a.Kind() {
+	case ledger.AssetXRP:
+		return b.Kind() == ledger.AssetXRP
+	case ledger.AssetIOU:
+		return sameIssue(types.IssuedCurrencyAmount{Currency: a.Currency, Issuer: a.Issuer}, b)
+	case ledger.AssetMPT:
+		return sameIssue(types.MPTCurrencyAmount{MPTIssuanceID: a.MPTIssuanceID}, b)
 	}
 	return false
 }
@@ -169,8 +209,7 @@ func validateMemos(memoWrapper []types.MemoWrapper) error {
 
 // isPublicKey reports whether signingPubKey is a well-formed public key. An empty value fails.
 func isPublicKey(signingPubKey string) bool {
-	_, err := keypairs.DeriveClassicAddress(signingPubKey)
-	return err == nil
+	return keypairs.IsValidPublicKey(signingPubKey)
 }
 
 // isSignaturePair reports whether a public key and signature are well formed.

@@ -2,9 +2,9 @@ package transaction
 
 import (
 	"fmt"
+	"math/big"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -23,6 +23,10 @@ const (
 	LoanSetMaxOverPaymentInterestRate = 100_000
 	// LoanSetMinPaymentInterval is the minimum value for PaymentInterval in seconds.
 	LoanSetMinPaymentInterval = 60
+	// LoanSetMinGracePeriod is the minimum value for GracePeriod in seconds.
+	LoanSetMinGracePeriod = 60
+	// loanSetDefaultPaymentInterval is the PaymentInterval rippled uses when the field is omitted.
+	loanSetDefaultPaymentInterval = 60
 )
 
 // LoanSetFlags represents flags for LoanSet transactions.
@@ -106,9 +110,10 @@ type LoanSet struct {
 	OverpaymentInterestRate *types.InterestRate `json:",omitempty"`
 	// The total number of payments to be made against the Loan.
 	PaymentTotal *types.PaymentTotal `json:",omitempty"`
-	// Number of seconds between Loan payments.
+	// Number of seconds between Loan payments. When set, it must be at least 60.
 	PaymentInterval *types.PaymentInterval `json:",omitempty"`
-	// The number of seconds after the Loan's Payment Due Date can be Defaulted.
+	// The number of seconds after the Loan's Payment Due Date can be Defaulted. When set,
+	// it must be at least 60 and at most PaymentInterval, or exactly 60 when PaymentInterval is omitted.
 	GracePeriod *types.GracePeriod `json:",omitempty"`
 }
 
@@ -187,11 +192,11 @@ func (tx *LoanSet) Flatten() FlatTransaction {
 		flattened["PaymentTotal"] = uint32(*tx.PaymentTotal)
 	}
 
-	if tx.PaymentInterval != nil && *tx.PaymentInterval != 0 {
+	if tx.PaymentInterval != nil {
 		flattened["PaymentInterval"] = uint32(*tx.PaymentInterval)
 	}
 
-	if tx.GracePeriod != nil && *tx.GracePeriod != 0 {
+	if tx.GracePeriod != nil {
 		flattened["GracePeriod"] = uint32(*tx.GracePeriod)
 	}
 
@@ -203,19 +208,23 @@ func validateLoanSetCounterpartySignature(signature *CounterpartySignature, inne
 		return nil
 	}
 
+	// Flatten drops an empty TxnSignature and an empty Signers list, so both are absent on the wire.
 	if inner {
-		if signature.SigningPubKey != "" || signature.TxnSignature != "" || signature.Signers != nil {
+		if signature.SigningPubKey != "" || signature.TxnSignature != "" || len(signature.Signers) > 0 {
 			return ErrLoanSetInnerCounterpartySignature
 		}
 		return nil
 	}
 
-	// Flatten drops an empty TxnSignature, so it is absent on the wire.
 	var txnSignature *string
 	if signature.TxnSignature != "" {
 		txnSignature = &signature.TxnSignature
 	}
-	if err := validateSignatureFields(signature.SigningPubKey, txnSignature, signature.Signers); err != nil {
+	var signers []types.Signer
+	if len(signature.Signers) > 0 {
+		signers = signature.Signers
+	}
+	if err := validateSignatureFields(signature.SigningPubKey, txnSignature, signers); err != nil {
 		return fmt.Errorf("%w: %w", ErrLoanSetCounterpartySignatureInvalid, err)
 	}
 	return nil
@@ -231,7 +240,7 @@ func (tx *LoanSet) Validate() (bool, error) {
 		return false, ErrLoanSetLoanBrokerIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.LoanBrokerID) {
+	if !isNonZeroHex256(tx.LoanBrokerID) {
 		return false, ErrLoanSetLoanBrokerIDInvalid
 	}
 
@@ -239,12 +248,16 @@ func (tx *LoanSet) Validate() (bool, error) {
 		return false, ErrLoanSetPrincipalRequestedRequired
 	}
 
-	if !typecheck.IsXRPLNumber(tx.PrincipalRequested.String()) {
+	if !isCodecNumber(tx.PrincipalRequested.String()) {
+		return false, ErrLoanSetPrincipalRequestedInvalid
+	}
+	principal, ok := new(big.Rat).SetString(tx.PrincipalRequested.String())
+	if !ok || principal.Sign() <= 0 {
 		return false, ErrLoanSetPrincipalRequestedInvalid
 	}
 
 	if tx.Data != nil && *tx.Data != "" {
-		if !IsBoundedHexBlob(tx.Data.Value(), LoanSetMaxDataLength) {
+		if !ValidateHexMetadata(tx.Data.Value(), LoanSetMaxDataLength) {
 			return false, ErrLoanSetDataInvalid
 		}
 	}
@@ -288,29 +301,40 @@ func (tx *LoanSet) Validate() (bool, error) {
 		return false, ErrLoanSetPaymentTotalInvalid
 	}
 
-	if tx.PaymentInterval != nil && *tx.PaymentInterval != 0 && *tx.PaymentInterval < LoanSetMinPaymentInterval {
+	if tx.PaymentInterval != nil && *tx.PaymentInterval < LoanSetMinPaymentInterval {
 		return false, ErrLoanSetPaymentIntervalInvalid
 	}
 
-	if tx.PaymentInterval != nil && tx.GracePeriod != nil && *tx.PaymentInterval != 0 && *tx.GracePeriod != 0 && tx.GracePeriod.Value() > tx.PaymentInterval.Value() {
-		return false, ErrLoanSetGracePeriodInvalid
+	if tx.GracePeriod != nil {
+		maxGracePeriod := uint32(loanSetDefaultPaymentInterval)
+		if tx.PaymentInterval != nil {
+			maxGracePeriod = tx.PaymentInterval.Value()
+		}
+		if *tx.GracePeriod < LoanSetMinGracePeriod || tx.GracePeriod.Value() > maxGracePeriod {
+			return false, ErrLoanSetGracePeriodInvalid
+		}
 	}
 
-	// Validate optional XRPLNumber fields
-	if tx.LoanOriginationFee != nil && *tx.LoanOriginationFee != "" && !typecheck.IsXRPLNumber(tx.LoanOriginationFee.String()) {
-		return false, ErrLoanSetLoanOriginationFeeInvalid
-	}
-
-	if tx.LoanServiceFee != nil && *tx.LoanServiceFee != "" && !typecheck.IsXRPLNumber(tx.LoanServiceFee.String()) {
-		return false, ErrLoanSetLoanServiceFeeInvalid
-	}
-
-	if tx.LatePaymentFee != nil && *tx.LatePaymentFee != "" && !typecheck.IsXRPLNumber(tx.LatePaymentFee.String()) {
-		return false, ErrLoanSetLatePaymentFeeInvalid
-	}
-
-	if tx.ClosePaymentFee != nil && *tx.ClosePaymentFee != "" && !typecheck.IsXRPLNumber(tx.ClosePaymentFee.String()) {
-		return false, ErrLoanSetClosePaymentFeeInvalid
+	for _, field := range []struct {
+		value   *types.XRPLNumber
+		maximum *big.Rat
+		err     error
+	}{
+		{tx.LoanOriginationFee, principal, ErrLoanSetLoanOriginationFeeInvalid},
+		{tx.LoanServiceFee, nil, ErrLoanSetLoanServiceFeeInvalid},
+		{tx.LatePaymentFee, nil, ErrLoanSetLatePaymentFeeInvalid},
+		{tx.ClosePaymentFee, nil, ErrLoanSetClosePaymentFeeInvalid},
+	} {
+		if field.value == nil || *field.value == "" {
+			continue
+		}
+		if !isCodecNumber(field.value.String()) {
+			return false, field.err
+		}
+		value, ok := new(big.Rat).SetString(field.value.String())
+		if !ok || value.Sign() < 0 || (field.maximum != nil && value.Cmp(field.maximum) > 0) {
+			return false, field.err
+		}
 	}
 
 	return true, nil

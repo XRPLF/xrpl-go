@@ -72,6 +72,10 @@ func (a *AMMVote) Validate() (bool, error) {
 		return false, err
 	}
 
+	if sameAssetIssue(a.Asset, a.Asset2) {
+		return false, ErrAMMInvalidTokens
+	}
+
 	if a.TradingFee > AmmMaxTradingFee {
 		return false, ErrAMMTradingFeeTooHigh{
 			Value: a.TradingFee,

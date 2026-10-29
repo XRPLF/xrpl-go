@@ -16,12 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### xrpl/transaction
 
-- Corrected the `AMMClawback` model to use issue-shaped `Asset` and `Asset2` fields and an optional issued-token or MPT `Amount`.
-- Changed `TrustSet.QualityIn` and `QualityOut` to optional pointers so callers can distinguish omission from an explicit zero that clears a quality.
+- Changed `AMMClawback.Asset` from `types.IssuedCurrency` to `ledger.Asset`, and `Asset2` from `types.CurrencyAmount` to `ledger.Asset`. For an XRP side, use `Asset2: ledger.Asset{Currency: "XRP"}` instead of `types.IssuedCurrencyAmount{Currency: "XRP"}`. `Flatten` now always sends `Asset` and `Asset2`, as the other AMM transactions do. Before, it omitted an empty `Asset` or `Asset2` and the transaction encoded. Now an `AMMClawback` without them fails to encode with `invalid issue object`.
+- Changed `AMMClawback.Amount` from `types.IssuedCurrencyAmount` to optional `types.CurrencyAmount`, and `Holder` from `string` to `types.Address`. For example, use `Holder: holderWallet.GetAddress()` instead of `holderWallet.GetAddress().String()`, or `types.Address("r...")` for an address string. MPT assets and amounts require the `MPTokensV2` amendment.
+- Changed `TrustSet.QualityIn` and `QualityOut` from `uint32` to `*uint32`. A nil pointer omits the field, and a pointer to zero clears the quality. For example, use `QualityIn: new(uint32(990_000_000))`.
 
 ### Added
 
-Errors that were created inline now have sentinels or error types, so callers can match them with `errors.Is` or `errors.As`. Unless noted under Changed, the error text is unchanged.
+Errors that were created inline now have sentinels or error types, so callers can match them with `errors.Is` or `errors.As`. Unless noted under Changed, the error text is unchanged. New checks also return new errors, listed under the package that adds them.
 
 #### address-codec
 
@@ -31,9 +32,14 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Added `types.ParseCurrencyCode`, the currency-code parser behind `Currency`, issued-currency amounts, and path steps.
 - Added `types.IsXRPCurrency`, which reports whether currency bytes are native XRP or the reserved ISO `XRP` code.
+- Added `types.CurrencyCodeByteLength`, the 20-byte length of a currency code.
 - Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
 - Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
 - Added `types.ErrNumberUnderflow`, returned when a `Number` value is too small to represent.
+
+#### keypairs
+
+- Added `IsValidPublicKey`, which reports whether a string is a well-formed Ed25519 or compressed secp256k1 public key without deriving an address.
 
 #### pkg/hexutil
 
@@ -57,19 +63,32 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 #### xrpl/transaction
 
-- Added `IsBoundedHexBlob` for checking whole-byte hex fields against a hex-character limit.
-- Added `types.XRPCurrencyAmount.IsValid`, which reports whether an amount fits the native XRP range.
-- Added `types.Address.Flatten`, which returns the classic form of a tagless X-address for use inside nested objects such as issuers.
+- Added `ErrAMMClawback*` errors for holder, asset, amount, and issuer checks, plus `ErrAMMDepositTradingFeeRequiresEmptyPool` and `ErrAMMInvalidTokens`.
+- Added `ErrLoanSetPaymentTotalInvalid`, `ErrLoanSetCounterpartySignatureInvalid`, and `ErrLoanSetInnerCounterparty*` errors for payment counts and counterparty signatures.
+- Added `ErrOracle*Invalid` errors for provider, URI, asset class, and update time, plus `ErrPaymentChannel*` errors for amount bounds and claim signature fields.
+- Added `ErrInvalidAssetCurrency`, `ErrInvalidOtherChainDestination`, `ErrSignerSignaturePairMalformed`, `ErrVaultCreateWithdrawalPolicyInvalid`, and `ErrVaultSetEmptyUpdate` for field validation.
+- Added `OracleSetURIMaxLength` and `OracleSetAssetClassMaxLength`, the decoded byte limits of `OracleSet.URI` and `AssetClass`.
+- Added `LoanSetMinGracePeriod`, the minimum `LoanSet.GracePeriod` in seconds.
+- Added `(*AMMClawback).UnmarshalJSON`, so an `AMMClawback` with its optional `Amount` decodes from JSON.
+
+#### xrpl/transaction/types
+
+- Added `XRPCurrencyAmount.IsValid`, which reports whether an amount fits the native XRP range.
+- Added `Address.Flatten`, which returns the classic form of a tagless X-address for use inside nested objects such as issuers.
 
 ### Changed
 
 #### binary-codec
 
-- Currency codes no longer accept a `0x` prefix, which no XRPL implementation accepts. A code is `XRP`, three characters from the IOU alphabet, or 40 hexadecimal characters.
+- Issued-currency amounts and path steps no longer accept a `0x` currency prefix. A code is `XRP`, three characters from the IOU alphabet, or 40 hexadecimal characters.
+- `Currency` and `Issue` encoding now return `*types.InvalidCodeError` for a currency code that is not 3 or 40 characters long. Before, they returned a hex decode error or encoded the wrong number of bytes.
+- An issued-currency amount with an XRP currency now returns `'XRP' is/are disallowed or invalid` instead of `'XRP uppercase' is/are disallowed or invalid`. A path step with the reserved ISO `XRP` code now names that code in the same error.
+- `Currency` decoding now returns uppercase hexadecimal for a nonstandard code, as `Issue`, `Amount` and `PathSet` decoding do.
 - A `PathSet` step that is not an object now returns an error wrapping `types.ErrInvalidPathSet`. Its text gains the `invalid path set: ` prefix.
 - A non-string `AccountID` value now returns `account ID must be a string: got <type>` instead of `expected a string but got <type>`.
 - An unknown field type now returns `unknown field type: type "<type>", field "<field>"` instead of `unknown type "<type>" for field "<field>"`.
 - An unsupported amount value type now returns `unsupported amount value type: <type>` instead of `unsupported type <type> for amount value`.
+- The `invalid currency code` error now matches `errors.Is(err, types.ErrInvalidCurrency)`. Its text is unchanged. `types.ParseCurrencyCode`, `Currency`, `Issue`, `Amount` and `PathSet` encoding return it for a three-character code outside the IOU alphabet. `Amount` and `PathSet` decoding return it for the reserved ISO `XRP` code.
 
 #### pkg/hexutil
 
@@ -89,21 +108,40 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 #### xrpl/transaction
 
-- Deprecated `ValidateHexMetadata` in favour of `IsBoundedHexBlob`, which takes the same arguments. It now rejects odd-length hex, which the binary codec cannot encode.
+- `ErrInvalidHexPublicKey` text changes from `invalid PublicKey, must be a valid hexadecimal string` to `invalid PublicKey, must be a well-formed public key`.
+- `ErrInvalidChannel` text changes from `invalid Channel, must be a valid 64-character hexadecimal string` to `invalid Channel, must be a nonzero 64-character hexadecimal string`.
+- `ErrInvalidSignature` text changes from `invalid Signature, must be a valid hexadecimal string` to `invalid Signature, must be whole-byte hexadecimal`.
+- `ErrInvalidTokenCurrency` text changes from `invalid or missing token currency, it also cannot have a similar standard code as XRP` to `token currency must be a three-character IOU code or 40 hexadecimal characters, not XRP in native or reserved form`.
+- `ErrInvalidMPTIssuanceID` text changes from `mpt_issuance_id field must be a valid hex string` to `mpt_issuance_id field must be 48 hexadecimal characters (24 bytes)`.
+- `ErrLoanSetGracePeriodInvalid` text changes from `loanSet: GracePeriod must not be greater than PaymentInterval` to `loanSet: GracePeriod must be between 60 and PaymentInterval inclusive, where PaymentInterval defaults to 60`.
+- `ErrLoanBrokerSetDebtMaximumInvalid` text changes from `loanBrokerSet: DebtMaximum must be a valid XRPL number` to `loanBrokerSet: DebtMaximum must be a valid XRPL number between 0 and 9223372036854775807 inclusive`.
+- `ErrVaultCreateAssetsMaximumInvalid` and `ErrVaultSetAssetsMaximumInvalid` text changes from `<tx>: AssetsMaximum must be a valid XRPL number` to `<tx>: AssetsMaximum must be a non-negative XRPL number`.
+- `ErrLoanManageFlagsConflict` text changes from `loanManage: TfLoanImpair and TfLoanUnimpair cannot both be present` to `loanManage: TfLoanDefault, TfLoanImpair and TfLoanUnimpair are mutually exclusive`.
+- The ledger entry ID errors `ErrLoanSetLoanBrokerIDInvalid`, `ErrLoanBrokerSetVaultIDInvalid`, `ErrLoanBrokerSetLoanBrokerIDInvalid`, `ErrLoanBrokerDeleteLoanBrokerIDInvalid`, `ErrLoanBrokerCoverDepositLoanBrokerIDInvalid`, `ErrLoanBrokerCoverWithdrawLoanBrokerIDInvalid`, `ErrLoanBrokerCoverClawbackLoanBrokerIDInvalid`, `ErrLoanDeleteLoanIDInvalid`, `ErrLoanManageLoanIDInvalid` and `ErrLoanPayLoanIDInvalid` change from `<tx>: <field> must be 64 characters hexadecimal string` to `<tx>: <field> must be a nonzero 64-character hexadecimal string`. `ErrVaultSetVaultIDInvalid`, `ErrVaultDeleteVaultIDInvalid`, `ErrVaultDepositVaultIDInvalid`, `ErrVaultWithdrawVaultIDInvalid` and `ErrVaultClawbackVaultIDInvalid` change from `<tx>: VaultID must be a valid 64-character hexadecimal string` to `<tx>: VaultID must be a nonzero 64-character hexadecimal string`.
+- Signature and form checks on typed `SponsorSignature` objects, and raw objects that parse successfully, now wrap the specific reason in `ErrInvalidSponsorSignature`. Their text gains a `: <reason>` suffix. Raw shape and type failures still return the bare sentinel. Errors from a `SponsorSignature.Signers` entry are now also wrapped in `ErrInvalidSponsorSignature`. For such an entry, `errors.Is` matches both the sentinel and the exported `ErrSigner*` reason. The signature-form reasons and the `Signers` count and order reasons are unexported, so only the sentinel matches them.
+- `ValidateHexMetadata` now rejects odd-length hex, which the binary codec cannot encode.
 - Deprecated `ErrInvalidAmountIssuer`. `AMMClawback.Validate` reports `ErrAMMClawbackInvalidAmount` or `ErrAMMClawbackAmountAssetMismatch` instead.
-- `OracleSet.Provider`, `URI` and `AssetClass` must now be hex-encoded, matching their ledger blob format. `ErrOracleProviderLength.Length` reports decoded bytes.
+- `OracleSet.Provider`, `URI` and `AssetClass` must now be whole-byte hexadecimal, matching their ledger blob format. `Provider` and `URI` are limited to 256 decoded bytes, and `AssetClass` to 16 decoded bytes. The `Provider` limit grows from 256 to 512 hexadecimal characters, and `ErrOracleProviderLength.Length` now reports decoded bytes.
+- `LoanSet.Flatten` now sends an explicit `PaymentTotal`, `PaymentInterval` or `GracePeriod` of 0. Before, it dropped an explicit zero silently, so the server used its default. `Validate` now rejects a zero `PaymentTotal` (`ErrLoanSetPaymentTotalInvalid`) and a `PaymentInterval` below 60, including 0 (`ErrLoanSetPaymentIntervalInvalid`). `GracePeriod` must be from 60 to `PaymentInterval`, or exactly 60 when `PaymentInterval` is nil (`ErrLoanSetGracePeriodInvalid`). Before, a `GracePeriod` from 1 to 59, or above 60 without `PaymentInterval`, passed `Validate()`. Leave a field nil to use the server default. `PrincipalRequested` must be positive. `LoanServiceFee`, `LatePaymentFee` and `ClosePaymentFee` must be nonnegative. `LoanOriginationFee` must be from 0 to `PrincipalRequested` inclusive. These value checks use exact decimal comparisons and the existing field-specific `ErrLoanSet*Invalid` errors.
+- `IsAsset` now returns `ErrInvalidAssetCurrency` instead of `ErrInvalidAssetIssuer` for an asset without an issuer whose currency does not parse or is the reserved ISO `XRP` layout. A parseable issued currency without an issuer, such as `USD`, `xrp`, or the `noCurrency` code, still returns `ErrInvalidAssetIssuer`.
 
 ### Fixed
 
 #### binary-codec
 
-- Fixed hex currency codes with a `0x00` type byte being rewritten to XRP or rejected on encoding. They now serialize verbatim.
+- Fixed hex currency codes with a `0x00` type byte being rewritten to XRP or rejected when they encode in issued-currency amounts and path steps. They now serialize verbatim. Both still reject the reserved ISO `XRP` code. An issued-currency amount with 40 zero hex characters, which previously encoded XRP bytes inside an IOU, is now also rejected.
 - Fixed `Currency` accepting three-character codes outside the IOU alphabet, which produced Issue fields the ledger rejects.
-- Fixed decoding uppercasing three-character currency codes. A code like `xrP` now round-trips unchanged.
+- Fixed currency decoding so that a nonstandard code encodes back to the same bytes, as in rippled, except for its `noCurrency` sentinel. The codec returns that sentinel as 40 hexadecimal characters instead of rippled's `"1"` so that it can encode back to the same bytes. `Currency`, `Issue`, `Amount` and `PathSet` decode a currency that is not a standard IOU code as 40 hexadecimal characters. Before, `Amount` and `PathSet` dropped nonzero padding around a three-character code and uppercased the code, so `xrP` became `XRP`. `Currency` and `Issue` returned characters outside the IOU alphabet as text and the reserved ISO `XRP` code as `XRP`. `Amount` and `PathSet` still reject the ISO `XRP` code.
+- Fixed decoding of an issued-currency `Amount` whose currency bytes are all zero. It now fails with `'XRP' is/are disallowed or invalid` (`*types.InvalidCodeError`), as encoding and rippled do. Before, it decoded as currency `XRP`, and the result could not encode back.
+- Fixed `Number` encoding of exponents outside the 32-bit range. Before, an exponent wrapped around, so `1e4294967296` encoded as `1`. A value too large to represent now returns `types.ErrInvalidExponent`, and a value too small returns `types.ErrNumberUnderflow`.
 
 #### dependencies
 
 - Upgraded `golang.org/x/crypto` from v0.54.0 to v0.56.0 to include upstream security fixes (GO-2026-6303, GO-2026-6354, GO-2026-6355).
+
+#### xrpl/ledger-entry-types
+
+- `Asset.Flatten` now writes a tagless X-address issuer in its classic form. A tagged or malformed issuer stays unchanged, so validation or encoding reports it.
 
 #### xrpl/rpc
 
@@ -114,16 +152,36 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - Fixed `Payment.Validate()` and `CheckCreate.Validate()` to reject malformed non-empty `InvoiceID` values with `ErrInvalidInvoiceID`.
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
-- Normalized tagless X-addresses to classic addresses when flattening assets, issued-currency amounts, payment path steps, and cross-chain bridges, while preserving tagged and malformed addresses for encoding errors.
-- Tightened `IsIssuedCurrency` to reject currency codes the binary codec cannot encode and issuers with an X-address tag. This applies to `IsAmount` and every transaction with an issued-currency amount.
-- Tightened `IsAsset` to reject assets that cannot encode as an Issue or that the ledger rejects: unencodable currency codes, the reserved ISO `XRP` code, tagged issuers, and MPT issuance IDs that are not 24 bytes. Only the exact code `XRP` is native, other spellings are issued currencies and need an issuer. This also applies to `Validate()` on every AMM transaction and `VaultCreate`.
-- Signer entries now require a well-formed public key and a whole-byte hexadecimal signature. This applies to `IsSigner`, every `Signers` list, single-signed `SponsorSignature` objects, and the `PublicKey` and `Signature` of XChain attestations.
-- `SponsorSignature` and LoanSet `CounterpartySignature` now share one form check: a present but empty `Signers` list is invalid, and `ErrInvalidSponsorSignature` wraps the specific reason so both remain matchable with `errors.Is`.
-- Rejected odd-length hex in the `Data`, `MemoData` and `MPTokenMetadata` fields of LoanSet, LoanBrokerSet, Vault and MPTokenIssuance transactions. It previously passed `Validate()` and failed at encoding.
-- `AMMClawback.Validate` no longer accepts a `Holder` equal to `Account`.
-- `PaymentChannelCreate` and `PaymentChannelClaim` now require `PublicKey` to be a well-formed public key rather than any hexadecimal string, and `PaymentChannelClaim.Signature` must be whole-byte hexadecimal.
+- `PathStep.Flatten` now writes a tagless X-address `account` or `issuer` in its classic form. A tagged or malformed address stays unchanged, so validation or encoding reports it.
+- Tightened `IsIssuedCurrency` to reject currency codes the binary codec cannot encode as an issued currency, including the hexadecimal forms of XRP, issuers with an X-address tag, and the ACCOUNT_ZERO issuer. An amount with an ACCOUNT_ZERO issuer previously passed `Validate()`, and rippled rejected it when it read the transaction. Spellings of XRP other than the exact code `XRP`, such as `xrp`, are now valid issued currencies, as in rippled. This applies to `IsAmount` and every transaction with an issued-currency amount.
+- `IsAmount` now rejects native XRP amounts above `currency.MaxNativeDrops` with `currency.ErrInvalidNativeAmount`, for value and pointer amounts and for other XRP amount types, such as wrappers, whose `Flatten` value is a drops string. This applies to every transaction that uses `IsAmount`, including `Payment` and `AMMDeposit`. The maximum and zero remain valid in the shared helper.
+- Tightened `IsAsset` to reject assets that cannot encode as an Issue or that the ledger rejects: unencodable currency codes, the reserved ISO `XRP` layout, the ACCOUNT_ZERO and ACCOUNT_ONE issuers, tagged issuers, and MPT issuance IDs that are not 24 bytes or have a zero issuer AccountID. A currency of 40 zero hex characters with a valid issuer previously passed and now returns `ErrInvalidAssetIssuer`. `XRP` and 40 zero hex characters are native and must omit the issuer. Other spellings, such as `xrp` and the `noCurrency` code, are issued currencies and need an issuer. This also applies to `Validate()` on `AMMBid`, `AMMClawback`, `AMMDelete`, `AMMDeposit`, `AMMVote`, `AMMWithdraw` and `VaultCreate`.
+- Signer entries now require a well-formed public key and a whole-byte hexadecimal signature. This applies to `IsSigner`, the transaction `Signers` list, the `Signers` of `SponsorSignature` and LoanSet `CounterpartySignature`, single-signed `SponsorSignature` objects, and the `PublicKey` and `Signature` of XChain attestations. Nested `BatchSigner.Signers` are unchanged.
+- `SponsorSignature` and LoanSet `CounterpartySignature` now share one form check: either a non-empty `Signers` list alone, or a well-formed `SigningPubKey` and `TxnSignature` pair. `LoanSet.Validate` reports a failed check with `ErrLoanSetCounterpartySignatureInvalid`. For `CounterpartySignature`, an empty `Signers` list counts as absent, because `Flatten` does not send it. A `LoanSet` without `CounterpartySignature` still passes `Validate()`, so the first party can sign before the counterparty adds its signature.
+- An inner Batch `LoanSet` now requires `Counterparty` (`ErrLoanSetInnerCounterpartyRequired`) and cannot contain counterparty signature fields (`ErrLoanSetInnerCounterpartySignature`).
+- Rejected odd-length hex in memo `MemoData`, `MemoFormat`, and `MemoType`, `LoanSet.Data`, `LoanBrokerSet.Data`, `VaultSet.Data`, `VaultCreate.MPTokenMetadata`, and the `MPTokenMetadata` of `MPTokenIssuanceCreate` and `MPTokenIssuanceSet`. It previously passed `Validate()` and failed at encoding.
 - Fixed `IsMPTCurrency` accepting an `MPTIssuanceID` that is not 24 bytes, so amounts and assets agree on the same ID.
-- Added missing stateless field checks for AMM deposits and clawbacks, LoanSet, OracleSet, payment channel creation, claims and funding, VaultCreate, and XChainCommit transactions.
+- `AMMClawback.Validate` now rejects undefined flag bits (`ErrInvalidFlags`), a `Holder` equal to `Account`, a tagged X-address `Holder` (`ErrInvalidHolder` wrapping `ErrAccountIDTagNotAllowed`), a missing, XRP, or invalid `Asset`, a missing or invalid `Asset2`, `TfClawTwoAssets` with an `Asset2` that `Account` does not issue, and an `Amount` that is not a positive token amount of `Asset`. Universal transaction flags remain valid.
+- `AMMDeposit.Validate` now requires exactly one deposit mode flag and rejects undefined flag bits (`ErrInvalidFlags`). Universal transaction flags remain valid. It applies the rippled per-mode table of required and forbidden fields (`ErrMissingField`, `ErrTransactionInvalidField`). `TradingFee` must be at most 1000 and is allowed only with `TfTwoAssetIfEmpty`. The pool assets must differ, and supplied `Amount` and `Amount2` must match distinct pool assets (`ErrAMMInvalidTokens`). Issue comparisons use canonical currency bytes, issuer AccountIDs and case-insensitive MPT issuance IDs. `LPTokenOut` must be a positive issued-currency amount, and `EPrice` must be a positive XRP or issued-currency amount. Deposit amounts must be positive except that `Amount` can be zero when `EPrice` is supplied (`ErrInvalidTokenValue`). When none of `Asset`, `Asset2`, `Amount`, or `Amount2` is MPT, `EPrice` must use `Amount`'s issue (`ErrAMMInvalidTokens`). A future `MPTokensV2` activation would relax rippled's issue check for non-MPT pools.
+- `AMMBid`, `AMMVote`, and `AMMCreate` now reject equal asset issues with `ErrAMMInvalidTokens`, including equivalent currency and issuer spellings. `AMMBid` still returns `ErrAMMAtLeastOneAssetMustBeNonXRP` for two XRP assets. `AMMCreate.Amount` and `Amount2`, and supplied `AMMBid.BidMin` and `BidMax`, must be nonzero (`ErrInvalidTokenValue`). `AMMBid.AuthAccounts` rejects the sender and duplicate AccountIDs, including equivalent classic and X-addresses (`ErrTransactionInvalidField`).
+- `AMMWithdraw.Validate` now accepts all seven withdrawal modes without requiring an omitted `LPTokenIn`. It requires exactly one mode and rejects undefined flags (`ErrInvalidFlags`), missing or forbidden fields (`ErrMissingField`, `ErrTransactionInvalidField`), equal pool assets, and amounts outside distinct pool assets (`ErrAMMInvalidTokens`). Supplied `LPTokenIn` and `EPrice` must be positive. `EPrice` must be an IOU whose issue differs from both pool assets (`ErrAMMInvalidTokens`), because it must name the pool's LP token. `Validate` does not derive the LP-token issue. `Amount` can be zero only with `TfOneAssetWithdrawAll`, `TfOneAssetLPToken`, or `EPrice`. `Amount2` must be positive. Universal flags remain valid.
+- `OracleSet.Validate` now requires a non-empty `PriceDataSeries` (`ErrMissingField`) and a `LastUpdateTime` of at least 946684800, the Unix timestamp of the Ripple epoch (2000-01-01). A zero `LastUpdateTime` previously passed `Validate()`. Each series entry must have parseable currency codes and distinct base and quote assets. Repeated ordered pairs are rejected, including update and deletion entries with equivalent text and hexadecimal currency codes (`ErrTransactionInvalidField`). Reversed pairs remain valid.
+- `PaymentChannelCreate.Validate` now requires an `Amount` from 1 drop to the native XRP maximum, a `Destination` other than `Account` (`ErrDestinationAccountConflict`, compared as AccountIDs), and a well-formed `PublicKey` instead of any hexadecimal string.
+- `PaymentChannelFund.Validate` now requires a nonzero 64-character hexadecimal `Channel` and an `Amount` from 1 drop to the native XRP maximum.
+- `PaymentChannelClaim.Validate` now requires a nonzero 64-character hexadecimal `Channel` instead of any non-empty value, and rejects undefined flag bits or `TfClose` with `TfRenew` (`ErrInvalidFlags`). Universal flags remain valid. `PublicKey` and `Signature` must be whole-byte hexadecimal when supplied. `PublicKey` must also be a well-formed public key when `Signature` is supplied. `Balance` and `Amount` must not exceed the native XRP maximum, `Balance` must not exceed a supplied `Amount`, and a `Signature` requires `Balance` and `PublicKey`.
+- `VaultCreate.Validate` now rejects a `WithdrawalPolicy` other than `VaultStrategyFirstComeFirstServe`. `AssetsMaximum`, after Number encoding and asset conversion rounding, must not exceed the asset ceiling: `100000000000000000` drops for XRP, `9223372036854775807` for MPT, or `9999999999999999e80` for IOU (`ErrVaultCreateAssetsMaximumInvalid`). Fractional XRP and MPT values and IOU underflow remain valid.
+- `VaultSet.Validate` now requires at least one non-empty `Data`, `AssetsMaximum`, or `DomainID` field (`ErrVaultSetEmptyUpdate`). An `AssetsMaximum` of `"0"` and an all-zero `DomainID` remain valid updates.
+- `XChainCommit.Validate` now rejects an `OtherChainDestination` that is not a valid AccountID or that has an X-address tag.
+- `LoanSet`, `LoanBrokerSet`, `LoanBrokerDelete`, `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `LoanBrokerCoverClawback`, `LoanDelete`, `LoanManage`, `LoanPay`, `VaultClawback`, `VaultDelete`, `VaultDeposit`, `VaultSet` and `VaultWithdraw` now reject an all-zero `LoanID`, `LoanBrokerID` or `VaultID` with the field's existing `Invalid` error, as rippled does. It previously passed `Validate()`.
+- `LoanBrokerCoverDeposit`, `LoanBrokerCoverWithdraw`, `VaultDeposit`, `VaultWithdraw`, and `LoanPay` now reject zero `Amount` values (`ErrInvalidTokenValue`). Both withdrawal transactions reject an ACCOUNT_ZERO `Destination`, including its X-address form (`ErrInvalidDestination`). `LoanManage` rejects every combination of two or more loan management flags (`ErrLoanManageFlagsConflict`). Single flags, no flags, and universal flags remain valid.
+- `LoanBrokerSet` updates now reject nonzero `ManagementFeeRate`, `CoverRateMinimum`, or `CoverRateLiquidation` (`ErrTransactionInvalidField`). Zero pointers remain valid because `Flatten` omits them. Creation still permits these fields.
+- `LoanSet`, `LoanBrokerSet.DebtMaximum`, `VaultCreate.AssetsMaximum` and `VaultSet.AssetsMaximum` now reject `Number` values the binary codec cannot encode, such as `1e40000`, `1e-40000`, `.5` and `1.`, with the field's existing `Invalid` error. They previously passed `Validate()` and failed at encoding. `DebtMaximum` now rejects values above 9223372036854775807, including `1e19` and `1e400`, with `ErrLoanBrokerSetDebtMaximumInvalid`. Negative values still return `ErrLoanBrokerSetDebtMaximumNegative`. Vault `AssetsMaximum` values must be non-negative and return the field's existing `Invalid` error otherwise.
+- `LoanBrokerCoverClawback.Validate` and `NFTokenAcceptOffer.Validate` now check `Amount` and `NFTokenBrokerFee` with `IsAmount`. An ACCOUNT_ZERO or tagged issuer, an unencodable currency, or a malformed value such as `NaN` previously passed `Validate()`. `LoanBrokerCoverClawback` requires `LoanBrokerID` for an MPT amount or an IOU amount issued by `Account`, compared as AccountIDs (`ErrMissingField`). Its `Flatten` now omits a pointer to an empty `LoanBrokerID`, as `Validate` does, so a valid IOU clawback without a broker ID can encode.
+- `NFTokenAcceptOffer.NFTokenBrokerFee` and `NFTokenCreateOffer.Amount` now reject MPT amounts with `ErrTransactionInvalidField`. XRP and issued-currency amounts remain supported.
+
+#### xrpl/transaction/types
+
+- `IssuedCurrency.Flatten`, `IssuedCurrencyAmount.Flatten` and `XChainBridge.Flatten` now write tagless X-addresses in their classic form. Tagged and malformed addresses stay unchanged, so validation or encoding reports them.
 
 #### xrpl/websocket
 

@@ -65,11 +65,52 @@ func TestLoanBrokerSet_Flatten(t *testing.T) {
 }
 
 func TestLoanBrokerSet_Validate(t *testing.T) {
+	id := types.LoanBrokerID("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430")
+	nonzero := types.InterestRate(1)
+	zero := types.InterestRate(0)
 	testcases := []struct {
 		name     string
 		tx       *LoanBrokerSet
 		expected error
 	}{
+		{
+			name: "fail - update ManagementFeeRate",
+			tx: &LoanBrokerSet{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerSetTx},
+				VaultID: id.Value(), LoanBrokerID: &id, ManagementFeeRate: &nonzero,
+			},
+			expected: ErrTransactionInvalidField{Type: "LoanBrokerSet", Field: "ManagementFeeRate"},
+		},
+		{
+			name: "fail - update cover rates",
+			tx: &LoanBrokerSet{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerSetTx},
+				VaultID: id.Value(), LoanBrokerID: &id, CoverRateMinimum: &nonzero, CoverRateLiquidation: &nonzero,
+			},
+			expected: ErrTransactionInvalidField{Type: "LoanBrokerSet", Field: "CoverRateMinimum"},
+		},
+		{
+			name: "fail - update CoverRateLiquidation alone",
+			tx: &LoanBrokerSet{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerSetTx},
+				VaultID: id.Value(), LoanBrokerID: &id, CoverRateLiquidation: &nonzero,
+			},
+			expected: ErrTransactionInvalidField{Type: "LoanBrokerSet", Field: "CoverRateLiquidation"},
+		},
+		{
+			name: "pass - update with omitted zero rates",
+			tx: &LoanBrokerSet{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerSetTx},
+				VaultID: id.Value(), LoanBrokerID: &id, ManagementFeeRate: &zero, CoverRateMinimum: &zero, CoverRateLiquidation: &zero,
+			},
+		},
+		{
+			name: "pass - create with rates",
+			tx: &LoanBrokerSet{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerSetTx},
+				VaultID: id.Value(), ManagementFeeRate: &nonzero, CoverRateMinimum: &nonzero, CoverRateLiquidation: &nonzero,
+			},
+		},
 		{
 			name: "fail - base tx invalid",
 			tx: &LoanBrokerSet{
@@ -100,6 +141,123 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
 			},
 			expected: ErrLoanBrokerSetVaultIDInvalid,
+		},
+		{
+			name: "fail - zero VaultID",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID: strings.Repeat("0", 64),
+			},
+			expected: ErrLoanBrokerSetVaultIDInvalid,
+		},
+		{
+			name: "fail - zero LoanBrokerID",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:      "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				LoanBrokerID: func() *types.LoanBrokerID { v := types.LoanBrokerID(strings.Repeat("0", 64)); return &v }(),
+			},
+			expected: ErrLoanBrokerSetLoanBrokerIDInvalid,
+		},
+		{
+			name: "fail - DebtMaximum exponent too large to encode",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("1e40000"); return &v }(),
+			},
+			expected: ErrLoanBrokerSetDebtMaximumInvalid,
+		},
+		{
+			name: "fail - DebtMaximum without integer digits",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber(".5"); return &v }(),
+			},
+			expected: ErrLoanBrokerSetDebtMaximumInvalid,
+		},
+		{
+			name: "fail - DebtMaximum negative",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("-1"); return &v }(),
+			},
+			expected: ErrLoanBrokerSetDebtMaximumNegative,
+		},
+		{
+			name: "fail - DebtMaximum above float64 range",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("1e400"); return &v }(),
+			},
+			expected: ErrLoanBrokerSetDebtMaximumInvalid,
+		},
+		{
+			name: "fail - DebtMaximum above the MPT maximum",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("9223372036854775808"); return &v }(),
+			},
+			expected: ErrLoanBrokerSetDebtMaximumInvalid,
+		},
+		{
+			name: "fail - DebtMaximum 1e19",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("1e19"); return &v }(),
+			},
+			expected: ErrLoanBrokerSetDebtMaximumInvalid,
+		},
+		{
+			name: "pass - DebtMaximum at the MPT maximum",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("9223372036854775807"); return &v }(),
+			},
+		},
+		{
+			name: "pass - DebtMaximum zero",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("0"); return &v }(),
+			},
 		},
 		{
 			name: "fail - Data too long",
@@ -158,6 +316,7 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
 				require.NoError(t, err)

@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	rippletime "github.com/Peersyst/xrpl-go/xrpl/time"
@@ -61,7 +62,7 @@ type OracleSet struct {
 	// (Variable) Hex-encoded asset classification data, limited to 16 decoded bytes.
 	// This field is required when creating a new Oracle ledger entry, but is optional for updates.
 	AssetClass string `json:",omitempty"`
-	// An array of up to 10 PriceData objects, each representing the price information for a token pair. More than five PriceData objects require two owner reserves.
+	// An array of 1 to 10 PriceData objects, each representing the price information for a token pair. More than five PriceData objects require two owner reserves.
 	PriceDataSeries []ledger.PriceDataWrapper
 }
 
@@ -125,11 +126,11 @@ func (tx *OracleSet) Validate() (bool, error) {
 		}
 	}
 
-	if tx.URI != "" && !IsBoundedHexBlob(tx.URI, 2*OracleSetURIMaxLength) {
+	if tx.URI != "" && !ValidateHexMetadata(tx.URI, 2*OracleSetURIMaxLength) {
 		return false, ErrOracleURIInvalid
 	}
 
-	if tx.AssetClass != "" && !IsBoundedHexBlob(tx.AssetClass, 2*OracleSetAssetClassMaxLength) {
+	if tx.AssetClass != "" && !ValidateHexMetadata(tx.AssetClass, 2*OracleSetAssetClassMaxLength) {
 		return false, ErrOracleAssetClassInvalid
 	}
 
@@ -139,6 +140,11 @@ func (tx *OracleSet) Validate() (bool, error) {
 		return false, ErrOracleLastUpdateTimeInvalid
 	}
 
+	// rippled returns temARRAY_EMPTY for an empty series, and Flatten omits it entirely.
+	if len(tx.PriceDataSeries) == 0 {
+		return false, ErrMissingField{Field: "PriceDataSeries"}
+	}
+
 	if len(tx.PriceDataSeries) > OracleSetMaxPriceDataSeriesItems {
 		return false, ErrOraclePriceDataSeriesItems{
 			Length: len(tx.PriceDataSeries),
@@ -146,10 +152,27 @@ func (tx *OracleSet) Validate() (bool, error) {
 		}
 	}
 
+	pairs := make(map[[2][bctypes.CurrencyCodeByteLength]byte]struct{}, len(tx.PriceDataSeries))
 	for _, priceDataWrapper := range tx.PriceDataSeries {
 		if err := priceDataWrapper.PriceData.Validate(); err != nil {
 			return false, err
 		}
+		base, err := bctypes.ParseCurrencyCode(priceDataWrapper.PriceData.BaseAsset)
+		if err != nil {
+			return false, ErrTransactionInvalidField{Type: tx.TxType().String(), Field: "PriceDataSeries"}
+		}
+		quote, err := bctypes.ParseCurrencyCode(priceDataWrapper.PriceData.QuoteAsset)
+		if err != nil {
+			return false, ErrTransactionInvalidField{Type: tx.TxType().String(), Field: "PriceDataSeries"}
+		}
+		pair := [2][bctypes.CurrencyCodeByteLength]byte{
+			[bctypes.CurrencyCodeByteLength]byte(base),
+			[bctypes.CurrencyCodeByteLength]byte(quote),
+		}
+		if _, duplicate := pairs[pair]; duplicate || pair[0] == pair[1] {
+			return false, ErrTransactionInvalidField{Type: tx.TxType().String(), Field: "PriceDataSeries"}
+		}
+		pairs[pair] = struct{}{}
 	}
 
 	return true, nil

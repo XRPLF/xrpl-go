@@ -510,28 +510,125 @@ func TestIssuedCurrencyXAddressEncodingParity(t *testing.T) {
 	}
 }
 
-func TestCurrencyCodeRoundTripPreservesCase(t *testing.T) {
+func TestCurrencyCodeRoundTrip(t *testing.T) {
+	const issuerHex = "0A20B3C85F482532A9578DBB3950B85CA06594D1"
+	const issuer = "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B"
 	tests := []struct {
 		name string
 		code string
+		hex  string
 	}{
-		{"uppercase ISO", "USD"},
-		{"mixed-case ISO", "xrP"},
-		{"nonstandard hex", "0000000000000000000000000000000000000001"},
+		{"uppercase ISO", "USD", "0000000000000000000000005553440000000000"},
+		{"mixed-case ISO", "xrP", "0000000000000000000000007872500000000000"},
+		{"nonstandard hex", "0000000000000000000000000000000000000001", "0000000000000000000000000000000000000001"},
+		{"outside IOU alphabet", "00000000000000000000000041442F0000000000", "00000000000000000000000041442F0000000000"},
+		{"nonprintable ISO slot", "0000000000000000000000000102030000000000", "0000000000000000000000000102030000000000"},
+		{"nonzero leading padding", "0100000000000000000000005553440000000000", "0100000000000000000000005553440000000000"},
+		{"nonzero trailing padding", "0000000000000000000000005553440000000001", "0000000000000000000000005553440000000001"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tx := map[string]any{"Amount": map[string]any{
-				"currency": tt.code,
-				"issuer":   "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+			fields := []struct {
+				name     string
+				blob     string
+				expected any
+			}{
+				{"BaseAsset", "011A" + tt.hex, tt.code},
+				{"Asset", "0318" + tt.hex + issuerHex, map[string]any{
+					"currency": tt.code,
+					"issuer":   issuer,
+				}},
+				{"Amount", "61D4838D7EA4C68000" + tt.hex + issuerHex, map[string]any{
+					"currency": tt.code,
+					"issuer":   issuer,
+					"value":    "1",
+				}},
+				{"Paths", "011210" + tt.hex + "00", []any{[]any{map[string]any{
+					"currency": tt.code,
+					"type":     16,
+					"type_hex": "0000000000000010",
+				}}}},
+			}
+			for _, field := range fields {
+				t.Run(field.name, func(t *testing.T) {
+					decoded, err := Decode(field.blob)
+					require.NoError(t, err)
+					require.Equal(t, map[string]any{field.name: field.expected}, decoded)
+
+					encoded, err := Encode(decoded)
+					require.NoError(t, err)
+					require.Equal(t, field.blob, encoded)
+				})
+			}
+		})
+	}
+}
+
+func TestReservedISOCurrencyDecoding(t *testing.T) {
+	const currencyHex = "0000000000000000000000005852500000000000"
+	const zeroCurrencyHex = "0000000000000000000000000000000000000000"
+	const issuerHex = "0A20B3C85F482532A9578DBB3950B85CA06594D1"
+	tests := []struct {
+		name     string
+		blob     string
+		expected map[string]any
+		err      string
+	}{
+		{name: "Currency preserves hex", blob: "011A" + currencyHex, expected: map[string]any{"BaseAsset": currencyHex}},
+		{name: "Issue preserves hex", blob: "0318" + currencyHex + issuerHex, expected: map[string]any{"Asset": map[string]any{
+			"currency": currencyHex,
+			"issuer":   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+		}}},
+		{name: "Amount rejects reserved XRP", blob: "61D4838D7EA4C68000" + currencyHex + issuerHex, err: "invalid currency code"},
+		{name: "Amount rejects all-zero XRP", blob: "61D4838D7EA4C68000" + zeroCurrencyHex + issuerHex, err: "'XRP' is/are disallowed or invalid"},
+		{name: "PathSet rejects reserved XRP", blob: "011210" + currencyHex + "00", err: "invalid currency code"},
+		{name: "PathSet accepts all-zero XRP", blob: "011210" + zeroCurrencyHex + "00", expected: map[string]any{"Paths": []any{[]any{map[string]any{
+			"currency": "XRP",
+			"type":     16,
+			"type_hex": "0000000000000010",
+		}}}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			decoded, err := Decode(tt.blob)
+			if tt.err != "" {
+				require.ErrorContains(t, err, tt.err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, decoded)
+
+			encoded, err := Encode(decoded)
+			require.NoError(t, err)
+			require.Equal(t, tt.blob, encoded)
+		})
+	}
+}
+
+func TestOutOfAlphabetCurrencyCodeMatchesErrInvalidCurrency(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func() error
+	}{
+		{"ParseCurrencyCode", func() error {
+			_, err := types.ParseCurrencyCode("AD/")
+			return err
+		}},
+		{"Amount encode", func() error {
+			_, err := Encode(map[string]any{"Amount": map[string]any{
+				"currency": "AD/",
+				"issuer":   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
 				"value":    "1",
-			}}
-			blob, err := Encode(tx)
-			require.NoError(t, err)
-			decoded, err := Decode(blob)
-			require.NoError(t, err)
-			require.Equal(t, tt.code, decoded["Amount"].(map[string]any)["currency"])
+			}})
+			return err
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.run()
+			require.ErrorIs(t, err, types.ErrInvalidCurrency)
+			require.EqualError(t, err, "invalid currency code")
 		})
 	}
 }

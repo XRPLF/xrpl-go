@@ -6,9 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"regexp"
-	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
+	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 // CurrencyCodeByteLength is the length of a currency code on the ledger.
@@ -49,36 +49,35 @@ func (c *Currency) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 		return nil, err
 	}
 
+	return formatCurrencyCode(currencyBytes), nil
+}
+
+// formatCurrencyCode converts currency bytes to their JSON form, following rippled's
+// to_string(Currency). It is the inverse of ParseCurrencyCode. 20 zero bytes are "XRP".
+// The standard layout of an IOU code other than "XRP" is that 3-character code.
+// Anything else, including the reserved standard layout of "XRP", is uppercase hexadecimal.
+// This intentionally differs from rippled for noCurrency: rippled returns "1", but this
+// returns the 40 hex characters, because ParseCurrencyCode("1") fails and the hex form
+// keeps the bytes round-trippable.
+func formatCurrencyCode(currencyBytes []byte) string {
 	if bytes.Equal(currencyBytes, XRPBytes) {
-		return "XRP", nil
+		return "XRP"
 	}
-
-	// Check if bytes has exactly 3 non-zero bytes at positions 12-14
-	nonZeroCount := 0
-	var currencyStr strings.Builder
-	for i := range currencyBytes {
-		if currencyBytes[i] != 0 {
-			if i >= 12 && i <= 14 {
-				nonZeroCount++
-				currencyStr.WriteString(string(currencyBytes[i]))
-			} else {
-				nonZeroCount = 0
-				break
-			}
-		}
+	if len(currencyBytes) == CurrencyCodeByteLength &&
+		bytes.Equal(currencyBytes[:12], XRPBytes[:12]) &&
+		bytes.Equal(currencyBytes[15:], XRPBytes[15:]) &&
+		!bytes.Equal(currencyBytes, isoXRPBytes) &&
+		iouCodeRegex.Match(currencyBytes[12:15]) {
+		return string(currencyBytes[12:15])
 	}
-
-	if nonZeroCount == 3 {
-		return currencyStr.String(), nil
-	}
-
-	return hex.EncodeToString(currencyBytes), nil
+	return hexutil.EncodeToUpperHex(currencyBytes)
 }
 
 // ParseCurrencyCode converts a JSON currency code to its 20-byte form, following
 // rippled's to_currency. "XRP" is the native currency and encodes as 20 zero bytes.
-// A 3-character code must use the IOU code alphabet and is placed at bytes 12 to 14.
-// A 40-character hexadecimal code is taken verbatim. Anything else is an error.
+// A 3-character code must use the IOU code alphabet and is placed at bytes 12 to 14;
+// a code outside that alphabet returns an error that matches ErrInvalidCurrency.
+// A 40-character hexadecimal code is taken verbatim. Any other length returns an *InvalidCodeError.
 func ParseCurrencyCode(code string) ([]byte, error) {
 	switch len(code) {
 	case 3:

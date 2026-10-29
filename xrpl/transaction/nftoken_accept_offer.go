@@ -94,6 +94,14 @@ func (n *NFTokenAcceptOffer) Validate() (bool, error) {
 		}
 	}
 
+	if n.NFTokenBrokerFee != nil && n.NFTokenBrokerFee.Kind() == types.MPT {
+		return false, ErrTransactionInvalidField{Type: n.TxType().String(), Field: "NFTokenBrokerFee"}
+	}
+
+	if ok, err := IsAmount(n.NFTokenBrokerFee, "NFTokenBrokerFee", false); !ok {
+		return false, err
+	}
+
 	// if NFTokenBrokerFee is set, then both NFTokenSellOffer and NFTokenBuyOffer must be set
 	if n.NFTokenBrokerFee != nil && (n.NFTokenSellOffer == "" || n.NFTokenBuyOffer == "") {
 		return false, ErrMissingBothOffers

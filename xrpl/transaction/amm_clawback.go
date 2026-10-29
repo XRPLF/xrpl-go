@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -45,8 +46,8 @@ const (
 // ```
 type AMMClawback struct {
 	BaseTx
-	// The account holding the asset to be clawed back.
-	Holder string
+	// The account holding the asset to be clawed back. An X-address must not carry a tag.
+	Holder types.Address
 	// The issued token or MPT that the issuer wants to claw back from the AMM pool.
 	// Its issuer must match Account; XRP is not allowed here.
 	Asset ledger.Asset
@@ -68,7 +69,7 @@ func (a *AMMClawback) Flatten() FlatTransaction {
 	flattened["TransactionType"] = a.TxType().String()
 
 	if a.Holder != "" {
-		flattened["Holder"] = a.Holder
+		flattened["Holder"] = a.Holder.String()
 	}
 
 	flattened["Asset"] = a.Asset.Flatten()
@@ -107,14 +108,21 @@ func (a *AMMClawback) Validate() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if !flag.ContainsOnly(a.Flags, TfClawTwoAssets|types.TfUniversal) {
+		return false, ErrInvalidFlags
+	}
 	accountID, _, err := decodeAddressAccountID(a.Account)
 	if err != nil {
 		return false, ErrInvalidAccount
 	}
 
-	holderID, _, err := decodeAddressAccountID(types.Address(a.Holder))
+	holderID, holderHasTag, err := decodeAddressAccountID(a.Holder)
 	if err != nil {
 		return false, ErrInvalidHolder
+	}
+	// Holder has no companion tag field, so the codec cannot encode a tagged X-address.
+	if holderHasTag {
+		return false, fmt.Errorf("%w: %w", ErrInvalidHolder, ErrAccountIDTagNotAllowed)
 	}
 	if bytes.Equal(holderID, accountID) {
 		return false, ErrAMMClawbackSameHolder

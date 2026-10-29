@@ -112,19 +112,29 @@ func (a *AMMBid) Validate() (bool, error) {
 		return false, err
 	}
 
-	if a.Asset.Currency == "XRP" && a.Asset2.Currency == "XRP" {
+	if a.Asset.Kind() == ledger.AssetXRP && a.Asset2.Kind() == ledger.AssetXRP {
 		return false, ErrAMMAtLeastOneAssetMustBeNonXRP
+	}
+
+	if sameAssetIssue(a.Asset, a.Asset2) {
+		return false, ErrAMMInvalidTokens
 	}
 
 	if ok, err := IsAmount(a.BidMin, "BidMin", false); !ok {
 		return false, err
 	}
+	if a.BidMin != nil && a.BidMin.IsZero() {
+		return false, ErrInvalidTokenValue
+	}
 
 	if ok, err := IsAmount(a.BidMax, "BidMax", false); !ok {
 		return false, err
 	}
+	if a.BidMax != nil && a.BidMax.IsZero() {
+		return false, ErrInvalidTokenValue
+	}
 
-	if ok, err := validateAuthAccounts(a.AuthAccounts); !ok {
+	if ok, err := validateAuthAccounts(a.AuthAccounts, a.Account); !ok {
 		return false, err
 	}
 
@@ -132,14 +142,22 @@ func (a *AMMBid) Validate() (bool, error) {
 }
 
 // Validate the AuthAccounts field.
-func validateAuthAccounts(authAccounts []ledger.AuthAccounts) (bool, error) {
+func validateAuthAccounts(authAccounts []ledger.AuthAccounts, account types.Address) (bool, error) {
 	if len(authAccounts) > 4 {
 		return false, ErrAMMAuthAccountsTooMany
 	}
 
-	for _, authAccounts := range authAccounts {
-		if ok := addresscodec.IsValidAddress(authAccounts.AuthAccount.Account.String()); !ok {
+	for i, authAccount := range authAccounts {
+		if ok := addresscodec.IsValidAddress(authAccount.AuthAccount.Account.String()); !ok {
 			return false, ErrInvalidAccount
+		}
+		if sameAccountAddress(authAccount.AuthAccount.Account, account) {
+			return false, ErrTransactionInvalidField{Type: "AMMBid", Field: "AuthAccounts"}
+		}
+		for _, previous := range authAccounts[:i] {
+			if sameAccountAddress(authAccount.AuthAccount.Account, previous.AuthAccount.Account) {
+				return false, ErrTransactionInvalidField{Type: "AMMBid", Field: "AuthAccounts"}
+			}
 		}
 	}
 

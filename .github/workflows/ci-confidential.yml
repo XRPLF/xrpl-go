@@ -15,7 +15,6 @@ on:
       - '.ci-config/**'
       - 'scripts/localnet-integration.sh'
       - 'scripts/summarize-go-test-report.sh'
-      - 'scripts/report-api-compatibility.sh'
       - '.github/workflows/ci-confidential.yml'
       - '.github/workflows/ci-tests.yml'
       - '.github/workflows/ci-checks.yml'

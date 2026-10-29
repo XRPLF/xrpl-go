@@ -103,6 +103,10 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 		return false, err
 	}
 
+	if n.Amount != nil && n.Amount.Kind() == types.MPT {
+		return false, ErrTransactionInvalidField{Type: n.TxType().String(), Field: "Amount"}
+	}
+
 	if ok, err := IsAmount(n.Amount, "Amount", true); !ok {
 		return false, err
 	}

@@ -61,6 +61,12 @@ func (p *PaymentChannelFund) Validate() (bool, error) {
 		return false, err
 	}
 
+	// rippled rejects a zero Channel under fixCleanup3_2_0. No PayChannel has a zero ID,
+	// so the check applies without amendment activation.
+	if !isNonZeroHex256(string(p.Channel)) {
+		return false, ErrInvalidChannel
+	}
+
 	if p.Amount.IsZero() || !p.Amount.IsValid() {
 		return false, ErrPaymentChannelFundAmountInvalid
 	}

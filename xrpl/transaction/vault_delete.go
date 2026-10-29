@@ -58,11 +58,11 @@ func (tx *VaultDelete) Validate() (bool, error) {
 		return false, ErrVaultDeleteVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID.String()) {
+	if !isNonZeroHex256(tx.VaultID.String()) {
 		return false, ErrVaultDeleteVaultIDInvalid
 	}
 
-	if tx.MemoData != nil && !IsBoundedHexBlob(*tx.MemoData, VaultDeleteMaxMemoDataLength) {
+	if tx.MemoData != nil && !ValidateHexMetadata(*tx.MemoData, VaultDeleteMaxMemoDataLength) {
 		return false, ErrVaultDeleteMemoDataInvalid
 	}
 

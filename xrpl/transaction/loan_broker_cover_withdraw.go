@@ -79,7 +79,7 @@ func (tx *LoanBrokerCoverWithdraw) Validate() (bool, error) {
 		return false, ErrLoanBrokerCoverWithdrawLoanBrokerIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.LoanBrokerID) {
+	if !isNonZeroHex256(tx.LoanBrokerID) {
 		return false, ErrLoanBrokerCoverWithdrawLoanBrokerIDInvalid
 	}
 
@@ -90,9 +90,13 @@ func (tx *LoanBrokerCoverWithdraw) Validate() (bool, error) {
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {
 		return false, err
 	}
+	if tx.Amount.IsZero() {
+		return false, ErrInvalidTokenValue
+	}
 
 	if tx.Destination != nil {
-		if !addresscodec.IsValidAddress(tx.Destination.String()) {
+		destinationID, _, err := decodeAddressAccountID(*tx.Destination)
+		if err != nil || addresscodec.IsZeroAccountID(destinationID) {
 			return false, ErrInvalidDestination
 		}
 	}
