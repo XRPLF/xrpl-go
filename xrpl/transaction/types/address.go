@@ -21,6 +21,11 @@ func (a Address) String() string {
 // that later validation or encoding can reject it instead of silently dropping the tag.
 // A malformed address is left for the same later stages to report.
 func (a Address) Flatten() string {
+	// Only an X-address changes spelling, and its base58 version byte renders as X
+	// (mainnet) or T (testnet). Classic r-addresses and malformed input are already final.
+	if len(a) == 0 || (a[0] != 'X' && a[0] != 'T') {
+		return a.String()
+	}
 	decoded, err := addresscodec.DecodeAddress(a.String())
 	if err != nil || decoded.HasTag {
 		return a.String()

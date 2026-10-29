@@ -90,6 +90,9 @@ func issuedCurrencyBytes(code string) ([]byte, error) {
 // as codec bytes so "USD" equals its hex spelling, and issuers as AccountIDs so a classic
 // address equals its X-address. Both inputs must already be validated.
 func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
+	if amount.Kind() == types.XRP {
+		return asset.Kind() == ledger.AssetXRP
+	}
 	switch amount := amount.(type) {
 	case types.IssuedCurrencyAmount:
 		if asset.Kind() != ledger.AssetIOU {
@@ -169,8 +172,7 @@ func validateMemos(memoWrapper []types.MemoWrapper) error {
 
 // isPublicKey reports whether signingPubKey is a well-formed public key. An empty value fails.
 func isPublicKey(signingPubKey string) bool {
-	_, err := keypairs.DeriveClassicAddress(signingPubKey)
-	return err == nil
+	return keypairs.IsValidPublicKey(signingPubKey)
 }
 
 // isSignaturePair reports whether a public key and signature are well formed.

@@ -164,8 +164,9 @@ var (
 
 	// ErrEmptyPath is returned when the path is empty.
 	ErrEmptyPath = errors.New("path(s) should have at least one path")
-	// ErrInvalidTokenCurrency is returned when the token currency is XRP.
-	ErrInvalidTokenCurrency = errors.New("invalid or missing token currency, it also cannot have a similar standard code as XRP")
+	// ErrInvalidTokenCurrency is returned when the token currency is neither a three-character IOU code
+	// nor 40 hexadecimal characters, or when it is XRP in its native or reserved standard-currency form.
+	ErrInvalidTokenCurrency = errors.New("token currency must be a three-character IOU code or 40 hexadecimal characters, not XRP in native or reserved form")
 	// ErrInvalidTokenFields is returned when the issued currency object does not have the required fields (currency, issuer and value).
 	ErrInvalidTokenFields = errors.New("issued currency object should have 3 fields: currency, issuer, value")
 	// ErrInvalidPathStepCombination is returned when the path step is invalid. The fields combination is invalid.
@@ -180,8 +181,8 @@ var (
 	ErrInvalidMPTType = errors.New("an MPT currency amount must be of type MPT")
 	// ErrMissingMPTIssuanceID is returned when the MPTIssuanceID field is missing for an MPT currency amount.
 	ErrMissingMPTIssuanceID = errors.New("mpt_issuance_id field is missing for the MPT currency amount")
-	// ErrInvalidMPTIssuanceID is returned when the MPTIssuanceID field is not a valid hex string.
-	ErrInvalidMPTIssuanceID = errors.New("mpt_issuance_id field must be a valid hex string")
+	// ErrInvalidMPTIssuanceID is returned when the MPTIssuanceID field is not 48 hexadecimal characters (24 bytes).
+	ErrInvalidMPTIssuanceID = errors.New("mpt_issuance_id field must be 48 hexadecimal characters (24 bytes)")
 	// ErrInvalidMPTValue is returned when the value field is not a valid positive integer in the range 0 to 0x7FFFFFFFFFFFFFFF.
 	ErrInvalidMPTValue = errors.New("value field should be a valid positive integer in the range 0 to 0x7FFFFFFFFFFFFFFF for MPT currency amount")
 	// ErrInvalidAssetFields is returned when the asset object does not have the required fields (currency, or currency and issuer).
