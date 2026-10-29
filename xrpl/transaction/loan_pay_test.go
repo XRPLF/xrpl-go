@@ -119,6 +119,32 @@ func TestLoanPay_Validate(t *testing.T) {
 		expected error
 	}{
 		{
+			name: "fail - zero XRP Amount",
+			tx: &LoanPay{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanPayTx},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430", Amount: types.XRPCurrencyAmount(0),
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - zero IOU Amount",
+			tx: &LoanPay{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanPayTx},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "0"},
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - zero MPT Amount",
+			tx: &LoanPay{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanPayTx},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount: types.MPTCurrencyAmount{MPTIssuanceID: "00000001ABCDEF0123456789ABCDEF0123456789ABCDEF01", Value: "0"},
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
 			name: "fail - base tx invalid",
 			tx: &LoanPay{
 				BaseTx: BaseTx{
@@ -159,6 +185,18 @@ func TestLoanPay_Validate(t *testing.T) {
 					TransactionType: LoanPayTx,
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: ErrLoanPayLoanIDInvalid,
+		},
+		{
+			name: "fail - zero LoanID",
+			tx: &LoanPay{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanPayTx,
+				},
+				LoanID: "0000000000000000000000000000000000000000000000000000000000000000",
 				Amount: types.XRPCurrencyAmount(10000),
 			},
 			expected: ErrLoanPayLoanIDInvalid,
@@ -247,6 +285,7 @@ func TestLoanPay_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
 				require.NoError(t, err)

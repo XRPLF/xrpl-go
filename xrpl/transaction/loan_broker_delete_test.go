@@ -93,6 +93,17 @@ func TestLoanBrokerDelete_Validate(t *testing.T) {
 			expected: ErrLoanBrokerDeleteLoanBrokerIDInvalid,
 		},
 		{
+			name: "fail - zero LoanBrokerID",
+			tx: &LoanBrokerDelete{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerDeleteTx,
+				},
+				LoanBrokerID: "0000000000000000000000000000000000000000000000000000000000000000",
+			},
+			expected: ErrLoanBrokerDeleteLoanBrokerIDInvalid,
+		},
+		{
 			name: "pass - complete",
 			tx: &LoanBrokerDelete{
 				BaseTx: BaseTx{

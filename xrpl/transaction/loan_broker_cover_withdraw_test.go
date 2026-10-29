@@ -93,6 +93,50 @@ func TestLoanBrokerCoverWithdraw_Validate(t *testing.T) {
 		expected error
 	}{
 		{
+			name: "fail - zero XRP Amount",
+			tx: &LoanBrokerCoverWithdraw{
+				BaseTx:       BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerCoverWithdrawTx},
+				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430", Amount: types.XRPCurrencyAmount(0),
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - zero IOU Amount",
+			tx: &LoanBrokerCoverWithdraw{
+				BaseTx:       BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerCoverWithdrawTx},
+				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount:       types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "0"},
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - zero MPT Amount",
+			tx: &LoanBrokerCoverWithdraw{
+				BaseTx:       BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerCoverWithdrawTx},
+				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount:       types.MPTCurrencyAmount{MPTIssuanceID: "00000001ABCDEF0123456789ABCDEF0123456789ABCDEF01", Value: "0"},
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - ACCOUNT_ZERO Destination",
+			tx: &LoanBrokerCoverWithdraw{
+				BaseTx:       BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerCoverWithdrawTx},
+				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430", Amount: types.XRPCurrencyAmount(1),
+				Destination: func() *types.Address { v := types.Address(testAddrZero); return &v }(),
+			},
+			expected: ErrInvalidDestination,
+		},
+		{
+			name: "fail - ACCOUNT_ZERO X-address Destination",
+			tx: &LoanBrokerCoverWithdraw{
+				BaseTx:       BaseTx{Account: testAddrAccount, TransactionType: LoanBrokerCoverWithdrawTx},
+				LoanBrokerID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430", Amount: types.XRPCurrencyAmount(1),
+				Destination: func() *types.Address { v := xAddr(t, testAddrZero, 0, false); return &v }(),
+			},
+			expected: ErrInvalidDestination,
+		},
+		{
 			name: "fail - base tx invalid",
 			tx: &LoanBrokerCoverWithdraw{
 				BaseTx: BaseTx{
@@ -138,6 +182,18 @@ func TestLoanBrokerCoverWithdraw_Validate(t *testing.T) {
 			expected: ErrLoanBrokerCoverWithdrawLoanBrokerIDInvalid,
 		},
 		{
+			name: "fail - zero LoanBrokerID",
+			tx: &LoanBrokerCoverWithdraw{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerCoverWithdrawTx,
+				},
+				LoanBrokerID: "0000000000000000000000000000000000000000000000000000000000000000",
+				Amount:       types.XRPCurrencyAmount(10000),
+			},
+			expected: ErrLoanBrokerCoverWithdrawLoanBrokerIDInvalid,
+		},
+		{
 			name: "pass - complete",
 			tx: &LoanBrokerCoverWithdraw{
 				BaseTx: BaseTx{
@@ -170,6 +226,7 @@ func TestLoanBrokerCoverWithdraw_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
 				require.NoError(t, err)
