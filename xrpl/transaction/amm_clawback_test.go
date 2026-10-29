@@ -35,11 +35,44 @@ func TestAMMClawback_TxType(t *testing.T) {
 }
 
 func TestAMMClawback_Validate(t *testing.T) {
+	taglessHolder, err := addresscodec.ClassicAddressToXAddress(ammClawbackHolder, 0, false, false)
+	require.NoError(t, err)
+	taggedHolder, err := addresscodec.ClassicAddressToXAddress(ammClawbackHolder, 42, true, false)
+	require.NoError(t, err)
+	zeroTagHolder, err := addresscodec.ClassicAddressToXAddress(ammClawbackHolder, 0, true, false)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name    string
 		tx      *AMMClawback
 		wantErr error
 	}{
+		{
+			name: "undefined flag",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Flags = 0x2
+				return tx
+			}(),
+			wantErr: ErrInvalidFlags,
+		},
+		{
+			name: "all universal flags",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Flags = types.TfUniversal
+				return tx
+			}(),
+		},
+		{
+			name: "claw two assets with all universal flags",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Flags = TfClawTwoAssets | types.TfUniversal
+				tx.Asset2 = ledger.Asset{Currency: "EUR", Issuer: ammClawbackIssuer}
+				return tx
+			}(),
+		},
 		{
 			name: "valid omission claws all",
 			tx:   newAMMClawback(),
@@ -48,10 +81,36 @@ func TestAMMClawback_Validate(t *testing.T) {
 			name: "holder cannot be the account",
 			tx: func() *AMMClawback {
 				tx := newAMMClawback()
-				tx.Holder = ammClawbackIssuer.String()
+				tx.Holder = ammClawbackIssuer
 				return tx
 			}(),
 			wantErr: ErrAMMClawbackSameHolder,
+		},
+		{
+			name: "holder X-address without tag",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Holder = types.Address(taglessHolder)
+				return tx
+			}(),
+		},
+		{
+			name: "holder X-address cannot carry a tag",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Holder = types.Address(taggedHolder)
+				return tx
+			}(),
+			wantErr: ErrAccountIDTagNotAllowed,
+		},
+		{
+			name: "holder X-address cannot carry an explicit zero tag",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Holder = types.Address(zeroTagHolder)
+				return tx
+			}(),
+			wantErr: ErrAccountIDTagNotAllowed,
 		},
 		{
 			name: "asset2 is required",
@@ -129,7 +188,7 @@ func TestAMMClawback_Validate(t *testing.T) {
 			name: "nonstandard currency bytes must match asset",
 			tx: func() *AMMClawback {
 				tx := newAMMClawback()
-				tx.Asset.Currency = "0000000000000000000000000000000000000001"
+				tx.Asset.Currency = "0000000000000000000000000000000000000003"
 				tx.Amount = types.IssuedCurrencyAmount{
 					Currency: "0000000000000000000000000000000000000002",
 					Issuer:   ammClawbackIssuer,
@@ -143,12 +202,20 @@ func TestAMMClawback_Validate(t *testing.T) {
 			name: "same nonstandard currency bytes match",
 			tx: func() *AMMClawback {
 				tx := newAMMClawback()
-				tx.Asset.Currency = "0000000000000000000000000000000000000001"
+				tx.Asset.Currency = "0000000000000000000000000000000000000003"
 				tx.Amount = types.IssuedCurrencyAmount{
-					Currency: "0000000000000000000000000000000000000001",
+					Currency: "0000000000000000000000000000000000000003",
 					Issuer:   ammClawbackIssuer,
 					Value:    "1",
 				}
+				return tx
+			}(),
+		},
+		{
+			name: "asset currency can be noCurrency",
+			tx: func() *AMMClawback {
+				tx := newAMMClawback()
+				tx.Asset.Currency = "0000000000000000000000000000000000000001"
 				return tx
 			}(),
 		},
