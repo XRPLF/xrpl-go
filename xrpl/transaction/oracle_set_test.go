@@ -225,6 +225,9 @@ func TestOracleSet_Validate(t *testing.T) {
 				},
 				Provider:       strings.Repeat("AA", 129),
 				LastUpdateTime: 946684800,
+				PriceDataSeries: []ledger.PriceDataWrapper{
+					{PriceData: ledger.PriceData{BaseAsset: "XRP", QuoteAsset: "USD", AssetPrice: ledger.AssetPrice(740), Scale: 3}},
+				},
 			},
 			expected: nil,
 		},
@@ -282,6 +285,29 @@ func TestOracleSet_Validate(t *testing.T) {
 				LastUpdateTime: 946684799,
 			},
 			expected: ErrOracleLastUpdateTimeInvalid,
+		},
+		{
+			name: "fail - price data series nil",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				LastUpdateTime: 1724871860,
+			},
+			expected: ErrMissingField{Field: "PriceDataSeries"},
+		},
+		{
+			name: "fail - price data series empty",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				LastUpdateTime:  1724871860,
+				PriceDataSeries: []ledger.PriceDataWrapper{},
+			},
+			expected: ErrMissingField{Field: "PriceDataSeries"},
 		},
 		{
 			name: "fail - price data series items",
@@ -392,6 +418,103 @@ func TestOracleSet_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			assert.ErrorIs(t, err, testcase.expected, "expected %v, got %v", testcase.expected, err)
+		})
+	}
+}
+
+func TestOracleSet_ValidateTokenPairs(t *testing.T) {
+	const usdHex = "0000000000000000000000005553440000000000"
+	const xrpHex = "0000000000000000000000000000000000000000"
+	invalidSeries := ErrTransactionInvalidField{Type: OracleSetTx.String(), Field: "PriceDataSeries"}
+	tests := []struct {
+		name    string
+		data    []ledger.PriceData
+		wantErr error
+	}{
+		{
+			name:    "equal assets",
+			data:    []ledger.PriceData{{BaseAsset: "USD", QuoteAsset: "USD", AssetPrice: ledger.AssetPrice(1)}},
+			wantErr: invalidSeries,
+		},
+		{
+			name:    "equal assets with mixed spellings",
+			data:    []ledger.PriceData{{BaseAsset: "USD", QuoteAsset: usdHex, AssetPrice: ledger.AssetPrice(1)}},
+			wantErr: invalidSeries,
+		},
+		{
+			name:    "equal native assets with mixed spellings",
+			data:    []ledger.PriceData{{BaseAsset: "XRP", QuoteAsset: xrpHex}},
+			wantErr: invalidSeries,
+		},
+		{
+			name: "duplicate priced pair with mixed spellings",
+			data: []ledger.PriceData{
+				{BaseAsset: "USD", QuoteAsset: "XRP", AssetPrice: ledger.AssetPrice(1)},
+				{BaseAsset: usdHex, QuoteAsset: xrpHex, AssetPrice: ledger.AssetPrice(2)},
+			},
+			wantErr: invalidSeries,
+		},
+		{
+			name: "duplicate deletion pair with mixed spellings",
+			data: []ledger.PriceData{
+				{BaseAsset: "USD", QuoteAsset: "XRP"},
+				{BaseAsset: usdHex, QuoteAsset: xrpHex},
+			},
+			wantErr: invalidSeries,
+		},
+		{
+			name: "priced pair followed by deletion",
+			data: []ledger.PriceData{
+				{BaseAsset: "USD", QuoteAsset: "XRP", AssetPrice: ledger.AssetPrice(1)},
+				{BaseAsset: usdHex, QuoteAsset: xrpHex},
+			},
+			wantErr: invalidSeries,
+		},
+		{
+			name: "deletion followed by priced pair",
+			data: []ledger.PriceData{
+				{BaseAsset: "USD", QuoteAsset: "XRP"},
+				{BaseAsset: usdHex, QuoteAsset: xrpHex, AssetPrice: ledger.AssetPrice(1)},
+			},
+			wantErr: invalidSeries,
+		},
+		{
+			name: "reversed pairs are distinct",
+			data: []ledger.PriceData{
+				{BaseAsset: "USD", QuoteAsset: "XRP", AssetPrice: ledger.AssetPrice(1)},
+				{BaseAsset: xrpHex, QuoteAsset: usdHex, AssetPrice: ledger.AssetPrice(2)},
+			},
+		},
+		{
+			name: "distinct pairs sharing the base asset",
+			data: []ledger.PriceData{
+				{BaseAsset: "USD", QuoteAsset: "XRP"},
+				{BaseAsset: usdHex, QuoteAsset: "EUR"},
+			},
+		},
+		{
+			name:    "unparseable base currency",
+			data:    []ledger.PriceData{{BaseAsset: "USDX", QuoteAsset: "XRP"}},
+			wantErr: invalidSeries,
+		},
+		{
+			name:    "unparseable quote currency",
+			data:    []ledger.PriceData{{BaseAsset: "USD", QuoteAsset: strings.Repeat("Z", 40)}},
+			wantErr: invalidSeries,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := OracleSet{
+				BaseTx:         BaseTx{Account: "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1", TransactionType: OracleSetTx},
+				LastUpdateTime: 946684800,
+			}
+			for _, data := range tt.data {
+				tx.PriceDataSeries = append(tx.PriceDataSeries, ledger.PriceDataWrapper{PriceData: data})
+			}
+			ok, err := tx.Validate()
+			require.Equal(t, tt.wantErr == nil, ok)
+			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }
