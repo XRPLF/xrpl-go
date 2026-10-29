@@ -31,6 +31,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Added `types.ParseCurrencyCode`, the currency-code parser behind `Currency`, issued-currency amounts, and path steps.
 - Added `types.IsXRPCurrency`, which reports whether currency bytes are native XRP or the reserved ISO `XRP` code.
+- Added `types.CurrencyCodeByteLength`, the 20-byte length of a currency code.
 - Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
 - Added `types.ErrBlobNotString`, returned when a `Blob` field receives a non-string JSON value.
 - Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
@@ -66,11 +67,15 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 #### binary-codec
 
-- Currency codes no longer accept a `0x` prefix, which no XRPL implementation accepts. A code is `XRP`, three characters from the IOU alphabet, or 40 hexadecimal characters.
+- Issued-currency amounts and path steps no longer accept a `0x` currency prefix. A code is `XRP`, three characters from the IOU alphabet, or 40 hexadecimal characters.
+- `Currency` and `Issue` encoding now return `*types.InvalidCodeError` for a currency code that is not 3 or 40 characters long. Before, they returned a hex decode error or encoded the wrong number of bytes.
+- An issued-currency amount with an XRP currency now returns `'XRP' is/are disallowed or invalid` instead of `'XRP uppercase' is/are disallowed or invalid`. A path step with the reserved ISO `XRP` code now names that code in the same error.
+- `Currency` decoding now returns uppercase hexadecimal for a nonstandard code, as `Issue`, `Amount` and `PathSet` decoding do.
 - A `PathSet` step that is not an object now returns an error wrapping `types.ErrInvalidPathSet`. Its text gains the `invalid path set: ` prefix.
 - A non-string `AccountID` value now returns `account ID must be a string: got <type>` instead of `expected a string but got <type>`.
 - An unknown field type now returns `unknown field type: type "<type>", field "<field>"` instead of `unknown type "<type>" for field "<field>"`.
 - An unsupported amount value type now returns `unsupported amount value type: <type>` instead of `unsupported type <type> for amount value`.
+- The `invalid currency code` error now matches `errors.Is(err, types.ErrInvalidCurrency)`. Its text is unchanged. `types.ParseCurrencyCode`, `Currency`, `Issue`, `Amount` and `PathSet` encoding return it for a three-character code outside the IOU alphabet. `Amount` and `PathSet` decoding return it for the reserved ISO `XRP` code.
 
 #### pkg/hexutil
 
@@ -98,9 +103,11 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 #### binary-codec
 
-- Fixed hex currency codes with a `0x00` type byte being rewritten to XRP or rejected on encoding. They now serialize verbatim.
+- Fixed hex currency codes with a `0x00` type byte being rewritten to XRP or rejected when they encode in issued-currency amounts and path steps. They now serialize verbatim. Both still reject the reserved ISO `XRP` code. An issued-currency amount with 40 zero hex characters, which previously encoded XRP bytes inside an IOU, is now also rejected.
 - Fixed `Currency` accepting three-character codes outside the IOU alphabet, which produced Issue fields the ledger rejects.
-- Fixed decoding uppercasing three-character currency codes. A code like `xrP` now round-trips unchanged.
+- Fixed currency decoding so that a nonstandard code encodes back to the same bytes, as in rippled, except for its `noCurrency` sentinel. The codec returns that sentinel as 40 hexadecimal characters instead of rippled's `"1"` so that it can encode back to the same bytes. `Currency`, `Issue`, `Amount` and `PathSet` decode a currency that is not a standard IOU code as 40 hexadecimal characters. Before, `Amount` and `PathSet` dropped nonzero padding around a three-character code and uppercased the code, so `xrP` became `XRP`. `Currency` and `Issue` returned characters outside the IOU alphabet as text and the reserved ISO `XRP` code as `XRP`. `Amount` and `PathSet` still reject the ISO `XRP` code.
+- Fixed decoding of an issued-currency `Amount` whose currency bytes are all zero. It now fails with `'XRP' is/are disallowed or invalid` (`*types.InvalidCodeError`), as encoding and rippled do. Before, it decoded as currency `XRP`, and the result could not encode back.
+- Fixed `Number` encoding of exponents outside the 32-bit range. Before, an exponent wrapped around, so `1e4294967296` encoded as `1`. A value too large to represent now returns `types.ErrInvalidExponent`, and a value too small returns `types.ErrNumberUnderflow`.
 - Encode and Decode return an error for fields nested deeper than xrpld's limit of 10.
 - Blob fields return an error for non-string JSON values.
 
