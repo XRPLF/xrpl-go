@@ -109,6 +109,17 @@ func TestVaultSet_Validate(t *testing.T) {
 			expected: ErrVaultSetVaultIDInvalid,
 		},
 		{
+			name: "fail - zero VaultID",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID: types.Hash256(strings.Repeat("0", 64)),
+			},
+			expected: ErrVaultSetVaultIDInvalid,
+		},
+		{
 			name: "fail - Data not hex",
 			tx: &VaultSet{
 				BaseTx: BaseTx{
@@ -157,13 +168,149 @@ func TestVaultSet_Validate(t *testing.T) {
 			expected: ErrVaultSetAssetsMaximumInvalid,
 		},
 		{
-			name: "pass - complete",
+			name: "fail - AssetsMaximum exponent too large to encode",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:       types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("1e40000"); return &v }(),
+			},
+			expected: ErrVaultSetAssetsMaximumInvalid,
+		},
+		{
+			name: "fail - AssetsMaximum without integer digits",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:       types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber(".5"); return &v }(),
+			},
+			expected: ErrVaultSetAssetsMaximumInvalid,
+		},
+		{
+			name: "fail - AssetsMaximum negative",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:       types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("-1"); return &v }(),
+			},
+			expected: ErrVaultSetAssetsMaximumInvalid,
+		},
+		{
+			name: "fail - AssetsMaximum negative fraction",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:       types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("-0.5"); return &v }(),
+			},
+			expected: ErrVaultSetAssetsMaximumInvalid,
+		},
+		{
+			name: "fail - no update fields",
 			tx: &VaultSet{
 				BaseTx: BaseTx{
 					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 					TransactionType: VaultSetTx,
 				},
 				VaultID: types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+			},
+			expected: ErrVaultSetEmptyUpdate,
+		},
+		{
+			name: "fail - empty update values",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:       types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				Data:          func() *types.Data { v := types.Data(""); return &v }(),
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber(""); return &v }(),
+				DomainID:      func() *string { v := ""; return &v }(),
+			},
+			expected: ErrVaultSetEmptyUpdate,
+		},
+		{
+			name: "pass - complete",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:       types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				Data:          func() *types.Data { v := types.Data("ABCD"); return &v }(),
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("1000"); return &v }(),
+				DomainID:      func() *string { v := "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"; return &v }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - Data only",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID: types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				Data:    func() *types.Data { v := types.Data("ABCD"); return &v }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - AssetsMaximum zero only",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:       types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("0"); return &v }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - AssetsMaximum negative zero only",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:       types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("-0"); return &v }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - AssetsMaximum positive only",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:       types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("1e10"); return &v }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - zero DomainID only",
+			tx: &VaultSet{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultSetTx,
+				},
+				VaultID:  types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
+				DomainID: func() *string { v := strings.Repeat("0", 64); return &v }(),
 			},
 			expected: nil,
 		},
@@ -198,6 +345,7 @@ func TestVaultSet_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
 				require.NoError(t, err)

@@ -65,6 +65,32 @@ func TestVaultDeposit_Validate(t *testing.T) {
 		expected error
 	}{
 		{
+			name: "fail - zero XRP Amount",
+			tx: &VaultDeposit{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: VaultDepositTx},
+				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430", Amount: types.XRPCurrencyAmount(0),
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - zero IOU Amount",
+			tx: &VaultDeposit{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: VaultDepositTx},
+				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount:  types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "0"},
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - zero MPT Amount",
+			tx: &VaultDeposit{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: VaultDepositTx},
+				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount:  types.MPTCurrencyAmount{MPTIssuanceID: "00000001ABCDEF0123456789ABCDEF0123456789ABCDEF01", Value: "0"},
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
 			name: "fail - base tx invalid",
 			tx: &VaultDeposit{
 				BaseTx: BaseTx{
@@ -93,6 +119,18 @@ func TestVaultDeposit_Validate(t *testing.T) {
 					TransactionType: VaultDepositTx,
 				},
 				VaultID: types.Hash256("INVALIDID"),
+				Amount:  types.XRPCurrencyAmount(10000),
+			},
+			expected: ErrVaultDepositVaultIDInvalid,
+		},
+		{
+			name: "fail - zero VaultID",
+			tx: &VaultDeposit{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultDepositTx,
+				},
+				VaultID: types.Hash256("0000000000000000000000000000000000000000000000000000000000000000"),
 				Amount:  types.XRPCurrencyAmount(10000),
 			},
 			expected: ErrVaultDepositVaultIDInvalid,
@@ -128,6 +166,7 @@ func TestVaultDeposit_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
 				require.NoError(t, err)

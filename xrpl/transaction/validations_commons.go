@@ -2,7 +2,9 @@ package transaction
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
+	"math/big"
 	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
@@ -84,6 +86,32 @@ func issuedCurrencyBytes(code string) ([]byte, error) {
 		return nil, ErrInvalidTokenCurrency
 	}
 	return currencyBytes, nil
+}
+
+// codecNumber returns the exact value of the Number that the binary codec encodes for
+// value. rippled compares the encoded Number, so range checks use this value and not the
+// decimal text, which the codec can round.
+func codecNumber(value string) (*big.Rat, bool) {
+	encoded, err := (&bctypes.Number{}).FromJSON(value)
+	if err != nil {
+		return nil, false
+	}
+	mantissa := int64(binary.BigEndian.Uint64(encoded[:8])) //nolint:gosec // G115: the codec writes a signed mantissa.
+	if mantissa == 0 {
+		return new(big.Rat), true
+	}
+	exponent := int64(int32(binary.BigEndian.Uint32(encoded[8:]))) //nolint:gosec // G115: the codec writes a signed exponent.
+	number := new(big.Rat).SetInt64(mantissa)
+	power := new(big.Rat).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(max(exponent, -exponent)), nil))
+	if exponent < 0 {
+		return number.Quo(number, power), true
+	}
+	return number.Mul(number, power), true
+}
+
+func isNonNegativeCodecNumber(value string) bool {
+	number, ok := codecNumber(value)
+	return ok && number.Sign() >= 0
 }
 
 func amountAsset(amount types.CurrencyAmount) ledger.Asset {

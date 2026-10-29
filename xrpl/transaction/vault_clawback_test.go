@@ -101,6 +101,18 @@ func TestVaultClawback_Validate(t *testing.T) {
 			expected: ErrVaultClawbackVaultIDInvalid,
 		},
 		{
+			name: "fail - zero VaultID",
+			tx: &VaultClawback{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultClawbackTx,
+				},
+				VaultID: types.Hash256("0000000000000000000000000000000000000000000000000000000000000000"),
+				Holder:  "rwCNM7SeUHTajEBQDiNqxDG8p1Mreizw85",
+			},
+			expected: ErrVaultClawbackVaultIDInvalid,
+		},
+		{
 			name: "fail - Holder required",
 			tx: &VaultClawback{
 				BaseTx: BaseTx{
