@@ -121,6 +121,16 @@ func TestNumber_FromJSON_ToJSON_Roundtrip(t *testing.T) {
 			input:    "92233720368547758079",
 			expected: "922337203685477581e2",
 		},
+		{
+			name:     "Exponent above the maximum before mantissa scaling",
+			input:    "1e32769",
+			expected: "10e32768",
+		},
+		{
+			name:     "Trailing zero that raises the exponent above the maximum",
+			input:    "10e32768",
+			expected: "10e32768",
+		},
 	}
 
 	defs := definitions.Get()
@@ -162,6 +172,46 @@ func TestNumber_FromJSON_Errors(t *testing.T) {
 		{
 			name:        "Underflow - value too small",
 			input:       "1e-40000",
+			expectedErr: ErrNumberUnderflow,
+		},
+		{
+			name:        "Exponent above int32 range",
+			input:       "1e4294967296",
+			expectedErr: ErrInvalidExponent,
+		},
+		{
+			name:        "Exponent below int32 range",
+			input:       "1e-4294967296",
+			expectedErr: ErrNumberUnderflow,
+		},
+		{
+			name:        "Zero with exponent above int32 range",
+			input:       "0e4294967296",
+			expectedErr: ErrInvalidExponent,
+		},
+		{
+			name:        "Exponent at int64 max",
+			input:       "1e9223372036854775807",
+			expectedErr: ErrInvalidExponent,
+		},
+		{
+			name:        "Exponent above int64 range",
+			input:       "1e99999999999999999999",
+			expectedErr: ErrInvalidExponent,
+		},
+		{
+			name:        "Exponent below int64 range",
+			input:       "1e-99999999999999999999",
+			expectedErr: ErrNumberUnderflow,
+		},
+		{
+			name:        "Trailing zero pushes exponent past int32 max",
+			input:       "10e2147483647",
+			expectedErr: ErrInvalidExponent,
+		},
+		{
+			name:        "Fraction pushes exponent past int32 min",
+			input:       "0.1e-2147483648",
 			expectedErr: ErrNumberUnderflow,
 		},
 		{
