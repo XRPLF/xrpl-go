@@ -166,7 +166,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "pass - valid sell offer with non-zero MPT amount",
+			name: "fail - sell offer with MPT amount",
 			input: &NFTokenCreateOffer{
 				BaseTx: BaseTx{
 					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
@@ -181,6 +181,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 			setter: func(n *NFTokenCreateOffer) {
 				n.SetSellNFTokenFlag()
 			},
+			expectedErr: ErrTransactionInvalidField{Type: "NFTokenCreateOffer", Field: "Amount"},
 		},
 		{
 			name: "fail - invalid BaseTx, missing account",
@@ -222,7 +223,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 			},
 		},
 		{
-			name: "pass - valid buy offer with MPT amount",
+			name: "fail - buy offer with MPT amount",
 			input: &NFTokenCreateOffer{
 				BaseTx: BaseTx{
 					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
@@ -235,6 +236,7 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 					Value:         "1",
 				},
 			},
+			expectedErr: ErrTransactionInvalidField{Type: "NFTokenCreateOffer", Field: "Amount"},
 		},
 		{
 			name: "fail - owner and account are equal",
@@ -364,22 +366,6 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 			expectedErr: ErrInvalidTokenValue,
 		},
 		{
-			name: "fail - buy offer MPT amount cannot be zero",
-			input: &NFTokenCreateOffer{
-				BaseTx: BaseTx{
-					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
-					TransactionType: NFTokenCreateOfferTx,
-				},
-				Owner:     "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
-				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
-				Amount: types.MPTCurrencyAmount{
-					MPTIssuanceID: "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF",
-					Value:         "0",
-				},
-			},
-			expectedErr: ErrInvalidTokenValue,
-		},
-		{
 			name: "fail - sell offer issued amount cannot be zero",
 			input: &NFTokenCreateOffer{
 				BaseTx: BaseTx{
@@ -391,24 +377,6 @@ func TestNFTokenCreateOffer_Validate(t *testing.T) {
 					Issuer:   "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh",
 					Currency: "USD",
 					Value:    "0",
-				},
-			},
-			setter: func(n *NFTokenCreateOffer) {
-				n.SetSellNFTokenFlag()
-			},
-			expectedErr: ErrInvalidTokenValue,
-		},
-		{
-			name: "fail - sell offer MPT amount cannot be zero",
-			input: &NFTokenCreateOffer{
-				BaseTx: BaseTx{
-					Account:         "rs8jBmmfpwgmrSPgwMsh7CvKRmRt1JTVSX",
-					TransactionType: NFTokenCreateOfferTx,
-				},
-				NFTokenID: "000100001E962F495F07A990F4ED55ACCFEEF365DBAA76B6A048C0A200000007",
-				Amount: types.MPTCurrencyAmount{
-					MPTIssuanceID: "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF",
-					Value:         "0",
 				},
 			},
 			setter: func(n *NFTokenCreateOffer) {
