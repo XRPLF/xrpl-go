@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -145,15 +146,31 @@ func (p *PaymentChannelClaim) Validate() (bool, error) {
 		return false, err
 	}
 
-	if p.Channel == "" {
+	// rippled rejects a zero Channel under fixCleanup3_2_0. No PayChannel has a zero ID,
+	// so the check applies without amendment activation.
+	if !isNonZeroHex256(string(p.Channel)) {
 		return false, ErrInvalidChannel
+	}
+
+	if !flag.ContainsOnly(p.Flags, TfClose|TfRenew|types.TfUniversal) {
+		return false, ErrInvalidFlags
+	}
+
+	if flag.Contains(p.Flags, TfClose|TfRenew) {
+		return false, ErrInvalidFlags
 	}
 
 	if p.Signature != "" && !typecheck.IsHexBlob(p.Signature) {
 		return false, ErrInvalidSignature
 	}
 
-	if p.PublicKey != "" && !isPublicKey(p.PublicKey) {
+	// rippled parses sfPublicKey as a plain VL blob, so any non-empty value must be
+	// whole-byte hexadecimal. It reads the key form only under the Signature branch.
+	if p.PublicKey != "" && !typecheck.IsHexBlob(p.PublicKey) {
+		return false, ErrInvalidHexPublicKey
+	}
+
+	if p.Signature != "" && p.PublicKey != "" && !isPublicKey(p.PublicKey) {
 		return false, ErrInvalidHexPublicKey
 	}
 

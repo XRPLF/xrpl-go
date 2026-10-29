@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -87,7 +88,7 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelFundTx,
 				},
-				Channel: "ABC123",
+				Channel: testChannelID,
 				Amount:  types.XRPCurrencyAmount(200000),
 			},
 			expirationSetter: func(tx *PaymentChannelFund) {
@@ -104,7 +105,7 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelFundTx,
 				},
-				Channel: "ABC123",
+				Channel: testChannelID,
 				Amount:  0,
 			},
 			wantValid:   false,
@@ -118,7 +119,7 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelFundTx,
 				},
-				Channel: "ABC123",
+				Channel: testChannelID,
 				Amount:  types.XRPCurrencyAmount(currency.MaxNativeDrops + 1),
 			},
 			wantValid:   false,
@@ -131,7 +132,7 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 				BaseTx: BaseTx{
 					TransactionType: PaymentChannelFundTx,
 				},
-				Channel: "ABC123",
+				Channel: testChannelID,
 				Amount:  types.XRPCurrencyAmount(200000),
 			},
 			expirationSetter: func(tx *PaymentChannelFund) {
@@ -148,13 +149,68 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelFundTx,
 				},
-				Channel:    "DEF456",
+				Channel:    testChannelID,
 				Amount:     types.XRPCurrencyAmount(300000),
 				Expiration: 1, // Invalid expiration time
 			},
 			wantValid:   false,
 			wantErr:     true,
 			expectedErr: ErrInvalidExpiration,
+		},
+		{
+			name: "fail - empty Channel",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Amount: types.XRPCurrencyAmount(200000),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidChannel,
+		},
+		{
+			name: "fail - short Channel",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: "ABC123",
+				Amount:  types.XRPCurrencyAmount(200000),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidChannel,
+		},
+		{
+			name: "fail - non-hex Channel",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: types.Hash256(strings.Repeat("G", 64)),
+				Amount:  types.XRPCurrencyAmount(200000),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidChannel,
+		},
+		{
+			name: "fail - zero Channel",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: types.Hash256(strings.Repeat("0", 64)),
+				Amount:  types.XRPCurrencyAmount(200000),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidChannel,
 		},
 	}
 

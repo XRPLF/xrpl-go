@@ -225,6 +225,16 @@ func isPublicKey(signingPubKey string) bool {
 	return keypairs.IsValidPublicKey(signingPubKey)
 }
 
+// isPublicKeyType applies rippled publicKeyType: 33 bytes with an 0x02, 0x03 or 0xED prefix.
+// Unlike isPublicKey, it does not check that a secp256k1 key is a point on the curve.
+func isPublicKeyType(publicKey string) bool {
+	decoded, err := hex.DecodeString(publicKey)
+	if err != nil || len(decoded) != 33 {
+		return false
+	}
+	return decoded[0] == 0x02 || decoded[0] == 0x03 || decoded[0] == 0xED
+}
+
 // isSignaturePair reports whether a public key and signature are well formed.
 // It never verifies the signature, because the signed payload is not available
 // during field validation. An empty value fails either check.

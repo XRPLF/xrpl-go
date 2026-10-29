@@ -86,8 +86,12 @@ func (p *PaymentChannelCreate) Validate() (bool, error) {
 		return false, ErrInvalidDestination
 	}
 
-	// check PublicKey is valid hexademical string
-	if !isPublicKey(p.PublicKey) {
+	// Account and Destination are compared as AccountIDs, so an X-address matches its classic form.
+	if sameAccountAddress(p.Account, p.Destination) {
+		return false, ErrDestinationAccountConflict
+	}
+
+	if !isPublicKeyType(p.PublicKey) {
 		return false, ErrInvalidHexPublicKey
 	}
 

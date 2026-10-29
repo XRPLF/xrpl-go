@@ -77,6 +77,8 @@ func TestTransactionAccountIdentity(t *testing.T) {
 			setBase := base
 			setBase.TransactionType = MPTokenIssuanceSetTx
 			setBase.Flags = TfMPTLock
+			channelBase := base
+			channelBase.TransactionType = PaymentChannelCreateTx
 			const issuanceID = "000004C463C52827307480341125DA0577DEFC38405B0E3E"
 			nftID := types.NFTokenID(strings.Repeat("A", 64))
 
@@ -90,6 +92,7 @@ func TestTransactionAccountIdentity(t *testing.T) {
 				{"DepositPreauth Unauthorize", &DepositPreauth{BaseTx: depositBase, Unauthorize: pair.other}, ErrDepositPreauthUnauthorizeCannotBeSender, ErrDepositPreauthInvalidUnauthorize},
 				{"NFTokenCreateOffer Owner", &NFTokenCreateOffer{BaseTx: offerBase, NFTokenID: nftID, Amount: types.XRPCurrencyAmount(1), Owner: pair.other}, ErrOwnerAccountConflict, ErrInvalidOwner},
 				{"NFTokenCreateOffer Destination", &NFTokenCreateOffer{BaseTx: sellBase, NFTokenID: nftID, Amount: types.XRPCurrencyAmount(1), Destination: pair.other}, ErrDestinationAccountConflict, ErrInvalidDestination},
+				{"PaymentChannelCreate Destination", &PaymentChannelCreate{BaseTx: channelBase, Amount: types.XRPCurrencyAmount(1), Destination: pair.other, PublicKey: testPublicKey}, ErrDestinationAccountConflict, ErrInvalidDestination},
 				{"SetRegularKey", &SetRegularKey{BaseTx: keyBase, RegularKey: pair.other}, ErrRegularKeyMatchesAccount, ErrInvalidRegularKey},
 				{"DelegateSet", &DelegateSet{BaseTx: delegateBase, Authorize: pair.other, Permissions: []types.Permission{}}, ErrDelegateSetAuthorizeAccountConflict, ErrInvalidDestination},
 				{"NFTokenMint", &NFTokenMint{BaseTx: mintBase, Issuer: pair.other}, ErrIssuerAccountConflict, ErrInvalidIssuer},
