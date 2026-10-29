@@ -150,6 +150,17 @@ func TestVaultDelete_Validate(t *testing.T) {
 			expected: ErrVaultDeleteVaultIDInvalid,
 		},
 		{
+			name: "fail - zero VaultID",
+			tx: &VaultDelete{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultDeleteTx,
+				},
+				VaultID: types.Hash256("0000000000000000000000000000000000000000000000000000000000000000"),
+			},
+			expected: ErrVaultDeleteVaultIDInvalid,
+		},
+		{
 			name: "pass - complete",
 			tx: &VaultDelete{
 				BaseTx: BaseTx{

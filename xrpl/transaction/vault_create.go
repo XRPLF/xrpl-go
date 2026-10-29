@@ -1,7 +1,9 @@
 package transaction
 
 import (
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"math/big"
+
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -149,7 +151,7 @@ func (tx *VaultCreate) Validate() (bool, error) {
 		}
 	}
 
-	if tx.AssetsMaximum != nil && *tx.AssetsMaximum != "" && !typecheck.IsXRPLNumber(tx.AssetsMaximum.String()) {
+	if tx.AssetsMaximum != nil && *tx.AssetsMaximum != "" && !validVaultAssetsMaximum(tx.AssetsMaximum.String(), tx.Asset.Kind()) {
 		return false, ErrVaultCreateAssetsMaximumInvalid
 	}
 
@@ -205,4 +207,27 @@ func (tx *VaultCreate) Validate() (bool, error) {
 	}
 
 	return true, nil
+}
+
+func validVaultAssetsMaximum(value string, kind ledger.AssetKind) bool {
+	number, ok := codecNumber(value)
+	if !ok || number.Sign() < 0 {
+		return false
+	}
+
+	// Conversion rounds to nearest, ties to even. The midpoint is inclusive only
+	// for XRP's even ceiling. MPT's ceiling and the IOU's 16-digit mantissa are odd.
+	limit := new(big.Rat)
+	switch kind {
+	case ledger.AssetXRP:
+		limit.SetInt64(int64(currency.MaxNativeDrops))
+	case ledger.AssetMPT:
+		limit.SetInt64(int64(types.MaxMPTAmount))
+	case ledger.AssetIOU:
+		limit.SetString("99999999999999995e79")
+		return number.Cmp(limit) < 0
+	}
+	limit.Add(limit, big.NewRat(1, 2))
+	comparison := number.Cmp(limit)
+	return comparison < 0 || (comparison == 0 && kind == ledger.AssetXRP)
 }

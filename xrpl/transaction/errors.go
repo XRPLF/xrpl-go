@@ -681,8 +681,8 @@ var (
 	ErrVaultCreateInvestmentPeriodInvalid = errors.New("vaultCreate: investment period must be at least 180 and less than 946708560 seconds")
 	// ErrVaultCreateAssetRequired is returned when Asset is not set on a VaultCreate transaction.
 	ErrVaultCreateAssetRequired = errors.New("vaultCreate: Asset is required")
-	// ErrVaultCreateAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number.
-	ErrVaultCreateAssetsMaximumInvalid = errors.New("vaultCreate: AssetsMaximum must be a valid XRPL number")
+	// ErrVaultCreateAssetsMaximumInvalid is returned when AssetsMaximum is not a non-negative codec Number representable in the vault asset.
+	ErrVaultCreateAssetsMaximumInvalid = errors.New("vaultCreate: AssetsMaximum must be a non-negative XRPL number")
 	// ErrVaultCreateDataInvalid is returned when Data is not a valid hex string or exceeds 512 characters (256 bytes).
 	ErrVaultCreateDataInvalid = errors.New("vaultCreate: Data must be a valid hex string and at most 512 characters (256 bytes)")
 	// ErrVaultCreateMPTokenMetadataInvalid is returned when MPTokenMetadata is not a valid hex string or exceeds 2048 characters (1024 bytes).
@@ -700,40 +700,42 @@ var (
 
 	// ErrVaultSetVaultIDRequired is returned when VaultID is not set on a VaultSet transaction.
 	ErrVaultSetVaultIDRequired = errors.New("vaultSet: VaultID is required")
-	// ErrVaultSetVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
-	ErrVaultSetVaultIDInvalid = errors.New("vaultSet: VaultID must be a valid 64-character hexadecimal string")
-	// ErrVaultSetAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number.
-	ErrVaultSetAssetsMaximumInvalid = errors.New("vaultSet: AssetsMaximum must be a valid XRPL number")
+	// ErrVaultSetVaultIDInvalid is returned when VaultID is not a nonzero 64-character hexadecimal string.
+	ErrVaultSetVaultIDInvalid = errors.New("vaultSet: VaultID must be a nonzero 64-character hexadecimal string")
+	// ErrVaultSetAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number or is negative.
+	ErrVaultSetAssetsMaximumInvalid = errors.New("vaultSet: AssetsMaximum must be a non-negative XRPL number")
 	// ErrVaultSetDataInvalid is returned when Data is not a valid hex string or exceeds 512 characters (256 bytes).
 	ErrVaultSetDataInvalid = errors.New("vaultSet: Data must be a valid hex string and at most 512 characters (256 bytes)")
 	// ErrVaultSetDomainIDInvalid is returned when DomainID is not a valid 64-character hexadecimal string.
 	ErrVaultSetDomainIDInvalid = errors.New("vaultSet: DomainID must be a valid 64-character hexadecimal string")
+	// ErrVaultSetEmptyUpdate is returned when no mutable Vault field would be sent.
+	ErrVaultSetEmptyUpdate = errors.New("vaultSet: at least one of Data, AssetsMaximum, or DomainID is required")
 
 	// ErrVaultDeleteMemoDataInvalid is returned for empty, malformed, or oversized deletion metadata.
 	ErrVaultDeleteMemoDataInvalid = errors.New("vaultDelete: MemoData must encode 1 to 256 complete bytes as hexadecimal")
 	// ErrVaultDeleteVaultIDRequired is returned when VaultID is not set on a VaultDelete transaction.
 	ErrVaultDeleteVaultIDRequired = errors.New("vaultDelete: VaultID is required")
-	// ErrVaultDeleteVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
-	ErrVaultDeleteVaultIDInvalid = errors.New("vaultDelete: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultDeleteVaultIDInvalid is returned when VaultID is not a nonzero 64-character hexadecimal string.
+	ErrVaultDeleteVaultIDInvalid = errors.New("vaultDelete: VaultID must be a nonzero 64-character hexadecimal string")
 
 	// ErrVaultDepositVaultIDRequired is returned when VaultID is not set on a VaultDeposit transaction.
 	ErrVaultDepositVaultIDRequired = errors.New("vaultDeposit: VaultID is required")
-	// ErrVaultDepositVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
-	ErrVaultDepositVaultIDInvalid = errors.New("vaultDeposit: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultDepositVaultIDInvalid is returned when VaultID is not a nonzero 64-character hexadecimal string.
+	ErrVaultDepositVaultIDInvalid = errors.New("vaultDeposit: VaultID must be a nonzero 64-character hexadecimal string")
 	// ErrVaultDepositAmountRequired is returned when Amount is not set on a VaultDeposit transaction.
 	ErrVaultDepositAmountRequired = errors.New("vaultDeposit: Amount is required")
 
 	// ErrVaultWithdrawVaultIDRequired is returned when VaultID is not set on a VaultWithdraw transaction.
 	ErrVaultWithdrawVaultIDRequired = errors.New("vaultWithdraw: VaultID is required")
-	// ErrVaultWithdrawVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
-	ErrVaultWithdrawVaultIDInvalid = errors.New("vaultWithdraw: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultWithdrawVaultIDInvalid is returned when VaultID is not a nonzero 64-character hexadecimal string.
+	ErrVaultWithdrawVaultIDInvalid = errors.New("vaultWithdraw: VaultID must be a nonzero 64-character hexadecimal string")
 	// ErrVaultWithdrawAmountRequired is returned when Amount is not set on a VaultWithdraw transaction.
 	ErrVaultWithdrawAmountRequired = errors.New("vaultWithdraw: Amount is required")
 
 	// ErrVaultClawbackVaultIDRequired is returned when VaultID is not set on a VaultClawback transaction.
 	ErrVaultClawbackVaultIDRequired = errors.New("vaultClawback: VaultID is required")
-	// ErrVaultClawbackVaultIDInvalid is returned when VaultID is not a valid 64-character hexadecimal string.
-	ErrVaultClawbackVaultIDInvalid = errors.New("vaultClawback: VaultID must be a valid 64-character hexadecimal string")
+	// ErrVaultClawbackVaultIDInvalid is returned when VaultID is not a nonzero 64-character hexadecimal string.
+	ErrVaultClawbackVaultIDInvalid = errors.New("vaultClawback: VaultID must be a nonzero 64-character hexadecimal string")
 	// ErrVaultClawbackAmountInvalidType is returned when Amount is XRP on a VaultClawback transaction.
 	ErrVaultClawbackAmountInvalidType = errors.New("vaultClawback: Amount must be an IssuedCurrencyAmount or MPTCurrencyAmount")
 	// ErrVaultClawbackHolderRequired is returned when Holder is not set on a VaultClawback transaction.

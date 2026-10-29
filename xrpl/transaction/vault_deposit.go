@@ -54,7 +54,7 @@ func (tx *VaultDeposit) Validate() (bool, error) {
 		return false, ErrVaultDepositVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID.String()) {
+	if !isNonZeroHex256(tx.VaultID.String()) {
 		return false, ErrVaultDepositVaultIDInvalid
 	}
 
@@ -64,6 +64,9 @@ func (tx *VaultDeposit) Validate() (bool, error) {
 
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {
 		return false, err
+	}
+	if tx.Amount.IsZero() {
+		return false, ErrInvalidTokenValue
 	}
 
 	return true, nil
