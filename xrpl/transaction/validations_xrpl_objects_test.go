@@ -6,6 +6,7 @@ import (
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
@@ -227,6 +228,32 @@ func TestIsAmount(t *testing.T) {
 	}
 }
 
+func TestIsAmount_NativeRange(t *testing.T) {
+	type xrpWrapper struct{ types.XRPCurrencyAmount }
+	maximum := types.XRPCurrencyAmount(currency.MaxNativeDrops)
+	aboveMaximum := maximum + 1
+	tests := []struct {
+		name    string
+		amount  types.CurrencyAmount
+		wantErr error
+	}{
+		{name: "zero", amount: types.XRPCurrencyAmount(0)},
+		{name: "maximum", amount: maximum},
+		{name: "pointer maximum", amount: &maximum},
+		{name: "wrapper maximum", amount: xrpWrapper{maximum}},
+		{name: "above maximum", amount: aboveMaximum, wantErr: currency.ErrInvalidNativeAmount},
+		{name: "pointer above maximum", amount: &aboveMaximum, wantErr: currency.ErrInvalidNativeAmount},
+		{name: "wrapper above maximum", amount: xrpWrapper{aboveMaximum}, wantErr: currency.ErrInvalidNativeAmount},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := IsAmount(tt.amount, "Amount", true)
+			require.Equal(t, tt.wantErr == nil, ok)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
 func TestIsIssuedCurrency(t *testing.T) {
 	// IsIssuedCurrency returns (true, nil) on success and (false, err) on every
 	// failure, so a non-nil expectedErr both selects the failure path and locks
@@ -243,6 +270,14 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 				Currency: "USD",
 			},
+		},
+		{
+			name:  "pass - noCurrency remains allowed in Amount",
+			input: types.IssuedCurrencyAmount{Currency: "0000000000000000000000000000000000000001", Issuer: "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW", Value: "1"},
+		},
+		{
+			name:  "pass - ACCOUNT_ONE remains allowed in Amount",
+			input: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rrrrrrrrrrrrrrrrrrrrBZbvji", Value: "1"},
 		},
 		{
 			name: "pass - valid IssuedCurrency object with signed zero value",
@@ -353,6 +388,16 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Currency: "USD",
 				Value:    "100",
 			},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name:        "fail - ACCOUNT_ZERO issuer in Amount",
+			input:       types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rrrrrrrrrrrrrrrrrrrrrhoLvTp", Value: "1"},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name:        "fail - ACCOUNT_ZERO issuer as tagless X-address in Amount",
+			input:       types.IssuedCurrencyAmount{Currency: "USD", Issuer: "X7TYFRtYHMcHtT2qNycMwgXzFbcRvEgLY6WDzQKYkjCp8GS", Value: "1"},
 			expectedErr: ErrInvalidIssuer,
 		},
 		{
@@ -557,6 +602,25 @@ func TestIsMPTCurrency(t *testing.T) {
 }
 
 func TestIsMemo(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		memo    types.Memo
+		wantErr error
+	}{
+		{"odd MemoData", types.Memo{MemoData: "A"}, ErrMemoDataShouldBeHex},
+		{"odd MemoFormat", types.Memo{MemoFormat: "ABC"}, ErrMemoFormatShouldBeHex},
+		{"odd MemoType", types.Memo{MemoType: "ABCDE"}, ErrMemoTypeShouldBeHex},
+		{"even MemoData", types.Memo{MemoData: "AB"}, nil},
+		{"even MemoFormat", types.Memo{MemoFormat: "ABCD"}, nil},
+		{"even MemoType", types.Memo{MemoType: "ABCDEF"}, nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := IsMemo(tt.memo)
+			require.Equal(t, tt.wantErr == nil, ok)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+
 	t.Run("pass - valid Memo object with all fields", func(t *testing.T) {
 		obj := types.Memo{
 			MemoData:   "0123456789abcdef",
@@ -637,89 +701,125 @@ func TestIsAsset(t *testing.T) {
 		}
 	})
 
-	t.Run("fail - only uppercase XRP is native, any other code needs an issuer", func(t *testing.T) {
-		obj := ledger.Asset{
-			Currency: "xrP",
-		}
-
-		ok, err := IsAsset(obj)
-
-		require.False(t, ok)
-		require.ErrorIs(t, err, ErrInvalidAssetIssuer)
-	})
-
-	t.Run("fail - currency is not an encodable code", func(t *testing.T) {
-		obj := ledger.Asset{
-			Currency: "USDX",
-			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-		}
-
-		ok, err := IsAsset(obj)
-
-		require.False(t, ok)
-		require.ErrorIs(t, err, ErrInvalidAssetCurrency)
-	})
-
-	t.Run("fail - currency is the reserved ISO XRP code", func(t *testing.T) {
-		obj := ledger.Asset{
-			Currency: "0000000000000000000000005852500000000000",
-			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-		}
-
-		ok, err := IsAsset(obj)
-
-		require.False(t, ok)
-		require.ErrorIs(t, err, ErrInvalidAssetCurrency)
-	})
-
-	t.Run("fail - issuer is a tagged X-address", func(t *testing.T) {
-		obj := ledger.Asset{
-			Currency: "USD",
-			Issuer:   clawbackTaggedHolder,
-		}
-
-		ok, err := IsAsset(obj)
-
-		require.False(t, ok)
-		require.ErrorIs(t, err, ErrInvalidAssetIssuer)
-	})
-
-	t.Run("fail - MPT issuance ID has the wrong length", func(t *testing.T) {
-		obj := ledger.Asset{
-			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
-		}
-
-		ok, err := IsAsset(obj)
-
-		require.False(t, ok)
-		require.ErrorIs(t, err, ErrInvalidMPTIssuanceIDAsset)
-	})
-
-	t.Run("fail - invalid Asset object with currency XRP and an issuer defined", func(t *testing.T) {
-		obj := ledger.Asset{
-			Currency: "XRP",
-			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-		}
-
-		ok, err := IsAsset(obj)
-
-		if ok {
-			t.Errorf("Expected IsAsset to return false, but got true with error: %v", err)
-		}
-	})
-
-	t.Run("pass - lowercase xrP with an issuer is an issued currency", func(t *testing.T) {
-		obj := ledger.Asset{
-			Currency: "xrP",
-			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-		}
-
-		ok, err := IsAsset(obj)
-
-		if !ok {
-			t.Errorf("Expected IsAsset to return true, but got false with error: %v", err)
-		}
-	})
+	const issuer = "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
+	tests := []struct {
+		name    string
+		asset   ledger.Asset
+		wantErr error
+	}{
+		{
+			name:  "pass - native XRP as 40 zero hex characters",
+			asset: ledger.Asset{Currency: "0000000000000000000000000000000000000000"},
+		},
+		{
+			name:    "fail - empty asset",
+			asset:   ledger.Asset{},
+			wantErr: ErrInvalidAssetFields,
+		},
+		{
+			name:    "fail - lowercase xrp needs an issuer",
+			asset:   ledger.Asset{Currency: "xrp"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - USD needs an issuer",
+			asset:   ledger.Asset{Currency: "USD"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - unparseable currency without issuer",
+			asset:   ledger.Asset{Currency: "USDX"},
+			wantErr: ErrInvalidAssetCurrency,
+		},
+		{
+			name:    "fail - ISO XRP layout without issuer",
+			asset:   ledger.Asset{Currency: "0000000000000000000000005852500000000000"},
+			wantErr: ErrInvalidAssetCurrency,
+		},
+		{
+			name:    "fail - noCurrency without issuer",
+			asset:   ledger.Asset{Currency: "0000000000000000000000000000000000000001"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - mixed-case xrP needs an issuer",
+			asset:   ledger.Asset{Currency: "xrP"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - currency XRP with an issuer",
+			asset:   ledger.Asset{Currency: "XRP", Issuer: issuer},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - native XRP currency bytes with an issuer",
+			asset:   ledger.Asset{Currency: "0000000000000000000000000000000000000000", Issuer: issuer},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:  "pass - lowercase xrP with an issuer is an issued currency",
+			asset: ledger.Asset{Currency: "xrP", Issuer: issuer},
+		},
+		{
+			name:    "fail - currency is not an encodable code",
+			asset:   ledger.Asset{Currency: "USDX", Issuer: issuer},
+			wantErr: ErrInvalidAssetCurrency,
+		},
+		{
+			name:    "fail - currency is the reserved ISO XRP code",
+			asset:   ledger.Asset{Currency: "0000000000000000000000005852500000000000", Issuer: issuer},
+			wantErr: ErrInvalidAssetCurrency,
+		},
+		{
+			name:  "pass - currency is rippled noCurrency",
+			asset: ledger.Asset{Currency: "0000000000000000000000000000000000000001", Issuer: issuer},
+		},
+		{
+			name:  "pass - nonstandard currency with XRP bytes outside the ISO slot",
+			asset: ledger.Asset{Currency: "5852500000000000000000000000000000000000", Issuer: issuer},
+		},
+		{
+			name:    "fail - issuer is a tagged X-address",
+			asset:   ledger.Asset{Currency: "USD", Issuer: clawbackTaggedHolder},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - issuer is ACCOUNT_ZERO",
+			asset:   ledger.Asset{Currency: "USD", Issuer: "rrrrrrrrrrrrrrrrrrrrrhoLvTp"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - issuer is ACCOUNT_ONE",
+			asset:   ledger.Asset{Currency: "USD", Issuer: "rrrrrrrrrrrrrrrrrrrrBZbvji"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - MPT issuance ID has the wrong length",
+			asset:   ledger.Asset{MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF"},
+			wantErr: ErrInvalidMPTIssuanceIDAsset,
+		},
+		{
+			name:    "fail - MPT issuance ID has a zero issuer AccountID",
+			asset:   ledger.Asset{MPTIssuanceID: "000024030000000000000000000000000000000000000000"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:  "pass - MPT issuance ID has a nonzero issuer AccountID",
+			asset: ledger.Asset{MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := IsAsset(tt.asset)
+			if tt.wantErr == nil {
+				require.True(t, ok)
+				require.NoError(t, err)
+				return
+			}
+			require.False(t, ok)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
 
 	t.Run("fail - invalid Asset object with currency only and different than XRP", func(t *testing.T) {
 		obj := ledger.Asset{
@@ -769,18 +869,6 @@ func TestIsAsset(t *testing.T) {
 			t.Errorf("Expected IsAsset to return false, but got true")
 		} else if err == nil {
 			t.Errorf("Expected an error, but got nil")
-		}
-	})
-
-	t.Run("pass - valid MPT asset", func(t *testing.T) {
-		obj := ledger.Asset{
-			MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
-		}
-
-		ok, err := IsAsset(obj)
-
-		if !ok {
-			t.Errorf("Expected IsAsset to return true, but got false with error: %v", err)
 		}
 	})
 
