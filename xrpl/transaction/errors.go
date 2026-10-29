@@ -272,8 +272,8 @@ var (
 	// ErrInvalidExpiration indicates the expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel.
 	ErrInvalidExpiration = errors.New("expiration time must be either later than the current time plus the SettleDelay of the channel, or the existing Expiration of the channel")
 
-	// ErrInvalidChannel is returned when the Channel is not a valid 64-character hexadecimal string.
-	ErrInvalidChannel = errors.New("invalid Channel, must be a valid 64-character hexadecimal string")
+	// ErrInvalidChannel is returned when the Channel is not a nonzero 64-character hexadecimal string.
+	ErrInvalidChannel = errors.New("invalid Channel, must be a nonzero 64-character hexadecimal string")
 	// ErrPaymentChannelCreateAmountInvalid is returned when Amount is outside the valid native XRP range.
 	ErrPaymentChannelCreateAmountInvalid = errors.New("paymentChannelCreate: Amount must be between 1 and 100000000000000000 drops")
 	// ErrPaymentChannelFundAmountInvalid is returned when Amount is outside the valid native XRP range.
@@ -286,8 +286,8 @@ var (
 	ErrPaymentChannelClaimBalanceExceedsAmount = errors.New("paymentChannelClaim: Balance must not exceed Amount")
 	// ErrPaymentChannelClaimSignatureFieldsRequired is returned when a signature omits Balance or PublicKey.
 	ErrPaymentChannelClaimSignatureFieldsRequired = errors.New("paymentChannelClaim: Signature requires Balance and PublicKey")
-	// ErrInvalidSignature is returned when the Signature is not a valid hexadecimal string.
-	ErrInvalidSignature = errors.New("invalid Signature, must be a valid hexadecimal string")
+	// ErrInvalidSignature is returned when the Signature is not whole-byte hexadecimal.
+	ErrInvalidSignature = errors.New("invalid Signature, must be whole-byte hexadecimal")
 
 	// offer
 
