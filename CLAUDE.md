@@ -1,208 +1,64 @@
 # XRPL-GO
 
-## Essential Commands
+## Commands
 
-### Linting
+Run the core checks with `GOWORK=off`. A `go.work` file from `make workspace` can change the dependency versions that the root module uses. Root `./...` commands skip `confidential/`.
 
 ```bash
-make lint           # Run golangci-lint (auto-installs if missing)
-make lint-fix       # Run gofmt to fix formatting issues
+GOWORK=off make lint
+GOWORK=off make lint-fix
+GOWORK=off make test-ci
+GOWORK=off go test -run TestPayment_TxType ./xrpl/transaction
 ```
 
-### Testing
+For changes in `confidential/`, create the workspace first. The native tests need cgo.
 
 ```bash
-# Unit tests
-make test-ci        # Run core unit tests (CI mode, clean cache, parallel)
-make test-all       # Run core unit tests (standard mode)
-
-# Optional confidential module, tested with the checked-out core
 make workspace
+make lint-confidential
 make test-confidential
 make test-confidential-nocgo
-make lint-confidential
-
-# Package-specific tests
-make test-binary-codec   # Test binary-codec package
-make test-address-codec  # Test address-codec package
-make test-keypairs       # Test keypairs package
-make test-xrpl           # Test xrpl package
-
-# Integration tests (require running network)
-make run-localnet-linux/amd64       # Start local rippled node (amd64)
-make run-localnet-linux/arm64       # Start local rippled node (arm64)
-make test-integration-localnet      # Run integration tests on localnet
-make test-integration-devnet        # Run integration tests on devnet
-make test-integration-testnet       # Run integration tests on testnet
-
-# Confidential MPT (XLS-96) integration tests. Kept separate because they need CGo and
-# only build on linux/darwin with amd64/arm64.
-make test-integration-confidential-localnet   # Confidential MPT tests on localnet
-make test-integration-confidential-devnet     # Confidential MPT tests on devnet
-
-# Coverage and benchmarks
-make coverage-unit   # Generate coverage report (coverage.html)
-make benchmark       # Run benchmarks
 ```
 
-### Running Single Tests
-
-```bash
-# Run specific test file
-go test ./xrpl/transaction/payment_test.go
-
-# Run specific test function
-go test -run TestPayment ./xrpl/transaction
-
-# Run with verbose output
-go test -v ./xrpl/transaction
-
-# Run integration tests (set INTEGRATION env var)
-INTEGRATION=localnet go test ./xrpl/transaction/integration -v
-```
+For integration tests, localnet, and CI scope, read the "Development setup" and "CI scope" sections of [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Module boundaries
 
 The root module owns protocol types, codecs, clients, and wallet signing. The nested `confidential/` module owns builders, cryptographic helpers, native dependencies, its examples, and its integration tests. Dependencies go from confidential to core only. Keep code that imports confidential inside that module, including tests and examples, so root `go mod tidy` remains independent.
 
-Root `./...` commands skip the nested module. Use `make workspace` for paired development and `GOWORK=off` for checks against published dependencies. Before changing release automation, module version requirements, or release notes, read [RELEASING.md](RELEASING.md).
+In the root module, a package imports only the layers after it in this order: `xrpl/` -> `keypairs/` and `binary-codec/` -> `address-codec/` -> `pkg/`. The low-level packages never import `xrpl/`.
 
-## Architecture Overview
+Before changing release automation, module version requirements, or release notes, read [RELEASING.md](RELEASING.md).
 
-### Package Structure
+## Protocol parity
 
-The repository follows a modular architecture with four primary layers:
+xrpld (formerly rippled) is the reference for the protocol. Its source code is in the [XRPLF/rippled](https://github.com/XRPLF/rippled) repository. Use the source code, not only the documentation. The library must be correct compared to xrpld:
 
-1. **Low-level cryptographic primitives** (`address-codec/`, `keypairs/`, `binary-codec/`)
-   - `address-codec/`: Encodes/decodes XRPL addresses using Base58Check
-   - `keypairs/`: Cryptographic key generation and management (secp256k1, ed25519)
-   - `binary-codec/`: Binary serialization/deserialization of XRPL objects
-     - `definitions/`: Field type definitions from XRPL protocol
-     - `serdes/`: Serialization/deserialization logic
-     - `types/`: Type implementations for each XRPL field type
+- Field definitions, flags, limits, binary encoding, signing payloads, and hashes match xrpld exactly.
+- Validation accepts every transaction that can succeed on xrpld, unless a client policy that the library documents forbids it. Example: a tagged X-address in a field that has no tag field.
 
-2. **Core XRPL functionality** (`xrpl/`)
-   - `transaction/`: All transaction types and transaction handling
-     - Each transaction type has its own file (e.g., `payment.go`, `account_set.go`)
-     - `BaseTx` struct contains common fields for all transactions
-     - All transactions implement `Tx` interface with `TxType()` method
-     - `integration/` subdirectory contains integration tests
-   - `rpc/`: JSON-RPC client for synchronous requests to rippled nodes
-   - `websocket/`: WebSocket client for real-time subscriptions and async requests
-   - `wallet/`: Wallet creation, derivation from seed/mnemonic, and offline signing
-   - `queries/`: Query request/response types for ledger data
-   - `ledger-entry-types/`: Types for different ledger objects
-   - `hash/`, `time/`, `currency/`, `common/`: Utilities for XRPL-specific data types
+[xrpl.js](https://github.com/XRPLF/xrpl.js) and [xrpl-py](https://github.com/XRPLF/xrpl-py) are the most used client libraries, and they are the reference for client behavior. Before you implement a feature, read how they do it and keep parity with their behavior, so that users get the same experience in all client libraries. Match the behavior, not the API shape, and use Go idioms for the API.
 
-3. **Internal utilities** (`pkg/`)
-   - Shared utilities that don't depend on XRPL-specific logic
-   - `crypto/`, `big-decimal/`, `map_utils/`, `random/`, `typecheck/`
+When you implement or change a rule, and xrpld, xrpl.js, xrpl-py, and xrpl-go do not agree on it, the user chooses the behavior. Show the user a parity table with one row for each of the four. For each row, give the behavior and the location of the code. Then ask the user which behavior to implement.
 
-4. **Examples and documentation** (`examples/`, `docs/`)
-   - `examples/` contains working examples for each major feature
-   - Each example is self-contained in its own directory
+Checks that prevent real problems for the user are welcome. In xrpld, the stateless rules are in the preflight stage of each transactor (`preflight`, `getFlagsMask`, and related functions). The rules that read the ledger are in `preclaim` and `doApply`.
 
-### Key Design Patterns
+- Stateless check: add it when it stops a real problem before the user signs or submits the transaction, for example a value that xrpld always rejects in preflight. When the rule is clear and the same in all cases, add the check without the parity table, even when xrpl.js and xrpl-py do not have it. When the rule is not clear, for example when it depends on an amendment, show the parity table and ask.
+- Stateful check: it reads the ledger, so it costs requests to the server, and xrpld does the same check when it processes the transaction. Add it when its value to the user is more than its cost. Many ledger requests that only repeat an xrpld check cost more than they give. When xrpl.js or xrpl-py does the check, it can be a good idea to add it too, for parity.
 
-#### Interfaces and Abstractions
+## Tests
 
-- Each major package has an `interfaces/` subdirectory defining contracts
-- Enables dependency injection and testing with mocks
-- See `xrpl/interfaces/`, `keypairs/interfaces/`, etc.
+- Use table-driven tests when all cases use the same setup, action, and assertions, and only inputs or expected results change. When a new case fits an existing table, add it to that table.
+- Use separate focused tests when setup or assertions differ. Keep per-case assertion callbacks, conditional checks, and one-off setup hooks out of tables.
+- Use `golang/mock` for mocks.
+- Integration tests are in `xrpl/transaction/integration/` and `confidential/integration/`. They skip unless `INTEGRATION` is `localnet`, `devnet`, or `testnet`, so a run without it tests nothing.
 
-#### Test Organization
-
-- `testutil/` directories provide test helpers and fixtures for each package
-- Unit tests exclude: `faucet/`, `examples/`, `testutil/`, `interfaces/`
-- Integration tests in `xrpl/transaction/integration/` require live network
-- Use `golang/mock` for generating mocks
-- Use table-driven tests when all cases use the same setup, action, and assertions, and only inputs or expected results change
-- When a new case naturally fits an existing table test, add it to that table
-- Do not force different behavior into a table with per-case assertion callbacks, many conditional checks, or one-off setup hooks; use separate focused tests when setup or assertions differ
-
-#### Type Safety
-
-- Transaction types use specific Go types from `xrpl/transaction/types/`
-- Currency amounts distinguish between XRP (drops) and issued currencies
-- Address validation through `addresscodec` package
-
-### Client Usage Pattern
-
-Two primary client types for interacting with XRPL:
-
-1. **RPC Client** (`xrpl/rpc/`): Synchronous JSON-RPC requests
-   - Used for one-off queries and transaction submission
-   - Methods in `queries.go` map to rippled API methods
-
-2. **WebSocket Client** (`xrpl/websocket/`): Asynchronous connections
-   - Used for subscriptions and real-time data
-   - Supports streaming ledger updates, transaction monitoring
-   - Methods in `queries.go` and subscription handlers in `subscription.go`
-
-Both clients share similar query interfaces but differ in connection management.
-
-### Transaction Lifecycle
-
-1. **Create**: Construct transaction struct (e.g., `Payment`, `AccountSet`)
-2. **Autofill**: Set `Fee`, `Sequence`, `LastLedgerSequence` (via RPC/WebSocket client helpers)
-3. **Sign**: Use `wallet.Sign()` to add signature
-4. **Encode**: Serialize with `binarycodec.Encode()` for submission
-5. **Submit**: Send via `rpc.Submit()` or `websocket.Submit()`
-6. **Monitor**: Wait for validation and check result
-
-See `examples/send-xrp/` or `examples/send-payment/` for complete workflows.
-
-## Important Development Notes
-
-### Test Exclusions
-
-The Makefile excludes certain packages from standard test runs:
-
-- `faucet/` - Interacts with external testnet faucets
-- `examples/` - Standalone example code, not library tests
-- `testutil/` - Test helpers, not tests themselves
-- `interfaces/` - Interface definitions only
-
-### Integration Tests
-
-Integration tests require `INTEGRATION` environment variable:
-
-- `localnet`: Requires local rippled node (Docker)
-- `devnet`: Uses XRPL devnet
-- `testnet`: Uses XRPL testnet
-
-Start localnet with `make run-localnet-linux/amd64` before running integration tests.
-
-### Lint Configuration
-
-- Uses `golangci-lint v2.11.3` (configured in Makefile)
-- Config in `.golangci.yml` enables: govet, errcheck, staticcheck, gosec, etc.
-- Excludes package-comments linter for examples/
-
-### Binary Codec
-
-The binary codec is critical for transaction signing and submission:
-
-- Canonical field ordering defined in `binary-codec/definitions/`
-- Type serializers in `binary-codec/types/`
-- Always use `binarycodec.Encode()` for creating transaction blobs
-- Use `binarycodec.EncodeForSigning()` when preparing transactions for signature
-
-### Changelog
+## Changelog
 
 Before editing either module's changelog, compare the final branch with its base branch. Entries must describe the net effect of that final diff, not intermediate changes made during development. Follow the [contributor guidance](CONTRIBUTING.md#pull-requests) for section placement and omitting empty `[Unreleased]` sections.
 
 - Add or update an entry only when the final branch has a changelog-worthy difference from the base branch
 - If a feature changes and then returns to its base-branch behavior, remove its entry or add no entry
-- If later work changes the effect of an existing entry, edit that entry to describe the final result; do not add another entry for the intermediate state
-- It is valid to make no changelog change when the branch has no changelog-worthy net difference
+- If later work changes the effect of an existing entry, edit that entry to describe the final result instead of adding an entry for the intermediate state
 
-Follow the existing format: group entries under `### Added`, `### Changed`, or `### Fixed`, with a `#### <package>` subheading. Keep entries concise but descriptive enough that users understand the impact. Use `confidential/CHANGELOG.md` for changes to the optional module and the root changelog for core changes.
-
-### Common Gotchas
-
-- XRP amounts are always in "drops" (1 XRP = 1,000,000 drops)
-- Transaction `Fee` must be set before signing
-- `Sequence` numbers must be consecutive (or use Tickets)
-- `LastLedgerSequence` prevents transaction from staying in queue indefinitely
-- Address encoding differs between classic addresses and X-addresses
+Follow the existing format: group entries under `### BREAKING CHANGES`, `### Added`, `### Changed`, or `### Fixed`, with a `#### <package>` subheading. Use `### BREAKING CHANGES` for source-incompatible API changes and list it first. Keep entries concise but descriptive enough that users understand the impact. Use `confidential/CHANGELOG.md` for changes to the optional module and the root changelog for core changes.
