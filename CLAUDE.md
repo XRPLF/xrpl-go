@@ -46,6 +46,14 @@ Checks that prevent real problems for the user are welcome. In xrpld, the statel
 - Stateless check: add it when it stops a real problem before the user signs or submits the transaction, for example a value that xrpld always rejects in preflight. When the rule is clear and the same in all cases, add the check without the parity table, even when xrpl.js and xrpl-py do not have it. When the rule is not clear, for example when it depends on an amendment, show the parity table and ask.
 - Stateful check: it reads the ledger, so it costs requests to the server, and xrpld does the same check when it processes the transaction. Add it when its value to the user is more than its cost. Many ledger requests that only repeat an xrpld check cost more than they give. When xrpl.js or xrpl-py does the check, it can be a good idea to add it too, for parity.
 
+## Errors
+
+These rules apply to library code. `examples/` and `testutil/` can create errors inline.
+
+- Define comparable errors (`errors.New` sentinels and error types) in the package's `errors.go`. Follow the structure of that file: group related errors and give each exported error a `// ErrX is returned when ...` comment.
+- When a field fails because of a shared condition, define its error in `errors.go` as a wrap of both, for example `fmt.Errorf("%w: %w", ErrInvalidDelegate, ErrZeroAccountID)`, so callers can match either with `errors.Is`.
+- At the failure site, wrap a sentinel with `fmt.Errorf` to add context, for example `fmt.Errorf("%w %q: ...: %w", ErrInvalidAddressFormat, address, err)`. This is correct and does not belong in `errors.go`.
+
 ## Tests
 
 - Use table-driven tests when all cases use the same setup, action, and assertions, and only inputs or expected results change. When a new case fits an existing table, add it to that table.
