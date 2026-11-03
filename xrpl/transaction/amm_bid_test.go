@@ -143,6 +143,34 @@ func TestAMMBid_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "fail - BidMin above BidMax with the same issue",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "9.5"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "pass - BidMin equal to BidMax",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "1e1"},
+			},
+		},
+		{
+			name: "pass - BidMin above BidMax with different issues",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "EUR", Issuer: testAddrDelegate, Value: "5"},
+			},
+		},
+		{
 			name: "fail - sender AuthAccount",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
