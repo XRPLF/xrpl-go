@@ -229,33 +229,24 @@ func (a *Amount) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 }
 
 func deserializeToken(data []byte) (map[string]any, error) {
-	var value string
-	var err error
-	if bytes.Equal(data[0:8], []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) {
-		value = "0"
-	} else {
-		value, err = deserializeValue(data[:8])
-		if err != nil {
+	// rippled's STAmount reader rejects a native currency or an ACCOUNT_ZERO issuer, and
+	// reads the reserved standard layout of "XRP" as an ordinary currency.
+	parts, err := newIOUParts(data[8:28], data[28:48])
+	if err != nil {
+		return nil, err
+	}
+	token, err := parts.json()
+	if err != nil {
+		return nil, err
+	}
+	value := "0"
+	if !bytes.Equal(data[0:8], []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) {
+		if value, err = deserializeValue(data[:8]); err != nil {
 			return nil, err
 		}
 	}
-	issuer, err := deserializeIssuer(data[28:])
-	if err != nil {
-		return nil, err
-	}
-	// An issued-currency amount cannot use the native currency. The encoder and rippled reject it.
-	if bytes.Equal(data[8:28], XRPBytes) {
-		return nil, &InvalidCodeError{Disallowed: "XRP"}
-	}
-	curr, err := deserializeCurrencyCode(data[8:28])
-	if err != nil {
-		return nil, err
-	}
-	return map[string]any{
-		"value":    value,
-		"currency": curr,
-		"issuer":   issuer,
-	}, nil
+	token["value"] = value
+	return token, nil
 }
 
 func deserializeValue(data []byte) (string, error) {
@@ -288,15 +279,6 @@ func deserializeValue(data []byte) (string, error) {
 		return "", err
 	}
 	return val, nil
-}
-
-// deserializeCurrencyCode decodes the currency of an issued-currency amount or a path step.
-// Both encoders reject the reserved standard layout of "XRP", so decoding rejects it too.
-func deserializeCurrencyCode(data []byte) (string, error) {
-	if bytes.Equal(data, isoXRPBytes) {
-		return "", errInvalidCurrencyCode
-	}
-	return formatCurrencyCode(data), nil
 }
 
 func deserializeIssuer(data []byte) (string, error) {
@@ -536,18 +518,18 @@ func serializeIssuedCurrencyAmount(value, currency, issuer string) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	if IsXRPCurrency(currencyBytes) {
-		return nil, &InvalidCodeError{Disallowed: "XRP"}
-	}
 	issuerBytes, err := serializeIssuedCurrencyIssuer(issuer)
+	if err != nil {
+		return nil, err
+	}
+	parts, err := newIOUParts(currencyBytes, issuerBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	// AccountIDs that appear as children of special fields (Amount issuer and PathSet account) are not length-prefixed.
 	// So in Amount and PathSet fields, don't use the length indicator 0x14. This is in contrast to the AccountID fields where the length indicator prefix 0x14 is added.
-
-	return append(append(valBytes, currencyBytes...), issuerBytes...), nil
+	return parts.append(valBytes), nil
 }
 
 // serializeMPTCurrencyValue serializes an MPT currency value to its binary representation.

@@ -42,6 +42,49 @@ func TestIssue_FromJson(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - tagless X-address issuer encodes as its classic AccountID",
+			input: map[string]any{
+				"currency": "USD",
+				"issuer":   "XVMEz67QftZamMQtmWCaW2urrZFhrT5UUETXFsPhSPzWPRY",
+			},
+			expected: []byte{
+				0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				0, 0, 85, 83, 68, 0, 0, 0, 0, 0,
+				174, 18, 58, 133, 86, 243, 207, 145, 21, 71,
+				17, 55, 106, 251, 15, 137, 79, 131, 43, 61,
+			},
+		},
+		{
+			name:        "fail - issued currency without issuer",
+			input:       map[string]any{"currency": "USD"},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name:        "fail - XRP with issuer",
+			input:       map[string]any{"currency": "XRP", "issuer": "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn"},
+			expectedErr: ErrInvalidIssueObject,
+		},
+		{
+			name:        "fail - ACCOUNT_ZERO issuer",
+			input:       map[string]any{"currency": "USD", "issuer": "rrrrrrrrrrrrrrrrrrrrrhoLvTp"},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name:        "fail - ACCOUNT_ONE issuer is the MPT marker",
+			input:       map[string]any{"currency": "USD", "issuer": "rrrrrrrrrrrrrrrrrrrrBZbvji"},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name:        "fail - unknown key",
+			input:       map[string]any{"currency": "USD", "issuer": "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn", "value": "1"},
+			expectedErr: ErrInvalidIssueObject,
+		},
+		{
+			name:        "fail - MPT issuance with ACCOUNT_ZERO issuer",
+			input:       map[string]any{"mpt_issuance_id": "00000001" + "0000000000000000000000000000000000000000"},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
 			name: "pass - valid xrp issue object",
 			input: map[string]any{
 				"currency": "0123456789ABCDEF0123456789ABCDEF01234567",
