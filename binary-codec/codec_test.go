@@ -579,10 +579,15 @@ func TestCurrencyCodeRoundTrip(t *testing.T) {
 	}
 }
 
-func TestReservedISOCurrencyDecoding(t *testing.T) {
+// TestIssueAndAmountBinaryRoundTrip checks that Issue, Amount and PathSet decoding follows
+// rippled's binary readers and that every decoded value encodes back to the same bytes.
+func TestIssueAndAmountBinaryRoundTrip(t *testing.T) {
 	const currencyHex = "0000000000000000000000005852500000000000"
 	const zeroCurrencyHex = "0000000000000000000000000000000000000000"
 	const issuerHex = "0A20B3C85F482532A9578DBB3950B85CA06594D1"
+	const usdHex = "0000000000000000000000005553440000000000"
+	const zeroAccountHex = "0000000000000000000000000000000000000000"
+	const oneAccountHex = "0000000000000000000000000000000000000001"
 	tests := []struct {
 		name     string
 		blob     string
@@ -594,14 +599,32 @@ func TestReservedISOCurrencyDecoding(t *testing.T) {
 			"currency": currencyHex,
 			"issuer":   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
 		}}},
-		{name: "Amount rejects reserved XRP", blob: "61D4838D7EA4C68000" + currencyHex + issuerHex, err: "invalid currency code"},
+		{name: "Amount preserves hex", blob: "61D4838D7EA4C68000" + currencyHex + issuerHex, expected: map[string]any{"Amount": map[string]any{
+			"currency": currencyHex,
+			"issuer":   "rvYAfWj5gh67oV6fW32ZzP3Aw4Eubs59B",
+			"value":    "1",
+		}}},
 		{name: "Amount rejects all-zero XRP", blob: "61D4838D7EA4C68000" + zeroCurrencyHex + issuerHex, err: "'XRP' is/are disallowed or invalid"},
-		{name: "PathSet rejects reserved XRP", blob: "011210" + currencyHex + "00", err: "invalid currency code"},
+		{name: "PathSet preserves hex", blob: "011210" + currencyHex + "00", expected: map[string]any{"Paths": []any{[]any{map[string]any{
+			"currency": currencyHex,
+			"type":     16,
+			"type_hex": "0000000000000010",
+		}}}}},
 		{name: "PathSet accepts all-zero XRP", blob: "011210" + zeroCurrencyHex + "00", expected: map[string]any{"Paths": []any{[]any{map[string]any{
 			"currency": "XRP",
 			"type":     16,
 			"type_hex": "0000000000000010",
 		}}}}},
+		{name: "Issue rejects ACCOUNT_ZERO issuer", blob: "0318" + usdHex + zeroAccountHex, err: "invalid issuer"},
+		{name: "Amount rejects ACCOUNT_ZERO issuer", blob: "61D4838D7EA4C68000" + usdHex + zeroAccountHex, err: "invalid issuer"},
+		{name: "Amount accepts ACCOUNT_ONE issuer", blob: "61D4838D7EA4C68000" + usdHex + oneAccountHex, expected: map[string]any{"Amount": map[string]any{
+			"currency": "USD",
+			"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
+			"value":    "1",
+		}}},
+		{name: "Issue MPT stores the sequence little-endian", blob: "0318" + issuerHex + oneAccountHex + "02010000", expected: map[string]any{"Asset": map[string]any{
+			"mpt_issuance_id": "00000102" + issuerHex,
+		}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
