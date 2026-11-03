@@ -3,6 +3,7 @@ package transaction
 import (
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,6 +65,58 @@ func TestLoanManage_Validate(t *testing.T) {
 		expected error
 	}{
 		{
+			name: "fail - Default and Impair",
+			tx: &LoanManage{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanManageTx, Flags: TfLoanDefault | TfLoanImpair},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+			},
+			expected: ErrLoanManageFlagsConflict,
+		},
+		{
+			name: "fail - Default and Unimpair",
+			tx: &LoanManage{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanManageTx, Flags: TfLoanDefault | TfLoanUnimpair},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+			},
+			expected: ErrLoanManageFlagsConflict,
+		},
+		{
+			name: "fail - all loan flags with universal flags",
+			tx: &LoanManage{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanManageTx, Flags: TfLoanDefault | TfLoanImpair | TfLoanUnimpair | types.TfUniversal},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+			},
+			expected: ErrLoanManageFlagsConflict,
+		},
+		{
+			name: "pass - Impair and universal flags",
+			tx: &LoanManage{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanManageTx, Flags: TfLoanImpair | types.TfUniversal},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+			},
+		},
+		{
+			name: "pass - Unimpair",
+			tx: &LoanManage{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanManageTx, Flags: TfLoanUnimpair},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+			},
+		},
+		{
+			name: "pass - universal flags alone",
+			tx: &LoanManage{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanManageTx, Flags: types.TfUniversal},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+			},
+		},
+		{
+			name: "pass - no flags",
+			tx: &LoanManage{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: LoanManageTx},
+				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+			},
+		},
+		{
 			name: "fail - base tx invalid",
 			tx: &LoanManage{
 				BaseTx: BaseTx{
@@ -91,6 +144,17 @@ func TestLoanManage_Validate(t *testing.T) {
 					TransactionType: LoanManageTx,
 				},
 				LoanID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43",
+			},
+			expected: ErrLoanManageLoanIDInvalid,
+		},
+		{
+			name: "fail - zero LoanID",
+			tx: &LoanManage{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanManageTx,
+				},
+				LoanID: "0000000000000000000000000000000000000000000000000000000000000000",
 			},
 			expected: ErrLoanManageLoanIDInvalid,
 		},
@@ -125,6 +189,7 @@ func TestLoanManage_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
 				require.NoError(t, err)

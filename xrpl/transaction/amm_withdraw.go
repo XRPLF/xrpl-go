@@ -1,6 +1,9 @@
 package transaction
 
 import (
+	"math/bits"
+
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -59,6 +62,9 @@ const (
 	// TfOneAssetWithdrawAll performs a single-asset withdrawal returning all of your LP Tokens.
 	TfOneAssetWithdrawAll uint32 = 262144
 )
+
+const ammWithdrawModeFlags = TfLPToken | TfWithdrawAll | TfOneAssetWithdrawAll |
+	TfSingleAsset | TfTwoAsset | TfOneAssetLPToken | TfLimitLPToken
 
 // SetLPTokentFlag performs a double-asset withdrawal and receives the specified amount of LP Tokens.
 func (a *AMMWithdraw) SetLPTokentFlag() {
@@ -142,26 +148,82 @@ func (a *AMMWithdraw) Validate() (bool, error) {
 		return false, err
 	}
 
+	if !flag.ContainsOnly(a.Flags, ammWithdrawModeFlags|types.TfUniversal) ||
+		bits.OnesCount32(a.Flags&ammWithdrawModeFlags) != 1 {
+		return false, ErrInvalidFlags
+	}
+
 	if a.Amount2 != nil && a.Amount == nil {
 		return false, ErrAMMMustSetAmountWithAmount2
 	} else if a.EPrice != nil && a.Amount == nil {
 		return false, ErrAMMMustSetAmountWithEPrice
 	}
 
-	if ok, err := IsAmount(a.Amount, "Amount", false); !ok {
-		return false, err
+	mode := a.Flags & ammWithdrawModeFlags
+	for _, field := range []struct {
+		name     string
+		present  bool
+		required bool
+	}{
+		{"Amount", a.Amount != nil, mode != TfLPToken && mode != TfWithdrawAll},
+		{"Amount2", a.Amount2 != nil, mode == TfTwoAsset},
+		{"EPrice", a.EPrice != nil, mode == TfLimitLPToken},
+		{"LPTokenIn", !a.LPTokenIn.IsEmpty(), mode == TfLPToken || mode == TfOneAssetLPToken},
+	} {
+		if field.required && !field.present {
+			return false, ErrMissingField{Field: field.name}
+		}
+		if field.present && !field.required {
+			return false, ErrTransactionInvalidField{Type: a.TxType().String(), Field: field.name}
+		}
 	}
 
-	if ok, err := IsAmount(a.Amount2, "Amount2", false); !ok {
-		return false, err
+	if sameAssetIssue(a.Asset, a.Asset2) {
+		return false, ErrAMMInvalidTokens
 	}
 
-	if ok, err := IsAmount(a.EPrice, "EPrice", false); !ok {
-		return false, err
+	if !a.LPTokenIn.IsEmpty() {
+		if ok, err := IsIssuedCurrency(a.LPTokenIn); !ok {
+			return false, err
+		}
+		if a.LPTokenIn.IsZero() {
+			return false, ErrInvalidTokenValue
+		}
+	}
+	if a.EPrice != nil && a.EPrice.Kind() == types.MPT {
+		return false, ErrTransactionInvalidField{Type: a.TxType().String(), Field: "EPrice"}
 	}
 
-	if ok, err := IsIssuedCurrency(a.LPTokenIn); !ok {
-		return false, err
+	for _, field := range []struct {
+		amount    types.CurrencyAmount
+		name      string
+		validZero bool
+		inPool    bool
+	}{
+		{a.Amount, "Amount", mode == TfOneAssetWithdrawAll || mode == TfOneAssetLPToken || a.EPrice != nil, true},
+		{a.Amount2, "Amount2", false, true},
+		{a.EPrice, "EPrice", false, false},
+	} {
+		if ok, err := IsAmount(field.amount, field.name, false); !ok {
+			return false, err
+		}
+		if field.amount == nil {
+			continue
+		}
+		if !field.validZero && field.amount.IsZero() {
+			return false, ErrInvalidTokenValue
+		}
+		if field.inPool && !sameIssue(field.amount, a.Asset) && !sameIssue(field.amount, a.Asset2) {
+			return false, ErrAMMInvalidTokens
+		}
+	}
+
+	if a.Amount != nil && a.Amount2 != nil && sameIssue(a.Amount, a.Asset) == sameIssue(a.Amount2, a.Asset) {
+		return false, ErrAMMInvalidTokens
+	}
+
+	if a.EPrice != nil && (a.EPrice.Kind() == types.XRP || sameIssue(a.EPrice, a.Asset) || sameIssue(a.EPrice, a.Asset2)) {
+		return false, ErrAMMInvalidTokens
 	}
 
 	return true, nil

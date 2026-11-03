@@ -1,9 +1,8 @@
 package transaction
 
 import (
-	"strconv"
+	"math/big"
 
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -103,13 +102,22 @@ func (tx *LoanBrokerSet) Validate() (bool, error) {
 		return false, ErrLoanBrokerSetVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID) {
+	if !isNonZeroHex256(tx.VaultID) {
 		return false, ErrLoanBrokerSetVaultIDInvalid
 	}
 
 	if tx.LoanBrokerID != nil && *tx.LoanBrokerID != "" {
-		if !IsLedgerEntryID(tx.LoanBrokerID.Value()) {
+		if !isNonZeroHex256(tx.LoanBrokerID.Value()) {
 			return false, ErrLoanBrokerSetLoanBrokerIDInvalid
+		}
+		if tx.ManagementFeeRate != nil && *tx.ManagementFeeRate != 0 {
+			return false, ErrTransactionInvalidField{Type: "LoanBrokerSet", Field: "ManagementFeeRate"}
+		}
+		if tx.CoverRateMinimum != nil && *tx.CoverRateMinimum != 0 {
+			return false, ErrTransactionInvalidField{Type: "LoanBrokerSet", Field: "CoverRateMinimum"}
+		}
+		if tx.CoverRateLiquidation != nil && *tx.CoverRateLiquidation != 0 {
+			return false, ErrTransactionInvalidField{Type: "LoanBrokerSet", Field: "CoverRateLiquidation"}
 		}
 	}
 
@@ -124,13 +132,15 @@ func (tx *LoanBrokerSet) Validate() (bool, error) {
 	}
 
 	if tx.DebtMaximum != nil && *tx.DebtMaximum != "" {
-		if !typecheck.IsXRPLNumber(tx.DebtMaximum.String()) {
+		val, ok := codecNumber(tx.DebtMaximum.String())
+		if !ok {
 			return false, ErrLoanBrokerSetDebtMaximumInvalid
 		}
-		// Check that DebtMaximum is non-negative
-		val, err := strconv.ParseFloat(tx.DebtMaximum.String(), 64)
-		if err != nil || val < 0 {
+		if val.Sign() < 0 {
 			return false, ErrLoanBrokerSetDebtMaximumNegative
+		}
+		if val.Cmp(big.NewRat(int64(types.MaxMPTAmount), 1)) > 0 {
+			return false, ErrLoanBrokerSetDebtMaximumInvalid
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/require"
@@ -31,7 +32,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: testPublicKey,
 			},
 			expected: true,
 		},
@@ -40,7 +41,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       types.Address(taglessSigner),
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: testPublicKey,
 			},
 			expected: true,
 		},
@@ -49,7 +50,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       types.Address(taggedSigner),
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: testPublicKey,
 			},
 			expected: false,
 			wantErr:  ErrSignerAccountTagNotAllowed,
@@ -59,7 +60,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
 				TxnSignature:  "0123456789abcdef",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: testPublicKey,
 			},
 			expected: false,
 			wantErr:  ErrSignerAccountZero,
@@ -68,7 +69,7 @@ func TestIsSigner(t *testing.T) {
 			name: "fail - Signer object with missing fields",
 			input: types.SignerData{
 				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: testPublicKey,
 			},
 			expected: false,
 		},
@@ -76,7 +77,7 @@ func TestIsSigner(t *testing.T) {
 			name: "fail - invalid Signer object with empty XRPL account",
 			input: types.SignerData{
 				Account:       "  ",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: testPublicKey,
 				TxnSignature:  "0123456789abcdef",
 			},
 			expected: false,
@@ -85,7 +86,7 @@ func TestIsSigner(t *testing.T) {
 			name: "fail - invalid Signer object with invalid XRPL account",
 			input: types.SignerData{
 				Account:       "invalid",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: testPublicKey,
 				TxnSignature:  "0123456789abcdef",
 			},
 			expected: false,
@@ -95,7 +96,7 @@ func TestIsSigner(t *testing.T) {
 			input: types.SignerData{
 				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 				TxnSignature:  "  ",
-				SigningPubKey: "abcdef0123456789",
+				SigningPubKey: testPublicKey,
 			},
 			expected: false,
 		},
@@ -107,6 +108,16 @@ func TestIsSigner(t *testing.T) {
 				SigningPubKey: "  ",
 			},
 			expected: false,
+		},
+		{
+			name: "fail - SigningPubKey is not a public key",
+			input: types.SignerData{
+				Account:       "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				TxnSignature:  "0123456789abcdef",
+				SigningPubKey: "abcdef0123456789",
+			},
+			expected: false,
+			wantErr:  ErrSignerSignaturePairMalformed,
 		},
 		{
 			name:     "fail - nil object",
@@ -217,6 +228,32 @@ func TestIsAmount(t *testing.T) {
 	}
 }
 
+func TestIsAmount_NativeRange(t *testing.T) {
+	type xrpWrapper struct{ types.XRPCurrencyAmount }
+	maximum := types.XRPCurrencyAmount(currency.MaxNativeDrops)
+	aboveMaximum := maximum + 1
+	tests := []struct {
+		name    string
+		amount  types.CurrencyAmount
+		wantErr error
+	}{
+		{name: "zero", amount: types.XRPCurrencyAmount(0)},
+		{name: "maximum", amount: maximum},
+		{name: "pointer maximum", amount: &maximum},
+		{name: "wrapper maximum", amount: xrpWrapper{maximum}},
+		{name: "above maximum", amount: aboveMaximum, wantErr: currency.ErrInvalidNativeAmount},
+		{name: "pointer above maximum", amount: &aboveMaximum, wantErr: currency.ErrInvalidNativeAmount},
+		{name: "wrapper above maximum", amount: xrpWrapper{aboveMaximum}, wantErr: currency.ErrInvalidNativeAmount},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := IsAmount(tt.amount, "Amount", true)
+			require.Equal(t, tt.wantErr == nil, ok)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
 func TestIsIssuedCurrency(t *testing.T) {
 	// IsIssuedCurrency returns (true, nil) on success and (false, err) on every
 	// failure, so a non-nil expectedErr both selects the failure path and locks
@@ -233,6 +270,14 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
 				Currency: "USD",
 			},
+		},
+		{
+			name:  "pass - noCurrency remains allowed in Amount",
+			input: types.IssuedCurrencyAmount{Currency: "0000000000000000000000000000000000000001", Issuer: "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW", Value: "1"},
+		},
+		{
+			name:  "pass - ACCOUNT_ONE remains allowed in Amount",
+			input: types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rrrrrrrrrrrrrrrrrrrrBZbvji", Value: "1"},
 		},
 		{
 			name: "pass - valid IssuedCurrency object with signed zero value",
@@ -305,10 +350,27 @@ func TestIsIssuedCurrency(t *testing.T) {
 			name: "fail - issuedCurrency object with XRP currency",
 			input: types.IssuedCurrencyAmount{
 				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
-				Currency: "XRp", // will be uppercased during validation
+				Currency: "XRP",
 				Value:    "100",
 			},
 			expectedErr: ErrInvalidTokenCurrency,
+		},
+		{
+			name: "fail - issuedCurrency object with reserved ISO XRP currency",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "0000000000000000000000005852500000000000",
+				Value:    "100",
+			},
+			expectedErr: ErrInvalidTokenCurrency,
+		},
+		{
+			name: "pass - lowercase xrp is an issued currency, not XRP",
+			input: types.IssuedCurrencyAmount{
+				Issuer:   "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW",
+				Currency: "XRp",
+				Value:    "100",
+			},
 		},
 		{
 			name: "fail - issuedCurrency object with empty value",
@@ -326,6 +388,16 @@ func TestIsIssuedCurrency(t *testing.T) {
 				Currency: "USD",
 				Value:    "100",
 			},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name:        "fail - ACCOUNT_ZERO issuer in Amount",
+			input:       types.IssuedCurrencyAmount{Currency: "USD", Issuer: "rrrrrrrrrrrrrrrrrrrrrhoLvTp", Value: "1"},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name:        "fail - ACCOUNT_ZERO issuer as tagless X-address in Amount",
+			input:       types.IssuedCurrencyAmount{Currency: "USD", Issuer: "X7TYFRtYHMcHtT2qNycMwgXzFbcRvEgLY6WDzQKYkjCp8GS", Value: "1"},
 			expectedErr: ErrInvalidIssuer,
 		},
 		{
@@ -530,6 +602,25 @@ func TestIsMPTCurrency(t *testing.T) {
 }
 
 func TestIsMemo(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		memo    types.Memo
+		wantErr error
+	}{
+		{"odd MemoData", types.Memo{MemoData: "A"}, ErrMemoDataShouldBeHex},
+		{"odd MemoFormat", types.Memo{MemoFormat: "ABC"}, ErrMemoFormatShouldBeHex},
+		{"odd MemoType", types.Memo{MemoType: "ABCDE"}, ErrMemoTypeShouldBeHex},
+		{"even MemoData", types.Memo{MemoData: "AB"}, nil},
+		{"even MemoFormat", types.Memo{MemoFormat: "ABCD"}, nil},
+		{"even MemoType", types.Memo{MemoType: "ABCDEF"}, nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := IsMemo(tt.memo)
+			require.Equal(t, tt.wantErr == nil, ok)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+
 	t.Run("pass - valid Memo object with all fields", func(t *testing.T) {
 		obj := types.Memo{
 			MemoData:   "0123456789abcdef",
@@ -600,7 +691,7 @@ func TestIsMemo(t *testing.T) {
 func TestIsAsset(t *testing.T) {
 	t.Run("pass - valid Asset object with currency XRP only", func(t *testing.T) {
 		obj := ledger.Asset{
-			Currency: "xrP", // will be converted to XRP in the Validate function
+			Currency: "XRP",
 		}
 
 		ok, err := IsAsset(obj)
@@ -610,18 +701,125 @@ func TestIsAsset(t *testing.T) {
 		}
 	})
 
-	t.Run("fail - invalid Asset object with currency XRP and an issuer defined", func(t *testing.T) {
-		obj := ledger.Asset{
-			Currency: "xrP", // will be converted to XRP in the Validate function
-			Issuer:   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-		}
-
-		ok, err := IsAsset(obj)
-
-		if ok {
-			t.Errorf("Expected IsAsset to return true, but got false with error: %v", err)
-		}
-	})
+	const issuer = "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"
+	tests := []struct {
+		name    string
+		asset   ledger.Asset
+		wantErr error
+	}{
+		{
+			name:  "pass - native XRP as 40 zero hex characters",
+			asset: ledger.Asset{Currency: "0000000000000000000000000000000000000000"},
+		},
+		{
+			name:    "fail - empty asset",
+			asset:   ledger.Asset{},
+			wantErr: ErrInvalidAssetFields,
+		},
+		{
+			name:    "fail - lowercase xrp needs an issuer",
+			asset:   ledger.Asset{Currency: "xrp"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - USD needs an issuer",
+			asset:   ledger.Asset{Currency: "USD"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - unparseable currency without issuer",
+			asset:   ledger.Asset{Currency: "USDX"},
+			wantErr: ErrInvalidAssetCurrency,
+		},
+		{
+			name:    "fail - ISO XRP layout without issuer",
+			asset:   ledger.Asset{Currency: "0000000000000000000000005852500000000000"},
+			wantErr: ErrInvalidAssetCurrency,
+		},
+		{
+			name:    "fail - noCurrency without issuer",
+			asset:   ledger.Asset{Currency: "0000000000000000000000000000000000000001"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - mixed-case xrP needs an issuer",
+			asset:   ledger.Asset{Currency: "xrP"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - currency XRP with an issuer",
+			asset:   ledger.Asset{Currency: "XRP", Issuer: issuer},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - native XRP currency bytes with an issuer",
+			asset:   ledger.Asset{Currency: "0000000000000000000000000000000000000000", Issuer: issuer},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:  "pass - lowercase xrP with an issuer is an issued currency",
+			asset: ledger.Asset{Currency: "xrP", Issuer: issuer},
+		},
+		{
+			name:    "fail - currency is not an encodable code",
+			asset:   ledger.Asset{Currency: "USDX", Issuer: issuer},
+			wantErr: ErrInvalidAssetCurrency,
+		},
+		{
+			name:    "fail - currency is the reserved ISO XRP code",
+			asset:   ledger.Asset{Currency: "0000000000000000000000005852500000000000", Issuer: issuer},
+			wantErr: ErrInvalidAssetCurrency,
+		},
+		{
+			name:  "pass - currency is rippled noCurrency",
+			asset: ledger.Asset{Currency: "0000000000000000000000000000000000000001", Issuer: issuer},
+		},
+		{
+			name:  "pass - nonstandard currency with XRP bytes outside the ISO slot",
+			asset: ledger.Asset{Currency: "5852500000000000000000000000000000000000", Issuer: issuer},
+		},
+		{
+			name:    "fail - issuer is a tagged X-address",
+			asset:   ledger.Asset{Currency: "USD", Issuer: clawbackTaggedHolder},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - issuer is ACCOUNT_ZERO",
+			asset:   ledger.Asset{Currency: "USD", Issuer: "rrrrrrrrrrrrrrrrrrrrrhoLvTp"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - issuer is ACCOUNT_ONE",
+			asset:   ledger.Asset{Currency: "USD", Issuer: "rrrrrrrrrrrrrrrrrrrrBZbvji"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:    "fail - MPT issuance ID has the wrong length",
+			asset:   ledger.Asset{MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF"},
+			wantErr: ErrInvalidMPTIssuanceIDAsset,
+		},
+		{
+			name:    "fail - MPT issuance ID has a zero issuer AccountID",
+			asset:   ledger.Asset{MPTIssuanceID: "000024030000000000000000000000000000000000000000"},
+			wantErr: ErrInvalidAssetIssuer,
+		},
+		{
+			name:  "pass - MPT issuance ID has a nonzero issuer AccountID",
+			asset: ledger.Asset{MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, err := IsAsset(tt.asset)
+			if tt.wantErr == nil {
+				require.True(t, ok)
+				require.NoError(t, err)
+				return
+			}
+			require.False(t, ok)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
 
 	t.Run("fail - invalid Asset object with currency only and different than XRP", func(t *testing.T) {
 		obj := ledger.Asset{
@@ -674,21 +872,9 @@ func TestIsAsset(t *testing.T) {
 		}
 	})
 
-	t.Run("pass - valid MPT asset", func(t *testing.T) {
-		obj := ledger.Asset{
-			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
-		}
-
-		ok, err := IsAsset(obj)
-
-		if !ok {
-			t.Errorf("Expected IsAsset to return true, but got false with error: %v", err)
-		}
-	})
-
 	t.Run("fail - MPT asset with currency set", func(t *testing.T) {
 		obj := ledger.Asset{
-			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+			MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 			Currency:      "USD",
 		}
 
@@ -701,7 +887,7 @@ func TestIsAsset(t *testing.T) {
 
 	t.Run("fail - MPT asset with issuer set", func(t *testing.T) {
 		obj := ledger.Asset{
-			MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+			MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 			Issuer:        "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 		}
 
@@ -959,6 +1145,29 @@ func TestIsDomainID(t *testing.T) {
 			if result := IsDomainID(tt.input); result != tt.expected {
 				t.Errorf("Expected IsDomainID to return %v, but got %v", tt.expected, result)
 			}
+		})
+	}
+}
+
+func TestValidateHexMetadata(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		maxHexLength int
+		want         bool
+	}{
+		{"pass - exactly at the limit", "ABCD", 4, true},
+		{"pass - under the limit", "AB", 4, true},
+		{"pass - lowercase hex", "abcd", 4, true},
+		{"fail - empty", "", 4, false},
+		{"fail - odd length is not whole bytes", "ABC", 4, false},
+		{"fail - one byte over the limit", "ABCDEF", 4, false},
+		{"fail - not hex", "ZZ", 4, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, ValidateHexMetadata(tt.input, tt.maxHexLength))
 		})
 	}
 }
