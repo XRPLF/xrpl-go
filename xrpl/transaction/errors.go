@@ -527,6 +527,8 @@ var (
 	ErrAMMInvalidTokens = errors.New("amm: assets must differ and amount and EPrice issues must be compatible with the pool")
 	// ErrAMMAtLeastOneAssetMustBeNonXRP is returned when both assets are XRP; at least one asset must be non-XRP.
 	ErrAMMAtLeastOneAssetMustBeNonXRP = errors.New("at least one of the assets must be non-XRP")
+	// ErrAMMBidMinAboveBidMax is returned when BidMin is greater than a BidMax of the same issue.
+	ErrAMMBidMinAboveBidMax = errors.New("amm bid: BidMin must not be greater than BidMax")
 	// ErrAMMAuthAccountsTooMany is returned when more than four AuthAccount objects are provided.
 	ErrAMMAuthAccountsTooMany = errors.New("authAccounts should have at most 4 AuthAccount objects")
 

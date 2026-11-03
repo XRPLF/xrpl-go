@@ -1,6 +1,8 @@
 package transaction
 
 import (
+	"math/big"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -134,6 +136,16 @@ func (a *AMMBid) Validate() (bool, error) {
 		return false, ErrInvalidTokenValue
 	}
 
+	// rippled AMMBid::preclaim returns tecAMM_INVALID_TOKENS for BidMin > BidMax, which
+	// charges the fee. Both bids must name the LP token, so compare only bids that share an
+	// issue. A bid with another issue gets temBAD_AMM_TOKENS, which is free.
+	if a.BidMin != nil && a.BidMax != nil &&
+		a.BidMin.Kind() == types.ISSUED &&
+		sameIssue(a.BidMax, amountAsset(a.BidMin)) &&
+		bidAbove(a.BidMin, a.BidMax) {
+		return false, ErrAMMBidMinAboveBidMax
+	}
+
 	if ok, err := validateAuthAccounts(a.AuthAccounts, a.Account); !ok {
 		return false, err
 	}
@@ -162,4 +174,12 @@ func validateAuthAccounts(authAccounts []ledger.AuthAccounts, account types.Addr
 	}
 
 	return true, nil
+}
+
+// bidAbove reports whether bidMin is greater than bidMax. Both are validated IOU amounts,
+// so they have at most 16 significant digits and compare as rippled's STAmount does.
+func bidAbove(bidMin, bidMax types.CurrencyAmount) bool {
+	minValue, _ := new(big.Rat).SetString(bidMin.(types.IssuedCurrencyAmount).Value)
+	maxValue, _ := new(big.Rat).SetString(bidMax.(types.IssuedCurrencyAmount).Value)
+	return minValue.Cmp(maxValue) > 0
 }
