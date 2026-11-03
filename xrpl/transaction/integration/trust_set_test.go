@@ -18,7 +18,7 @@ type TrustSetTest struct {
 }
 
 func trustSetQuality(value uint32) *uint32 {
-	return &value
+	return new(value)
 }
 
 func testIntegrationTrustSet(t *testing.T, client integration.Client) {

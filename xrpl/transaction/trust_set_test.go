@@ -11,7 +11,7 @@ import (
 )
 
 func trustSetQuality(value uint32) *uint32 {
-	return &value
+	return new(value)
 }
 
 func TestTrustSetFlatten(t *testing.T) {
