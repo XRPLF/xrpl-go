@@ -150,6 +150,9 @@ func TestLoanSet_Validate(t *testing.T) {
 			expected: ErrLoanSetLoanOriginationFeeInvalid,
 		},
 		{
+			name: "pass - origination fee that encodes to the principal", tx: amounts("1", "1.0000000000000000001", "", "", ""),
+		},
+		{
 			name: "fail - scientific origination fee above principal", tx: amounts("1e-1000", "2e-1000", "", "", ""),
 			expected: ErrLoanSetLoanOriginationFeeInvalid,
 		},

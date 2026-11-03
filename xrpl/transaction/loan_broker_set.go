@@ -132,11 +132,11 @@ func (tx *LoanBrokerSet) Validate() (bool, error) {
 	}
 
 	if tx.DebtMaximum != nil && *tx.DebtMaximum != "" {
-		if !isCodecNumber(tx.DebtMaximum.String()) {
+		val, ok := codecNumber(tx.DebtMaximum.String())
+		if !ok {
 			return false, ErrLoanBrokerSetDebtMaximumInvalid
 		}
-		val, ok := new(big.Rat).SetString(tx.DebtMaximum.String())
-		if !ok || val.Sign() < 0 {
+		if val.Sign() < 0 {
 			return false, ErrLoanBrokerSetDebtMaximumNegative
 		}
 		if val.Cmp(big.NewRat(int64(types.MaxMPTAmount), 1)) > 0 {

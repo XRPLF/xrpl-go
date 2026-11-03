@@ -1,10 +1,8 @@
 package transaction
 
 import (
-	"encoding/binary"
 	"math/big"
 
-	bctypes "github.com/Peersyst/xrpl-go/binary-codec/types"
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
@@ -212,35 +210,9 @@ func (tx *VaultCreate) Validate() (bool, error) {
 }
 
 func validVaultAssetsMaximum(value string, kind ledger.AssetKind) bool {
-	encoded, err := (&bctypes.Number{}).FromJSON(value)
-	if err != nil || encoded[0]&0x80 != 0 {
+	number, ok := codecNumber(value)
+	if !ok || number.Sign() < 0 {
 		return false
-	}
-	mantissa := binary.BigEndian.Uint64(encoded[:8])
-	if mantissa == 0 {
-		return true
-	}
-	exponent := int64(binary.BigEndian.Uint32(encoded[8:]))
-	if exponent >= 1<<31 {
-		exponent -= 1 << 32
-	}
-	if exponent < -19 {
-		return true
-	}
-	if exponent > 96 {
-		return false
-	}
-
-	number := new(big.Rat).SetInt(new(big.Int).SetUint64(mantissa))
-	powerExponent := exponent
-	if powerExponent < 0 {
-		powerExponent = -powerExponent
-	}
-	power := new(big.Int).Exp(big.NewInt(10), big.NewInt(powerExponent), nil)
-	if exponent < 0 {
-		number.Quo(number, new(big.Rat).SetInt(power))
-	} else {
-		number.Mul(number, new(big.Rat).SetInt(power))
 	}
 
 	// Conversion rounds to nearest, ties to even. The midpoint is inclusive only

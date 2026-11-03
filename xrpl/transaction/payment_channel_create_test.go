@@ -3,6 +3,7 @@ package transaction
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
@@ -238,6 +239,52 @@ func TestPaymentChannelCreate_Validate(t *testing.T) {
 				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
 				SettleDelay: 86400,
 				PublicKey:   "invalidPublicKey",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidHexPublicKey,
+		},
+		{
+			name: "pass - secp256k1 key that is not a curve point",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
+				SettleDelay: 86400,
+				PublicKey:   "02" + strings.Repeat("FF", 32),
+			},
+			wantValid: true,
+		},
+		{
+			name: "fail - public key with an unknown prefix",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
+				SettleDelay: 86400,
+				PublicKey:   "04" + strings.Repeat("FF", 32),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidHexPublicKey,
+		},
+		{
+			name: "fail - public key shorter than 33 bytes",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
+				SettleDelay: 86400,
+				PublicKey:   "ED" + strings.Repeat("FF", 31),
 			},
 			wantValid:   false,
 			wantErr:     true,

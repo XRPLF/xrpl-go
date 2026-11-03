@@ -91,7 +91,7 @@ func (p *PaymentChannelCreate) Validate() (bool, error) {
 		return false, ErrDestinationAccountConflict
 	}
 
-	if !isPublicKey(p.PublicKey) {
+	if !isPublicKeyType(p.PublicKey) {
 		return false, ErrInvalidHexPublicKey
 	}
 

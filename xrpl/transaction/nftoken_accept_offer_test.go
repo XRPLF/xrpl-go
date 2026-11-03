@@ -131,6 +131,19 @@ func TestNFTokenAcceptOffer_Validate(t *testing.T) {
 			errMessage: ErrNFTokenBrokerFeeZero,
 		},
 		{
+			name: "fail - zero NFTokenBrokerFee as XRP pointer",
+			tx: &NFTokenAcceptOffer{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: NFTokenAcceptOfferTx,
+				},
+				NFTokenBrokerFee: new(types.XRPCurrencyAmount(0)),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrNFTokenBrokerFeeZero,
+		},
+		{
 			name: "fail - invalid NFTokenBrokerFee as issued amount",
 			tx: &NFTokenAcceptOffer{
 				BaseTx: BaseTx{

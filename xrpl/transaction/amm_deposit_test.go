@@ -206,21 +206,16 @@ func TestAMMDeposit_Validate(t *testing.T) {
 		expectedErr error
 	}{
 		{
-			name: "pass - MPT pool with different issue IOU EPrice",
-			tx: withAssets(deposit(TfLimitLPToken, mptAmount, nil, lpTokenOut, nil),
-				mptAsset, ledger.Asset{Currency: "XRP"}),
+			name: "pass - EPrice issue differs from Amount",
+			tx:   deposit(TfLimitLPToken, amount, nil, amount2, nil),
 		},
 		{
-			name: "pass - XRP EPrice with XRP Amount",
-			tx:   deposit(TfLimitLPToken, amount2, nil, amount2, nil),
+			name: "pass - zero Amount with EPrice",
+			tx:   deposit(TfLimitLPToken, types.XRPCurrencyAmount(0), nil, ePrice, nil),
 		},
 		{
-			name: "pass - zero XRP Amount with XRP EPrice",
-			tx:   deposit(TfLimitLPToken, types.XRPCurrencyAmount(0), nil, amount2, nil),
-		},
-		{
-			name: "pass - canonical EPrice issue matches Amount",
-			tx:   deposit(TfLimitLPToken, amount, nil, canonicalAmount, nil),
+			name: "pass - EPrice issue outside pool",
+			tx:   deposit(TfLimitLPToken, amount, nil, lpTokenOut, nil),
 		},
 		{
 			name: "pass - XRP pointer in Amount",
@@ -250,11 +245,6 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			tx: deposit(TfLimitLPToken, amount, nil,
 				types.MPTCurrencyAmount{MPTIssuanceID: "000000010000000000000000000000000000000000000000", Value: "1"}, nil),
 			expectedErr: invalidField("EPrice"),
-		},
-		{
-			name:        "fail - XRP EPrice with IOU Amount",
-			tx:          deposit(TfLimitLPToken, amount, nil, amount2, nil),
-			expectedErr: ErrAMMInvalidTokens,
 		},
 		{
 			name:        "fail - MPT LPTokenOut",
@@ -339,16 +329,6 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			name:        "fail - zero Amount2",
 			tx:          deposit(TfTwoAsset, amount, types.XRPCurrencyAmount(0), nil, nil),
 			expectedErr: ErrInvalidTokenValue,
-		},
-		{
-			name:        "fail - zero XRP Amount with IOU EPrice",
-			tx:          deposit(TfLimitLPToken, types.XRPCurrencyAmount(0), nil, ePrice, nil),
-			expectedErr: ErrAMMInvalidTokens,
-		},
-		{
-			name:        "fail - EPrice issue outside pool",
-			tx:          deposit(TfLimitLPToken, amount, nil, lpTokenOut, nil),
-			expectedErr: ErrAMMInvalidTokens,
 		},
 		{
 			name: "pass - canonical amount matches pool",

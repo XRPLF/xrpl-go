@@ -249,6 +249,17 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - DebtMaximum that encodes to the MPT maximum",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("9223372036854775807.4"); return &v }(),
+			},
+		},
+		{
 			name: "pass - DebtMaximum zero",
 			tx: &LoanBrokerSet{
 				BaseTx: BaseTx{

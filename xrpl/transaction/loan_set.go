@@ -248,10 +248,7 @@ func (tx *LoanSet) Validate() (bool, error) {
 		return false, ErrLoanSetPrincipalRequestedRequired
 	}
 
-	if !isCodecNumber(tx.PrincipalRequested.String()) {
-		return false, ErrLoanSetPrincipalRequestedInvalid
-	}
-	principal, ok := new(big.Rat).SetString(tx.PrincipalRequested.String())
+	principal, ok := codecNumber(tx.PrincipalRequested.String())
 	if !ok || principal.Sign() <= 0 {
 		return false, ErrLoanSetPrincipalRequestedInvalid
 	}
@@ -328,10 +325,7 @@ func (tx *LoanSet) Validate() (bool, error) {
 		if field.value == nil || *field.value == "" {
 			continue
 		}
-		if !isCodecNumber(field.value.String()) {
-			return false, field.err
-		}
-		value, ok := new(big.Rat).SetString(field.value.String())
+		value, ok := codecNumber(field.value.String())
 		if !ok || value.Sign() < 0 || (field.maximum != nil && value.Cmp(field.maximum) > 0) {
 			return false, field.err
 		}

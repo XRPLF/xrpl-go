@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"math/big"
 	"strings"
@@ -87,17 +88,29 @@ func issuedCurrencyBytes(code string) ([]byte, error) {
 	return currencyBytes, nil
 }
 
-// isCodecNumber reports whether value is a Number string the binary codec can encode.
-func isCodecNumber(value string) bool {
-	_, err := (&bctypes.Number{}).FromJSON(value)
-	return err == nil
+// codecNumber returns the exact value of the Number that the binary codec encodes for
+// value. rippled compares the encoded Number, so range checks use this value and not the
+// decimal text, which the codec can round.
+func codecNumber(value string) (*big.Rat, bool) {
+	encoded, err := (&bctypes.Number{}).FromJSON(value)
+	if err != nil {
+		return nil, false
+	}
+	mantissa := int64(binary.BigEndian.Uint64(encoded[:8])) //nolint:gosec // G115: the codec writes a signed mantissa.
+	if mantissa == 0 {
+		return new(big.Rat), true
+	}
+	exponent := int64(int32(binary.BigEndian.Uint32(encoded[8:]))) //nolint:gosec // G115: the codec writes a signed exponent.
+	number := new(big.Rat).SetInt64(mantissa)
+	power := new(big.Rat).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(max(exponent, -exponent)), nil))
+	if exponent < 0 {
+		return number.Quo(number, power), true
+	}
+	return number.Mul(number, power), true
 }
 
 func isNonNegativeCodecNumber(value string) bool {
-	if !isCodecNumber(value) {
-		return false
-	}
-	number, ok := new(big.Rat).SetString(value)
+	number, ok := codecNumber(value)
 	return ok && number.Sign() >= 0
 }
 
@@ -210,6 +223,16 @@ func validateMemos(memoWrapper []types.MemoWrapper) error {
 // isPublicKey reports whether signingPubKey is a well-formed public key. An empty value fails.
 func isPublicKey(signingPubKey string) bool {
 	return keypairs.IsValidPublicKey(signingPubKey)
+}
+
+// isPublicKeyType applies rippled publicKeyType: 33 bytes with an 0x02, 0x03 or 0xED prefix.
+// Unlike isPublicKey, it does not check that a secp256k1 key is a point on the curve.
+func isPublicKeyType(publicKey string) bool {
+	decoded, err := hex.DecodeString(publicKey)
+	if err != nil || len(decoded) != 33 {
+		return false
+	}
+	return decoded[0] == 0x02 || decoded[0] == 0x03 || decoded[0] == 0xED
 }
 
 // isSignaturePair reports whether a public key and signature are well formed.

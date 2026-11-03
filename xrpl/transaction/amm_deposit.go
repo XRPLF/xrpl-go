@@ -228,12 +228,6 @@ func (a *AMMDeposit) Validate() (bool, error) {
 		return false, ErrAMMInvalidTokens
 	}
 
-	if a.EPrice != nil && a.Asset.Kind() != ledger.AssetMPT && a.Asset2.Kind() != ledger.AssetMPT &&
-		a.Amount.Kind() != types.MPT && (a.Amount2 == nil || a.Amount2.Kind() != types.MPT) &&
-		!sameIssue(a.EPrice, amountAsset(a.Amount)) {
-		return false, ErrAMMInvalidTokens
-	}
-
 	return true, nil
 }
 

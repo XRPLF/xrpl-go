@@ -84,14 +84,8 @@ func (n *NFTokenAcceptOffer) Validate() (bool, error) {
 		return false, err
 	}
 
-	if xrpAmount, ok := n.NFTokenBrokerFee.(types.XRPCurrencyAmount); ok {
-		if xrpAmount.Uint64() == 0 {
-			return false, ErrNFTokenBrokerFeeZero
-		}
-	} else if issuedAmount, ok := n.NFTokenBrokerFee.(types.IssuedCurrencyAmount); ok {
-		if issuedAmount.IsZero() {
-			return false, ErrNFTokenBrokerFeeZero
-		}
+	if n.NFTokenBrokerFee != nil && n.NFTokenBrokerFee.IsZero() {
+		return false, ErrNFTokenBrokerFeeZero
 	}
 
 	if n.NFTokenBrokerFee != nil && n.NFTokenBrokerFee.Kind() == types.MPT {
