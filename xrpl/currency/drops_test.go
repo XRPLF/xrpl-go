@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/internal/decimal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -242,7 +243,7 @@ func TestDropsMulDecimalRejectsInvalidValues(t *testing.T) {
 		{name: "empty", value: "", expectedErr: ErrInvalidDecimalMultiplier},
 		{name: "invalid", value: "invalid", expectedErr: ErrInvalidDecimalMultiplier},
 		{name: "exponent too large", value: "1e325", expectedErr: ErrInvalidDecimalMultiplier},
-		{name: "input too long", value: strings.Repeat("1", maxDecimalRatInputLen+1), expectedErr: ErrInvalidDecimalMultiplier},
+		{name: "input too long", value: strings.Repeat("1", decimal.MaxInputLen+1), expectedErr: ErrInvalidDecimalMultiplier},
 		{name: "negative", value: "-1", expectedErr: ErrInvalidDecimalMultiplier},
 	}
 

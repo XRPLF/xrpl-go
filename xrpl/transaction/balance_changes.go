@@ -1,13 +1,12 @@
 package transaction
 
 import (
-	"math"
 	"math/big"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
+	"github.com/Peersyst/xrpl-go/xrpl/internal/decimal"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -210,12 +209,14 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 		return nil, errBalanceCurrencyNotFound
 	}
 
+	formatted := formatBalance(value)
+
 	result := balanceChange{
 		Account: types.Address(lowLimitIssuer),
 		Balance: Balance{
 			Issuer:   highLimitIssuer,
 			Currency: balanceCurrency,
-			Value:    formatBalance(value),
+			Value:    formatted,
 		},
 	}
 
@@ -224,7 +225,7 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 		Balance: Balance{
 			Issuer:   result.Account.String(),
 			Currency: result.Currency,
-			Value:    formatBalance(negateBalance(value)),
+			Value:    negateBalance(formatted),
 		},
 	}
 
@@ -239,36 +240,18 @@ func computeBalanceChange(node *normalizedNode) (delta string, hasBalanceChange 
 	var value *big.Rat
 	switch {
 	case okNewBalance:
-		balanceValue, err := getValue(newBalance)
-		if err != nil {
+		if value, err = parseBalance(newBalance); err != nil {
 			return "", false, err
-		}
-
-		value, err = parseBalance(balanceValue)
-		if err != nil {
-			return "", false, errInvalidBalanceValue
 		}
 	case okPreviousBalance && okFinalBalance:
-		balanceValue, err := getValue(previousBalance)
-		if err != nil {
+		var previous *big.Rat
+		if previous, err = parseBalance(previousBalance); err != nil {
 			return "", false, err
 		}
-
-		previousBalanceDecimal, err := parseBalance(balanceValue)
-		if err != nil {
-			return "", false, errInvalidBalanceValue
-		}
-		balanceValue, err = getValue(finalBalance)
-		if err != nil {
+		if value, err = parseBalance(finalBalance); err != nil {
 			return "", false, err
 		}
-
-		finalBalanceDecimal, err := parseBalance(balanceValue)
-		if err != nil {
-			return "", false, errInvalidBalanceValue
-		}
-
-		value = finalBalanceDecimal.Sub(finalBalanceDecimal, previousBalanceDecimal)
+		value.Sub(value, previous)
 	default:
 		return "", false, nil
 	}
@@ -277,7 +260,9 @@ func computeBalanceChange(node *normalizedNode) (delta string, hasBalanceChange 
 		return "", false, nil
 	}
 
-	return decimalString(value), true, nil
+	// Decimal inputs give a finite expansion, so the precision is exact.
+	precision, _ := value.FloatPrec()
+	return value.FloatString(precision), true, nil
 }
 
 func getValue(balance any) (string, error) {
@@ -291,44 +276,20 @@ func getValue(balance any) (string, error) {
 	return "", errInvalidBalanceValue
 }
 
-// XRPL amounts have a 16-digit IOU mantissa and bounded exponent; 256 bytes
-// also accommodates expanded decimal representations of all valid amounts.
-const maxBalanceLength = 256
+// maxBalanceExponent bounds the exponent of a balance value. xrpld emits
+// issued-currency exponents from -96 to 80, so no valid amount is rejected.
+const maxBalanceExponent = 256
 
-var balancePattern = regexp.MustCompile(`^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$`)
-
-func parseBalance(value string) (*big.Rat, error) {
-	if len(value) > maxBalanceLength || !balancePattern.MatchString(value) {
-		return nil, errInvalidBalanceValue
+func parseBalance(balance any) (*big.Rat, error) {
+	text, err := getValue(balance)
+	if err != nil {
+		return nil, err
 	}
-	if i := strings.IndexAny(value, "eE"); i >= 0 {
-		exponent, err := strconv.Atoi(value[i+1:])
-		if err != nil || exponent < -256 || exponent > 256 {
-			return nil, errInvalidBalanceValue
-		}
-	}
-	result, ok := new(big.Rat).SetString(value)
+	value, ok := decimal.Parse(text, maxBalanceExponent)
 	if !ok {
 		return nil, errInvalidBalanceValue
 	}
-	return result, nil
-}
-
-// decimalString formats value, whose denominator is 2^a*5^b because every
-// input is a decimal string, with exactly the fractional digits it needs.
-func decimalString(value *big.Rat) string {
-	denominator := value.Denom()
-	oddBits := new(big.Int).Rsh(denominator, denominator.TrailingZeroBits()).BitLen()
-	twos := denominator.BitLen() - oddBits
-	// The odd part is 5^b, whose bit length L satisfies L-1 = floor(b*log2(5)),
-	// so b = ceil((L-1)/log2(5)).
-	fives := int(math.Ceil(float64(oddBits-1) / math.Log2(5)))
-	scale := max(twos, fives)
-	result := value.FloatString(scale)
-	if scale > 0 {
-		result = strings.TrimRight(strings.TrimRight(result, "0"), ".")
-	}
-	return result
+	return value, nil
 }
 
 func negateBalance(value string) string {

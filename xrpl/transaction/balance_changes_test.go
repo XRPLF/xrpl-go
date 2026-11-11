@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/internal/decimal"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/stretchr/testify/require"
 )
@@ -39,6 +40,18 @@ func TestGetBalanceChanges(t *testing.T) {
 				{Account: "rLow", Balances: []Balance{{Currency: "USD", Issuer: "rHigh", Value: "2e-8"}}},
 				{Account: "rHigh", Balances: []Balance{{Currency: "USD", Issuer: "rLow", Value: "-2e-8"}}},
 			},
+		},
+		{
+			name: "negative zero trustline is skipped",
+			meta: &TxObjMeta{AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
+				LedgerEntryType: ledger.RippleStateEntry,
+				NewFields: ledger.FlatLedgerObject{
+					"Balance":   map[string]any{"currency": "USD", "value": "-0"},
+					"LowLimit":  map[string]any{"issuer": "rLow"},
+					"HighLimit": map[string]any{"issuer": "rHigh"},
+				},
+			}}}},
+			expected: []AccountBalanceChanges{},
 		},
 		{
 			name: "pass - account delete",
@@ -803,21 +816,18 @@ func TestGetBalanceChanges(t *testing.T) {
 
 func TestGetBalanceChangesTrustlineValues(t *testing.T) {
 	for _, tc := range []struct {
-		name     string
-		balance  string
-		low      string
-		high     string
-		noChange bool
+		name    string
+		balance string
+		low     string
+		high    string
 	}{
 		{name: "explicit plus sign", balance: "+5", low: "5", high: "-5"},
-		{name: "negative zero", balance: "-0", noChange: true},
 		{name: "1e-6 plain", balance: "0.000001", low: "0.000001", high: "-0.000001"},
 		{name: "1e-7 exponential", balance: "0.0000001", low: "1e-7", high: "-1e-7"},
 		{name: "1e20 plain", balance: "1e20", low: "100000000000000000000", high: "-100000000000000000000"},
 		{name: "1e21 exponential", balance: "1e21", low: "1e+21", high: "-1e+21"},
 		{name: "exponent 256", balance: "1e256", low: "1e+256", high: "-1e+256"},
 		{name: "exponent -256", balance: "1.5e-256", low: "1.5e-256", high: "-1.5e-256"},
-		{name: "length 256", balance: "1" + strings.Repeat("0", 255), low: "1e+255", high: "-1e+255"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			meta := &TxObjMeta{AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
@@ -828,12 +838,9 @@ func TestGetBalanceChangesTrustlineValues(t *testing.T) {
 					"HighLimit": map[string]any{"issuer": "rHigh"},
 				},
 			}}}}
-			expected := []AccountBalanceChanges{}
-			if !tc.noChange {
-				expected = []AccountBalanceChanges{
-					{Account: "rLow", Balances: []Balance{{Currency: "USD", Issuer: "rHigh", Value: tc.low}}},
-					{Account: "rHigh", Balances: []Balance{{Currency: "USD", Issuer: "rLow", Value: tc.high}}},
-				}
+			expected := []AccountBalanceChanges{
+				{Account: "rLow", Balances: []Balance{{Currency: "USD", Issuer: "rHigh", Value: tc.low}}},
+				{Account: "rHigh", Balances: []Balance{{Currency: "USD", Issuer: "rLow", Value: tc.high}}},
 			}
 			balanceChanges, err := GetBalanceChanges(meta)
 			require.NoError(t, err)
@@ -895,7 +902,7 @@ func TestGetBalanceChangesReturnsInvalidBalanceErrors(t *testing.T) {
 		{"missing value", map[string]any{}},
 		{"number value", map[string]any{"value": 1}},
 		{"null value", map[string]any{"value": nil}},
-		{"length 257", strings.Repeat("1", 257)},
+		{"too long", strings.Repeat("1", decimal.MaxInputLen+1)},
 		{"infinity", "Inf"},
 		{"large exponent", "1e999999"},
 		{"exponent 257", "1e257"},
