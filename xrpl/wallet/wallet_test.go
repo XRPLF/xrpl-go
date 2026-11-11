@@ -2,9 +2,11 @@ package wallet
 
 import (
 	"maps"
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/bsv-blockchain/go-sdk/compat/bip39"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -130,6 +132,24 @@ func TestNewWalletFromMnemonic(t *testing.T) {
 			ClassicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
 		},
 		{
+			Mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u00a0"),
+			PublicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			PrivateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			ClassicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+		},
+		{
+			Mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u3000"),
+			PublicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			PrivateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			ClassicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+		},
+		{
+			Mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u2002"),
+			PublicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			PrivateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			ClassicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+		},
+		{
 			Mnemonic:       "honey tip lunch empower omit invite nuclear tent brother sadness still exercise odor harbor alcohol huge wait swamp vessel tired swallow supreme silk spawn",
 			PublicKey:      "038D4EA460687B0FF43E95D9CB56E439AC2C65D890C9FD8B553FF24997C5F91D9A",
 			PrivateKey:     "00C2C6F996F5FAD5168CAAAD6E58E518641A41E8E164A6FADC540F52D728E2A4AB",
@@ -145,9 +165,7 @@ func TestNewWalletFromMnemonic(t *testing.T) {
 
 	for _, tc := range testCases {
 		wallet, err := FromMnemonic(tc.Mnemonic)
-		if err != nil {
-			t.Errorf("Error generating wallet from mnemonic: %s", err)
-		}
+		require.NoError(t, err)
 
 		if wallet.PublicKey != tc.PublicKey {
 			t.Errorf("Public key does not match expected value. Expected: %s, got: %s", tc.PublicKey, wallet.PublicKey)
@@ -160,6 +178,77 @@ func TestNewWalletFromMnemonic(t *testing.T) {
 		if wallet.ClassicAddress != tc.ClassicAddress {
 			t.Errorf("Classic address does not match expected value. Expected: %s, got: %s", tc.ClassicAddress, wallet.ClassicAddress)
 		}
+	}
+}
+
+func TestFromMnemonicNonCanonicalWhitespace(t *testing.T) {
+	const mnemonic = "midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate"
+
+	testCases := []struct {
+		name     string
+		mnemonic string
+	}{
+		{name: "trailing newline", mnemonic: mnemonic + "\n"},
+		{name: "double space", mnemonic: "midnight  " + mnemonic[len("midnight "):]},
+		{name: "tab", mnemonic: "midnight\t" + mnemonic[len("midnight "):]},
+		{name: "leading space", mnemonic: " " + mnemonic},
+		{name: "trailing space", mnemonic: mnemonic + " "},
+		{name: "ogham space mark", mnemonic: "midnight\u1680" + mnemonic[len("midnight "):]},
+		{name: "next line", mnemonic: "midnight\u0085" + mnemonic[len("midnight "):]},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			wallet, err := FromMnemonic(tc.mnemonic)
+			require.ErrorIs(t, err, ErrNonCanonicalMnemonic)
+			require.ErrorIs(t, err, bip39.ErrInvalidMnemonic)
+			require.Nil(t, wallet)
+		})
+	}
+}
+
+func TestFromMnemonicLegacyDeprecated(t *testing.T) {
+	const mnemonic = "midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate"
+
+	testCases := []struct {
+		name           string
+		mnemonic       string
+		classicAddress types.Address
+		privateKey     string
+	}{
+		{name: "canonical", mnemonic: mnemonic, classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh", privateKey: "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557"},
+		{name: "trailing newline", mnemonic: mnemonic + "\n", classicAddress: "r3a3m8U8huGvkCUG99hxNak5nVpsn85Qto", privateKey: "0037AA4A01917A8CF0D10C0ACB0B7B1BE2A23D122236F17C7A8E9925B00B9B78FC"},
+		{name: "double space", mnemonic: "midnight  " + mnemonic[len("midnight "):], classicAddress: "rsdSCQE6dZjYCEFDJiATVdrsi3WdDBpQG1", privateKey: "00D1D00BA1638C95E84107FEACDFC80913675E33064AE33437D70F38246BC7A89E"},
+		{name: "tab", mnemonic: "midnight\t" + mnemonic[len("midnight "):], classicAddress: "rPvF4c1rQEGTZGNt4efQDXP9s22j8pgQVT", privateKey: "00C644DB0E1ECEA3AD16A7CD45A918A58A4AA825F12E6828569CDA78FF919D5361"},
+		{name: "no-break spaces", mnemonic: strings.ReplaceAll(mnemonic, " ", "\u00a0"), classicAddress: "rKqSYdnPTaahcj8gdQERU7jAkmmDWHRzcj", privateKey: "0020EA403FEA685437C1ED53773AA00CCF42485FC15FA2E98C7A49AD9877000C13"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			wallet, err := FromMnemonicLegacyDeprecated(tc.mnemonic)
+			require.NoError(t, err)
+			require.Equal(t, tc.classicAddress, wallet.ClassicAddress)
+			require.Equal(t, tc.privateKey, wallet.PrivateKey)
+		})
+	}
+}
+
+func TestFromMnemonicXRPLJSVector(t *testing.T) {
+	wallet, err := FromMnemonic("assault rare scout seed design extend noble drink talk control guitar quote")
+	require.NoError(t, err)
+	assert.Equal(t, "035953FCD81D001CF634EB44A87940F3F98ADF2483D09C914BAED0539BE50F385D", wallet.PublicKey)
+	assert.Equal(t, "0013FC461CA5799F1357C8130AF703CBA7E9C28E072C6CA8F7DEF8601CDE98F394", wallet.PrivateKey)
+}
+
+func TestFromMnemonicInvalidWords(t *testing.T) {
+	testCases := []string{
+		"ASSAULT rare scout seed design extend noble drink talk control guitar quote",
+		"assault rare scout seed design extend noble drink talk control guitar assault",
+		"assault rare scout seed design extend noble drink talk control guitar",
+	}
+	for _, mnemonic := range testCases {
+		_, err := FromMnemonic(mnemonic)
+		require.ErrorIs(t, err, bip39.ErrInvalidMnemonic)
 	}
 }
 

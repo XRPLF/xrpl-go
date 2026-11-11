@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Raised the minimum Go version from 1.25.13 to 1.26.10 to fix standard-library vulnerabilities in `net/http`, `net/textproto`, and `crypto/tls` (GO-2026-6603, GO-2026-6605, GO-2026-6607, GO-2026-6608, GO-2026-6610, GO-2026-6611, GO-2026-6612, GO-2026-6613, GO-2026-6617). Go 1.25 no longer receives security fixes, and `golang.org/x/crypto` v0.56.0 requires Go 1.26. Modules that build with Go 1.25 must upgrade Go before they use this release.
 
+#### xrpl/wallet
+
+- `FromMnemonic` now normalizes input with NFKD before validation and derivation, matching xrpl.js. Compatibility spaces now derive the same address as the same words separated by single ASCII spaces, instead of the previous address; other noncanonical whitespace is rejected. See the [migration guide](docs/docs/upgrading-from-v0.3.x-to-v0.4.0.md#wallet-mnemonics) for recovery steps.
+
 ### Added
 
 Errors that were created inline now have sentinels or error types, so callers can match them with `errors.Is` or `errors.As`. Unless noted under Changed, the error text is unchanged.
@@ -47,6 +51,11 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### xrpl/rpc, xrpl/websocket
 
 - Added `RequestContext`, a `Request` variant with caller cancellation and deadlines.
+
+#### xrpl/wallet
+
+- Added `ErrNonCanonicalMnemonic`, returned by `FromMnemonic` when the words are not separated by single ASCII spaces after NFKD normalization. It wraps `bip39.ErrInvalidMnemonic`.
+- Added the deprecated `FromMnemonicLegacyDeprecated`, which derives a wallet with the `FromMnemonic` behavior of v0.1.13 through v0.3.1, so applications can move funds from the previous address. It is kept in all v0.4.x releases and can be removed in v0.5.0 or any later release.
 
 ### Changed
 
