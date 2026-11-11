@@ -1,6 +1,7 @@
 package addresscodec
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -152,6 +153,16 @@ func TestDecodeXAddress(t *testing.T) {
 			name:        "fail - invalid x-address",
 			input:       "invalid",
 			expectedErr: ErrInvalidFormat,
+		},
+		{
+			name:        "fail - input at limit reaches checksum",
+			input:       strings.Repeat("r", 128),
+			expectedErr: ErrChecksum,
+		},
+		{
+			name:        "fail - input exceeds limit",
+			input:       strings.Repeat("r", 129),
+			expectedErr: ErrBase58InputTooLong,
 		},
 		{
 			name:  "pass - valid testnet x-address",

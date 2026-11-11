@@ -4,6 +4,7 @@
 package addresscodec
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -59,6 +60,26 @@ func TestDecodeBase58(t *testing.T) {
 			name:           "pass - successful decode with XRP alphabet - 3",
 			input:          "s2uiNSCBQnQfsVtnX49adC9QqtWNP8upC16t7GFLrmbR7tm",
 			expectedOutput: []byte("rUxb5vn9fGYRV3KZcnu3JLM4q5DTnNSavf"),
+		},
+		{
+			name:           "invalid non-ASCII character",
+			input:          "Ā",
+			expectedOutput: []byte{},
+		},
+		{
+			name:           "invalid UTF-8",
+			input:          "\xff",
+			expectedOutput: []byte{},
+		},
+		{
+			name:           "multibyte character across chunk boundary",
+			input:          "rrrrrrrrr" + "é",
+			expectedOutput: []byte{},
+		},
+		{
+			name:           "long generic value",
+			input:          strings.Repeat("r", 129),
+			expectedOutput: make([]byte, 129),
 		},
 	}
 
