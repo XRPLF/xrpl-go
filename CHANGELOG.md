@@ -77,7 +77,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 #### binary-codec
 
-- `XChainBridge` values now use the binary format of xrpld, xrpl.js, and xrpl-py: each door is a length-prefixed `AccountID` and each issue is an `Issue`. `Encode` takes the issues as objects such as `{"currency": "XRP"}`, and `Decode` no longer fails with `no length prefix size given`. The XLS-38 bridge feature is being retired and xrpld has removed it, so this fix only keeps historical data readable.
+- `XChainBridge` values now use the binary format of xrpld, xrpl.js, and xrpl-py: each door is a length-prefixed `AccountID` and each issue is an `Issue`. `Encode` takes the issues as objects such as `{"currency": "XRP"}`, and `Decode` no longer fails with `no length prefix size given`.
 
 #### dependencies
 

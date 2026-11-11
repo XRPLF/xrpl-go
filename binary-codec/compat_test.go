@@ -14,11 +14,11 @@ import (
 
 // CodecFixtures represents the structure of codec-fixtures.json
 type CodecFixtures struct {
-	AccountState []AccountStateTest `json:"accountState"`
-	Transactions []AccountStateTest `json:"transactions"`
+	AccountState []CodecFixtureTest `json:"accountState"`
+	Transactions []CodecFixtureTest `json:"transactions"`
 }
 
-type AccountStateTest struct {
+type CodecFixtureTest struct {
 	Binary string         `json:"binary"`
 	JSON   map[string]any `json:"json"`
 }
@@ -256,7 +256,7 @@ func TestCompat_CodecFixtures(t *testing.T) {
 	err = json.Unmarshal(data, &fixtures)
 	require.NoError(t, err, "Failed to parse codec-fixtures.json")
 
-	sections := map[string][]AccountStateTest{
+	sections := map[string][]CodecFixtureTest{
 		"AccountState": fixtures.AccountState,
 		"Transactions": fixtures.Transactions,
 	}
