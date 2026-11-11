@@ -62,6 +62,16 @@ func TestStObject_FromJson(t *testing.T) {
 			output:      []byte{0x12, 0x0, 0x0, 0x22, 0x0, 0x8, 0x0, 0x0, 0x20, 0x19, 0x0, 0x1a, 0xbe, 0xd7, 0x65, 0x40, 0x0, 0x0, 0x22, 0xec, 0xb2, 0x5c, 0x0, 0x68, 0x40, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xa, 0x3, 0x10, 0x0},
 			expectedErr: nil,
 		},
+		{
+			name:   "pass - X-address in Owner",
+			input:  map[string]any{"Owner": "XVYRdEocC28DRx94ZFGP3qNJ1D5Ln7ecXFMd3vREB5Pesju"},
+			output: []byte{0x82, 0x14, 211, 168, 209, 109, 176, 55, 12, 60, 93, 57, 103, 89, 62, 51, 191, 128, 222, 149, 106, 66},
+		},
+		{
+			name:   "pass - base58-looking memo data",
+			input:  map[string]any{"MemoData": "ABCDEFABCDEF"},
+			output: []byte{0x7d, 0x06, 0xab, 0xcd, 0xef, 0xab, 0xcd, 0xef},
+		},
 	}
 
 	for _, tc := range tt {
@@ -168,6 +178,42 @@ func TestStObject_FromJSONWithRawFieldValueOverrides(t *testing.T) {
 			0x81, 0x00,
 		}, got)
 	})
+}
+
+func TestCreateFieldInstanceMapFromJsonFieldTypes(t *testing.T) {
+	tests := []struct {
+		name  string
+		field string
+		input string
+		want  string
+	}{
+		{
+			name:  "Owner expands X-address",
+			field: "Owner",
+			input: "XVYRdEocC28DRx94ZFGP3qNJ1D5Ln7ecXFMd3vREB5Pesju",
+			want:  "rLJ9FwQ3opJZBMsTjhqhHrbhRNALqAQJ5U",
+		},
+		{
+			name:  "MemoData preserves X-address-shaped value",
+			field: "MemoData",
+			input: "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGxLBw6rACm2heBxVn",
+			want:  "X7AcgcsBL6XDcUb289X4mJ8djcdyKaGxLBw6rACm2heBxVn",
+		},
+		{
+			name:  "MemoData preserves base58-looking hex",
+			field: "MemoData",
+			input: "ABCDEFABCDEF",
+			want:  "ABCDEFABCDEF",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := createFieldInstanceMapFromJson(map[string]any{tc.field: tc.input})
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got[testutil.GetFieldInstance(t, tc.field)])
+		})
+	}
 }
 
 func TestCreateFieldInstanceMapFromJsonXAddressZeroTag(t *testing.T) {

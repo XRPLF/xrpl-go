@@ -75,6 +75,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 ### Fixed
 
+#### binary-codec
+
+- The encoder only expands X-addresses in AccountID fields.
+
 #### dependencies
 
 - Upgraded `golang.org/x/crypto` from v0.54.0 to v0.56.0 to include upstream security fixes (GO-2026-6303, GO-2026-6354, GO-2026-6355).

@@ -164,6 +164,14 @@ func createFieldInstanceMapFromJson(json map[string]any) (map[definitions.FieldI
 
 	// Process X-addresses
 	for k, v := range json {
+		fi, err := definitions.Get().GetFieldInstanceByFieldName(k)
+		if err != nil {
+			return nil, err
+		}
+		if fi.Type != "AccountID" {
+			continue
+		}
+
 		strVal, ok := v.(string)
 		if !ok {
 			continue
