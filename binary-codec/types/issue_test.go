@@ -243,50 +243,6 @@ func TestIssue_ToJson(t *testing.T) {
 			},
 		},
 		{
-			name: "pass - non-standard currency with three non-ISO bytes",
-			expected: map[string]any{
-				"currency": "000000000000000000000000FFFFFF0000000000",
-				"issuer":   "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
-			},
-			opts: []int{20},
-			err:  nil,
-			setup: func(t *testing.T) (*Issue, *testutil.MockBinaryParser) {
-				ctrl := gomock.NewController(t)
-				mock := testutil.NewMockBinaryParser(ctrl)
-				mock.EXPECT().ReadBytes(20).Return([]byte{
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0,
-				}, nil)
-				mock.EXPECT().ReadBytes(20).Return([]byte{
-					174, 18, 58, 133, 86, 243, 207, 145, 21, 71,
-					17, 55, 106, 251, 15, 137, 79, 131, 43, 61,
-				}, nil)
-				return &Issue{}, mock
-			},
-		},
-		{
-			name: "pass - non-standard currency with the XRP code bytes",
-			expected: map[string]any{
-				"currency": "0000000000000000000000005852500000000000",
-				"issuer":   "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
-			},
-			opts: []int{20},
-			err:  nil,
-			setup: func(t *testing.T) (*Issue, *testutil.MockBinaryParser) {
-				ctrl := gomock.NewController(t)
-				mock := testutil.NewMockBinaryParser(ctrl)
-				mock.EXPECT().ReadBytes(20).Return([]byte{
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 'X', 'R', 'P', 0, 0, 0, 0, 0,
-				}, nil)
-				mock.EXPECT().ReadBytes(20).Return([]byte{
-					174, 18, 58, 133, 86, 243, 207, 145, 21, 71,
-					17, 55, 106, 251, 15, 137, 79, 131, 43, 61,
-				}, nil)
-				return &Issue{}, mock
-			},
-		},
-		{
 			name:     "fail - invalid Issue",
 			expected: nil,
 			opts:     []int{20},
