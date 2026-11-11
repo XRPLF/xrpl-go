@@ -26,6 +26,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
 - Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
+- Added `types.ErrMaxNestingDepth`, returned when a serialized field exceeds the maximum nesting depth.
 - Added `types.ErrNumberUnderflow`, returned when a `Number` value is too small to represent.
 
 #### pkg/hexutil
