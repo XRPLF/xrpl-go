@@ -76,7 +76,7 @@ func EncodeBase58(b []byte) string {
 
 // DecodeBase58 decodes a modified base58 string to a byte slice.
 // It does not limit the input length, and its cost grows with the square of the length,
-// so callers should bound untrusted input or use the typed decoders such as Decode.
+// so callers should bound untrusted input or use the typed decoders such as DecodeNodePublicKey.
 func DecodeBase58(b string) []byte {
 	answer := big.NewInt(0)
 	scratch := new(big.Int)

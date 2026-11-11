@@ -46,7 +46,7 @@ func decodeXRPLPrefixed(input string, typePrefix []byte) ([]byte, error) {
 
 // Base58CheckDecode decodes a Base58Check encoded string and verifies the checksum.
 // It does not limit the input length, and its cost grows with the square of the length,
-// so callers should bound untrusted input or use the typed decoders such as Decode.
+// so callers should bound untrusted input or use the typed decoders such as DecodeNodePublicKey.
 func Base58CheckDecode(input string) (result []byte, err error) {
 	decoded := DecodeBase58(input)
 	if len(decoded) < 5 {
