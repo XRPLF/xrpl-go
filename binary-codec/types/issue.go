@@ -4,8 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
-	"strings"
+	"regexp"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
@@ -22,10 +21,8 @@ const (
 var NoAccountBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}
 
 var (
-	// ErrInvalidIssueObject is returned when the JSON object is not a valid Issue.
-	ErrInvalidIssueObject = errors.New("invalid issue object")
-	// ErrInvalidIssuer is returned when the issuer field is missing or invalid in the Issue JSON.
-	ErrInvalidIssuer = errors.New("invalid issuer")
+	// standardCurrencyCodeRegex matches the three bytes of a standard currency code.
+	standardCurrencyCodeRegex = regexp.MustCompile(`^` + IOUCodeRegex + `$`)
 	// XRPBytes is the serialized byte representation for native XRP (zero-value currency issuer).
 	XRPBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 )
@@ -101,6 +98,12 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 		return append(currencyBytes, issuerBytes...), nil
 	}
 
+	// As in xrpld's issueFromJson, only XRP has no issuer. Without one, a token issue
+	// would serialize to 20 bytes and the decoder would read the next 20 bytes as its issuer.
+	if !bytes.Equal(currencyBytes, XRPBytes) {
+		return nil, ErrInvalidIssuer
+	}
+
 	return currencyBytes, nil
 }
 
@@ -171,28 +174,19 @@ func (i *Issue) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 }
 
 // decodeCurrencyBytes decodes a 20-byte currency into its string representation.
+// As in xrpld and xrpl.js, only a standard currency code other than XRP decodes to its
+// three characters. Any other value decodes to hex, so that it encodes back to the same bytes.
 func decodeCurrencyBytes(currencyBytes []byte) string {
 	if bytes.Equal(currencyBytes, XRPBytes) {
 		return "XRP"
 	}
 
-	// Check if bytes has exactly 3 non-zero bytes at positions 12-14 (standard currency code)
-	nonZeroCount := 0
-	var currencyStr strings.Builder
-	for i := range currencyBytes {
-		if currencyBytes[i] != 0 {
-			if i >= 12 && i <= 14 {
-				nonZeroCount++
-				currencyStr.WriteString(string(currencyBytes[i]))
-			} else {
-				nonZeroCount = 0
-				break
-			}
-		}
-	}
-
-	if nonZeroCount == 3 {
-		return currencyStr.String()
+	code := currencyBytes[12:15]
+	if bytes.Equal(currencyBytes[:12], XRPBytes[:12]) &&
+		bytes.Equal(currencyBytes[15:], XRPBytes[15:]) &&
+		standardCurrencyCodeRegex.Match(code) &&
+		string(code) != "XRP" {
+		return string(code)
 	}
 
 	// Return hex-encoded currency for non-standard codes

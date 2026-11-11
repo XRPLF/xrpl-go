@@ -18,6 +18,8 @@ const (
 	xChainIssuingDoorHex = "14550fc62003e785dc231a1058a05e56e3f09cf4e6"
 	xChainXRPIssueHex    = "0000000000000000000000000000000000000000"
 	xChainUSDIssueHex    = "0000000000000000000000005553440000000000" + "af80285f637ee4af3c20378f9dfb12511acb8d27"
+	xChainNonStandardHex = "000000000000000000000000ffffff0000000000"
+	xChainXRPCodeHex     = "0000000000000000000000005852500000000000"
 )
 
 func xChainBridgeJSON(lockingIssue, issuingIssue any) map[string]any {
@@ -32,6 +34,8 @@ func xChainBridgeJSON(lockingIssue, issuingIssue any) map[string]any {
 func TestXChainBridge_RoundTrip(t *testing.T) {
 	xrp := map[string]any{"currency": "XRP"}
 	usd := map[string]any{"currency": "USD", "issuer": xChainLockingDoor}
+	nonStandard := map[string]any{"currency": strings.ToUpper(xChainNonStandardHex), "issuer": xChainLockingDoor}
+	xrpCode := map[string]any{"currency": xChainXRPCodeHex, "issuer": xChainLockingDoor}
 
 	tests := []struct {
 		name string
@@ -52,6 +56,16 @@ func TestXChainBridge_RoundTrip(t *testing.T) {
 			name: "XRP to token",
 			json: xChainBridgeJSON(xrp, usd),
 			hex:  xChainLockingDoorHex + xChainXRPIssueHex + xChainIssuingDoorHex + xChainUSDIssueHex,
+		},
+		{
+			name: "non-standard currency with three non-ISO bytes",
+			json: xChainBridgeJSON(nonStandard, xrp),
+			hex:  xChainLockingDoorHex + xChainNonStandardHex + xChainLockingDoorHex[2:] + xChainIssuingDoorHex + xChainXRPIssueHex,
+		},
+		{
+			name: "non-standard currency with the XRP code bytes",
+			json: xChainBridgeJSON(xrp, xrpCode),
+			hex:  xChainLockingDoorHex + xChainXRPIssueHex + xChainIssuingDoorHex + xChainXRPCodeHex + xChainLockingDoorHex[2:],
 		},
 	}
 
@@ -81,6 +95,8 @@ func TestXChainBridge_FromJSON_Errors(t *testing.T) {
 	withDoorNotString["LockingChainDoor"] = 1
 	withInvalidDoor := xChainBridgeJSON(xrp, xrp)
 	withInvalidDoor["IssuingChainDoor"] = "invalid"
+	usdWithoutIssuer := map[string]any{"currency": "USD"}
+	usdWithIssuerNotString := map[string]any{"currency": "USD", "issuer": 1}
 
 	tests := []struct {
 		name        string
@@ -94,6 +110,9 @@ func TestXChainBridge_FromJSON_Errors(t *testing.T) {
 		{name: "door is not a string", json: withDoorNotString, expectedErr: ErrAccountIDNotString},
 		{name: "door is not an address", json: withInvalidDoor, expectedErr: addresscodec.ErrInvalidAddressFormat},
 		{name: "issue is an address", json: xChainBridgeJSON(xChainLockingDoor, xrp), expectedErr: ErrInvalidIssueObject},
+		{name: "locking token issue without issuer", json: xChainBridgeJSON(usdWithoutIssuer, xrp), expectedErr: ErrInvalidIssuer},
+		{name: "issuing token issue without issuer", json: xChainBridgeJSON(xrp, usdWithoutIssuer), expectedErr: ErrInvalidIssuer},
+		{name: "token issue with issuer that is not a string", json: xChainBridgeJSON(usdWithIssuerNotString, xrp), expectedErr: ErrInvalidIssuer},
 	}
 
 	for _, tt := range tests {
