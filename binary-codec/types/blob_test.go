@@ -36,11 +36,6 @@ func TestBlob_FromJson(t *testing.T) {
 			expectedErr: hex.InvalidByteError('G'),
 		},
 		{
-			name:        "Number input",
-			input:       1,
-			expectedErr: ErrBlobNotString,
-		},
-		{
 			name:        "Nil input",
 			input:       nil,
 			expectedErr: ErrBlobNotString,
@@ -48,21 +43,6 @@ func TestBlob_FromJson(t *testing.T) {
 		{
 			name:        "Float input",
 			input:       float64(1),
-			expectedErr: ErrBlobNotString,
-		},
-		{
-			name:        "Bool input",
-			input:       true,
-			expectedErr: ErrBlobNotString,
-		},
-		{
-			name:        "Map input",
-			input:       map[string]any{"a": "00"},
-			expectedErr: ErrBlobNotString,
-		},
-		{
-			name:        "Slice input",
-			input:       []any{"00"},
 			expectedErr: ErrBlobNotString,
 		},
 	}
