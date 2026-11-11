@@ -10,6 +10,9 @@ import (
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 )
 
+// currencyBytesLength is the number of bytes of a serialized currency.
+const currencyBytesLength = 20
+
 var (
 	// ErrMissingCurrencyLengthOption is returned when no length option is
 	// provided to Currency.ToJSON.
@@ -33,7 +36,7 @@ func (c *Currency) FromJSON(json any) ([]byte, error) {
 // It requires a length option specifying the byte length to read.
 func (c *Currency) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 	// default to 20 bytes, https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/oracle#currency-internal-format
-	length := 20
+	length := currencyBytesLength
 	if len(opts) > 0 && opts[0] > 0 {
 		length = opts[0]
 	}
@@ -71,7 +74,7 @@ func (c *Currency) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
 
 func (c *Currency) fromString(str string) ([]byte, error) {
 	if len(str) == 3 {
-		var bytes [20]byte
+		var bytes [currencyBytesLength]byte
 		if str != "XRP" {
 			isoBytes := []byte(str)
 			copy(bytes[12:], isoBytes)
@@ -82,6 +85,9 @@ func (c *Currency) fromString(str string) ([]byte, error) {
 	bytes, err := hex.DecodeString(str)
 	if err != nil {
 		return nil, err
+	}
+	if len(bytes) != currencyBytesLength {
+		return nil, ErrInvalidCurrency
 	}
 
 	return bytes, nil

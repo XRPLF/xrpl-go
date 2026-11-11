@@ -116,6 +116,18 @@ func TestCurrency_FromJSON(t *testing.T) {
 			expected: nil,
 			err:      ErrInvalidCurrency,
 		},
+		{
+			name:     "fail - hex currency shorter than 20 bytes",
+			input:    "ABCD",
+			expected: nil,
+			err:      ErrInvalidCurrency,
+		},
+		{
+			name:     "fail - hex currency longer than 20 bytes",
+			input:    "0102030405060708090A0B0C0D0E0F101112131415",
+			expected: nil,
+			err:      ErrInvalidCurrency,
+		},
 	}
 
 	for _, tc := range tests {
