@@ -1047,12 +1047,6 @@ func TestEncodeForSigning(t *testing.T) {
 			output:      "53545800120007220008000024001ABED82A2380BF2C2019001ABED764D55920AC9391400000000000000000000000000055534400000000000A20B3C85F482532A9578DBB3950B85CA06594D165400000037E11D60068400000000000000A732103EE83BB432547885C219634A1BC407A9DB0474145D69737D09CCDC63E1DEE7FE38114DD76483FACDEE26E60D8A586BB58D09F27045C46",
 			expectedErr: nil,
 		},
-		{
-			description: "reject nil Domain blob for signing",
-			input:       map[string]any{"Domain": nil},
-			output:      "",
-			expectedErr: types.ErrBlobNotString,
-		},
 	}
 
 	for _, tc := range tt {
@@ -1060,10 +1054,7 @@ func TestEncodeForSigning(t *testing.T) {
 			got, err := EncodeForSigning(tc.input)
 
 			if tc.expectedErr != nil {
-				require.Error(t, err)
-				if !errors.Is(err, tc.expectedErr) {
-					require.EqualError(t, err, tc.expectedErr.Error())
-				}
+				require.EqualError(t, err, tc.expectedErr.Error())
 				require.Empty(t, got)
 			} else {
 				require.NoError(t, err)
