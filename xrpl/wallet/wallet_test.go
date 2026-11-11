@@ -161,6 +161,12 @@ func TestNewWalletFromMnemonic(t *testing.T) {
 			PrivateKey:     "001CBDDCA87FB57FB5A9D96ECE29D5710DA8421891F40CFA2262120DBB61E5050D",
 			ClassicAddress: "rsKbuMTkzR5HU96j8pdGsSuzmZEiZ6mKh5",
 		},
+		{
+			Mnemonic:       "assault rare scout seed design extend noble drink talk control guitar quote",
+			PublicKey:      "035953FCD81D001CF634EB44A87940F3F98ADF2483D09C914BAED0539BE50F385D",
+			PrivateKey:     "0013FC461CA5799F1357C8130AF703CBA7E9C28E072C6CA8F7DEF8601CDE98F394",
+			ClassicAddress: "rJUr92pXcNtH6PtFfbRhHCo469XmPrbTJU",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -231,13 +237,6 @@ func TestFromMnemonicLegacyDeprecated(t *testing.T) {
 			require.Equal(t, tc.privateKey, wallet.PrivateKey)
 		})
 	}
-}
-
-func TestFromMnemonicXRPLJSVector(t *testing.T) {
-	wallet, err := FromMnemonic("assault rare scout seed design extend noble drink talk control guitar quote")
-	require.NoError(t, err)
-	assert.Equal(t, "035953FCD81D001CF634EB44A87940F3F98ADF2483D09C914BAED0539BE50F385D", wallet.PublicKey)
-	assert.Equal(t, "0013FC461CA5799F1357C8130AF703CBA7E9C28E072C6CA8F7DEF8601CDE98F394", wallet.PrivateKey)
 }
 
 func TestFromMnemonicInvalidWords(t *testing.T) {
