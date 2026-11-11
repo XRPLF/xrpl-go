@@ -91,7 +91,7 @@ func (c *Clawback) Validate() (bool, error) {
 		return false, ErrClawbackInvalidAmount
 	}
 
-	switch amount := c.Amount.(type) {
+	switch amount := tokenAmountValue(c.Amount).(type) {
 	case types.IssuedCurrencyAmount:
 		if c.Holder != "" {
 			return false, ErrClawbackHolderNotAllowed

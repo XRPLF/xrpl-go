@@ -162,6 +162,7 @@ func IsAmount(field types.CurrencyAmount, fieldName string, isFieldRequired bool
 
 // IsIssuedCurrency checks if the given object is a valid IssuedCurrency object.
 func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
+	input = tokenAmountValue(input)
 	if input.Kind() == types.XRP {
 		return false, ErrInvalidTokenType
 	}
@@ -204,6 +205,7 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 
 // IsMPTCurrency checks if the given object is a valid MPTCurrencyAmount object.
 func IsMPTCurrency(input types.CurrencyAmount) (bool, error) {
+	input = tokenAmountValue(input)
 	if input.Kind() != types.MPT {
 		return false, ErrInvalidMPTType
 	}

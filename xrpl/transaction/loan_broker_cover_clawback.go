@@ -79,7 +79,7 @@ func (tx *LoanBrokerCoverClawback) Validate() (bool, error) {
 		}
 
 		// Check that Amount value is >= 0
-		switch amt := tx.Amount.(type) {
+		switch amt := tokenAmountValue(tx.Amount).(type) {
 		case types.IssuedCurrencyAmount:
 			val, err := strconv.ParseFloat(amt.Value, 64)
 			if err != nil || val < 0 {
@@ -96,7 +96,7 @@ func (tx *LoanBrokerCoverClawback) Validate() (bool, error) {
 			return false, err
 		}
 		if tx.LoanBrokerID == nil || *tx.LoanBrokerID == "" {
-			switch amount := tx.Amount.(type) {
+			switch amount := tokenAmountValue(tx.Amount).(type) {
 			case types.MPTCurrencyAmount:
 				return false, ErrMissingField{Field: "LoanBrokerID"}
 			case types.IssuedCurrencyAmount:
