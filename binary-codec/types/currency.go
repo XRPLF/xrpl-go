@@ -2,10 +2,8 @@
 package types
 
 import (
-	"bytes"
 	"encoding/hex"
 	"errors"
-	"strings"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 )
@@ -14,8 +12,9 @@ import (
 const currencyBytesLength = 20
 
 var (
-	// ErrMissingCurrencyLengthOption is returned when no length option is
-	// provided to Currency.ToJSON.
+	// ErrMissingCurrencyLengthOption is not returned by any function.
+	//
+	// Deprecated: Currency.ToJSON does not need a length option.
 	ErrMissingCurrencyLengthOption = errors.New("missing length option for Currency.ToJSON")
 	// ErrInvalidCurrency is returned when the currency field is missing or invalid.
 	ErrInvalidCurrency = errors.New("invalid currency")
@@ -32,44 +31,16 @@ func (c *Currency) FromJSON(json any) ([]byte, error) {
 	return nil, ErrInvalidCurrency
 }
 
-// ToJSON serializes a binary currency value into a JSON-compatible format.
-// It requires a length option specifying the byte length to read.
-func (c *Currency) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
-	// default to 20 bytes, https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/oracle#currency-internal-format
-	length := currencyBytesLength
-	if len(opts) > 0 && opts[0] > 0 {
-		length = opts[0]
-	}
-
-	currencyBytes, err := p.ReadBytes(length)
+// ToJSON reads a 20-byte currency from the parser and returns its JSON string.
+// A currency has a fixed length, so the opts parameter is ignored.
+// https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/oracle#currency-internal-format
+func (c *Currency) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
+	currencyBytes, err := p.ReadBytes(currencyBytesLength)
 	if err != nil {
 		return nil, err
 	}
 
-	if bytes.Equal(currencyBytes, XRPBytes) {
-		return "XRP", nil
-	}
-
-	// Check if bytes has exactly 3 non-zero bytes at positions 12-14
-	nonZeroCount := 0
-	var currencyStr strings.Builder
-	for i := range currencyBytes {
-		if currencyBytes[i] != 0 {
-			if i >= 12 && i <= 14 {
-				nonZeroCount++
-				currencyStr.WriteString(string(currencyBytes[i]))
-			} else {
-				nonZeroCount = 0
-				break
-			}
-		}
-	}
-
-	if nonZeroCount == 3 {
-		return currencyStr.String(), nil
-	}
-
-	return hex.EncodeToString(currencyBytes), nil
+	return decodeCurrencyBytes(currencyBytes), nil
 }
 
 func (c *Currency) fromString(str string) ([]byte, error) {
