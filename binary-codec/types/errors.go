@@ -5,8 +5,7 @@ import "errors"
 
 var (
 	errNotValidJSON         = errors.New("not a valid json")
-	errDecodeClassicAddress = errors.New("unable to decode classic address")
-	errReadBytes            = errors.New("read bytes error")
+	errNotValidXChainBridge = errors.New("not a valid xchain bridge")
 	// errUnknownFieldType is returned when a field definition names a type with no serializer.
 	// Invariant failures are not part of the caller's errors.Is contract.
 	// Export a sentinel when callers are expected to branch on it.
