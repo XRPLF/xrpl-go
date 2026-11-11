@@ -184,27 +184,15 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 		fields = node.FinalFields
 	}
 
-	lowLimitMap, ok := fields["LowLimit"].(map[string]any)
+	lowLimitIssuer, ok := nestedString(fields, "LowLimit", "issuer")
 	if !ok {
 		return nil, errLowLimitIssuerNotFound
 	}
-	lowLimitIssuer, ok := lowLimitMap["issuer"].(string)
-	if !ok {
-		return nil, errLowLimitIssuerNotFound
-	}
-	highLimitMap, ok := fields["HighLimit"].(map[string]any)
+	highLimitIssuer, ok := nestedString(fields, "HighLimit", "issuer")
 	if !ok {
 		return nil, errHighLimitIssuerNotFound
 	}
-	highLimitIssuer, ok := highLimitMap["issuer"].(string)
-	if !ok {
-		return nil, errHighLimitIssuerNotFound
-	}
-	balanceMap, ok := fields["Balance"].(map[string]any)
-	if !ok {
-		return nil, errBalanceCurrencyNotFound
-	}
-	balanceCurrency, ok := balanceMap["currency"].(string)
+	balanceCurrency, ok := nestedString(fields, "Balance", "currency")
 	if !ok {
 		return nil, errBalanceCurrencyNotFound
 	}
@@ -230,6 +218,12 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 	}
 
 	return []balanceChange{result, flippedResult}, nil
+}
+
+func nestedString(fields ledger.FlatLedgerObject, field, key string) (string, bool) {
+	object, _ := fields[field].(map[string]any)
+	value, ok := object[key].(string)
+	return value, ok
 }
 
 func computeBalanceChange(node *normalizedNode) (delta string, hasBalanceChange bool, err error) {
