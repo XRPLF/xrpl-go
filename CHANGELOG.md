@@ -75,6 +75,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 ### Fixed
 
+#### binary-codec
+
+- Encode and Decode return an error for fields nested deeper than xrpld's limit of 10.
+
 #### dependencies
 
 - Upgraded `golang.org/x/crypto` from v0.54.0 to v0.56.0 to include upstream security fixes (GO-2026-6303, GO-2026-6354, GO-2026-6355).
