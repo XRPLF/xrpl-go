@@ -25,6 +25,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### binary-codec
 
 - Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
+- Added `types.ErrBlobNotString`, returned when a `Blob` field receives a non-string JSON value.
 - Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
 - Added `types.ErrNumberUnderflow`, returned when a `Number` value is too small to represent.
 
@@ -74,6 +75,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - `DefinitionFormatField.Validate` errors now start with `server_definitions: invalid format field: `.
 
 ### Fixed
+
+#### binary-codec
+
+- Blob fields return an error for non-string JSON values.
 
 #### dependencies
 
