@@ -1,6 +1,6 @@
 module github.com/Peersyst/xrpl-go/confidential
 
-go 1.26.10
+go 1.26.11
 
 require (
 	github.com/Peersyst/xrpl-go v0.3.1
