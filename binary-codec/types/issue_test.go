@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/testutil"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,14 @@ func TestIssue_FromJson(t *testing.T) {
 				0, 0, 0, 0, 0, 0,
 			},
 			expectedErr: nil,
+		},
+		{
+			name: "pass - XRP issue with null issuer",
+			input: map[string]any{
+				"currency": "XRP",
+				"issuer":   nil,
+			},
+			expected: XRPBytes,
 		},
 		{
 			name: "pass - valid issue iou object",
@@ -77,6 +86,79 @@ func TestIssue_FromJson(t *testing.T) {
 			input:       "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p2",
 			expected:    nil,
 			expectedErr: ErrInvalidIssueObject,
+		},
+		{
+			name: "fail - XRP issue with issuer",
+			input: map[string]any{
+				"currency": "XRP",
+				"issuer":   "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+			},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name: "fail - XRP hex issue with issuer",
+			input: map[string]any{
+				"currency": "0000000000000000000000000000000000000000",
+				"issuer":   "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+			},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name: "fail - XRP issue with non-string issuer",
+			input: map[string]any{
+				"currency": "XRP",
+				"issuer":   1,
+			},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name: "fail - token issue without issuer",
+			input: map[string]any{
+				"currency": "USD",
+			},
+			expected:    nil,
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name: "fail - token issue with issuer that is not a string",
+			input: map[string]any{
+				"currency": "USD",
+				"issuer":   1,
+			},
+			expected:    nil,
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name: "fail - token issue with invalid issuer address",
+			input: map[string]any{
+				"currency": "USD",
+				"issuer":   "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCm",
+			},
+			expectedErr: addresscodec.ErrInvalidClassicAddress,
+		},
+		{
+			name: "fail - token issue with NO_ACCOUNT issuer",
+			input: map[string]any{
+				"currency": "USD",
+				"issuer":   "rrrrrrrrrrrrrrrrrrrrBZbvji",
+			},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name: "fail - token issue with ACCOUNT_ZERO issuer",
+			input: map[string]any{
+				"currency": "USD",
+				"issuer":   "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+			},
+			expectedErr: ErrInvalidIssuer,
+		},
+		{
+			name: "fail - token issue with short hex currency",
+			input: map[string]any{
+				"currency": "ABCD",
+				"issuer":   "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
+			},
+			expectedErr: ErrInvalidCurrency,
 		},
 	}
 

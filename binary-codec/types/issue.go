@@ -4,8 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
-	"strings"
+	"regexp"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
@@ -22,24 +21,22 @@ const (
 var NoAccountBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}
 
 var (
-	// ErrInvalidIssueObject is returned when the JSON object is not a valid Issue.
-	ErrInvalidIssueObject = errors.New("invalid issue object")
-	// ErrInvalidIssuer is returned when the issuer field is missing or invalid in the Issue JSON.
-	ErrInvalidIssuer = errors.New("invalid issuer")
+	// standardCurrencyCodeRegex matches the three bytes of a standard currency code.
+	standardCurrencyCodeRegex = regexp.MustCompile(`^` + IOUCodeRegex + `$`)
 	// XRPBytes is the serialized byte representation for native XRP (zero-value currency issuer).
 	XRPBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 )
 
-// Issue represents an XRPL Issue, which is essentially an AccountID.
-// It is used to identify the issuer of a currency in the XRPL.
-// The FromJson method converts a classic address string to an AccountID byte slice.
-// The ToJson method converts an AccountID byte slice back to a classic address string.
-// This type is crucial for handling currency issuers in XRPL transactions and ledger entries.
+// Issue is the codec for the XRPL Issue type, which identifies an asset without an amount:
+// XRP, a token (currency and issuer), or an MPT (issuance ID).
 type Issue struct{}
 
-// FromJSON parses a classic address string and returns the corresponding AccountID byte slice.
-// It uses the addresscodec package to decode the classic address.
-// If the input is not a valid classic address, it returns an error.
+// FromJSON converts an Issue JSON object to its binary representation:
+// - XRP: {"currency": "XRP"} to 20 bytes (currency only, all zeros)
+// - IOU: {"currency": ..., "issuer": ...} to 40 bytes (currency + issuer)
+// - MPT: {"mpt_issuance_id": ...} to 44 bytes (issuer account + NO_ACCOUNT marker + sequence)
+// It returns ErrInvalidIssueObject when the object has another shape, and ErrInvalidIssuer
+// when the issuer does not agree with the currency.
 func (i *Issue) FromJSON(json any) ([]byte, error) {
 	if !i.isIssueObject(json) {
 		return nil, ErrInvalidIssueObject
@@ -93,15 +90,32 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 		return nil, err
 	}
 
-	if issuer, ok := mapObj["issuer"].(string); ok {
-		_, issuerBytes, err := addresscodec.DecodeClassicAddressToAccountID(issuer)
-		if err != nil {
-			return nil, err
+	issuer := mapObj["issuer"]
+	if bytes.Equal(currencyBytes, XRPBytes) {
+		if issuer != nil {
+			return nil, ErrInvalidIssuer
 		}
-		return append(currencyBytes, issuerBytes...), nil
+		return currencyBytes, nil
 	}
 
-	return currencyBytes, nil
+	// As in xrpld's issueFromJson, only XRP has no issuer. Without one, a token issue
+	// would serialize to 20 bytes and the decoder would read the next 20 bytes as its issuer.
+	issuerString, ok := issuer.(string)
+	if !ok {
+		return nil, ErrInvalidIssuer
+	}
+
+	_, issuerBytes, err := addresscodec.DecodeClassicAddressToAccountID(issuerString)
+	if err != nil {
+		return nil, err
+	}
+
+	// As in xrpld's issueFromJson, a token issuer is never ACCOUNT_ZERO or the NO_ACCOUNT
+	// marker. The decoder would read the marker as the start of an MPT issue.
+	if addresscodec.IsZeroAccountID(issuerBytes) || bytes.Equal(issuerBytes, NoAccountBytes) {
+		return nil, ErrInvalidIssuer
+	}
+	return append(currencyBytes, issuerBytes...), nil
 }
 
 // ToJSON converts a binary Issue representation back to a JSON object.
@@ -171,28 +185,19 @@ func (i *Issue) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 }
 
 // decodeCurrencyBytes decodes a 20-byte currency into its string representation.
+// As in xrpld and xrpl.js, only a standard currency code other than XRP decodes to its
+// three characters. Any other value decodes to hex, so that it encodes back to the same bytes.
 func decodeCurrencyBytes(currencyBytes []byte) string {
 	if bytes.Equal(currencyBytes, XRPBytes) {
 		return "XRP"
 	}
 
-	// Check if bytes has exactly 3 non-zero bytes at positions 12-14 (standard currency code)
-	nonZeroCount := 0
-	var currencyStr strings.Builder
-	for i := range currencyBytes {
-		if currencyBytes[i] != 0 {
-			if i >= 12 && i <= 14 {
-				nonZeroCount++
-				currencyStr.WriteString(string(currencyBytes[i]))
-			} else {
-				nonZeroCount = 0
-				break
-			}
-		}
-	}
-
-	if nonZeroCount == 3 {
-		return currencyStr.String()
+	code := currencyBytes[12:15]
+	if bytes.Equal(currencyBytes[:12], XRPBytes[:12]) &&
+		bytes.Equal(currencyBytes[15:], XRPBytes[15:]) &&
+		standardCurrencyCodeRegex.Match(code) &&
+		string(code) != "XRP" {
+		return string(code)
 	}
 
 	// Return hex-encoded currency for non-standard codes

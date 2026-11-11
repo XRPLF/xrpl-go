@@ -1,259 +1,150 @@
 package types
 
 import (
-	"bytes"
-	"errors"
-	"reflect"
+	"encoding/hex"
+	"strings"
 	"testing"
 
+	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/definitions"
 	"github.com/Peersyst/xrpl-go/binary-codec/serdes"
-	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
-	"github.com/Peersyst/xrpl-go/binary-codec/types/testutil"
-	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
-func TestXChainBridge_FromJson(t *testing.T) {
-	tt := []struct {
+const (
+	xChainLockingDoor    = "rGzx83BVoqTYbGn7tiVAnFw7cbxjin13jL"
+	xChainLockingDoorHex = "14af80285f637ee4af3c20378f9dfb12511acb8d27"
+	xChainIssuingDoor    = "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV"
+	xChainIssuingDoorHex = "14550fc62003e785dc231a1058a05e56e3f09cf4e6"
+	xChainXRPIssueHex    = "0000000000000000000000000000000000000000"
+	xChainUSDIssueHex    = "0000000000000000000000005553440000000000" + "af80285f637ee4af3c20378f9dfb12511acb8d27"
+	xChainNonStandardHex = "000000000000000000000000ffffff0000000000"
+	xChainXRPCodeHex     = "0000000000000000000000005852500000000000"
+)
+
+func xChainBridgeJSON(lockingIssue, issuingIssue any) map[string]any {
+	return map[string]any{
+		"LockingChainDoor":  xChainLockingDoor,
+		"LockingChainIssue": lockingIssue,
+		"IssuingChainDoor":  xChainIssuingDoor,
+		"IssuingChainIssue": issuingIssue,
+	}
+}
+
+func TestXChainBridge_RoundTrip(t *testing.T) {
+	xrp := map[string]any{"currency": "XRP"}
+	usd := map[string]any{"currency": "USD", "issuer": xChainLockingDoor}
+	nonStandard := map[string]any{"currency": strings.ToUpper(xChainNonStandardHex), "issuer": xChainLockingDoor}
+	xrpCode := map[string]any{"currency": xChainXRPCodeHex, "issuer": xChainLockingDoor}
+
+	tests := []struct {
 		name string
-		json any
-		want []byte
-		err  error
+		json map[string]any
+		hex  string
 	}{
 		{
-			name: "valid xchain bridge",
-			json: map[string]any{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			want: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
-			err:  nil,
+			name: "XRP to XRP",
+			json: xChainBridgeJSON(xrp, xrp),
+			hex:  xChainLockingDoorHex + xChainXRPIssueHex + xChainIssuingDoorHex + xChainXRPIssueHex,
 		},
 		{
-			name: "invalid LockingChainDoor classic address",
-			json: map[string]any{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p1",
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			want: nil,
-			err:  errDecodeClassicAddress,
+			name: "token to XRP",
+			json: xChainBridgeJSON(usd, xrp),
+			hex:  xChainLockingDoorHex + xChainUSDIssueHex + xChainIssuingDoorHex + xChainXRPIssueHex,
 		},
 		{
-			name: "invalid LockingChainIssue classic address",
-			json: map[string]any{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p1",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			want: nil,
-			err:  errDecodeClassicAddress,
+			name: "XRP to token",
+			json: xChainBridgeJSON(xrp, usd),
+			hex:  xChainLockingDoorHex + xChainXRPIssueHex + xChainIssuingDoorHex + xChainUSDIssueHex,
 		},
 		{
-			name: "invalid IssuingChainDoor classic address",
-			json: map[string]any{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p1",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			want: nil,
-			err:  errDecodeClassicAddress,
+			name: "non-standard currency with three non-ISO bytes",
+			json: xChainBridgeJSON(nonStandard, xrp),
+			hex:  xChainLockingDoorHex + xChainNonStandardHex + xChainLockingDoorHex[2:] + xChainIssuingDoorHex + xChainXRPIssueHex,
 		},
 		{
-			name: "invalid IssuingChainIssue classic address",
-			json: map[string]any{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p1",
-			},
-			want: nil,
-			err:  errDecodeClassicAddress,
-		},
-		{
-			name: "not a valid json",
-			json: "not a valid json",
-			want: nil,
-			err:  errNotValidJSON,
-		},
-		{
-			name: "invalid xchain bridge",
-			json: map[string]any{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			want: nil,
-			err:  errNotValidXChainBridge,
-		},
-		{
-			name: "LockingChainDoor is not a string",
-			json: map[string]any{
-				"LockingChainDoor":  123,
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			want: nil,
-			err:  errNotValidXChainBridge,
-		},
-		{
-			name: "LockingChainIssue is not a string",
-			json: map[string]any{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"LockingChainIssue": 123,
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			want: nil,
-			err:  errNotValidXChainBridge,
-		},
-		{
-			name: "IssuingChainDoor is not a string",
-			json: map[string]any{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  123,
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			want: nil,
-			err:  errNotValidXChainBridge,
-		},
-		{
-			name: "IssuingChainIssue is not a string",
-			json: map[string]any{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": 123,
-			},
-			want: nil,
-			err:  errNotValidXChainBridge,
+			name: "non-standard currency with the XRP code bytes",
+			json: xChainBridgeJSON(xrp, xrpCode),
+			hex:  xChainLockingDoorHex + xChainXRPIssueHex + xChainIssuingDoorHex + xChainXRPCodeHex + xChainLockingDoorHex[2:],
 		},
 	}
 
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			xcb := &XChainBridge{}
-			got, err := xcb.FromJSON(tc.json)
-			if !errors.Is(err, tc.err) {
-				t.Errorf("FromJson() error = %v, want %v", err.Error(), tc.err.Error())
-			}
-			if !bytes.Equal(got, tc.want) {
-				t.Errorf("FromJson() got = %v, want %v", got, tc.want)
-			}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := (&XChainBridge{}).FromJSON(tt.json)
+			require.NoError(t, err)
+			require.Equal(t, tt.hex, hex.EncodeToString(encoded))
+
+			decoded, err := (&XChainBridge{}).ToJSON(serdes.NewBinaryParser(encoded, definitions.Get()))
+			require.NoError(t, err)
+			require.Equal(t, tt.json, decoded)
 		})
 	}
 }
 
-func TestXChainBridge_ToJson(t *testing.T) {
-	tt := []struct {
-		name  string
-		input []byte
-		opts  []int
-		want  map[string]string
-		err   error
-		setup func(t *testing.T) (*XChainBridge, interfaces.BinaryParser)
+func TestXChainBridge_FromJSON_Errors(t *testing.T) {
+	xrp := map[string]any{"currency": "XRP"}
+	withExtraField := xChainBridgeJSON(xrp, xrp)
+	withExtraField["Extra"] = "value"
+	withoutIssuingDoor := xChainBridgeJSON(xrp, xrp)
+	delete(withoutIssuingDoor, "IssuingChainDoor")
+	withRenamedField := xChainBridgeJSON(xrp, xrp)
+	delete(withRenamedField, "IssuingChainDoor")
+	withRenamedField["Door"] = xChainIssuingDoor
+	withDoorNotString := xChainBridgeJSON(xrp, xrp)
+	withDoorNotString["LockingChainDoor"] = 1
+	withInvalidDoor := xChainBridgeJSON(xrp, xrp)
+	withInvalidDoor["IssuingChainDoor"] = "invalid"
+	usdWithoutIssuer := map[string]any{"currency": "USD"}
+	usdWithIssuerNotString := map[string]any{"currency": "USD", "issuer": 1}
+
+	tests := []struct {
+		name        string
+		json        any
+		expectedErr error
 	}{
-		{
-			name:  "Valid xchain bridge",
-			input: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
-			opts:  []int{80},
-			want: map[string]string{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			err: nil,
-			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
-				ctrl := gomock.NewController(t)
-				mock := testutil.NewMockBinaryParser(ctrl)
-				mock.EXPECT().ReadBytes(80).Return([]byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18}, nil)
-				return &XChainBridge{}, mock
-			},
-		},
-		{
-			name:  "Valid xchain bridge - real parser",
-			input: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
-			opts:  []int{80},
-			want: map[string]string{
-				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-				"IssuingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			},
-			err: nil,
-			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
-				payload := []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18}
-				return &XChainBridge{}, serdes.NewBinaryParser(payload, definitions.Get())
-			},
-		},
-		{
-			name:  "No length prefix",
-			input: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
-			opts:  nil,
-			want:  nil,
-			err:   ErrNoLengthPrefix,
-			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
-				return &XChainBridge{}, nil
-			},
-		},
-		{
-			name:  "ReadBytes error",
-			input: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
-			opts:  []int{80},
-			want:  nil,
-			err:   errReadBytes,
-			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
-				ctrl := gomock.NewController(t)
-				mock := testutil.NewMockBinaryParser(ctrl)
-				mock.EXPECT().ReadBytes(80).Return([]byte{}, errors.New("errReadBytes"))
-				return &XChainBridge{}, mock
-			},
-		},
-		{
-			name:  "Short bytes",
-			input: nil,
-			opts:  []int{80},
-			want:  nil,
-			err:   errNotValidXChainBridge,
-			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
-				ctrl := gomock.NewController(t)
-				mock := testutil.NewMockBinaryParser(ctrl)
-				mock.EXPECT().ReadBytes(80).Return(make([]byte, 60), nil)
-				return &XChainBridge{}, mock
-			},
-		},
-		{
-			name:  "Nil bytes",
-			input: nil,
-			opts:  []int{80},
-			want:  nil,
-			err:   errNotValidXChainBridge,
-			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
-				ctrl := gomock.NewController(t)
-				mock := testutil.NewMockBinaryParser(ctrl)
-				mock.EXPECT().ReadBytes(80).Return(nil, nil)
-				return &XChainBridge{}, mock
-			},
-		},
+		{name: "not an object", json: "bridge", expectedErr: errNotValidJSON},
+		{name: "extra field", json: withExtraField, expectedErr: errNotValidXChainBridge},
+		{name: "missing field", json: withoutIssuingDoor, expectedErr: errNotValidXChainBridge},
+		{name: "renamed field", json: withRenamedField, expectedErr: errNotValidXChainBridge},
+		{name: "door is not a string", json: withDoorNotString, expectedErr: ErrAccountIDNotString},
+		{name: "door is not an address", json: withInvalidDoor, expectedErr: addresscodec.ErrInvalidAddressFormat},
+		{name: "issue is an address", json: xChainBridgeJSON(xChainLockingDoor, xrp), expectedErr: ErrInvalidIssueObject},
+		{name: "locking token issue without issuer", json: xChainBridgeJSON(usdWithoutIssuer, xrp), expectedErr: ErrInvalidIssuer},
+		{name: "issuing token issue without issuer", json: xChainBridgeJSON(xrp, usdWithoutIssuer), expectedErr: ErrInvalidIssuer},
+		{name: "token issue with issuer that is not a string", json: xChainBridgeJSON(usdWithIssuerNotString, xrp), expectedErr: ErrInvalidIssuer},
 	}
 
-	for _, tc := range tt {
-		t.Run(tc.name, func(t *testing.T) {
-			xcb, parser := tc.setup(t)
-			got, err := xcb.ToJSON(parser, tc.opts...)
-			if !errors.Is(err, tc.err) {
-				t.Errorf("ToJson() error = %v, want %v", err.Error(), tc.err.Error())
-			} else if tc.err == nil && !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("ToJson() got = %v, want %v", got, tc.want)
-			}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			encoded, err := (&XChainBridge{}).FromJSON(tt.json)
+			require.ErrorIs(t, err, tt.expectedErr)
+			require.Nil(t, encoded)
+		})
+	}
+}
+
+func TestXChainBridge_ToJSON_Errors(t *testing.T) {
+	valid := xChainLockingDoorHex + xChainXRPIssueHex + xChainIssuingDoorHex + xChainXRPIssueHex
+
+	tests := []struct {
+		name string
+		hex  string
+	}{
+		{name: "empty", hex: ""},
+		{name: "truncated issue", hex: valid[:len(valid)-2]},
+		{name: "door without length prefix", hex: strings.TrimPrefix(valid, "14")},
+		{name: "door with a wrong length", hex: "13" + strings.TrimPrefix(valid, "14")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input, err := hex.DecodeString(tt.hex)
+			require.NoError(t, err)
+
+			decoded, err := (&XChainBridge{}).ToJSON(serdes.NewBinaryParser(input, definitions.Get()))
+			require.ErrorIs(t, err, errNotValidXChainBridge)
+			require.Nil(t, decoded)
 		})
 	}
 }

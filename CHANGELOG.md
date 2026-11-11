@@ -56,6 +56,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - A non-string `AccountID` value now returns `account ID must be a string: got <type>` instead of `expected a string but got <type>`.
 - An unknown field type now returns `unknown field type: type "<type>", field "<field>"` instead of `unknown type "<type>" for field "<field>"`.
 - An unsupported amount value type now returns `unsupported amount value type: <type>` instead of `unsupported type <type> for amount value`.
+- `types.ErrMissingCurrencyLengthOption` is deprecated, because no function returns it.
 
 #### pkg/hexutil
 
@@ -74,6 +75,13 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - `DefinitionFormatField.Validate` errors now start with `server_definitions: invalid format field: `.
 
 ### Fixed
+
+#### binary-codec
+
+- `XChainBridge` values now use the binary format of xrpld, xrpl.js, and xrpl-py: each door is a length-prefixed `AccountID` and each issue is an `Issue`. `Encode` takes the issues as objects such as `{"currency": "XRP"}`, and `Decode` no longer fails with `no length prefix size given`.
+- `Issue` values, including the issues of an `XChainBridge`, now reject XRP with a non-null `issuer`, non-XRP currencies without a string `issuer`, and the ACCOUNT_ZERO and NO_ACCOUNT issuers. `Encode` returns `ErrInvalidIssuer`. Before, a string `issuer` on XRP, a missing `issuer` on a token, or the NO_ACCOUNT issuer gave bytes that cannot be decoded.
+- `Currency` values, including the currency of an `Issue`, no longer encode a hex code that is not 20 bytes long. `Encode` now returns `ErrInvalidCurrency` instead of bytes that cannot be decoded.
+- `Currency` and `Issue` values, including the issues of an `XChainBridge`, now decode a currency to its three-character code only when the code has standard currency characters and is not `XRP`. Other currencies, such as `000000000000000000000000FFFFFF0000000000`, decode to hex and encode back to the same bytes. `Currency` values now decode to uppercase hex, as `Issue` values do.
 
 #### dependencies
 
