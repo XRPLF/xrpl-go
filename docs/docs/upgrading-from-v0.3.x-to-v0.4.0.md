@@ -23,14 +23,14 @@ fmt.Println("Cleaned-mnemonic address:", cleanedWallet.ClassicAddress)
 
 Import `fmt`, `strings`, and `github.com/Peersyst/xrpl-go/xrpl/wallet` for this example. If the addresses differ, the cleaned-mnemonic wallet does not control the funded address by default. Keep the exact original string, including all whitespace. Never share the mnemonic or private keys.
 
-If funds are on the old address, use `wallet.FromMnemonicLegacyDeprecated` with the exact original string. It derives the wallet with the `FromMnemonic` behavior of `v0.1.13` through `v0.3.1`, so you can sign the migration transactions in the same program:
+If funds are on the old address, use `wallet.FromMnemonicLegacy` with the exact original string. It derives the wallet with the `FromMnemonic` behavior of `v0.1.13` through `v0.3.1`, so you can sign the migration transactions in the same program:
 
 ```go
 original, err := os.ReadFile("mnemonic.txt") // exact original bytes, including any final newline
 if err != nil {
 	return err
 }
-oldWallet, err := wallet.FromMnemonicLegacyDeprecated(string(original))
+oldWallet, err := wallet.FromMnemonicLegacy(string(original))
 if err != nil {
 	return err
 }
@@ -39,11 +39,11 @@ fmt.Println("Old address:", oldWallet.ClassicAddress)
 
 Confirm the old address matches the funded address. Then use `oldWallet` to send the funds to the cleaned-mnemonic address with a `Payment`, or close the old account with `AccountDelete` if its ledger requirements permit. Alternatively, use `SetRegularKey` signed by `oldWallet` to authorize the cleaned-mnemonic wallet as the old account's regular key. Check the transaction result before discarding any recovery material. Test the process with non-production funds first. Keep the mnemonic and any private key private.
 
-`FromMnemonicLegacyDeprecated` is deprecated and exists only for this migration. It is available in all `v0.4.x` releases and can be removed in `v0.5.0` or any later release, so complete the migration before you upgrade to `v0.5.0`.
+`FromMnemonicLegacy` is deprecated and exists only for this migration. It is available in all `v0.4.x` releases and can be removed in `v0.5.0` or any later release, so complete the migration before you upgrade to `v0.5.0`.
 
 #### Wallets created with v0.1.0 through v0.1.12
 
-For a small share of mnemonics, `v0.1.0` through `v0.1.12` derive a different address than later versions, even without whitespace. `FromMnemonicLegacyDeprecated` reproduces `v0.1.13` through `v0.3.1` only. If its address does not match the funded address and the wallet was created with `v0.1.12` or earlier, recover it in a separate program pinned to `v0.1.12`:
+For a small share of mnemonics, `v0.1.0` through `v0.1.12` derive a different address than later versions, even without whitespace. `FromMnemonicLegacy` reproduces `v0.1.13` through `v0.3.1` only. If its address does not match the funded address and the wallet was created with `v0.1.12` or earlier, recover it in a separate program pinned to `v0.1.12`:
 
 ```sh
 mkdir mnemonic-recovery && cd mnemonic-recovery

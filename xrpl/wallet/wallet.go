@@ -88,16 +88,16 @@ func FromMnemonic(mnemonic string) (*Wallet, error) {
 	return walletFromMnemonic(mnemonic)
 }
 
-// FromMnemonicLegacyDeprecated derives a Wallet with the FromMnemonic behavior
+// FromMnemonicLegacy derives a Wallet with the FromMnemonic behavior
 // of v0.1.13 through v0.3.1: it validates the words but derives the seed from
 // the unmodified string, including any whitespace and without NFKD
 // normalization. Use it only to recover a wallet created by those versions and
 // move its funds to the wallet that FromMnemonic derives.
 //
-// Deprecated: Use FromMnemonic. FromMnemonicLegacyDeprecated is kept in all
+// Deprecated: Use FromMnemonic. FromMnemonicLegacy is kept in all
 // v0.4.x releases to allow migration, and it can be removed in v0.5.0 or any
 // later release.
-func FromMnemonicLegacyDeprecated(mnemonic string) (*Wallet, error) {
+func FromMnemonicLegacy(mnemonic string) (*Wallet, error) {
 	return walletFromMnemonic(mnemonic)
 }
 

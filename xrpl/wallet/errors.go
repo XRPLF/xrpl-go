@@ -9,6 +9,8 @@ import (
 )
 
 var (
+	// mnemonic
+
 	// ErrNonCanonicalMnemonic is returned when normalized mnemonic words are not separated by single ASCII spaces.
 	ErrNonCanonicalMnemonic = fmt.Errorf("%w: normalized mnemonic must use single ASCII spaces without leading or trailing whitespace", bip39.ErrInvalidMnemonic)
 

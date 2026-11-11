@@ -55,7 +55,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### xrpl/wallet
 
 - Added `ErrNonCanonicalMnemonic`, returned by `FromMnemonic` when the words are not separated by single ASCII spaces after NFKD normalization. It wraps `bip39.ErrInvalidMnemonic`.
-- Added the deprecated `FromMnemonicLegacyDeprecated`, which derives a wallet with the `FromMnemonic` behavior of v0.1.13 through v0.3.1, so applications can move funds from the previous address. It is kept in all v0.4.x releases and can be removed in v0.5.0 or any later release.
+- Added the deprecated `FromMnemonicLegacy`, which derives a wallet with the `FromMnemonic` behavior of v0.1.13 through v0.3.1, so applications can move funds from the previous address. It is kept in all v0.4.x releases and can be removed in v0.5.0 or any later release.
 
 ### Changed
 

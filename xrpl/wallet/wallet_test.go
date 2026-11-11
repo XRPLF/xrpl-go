@@ -213,7 +213,7 @@ func TestFromMnemonicNonCanonicalWhitespace(t *testing.T) {
 	}
 }
 
-func TestFromMnemonicLegacyDeprecated(t *testing.T) {
+func TestFromMnemonicLegacy(t *testing.T) {
 	const mnemonic = "midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate"
 
 	testCases := []struct {
@@ -231,7 +231,7 @@ func TestFromMnemonicLegacyDeprecated(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			wallet, err := FromMnemonicLegacyDeprecated(tc.mnemonic)
+			wallet, err := FromMnemonicLegacy(tc.mnemonic)
 			require.NoError(t, err)
 			require.Equal(t, tc.classicAddress, wallet.ClassicAddress)
 			require.Equal(t, tc.privateKey, wallet.PrivateKey)
@@ -240,14 +240,20 @@ func TestFromMnemonicLegacyDeprecated(t *testing.T) {
 }
 
 func TestFromMnemonicInvalidWords(t *testing.T) {
-	testCases := []string{
-		"ASSAULT rare scout seed design extend noble drink talk control guitar quote",
-		"assault rare scout seed design extend noble drink talk control guitar assault",
-		"assault rare scout seed design extend noble drink talk control guitar",
+	testCases := []struct {
+		name     string
+		mnemonic string
+	}{
+		{name: "uppercase word", mnemonic: "ASSAULT rare scout seed design extend noble drink talk control guitar quote"},
+		{name: "invalid checksum", mnemonic: "assault rare scout seed design extend noble drink talk control guitar assault"},
+		{name: "eleven words", mnemonic: "assault rare scout seed design extend noble drink talk control guitar"},
 	}
-	for _, mnemonic := range testCases {
-		_, err := FromMnemonic(mnemonic)
-		require.ErrorIs(t, err, bip39.ErrInvalidMnemonic)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := FromMnemonic(tc.mnemonic)
+			require.ErrorIs(t, err, bip39.ErrInvalidMnemonic)
+		})
 	}
 }
 
