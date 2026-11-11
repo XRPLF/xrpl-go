@@ -89,7 +89,6 @@ func EncodeClassicAddressFromPublicKeyHex(pubkeyhex string) (string, error) {
 
 // DecodeClassicAddressToAccountID returns the prefix and accountID byte slice from a classic address.
 func DecodeClassicAddressToAccountID(cAddress string) (typePrefix, accountID []byte, err error) {
-	// Use Base58CheckDecode to validate checksum
 	decoded, err := decodeXRPLBase58Check(cAddress)
 	if err != nil {
 		return nil, nil, ErrInvalidClassicAddress

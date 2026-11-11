@@ -25,11 +25,13 @@ func Base58CheckEncode(input []byte, prefix ...byte) string {
 	return EncodeBase58(b)
 }
 
-// maxXRPLBase58Length bounds the XRPL-typed base58 decoders. The longest XRPL base58
-// value is about 53 characters; rippled caps decoded input at 64 characters after
-// leading zeros.
+// maxXRPLBase58Length bounds the XRPL-typed base58 decoders, in bytes. The longest XRPL
+// base58 value is 52 characters. xrpld rejects input longer than 52 characters in its
+// default decoder, and longer than 64 after leading zeros in its MSVC decoder.
 const maxXRPLBase58Length = 128
 
+// decodeXRPLBase58Check is Base58CheckDecode for XRPL values: it rejects input longer
+// than maxXRPLBase58Length before decoding.
 func decodeXRPLBase58Check(input string) ([]byte, error) {
 	if len(input) > maxXRPLBase58Length {
 		return nil, ErrBase58InputTooLong
@@ -37,6 +39,8 @@ func decodeXRPLBase58Check(input string) ([]byte, error) {
 	return Base58CheckDecode(input)
 }
 
+// decodeXRPLPrefixed is Decode for XRPL values: it rejects input longer than
+// maxXRPLBase58Length before decoding.
 func decodeXRPLPrefixed(input string, typePrefix []byte) ([]byte, error) {
 	if len(input) > maxXRPLBase58Length {
 		return nil, ErrBase58InputTooLong

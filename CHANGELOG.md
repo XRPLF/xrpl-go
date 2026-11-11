@@ -21,7 +21,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### address-codec
 
 - Added `ErrInvalidEncodingType`, returned by `EncodeSeed` for an unknown encoding type.
-- Added `ErrBase58InputTooLong`, returned by `DecodeNodePublicKey`, `DecodeAccountPublicKey`, and `DecodeXAddress` when the input is longer than 128 characters. `DecodeClassicAddressToAccountID` returns `ErrInvalidClassicAddress` and `DecodeSeed` returns `ErrInvalidSeed` for the same input. The generic `Decode`, `Base58CheckDecode`, and `DecodeBase58` do not limit input length.
+- Added `ErrBase58InputTooLong`, returned by `DecodeNodePublicKey`, `DecodeAccountPublicKey`, and `DecodeXAddress` when the input is longer than 128 bytes. `DecodeClassicAddressToAccountID` returns `ErrInvalidClassicAddress` and `DecodeSeed` returns `ErrInvalidSeed` for the same input. The generic `Decode`, `Base58CheckDecode`, and `DecodeBase58` do not limit input length.
 
 #### binary-codec
 
