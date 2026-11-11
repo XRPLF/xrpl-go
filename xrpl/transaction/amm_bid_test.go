@@ -162,6 +162,25 @@ func TestAMMBid_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "pass - pointer bid limits",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: &types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "9"},
+				BidMax: &types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+			},
+		},
+		{
+			name: "fail - pointer BidMin above BidMax",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: &types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+				BidMax: &types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "9"},
+			},
+			wantErr: true,
+		},
+		{
 			name: "pass - BidMin above BidMax with different issues",
 			ammBid: AMMBid{
 				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},

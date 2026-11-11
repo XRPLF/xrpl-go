@@ -114,7 +114,22 @@ func isNonNegativeCodecNumber(value string) bool {
 	return ok && number.Sign() >= 0
 }
 
+func tokenAmountValue(amount types.CurrencyAmount) types.CurrencyAmount {
+	switch amount := amount.(type) {
+	case *types.IssuedCurrencyAmount:
+		if amount != nil {
+			return *amount
+		}
+	case *types.MPTCurrencyAmount:
+		if amount != nil {
+			return *amount
+		}
+	}
+	return amount
+}
+
 func amountAsset(amount types.CurrencyAmount) ledger.Asset {
+	amount = tokenAmountValue(amount)
 	switch amount := amount.(type) {
 	case types.IssuedCurrencyAmount:
 		return ledger.Asset{Currency: amount.Currency, Issuer: amount.Issuer}
@@ -128,6 +143,7 @@ func amountAsset(amount types.CurrencyAmount) ledger.Asset {
 // as codec bytes so "USD" equals its hex spelling, and issuers as AccountIDs so a classic
 // address equals its X-address. Both inputs must already be validated.
 func sameIssue(amount types.CurrencyAmount, asset ledger.Asset) bool {
+	amount = tokenAmountValue(amount)
 	if amount.Kind() == types.XRP {
 		return asset.Kind() == ledger.AssetXRP
 	}
@@ -167,7 +183,7 @@ func sameAssetIssue(a, b ledger.Asset) bool {
 // greater than zero. XRP is not a token amount.
 func isPositiveTokenAmount(amount types.CurrencyAmount) bool {
 	var ok bool
-	switch amount.(type) {
+	switch tokenAmountValue(amount).(type) {
 	case types.IssuedCurrencyAmount:
 		ok, _ = IsIssuedCurrency(amount)
 	case types.MPTCurrencyAmount:

@@ -179,7 +179,7 @@ func validateAuthAccounts(authAccounts []ledger.AuthAccounts, account types.Addr
 // bidAbove reports whether bidMin is greater than bidMax. Both are validated IOU amounts,
 // so they have at most 16 significant digits and compare as rippled's STAmount does.
 func bidAbove(bidMin, bidMax types.CurrencyAmount) bool {
-	minValue, _ := new(big.Rat).SetString(bidMin.(types.IssuedCurrencyAmount).Value)
-	maxValue, _ := new(big.Rat).SetString(bidMax.(types.IssuedCurrencyAmount).Value)
+	minValue, _ := new(big.Rat).SetString(tokenAmountValue(bidMin).(types.IssuedCurrencyAmount).Value)
+	maxValue, _ := new(big.Rat).SetString(tokenAmountValue(bidMax).(types.IssuedCurrencyAmount).Value)
 	return minValue.Cmp(maxValue) > 0
 }

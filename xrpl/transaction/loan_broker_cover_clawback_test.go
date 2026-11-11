@@ -262,6 +262,25 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 			expected: nil,
 		},
 		{
+			name: "pass - MPT pointer with LoanBrokerID",
+			tx: &LoanBrokerCoverClawback{
+				BaseTx: BaseTx{Account: "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds", TransactionType: LoanBrokerCoverClawbackTx},
+				LoanBrokerID: func() *types.LoanBrokerID {
+					v := types.LoanBrokerID("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430")
+					return &v
+				}(),
+				Amount: &types.MPTCurrencyAmount{MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF", Value: "1"},
+			},
+		},
+		{
+			name: "fail - MPT pointer without LoanBrokerID",
+			tx: &LoanBrokerCoverClawback{
+				BaseTx: BaseTx{Account: "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds", TransactionType: LoanBrokerCoverClawbackTx},
+				Amount: &types.MPTCurrencyAmount{MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF", Value: "1"},
+			},
+			expected: ErrMissingField{Field: "LoanBrokerID"},
+		},
+		{
 			name: "pass - with Amount only from another issuer",
 			tx: &LoanBrokerCoverClawback{
 				BaseTx: BaseTx{

@@ -174,6 +174,20 @@ func TestIsAmount(t *testing.T) {
 			expected:        true,
 		},
 		{
+			name:            "pass - issued amount pointer",
+			input:           &types.IssuedCurrencyAmount{Value: "100", Issuer: "r4ES5Mmnz4HGbu2asdicuECBaBWo4knhXW", Currency: "USD"},
+			fieldName:       "Amount",
+			isFieldRequired: true,
+			expected:        true,
+		},
+		{
+			name:            "pass - MPT amount pointer",
+			input:           &types.MPTCurrencyAmount{MPTIssuanceID: "00000001A407AF5856CEF3379FAB85D584F3AA7C0E8B8C4A", Value: "100"},
+			fieldName:       "Amount",
+			isFieldRequired: true,
+			expected:        true,
+		},
+		{
 			name:            "fail - required field is nil",
 			input:           nil,
 			fieldName:       "Amount",

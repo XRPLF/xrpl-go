@@ -226,6 +226,14 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			tx:   deposit(TfTwoAsset, amount, &amount2, nil, nil),
 		},
 		{
+			name: "pass - token pointer in Amount",
+			tx:   deposit(TfSingleAsset, &amount, nil, nil, nil),
+		},
+		{
+			name: "pass - MPT pointer in Amount",
+			tx:   withAssets(deposit(TfSingleAsset, &mptAmount, nil, nil, nil), mptAsset, ledger.Asset{Currency: "XRP"}),
+		},
+		{
 			name:        "fail - XRP pointers still cannot name the same issue",
 			tx:          deposit(TfTwoAsset, &amount2, &amount2, nil, nil),
 			expectedErr: ErrAMMInvalidTokens,
@@ -236,9 +244,8 @@ func TestAMMDeposit_Validate(t *testing.T) {
 			expectedErr: currency.ErrInvalidNativeAmount,
 		},
 		{
-			name:        "fail - MPT EPrice with nonzero issuer",
-			tx:          deposit(TfLimitLPToken, amount, nil, mptAmount, nil),
-			expectedErr: invalidField("EPrice"),
+			name: "pass - MPT EPrice with nonzero issuer",
+			tx:   deposit(TfLimitLPToken, amount, nil, mptAmount, nil),
 		},
 		{
 			name: "fail - MPT EPrice with zero issuer",

@@ -197,7 +197,9 @@ func (a *AMMDeposit) Validate() (bool, error) {
 		}
 	}
 	if a.EPrice != nil && a.EPrice.Kind() == types.MPT {
-		return false, a.fieldNotAllowed("EPrice")
+		if ok, _ := IsAsset(amountAsset(a.EPrice)); !ok {
+			return false, a.fieldNotAllowed("EPrice")
+		}
 	}
 
 	for _, field := range []struct {

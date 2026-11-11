@@ -251,6 +251,16 @@ func TestNFTokenAcceptOffer_Validate(t *testing.T) {
 			wantValid: true,
 		},
 		{
+			name: "pass - NFTokenBrokerFee issued amount pointer",
+			tx: &NFTokenAcceptOffer{
+				BaseTx:           BaseTx{Account: "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2", TransactionType: NFTokenAcceptOfferTx},
+				NFTokenSellOffer: "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBuyOffer:  "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBrokerFee: &types.IssuedCurrencyAmount{Issuer: "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2", Currency: "USD", Value: "1.5"},
+			},
+			wantValid: true,
+		},
+		{
 			name: "pass - Valid with Sell Offer",
 			tx: &NFTokenAcceptOffer{
 				BaseTx: BaseTx{
