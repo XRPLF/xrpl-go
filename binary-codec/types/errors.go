@@ -11,6 +11,8 @@ var (
 	// Invariant failures are not part of the caller's errors.Is contract.
 	// Export a sentinel when callers are expected to branch on it.
 	errUnknownFieldType = errors.New("unknown field type")
+	// ErrMaxNestingDepth is returned when a serialized field exceeds the maximum nesting depth.
+	ErrMaxNestingDepth = errors.New("maximum nesting depth exceeded")
 	// ErrDuplicateXAddressTag is returned when an X-address contains a tag and the transaction also defines the matching tag field.
 	ErrDuplicateXAddressTag = errors.New("duplicate X-address tag")
 	// ErrAccountIDTagNotAllowed is returned when an AccountID-typed field receives an X-address that carries an embedded tag.
