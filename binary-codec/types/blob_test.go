@@ -13,7 +13,7 @@ import (
 func TestBlob_FromJson(t *testing.T) {
 	tt := []struct {
 		name        string
-		input       string
+		input       any
 		expected    []byte
 		expectedErr error
 	}{
@@ -34,6 +34,16 @@ func TestBlob_FromJson(t *testing.T) {
 			input:       "000102030405060708090A0B0C0D0E0G",
 			expected:    nil,
 			expectedErr: hex.InvalidByteError('G'),
+		},
+		{
+			name:        "Nil input",
+			input:       nil,
+			expectedErr: ErrBlobNotString,
+		},
+		{
+			name:        "Float input",
+			input:       float64(1),
+			expectedErr: ErrBlobNotString,
 		},
 	}
 
