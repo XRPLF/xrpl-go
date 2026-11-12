@@ -4,6 +4,7 @@ package types
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 	"github.com/Peersyst/xrpl-go/pkg/hexutil"
@@ -17,9 +18,13 @@ type Blob struct{}
 
 // FromJSON method for Blob converts a hexadecimal string from JSON to a byte array.
 func (b *Blob) FromJSON(json any) ([]byte, error) {
+	str, ok := json.(string)
+	if !ok {
+		return nil, fmt.Errorf("%w: got %T", ErrBlobNotString, json)
+	}
 	// Convert hexadecimal string to byte array.
 	// Return an error if the conversion fails.
-	v, err := hex.DecodeString(json.(string))
+	v, err := hex.DecodeString(str)
 	if err != nil {
 		return nil, err
 	}
