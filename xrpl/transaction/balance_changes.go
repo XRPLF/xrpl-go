@@ -2,9 +2,11 @@ package transaction
 
 import (
 	"math/big"
+	"strconv"
 	"strings"
 
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
+	"github.com/Peersyst/xrpl-go/xrpl/internal/decimal"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -133,11 +135,12 @@ func getXRPQuantity(node *normalizedNode) (*balanceChange, error) {
 	}
 
 	var account string
-	if finalFieldsAccount, ok := node.FinalFields["Account"]; ok {
-		account = finalFieldsAccount.(string)
-	} else if newFieldsAccount, ok := node.NewFields["Account"]; ok {
-		account = newFieldsAccount.(string)
-	} else {
+	accountValue, ok := node.FinalFields["Account"]
+	if !ok {
+		accountValue = node.NewFields["Account"]
+	}
+	account, ok = accountValue.(string)
+	if !ok {
 		return nil, errAccountNotFoundForXRPQuantity
 	}
 
@@ -181,56 +184,46 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 		fields = node.FinalFields
 	}
 
-	lowLimitMap, ok := fields["LowLimit"].(map[string]any)
+	lowLimitIssuer, ok := nestedString(fields, "LowLimit", "issuer")
 	if !ok {
 		return nil, errLowLimitIssuerNotFound
 	}
-	lowLimitIssuer, ok := lowLimitMap["issuer"]
-	if !ok {
-		return nil, errLowLimitIssuerNotFound
-	}
-	highLimitMap, ok := fields["HighLimit"].(map[string]any)
+	highLimitIssuer, ok := nestedString(fields, "HighLimit", "issuer")
 	if !ok {
 		return nil, errHighLimitIssuerNotFound
 	}
-	highLimitIssuer, ok := highLimitMap["issuer"]
-	if !ok {
-		return nil, errHighLimitIssuerNotFound
-	}
-	balanceMap, ok := fields["Balance"].(map[string]any)
+	balanceCurrency, ok := nestedString(fields, "Balance", "currency")
 	if !ok {
 		return nil, errBalanceCurrencyNotFound
 	}
-	balanceCurrency, ok := balanceMap["currency"]
-	if !ok {
-		return nil, errBalanceCurrencyNotFound
-	}
+
+	formatted := formatBalance(value)
 
 	result := balanceChange{
-		Account: types.Address(lowLimitIssuer.(string)),
+		Account: types.Address(lowLimitIssuer),
 		Balance: Balance{
-			Issuer:   highLimitIssuer.(string),
-			Currency: balanceCurrency.(string),
-			Value:    value,
+			Issuer:   highLimitIssuer,
+			Currency: balanceCurrency,
+			Value:    formatted,
 		},
 	}
-
-	bigFloatValue, ok := new(big.Float).SetString(value)
-	if !ok {
-		return nil, errInvalidBalanceValue
-	}
-	negatedValue := new(big.Float).Neg(bigFloatValue)
 
 	flippedResult := balanceChange{
 		Account: types.Address(result.Issuer),
 		Balance: Balance{
 			Issuer:   result.Account.String(),
 			Currency: result.Currency,
-			Value:    negatedValue.String(),
+			Value:    negateBalance(formatted),
 		},
 	}
 
 	return []balanceChange{result, flippedResult}, nil
+}
+
+func nestedString(fields ledger.FlatLedgerObject, field, key string) (string, bool) {
+	object, _ := fields[field].(map[string]any)
+	value, ok := object[key].(string)
+	return value, ok
 }
 
 func computeBalanceChange(node *normalizedNode) (delta string, hasBalanceChange bool, err error) {
@@ -238,40 +231,21 @@ func computeBalanceChange(node *normalizedNode) (delta string, hasBalanceChange 
 	previousBalance, okPreviousBalance := node.PreviousFields["Balance"]
 	finalBalance, okFinalBalance := node.FinalFields["Balance"]
 
-	var value *big.Float
-	var ok bool
+	var value *big.Rat
 	switch {
 	case okNewBalance:
-		balanceValue, err := getValue(newBalance)
-		if err != nil {
+		if value, err = parseBalance(newBalance); err != nil {
 			return "", false, err
-		}
-
-		value, ok = new(big.Float).SetString(balanceValue)
-		if !ok {
-			return "", false, errInvalidBalanceValue
 		}
 	case okPreviousBalance && okFinalBalance:
-		balanceValue, err := getValue(previousBalance)
-		if err != nil {
+		var previous *big.Rat
+		if previous, err = parseBalance(previousBalance); err != nil {
 			return "", false, err
 		}
-
-		previousBalanceBigDecimal, ok := new(big.Float).SetString(balanceValue)
-		if !ok {
-			return "", false, errInvalidBalanceValue
-		}
-		balanceValue, err = getValue(finalBalance)
-		if err != nil {
+		if value, err = parseBalance(finalBalance); err != nil {
 			return "", false, err
 		}
-
-		finalBalanceBigInt, ok := new(big.Float).SetString(balanceValue)
-		if !ok {
-			return "", false, errInvalidBalanceValue
-		}
-
-		value = finalBalanceBigInt.Sub(finalBalanceBigInt, previousBalanceBigDecimal)
+		value.Sub(value, previous)
 	default:
 		return "", false, nil
 	}
@@ -280,16 +254,75 @@ func computeBalanceChange(node *normalizedNode) (delta string, hasBalanceChange 
 		return "", false, nil
 	}
 
-	return value.String(), true, nil
+	// Decimal inputs give a finite expansion, so the precision is exact.
+	precision, _ := value.FloatPrec()
+	return value.FloatString(precision), true, nil
 }
 
 func getValue(balance any) (string, error) {
 	if value, ok := balance.(string); ok {
 		return value, nil
 	} else if balanceMap, ok := balance.(map[string]any); ok {
-		return balanceMap["value"].(string), nil
+		if value, ok := balanceMap["value"].(string); ok {
+			return value, nil
+		}
 	}
 	return "", errInvalidBalanceValue
+}
+
+// maxBalanceExponent bounds the exponent of a balance value. xrpld emits
+// issued-currency exponents from -96 to 80, so no valid amount is rejected.
+const maxBalanceExponent = 256
+
+func parseBalance(balance any) (*big.Rat, error) {
+	text, err := getValue(balance)
+	if err != nil {
+		return nil, err
+	}
+	value, ok := decimal.Parse(text, maxBalanceExponent)
+	if !ok {
+		return nil, errInvalidBalanceValue
+	}
+	return value, nil
+}
+
+func negateBalance(value string) string {
+	if strings.HasPrefix(value, "-") {
+		return value[1:]
+	}
+	return "-" + value
+}
+
+func formatBalance(value string) string {
+	sign := ""
+	if strings.HasPrefix(value, "-") {
+		sign, value = "-", value[1:]
+	}
+	parts := strings.SplitN(value, ".", 2)
+	integer := parts[0]
+	fraction := ""
+	if len(parts) == 2 {
+		fraction = parts[1]
+	}
+	exponent := len(integer) - 1
+	digits := integer + fraction
+	if integer == "0" {
+		leading := len(fraction) - len(strings.TrimLeft(fraction, "0"))
+		exponent = -leading - 1
+		digits = fraction[leading:]
+	}
+	if exponent > -7 && exponent < 21 {
+		return sign + value
+	}
+	digits = strings.TrimRight(digits, "0")
+	mantissa := digits[:1]
+	if len(digits) > 1 {
+		mantissa += "." + digits[1:]
+	}
+	if exponent >= 0 {
+		return sign + mantissa + "e+" + strconv.Itoa(exponent)
+	}
+	return sign + mantissa + "e" + strconv.Itoa(exponent)
 }
 
 func groupByAccount(balanceChanges []balanceChange) []AccountBalanceChanges {
