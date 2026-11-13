@@ -120,70 +120,78 @@ func TestNewWalletFromSecret(t *testing.T) {
 
 func TestNewWalletFromMnemonic(t *testing.T) {
 	testCases := []struct {
-		Mnemonic       string
-		PublicKey      string
-		PrivateKey     string
-		ClassicAddress types.Address
+		name           string
+		mnemonic       string
+		publicKey      string
+		privateKey     string
+		classicAddress types.Address
 	}{
 		{
-			Mnemonic:       "midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate",
-			PublicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
-			PrivateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
-			ClassicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+			name:           "canonical",
+			mnemonic:       "midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate",
+			publicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			privateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
 		},
 		{
-			Mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u00a0"),
-			PublicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
-			PrivateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
-			ClassicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+			name:           "no-break spaces",
+			mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u00a0"),
+			publicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			privateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
 		},
 		{
-			Mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u3000"),
-			PublicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
-			PrivateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
-			ClassicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+			name:           "ideographic spaces",
+			mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u3000"),
+			publicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			privateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
 		},
 		{
-			Mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u2002"),
-			PublicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
-			PrivateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
-			ClassicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+			name:           "en spaces",
+			mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u2002"),
+			publicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			privateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
 		},
 		{
-			Mnemonic:       "honey tip lunch empower omit invite nuclear tent brother sadness still exercise odor harbor alcohol huge wait swamp vessel tired swallow supreme silk spawn",
-			PublicKey:      "038D4EA460687B0FF43E95D9CB56E439AC2C65D890C9FD8B553FF24997C5F91D9A",
-			PrivateKey:     "00C2C6F996F5FAD5168CAAAD6E58E518641A41E8E164A6FADC540F52D728E2A4AB",
-			ClassicAddress: "rPdkbYi6ok7HFpbRo6CSxeDUg951tVdA1m",
+			name:           "24-word vector 2",
+			mnemonic:       "honey tip lunch empower omit invite nuclear tent brother sadness still exercise odor harbor alcohol huge wait swamp vessel tired swallow supreme silk spawn",
+			publicKey:      "038D4EA460687B0FF43E95D9CB56E439AC2C65D890C9FD8B553FF24997C5F91D9A",
+			privateKey:     "00C2C6F996F5FAD5168CAAAD6E58E518641A41E8E164A6FADC540F52D728E2A4AB",
+			classicAddress: "rPdkbYi6ok7HFpbRo6CSxeDUg951tVdA1m",
 		},
 		{
-			Mnemonic:       "hen toe quarter robust elevator badge coconut all place desk pen school topic life seminar run salute paddle hurdle impact push amount oblige citizen",
-			PublicKey:      "0388AE366DF0D8819760B82319C7A04CA06CC1D49EB5D41ED8DA0C8903DE8FF812",
-			PrivateKey:     "001CBDDCA87FB57FB5A9D96ECE29D5710DA8421891F40CFA2262120DBB61E5050D",
-			ClassicAddress: "rsKbuMTkzR5HU96j8pdGsSuzmZEiZ6mKh5",
+			name:           "24-word vector 3",
+			mnemonic:       "hen toe quarter robust elevator badge coconut all place desk pen school topic life seminar run salute paddle hurdle impact push amount oblige citizen",
+			publicKey:      "0388AE366DF0D8819760B82319C7A04CA06CC1D49EB5D41ED8DA0C8903DE8FF812",
+			privateKey:     "001CBDDCA87FB57FB5A9D96ECE29D5710DA8421891F40CFA2262120DBB61E5050D",
+			classicAddress: "rsKbuMTkzR5HU96j8pdGsSuzmZEiZ6mKh5",
 		},
 		{
-			Mnemonic:       "assault rare scout seed design extend noble drink talk control guitar quote",
-			PublicKey:      "035953FCD81D001CF634EB44A87940F3F98ADF2483D09C914BAED0539BE50F385D",
-			PrivateKey:     "0013FC461CA5799F1357C8130AF703CBA7E9C28E072C6CA8F7DEF8601CDE98F394",
-			ClassicAddress: "rJUr92pXcNtH6PtFfbRhHCo469XmPrbTJU",
+			name:           "xrpl.js 12-word vector",
+			mnemonic:       "assault rare scout seed design extend noble drink talk control guitar quote",
+			publicKey:      "035953FCD81D001CF634EB44A87940F3F98ADF2483D09C914BAED0539BE50F385D",
+			privateKey:     "0013FC461CA5799F1357C8130AF703CBA7E9C28E072C6CA8F7DEF8601CDE98F394",
+			classicAddress: "rJUr92pXcNtH6PtFfbRhHCo469XmPrbTJU",
+		},
+		{
+			name:           "full-width letters",
+			mnemonic:       "ａｓｓａｕｌｔ rare scout seed design extend noble drink talk control guitar quote",
+			publicKey:      "035953FCD81D001CF634EB44A87940F3F98ADF2483D09C914BAED0539BE50F385D",
+			privateKey:     "0013FC461CA5799F1357C8130AF703CBA7E9C28E072C6CA8F7DEF8601CDE98F394",
+			classicAddress: "rJUr92pXcNtH6PtFfbRhHCo469XmPrbTJU",
 		},
 	}
 
 	for _, tc := range testCases {
-		wallet, err := FromMnemonic(tc.Mnemonic)
-		require.NoError(t, err)
-
-		if wallet.PublicKey != tc.PublicKey {
-			t.Errorf("Public key does not match expected value. Expected: %s, got: %s", tc.PublicKey, wallet.PublicKey)
-		}
-
-		if wallet.PrivateKey != tc.PrivateKey {
-			t.Errorf("Private key does not match expected value. Expected: %s, got: %s", tc.PrivateKey, wallet.PrivateKey)
-		}
-
-		if wallet.ClassicAddress != tc.ClassicAddress {
-			t.Errorf("Classic address does not match expected value. Expected: %s, got: %s", tc.ClassicAddress, wallet.ClassicAddress)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			wallet, err := FromMnemonic(tc.mnemonic)
+			require.NoError(t, err)
+			require.Equal(t, tc.publicKey, wallet.PublicKey)
+			require.Equal(t, tc.privateKey, wallet.PrivateKey)
+			require.Equal(t, tc.classicAddress, wallet.ClassicAddress)
+		})
 	}
 }
 
@@ -252,6 +260,8 @@ func TestFromMnemonicInvalidWords(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := FromMnemonic(tc.mnemonic)
+			require.ErrorIs(t, err, bip39.ErrInvalidMnemonic)
+			_, err = FromMnemonicLegacy(tc.mnemonic)
 			require.ErrorIs(t, err, bip39.ErrInvalidMnemonic)
 		})
 	}

@@ -6,9 +6,9 @@ This guide covers the source and behavior changes that are most likely to affect
 
 ### Wallet mnemonics
 
-This change affects wallets derived with `wallet.FromMnemonic` in released versions `v0.1.0` through `v0.3.1` when the original mnemonic contained leading or trailing whitespace, a newline, repeated spaces, tabs, or non-ASCII spaces. Those versions accepted whitespace when validating words but derived the wallet from the original string. A mnemonic with single ASCII spaces between words and no leading or trailing whitespace is not affected.
+If your original mnemonic has one space between each word and no surrounding whitespace, and any of those spaces are non-ASCII spaces that Unicode NFKD maps to ASCII spaces, such as non-breaking spaces, `wallet.FromMnemonic` now derives the address of the same words separated by single ASCII spaces, not the original address. It returns no error. Compare the derived address with your funded address before you use the wallet.
 
-`FromMnemonic` now applies Unicode NFKD normalization before validation and derivation, like xrpl.js. A non-ASCII space that NFKD maps to an ASCII space, such as a non-breaking space, derives the same address as the same words separated by single ASCII spaces. A newline, tab, repeated space, or leading or trailing space returns an error.
+`FromMnemonic` now applies NFKD normalization before validation and derivation, like xrpl.js. Released versions `v0.1.0` through `v0.3.1` validated the words but derived the wallet from the original string. A newline, tab, repeated space, or leading or trailing space now returns an error. A mnemonic with single ASCII spaces between words and no leading or trailing whitespace is not affected by this change.
 
 To check whether you are affected, compare your funded address with the address derived by the new version from your cleaned mnemonic:
 
@@ -36,6 +36,8 @@ if err != nil {
 }
 fmt.Println("Old address:", oldWallet.ClassicAddress)
 ```
+
+Also import `os` for this example.
 
 Confirm the old address matches the funded address. Then use `oldWallet` to send the funds to the cleaned-mnemonic address with a `Payment`, or close the old account with `AccountDelete` if its ledger requirements permit. Alternatively, use `SetRegularKey` signed by `oldWallet` to authorize the cleaned-mnemonic wallet as the old account's regular key. Check the transaction result before discarding any recovery material. Test the process with non-production funds first. Keep the mnemonic and any private key private.
 
