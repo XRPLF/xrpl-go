@@ -10,6 +10,8 @@ import (
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 )
 
+const maxNestingDepth = 10
+
 // STObject represents a map of serialized field instances, where each key is a field name
 // and the associated value is the field's value. This structure allows us to represent nested
 // and complex structures of the Ripple protocol.
@@ -31,7 +33,7 @@ func NewSTObject(bs interfaces.BinarySerializer) *STObject {
 // and value), and then serializing each field instance.
 // This method returns an error if the JSON input is not a valid object.
 func (t *STObject) FromJSON(json any) ([]byte, error) {
-	return t.fromJSON(json, nil)
+	return t.fromJSON(json, nil, 0)
 }
 
 // FromJSONWithRawFieldValueOverrides converts a JSON object into a serialized byte slice and
@@ -40,10 +42,10 @@ func (t *STObject) FromJSONWithRawFieldValueOverrides(
 	json any,
 	overrides RawFieldValueOverrides,
 ) ([]byte, error) {
-	return t.fromJSON(json, overrides)
+	return t.fromJSON(json, overrides, 0)
 }
 
-func (t *STObject) fromJSON(json any, overrides RawFieldValueOverrides) ([]byte, error) {
+func (t *STObject) fromJSON(json any, overrides RawFieldValueOverrides, depth int) ([]byte, error) {
 	object, ok := json.(map[string]any)
 	if !ok {
 		return nil, errNotValidJSON
@@ -59,10 +61,13 @@ func (t *STObject) fromJSON(json any, overrides RawFieldValueOverrides) ([]byte,
 		if !v.IsSerialized {
 			continue
 		}
+		if depth+1 > maxNestingDepth {
+			return nil, ErrMaxNestingDepth
+		}
 
 		b, overridden := overrides[v.FieldName]
 		if !overridden {
-			b, err = encodeFieldValue(v, fimap[v])
+			b, err = encodeFieldValue(v, fimap[v], depth+1)
 			if err != nil {
 				return nil, err
 			}
@@ -82,10 +87,16 @@ type fieldAwareEncoder interface {
 
 // encodeFieldValue applies field-specific JSON rules and returns value bytes.
 // It does not apply raw overrides or write field headers or length prefixes.
-func encodeFieldValue(fi definitions.FieldInstance, value any) ([]byte, error) {
+func encodeFieldValue(fi definitions.FieldInstance, value any, depth int) ([]byte, error) {
 	st := GetSerializedType(fi.Type)
 	if st == nil {
 		return nil, fmt.Errorf("%w: type %q, field %q", errUnknownFieldType, fi.Type, fi.FieldName)
+	}
+	switch nested := st.(type) {
+	case *STObject:
+		return nested.fromJSON(value, nil, depth)
+	case *STArray:
+		return arrayFromJSON(value, depth)
 	}
 
 	if encoder, ok := st.(fieldAwareEncoder); ok {
@@ -98,6 +109,10 @@ func encodeFieldValue(fi definitions.FieldInstance, value any) ([]byte, error) {
 // back to a JSON value. It will continue parsing until it encounters an end marker for an object
 // or an array, or until the parser has no more data.
 func (t *STObject) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
+	return objectToJSON(p, 0)
+}
+
+func objectToJSON(p interfaces.BinaryParser, depth int) (any, error) {
 	m := make(map[string]any)
 
 	for p.HasMore() {
@@ -109,6 +124,9 @@ func (t *STObject) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 
 		if fi.FieldName == "ObjectEndMarker" || fi.FieldName == "ArrayEndMarker" {
 			break
+		}
+		if depth+1 > maxNestingDepth {
+			return nil, ErrMaxNestingDepth
 		}
 
 		st := GetSerializedType(fi.Type)
@@ -128,9 +146,14 @@ func (t *STObject) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 			}
 
 		} else {
-			if fi.Type == "UInt64" {
+			switch st.(type) {
+			case *STObject:
+				res, err = objectToJSON(p, depth+1)
+			case *STArray:
+				res, err = arrayToJSON(p, depth+1)
+			case *UInt64:
 				res, err = st.ToJSON(p, uint64JSONBaseForField(fi.FieldName))
-			} else {
+			default:
 				res, err = st.ToJSON(p)
 			}
 			if err != nil {

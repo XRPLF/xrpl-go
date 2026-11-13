@@ -1,11 +1,10 @@
-//go:build unit
-// +build unit
-
 package addresscodec
 
 import (
-	"bytes"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 var testcases = []struct {
@@ -19,7 +18,7 @@ var testcases = []struct {
 		"rDTXLQ7ZKZVKz33zJbHjgVShjsBnqMBhmN",
 	},
 	{
-		[]byte{SECP256K1},
+		[]byte{FamilySeedPrefix},
 		[]byte("testingsomething"),
 		"shKMVJjV52uudwfS7HzzaiwmZqVeP",
 	},
@@ -38,30 +37,19 @@ func TestCheckDecode(t *testing.T) {
 	for x, tc := range testcases {
 
 		res, err := Base58CheckDecode(tc.out)
-		res = res[1:]
-		switch {
-		case err != nil:
-			t.Errorf("CheckDecode test #%d failed with err: %v", x, err)
-
-		case !bytes.Equal(res, tc.in):
-			t.Errorf("CheckDecode test #%d failed: got: %s want: %s", x, res, tc.in)
-		}
+		require.NoError(t, err, "CheckDecode test #%d", x)
+		require.NotEmpty(t, res, "CheckDecode test #%d", x)
+		require.Equal(t, tc.in, res[1:], "CheckDecode test #%d", x)
 
 		// test the two decoding failure cases
 		// case 1: checksum error
 		_, err = Base58CheckDecode("3MNQE1Y")
-		if err != ErrChecksum {
-			t.Error("Checkdecode test failed, expected ErrChecksum")
-		}
+		require.ErrorIs(t, err, ErrChecksum)
 		// case 2: invalid formats (string lengths below 5 mean the version byte and/or the checksum
 		// bytes are missing).
-		testString := ""
-		for len := 0; len < 4; len++ {
-			testString += "x"
-			_, err = Base58CheckDecode(testString)
-			if err != ErrInvalidFormat {
-				t.Error("Checkdecode test failed, expected ErrInvalidFormat")
-			}
+		for i := range 4 {
+			_, err = Base58CheckDecode(strings.Repeat("x", i+1))
+			require.ErrorIs(t, err, ErrInvalidFormat)
 		}
 	}
 }

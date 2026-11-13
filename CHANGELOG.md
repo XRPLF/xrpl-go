@@ -21,11 +21,14 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### address-codec
 
 - Added `ErrInvalidEncodingType`, returned by `EncodeSeed` for an unknown encoding type.
+- Added `ErrBase58InputTooLong`, returned by `DecodeNodePublicKey`, `DecodeAccountPublicKey`, and `DecodeXAddress` when the input is longer than 128 bytes. `DecodeClassicAddressToAccountID` returns `ErrInvalidClassicAddress` and `DecodeSeed` returns `ErrInvalidSeed` for the same input. The generic `Decode`, `Base58CheckDecode`, and `DecodeBase58` do not limit input length.
 
 #### binary-codec
 
 - Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
+- Added `types.ErrBlobNotString`, returned when a `Blob` field receives a non-string JSON value.
 - Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
+- Added `types.ErrMaxNestingDepth`, returned when a serialized field exceeds the maximum nesting depth.
 - Added `types.ErrNumberUnderflow`, returned when a `Number` value is too small to represent.
 
 #### pkg/hexutil
@@ -74,6 +77,15 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - `DefinitionFormatField.Validate` errors now start with `server_definitions: invalid format field: `.
 
 ### Fixed
+
+#### address-codec
+
+- Fixed a panic in `DecodeBase58` and address, seed, and key decoders for some non-ASCII input, and limited XRPL-typed base58 inputs to 128 bytes.
+
+#### binary-codec
+
+- Encode and Decode return an error for fields nested deeper than xrpld's limit of 10.
+- Blob fields return an error for non-string JSON values.
 
 #### dependencies
 
