@@ -47,7 +47,7 @@ func (tx *LoanDelete) Validate() (bool, error) {
 		return false, ErrLoanDeleteLoanIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.LoanID) {
+	if !isNonZeroHex256(tx.LoanID) {
 		return false, ErrLoanDeleteLoanIDInvalid
 	}
 

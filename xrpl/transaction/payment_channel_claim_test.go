@@ -2,13 +2,18 @@ package transaction
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// testChannelID is a well-formed 256-bit payment channel ID.
+const testChannelID = "C1AE6DDDEEC05CF2978C0BAD6FE302948E9533691DC749DCDD3B9E5992CA6198"
 
 func TestPaymentChannelClaim_TxType(t *testing.T) {
 	tx := &PaymentChannelClaim{}
@@ -100,13 +105,13 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Signature: "ABCDEF",
-				PublicKey: "123456",
+				PublicKey: testPublicKey,
 			},
 			expected: `{
 				"Account": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"TransactionType": "PaymentChannelClaim",
 				"Signature": "ABCDEF",
-				"PublicKey": "123456"
+				"PublicKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
 			}`,
 		},
 		{
@@ -120,7 +125,7 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 				Balance:       types.XRPCurrencyAmount(1000),
 				Amount:        types.XRPCurrencyAmount(2000),
 				Signature:     "ABCDEF",
-				PublicKey:     "123456",
+				PublicKey:     testPublicKey,
 				CredentialIDs: types.CredentialIDs{"1234567890abcdef"},
 			},
 			expected: `{
@@ -130,7 +135,7 @@ func TestPaymentChannelClaim_Flatten(t *testing.T) {
 				"Balance": "1000",
 				"Amount": "2000",
 				"Signature": "ABCDEF",
-				"PublicKey": "123456",
+				"PublicKey": "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 				"CredentialIDs": ["1234567890abcdef"]
 			}`,
 		},
@@ -160,13 +165,86 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Balance:       types.XRPCurrencyAmount(1000),
-				Channel:       "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:       testChannelID,
 				Signature:     "ABCDEF",
-				PublicKey:     "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				PublicKey:     testPublicKey,
 				CredentialIDs: types.CredentialIDs{"1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"},
 			},
 			wantValid: true,
 			wantErr:   false,
+		},
+		{
+			name: "fail - Balance exceeds native maximum",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: testChannelID,
+				Balance: types.XRPCurrencyAmount(currency.MaxNativeDrops + 1),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimBalanceInvalid,
+		},
+		{
+			name: "fail - Amount exceeds native maximum",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: testChannelID,
+				Amount:  types.XRPCurrencyAmount(currency.MaxNativeDrops + 1),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimAmountInvalid,
+		},
+		{
+			name: "fail - Balance exceeds Amount",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: testChannelID,
+				Balance: 2,
+				Amount:  1,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimBalanceExceedsAmount,
+		},
+		{
+			name: "fail - Signature without Balance",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   testChannelID,
+				Signature: "ABCDEF",
+				PublicKey: testPublicKey,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimSignatureFieldsRequired,
+		},
+		{
+			name: "fail - Signature without PublicKey",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   testChannelID,
+				Balance:   1,
+				Signature: "ABCDEF",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimSignatureFieldsRequired,
 		},
 		{
 			name: "fail - missing Account in BaseTx",
@@ -175,9 +253,9 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					TransactionType: PaymentChannelClaimTx,
 				},
 				Balance:   types.XRPCurrencyAmount(1000),
-				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:   testChannelID,
 				Signature: "ABCDEF",
-				PublicKey: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				PublicKey: testPublicKey,
 			},
 			wantValid:   false,
 			wantErr:     true,
@@ -196,14 +274,160 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			expectedErr: ErrInvalidChannel,
 		},
 		{
+			name: "fail - short Channel",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidChannel,
+		},
+		{
+			name: "fail - non-hex Channel",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: types.Hash256(strings.Repeat("G", 64)),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidChannel,
+		},
+		{
+			name: "fail - zero Channel",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: types.Hash256(strings.Repeat("0", 64)),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidChannel,
+		},
+		{
+			name: "pass - lowercase Channel",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: types.Hash256(strings.ToLower(testChannelID)),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - TfClose alone",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+					Flags:           TfClose,
+				},
+				Channel: testChannelID,
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - TfRenew alone",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+					Flags:           TfRenew,
+				},
+				Channel: testChannelID,
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - TfClose with TfRenew",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+					Flags:           TfClose | TfRenew,
+				},
+				Channel: testChannelID,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidFlags,
+		},
+		{
+			name: "fail - undefined flag 0x1",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+					Flags:           0x1,
+				},
+				Channel: testChannelID,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidFlags,
+		},
+		{
+			name: "fail - undefined flag 0x2 with TfClose",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+					Flags:           TfClose | 0x2,
+				},
+				Channel: testChannelID,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidFlags,
+		},
+		{
+			name: "pass - TfClose with universal flags",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+					Flags:           TfClose | types.TfUniversal,
+				},
+				Channel: testChannelID,
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
 			name: "fail - invalid Signature",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:   testChannelID,
 				Signature: "INVALID_SIGNATURE",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidSignature,
+		},
+		{
+			name: "fail - odd-length Signature is not whole bytes",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   testChannelID,
+				Signature: "ABC",
 			},
 			wantValid:   false,
 			wantErr:     true,
@@ -216,20 +440,63 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel: testChannelID,
 			},
 			wantValid: true,
 			wantErr:   false,
 		},
 		{
-			name: "fail - invalid PublicKey",
+			name: "fail - non-hex PublicKey without Signature",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:   testChannelID,
 				PublicKey: "INVALID",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidHexPublicKey,
+		},
+		{
+			name: "fail - odd-length PublicKey without Signature",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   testChannelID,
+				PublicKey: "ABC",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidHexPublicKey,
+		},
+		{
+			name: "pass - non-key hex PublicKey without Signature",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   testChannelID,
+				PublicKey: "AB",
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - non-key hex PublicKey with Signature",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   testChannelID,
+				Balance:   1,
+				Signature: "ABCDEF",
+				PublicKey: "AB",
 			},
 			wantValid:   false,
 			wantErr:     true,
@@ -242,7 +509,7 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 					TransactionType: PaymentChannelClaimTx,
 				},
-				Channel:       "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Channel:       testChannelID,
 				CredentialIDs: types.CredentialIDs{"invalid"},
 			},
 			wantValid:   false,

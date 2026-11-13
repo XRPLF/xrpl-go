@@ -120,7 +120,7 @@ func TestSignLoanSetByCounterparty(t *testing.T) {
 			tx: transaction.FlatTransaction{
 				"TransactionType": "Payment",
 				"TxnSignature":    "AABBCC",
-				"SigningPubKey":   "DEADBEEF",
+				"SigningPubKey":   "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 			},
 			err: ErrTxMustBeLoanSet,
 		},
@@ -129,7 +129,7 @@ func TestSignLoanSetByCounterparty(t *testing.T) {
 			tx: transaction.FlatTransaction{
 				"TransactionType":       "LoanSet",
 				"TxnSignature":          "AABBCC",
-				"SigningPubKey":         "DEADBEEF",
+				"SigningPubKey":         "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 				"CounterpartySignature": map[string]any{"TxnSignature": "AA"},
 			},
 			err: ErrCounterpartyAlreadySigned,
@@ -156,7 +156,7 @@ func TestSignLoanSetByCounterparty(t *testing.T) {
 			name: "fail - broker has SigningPubKey but no TxnSignature",
 			tx: transaction.FlatTransaction{
 				"TransactionType": "LoanSet",
-				"SigningPubKey":   "DEADBEEF",
+				"SigningPubKey":   "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 			},
 			err: ErrBrokerMustSignFirst,
 		},
@@ -276,7 +276,7 @@ func TestCombineLoanSetCounterpartySigners(t *testing.T) {
 			"Fee":             "12",
 			"Sequence":        uint32(99),
 			"TxnSignature":    "AABBCC",
-			"SigningPubKey":   "DEADBEEF",
+			"SigningPubKey":   "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 		}
 		tx2, _ := buildCounterpartyMultisigTx(t, cp2, otherTx)
 

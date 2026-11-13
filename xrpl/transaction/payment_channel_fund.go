@@ -61,6 +61,16 @@ func (p *PaymentChannelFund) Validate() (bool, error) {
 		return false, err
 	}
 
+	// rippled rejects a zero Channel under fixCleanup3_2_0. No PayChannel has a zero ID,
+	// so the check applies without amendment activation.
+	if !isNonZeroHex256(string(p.Channel)) {
+		return false, ErrInvalidChannel
+	}
+
+	if p.Amount.IsZero() || !p.Amount.IsValid() {
+		return false, ErrPaymentChannelFundAmountInvalid
+	}
+
 	// check the expiration time is in the future. /!\ Incomplete as the channel SettleDelay is not taken into account but it's already a good check.
 	currentRippleTime := rippletime.UnixTimeToRippleTime(time.Now().Unix())
 	if (p.Expiration != 0) && (int64(p.Expiration) < currentRippleTime) {

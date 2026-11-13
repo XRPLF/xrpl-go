@@ -1,6 +1,9 @@
 package transaction
 
 import (
+	"math/bits"
+
+	"github.com/Peersyst/xrpl-go/xrpl/flag"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
@@ -60,6 +63,9 @@ type AMMDeposit struct {
 const (
 	// TfTwoAssetIfEmpty performs a special double-asset deposit to an AMM with an empty pool.
 	TfTwoAssetIfEmpty uint32 = 8388608
+
+	// ammDepositModeFlags is rippled tfDepositSubTx: the deposit modes, of which exactly one must be set.
+	ammDepositModeFlags = TfLPToken | TfSingleAsset | TfTwoAsset | TfOneAssetLPToken | TfLimitLPToken | TfTwoAssetIfEmpty
 )
 
 // SetLPTokentFlag performs a double-asset deposit and receives the specified amount of LP Tokens.
@@ -146,6 +152,25 @@ func (a *AMMDeposit) Validate() (bool, error) {
 		return false, err
 	}
 
+	if a.TradingFee > AmmMaxTradingFee {
+		return false, ErrAMMTradingFeeTooHigh{
+			Value: a.TradingFee,
+			Limit: AmmMaxTradingFee,
+		}
+	}
+
+	if a.TradingFee != 0 && !types.IsFlagEnabled(a.Flags, TfTwoAssetIfEmpty) {
+		return false, ErrAMMDepositTradingFeeRequiresEmptyPool
+	}
+
+	if !flag.ContainsOnly(a.Flags, ammDepositModeFlags|types.TfUniversal) {
+		return false, ErrInvalidFlags
+	}
+
+	if bits.OnesCount32(a.Flags&ammDepositModeFlags) != 1 {
+		return false, ErrInvalidFlags
+	}
+
 	switch {
 	case a.Amount2 != nil && a.Amount == nil:
 		return false, ErrAMMMustSetAmountWithAmount2
@@ -155,17 +180,130 @@ func (a *AMMDeposit) Validate() (bool, error) {
 		return false, ErrAMMAtLeastOneAssetMustBeSet
 	}
 
-	if ok, err := IsAmount(a.Amount, "Amount", false); !ok {
+	if err := a.validateDepositModeFields(); err != nil {
 		return false, err
 	}
 
-	if ok, err := IsAmount(a.Amount2, "Amount", false); !ok {
-		return false, err
+	if sameAssetIssue(a.Asset, a.Asset2) {
+		return false, ErrAMMInvalidTokens
 	}
 
-	if ok, err := IsAmount(a.EPrice, "EPrice", false); !ok {
-		return false, err
+	if a.LPTokenOut != nil {
+		if ok, err := IsIssuedCurrency(a.LPTokenOut); !ok {
+			return false, err
+		}
+		if a.LPTokenOut.IsZero() {
+			return false, ErrInvalidTokenValue
+		}
+	}
+	if a.EPrice != nil && a.EPrice.Kind() == types.MPT {
+		if ok, _ := IsAsset(amountAsset(a.EPrice)); !ok {
+			return false, a.fieldNotAllowed("EPrice")
+		}
+	}
+
+	for _, field := range []struct {
+		amount    types.CurrencyAmount
+		name      string
+		validZero bool
+		inPool    bool
+	}{
+		{a.Amount, "Amount", a.EPrice != nil, true},
+		{a.Amount2, "Amount2", false, true},
+		{a.EPrice, "EPrice", false, false},
+	} {
+		if ok, err := IsAmount(field.amount, field.name, false); !ok {
+			return false, err
+		}
+		if field.amount == nil {
+			continue
+		}
+		if !field.validZero && field.amount.IsZero() {
+			return false, ErrInvalidTokenValue
+		}
+		if field.inPool && !sameIssue(field.amount, a.Asset) && !sameIssue(field.amount, a.Asset2) {
+			return false, ErrAMMInvalidTokens
+		}
+	}
+
+	if a.Amount != nil && a.Amount2 != nil && sameIssue(a.Amount, a.Asset) == sameIssue(a.Amount2, a.Asset) {
+		return false, ErrAMMInvalidTokens
 	}
 
 	return true, nil
+}
+
+// validateDepositModeFields applies the per-mode field table of rippled AMMDeposit::preflight.
+// Validate has already checked that exactly one mode flag is set, that Amount2 and EPrice
+// come with Amount, and that TradingFee appears only with TfTwoAssetIfEmpty.
+func (a *AMMDeposit) validateDepositModeFields() error {
+	switch a.Flags & ammDepositModeFlags {
+	case TfLPToken:
+		// Amount and Amount2 are optional deposit minimums, given together or not at all.
+		switch {
+		case a.LPTokenOut == nil:
+			return ErrMissingField{Field: "LPTokenOut"}
+		case a.Amount != nil && a.Amount2 == nil:
+			return ErrMissingField{Field: "Amount2"}
+		case a.EPrice != nil:
+			return a.fieldNotAllowed("EPrice")
+		}
+	case TfSingleAsset:
+		switch {
+		case a.Amount == nil:
+			return ErrMissingField{Field: "Amount"}
+		case a.Amount2 != nil:
+			return a.fieldNotAllowed("Amount2")
+		case a.EPrice != nil:
+			return a.fieldNotAllowed("EPrice")
+		}
+	case TfTwoAsset:
+		switch {
+		case a.Amount == nil:
+			return ErrMissingField{Field: "Amount"}
+		case a.Amount2 == nil:
+			return ErrMissingField{Field: "Amount2"}
+		case a.EPrice != nil:
+			return a.fieldNotAllowed("EPrice")
+		}
+	case TfOneAssetLPToken:
+		switch {
+		case a.Amount == nil:
+			return ErrMissingField{Field: "Amount"}
+		case a.LPTokenOut == nil:
+			return ErrMissingField{Field: "LPTokenOut"}
+		case a.Amount2 != nil:
+			return a.fieldNotAllowed("Amount2")
+		case a.EPrice != nil:
+			return a.fieldNotAllowed("EPrice")
+		}
+	case TfLimitLPToken:
+		switch {
+		case a.Amount == nil:
+			return ErrMissingField{Field: "Amount"}
+		case a.EPrice == nil:
+			return ErrMissingField{Field: "EPrice"}
+		case a.Amount2 != nil:
+			return a.fieldNotAllowed("Amount2")
+		case a.LPTokenOut != nil:
+			return a.fieldNotAllowed("LPTokenOut")
+		}
+	case TfTwoAssetIfEmpty:
+		switch {
+		case a.Amount == nil:
+			return ErrMissingField{Field: "Amount"}
+		case a.Amount2 == nil:
+			return ErrMissingField{Field: "Amount2"}
+		case a.EPrice != nil:
+			return a.fieldNotAllowed("EPrice")
+		case a.LPTokenOut != nil:
+			return a.fieldNotAllowed("LPTokenOut")
+		}
+	}
+	return nil
+}
+
+// fieldNotAllowed reports a field that the selected deposit mode forbids.
+func (a *AMMDeposit) fieldNotAllowed(field string) error {
+	return ErrTransactionInvalidField{Type: a.TxType().String(), Field: field}
 }

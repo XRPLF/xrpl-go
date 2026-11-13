@@ -254,6 +254,38 @@ func TestDeriveKeypair(t *testing.T) {
 	}
 }
 
+func TestIsValidPublicKey(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{name: "pass - ed25519", input: testEdPublicKey, want: true},
+		{name: "pass - lowercase ed25519", input: strings.ToLower(testEdPublicKey), want: true},
+		{name: "pass - ed25519 format without curve validation", input: "ED" + strings.Repeat("00", 32), want: true},
+		{name: "pass - compressed secp256k1 even Y", input: testSecpCompressedEvenKey, want: true},
+		{name: "pass - compressed secp256k1 odd Y", input: testSecpCompressedOddKey, want: true},
+		{name: "pass - lowercase secp256k1", input: strings.ToLower(testSecpCompressedEvenKey), want: true},
+		{name: "fail - empty", input: "", want: false},
+		{name: "fail - bad prefix", input: "FF" + testEdPublicKey[2:], want: false},
+		{name: "fail - truncated", input: testEdPublicKey[:len(testEdPublicKey)-2], want: false},
+		{name: "fail - oversized", input: testEdPublicKey + "00", want: false},
+		{name: "fail - odd length", input: testEdPublicKey[:len(testEdPublicKey)-1], want: false},
+		{name: "fail - non-hex", input: testEdPublicKey[:len(testEdPublicKey)-1] + "Z", want: false},
+		{name: "fail - invalid secp256k1 point", input: "02" + strings.Repeat("FF", 32), want: false},
+		{name: "fail - uncompressed secp256k1", input: testSecpUncompressedKey, want: false},
+		{name: "fail - private key", input: testSecpPrefixedPrivateKey, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, IsValidPublicKey(tt.input))
+			_, err := DeriveClassicAddress(tt.input)
+			require.Equal(t, tt.want, err == nil)
+		})
+	}
+}
+
 func TestDeriveClassicAddress(t *testing.T) {
 	tt := []struct {
 		name        string

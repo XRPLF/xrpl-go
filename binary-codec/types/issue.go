@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
@@ -28,199 +27,217 @@ var (
 	ErrInvalidIssuer = errors.New("invalid issuer")
 	// XRPBytes is the serialized byte representation for native XRP (zero-value currency issuer).
 	XRPBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	// isoXRPBytes is the reserved standard-currency layout of "XRP". rippled reads it as
+	// an ordinary currency, so the codec encodes and decodes it as hexadecimal.
+	isoXRPBytes = []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x58, 0x52, 0x50, 0x00, 0x00, 0x00, 0x00, 0x00}
 )
 
-// Issue represents an XRPL Issue, which is essentially an AccountID.
-// It is used to identify the issuer of a currency in the XRPL.
-// The FromJson method converts a classic address string to an AccountID byte slice.
-// The ToJson method converts an AccountID byte slice back to a classic address string.
-// This type is crucial for handling currency issuers in XRPL transactions and ledger entries.
+// IsXRPCurrency reports whether currencyBytes is native XRP or the reserved
+// standard-currency layout of "XRP". Neither is a valid issued currency.
+func IsXRPCurrency(currencyBytes []byte) bool {
+	return bytes.Equal(currencyBytes, XRPBytes) || bytes.Equal(currencyBytes, isoXRPBytes)
+}
+
+// Issue represents an XRPL Issue field: native XRP, an issued currency and its issuer,
+// or an MPT issuance. FromJSON and ToJSON convert through the sealed issue type, so
+// the codec never writes or accepts an Issue that rippled's STIssue reader rejects.
 type Issue struct{}
 
-// FromJSON parses a classic address string and returns the corresponding AccountID byte slice.
-// It uses the addresscodec package to decode the classic address.
-// If the input is not a valid classic address, it returns an error.
+// FromJSON converts an Issue JSON object to its binary form. It returns ErrInvalidIssuer
+// for an issued currency without an issuer, or with an ACCOUNT_ZERO or ACCOUNT_ONE
+// issuer, and ErrInvalidIssueObject for an XRP issue with an issuer or unknown keys.
 func (i *Issue) FromJSON(json any) ([]byte, error) {
-	if !i.isIssueObject(json) {
-		return nil, ErrInvalidIssueObject
-	}
-
-	mapObj, ok := json.(map[string]any)
+	obj, ok := json.(map[string]any)
 	if !ok {
 		return nil, ErrInvalidIssueObject
 	}
-
-	currency, ok := mapObj["currency"]
-	if !ok {
-		mptIssuanceID, ok := mapObj["mpt_issuance_id"].(string)
-		if !ok {
-			return nil, ErrInvalidIssueObject
-		}
-
-		mptIssuanceIDBytes, err := hex.DecodeString(mptIssuanceID)
-		if err != nil {
-			return nil, err
-		}
-
-		// mpt_issuance_id is 24 bytes: 4 bytes sequence (BE) + 20 bytes issuer account
-		// Binary format for MPT Issue is 44 bytes: issuer account (20) + NO_ACCOUNT marker (20) + sequence (LE 4)
-		if len(mptIssuanceIDBytes) != MPTIssuanceIDBytesLength {
-			return nil, ErrInvalidIssueObject
-		}
-
-		// Extract sequence (first 4 bytes, big-endian) and issuer account (last 20 bytes)
-		sequenceBE := mptIssuanceIDBytes[0:4]
-		issuerAccount := mptIssuanceIDBytes[4:24]
-
-		// Convert sequence from big-endian to little-endian for internal storage
-		sequence := binary.BigEndian.Uint32(sequenceBE)
-		sequenceLE := make([]byte, 4)
-		binary.LittleEndian.PutUint32(sequenceLE, sequence)
-
-		// Encode as: issuerAccount(20) + NO_ACCOUNT(20) + sequence(4, little-endian) = 44 bytes
-		result := make([]byte, 0, 44)
-		result = append(result, issuerAccount...)
-		result = append(result, NoAccountBytes...)
-		result = append(result, sequenceLE...)
-
-		return result, nil
-	}
-
-	currencyCodec := &Currency{}
-
-	currencyBytes, err := currencyCodec.FromJSON(currency)
+	parsed, err := parseIssueJSON(obj)
 	if err != nil {
 		return nil, err
 	}
-
-	if issuer, ok := mapObj["issuer"].(string); ok {
-		_, issuerBytes, err := addresscodec.DecodeClassicAddressToAccountID(issuer)
-		if err != nil {
-			return nil, err
-		}
-		return append(currencyBytes, issuerBytes...), nil
-	}
-
-	return currencyBytes, nil
+	return parsed.appendIssue(nil), nil
 }
 
-// ToJSON converts a binary Issue representation back to a JSON object.
-// It self-determines the length by progressively reading and checking the data:
+// ToJSON converts a binary Issue back to a JSON object. It determines the length from
+// the data, as rippled's STIssue reader does:
 // - XRP: 20 bytes (currency only, all zeros)
 // - IOU: 40 bytes (currency + issuer)
 // - MPT: 44 bytes (issuer account + NO_ACCOUNT marker + sequence)
-// The opts parameter is ignored as length is determined automatically.
+// The opts parameter is ignored.
 func (i *Issue) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
-	// Step 1: Read first 20 bytes (currency for XRP/IOU, or issuer account for MPT)
-	currencyOrAccount, err := p.ReadBytes(20)
+	parsed, err := readIssue(p)
 	if err != nil {
 		return nil, err
 	}
+	return parsed.issueJSON()
+}
 
-	// Step 2: Check if it's XRP (all zeros)
-	if bytes.Equal(currencyOrAccount, XRPBytes) {
-		return map[string]any{
-			"currency": "XRP",
-		}, nil
+// issue is a parsed Issue. Only xrpIssue, iouIssue and mptIssue implement it, and their
+// constructors apply rippled's STIssue reader rules, so every value encodes to bytes that
+// rippled can read.
+type issue interface {
+	appendIssue(b []byte) []byte
+	issueJSON() (map[string]any, error)
+}
+
+// iouParts is the currency and issuer of an issued currency, with the rules of rippled's
+// STAmount reader. Amount uses it directly, so ACCOUNT_ONE stays a valid Amount issuer.
+type iouParts struct{ currency, issuer [20]byte }
+
+// iouIssue is an issued currency in the STIssue layout.
+type iouIssue struct{ iouParts }
+
+type xrpIssue struct{}
+
+type mptIssue struct {
+	id [MPTIssuanceIDBytesLength]byte
+}
+
+// newIOUParts rejects the native all-zero currency and an ACCOUNT_ZERO issuer, as
+// rippled's STAmount reader and STIssue isConsistent do. The reserved standard layout of
+// "XRP" passes, because rippled reads it as an ordinary currency.
+func newIOUParts(currency, issuer []byte) (iouParts, error) {
+	switch {
+	case len(currency) != CurrencyCodeByteLength:
+		return iouParts{}, errInvalidCurrencyCode
+	case len(issuer) != addresscodec.AccountAddressLength:
+		return iouParts{}, ErrInvalidIssuer
+	case bytes.Equal(currency, XRPBytes):
+		return iouParts{}, &InvalidCodeError{Disallowed: "XRP"}
+	case bytes.Equal(issuer, XRPBytes):
+		return iouParts{}, ErrInvalidIssuer
 	}
+	var parts iouParts
+	copy(parts.currency[:], currency)
+	copy(parts.issuer[:], issuer)
+	return parts, nil
+}
 
-	// Step 3: Read next 20 bytes (issuer for IOU, or NO_ACCOUNT marker for MPT)
-	issuerOrNoAccount, err := p.ReadBytes(20)
+// newIOUIssue also rejects an ACCOUNT_ONE issuer, which STIssue reads as the MPT marker.
+func newIOUIssue(currency, issuer []byte) (iouIssue, error) {
+	parts, err := newIOUParts(currency, issuer)
+	if err != nil {
+		return iouIssue{}, err
+	}
+	if bytes.Equal(issuer, NoAccountBytes) {
+		return iouIssue{}, ErrInvalidIssuer
+	}
+	return iouIssue{parts}, nil
+}
+
+// newMPTIssue rejects an issuance whose issuer is ACCOUNT_ZERO. STIssue reads 20 leading
+// zero bytes as XRP, so that issuance cannot be an Issue.
+func newMPTIssue(id []byte) (mptIssue, error) {
+	if len(id) != MPTIssuanceIDBytesLength {
+		return mptIssue{}, ErrInvalidIssueObject
+	}
+	if bytes.Equal(id[4:], XRPBytes) {
+		return mptIssue{}, ErrInvalidIssuer
+	}
+	var m mptIssue
+	copy(m.id[:], id)
+	return m, nil
+}
+
+func (p iouParts) append(b []byte) []byte {
+	return append(append(b, p.currency[:]...), p.issuer[:]...)
+}
+
+func (p iouParts) json() (map[string]any, error) {
+	issuer, err := deserializeIssuer(p.issuer[:])
 	if err != nil {
 		return nil, err
 	}
+	return map[string]any{"currency": formatCurrencyCode(p.currency[:]), "issuer": issuer}, nil
+}
 
-	// Step 4: Check if it's MPT (NO_ACCOUNT marker)
-	if bytes.Equal(issuerOrNoAccount, NoAccountBytes) {
-		// MPT case - read 4 more bytes for sequence (stored in little-endian)
-		sequenceBytes, err := p.ReadBytes(4)
+func (xrpIssue) appendIssue(b []byte) []byte { return append(b, XRPBytes...) }
+
+func (xrpIssue) issueJSON() (map[string]any, error) {
+	return map[string]any{"currency": "XRP"}, nil
+}
+
+func (i iouIssue) appendIssue(b []byte) []byte { return i.append(b) }
+
+func (i iouIssue) issueJSON() (map[string]any, error) { return i.json() }
+
+// appendIssue writes the issuer account, the NO_ACCOUNT marker and the sequence. The
+// issuance ID holds the sequence big-endian, and STIssue stores it little-endian.
+func (m mptIssue) appendIssue(b []byte) []byte {
+	b = append(append(b, m.id[4:]...), NoAccountBytes...)
+	return binary.LittleEndian.AppendUint32(b, binary.BigEndian.Uint32(m.id[:4]))
+}
+
+func (m mptIssue) issueJSON() (map[string]any, error) {
+	return map[string]any{"mpt_issuance_id": hexutil.EncodeToUpperHex(m.id[:])}, nil
+}
+
+// parseIssueJSON chooses the issue variant from the field values, not from the number of keys.
+func parseIssueJSON(obj map[string]any) (issue, error) {
+	if rawID, ok := obj["mpt_issuance_id"]; ok {
+		id, isString := rawID.(string)
+		if !isString || len(obj) != 1 {
+			return nil, ErrInvalidIssueObject
+		}
+		idBytes, err := hex.DecodeString(id)
 		if err != nil {
 			return nil, err
 		}
-
-		// Convert sequence from little-endian to big-endian for mpt_issuance_id
-		sequence := binary.LittleEndian.Uint32(sequenceBytes)
-		sequenceBE := make([]byte, 4)
-		binary.BigEndian.PutUint32(sequenceBE, sequence)
-
-		// mpt_issuance_id = sequence (BE) + issuer account
-		// currencyOrAccount contains the issuer account (first 20 bytes we read)
-		mptIssuanceID := make([]byte, 0, MPTIssuanceIDBytesLength)
-		mptIssuanceID = append(mptIssuanceID, sequenceBE...)
-		mptIssuanceID = append(mptIssuanceID, currencyOrAccount...)
-
-		return map[string]any{
-			"mpt_issuance_id": hexutil.EncodeToUpperHex(mptIssuanceID),
-		}, nil
+		return newMPTIssue(idBytes)
 	}
 
-	// Step 5: IOU case - decode currency and issuer
-	// currencyOrAccount contains the currency bytes
-	currencyStr := decodeCurrencyBytes(currencyOrAccount)
-
-	// issuerOrNoAccount contains the issuer bytes
-	address, err := addresscodec.Encode(issuerOrNoAccount, []byte{addresscodec.AccountAddressPrefix}, addresscodec.AccountAddressLength)
+	for key := range obj {
+		if key != "currency" && key != "issuer" {
+			return nil, ErrInvalidIssueObject
+		}
+	}
+	rawCurrency, ok := obj["currency"]
+	if !ok {
+		return nil, ErrInvalidIssueObject
+	}
+	currency, err := (&Currency{}).FromJSON(rawCurrency)
 	if err != nil {
 		return nil, err
 	}
 
-	return map[string]any{
-		"currency": currencyStr,
-		"issuer":   address,
-	}, nil
-}
-
-// decodeCurrencyBytes decodes a 20-byte currency into its string representation.
-func decodeCurrencyBytes(currencyBytes []byte) string {
-	if bytes.Equal(currencyBytes, XRPBytes) {
-		return "XRP"
-	}
-
-	// Check if bytes has exactly 3 non-zero bytes at positions 12-14 (standard currency code)
-	nonZeroCount := 0
-	var currencyStr strings.Builder
-	for i := range currencyBytes {
-		if currencyBytes[i] != 0 {
-			if i >= 12 && i <= 14 {
-				nonZeroCount++
-				currencyStr.WriteString(string(currencyBytes[i]))
-			} else {
-				nonZeroCount = 0
-				break
-			}
+	rawIssuer, hasIssuer := obj["issuer"]
+	if bytes.Equal(currency, XRPBytes) {
+		if hasIssuer {
+			return nil, ErrInvalidIssueObject
 		}
+		return xrpIssue{}, nil
 	}
-
-	if nonZeroCount == 3 {
-		return currencyStr.String()
+	issuerText, ok := rawIssuer.(string)
+	if !ok {
+		return nil, ErrInvalidIssuer
 	}
-
-	// Return hex-encoded currency for non-standard codes
-	return hexutil.EncodeToUpperHex(currencyBytes)
+	issuer, err := serializeIssuedCurrencyIssuer(issuerText)
+	if err != nil {
+		return nil, err
+	}
+	return newIOUIssue(currency, issuer)
 }
 
-func (i *Issue) isIssueObject(obj any) bool {
-	mapObj, ok := obj.(map[string]any)
-	if !ok {
-		return false
+// readIssue reads an Issue as rippled's STIssue reader does.
+func readIssue(p interfaces.BinaryParser) (issue, error) {
+	first, err := p.ReadBytes(20)
+	if err != nil {
+		return nil, err
 	}
-
-	nKeys := len(mapObj)
-
-	_, okMptIssuanceID := mapObj["mpt_issuance_id"]
-	if nKeys == 1 && okMptIssuanceID {
-		return true
+	if bytes.Equal(first, XRPBytes) {
+		return xrpIssue{}, nil
 	}
-
-	_, okCurrency := mapObj["currency"]
-	if nKeys == 1 && okCurrency {
-		return true
+	second, err := p.ReadBytes(20)
+	if err != nil {
+		return nil, err
 	}
-
-	_, okIssuer := mapObj["issuer"]
-	if nKeys == 2 && okCurrency && okIssuer {
-		return true
+	if !bytes.Equal(second, NoAccountBytes) {
+		return newIOUIssue(first, second)
 	}
-
-	return false
+	sequence, err := p.ReadBytes(4)
+	if err != nil {
+		return nil, err
+	}
+	id := binary.BigEndian.AppendUint32(make([]byte, 0, MPTIssuanceIDBytesLength), binary.LittleEndian.Uint32(sequence))
+	return newMPTIssue(append(id, first...))
 }

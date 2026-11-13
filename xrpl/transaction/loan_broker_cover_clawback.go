@@ -50,7 +50,7 @@ func (tx *LoanBrokerCoverClawback) Flatten() FlatTransaction {
 		flattened["Account"] = tx.Account.String()
 	}
 
-	if tx.LoanBrokerID != nil {
+	if tx.LoanBrokerID != nil && *tx.LoanBrokerID != "" {
 		flattened["LoanBrokerID"] = string(*tx.LoanBrokerID)
 	}
 
@@ -68,7 +68,7 @@ func (tx *LoanBrokerCoverClawback) Validate() (bool, error) {
 	}
 
 	if tx.LoanBrokerID != nil && *tx.LoanBrokerID != "" {
-		if !IsLedgerEntryID(tx.LoanBrokerID.Value()) {
+		if !isNonZeroHex256(tx.LoanBrokerID.Value()) {
 			return false, ErrLoanBrokerCoverClawbackLoanBrokerIDInvalid
 		}
 	}
@@ -79,7 +79,7 @@ func (tx *LoanBrokerCoverClawback) Validate() (bool, error) {
 		}
 
 		// Check that Amount value is >= 0
-		switch amt := tx.Amount.(type) {
+		switch amt := tokenAmountValue(tx.Amount).(type) {
 		case types.IssuedCurrencyAmount:
 			val, err := strconv.ParseFloat(amt.Value, 64)
 			if err != nil || val < 0 {
@@ -89,6 +89,20 @@ func (tx *LoanBrokerCoverClawback) Validate() (bool, error) {
 			val, err := strconv.ParseFloat(amt.Value, 64)
 			if err != nil || val < 0 {
 				return false, ErrLoanBrokerCoverClawbackAmountNegative
+			}
+		}
+
+		if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {
+			return false, err
+		}
+		if tx.LoanBrokerID == nil || *tx.LoanBrokerID == "" {
+			switch amount := tokenAmountValue(tx.Amount).(type) {
+			case types.MPTCurrencyAmount:
+				return false, ErrMissingField{Field: "LoanBrokerID"}
+			case types.IssuedCurrencyAmount:
+				if sameAccountAddress(amount.Issuer, tx.Account) {
+					return false, ErrMissingField{Field: "LoanBrokerID"}
+				}
 			}
 		}
 	}

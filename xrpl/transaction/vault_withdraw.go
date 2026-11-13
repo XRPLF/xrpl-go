@@ -74,7 +74,7 @@ func (tx *VaultWithdraw) Validate() (bool, error) {
 		return false, ErrVaultWithdrawVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID.String()) {
+	if !isNonZeroHex256(tx.VaultID.String()) {
 		return false, ErrVaultWithdrawVaultIDInvalid
 	}
 
@@ -85,9 +85,13 @@ func (tx *VaultWithdraw) Validate() (bool, error) {
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {
 		return false, err
 	}
+	if tx.Amount.IsZero() {
+		return false, ErrInvalidTokenValue
+	}
 
 	if tx.Destination != nil {
-		if !addresscodec.IsValidAddress(tx.Destination.String()) {
+		destinationID, _, err := decodeAddressAccountID(*tx.Destination)
+		if err != nil || addresscodec.IsZeroAccountID(destinationID) {
 			return false, ErrInvalidDestination
 		}
 	}

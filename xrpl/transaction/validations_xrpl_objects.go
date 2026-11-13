@@ -43,17 +43,17 @@ func IsMemo(memo types.Memo) (bool, error) {
 		return false, ErrMemoShouldHaveAtLeastOneField
 	}
 
-	validData := memo.MemoData == "" || typecheck.IsHex(memo.MemoData)
+	validData := memo.MemoData == "" || typecheck.IsHexBlob(memo.MemoData)
 	if !validData {
 		return false, ErrMemoDataShouldBeHex
 	}
 
-	validFormat := memo.MemoFormat == "" || typecheck.IsHex(memo.MemoFormat)
+	validFormat := memo.MemoFormat == "" || typecheck.IsHexBlob(memo.MemoFormat)
 	if !validFormat {
 		return false, ErrMemoFormatShouldBeHex
 	}
 
-	validType := memo.MemoType == "" || typecheck.IsHex(memo.MemoType)
+	validType := memo.MemoType == "" || typecheck.IsHexBlob(memo.MemoType)
 	if !validType {
 		return false, ErrMemoTypeShouldBeHex
 	}
@@ -99,6 +99,12 @@ func validateSignerData(signerData types.SignerData) ([]byte, error) {
 		return nil, ErrSignerSigningPubKeyShouldBeNonEmpty
 	}
 
+	// Well-formedness belongs to the Signer entry itself, so every Signers list gets it
+	// and no transaction type has to remember to add it.
+	if !isSignaturePair(signerData.SigningPubKey, signerData.TxnSignature) {
+		return nil, ErrSignerSignaturePairMalformed
+	}
+
 	return accountID, nil
 }
 
@@ -117,6 +123,26 @@ func IsAmount(field types.CurrencyAmount, fieldName string, isFieldRequired bool
 	}
 
 	if field.Kind() == types.XRP {
+		switch amount := field.(type) {
+		case types.XRPCurrencyAmount:
+			if !amount.IsValid() {
+				return false, currency.ErrInvalidNativeAmount
+			}
+		case *types.XRPCurrencyAmount:
+			if !amount.IsValid() {
+				return false, currency.ErrInvalidNativeAmount
+			}
+		default:
+			// Other XRP amounts, such as wrapper types, are checked through the
+			// drops string they flatten to, as the binary codec reads it.
+			value, ok := field.Flatten().(string)
+			if !ok {
+				return false, currency.ErrInvalidNativeAmount
+			}
+			if drops, err := strconv.ParseUint(value, 10, 64); err != nil || drops > currency.MaxNativeDrops {
+				return false, currency.ErrInvalidNativeAmount
+			}
+		}
 		return true, nil
 	}
 
@@ -136,6 +162,7 @@ func IsAmount(field types.CurrencyAmount, fieldName string, isFieldRequired bool
 
 // IsIssuedCurrency checks if the given object is a valid IssuedCurrency object.
 func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
+	input = tokenAmountValue(input)
 	if input.Kind() == types.XRP {
 		return false, ErrInvalidTokenType
 	}
@@ -151,11 +178,14 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 	if strings.TrimSpace(issuedAmount.Currency) == "" {
 		return false, ErrMissingTokenCurrency
 	}
-	if strings.ToUpper(issuedAmount.Currency) == currency.NativeCurrencySymbol {
+	if _, err := issuedCurrencyBytes(issuedAmount.Currency); err != nil {
 		return false, ErrInvalidTokenCurrency
 	}
 
-	if !addresscodec.IsValidAddress(issuedAmount.Issuer.String()) {
+	// The issuer must be tagless, because an Amount has nowhere to encode a tag.
+	// rippled rejects an ACCOUNT_ZERO issuer when it reads an issued-currency amount,
+	// so it is rejected here too. ACCOUNT_ONE stays allowed.
+	if issuerID, hasTag, err := decodeAddressAccountID(issuedAmount.Issuer); err != nil || hasTag || addresscodec.IsZeroAccountID(issuerID) {
 		return false, ErrInvalidIssuer
 	}
 
@@ -175,6 +205,7 @@ func IsIssuedCurrency(input types.CurrencyAmount) (bool, error) {
 
 // IsMPTCurrency checks if the given object is a valid MPTCurrencyAmount object.
 func IsMPTCurrency(input types.CurrencyAmount) (bool, error) {
+	input = tokenAmountValue(input)
 	if input.Kind() != types.MPT {
 		return false, ErrInvalidMPTType
 	}
@@ -185,7 +216,7 @@ func IsMPTCurrency(input types.CurrencyAmount) (bool, error) {
 		return false, ErrMissingMPTIssuanceID
 	}
 
-	if !typecheck.IsHex(mptAmount.MPTIssuanceID) {
+	if !IsMPTIssuanceID(mptAmount.MPTIssuanceID) {
 		return false, ErrInvalidMPTIssuanceID
 	}
 
@@ -255,39 +286,60 @@ func IsPaths(pathsteps [][]PathStep) (bool, error) {
 }
 
 // IsAsset checks if the given object is a valid Asset object.
+// A valid Asset encodes as an Issue. It is native XRP, an issued currency with a
+// tagless issuer, or a well-formed MPT issuance ID whose issuer AccountID is not zero.
+// "XRP" and 40 zero hexadecimal characters are native. Other spellings such as
+// "xrp" are issued currencies and need an issuer.
+// It rejects ACCOUNT_ZERO and ACCOUNT_ONE issuers, and an issuer on a currency
+// that parses to native XRP. The noCurrency code is an issued currency and needs
+// an issuer, as in rippled's binary Issue representation.
 func IsAsset(asset ledger.Asset) (bool, error) {
-	// MPT asset: only MPTIssuanceID should be set
-	if asset.MPTIssuanceID != "" {
+	switch asset.Kind() {
+	case ledger.AssetMPT:
 		if asset.Currency != "" || asset.Issuer != "" {
 			return false, ErrInvalidMPTIssuanceIDAsset
 		}
-		if !typecheck.IsHex(asset.MPTIssuanceID) {
+		issuerID, ok := mptIssuerAccountID(asset.MPTIssuanceID)
+		if !ok {
 			return false, ErrInvalidMPTIssuanceIDAsset
 		}
-		return true, nil
-	}
-
-	// Get the size of the Asset object.
-	lenKeys := len(maputils.GetKeys(asset.Flatten()))
-
-	if lenKeys == 0 {
-		return false, ErrInvalidAssetFields
-	}
-
-	if strings.TrimSpace(asset.Currency) == "" {
-		return false, ErrMissingAssetCurrency
-	}
-
-	if strings.ToUpper(asset.Currency) == currency.NativeCurrencySymbol && strings.TrimSpace(asset.Issuer.String()) == "" {
-		return true, nil
-	}
-
-	if strings.ToUpper(asset.Currency) == currency.NativeCurrencySymbol && asset.Issuer != "" {
+		// The trailing 20 bytes of the issuance ID are the issuer AccountID. An all-zero
+		// AccountID reads back as XRP in Issue decoding and in rippled STIssue, and the
+		// AMM preflight returns temBAD_MPT, so no such issuance can exist.
+		if addresscodec.IsZeroAccountID(issuerID) {
+			return false, ErrInvalidAssetIssuer
+		}
+	case ledger.AssetXRP:
+		if asset.Currency == "" {
+			return false, ErrInvalidAssetFields
+		}
+		currencyBytes, err := bctypes.ParseCurrencyCode(asset.Currency)
+		if err == nil && bytes.Equal(currencyBytes, bctypes.XRPBytes) {
+			return true, nil
+		}
+		// Like rippled issueFromJson, a bad currency is reported before the missing issuer.
+		if err != nil || bctypes.IsXRPCurrency(currencyBytes) {
+			return false, ErrInvalidAssetCurrency
+		}
 		return false, ErrInvalidAssetIssuer
-	}
-
-	if asset.Currency != "" && !addresscodec.IsValidAddress(asset.Issuer.String()) {
-		return false, ErrInvalidAssetIssuer
+	case ledger.AssetIOU:
+		if strings.TrimSpace(asset.Currency) == "" {
+			return false, ErrMissingAssetCurrency
+		}
+		issuerID, hasTag, err := decodeAddressAccountID(asset.Issuer)
+		// ACCOUNT_ONE in the Issue issuer slot is the MPT marker, so it cannot name an issuer.
+		if err != nil || hasTag || addresscodec.IsZeroAccountID(issuerID) || bytes.Equal(issuerID, bctypes.NoAccountBytes) {
+			return false, ErrInvalidAssetIssuer
+		}
+		currencyBytes, err := bctypes.ParseCurrencyCode(asset.Currency)
+		if err == nil && bytes.Equal(currencyBytes, bctypes.XRPBytes) {
+			// rippled issueFromJson: "Issue, XRP should not have issuer".
+			return false, ErrInvalidAssetIssuer
+		}
+		// rippled badCurrency() is the reserved ISO XRP layout.
+		if err != nil || bctypes.IsXRPCurrency(currencyBytes) {
+			return false, ErrInvalidAssetCurrency
+		}
 	}
 
 	return true, nil
@@ -302,7 +354,7 @@ func IsDomainID(id string) bool {
 // IsNonZeroDomainID reports whether id is exactly 64 hexadecimal characters
 // other than zero. It does not check ledger existence or permissions.
 func IsNonZeroDomainID(id string) bool {
-	return IsDomainID(id) && strings.TrimLeft(id, "0") != ""
+	return isNonZeroHex256(id)
 }
 
 // IsLedgerEntryID checks if the input is a valid ledger entry id.
@@ -314,6 +366,11 @@ func IsLedgerEntryID(input string) bool {
 // IsHex256 checks if the input is a 256-bit value encoded as hexadecimal.
 func IsHex256(input string) bool {
 	return isValidFixedHexBlob(input, Hex256Length)
+}
+
+// isNonZeroHex256 reports whether input is a 256-bit hexadecimal value other than zero.
+func isNonZeroHex256(input string) bool {
+	return IsHex256(input) && strings.TrimLeft(input, "0") != ""
 }
 
 // IsMPTIssuanceID checks if the given hex string is a valid 24-byte MPT issuance ID (48 hex chars).
@@ -341,10 +398,11 @@ func IsMPTokenIssuer(issuanceID string, address types.Address) bool {
 	return bytes.Equal(issuerID, accountID)
 }
 
-// ValidateHexMetadata validates input is non-empty hex string of up to a certain length.
-// Returns true if the input is a valid non-empty hex string up to the specified length.
+// ValidateHexMetadata reports whether input is non-empty, whole-byte hexadecimal of at most
+// maxLength hex characters. A limit declared in decoded bytes must be doubled, because
+// each byte encodes as two hex characters.
 func ValidateHexMetadata(input string, maxLength int) bool {
-	return len(input) > 0 && len(input) <= maxLength && typecheck.IsHex(input)
+	return typecheck.IsHexBlob(input) && len(input) <= maxLength
 }
 
 // IsTokenAmount checks if the given amount is a token amount (IssuedCurrencyAmount or MPTCurrencyAmount).

@@ -45,7 +45,7 @@ func TestCurrency_ToJSON(t *testing.T) {
 		},
 		{
 			name:     "pass - hex currency code",
-			expected: "0102030405060708090a0b0c0d0e0f1011121314",
+			expected: "0102030405060708090A0B0C0D0E0F1011121314",
 			opts:     []int{20},
 			err:      nil,
 			setup: func(t *testing.T) (*Currency, *testutil.MockBinaryParser) {
@@ -115,6 +115,18 @@ func TestCurrency_FromJSON(t *testing.T) {
 			input:    123,
 			expected: nil,
 			err:      ErrInvalidCurrency,
+		},
+		{
+			name:     "fail - 3 letter code outside the IOU alphabet",
+			input:    "AD/",
+			expected: nil,
+			err:      errInvalidCurrencyCode,
+		},
+		{
+			name:     "fail - 0x prefix is not a currency code",
+			input:    "0x0102030405060708090A0B0C0D0E0F1011121314",
+			expected: nil,
+			err:      &InvalidCodeError{"0x0102030405060708090A0B0C0D0E0F1011121314"},
 		},
 	}
 

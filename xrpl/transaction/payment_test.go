@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	binarycodec "github.com/Peersyst/xrpl-go/binary-codec"
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -121,6 +122,16 @@ func TestPayment_Validate(t *testing.T) {
 		wantErr     bool
 		expectedErr error
 	}{
+		{
+			name: "fail - XRP Amount above maximum",
+			payment: Payment{
+				BaseTx:      BaseTx{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD", TransactionType: PaymentTx},
+				Destination: "rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW",
+				Amount:      types.XRPCurrencyAmount(currency.MaxNativeDrops + 1),
+			},
+			wantErr:     true,
+			expectedErr: currency.ErrInvalidNativeAmount,
+		},
 		{
 			name: "pass - valid InvoiceID",
 			payment: Payment{

@@ -1,6 +1,8 @@
 package transaction
 
 import (
+	"math/big"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -112,19 +114,39 @@ func (a *AMMBid) Validate() (bool, error) {
 		return false, err
 	}
 
-	if a.Asset.Currency == "XRP" && a.Asset2.Currency == "XRP" {
+	if a.Asset.Kind() == ledger.AssetXRP && a.Asset2.Kind() == ledger.AssetXRP {
 		return false, ErrAMMAtLeastOneAssetMustBeNonXRP
+	}
+
+	if sameAssetIssue(a.Asset, a.Asset2) {
+		return false, ErrAMMInvalidTokens
 	}
 
 	if ok, err := IsAmount(a.BidMin, "BidMin", false); !ok {
 		return false, err
 	}
+	if a.BidMin != nil && a.BidMin.IsZero() {
+		return false, ErrInvalidTokenValue
+	}
 
 	if ok, err := IsAmount(a.BidMax, "BidMax", false); !ok {
 		return false, err
 	}
+	if a.BidMax != nil && a.BidMax.IsZero() {
+		return false, ErrInvalidTokenValue
+	}
 
-	if ok, err := validateAuthAccounts(a.AuthAccounts); !ok {
+	// rippled AMMBid::preclaim returns tecAMM_INVALID_TOKENS for BidMin > BidMax, which
+	// charges the fee. Both bids must name the LP token, so compare only bids that share an
+	// issue. A bid with another issue gets temBAD_AMM_TOKENS, which is free.
+	if a.BidMin != nil && a.BidMax != nil &&
+		a.BidMin.Kind() == types.ISSUED &&
+		sameIssue(a.BidMax, amountAsset(a.BidMin)) &&
+		bidAbove(a.BidMin, a.BidMax) {
+		return false, ErrAMMBidMinAboveBidMax
+	}
+
+	if ok, err := validateAuthAccounts(a.AuthAccounts, a.Account); !ok {
 		return false, err
 	}
 
@@ -132,16 +154,32 @@ func (a *AMMBid) Validate() (bool, error) {
 }
 
 // Validate the AuthAccounts field.
-func validateAuthAccounts(authAccounts []ledger.AuthAccounts) (bool, error) {
+func validateAuthAccounts(authAccounts []ledger.AuthAccounts, account types.Address) (bool, error) {
 	if len(authAccounts) > 4 {
 		return false, ErrAMMAuthAccountsTooMany
 	}
 
-	for _, authAccounts := range authAccounts {
-		if ok := addresscodec.IsValidAddress(authAccounts.AuthAccount.Account.String()); !ok {
+	for i, authAccount := range authAccounts {
+		if ok := addresscodec.IsValidAddress(authAccount.AuthAccount.Account.String()); !ok {
 			return false, ErrInvalidAccount
+		}
+		if sameAccountAddress(authAccount.AuthAccount.Account, account) {
+			return false, ErrTransactionInvalidField{Type: "AMMBid", Field: "AuthAccounts"}
+		}
+		for _, previous := range authAccounts[:i] {
+			if sameAccountAddress(authAccount.AuthAccount.Account, previous.AuthAccount.Account) {
+				return false, ErrTransactionInvalidField{Type: "AMMBid", Field: "AuthAccounts"}
+			}
 		}
 	}
 
 	return true, nil
+}
+
+// bidAbove reports whether bidMin is greater than bidMax. Both are validated IOU amounts,
+// so they have at most 16 significant digits and compare as rippled's STAmount does.
+func bidAbove(bidMin, bidMax types.CurrencyAmount) bool {
+	minValue, _ := new(big.Rat).SetString(tokenAmountValue(bidMin).(types.IssuedCurrencyAmount).Value)
+	maxValue, _ := new(big.Rat).SetString(tokenAmountValue(bidMax).(types.IssuedCurrencyAmount).Value)
+	return minValue.Cmp(maxValue) > 0
 }

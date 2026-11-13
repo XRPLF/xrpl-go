@@ -83,7 +83,7 @@ func (tx *LoanPay) Validate() (bool, error) {
 		return false, ErrLoanPayLoanIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.LoanID) {
+	if !isNonZeroHex256(tx.LoanID) {
 		return false, ErrLoanPayLoanIDInvalid
 	}
 
@@ -93,6 +93,9 @@ func (tx *LoanPay) Validate() (bool, error) {
 
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {
 		return false, err
+	}
+	if tx.Amount.IsZero() {
+		return false, ErrInvalidTokenValue
 	}
 
 	// Validate mutually exclusive flags: at most one of the three payment type flags can be set.
