@@ -14,7 +14,7 @@ Use `xrpl/wallet` to create or recover signing keys and sign transactions locall
 | Mnemonic | `wallet.FromMnemonic(mnemonic)` |
 | Regular key for another account | `wallet.FromSeed(seed, masterAddress)` |
 
-Import `crypto` from `github.com/Peersyst/xrpl-go/pkg/crypto`. The SDK supports Ed25519 and secp256k1 seeds. `FromMnemonic` accepts a BIP39 mnemonic, always derives a secp256k1 key at `m/44'/144'/0'/0/0`, returns a `*Wallet` rather than a value, and leaves `Seed` empty. Use the constructor that matches your credential format rather than treating a seed, mnemonic, and private key as interchangeable strings.
+Import `crypto` from `github.com/Peersyst/xrpl-go/pkg/crypto`. The SDK supports Ed25519 and secp256k1 seeds. `FromMnemonic` accepts a BIP39 mnemonic, always derives a secp256k1 key at `m/44'/144'/0'/0/0`, returns a `*Wallet` rather than a value, and leaves `Seed` empty. It applies Unicode NFKD normalization first and then requires single ASCII spaces between words, with no leading or trailing whitespace. Use the constructor that matches your credential format rather than treating a seed, mnemonic, and private key as interchangeable strings.
 
 For regular-key signing, the account must authorize that key on the ledger. Setting `masterAddress` does not grant permission. See [regular key pairs](https://xrpl.org/docs/concepts/accounts/cryptographic-keys#regular-key-pair).
 

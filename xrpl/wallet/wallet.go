@@ -19,6 +19,7 @@ import (
 	bip32 "github.com/bsv-blockchain/go-sdk/compat/bip32"
 	"github.com/bsv-blockchain/go-sdk/compat/bip39"
 	chaincfg "github.com/bsv-blockchain/go-sdk/transaction/chaincfg"
+	"golang.org/x/text/unicode/norm"
 )
 
 var nilHDPrivateKeyID = [4]byte{0x00, 0x00, 0x00, 0x00}
@@ -76,17 +77,38 @@ func FromSecret(seed string) (Wallet, error) {
 	return FromSeed(seed, "")
 }
 
-// FromMnemonic derives a Wallet from a bip39 or RFC1751 mnemonic (defaults to bip39).
+// FromMnemonic derives a Wallet from a BIP39 mnemonic.
+// After NFKD normalization, words must be separated by single ASCII spaces.
 func FromMnemonic(mnemonic string) (*Wallet, error) {
-	// Validate the mnemonic
+	mnemonic = norm.NFKD.String(mnemonic)
+	if strings.Join(strings.Fields(mnemonic), " ") != mnemonic {
+		return nil, ErrNonCanonicalMnemonic
+	}
+
+	return walletFromMnemonic(mnemonic)
+}
+
+// FromMnemonicLegacy derives a Wallet with the FromMnemonic behavior
+// of v0.1.13 through v0.3.1: it validates the words but derives the seed from
+// the unmodified string, including any whitespace and without NFKD
+// normalization. Use it only to recover a wallet created by those versions and
+// move its funds to the wallet that FromMnemonic derives.
+//
+// Deprecated: Use FromMnemonic. FromMnemonicLegacy is kept in all
+// v0.4.x releases to allow migration, and it can be removed in v0.5.0 or any
+// later release.
+func FromMnemonicLegacy(mnemonic string) (*Wallet, error) {
+	return walletFromMnemonic(mnemonic)
+}
+
+// walletFromMnemonic validates the BIP39 words and derives the wallet at
+// m/44'/144'/0'/0/0 from the seed of the given string, without changing it.
+func walletFromMnemonic(mnemonic string) (*Wallet, error) {
 	if !bip39.IsMnemonicValid(mnemonic) {
 		return nil, bip39.ErrInvalidMnemonic
 	}
 
-	// Generate seed from mnemonic
 	seed := bip39.NewSeed(mnemonic, "")
-
-	// Derive the master key
 
 	params := &chaincfg.Params{
 		HDPrivateKeyID: nilHDPrivateKeyID,

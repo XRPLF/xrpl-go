@@ -2,9 +2,11 @@ package wallet
 
 import (
 	"maps"
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
+	"github.com/bsv-blockchain/go-sdk/compat/bip39"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -118,48 +120,150 @@ func TestNewWalletFromSecret(t *testing.T) {
 
 func TestNewWalletFromMnemonic(t *testing.T) {
 	testCases := []struct {
-		Mnemonic       string
-		PublicKey      string
-		PrivateKey     string
-		ClassicAddress types.Address
+		name           string
+		mnemonic       string
+		publicKey      string
+		privateKey     string
+		classicAddress types.Address
 	}{
 		{
-			Mnemonic:       "midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate",
-			PublicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
-			PrivateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
-			ClassicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+			name:           "canonical",
+			mnemonic:       "midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate",
+			publicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			privateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
 		},
 		{
-			Mnemonic:       "honey tip lunch empower omit invite nuclear tent brother sadness still exercise odor harbor alcohol huge wait swamp vessel tired swallow supreme silk spawn",
-			PublicKey:      "038D4EA460687B0FF43E95D9CB56E439AC2C65D890C9FD8B553FF24997C5F91D9A",
-			PrivateKey:     "00C2C6F996F5FAD5168CAAAD6E58E518641A41E8E164A6FADC540F52D728E2A4AB",
-			ClassicAddress: "rPdkbYi6ok7HFpbRo6CSxeDUg951tVdA1m",
+			name:           "no-break spaces",
+			mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u00a0"),
+			publicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			privateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
 		},
 		{
-			Mnemonic:       "hen toe quarter robust elevator badge coconut all place desk pen school topic life seminar run salute paddle hurdle impact push amount oblige citizen",
-			PublicKey:      "0388AE366DF0D8819760B82319C7A04CA06CC1D49EB5D41ED8DA0C8903DE8FF812",
-			PrivateKey:     "001CBDDCA87FB57FB5A9D96ECE29D5710DA8421891F40CFA2262120DBB61E5050D",
-			ClassicAddress: "rsKbuMTkzR5HU96j8pdGsSuzmZEiZ6mKh5",
+			name:           "ideographic spaces",
+			mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u3000"),
+			publicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			privateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+		},
+		{
+			name:           "en spaces",
+			mnemonic:       strings.ReplaceAll("midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate", " ", "\u2002"),
+			publicKey:      "028E831F16FD85ABEDA7577B6F4F26500FAB80AEA54B8A89EEC6FA44BCC7AF5678",
+			privateKey:     "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557",
+			classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh",
+		},
+		{
+			name:           "24-word vector 2",
+			mnemonic:       "honey tip lunch empower omit invite nuclear tent brother sadness still exercise odor harbor alcohol huge wait swamp vessel tired swallow supreme silk spawn",
+			publicKey:      "038D4EA460687B0FF43E95D9CB56E439AC2C65D890C9FD8B553FF24997C5F91D9A",
+			privateKey:     "00C2C6F996F5FAD5168CAAAD6E58E518641A41E8E164A6FADC540F52D728E2A4AB",
+			classicAddress: "rPdkbYi6ok7HFpbRo6CSxeDUg951tVdA1m",
+		},
+		{
+			name:           "24-word vector 3",
+			mnemonic:       "hen toe quarter robust elevator badge coconut all place desk pen school topic life seminar run salute paddle hurdle impact push amount oblige citizen",
+			publicKey:      "0388AE366DF0D8819760B82319C7A04CA06CC1D49EB5D41ED8DA0C8903DE8FF812",
+			privateKey:     "001CBDDCA87FB57FB5A9D96ECE29D5710DA8421891F40CFA2262120DBB61E5050D",
+			classicAddress: "rsKbuMTkzR5HU96j8pdGsSuzmZEiZ6mKh5",
+		},
+		{
+			name:           "xrpl.js 12-word vector",
+			mnemonic:       "assault rare scout seed design extend noble drink talk control guitar quote",
+			publicKey:      "035953FCD81D001CF634EB44A87940F3F98ADF2483D09C914BAED0539BE50F385D",
+			privateKey:     "0013FC461CA5799F1357C8130AF703CBA7E9C28E072C6CA8F7DEF8601CDE98F394",
+			classicAddress: "rJUr92pXcNtH6PtFfbRhHCo469XmPrbTJU",
+		},
+		{
+			name:           "full-width letters",
+			mnemonic:       "ａｓｓａｕｌｔ rare scout seed design extend noble drink talk control guitar quote",
+			publicKey:      "035953FCD81D001CF634EB44A87940F3F98ADF2483D09C914BAED0539BE50F385D",
+			privateKey:     "0013FC461CA5799F1357C8130AF703CBA7E9C28E072C6CA8F7DEF8601CDE98F394",
+			classicAddress: "rJUr92pXcNtH6PtFfbRhHCo469XmPrbTJU",
 		},
 	}
 
 	for _, tc := range testCases {
-		wallet, err := FromMnemonic(tc.Mnemonic)
-		if err != nil {
-			t.Errorf("Error generating wallet from mnemonic: %s", err)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			wallet, err := FromMnemonic(tc.mnemonic)
+			require.NoError(t, err)
+			require.Equal(t, tc.publicKey, wallet.PublicKey)
+			require.Equal(t, tc.privateKey, wallet.PrivateKey)
+			require.Equal(t, tc.classicAddress, wallet.ClassicAddress)
+		})
+	}
+}
 
-		if wallet.PublicKey != tc.PublicKey {
-			t.Errorf("Public key does not match expected value. Expected: %s, got: %s", tc.PublicKey, wallet.PublicKey)
-		}
+func TestFromMnemonicNonCanonicalWhitespace(t *testing.T) {
+	const mnemonic = "midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate"
 
-		if wallet.PrivateKey != tc.PrivateKey {
-			t.Errorf("Private key does not match expected value. Expected: %s, got: %s", tc.PrivateKey, wallet.PrivateKey)
-		}
+	testCases := []struct {
+		name     string
+		mnemonic string
+	}{
+		{name: "trailing newline", mnemonic: mnemonic + "\n"},
+		{name: "double space", mnemonic: "midnight  " + mnemonic[len("midnight "):]},
+		{name: "tab", mnemonic: "midnight\t" + mnemonic[len("midnight "):]},
+		{name: "leading space", mnemonic: " " + mnemonic},
+		{name: "trailing space", mnemonic: mnemonic + " "},
+		{name: "ogham space mark", mnemonic: "midnight\u1680" + mnemonic[len("midnight "):]},
+		{name: "next line", mnemonic: "midnight\u0085" + mnemonic[len("midnight "):]},
+	}
 
-		if wallet.ClassicAddress != tc.ClassicAddress {
-			t.Errorf("Classic address does not match expected value. Expected: %s, got: %s", tc.ClassicAddress, wallet.ClassicAddress)
-		}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			wallet, err := FromMnemonic(tc.mnemonic)
+			require.ErrorIs(t, err, ErrNonCanonicalMnemonic)
+			require.ErrorIs(t, err, bip39.ErrInvalidMnemonic)
+			require.Nil(t, wallet)
+		})
+	}
+}
+
+func TestFromMnemonicLegacy(t *testing.T) {
+	const mnemonic = "midnight help already frost arena force omit physical please dwarf envelope royal dice surge eight often muscle tired blast begin waste fat rescue debate"
+
+	testCases := []struct {
+		name           string
+		mnemonic       string
+		classicAddress types.Address
+		privateKey     string
+	}{
+		{name: "canonical", mnemonic: mnemonic, classicAddress: "rpa9S5fRbS2ZAf2cdFGtezhGYgom1iD4yh", privateKey: "00C503FC86436D384F37F946E8DE3B8D9B4D09961424B7ABEF47DEE229A499D557"},
+		{name: "trailing newline", mnemonic: mnemonic + "\n", classicAddress: "r3a3m8U8huGvkCUG99hxNak5nVpsn85Qto", privateKey: "0037AA4A01917A8CF0D10C0ACB0B7B1BE2A23D122236F17C7A8E9925B00B9B78FC"},
+		{name: "double space", mnemonic: "midnight  " + mnemonic[len("midnight "):], classicAddress: "rsdSCQE6dZjYCEFDJiATVdrsi3WdDBpQG1", privateKey: "00D1D00BA1638C95E84107FEACDFC80913675E33064AE33437D70F38246BC7A89E"},
+		{name: "tab", mnemonic: "midnight\t" + mnemonic[len("midnight "):], classicAddress: "rPvF4c1rQEGTZGNt4efQDXP9s22j8pgQVT", privateKey: "00C644DB0E1ECEA3AD16A7CD45A918A58A4AA825F12E6828569CDA78FF919D5361"},
+		{name: "no-break spaces", mnemonic: strings.ReplaceAll(mnemonic, " ", "\u00a0"), classicAddress: "rKqSYdnPTaahcj8gdQERU7jAkmmDWHRzcj", privateKey: "0020EA403FEA685437C1ED53773AA00CCF42485FC15FA2E98C7A49AD9877000C13"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			wallet, err := FromMnemonicLegacy(tc.mnemonic)
+			require.NoError(t, err)
+			require.Equal(t, tc.classicAddress, wallet.ClassicAddress)
+			require.Equal(t, tc.privateKey, wallet.PrivateKey)
+		})
+	}
+}
+
+func TestFromMnemonicInvalidWords(t *testing.T) {
+	testCases := []struct {
+		name     string
+		mnemonic string
+	}{
+		{name: "uppercase word", mnemonic: "ASSAULT rare scout seed design extend noble drink talk control guitar quote"},
+		{name: "invalid checksum", mnemonic: "assault rare scout seed design extend noble drink talk control guitar assault"},
+		{name: "eleven words", mnemonic: "assault rare scout seed design extend noble drink talk control guitar"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := FromMnemonic(tc.mnemonic)
+			require.ErrorIs(t, err, bip39.ErrInvalidMnemonic)
+			_, err = FromMnemonicLegacy(tc.mnemonic)
+			require.ErrorIs(t, err, bip39.ErrInvalidMnemonic)
+		})
 	}
 }
 

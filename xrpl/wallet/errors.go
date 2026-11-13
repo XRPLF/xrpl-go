@@ -2,11 +2,18 @@ package wallet
 
 import (
 	"errors"
+	"fmt"
 
 	clientinternal "github.com/Peersyst/xrpl-go/xrpl/internal/client"
+	"github.com/bsv-blockchain/go-sdk/compat/bip39"
 )
 
 var (
+	// mnemonic
+
+	// ErrNonCanonicalMnemonic is returned when normalized mnemonic words are not separated by single ASCII spaces.
+	ErrNonCanonicalMnemonic = fmt.Errorf("%w: normalized mnemonic must use single ASCII spaces without leading or trailing whitespace", bip39.ErrInvalidMnemonic)
+
 	// signing
 
 	// ErrNilTransaction is returned when a nil transaction map is provided.
