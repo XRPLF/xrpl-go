@@ -80,7 +80,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 #### address-codec
 
-- Fixed base58 decoding of non-ASCII input and limited XRPL-typed base58 inputs to 128 bytes.
+- Fixed a panic in `DecodeBase58` and address, seed, and key decoders for some non-ASCII input, and limited XRPL-typed base58 inputs to 128 bytes.
 
 #### binary-codec
 
