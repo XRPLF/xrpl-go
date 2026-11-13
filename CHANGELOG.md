@@ -26,7 +26,9 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### binary-codec
 
 - Added `types.ErrAccountIDNotString`, returned when an `AccountID` field receives a non-string JSON value.
+- Added `types.ErrBlobNotString`, returned when a `Blob` field receives a non-string JSON value.
 - Added the `types.ErrInvalidVector256Length` error type, returned when a `Vector256` byte length is not a multiple of 32. Match it with `errors.As`; its `Got` field holds the byte length.
+- Added `types.ErrMaxNestingDepth`, returned when a serialized field exceeds the maximum nesting depth.
 - Added `types.ErrNumberUnderflow`, returned when a `Number` value is too small to represent.
 
 #### pkg/hexutil
@@ -79,6 +81,11 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### address-codec
 
 - Fixed base58 decoding of non-ASCII input and limited XRPL-typed base58 inputs to 128 bytes.
+
+#### binary-codec
+
+- Encode and Decode return an error for fields nested deeper than xrpld's limit of 10.
+- Blob fields return an error for non-string JSON values.
 
 #### dependencies
 

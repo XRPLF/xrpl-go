@@ -11,6 +11,8 @@ var (
 	// Invariant failures are not part of the caller's errors.Is contract.
 	// Export a sentinel when callers are expected to branch on it.
 	errUnknownFieldType = errors.New("unknown field type")
+	// ErrMaxNestingDepth is returned when a serialized field exceeds the maximum nesting depth.
+	ErrMaxNestingDepth = errors.New("maximum nesting depth exceeded")
 	// ErrDuplicateXAddressTag is returned when an X-address contains a tag and the transaction also defines the matching tag field.
 	ErrDuplicateXAddressTag = errors.New("duplicate X-address tag")
 	// ErrAccountIDTagNotAllowed is returned when an AccountID-typed field receives an X-address that carries an embedded tag.
@@ -18,6 +20,8 @@ var (
 	ErrAccountIDTagNotAllowed = errors.New("AccountID field cannot have an associated tag")
 	// ErrAccountIDNotString is returned when an AccountID field receives a non-string JSON value.
 	ErrAccountIDNotString = errors.New("account ID must be a string")
+	// ErrBlobNotString is returned when a Blob field receives a non-string JSON value.
+	ErrBlobNotString = errors.New("blob must be a string")
 	// ErrUInt8OutOfRange is returned when a value is outside the uint8 range (0-255).
 	ErrUInt8OutOfRange = errors.New("value out of uint8 range (0-255)")
 	// ErrUInt16OutOfRange is returned when a value is outside the uint16 range (0-65535).

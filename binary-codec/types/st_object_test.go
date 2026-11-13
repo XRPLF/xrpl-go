@@ -124,7 +124,7 @@ func TestEncodeFieldValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			field := testutil.GetFieldInstance(t, tt.fieldName)
-			encoded, err := encodeFieldValue(field, tt.input)
+			encoded, err := encodeFieldValue(field, tt.input, 1)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, hex.EncodeToString(encoded))
 		})

@@ -22,12 +22,14 @@ type STArray struct{}
 // ErrNotSTObjectInSTArray is returned when a non-STObject value is found in an STArray.
 var ErrNotSTObjectInSTArray = errors.New("not STObject in STArray. Array fields must be STObjects")
 
-// FromJSON is a method that takes a JSON value (which should be a slice of JSON objects),
-// and converts it to a byte slice, representing the serialized form of the STArray.
-// It loops through the JSON slice, and for each element, calls the FromJSON method
-// of an STObject, appending the resulting byte slice to a "sink" slice.
-// The method returns an error if the JSON value is not a slice.
+// FromJSON converts a JSON value, which must be a slice of JSON objects, to the
+// serialized form of the STArray, including the array end marker.
+// It returns an error if the JSON value is not a slice.
 func (t *STArray) FromJSON(json any) ([]byte, error) {
+	return arrayFromJSON(json, 0)
+}
+
+func arrayFromJSON(json any, depth int) ([]byte, error) {
 	switch v := json.(type) {
 	case []any:
 		json = v
@@ -43,7 +45,7 @@ func (t *STArray) FromJSON(json any) ([]byte, error) {
 	var sink []byte
 	for _, v := range json.([]any) {
 		st := NewSTObject(serdes.NewBinarySerializer(serdes.NewFieldIDCodec(definitions.Get())))
-		b, err := st.FromJSON(v)
+		b, err := st.fromJSON(v, nil, depth)
 		if err != nil {
 			return nil, err
 		}
@@ -54,11 +56,13 @@ func (t *STArray) FromJSON(json any) ([]byte, error) {
 	return sink, nil
 }
 
-// ToJSON is a method that takes a BinaryParser and optional parameters, and converts
-// the serialized byte data back to a JSON value.
-// The method loops until the BinaryParser has no more data, and for each loop,
-// it calls the ToJSON method of an STObject, appending the resulting JSON value to a "value" slice.
+// ToJSON reads serialized STObjects from the BinaryParser until the array end marker
+// or the end of the data, and returns them as a slice of JSON objects.
 func (t *STArray) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
+	return arrayToJSON(p, 0)
+}
+
+func arrayToJSON(p interfaces.BinaryParser, depth int) (any, error) {
 	// Initialize as empty slice (not nil) so empty arrays marshal to [] not null
 	value := make([]any, 0)
 
@@ -77,9 +81,11 @@ func (t *STArray) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
 		if fi.Type != "STObject" {
 			return nil, ErrNotSTObjectInSTArray
 		}
+		if depth+1 > maxNestingDepth {
+			return nil, ErrMaxNestingDepth
+		}
 
-		st := GetSerializedType(fi.Type)
-		res, err := st.ToJSON(p)
+		res, err := objectToJSON(p, depth+1)
 		if err != nil {
 			return nil, err
 		}

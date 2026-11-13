@@ -429,6 +429,20 @@ func TestEncode(t *testing.T) {
 			output:      "",
 			expectedErr: types.ErrInvalidPathSet,
 		},
+		{
+			description: "reject non-string Memos MemoData blob",
+			input: map[string]any{
+				"Memos": []any{
+					map[string]any{
+						"Memo": map[string]any{
+							"MemoData": float64(1),
+						},
+					},
+				},
+			},
+			output:      "",
+			expectedErr: types.ErrBlobNotString,
+		},
 	}
 
 	for _, tc := range tt {
