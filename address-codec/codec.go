@@ -46,6 +46,8 @@ func Encode(b []byte, typePrefix []byte, expectedLength int) (string, error) {
 }
 
 // Decode returns the decoded byte slice of the base58-encoded string for the given prefix.
+// It does not limit the input length, and its cost grows with the square of the length,
+// so callers should bound untrusted input or use the typed decoders such as DecodeNodePublicKey.
 func Decode(b58string string, typePrefix []byte) ([]byte, error) {
 	prefixLength := len(typePrefix)
 
@@ -87,8 +89,7 @@ func EncodeClassicAddressFromPublicKeyHex(pubkeyhex string) (string, error) {
 
 // DecodeClassicAddressToAccountID returns the prefix and accountID byte slice from a classic address.
 func DecodeClassicAddressToAccountID(cAddress string) (typePrefix, accountID []byte, err error) {
-	// Use Base58CheckDecode to validate checksum
-	decoded, err := Base58CheckDecode(cAddress)
+	decoded, err := decodeXRPLBase58Check(cAddress)
 	if err != nil {
 		return nil, nil, ErrInvalidClassicAddress
 	}
@@ -136,7 +137,7 @@ func hasPrefixConstantTime(b, prefix []byte) bool {
 
 // DecodeSeed returns the decoded seed and its corresponding algorithm.
 func DecodeSeed(seed string) ([]byte, interfaces.CryptoImplementation, error) {
-	decoded, err := Base58CheckDecode(seed)
+	decoded, err := decodeXRPLBase58Check(seed)
 	if err != nil {
 		return nil, nil, ErrInvalidSeed
 	}
@@ -175,7 +176,7 @@ func EncodeNodePublicKey(b []byte) (string, error) {
 
 // DecodeNodePublicKey returns the decoded node public key byte slice from a base58 string.
 func DecodeNodePublicKey(key string) ([]byte, error) {
-	decodedNodeKey, err := Decode(key, []byte{NodePublicKeyPrefix})
+	decodedNodeKey, err := decodeXRPLPrefixed(key, []byte{NodePublicKeyPrefix})
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +197,7 @@ func EncodeAccountPublicKey(b []byte) (string, error) {
 
 // DecodeAccountPublicKey returns the decoded account public key byte slice from a base58 string.
 func DecodeAccountPublicKey(key string) ([]byte, error) {
-	decodedAccountKey, err := Decode(key, []byte{AccountPublicKeyPrefix})
+	decodedAccountKey, err := decodeXRPLPrefixed(key, []byte{AccountPublicKeyPrefix})
 	if err != nil {
 		return nil, err
 	}
