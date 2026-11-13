@@ -63,8 +63,7 @@ func EncodeXAddress(accountID []byte, tag uint32, tagFlag, testnetFlag bool) (st
 // DecodeXAddress returns the accountId, tag, tag presence, and testnet boolean decoding of the x-address.
 // If the x-address is invalid, it returns an error.
 func DecodeXAddress(xAddress string) (accountID []byte, tag uint32, hasTag, testnet bool, err error) {
-	// Use Base58CheckDecode to validate checksum
-	xAddressBytes, err := Base58CheckDecode(xAddress)
+	xAddressBytes, err := decodeXRPLBase58Check(xAddress)
 	if err != nil {
 		return nil, 0, false, false, err
 	}

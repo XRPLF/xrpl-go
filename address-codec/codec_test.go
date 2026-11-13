@@ -1,8 +1,10 @@
 package addresscodec
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Peersyst/xrpl-go/address-codec/interfaces"
@@ -72,6 +74,36 @@ func TestDecode(t *testing.T) {
 			expectedErr:    ErrInvalidFormat,
 		},
 		{
+			name:        "fail - non-ASCII character",
+			input:       "Ā",
+			inputPrefix: []byte{AccountAddressPrefix},
+			expectedErr: ErrInvalidFormat,
+		},
+		{
+			name:        "fail - invalid UTF-8",
+			input:       "\xff",
+			inputPrefix: []byte{AccountAddressPrefix},
+			expectedErr: ErrInvalidFormat,
+		},
+		{
+			name:        "fail - multibyte character across chunk boundary",
+			input:       "rrrrrrrrr" + "é",
+			inputPrefix: []byte{AccountAddressPrefix},
+			expectedErr: ErrInvalidFormat,
+		},
+		{
+			name:        "fail - long input is not length-limited",
+			input:       strings.Repeat("r", 129),
+			inputPrefix: []byte{AccountAddressPrefix},
+			expectedErr: ErrChecksum,
+		},
+		{
+			name:           "pass - node public key",
+			input:          "n9MDGCfimuyCmKXUAMcR12rv39PE6PY5YfFpNs75ZjtY3UWt31td",
+			inputPrefix:    []byte{NodePublicKeyPrefix},
+			expectedOutput: []byte{0x3, 0x5f, 0x6d, 0xdb, 0xd6, 0xaf, 0xc5, 0xf2, 0xcb, 0x3d, 0x7d, 0x8, 0x0, 0x55, 0x77, 0x58, 0xdc, 0xc9, 0x2a, 0xc5, 0x29, 0x2d, 0x5d, 0x4f, 0x36, 0x68, 0x31, 0x52, 0x69, 0x19, 0x3e, 0x59, 0xea},
+		},
+		{
 			name:           "fail - invalid checksum",
 			input:          "rrrrrrrrrrrrrrrrrp9U13c",
 			inputPrefix:    []byte{AccountAddressPrefix},
@@ -99,6 +131,19 @@ func TestDecode(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEncodeDecodeRoundTripLongPayload(t *testing.T) {
+	payload := bytes.Repeat([]byte{0xff}, 100)
+	prefix := []byte{0x42}
+
+	encoded, err := Encode(payload, prefix, len(payload))
+	require.NoError(t, err)
+	require.Greater(t, len(encoded), maxXRPLBase58Length)
+
+	decoded, err := Decode(encoded, prefix)
+	require.NoError(t, err)
+	require.Equal(t, payload, decoded)
 }
 
 func TestDecodersRejectChecksumCorruptionAtEveryPosition(t *testing.T) {
@@ -299,6 +344,21 @@ func TestDecodeSeed(t *testing.T) {
 			expectedOutput:    []byte("testingsomething"),
 			expectedAlgorithm: crypto.SECP256K1(),
 			expectedErr:       nil,
+		},
+		{
+			name:        "fail - input exceeds limit",
+			input:       strings.Repeat("r", 129),
+			expectedErr: ErrInvalidSeed,
+		},
+		{
+			name:        "fail - non-ASCII character",
+			input:       "sĀ",
+			expectedErr: ErrInvalidSeed,
+		},
+		{
+			name:        "fail - multibyte character across chunk boundary",
+			input:       "sssssssss" + "é",
+			expectedErr: ErrInvalidSeed,
 		},
 		{
 			name:              "fail - unsuccessful decode - invalid seed",
@@ -571,6 +631,16 @@ func TestDecodeNodePublicKey(t *testing.T) {
 			expectedOutput: nil,
 			expectedErr:    ErrB58PrefixMismatch,
 		},
+		{
+			name:        "fail - input at limit reaches checksum",
+			input:       strings.Repeat("r", 128),
+			expectedErr: ErrChecksum,
+		},
+		{
+			name:        "fail - input exceeds limit",
+			input:       strings.Repeat("r", 129),
+			expectedErr: ErrBase58InputTooLong,
+		},
 	}
 
 	for _, tc := range tt {
@@ -641,6 +711,16 @@ func TestDecodeAccountPublicKey(t *testing.T) {
 			output:      nil,
 			expectedErr: ErrB58PrefixMismatch,
 		},
+		{
+			name:        "fail - input at limit reaches checksum",
+			input:       strings.Repeat("r", 128),
+			expectedErr: ErrChecksum,
+		},
+		{
+			name:        "fail - input exceeds limit",
+			input:       strings.Repeat("r", 129),
+			expectedErr: ErrBase58InputTooLong,
+		},
 	}
 
 	for _, tc := range tt {
@@ -666,6 +746,21 @@ func TestIsValidAddress(t *testing.T) {
 		{
 			name:     "fail - invalid classic address",
 			input:    "yurt",
+			expected: false,
+		},
+		{
+			name:     "fail - input exceeds limit",
+			input:    strings.Repeat("r", 129),
+			expected: false,
+		},
+		{
+			name:     "fail - non-ASCII character",
+			input:    "rĀ",
+			expected: false,
+		},
+		{
+			name:     "fail - multibyte character across chunk boundary",
+			input:    "rrrrrrrrr" + "é",
 			expected: false,
 		},
 		{

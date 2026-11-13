@@ -21,6 +21,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### address-codec
 
 - Added `ErrInvalidEncodingType`, returned by `EncodeSeed` for an unknown encoding type.
+- Added `ErrBase58InputTooLong`, returned by `DecodeNodePublicKey`, `DecodeAccountPublicKey`, and `DecodeXAddress` when the input is longer than 128 bytes. `DecodeClassicAddressToAccountID` returns `ErrInvalidClassicAddress` and `DecodeSeed` returns `ErrInvalidSeed` for the same input. The generic `Decode`, `Base58CheckDecode`, and `DecodeBase58` do not limit input length.
 
 #### binary-codec
 
@@ -76,6 +77,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - `DefinitionFormatField.Validate` errors now start with `server_definitions: invalid format field: `.
 
 ### Fixed
+
+#### address-codec
+
+- Fixed a panic in `DecodeBase58` and address, seed, and key decoders for some non-ASCII input, and limited XRPL-typed base58 inputs to 128 bytes.
 
 #### binary-codec
 
