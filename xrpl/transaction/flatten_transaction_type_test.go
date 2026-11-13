@@ -83,14 +83,6 @@ func TestFlattenTransactionType(t *testing.T) {
 		func(base BaseTx) flatTx { return &VaultDeposit{BaseTx: base} },
 		func(base BaseTx) flatTx { return &VaultSet{BaseTx: base} },
 		func(base BaseTx) flatTx { return &VaultWithdraw{BaseTx: base} },
-		func(base BaseTx) flatTx { return &XChainAccountCreateCommit{BaseTx: base} },
-		func(base BaseTx) flatTx { return &XChainAddAccountCreateAttestation{BaseTx: base} },
-		func(base BaseTx) flatTx { return &XChainAddClaimAttestation{BaseTx: base} },
-		func(base BaseTx) flatTx { return &XChainClaim{BaseTx: base} },
-		func(base BaseTx) flatTx { return &XChainCommit{BaseTx: base} },
-		func(base BaseTx) flatTx { return &XChainCreateBridge{BaseTx: base} },
-		func(base BaseTx) flatTx { return &XChainCreateClaimID{BaseTx: base} },
-		func(base BaseTx) flatTx { return &XChainModifyBridge{BaseTx: base} },
 	}
 	for _, newTx := range constructors {
 		want := newTx(BaseTx{}).TxType().String()

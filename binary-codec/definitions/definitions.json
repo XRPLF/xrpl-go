@@ -1069,36 +1069,6 @@
       }
     ],
     [
-      "XChainClaimID",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 20,
-        "type": "UInt64"
-      }
-    ],
-    [
-      "XChainAccountCreateCount",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 21,
-        "type": "UInt64"
-      }
-    ],
-    [
-      "XChainAccountClaimCount",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 22,
-        "type": "UInt64"
-      }
-    ],
-    [
       "AssetPrice",
       {
         "isSerialized": true,
@@ -1829,26 +1799,6 @@
       }
     ],
     [
-      "SignatureReward",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 29,
-        "type": "Amount"
-      }
-    ],
-    [
-      "MinAccountCreateAmount",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 30,
-        "type": "Amount"
-      }
-    ],
-    [
       "LPTokenBalance",
       {
         "isSerialized": true,
@@ -2409,66 +2359,6 @@
       }
     ],
     [
-      "OtherChainSource",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": true,
-        "nth": 18,
-        "type": "AccountID"
-      }
-    ],
-    [
-      "OtherChainDestination",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": true,
-        "nth": 19,
-        "type": "AccountID"
-      }
-    ],
-    [
-      "AttestationSignerAccount",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": true,
-        "nth": 20,
-        "type": "AccountID"
-      }
-    ],
-    [
-      "AttestationRewardAccount",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": true,
-        "nth": 21,
-        "type": "AccountID"
-      }
-    ],
-    [
-      "LockingChainDoor",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": true,
-        "nth": 22,
-        "type": "AccountID"
-      }
-    ],
-    [
-      "IssuingChainDoor",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": true,
-        "nth": 23,
-        "type": "AccountID"
-      }
-    ],
-    [
       "Subject",
       {
         "isSerialized": true,
@@ -2929,46 +2819,6 @@
       }
     ],
     [
-      "XChainClaimProofSig",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 28,
-        "type": "STObject"
-      }
-    ],
-    [
-      "XChainCreateAccountProofSig",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 29,
-        "type": "STObject"
-      }
-    ],
-    [
-      "XChainClaimAttestationCollectionElement",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 30,
-        "type": "STObject"
-      }
-    ],
-    [
-      "XChainCreateAccountAttestationCollectionElement",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 31,
-        "type": "STObject"
-      }
-    ],
-    [
       "PriceData",
       {
         "isSerialized": true,
@@ -3159,26 +3009,6 @@
       }
     ],
     [
-      "XChainClaimAttestations",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 21,
-        "type": "STArray"
-      }
-    ],
-    [
-      "XChainCreateAccountAttestations",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 22,
-        "type": "STArray"
-      }
-    ],
-    [
       "PriceDataSeries",
       {
         "isSerialized": true,
@@ -3335,16 +3165,6 @@
         "isSigningField": true,
         "isVLEncoded": false,
         "nth": 17,
-        "type": "UInt8"
-      }
-    ],
-    [
-      "WasLockingChainSend",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 19,
         "type": "UInt8"
       }
     ],
@@ -3519,26 +3339,6 @@
       }
     ],
     [
-      "LockingChainIssue",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 1,
-        "type": "Issue"
-      }
-    ],
-    [
-      "IssuingChainIssue",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 2,
-        "type": "Issue"
-      }
-    ],
-    [
       "Asset",
       {
         "isSerialized": true,
@@ -3556,16 +3356,6 @@
         "isVLEncoded": false,
         "nth": 4,
         "type": "Issue"
-      }
-    ],
-    [
-      "XChainBridge",
-      {
-        "isSerialized": true,
-        "isSigningField": true,
-        "isVLEncoded": false,
-        "nth": 1,
-        "type": "XChainBridge"
       }
     ],
     [
@@ -3871,48 +3661,6 @@
       {
         "name": "PreviousTxnLgrSeq",
         "optionality": 1
-      }
-    ],
-    "Bridge": [
-      {
-        "name": "Account",
-        "optionality": 0
-      },
-      {
-        "name": "SignatureReward",
-        "optionality": 0
-      },
-      {
-        "name": "MinAccountCreateAmount",
-        "optionality": 1
-      },
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "XChainClaimID",
-        "optionality": 0
-      },
-      {
-        "name": "XChainAccountCreateCount",
-        "optionality": 0
-      },
-      {
-        "name": "XChainAccountClaimCount",
-        "optionality": 0
-      },
-      {
-        "name": "OwnerNode",
-        "optionality": 0
-      },
-      {
-        "name": "PreviousTxnID",
-        "optionality": 0
-      },
-      {
-        "name": "PreviousTxnLgrSeq",
-        "optionality": 0
       }
     ],
     "Check": [
@@ -5065,74 +4813,6 @@
         "optionality": 1
       }
     ],
-    "XChainOwnedClaimID": [
-      {
-        "name": "Account",
-        "optionality": 0
-      },
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "XChainClaimID",
-        "optionality": 0
-      },
-      {
-        "name": "OtherChainSource",
-        "optionality": 0
-      },
-      {
-        "name": "XChainClaimAttestations",
-        "optionality": 0
-      },
-      {
-        "name": "SignatureReward",
-        "optionality": 0
-      },
-      {
-        "name": "OwnerNode",
-        "optionality": 0
-      },
-      {
-        "name": "PreviousTxnID",
-        "optionality": 0
-      },
-      {
-        "name": "PreviousTxnLgrSeq",
-        "optionality": 0
-      }
-    ],
-    "XChainOwnedCreateAccountClaimID": [
-      {
-        "name": "Account",
-        "optionality": 0
-      },
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "XChainAccountCreateCount",
-        "optionality": 0
-      },
-      {
-        "name": "XChainCreateAccountAttestations",
-        "optionality": 0
-      },
-      {
-        "name": "OwnerNode",
-        "optionality": 0
-      },
-      {
-        "name": "PreviousTxnID",
-        "optionality": 0
-      },
-      {
-        "name": "PreviousTxnLgrSeq",
-        "optionality": 0
-      }
-    ],
     "common": [
       {
         "name": "LedgerIndex",
@@ -5156,7 +4836,6 @@
     "AMM": 121,
     "AccountRoot": 97,
     "Amendments": 102,
-    "Bridge": 105,
     "Check": 67,
     "Credential": 129,
     "DID": 73,
@@ -5182,9 +4861,7 @@
     "SignerList": 83,
     "Sponsorship": 144,
     "Ticket": 84,
-    "Vault": 132,
-    "XChainOwnedClaimID": 113,
-    "XChainOwnedCreateAccountClaimID": 116
+    "Vault": 132
   },
   "TRANSACTION_FLAGS": {
     "AMMClawback": {
@@ -5311,9 +4988,6 @@
     "VaultCreate": {
       "tfVaultPrivate": 65536,
       "tfVaultShareNonTransferable": 131072
-    },
-    "XChainModifyBridge": {
-      "tfClearAccountCreateAmount": 65536
     },
     "universal": {
       "tfFullyCanonicalSig": 2147483648,
@@ -6632,194 +6306,6 @@
         "optionality": 1
       }
     ],
-    "XChainAccountCreateCommit": [
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "Destination",
-        "optionality": 0
-      },
-      {
-        "name": "Amount",
-        "optionality": 0
-      },
-      {
-        "name": "SignatureReward",
-        "optionality": 0
-      }
-    ],
-    "XChainAddAccountCreateAttestation": [
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "AttestationSignerAccount",
-        "optionality": 0
-      },
-      {
-        "name": "PublicKey",
-        "optionality": 0
-      },
-      {
-        "name": "Signature",
-        "optionality": 0
-      },
-      {
-        "name": "OtherChainSource",
-        "optionality": 0
-      },
-      {
-        "name": "Amount",
-        "optionality": 0
-      },
-      {
-        "name": "AttestationRewardAccount",
-        "optionality": 0
-      },
-      {
-        "name": "WasLockingChainSend",
-        "optionality": 0
-      },
-      {
-        "name": "XChainAccountCreateCount",
-        "optionality": 0
-      },
-      {
-        "name": "Destination",
-        "optionality": 0
-      },
-      {
-        "name": "SignatureReward",
-        "optionality": 0
-      }
-    ],
-    "XChainAddClaimAttestation": [
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "AttestationSignerAccount",
-        "optionality": 0
-      },
-      {
-        "name": "PublicKey",
-        "optionality": 0
-      },
-      {
-        "name": "Signature",
-        "optionality": 0
-      },
-      {
-        "name": "OtherChainSource",
-        "optionality": 0
-      },
-      {
-        "name": "Amount",
-        "optionality": 0
-      },
-      {
-        "name": "AttestationRewardAccount",
-        "optionality": 0
-      },
-      {
-        "name": "WasLockingChainSend",
-        "optionality": 0
-      },
-      {
-        "name": "XChainClaimID",
-        "optionality": 0
-      },
-      {
-        "name": "Destination",
-        "optionality": 1
-      }
-    ],
-    "XChainClaim": [
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "XChainClaimID",
-        "optionality": 0
-      },
-      {
-        "name": "Destination",
-        "optionality": 0
-      },
-      {
-        "name": "DestinationTag",
-        "optionality": 1
-      },
-      {
-        "name": "Amount",
-        "optionality": 0
-      }
-    ],
-    "XChainCommit": [
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "XChainClaimID",
-        "optionality": 0
-      },
-      {
-        "name": "Amount",
-        "optionality": 0
-      },
-      {
-        "name": "OtherChainDestination",
-        "optionality": 1
-      }
-    ],
-    "XChainCreateBridge": [
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "SignatureReward",
-        "optionality": 0
-      },
-      {
-        "name": "MinAccountCreateAmount",
-        "optionality": 1
-      }
-    ],
-    "XChainCreateClaimID": [
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "SignatureReward",
-        "optionality": 0
-      },
-      {
-        "name": "OtherChainSource",
-        "optionality": 0
-      }
-    ],
-    "XChainModifyBridge": [
-      {
-        "name": "XChainBridge",
-        "optionality": 0
-      },
-      {
-        "name": "SignatureReward",
-        "optionality": 1
-      },
-      {
-        "name": "MinAccountCreateAmount",
-        "optionality": 1
-      }
-    ],
     "common": [
       {
         "name": "TransactionType",
@@ -7175,15 +6661,7 @@
     "VaultDelete": 67,
     "VaultDeposit": 68,
     "VaultSet": 66,
-    "VaultWithdraw": 69,
-    "XChainAccountCreateCommit": 44,
-    "XChainAddAccountCreateAttestation": 46,
-    "XChainAddClaimAttestation": 45,
-    "XChainClaim": 43,
-    "XChainCommit": 42,
-    "XChainCreateBridge": 48,
-    "XChainCreateClaimID": 41,
-    "XChainModifyBridge": 47
+    "VaultWithdraw": 69
   },
   "TYPES": {
     "AccountID": 8,
@@ -7215,8 +6693,7 @@
     "UInt96": 20,
     "Unknown": -2,
     "Validation": 10003,
-    "Vector256": 19,
-    "XChainBridge": 25
+    "Vector256": 19
   },
   "hash": "0F89957938A9185335A2ACD799EDDF3965F349E2E482A0CDD97094A1E4DB9FE7"
 }

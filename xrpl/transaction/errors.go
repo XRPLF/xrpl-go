@@ -133,28 +133,8 @@ var (
 	// ErrInvalidFlags is returned for unsupported or conflicting transaction flags.
 	ErrInvalidFlags = errors.New("invalid flags")
 
-	// xchain
-
 	// ErrInvalidDestinationAddress is returned when the destination address is invalid.
-	ErrInvalidDestinationAddress = errors.New("xchain claim: invalid destination address")
-	// ErrMissingXChainClaimID is returned when the XChainClaimID is missing.
-	ErrMissingXChainClaimID = errors.New("xchain claim: missing XChainClaimID")
-
-	// ErrInvalidXChainClaimID is returned when the XChainClaimID is invalid or missing.
-	ErrInvalidXChainClaimID = errors.New("invalid XChainClaimID")
-
-	// ErrInvalidAttestationRewardAccount is returned when the AttestationRewardAccount is not a valid address.
-	ErrInvalidAttestationRewardAccount = errors.New("invalid attestation reward account")
-	// ErrInvalidAttestationSignerAccount is returned when the AttestationSignerAccount is not a valid address.
-	ErrInvalidAttestationSignerAccount = errors.New("invalid attestation signer account")
-	// ErrInvalidOtherChainSource is returned when OtherChainSource is not a valid address.
-	ErrInvalidOtherChainSource = errors.New("invalid other chain source")
-	// ErrInvalidPublicKey is returned when the PublicKey field is empty or invalid.
-	ErrInvalidPublicKey = errors.New("invalid public key")
-	// ErrInvalidWasLockingChainSend is returned when WasLockingChainSend is not 0 or 1.
-	ErrInvalidWasLockingChainSend = errors.New("invalid was locking chain send")
-	// ErrInvalidXChainAccountCreateCount is returned when XChainAccountCreateCount is not a valid unsigned integer.
-	ErrInvalidXChainAccountCreateCount = errors.New("invalid x chain account create count")
+	ErrInvalidDestinationAddress = errors.New("invalid destination address")
 
 	// validations
 
