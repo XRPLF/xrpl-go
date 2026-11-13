@@ -68,6 +68,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - A non-string `AccountID` value now returns `account ID must be a string: got <type>` instead of `expected a string but got <type>`.
 - An unknown field type now returns `unknown field type: type "<type>", field "<field>"` instead of `unknown type "<type>" for field "<field>"`.
 - An unsupported amount value type now returns `unsupported amount value type: <type>` instead of `unsupported type <type> for amount value`.
+- `types.ErrMissingCurrencyLengthOption` is deprecated, because no function returns it.
 
 #### pkg/hexutil
 
@@ -95,6 +96,9 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Encode and Decode return an error for fields nested deeper than xrpld's limit of 10.
 - Blob fields return an error for non-string JSON values.
+- `Issue` values now reject XRP with a non-null `issuer`, non-XRP currencies without a string `issuer`, the ACCOUNT_ZERO and NO_ACCOUNT issuers, and an `mpt_issuance_id` with the ACCOUNT_ZERO issuer. `Encode` returns `ErrInvalidIssuer`. Before, a string `issuer` on XRP, a missing `issuer` on a token, the NO_ACCOUNT issuer, or an MPT with the ACCOUNT_ZERO issuer gave bytes that cannot be decoded.
+- `Currency` values, including the currency of an `Issue`, no longer encode a hex code that is not 20 bytes long, or a three-character code with a character that xrpld does not allow, such as `a b`. `Encode` now returns `ErrInvalidCurrency`. Before, the hex code gave bytes that cannot be decoded, and the three-character code decoded to hex.
+- `Currency` and `Issue` values now decode a currency to its three-character code only when the code has standard currency characters and is not `XRP`. Other currencies, such as `000000000000000000000000FFFFFF0000000000`, decode to hex and encode back to the same bytes. `Currency` values now decode to uppercase hex, as `Issue` values do.
 
 #### dependencies
 

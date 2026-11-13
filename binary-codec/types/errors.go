@@ -22,6 +22,10 @@ var (
 	ErrAccountIDNotString = errors.New("account ID must be a string")
 	// ErrBlobNotString is returned when a Blob field receives a non-string JSON value.
 	ErrBlobNotString = errors.New("blob must be a string")
+	// ErrInvalidIssueObject is returned when the JSON object is not a valid Issue.
+	ErrInvalidIssueObject = errors.New("invalid issue object")
+	// ErrInvalidIssuer is returned when the issuer field is missing or invalid in the Issue JSON.
+	ErrInvalidIssuer = errors.New("invalid issuer")
 	// ErrUInt8OutOfRange is returned when a value is outside the uint8 range (0-255).
 	ErrUInt8OutOfRange = errors.New("value out of uint8 range (0-255)")
 	// ErrUInt16OutOfRange is returned when a value is outside the uint16 range (0-65535).
