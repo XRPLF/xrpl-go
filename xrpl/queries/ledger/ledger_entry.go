@@ -15,42 +15,34 @@ import (
 // Request
 // ############################################################################
 
-var (
-	// ErrInvalidEntryRequest is returned unless exactly one ledger entry selector is set.
-	ErrInvalidEntryRequest = errors.New("ledger_entry: exactly one selector must be specified")
-	// ErrInvalidBridgeSelector is returned unless bridge and bridge_account are set together.
-	ErrInvalidBridgeSelector = errors.New("ledger_entry: bridge and bridge_account must be specified together")
-)
+// ErrInvalidEntryRequest is returned unless exactly one ledger entry selector is set.
+var ErrInvalidEntryRequest = errors.New("ledger_entry: exactly one selector must be specified")
 
 // EntryRequest retrieves one ledger entry using exactly one selector.
 type EntryRequest struct {
 	common.BaseRequest
-	Index                           string                                  `json:"index,omitempty"`
-	AccountRoot                     types.Address                           `json:"account_root,omitempty"`
-	AMM                             AMMSelector                             `json:"amm,omitzero"`
-	BridgeAccount                   types.Address                           `json:"bridge_account,omitempty"`
-	Bridge                          BridgeSelector                          `json:"bridge,omitzero"`
-	Check                           string                                  `json:"check,omitempty"`
-	Credential                      CredentialSelector                      `json:"credential,omitzero"`
-	Delegate                        DelegateSelector                        `json:"delegate,omitzero"`
-	DepositPreauth                  DepositPreauthSelector                  `json:"deposit_preauth,omitzero"`
-	DID                             types.Address                           `json:"did,omitempty"`
-	Directory                       DirectorySelector                       `json:"directory,omitzero"`
-	Escrow                          EscrowSelector                          `json:"escrow,omitzero"`
-	MPTIssuance                     types.MPTIssuanceID                     `json:"mpt_issuance,omitempty"`
-	MPToken                         MPTokenSelector                         `json:"mptoken,omitzero"`
-	NFTPage                         string                                  `json:"nft_page,omitempty"`
-	Offer                           OfferSelector                           `json:"offer,omitzero"`
-	PaymentChannel                  string                                  `json:"payment_channel,omitempty"`
-	RippleState                     RippleStateSelector                     `json:"ripple_state,omitzero"`
-	Sponsorship                     SponsorshipSelector                     `json:"sponsorship,omitzero"`
-	Ticket                          TicketSelector                          `json:"ticket,omitzero"`
-	XChainOwnedClaimID              XChainOwnedClaimIDSelector              `json:"xchain_owned_claim_id,omitzero"`
-	XChainOwnedCreateAccountClaimID XChainOwnedCreateAccountClaimIDSelector `json:"xchain_owned_create_account_claim_id,omitzero"`
-	LedgerIndex                     common.LedgerSpecifier                  `json:"ledger_index,omitempty"`
-	LedgerHash                      common.LedgerHash                       `json:"ledger_hash,omitempty"`
-	Binary                          bool                                    `json:"binary,omitempty"`
-	IncludeDeleted                  bool                                    `json:"include_deleted,omitempty"`
+	Index          string                 `json:"index,omitempty"`
+	AccountRoot    types.Address          `json:"account_root,omitempty"`
+	AMM            AMMSelector            `json:"amm,omitzero"`
+	Check          string                 `json:"check,omitempty"`
+	Credential     CredentialSelector     `json:"credential,omitzero"`
+	Delegate       DelegateSelector       `json:"delegate,omitzero"`
+	DepositPreauth DepositPreauthSelector `json:"deposit_preauth,omitzero"`
+	DID            types.Address          `json:"did,omitempty"`
+	Directory      DirectorySelector      `json:"directory,omitzero"`
+	Escrow         EscrowSelector         `json:"escrow,omitzero"`
+	MPTIssuance    types.MPTIssuanceID    `json:"mpt_issuance,omitempty"`
+	MPToken        MPTokenSelector        `json:"mptoken,omitzero"`
+	NFTPage        string                 `json:"nft_page,omitempty"`
+	Offer          OfferSelector          `json:"offer,omitzero"`
+	PaymentChannel string                 `json:"payment_channel,omitempty"`
+	RippleState    RippleStateSelector    `json:"ripple_state,omitzero"`
+	Sponsorship    SponsorshipSelector    `json:"sponsorship,omitzero"`
+	Ticket         TicketSelector         `json:"ticket,omitzero"`
+	LedgerIndex    common.LedgerSpecifier `json:"ledger_index,omitempty"`
+	LedgerHash     common.LedgerHash      `json:"ledger_hash,omitempty"`
+	Binary         bool                   `json:"binary,omitempty"`
+	IncludeDeleted bool                   `json:"include_deleted,omitempty"`
 }
 
 // Method returns the JSON-RPC method name for EntryRequest.
@@ -73,8 +65,6 @@ func (r EntryRequest) MarshalJSON() ([]byte, error) {
 // Validate requires exactly one ledger entry selector and validates selectors
 // that have multiple wire representations.
 func (r *EntryRequest) Validate() error {
-	hasBridge := r.Bridge != (BridgeSelector{})
-
 	// One row per selector, in request field order. err is only consulted for
 	// the selected selector, so eager validate() results on unset selectors are
 	// harmless.
@@ -86,7 +76,6 @@ func (r *EntryRequest) Validate() error {
 		{name: "index", selected: r.Index != ""},
 		{name: "account_root", selected: r.AccountRoot != ""},
 		{name: "amm", selected: !r.AMM.IsZero(), err: r.AMM.validate()},
-		{name: "bridge", selected: hasBridge},
 		{name: "check", selected: r.Check != ""},
 		{name: "credential", selected: !r.Credential.IsZero(), err: r.Credential.validate()},
 		{name: "delegate", selected: !r.Delegate.IsZero(), err: r.Delegate.validate()},
@@ -102,8 +91,6 @@ func (r *EntryRequest) Validate() error {
 		{name: "ripple_state", selected: r.RippleState != (RippleStateSelector{})},
 		{name: "sponsorship", selected: !r.Sponsorship.IsZero(), err: r.Sponsorship.validate()},
 		{name: "ticket", selected: !r.Ticket.IsZero(), err: r.Ticket.validate()},
-		{name: "xchain_owned_claim_id", selected: !r.XChainOwnedClaimID.IsZero(), err: r.XChainOwnedClaimID.validate()},
-		{name: "xchain_owned_create_account_claim_id", selected: !r.XChainOwnedCreateAccountClaimID.IsZero(), err: r.XChainOwnedCreateAccountClaimID.validate()},
 	}
 
 	selectorCount := 0
@@ -114,10 +101,6 @@ func (r *EntryRequest) Validate() error {
 	}
 	if selectorCount != 1 {
 		return ErrInvalidEntryRequest
-	}
-
-	if hasBridge != (r.BridgeAccount != "") {
-		return ErrInvalidBridgeSelector
 	}
 
 	for _, selector := range selectors {

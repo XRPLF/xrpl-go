@@ -22,7 +22,7 @@ type FlatTransaction map[string]any
 // carry tf flags (AccountSet, AMMClawback, AMMDeposit, AMMWithdraw, Batch,
 // LoanManage, LoanPay, LoanSet, MPTokenAuthorize, MPTokenIssuanceCreate,
 // MPTokenIssuanceSet, NFTokenCreateOffer, NFTokenMint, OfferCreate, Payment,
-// PaymentChannelClaim, TrustSet, VaultCreate, XChainModifyBridge).
+// PaymentChannelClaim, TrustSet, VaultCreate).
 func (f FlatTransaction) NormalizeFlags() error {
 	raw, present := f["Flags"]
 	if !present {

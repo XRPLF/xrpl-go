@@ -5,37 +5,34 @@ type EntryType string
 
 // EntryType constants define all supported ledger entry types.
 const (
-	AccountRootEntry                     EntryType = "AccountRoot"
-	AmendmentsEntry                      EntryType = "Amendments"
-	AMMEntry                             EntryType = "AMM"
-	BridgeEntry                          EntryType = "Bridge"
-	CheckEntry                           EntryType = "Check"
-	CredentialEntry                      EntryType = "Credential"
-	DelegateEntry                        EntryType = "Delegate"
-	DepositPreauthObjEntry               EntryType = "DepositPreauth"
-	DIDEntry                             EntryType = "DID"
-	DirectoryNodeEntry                   EntryType = "DirectoryNode"
-	EscrowEntry                          EntryType = "Escrow"
-	FeeSettingsEntry                     EntryType = "FeeSettings"
-	LedgerHashesEntry                    EntryType = "LedgerHashes"
-	LoanEntry                            EntryType = "Loan"
-	LoanBrokerEntry                      EntryType = "LoanBroker"
-	MPTokenEntry                         EntryType = "MPToken"
-	MPTokenIssuanceEntry                 EntryType = "MPTokenIssuance" // #nosec G101
-	NegativeUNLEntry                     EntryType = "NegativeUNL"
-	NFTokenOfferEntry                    EntryType = "NFTokenOffer"
-	NFTokenPageEntry                     EntryType = "NFTokenPage"
-	OfferEntry                           EntryType = "Offer"
-	OracleEntry                          EntryType = "Oracle"
-	PayChannelEntry                      EntryType = "PayChannel"
-	PermissionedDomainEntry              EntryType = "PermissionedDomain"
-	RippleStateEntry                     EntryType = "RippleState"
-	SignerListEntry                      EntryType = "SignerList"
-	SponsorshipEntry                     EntryType = "Sponsorship"
-	TicketEntry                          EntryType = "Ticket"
-	VaultEntry                           EntryType = "Vault"
-	XChainOwnedClaimIDEntry              EntryType = "XChainOwnedClaimID"
-	XChainOwnedCreateAccountClaimIDEntry EntryType = "XChainOwnedCreateAccountClaimID"
+	AccountRootEntry        EntryType = "AccountRoot"
+	AmendmentsEntry         EntryType = "Amendments"
+	AMMEntry                EntryType = "AMM"
+	CheckEntry              EntryType = "Check"
+	CredentialEntry         EntryType = "Credential"
+	DelegateEntry           EntryType = "Delegate"
+	DepositPreauthObjEntry  EntryType = "DepositPreauth"
+	DIDEntry                EntryType = "DID"
+	DirectoryNodeEntry      EntryType = "DirectoryNode"
+	EscrowEntry             EntryType = "Escrow"
+	FeeSettingsEntry        EntryType = "FeeSettings"
+	LedgerHashesEntry       EntryType = "LedgerHashes"
+	LoanEntry               EntryType = "Loan"
+	LoanBrokerEntry         EntryType = "LoanBroker"
+	MPTokenEntry            EntryType = "MPToken"
+	MPTokenIssuanceEntry    EntryType = "MPTokenIssuance" // #nosec G101
+	NegativeUNLEntry        EntryType = "NegativeUNL"
+	NFTokenOfferEntry       EntryType = "NFTokenOffer"
+	NFTokenPageEntry        EntryType = "NFTokenPage"
+	OfferEntry              EntryType = "Offer"
+	OracleEntry             EntryType = "Oracle"
+	PayChannelEntry         EntryType = "PayChannel"
+	PermissionedDomainEntry EntryType = "PermissionedDomain"
+	RippleStateEntry        EntryType = "RippleState"
+	SignerListEntry         EntryType = "SignerList"
+	SponsorshipEntry        EntryType = "Sponsorship"
+	TicketEntry             EntryType = "Ticket"
+	VaultEntry              EntryType = "Vault"
 )
 
 // FlatLedgerObject represents a generic ledger entry as a flat map of field names to values.
@@ -61,8 +58,6 @@ func EmptyLedgerObject(t string) (Object, error) {
 		return &Amendments{}, nil
 	case AMMEntry:
 		return &AMM{}, nil
-	case BridgeEntry:
-		return &Bridge{}, nil
 	case CheckEntry:
 		return &Check{}, nil
 	case CredentialEntry:
@@ -113,10 +108,6 @@ func EmptyLedgerObject(t string) (Object, error) {
 		return &Ticket{}, nil
 	case VaultEntry:
 		return &Vault{}, nil
-	case XChainOwnedClaimIDEntry:
-		return &XChainOwnedClaimID{}, nil
-	case XChainOwnedCreateAccountClaimIDEntry:
-		return &XChainOwnedCreateAccountClaimID{}, nil
 	}
 	return nil, ErrUnrecognizedLedgerObjectType{
 		Type: t,
