@@ -73,6 +73,7 @@ const sidebars: SidebarsConfig = {
     },
     "upgrading-from-v0.1.x-to-v0.2.0",
     "upgrading-from-v0.2.0-to-v0.3.0",
+    "upgrading-from-v0.3.x-to-v0.4.0",
   ],
 };
 

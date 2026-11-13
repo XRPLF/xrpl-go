@@ -10,6 +10,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/stretchr/testify v1.10.0
 	github.com/ugorji/go/codec v1.2.11
+	golang.org/x/text v0.41.0
 )
 
 require github.com/pkg/errors v0.9.1 // indirect
