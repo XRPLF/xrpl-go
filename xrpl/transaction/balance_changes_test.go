@@ -887,48 +887,71 @@ func TestGetBalanceChangesPreservesDeletedNodePreviousFieldsFromJSON(t *testing.
 	}, balanceChanges)
 }
 
+// requireInvalidBalance checks that GetBalanceChanges rejects balance in each
+// field that can hold it, for a node of the given entry type.
+func requireInvalidBalance(t *testing.T, entry ledger.EntryType, balance any) {
+	t.Helper()
+
+	for field, meta := range map[string]*TxObjMeta{
+		"new": {AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
+			LedgerEntryType: entry,
+			NewFields:       ledger.FlatLedgerObject{"Account": "rAccount", "Balance": balance},
+		}}}},
+		"previous": {AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
+			LedgerEntryType: entry,
+			FinalFields:     ledger.FlatLedgerObject{"Account": "rAccount", "Balance": "1"},
+			PreviousFields:  map[string]any{"Balance": balance},
+		}}}},
+		"final": {AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
+			LedgerEntryType: entry,
+			FinalFields:     ledger.FlatLedgerObject{"Account": "rAccount", "Balance": balance},
+			PreviousFields:  map[string]any{"Balance": "1"},
+		}}}},
+	} {
+		t.Run(field, func(t *testing.T) {
+			_, err := GetBalanceChanges(meta)
+			require.ErrorIs(t, err, errInvalidBalanceValue)
+		})
+	}
+}
+
 func TestGetBalanceChangesReturnsInvalidBalanceErrors(t *testing.T) {
+	for _, entry := range []ledger.EntryType{ledger.AccountRootEntry, ledger.RippleStateEntry} {
+		for _, tc := range []struct {
+			name    string
+			balance any
+		}{
+			{"text", "not-a-balance"},
+			{"number", 1},
+			{"null", nil},
+			{"missing value", map[string]any{}},
+			{"number value", map[string]any{"value": 1}},
+			{"null value", map[string]any{"value": nil}},
+			{"too long", strings.Repeat("1", decimal.MaxInputLen+1)},
+			{"infinity", "Inf"},
+			{"large exponent", "1e999999"},
+			{"exponent 257", "1e257"},
+			{"exponent -257", "1e-257"},
+			{"invalid value", map[string]any{"value": "1e257"}},
+		} {
+			t.Run(string(entry)+"/"+tc.name, func(t *testing.T) {
+				requireInvalidBalance(t, entry, tc.balance)
+			})
+		}
+	}
+}
+
+func TestGetBalanceChangesReturnsInvalidDropsBalanceErrors(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
-		balance any
+		balance string
 	}{
-		{"text", "not-a-balance"},
-		{"number", 1},
-		{"null", nil},
-		{"missing value", map[string]any{}},
-		{"number value", map[string]any{"value": 1}},
-		{"null value", map[string]any{"value": nil}},
-		{"too long", strings.Repeat("1", decimal.MaxInputLen+1)},
-		{"infinity", "Inf"},
-		{"large exponent", "1e999999"},
-		{"exponent 257", "1e257"},
-		{"exponent -257", "1e-257"},
 		{"fractional drops", "1.5"},
 		{"negative drops", "-1"},
 		{"above XRP supply", "100000000000000001"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for field, meta := range map[string]*TxObjMeta{
-				"new": {AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
-					LedgerEntryType: ledger.AccountRootEntry,
-					NewFields:       ledger.FlatLedgerObject{"Account": "rAccount", "Balance": tc.balance},
-				}}}},
-				"previous": {AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
-					LedgerEntryType: ledger.AccountRootEntry,
-					FinalFields:     ledger.FlatLedgerObject{"Account": "rAccount", "Balance": "1"},
-					PreviousFields:  map[string]any{"Balance": tc.balance},
-				}}}},
-				"final": {AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
-					LedgerEntryType: ledger.AccountRootEntry,
-					FinalFields:     ledger.FlatLedgerObject{"Account": "rAccount", "Balance": tc.balance},
-					PreviousFields:  map[string]any{"Balance": "1"},
-				}}}},
-			} {
-				t.Run(field, func(t *testing.T) {
-					_, err := GetBalanceChanges(meta)
-					require.ErrorIs(t, err, errInvalidBalanceValue)
-				})
-			}
+			requireInvalidBalance(t, ledger.AccountRootEntry, tc.balance)
 		})
 	}
 }
