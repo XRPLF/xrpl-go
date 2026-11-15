@@ -204,6 +204,22 @@ func TestPathSet_ToJson(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "pass - lowercase currency keeps its case",
+			malleate: func(t *testing.T) interfaces.BinaryParser {
+				return serdes.NewBinaryParser([]byte{0x10, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 'u', 's', 'd', 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, definitions.Get())
+			},
+			output: []any{
+				[]any{
+					map[string]any{
+						"currency": "usd",
+						"type":     16, // 0x10 = TYPE_CURRENCY
+						"type_hex": "0000000000000010",
+					},
+				},
+			},
+			err: nil,
+		},
 	}
 
 	for _, tc := range testcases {

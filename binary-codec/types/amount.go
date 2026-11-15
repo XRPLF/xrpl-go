@@ -8,14 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"regexp"
 	"strconv"
 	"strings"
 
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 	bigdecimal "github.com/Peersyst/xrpl-go/pkg/big-decimal"
-	"github.com/Peersyst/xrpl-go/pkg/hexutil"
 )
 
 const (
@@ -72,8 +70,6 @@ var (
 	errInvalidMPTLength     = fmt.Errorf("MPT slice must be exactly %d bytes", MPTAmountByteLength)
 	errInsufficientMPTBytes = fmt.Errorf("not enough bytes for MPT issuance ID, need %d bytes", MPTIssuanceIDByteLength)
 	errInvalidIssuanceIDLen = fmt.Errorf("mpt_issuance_id must be exactly %d bytes", MPTIssuanceIDByteLength)
-
-	zeroByteArray = make([]byte, 20)
 
 	errAmountMissingValue            = errors.New("amount missing value field")
 	errInvalidAmountValue            = errors.New("invalid amount value")
@@ -247,13 +243,9 @@ func deserializeToken(data []byte) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	curr, err := deserializeCurrencyCode(data[8:28])
-	if err != nil {
-		return nil, err
-	}
 	return map[string]any{
 		"value":    value,
-		"currency": curr,
+		"currency": decodeCurrencyBytes(data[8:28]),
 		"issuer":   issuer,
 	}, nil
 }
@@ -288,24 +280,6 @@ func deserializeValue(data []byte) (string, error) {
 		return "", err
 	}
 	return val, nil
-}
-
-func deserializeCurrencyCode(data []byte) (string, error) {
-	// Check for special xrp case
-	if bytes.Equal(data, zeroByteArray) {
-		return "XRP", nil
-	}
-
-	if bytes.Equal(data[0:12], make([]byte, 12)) && bytes.Equal(data[12:15], []byte{0x58, 0x52, 0x50}) && bytes.Equal(data[15:20], make([]byte, 5)) { // XRP in bytes
-		return "", errInvalidCurrencyCode
-	}
-	iso := strings.ToUpper(string(data[12:15]))
-	ok, _ := regexp.MatchString(IOUCodeRegex, iso)
-
-	if !ok {
-		return hexutil.EncodeToUpperHex(data), nil
-	}
-	return iso, nil
 }
 
 func deserializeIssuer(data []byte) (string, error) {
@@ -524,38 +498,14 @@ func serializeIssuedCurrencyCode(currency string) ([]byte, error) {
 	case 3: // if the currency code is 3 characters, it is standard
 		return serializeIssuedCurrencyCodeChars(currency)
 	case 40: // if the currency code is 40 characters, it is hex encoded
-		return serializeIssuedCurrencyCodeHex(currency)
+		return hex.DecodeString(currency)
 	}
 
 	return nil, &InvalidCodeError{Disallowed: currency}
 }
 
-func serializeIssuedCurrencyCodeHex(currency string) ([]byte, error) {
-	decodedHex, err := hex.DecodeString(currency)
-	if err != nil {
-		return nil, err
-	}
-
-	if bytes.HasPrefix(decodedHex, []byte{0x00}) {
-
-		if bytes.Equal(decodedHex[12:15], []byte{0x00, 0x00, 0x00}) {
-			return make([]byte, 20), nil
-		}
-
-		if containsInvalidIOUCodeCharactersHex(decodedHex[12:15]) {
-			return nil, errInvalidCurrencyCode
-		}
-		return decodedHex, nil
-
-	}
-	return decodedHex, nil
-}
-
 func serializeIssuedCurrencyCodeChars(currency string) ([]byte, error) {
-	r := regexp.MustCompile(IOUCodeRegex) // regex to check if the currency code is valid
-	m := r.FindAllString(currency, -1)
-
-	if len(m) != 1 {
+	if !standardCurrencyCodeRegex.MatchString(currency) {
 		return nil, errInvalidCurrencyCode
 	}
 
@@ -673,13 +623,6 @@ func isNative(value byte) bool {
 func isPositive(value byte) bool {
 	x := value&0x40 > 0
 	return x
-}
-
-func containsInvalidIOUCodeCharactersHex(currency []byte) bool {
-	r := regexp.MustCompile(IOUCodeRegex) // regex to check if the currency code is valid
-	m := r.FindAll(currency, -1)
-
-	return len(m) != 1
 }
 
 // valueToString converts various JSON‐style value types into their string form.

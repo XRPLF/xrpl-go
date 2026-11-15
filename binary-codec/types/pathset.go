@@ -269,11 +269,7 @@ func parsePathStep(parser interfaces.BinaryParser) (map[string]any, error) {
 			}
 
 			if op.typeKey == typeCurrency {
-				value, err := deserializeCurrencyCode(bytes)
-				if err != nil {
-					return nil, err
-				}
-				step[op.key] = value
+				step[op.key] = decodeCurrencyBytes(bytes)
 			} else {
 				value, err := addresscodec.Encode(bytes, []byte{addresscodec.AccountAddressPrefix}, addresscodec.AccountAddressLength)
 				if err != nil {

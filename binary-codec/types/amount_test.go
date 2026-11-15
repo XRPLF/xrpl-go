@@ -637,10 +637,16 @@ func TestSerializeIssuedCurrencyCode(t *testing.T) {
 			expectedErr: errInvalidCurrencyCode,
 		},
 		{
-			name:        "fail - standard currency - invalid characters in currency code - hex",
+			name:        "pass - hex currency with other characters at the code position",
 			input:       "0x00000000000000000000000041442f0000000000",
-			expected:    nil,
-			expectedErr: errInvalidCurrencyCode,
+			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0x44, 0x2f, 0x00, 0x00, 0x00, 0x00, 0x00},
+			expectedErr: nil,
+		},
+		{
+			name:        "pass - hex currency with zeros at the code position",
+			input:       "0x00000000000000000000000000000000000000FF",
+			expected:    []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff},
+			expectedErr: nil,
 		},
 	}
 	for _, tt := range tests {
@@ -1479,6 +1485,60 @@ func TestAmount_ToJSONEnforcesCanonicalIOUValue(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.NotNil(t, actual)
+		})
+	}
+}
+
+func TestAmount_ToJSONCurrency(t *testing.T) {
+	defs := definitions.Get()
+	tests := []struct {
+		name     string
+		currency []byte
+		expected string
+	}{
+		{
+			name: "pass - lowercase standard code keeps its case",
+			currency: []byte{
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 'u', 's', 'd', 0x00, 0x00, 0x00, 0x00, 0x00,
+			},
+			expected: "usd",
+		},
+		{
+			name: "pass - standard code with a nonzero first byte",
+			currency: []byte{
+				0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 'U', 'S', 'D', 0x00, 0x00, 0x00, 0x00, 0x00,
+			},
+			expected: "0100000000000000000000005553440000000000",
+		},
+		{
+			name: "pass - standard code with a nonzero last byte",
+			currency: []byte{
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 'U', 'S', 'D', 0x00, 0x00, 0x00, 0x00, 0x01,
+			},
+			expected: "0000000000000000000000005553440000000001",
+		},
+		{
+			name: "pass - XRP code bytes",
+			currency: []byte{
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 'X', 'R', 'P', 0x00, 0x00, 0x00, 0x00, 0x00,
+			},
+			expected: "0000000000000000000000005852500000000000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := issuedCurrencyAmountBytes(MinIOUExponent, MinIOUMantissa)
+			copy(data[NativeAmountByteLength:], tt.currency)
+
+			actual, err := (&Amount{}).ToJSON(serdes.NewBinaryParser(data, defs))
+
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual.(map[string]any)["currency"])
 		})
 	}
 }
