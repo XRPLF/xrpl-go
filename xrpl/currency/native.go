@@ -59,6 +59,30 @@ func DropsToXrp(value string) (string, error) {
 		return "", ErrDropsToXrpNegativeValue
 	}
 
+	return dropsRatToXrp(drops)
+}
+
+// SignedDropsToXrp converts a signed amount of drops, for example a balance
+// difference, into an amount of XRP. A negative value keeps its sign.
+func SignedDropsToXrp(value string) (string, error) {
+	drops, ok := nativeAmountRat(value)
+	if !ok {
+		return "", ErrDropsToXrpInvalidValue
+	}
+
+	if drops.Sign() >= 0 {
+		return dropsRatToXrp(drops)
+	}
+
+	xrp, err := dropsRatToXrp(drops.Neg(drops))
+	if err != nil {
+		return "", err
+	}
+	return "-" + xrp, nil
+}
+
+// dropsRatToXrp formats a non-negative drops value as an XRP decimal string.
+func dropsRatToXrp(drops *big.Rat) (string, error) {
 	if drops.Denom().Cmp(bigIntOne) != 0 {
 		return "", ErrDropsToXrpFractionalDrops
 	}

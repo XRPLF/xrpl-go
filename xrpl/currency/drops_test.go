@@ -84,6 +84,41 @@ func TestDropsFromStringRejectsInvalidValues(t *testing.T) {
 	}
 }
 
+func TestNativeDropsFromString(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		value       string
+		expected    string
+		expectedErr error
+	}{
+		{name: "zero", value: "0", expected: "0"},
+		{name: "native maximum", value: "100000000000000000", expected: "100000000000000000"},
+		{name: "above native maximum", value: "100000000000000001", expectedErr: ErrNativeAmountExceedsMax},
+		{name: "negative", value: "-1", expectedErr: ErrNegativeNativeAmount},
+		{name: "fractional drop", value: "1.5", expectedErr: ErrFractionalDrops},
+		{name: "invalid", value: "invalid", expectedErr: ErrInvalidNativeAmount},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			drops, err := NativeDropsFromString(test.value)
+			if test.expectedErr != nil {
+				require.ErrorIs(t, err, test.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+
+			actual, err := drops.WholeString()
+			require.NoError(t, err)
+			require.Equal(t, test.expected, actual)
+		})
+	}
+}
+
 func TestDropsFromXRP(t *testing.T) {
 	t.Parallel()
 

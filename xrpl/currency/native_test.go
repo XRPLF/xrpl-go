@@ -338,6 +338,38 @@ func TestDropsToXrp(t *testing.T) {
 	}
 }
 
+func TestSignedDropsToXrp(t *testing.T) {
+	tt := []struct {
+		name        string
+		drops       string
+		xrp         string
+		expectedErr error
+	}{
+		{name: "positive", drops: "1234567", xrp: "1.234567"},
+		{name: "negative", drops: "-1234567", xrp: "-1.234567"},
+		{name: "negative whole XRP", drops: "-1000000", xrp: "-1"},
+		{name: "negative fractional XRP", drops: "-1", xrp: "-0.000001"},
+		{name: "zero", drops: "0", xrp: "0"},
+		{name: "negative zero", drops: "-0", xrp: "0"},
+		{name: "negative maximum drops", drops: "-100000000000000000", xrp: "-100000000000"},
+		{name: "one drop below negative maximum", drops: "-100000000000000001", expectedErr: ErrDropsToXrpExceedsMax},
+		{name: "negative fractional drops", drops: "-1.5", expectedErr: ErrDropsToXrpFractionalDrops},
+		{name: "invalid input", drops: "-abc", expectedErr: ErrDropsToXrpInvalidValue},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			xrp, err := SignedDropsToXrp(tc.drops)
+			if tc.expectedErr != nil {
+				require.ErrorIs(t, err, tc.expectedErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.xrp, xrp)
+			}
+		})
+	}
+}
+
 func TestNativeCurrencyRoundTripPreservesDrops(t *testing.T) {
 	tt := []struct {
 		name  string

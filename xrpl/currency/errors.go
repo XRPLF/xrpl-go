@@ -7,6 +7,8 @@ var (
 	ErrInvalidNativeAmount = errors.New("invalid native amount")
 	// ErrNegativeNativeAmount indicates a negative native XRP amount.
 	ErrNegativeNativeAmount = errors.New("native amount cannot be negative")
+	// ErrNativeAmountExceedsMax indicates a native XRP amount above the maximum native supply.
+	ErrNativeAmountExceedsMax = errors.New("native amount exceeds maximum XRP supply")
 	// ErrInvalidDecimalMultiplier indicates a malformed, negative, or out-of-range
 	// decimal multiplier.
 	ErrInvalidDecimalMultiplier = errors.New("invalid decimal multiplier")

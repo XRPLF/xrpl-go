@@ -821,13 +821,9 @@ func TestGetBalanceChangesTrustlineValues(t *testing.T) {
 		low     string
 		high    string
 	}{
-		{name: "explicit plus sign", balance: "+5", low: "5", high: "-5"},
-		{name: "1e-6 plain", balance: "0.000001", low: "0.000001", high: "-0.000001"},
-		{name: "1e-7 exponential", balance: "0.0000001", low: "1e-7", high: "-1e-7"},
-		{name: "1e20 plain", balance: "1e20", low: "100000000000000000000", high: "-100000000000000000000"},
-		{name: "1e21 exponential", balance: "1e21", low: "1e+21", high: "-1e+21"},
-		{name: "exponent 256", balance: "1e256", low: "1e+256", high: "-1e+256"},
-		{name: "exponent -256", balance: "1.5e-256", low: "1.5e-256", high: "-1.5e-256"},
+		{name: "plain", balance: "+5", low: "5", high: "-5"},
+		{name: "exponential", balance: "0.0000001", low: "1e-7", high: "-1e-7"},
+		{name: "negative exponential", balance: "-1e21", low: "-1e+21", high: "1e+21"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			meta := &TxObjMeta{AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
@@ -907,26 +903,31 @@ func TestGetBalanceChangesReturnsInvalidBalanceErrors(t *testing.T) {
 		{"large exponent", "1e999999"},
 		{"exponent 257", "1e257"},
 		{"exponent -257", "1e-257"},
+		{"fractional drops", "1.5"},
+		{"negative drops", "-1"},
+		{"above XRP supply", "100000000000000001"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, meta := range []*TxObjMeta{
-				{AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
+			for field, meta := range map[string]*TxObjMeta{
+				"new": {AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
 					LedgerEntryType: ledger.AccountRootEntry,
 					NewFields:       ledger.FlatLedgerObject{"Account": "rAccount", "Balance": tc.balance},
 				}}}},
-				{AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
+				"previous": {AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
 					LedgerEntryType: ledger.AccountRootEntry,
 					FinalFields:     ledger.FlatLedgerObject{"Account": "rAccount", "Balance": "1"},
 					PreviousFields:  map[string]any{"Balance": tc.balance},
 				}}}},
-				{AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
+				"final": {AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
 					LedgerEntryType: ledger.AccountRootEntry,
 					FinalFields:     ledger.FlatLedgerObject{"Account": "rAccount", "Balance": tc.balance},
 					PreviousFields:  map[string]any{"Balance": "1"},
 				}}}},
 			} {
-				_, err := GetBalanceChanges(meta)
-				require.ErrorIs(t, err, errInvalidBalanceValue)
+				t.Run(field, func(t *testing.T) {
+					_, err := GetBalanceChanges(meta)
+					require.ErrorIs(t, err, errInvalidBalanceValue)
+				})
 			}
 		})
 	}

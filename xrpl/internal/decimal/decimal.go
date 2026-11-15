@@ -1,4 +1,9 @@
 // Package decimal parses untrusted decimal text into exact rational values.
+//
+// Use it when the value is needed for arithmetic, for example a balance
+// difference. pkg/big-decimal has a different purpose: it splits a decimal
+// string into sign, digits, and scale for the binary codec, it does no
+// arithmetic, and it rejects zero.
 package decimal
 
 import (
@@ -12,6 +17,16 @@ import (
 // room for non-canonical text. This is a parser safety limit, not an XRPL
 // protocol limit.
 const MaxInputLen = 1024
+
+// maxAmountExponent bounds the exponent of a token amount. xrpld emits
+// issued-currency exponents from -96 to 80, so no valid amount is rejected.
+const maxAmountExponent = 256
+
+// ParseAmount converts the text of a token amount to an exact rational. It
+// applies the rules of Parse with the exponent limit for token amounts.
+func ParseAmount(value string) (*big.Rat, bool) {
+	return Parse(value, maxAmountExponent)
+}
 
 // Parse converts value to an exact rational. It accepts an optional sign,
 // decimal digits with an optional point, and an optional exponent. It rejects
@@ -30,6 +45,56 @@ func Parse(value string, maxExponent int) (*big.Rat, bool) {
 	}
 
 	return new(big.Rat).SetString(value)
+}
+
+// Exponent bounds of plain notation in Format. They match the defaults of
+// bignumber.js toString, which xrpl.js uses for token values.
+const (
+	minPlainExponent = -6
+	maxPlainExponent = 20
+)
+
+// Format returns value as decimal text. It uses plain notation when the
+// decimal exponent of value is from -6 to 20 and exponential notation
+// otherwise, for example "0.000001", "1e-7", and "1e+21". It reports false
+// when value has no finite decimal expansion, for example 1/3.
+func Format(value *big.Rat) (string, bool) {
+	precision, exact := value.FloatPrec()
+	if !exact {
+		return "", false
+	}
+	if value.Sign() == 0 {
+		return "0", true
+	}
+
+	// scaled is |value| * 10^precision, which is an integer because the
+	// expansion is finite.
+	scaled := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(precision)), nil)
+	scaled.Mul(scaled, value.Num())
+	scaled.Quo(scaled, value.Denom())
+	digits := scaled.Abs(scaled).String()
+
+	exponent := len(digits) - 1 - precision
+	if exponent >= minPlainExponent && exponent <= maxPlainExponent {
+		return value.FloatString(precision), true
+	}
+
+	var text strings.Builder
+	if value.Sign() < 0 {
+		text.WriteByte('-')
+	}
+	digits = strings.TrimRight(digits, "0")
+	text.WriteString(digits[:1])
+	if len(digits) > 1 {
+		text.WriteByte('.')
+		text.WriteString(digits[1:])
+	}
+	text.WriteByte('e')
+	if exponent > 0 {
+		text.WriteByte('+')
+	}
+	text.WriteString(strconv.Itoa(exponent))
+	return text.String(), true
 }
 
 func containsInvalidChar(value string) bool {

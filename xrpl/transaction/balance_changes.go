@@ -1,9 +1,8 @@
 package transaction
 
 import (
+	"fmt"
 	"math/big"
-	"strconv"
-	"strings"
 
 	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/internal/decimal"
@@ -125,38 +124,28 @@ func normalizeNodes(nodes []AffectedNode) []*normalizedNode {
 }
 
 func getXRPQuantity(node *normalizedNode) (*balanceChange, error) {
-	value, hasBalanceChange, err := computeBalanceChange(node)
+	delta, err := computeBalanceChange(node, parseDropsBalance)
 	if err != nil {
 		return nil, err
 	}
-	if !hasBalanceChange {
+	if delta == nil {
 		// Balance-neutral nodes are skipped before requiring Account.
 		return nil, nil
 	}
 
-	var account string
 	accountValue, ok := node.FinalFields["Account"]
 	if !ok {
 		accountValue = node.NewFields["Account"]
 	}
-	account, ok = accountValue.(string)
+	account, ok := accountValue.(string)
 	if !ok {
 		return nil, errAccountNotFoundForXRPQuantity
 	}
 
-	var isNegative bool
-	if strings.HasPrefix(value, "-") {
-		isNegative = true
-		value = strings.TrimPrefix(value, "-")
-	}
-
-	xrpAmount, err := currency.DropsToXrp(value)
+	// parseDropsBalance accepts only whole drops, so the difference is whole.
+	xrpAmount, err := currency.SignedDropsToXrp(delta.Num().String())
 	if err != nil {
 		return nil, err
-	}
-
-	if isNegative {
-		xrpAmount = strings.Join([]string{"-", xrpAmount}, "")
 	}
 
 	return &balanceChange{
@@ -169,11 +158,11 @@ func getXRPQuantity(node *normalizedNode) (*balanceChange, error) {
 }
 
 func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
-	value, hasBalanceChange, err := computeBalanceChange(node)
+	delta, err := computeBalanceChange(node, parseBalance)
 	if err != nil {
 		return nil, err
 	}
-	if !hasBalanceChange {
+	if delta == nil {
 		return nil, nil
 	}
 
@@ -197,14 +186,18 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 		return nil, errBalanceCurrencyNotFound
 	}
 
-	formatted := formatBalance(value)
+	lowValue, okLow := decimal.Format(delta)
+	highValue, okHigh := decimal.Format(new(big.Rat).Neg(delta))
+	if !okLow || !okHigh {
+		return nil, errInvalidBalanceValue
+	}
 
 	result := balanceChange{
 		Account: types.Address(lowLimitIssuer),
 		Balance: Balance{
 			Issuer:   highLimitIssuer,
 			Currency: balanceCurrency,
-			Value:    formatted,
+			Value:    lowValue,
 		},
 	}
 
@@ -213,7 +206,7 @@ func getTrustlineQuantity(node *normalizedNode) ([]balanceChange, error) {
 		Balance: Balance{
 			Issuer:   result.Account.String(),
 			Currency: result.Currency,
-			Value:    negateBalance(formatted),
+			Value:    highValue,
 		},
 	}
 
@@ -226,37 +219,36 @@ func nestedString(fields ledger.FlatLedgerObject, field, key string) (string, bo
 	return value, ok
 }
 
-func computeBalanceChange(node *normalizedNode) (delta string, hasBalanceChange bool, err error) {
+// computeBalanceChange returns the exact balance difference of node, or nil
+// when the balance did not change. parse converts and validates each Balance
+// field for the kind of the node.
+func computeBalanceChange(node *normalizedNode, parse func(balance any) (*big.Rat, error)) (delta *big.Rat, err error) {
 	newBalance, okNewBalance := node.NewFields["Balance"]
 	previousBalance, okPreviousBalance := node.PreviousFields["Balance"]
 	finalBalance, okFinalBalance := node.FinalFields["Balance"]
 
-	var value *big.Rat
 	switch {
 	case okNewBalance:
-		if value, err = parseBalance(newBalance); err != nil {
-			return "", false, err
+		if delta, err = parse(newBalance); err != nil {
+			return nil, err
 		}
 	case okPreviousBalance && okFinalBalance:
 		var previous *big.Rat
-		if previous, err = parseBalance(previousBalance); err != nil {
-			return "", false, err
+		if previous, err = parse(previousBalance); err != nil {
+			return nil, err
 		}
-		if value, err = parseBalance(finalBalance); err != nil {
-			return "", false, err
+		if delta, err = parse(finalBalance); err != nil {
+			return nil, err
 		}
-		value.Sub(value, previous)
+		delta.Sub(delta, previous)
 	default:
-		return "", false, nil
+		return nil, nil
 	}
 
-	if value.Sign() == 0 {
-		return "", false, nil
+	if delta.Sign() == 0 {
+		return nil, nil
 	}
-
-	// Decimal inputs give a finite expansion, so the precision is exact.
-	precision, _ := value.FloatPrec()
-	return value.FloatString(precision), true, nil
+	return delta, nil
 }
 
 func getValue(balance any) (string, error) {
@@ -270,59 +262,29 @@ func getValue(balance any) (string, error) {
 	return "", errInvalidBalanceValue
 }
 
-// maxBalanceExponent bounds the exponent of a balance value. xrpld emits
-// issued-currency exponents from -96 to 80, so no valid amount is rejected.
-const maxBalanceExponent = 256
-
 func parseBalance(balance any) (*big.Rat, error) {
 	text, err := getValue(balance)
 	if err != nil {
 		return nil, err
 	}
-	value, ok := decimal.Parse(text, maxBalanceExponent)
+	value, ok := decimal.ParseAmount(text)
 	if !ok {
 		return nil, errInvalidBalanceValue
 	}
 	return value, nil
 }
 
-func negateBalance(value string) string {
-	if strings.HasPrefix(value, "-") {
-		return value[1:]
+// parseDropsBalance parses an AccountRoot balance. The value must be a whole,
+// non-negative number of drops that does not exceed the XRP supply.
+func parseDropsBalance(balance any) (*big.Rat, error) {
+	text, err := getValue(balance)
+	if err != nil {
+		return nil, err
 	}
-	return "-" + value
-}
-
-func formatBalance(value string) string {
-	sign := ""
-	if strings.HasPrefix(value, "-") {
-		sign, value = "-", value[1:]
+	if _, err := currency.NativeDropsFromString(text); err != nil {
+		return nil, fmt.Errorf("%w: %w", errInvalidBalanceValue, err)
 	}
-	parts := strings.SplitN(value, ".", 2)
-	integer := parts[0]
-	fraction := ""
-	if len(parts) == 2 {
-		fraction = parts[1]
-	}
-	exponent := len(integer) - 1
-	digits := integer + fraction
-	if integer == "0" {
-		leading := len(fraction) - len(strings.TrimLeft(fraction, "0"))
-		exponent = -leading - 1
-		digits = fraction[leading:]
-	}
-	if exponent > -7 && exponent < 21 {
-		return sign + value
-	}
-	digits = strings.TrimRight(digits, "0")
-	mantissa := digits[:1]
-	if len(digits) > 1 {
-		mantissa += "." + digits[1:]
-	}
-	if exponent >= 0 {
-		return sign + mantissa + "e+" + strconv.Itoa(exponent)
-	}
-	return sign + mantissa + "e" + strconv.Itoa(exponent)
+	return parseBalance(balance)
 }
 
 func groupByAccount(balanceChanges []balanceChange) []AccountBalanceChanges {
