@@ -92,55 +92,55 @@ func TestConfidentialMPTProtocolLengths(t *testing.T) {
 	}
 }
 
-// TestValidateConfidentialMPTBaseRejectsUndecodableAccount pins the fail-closed behaviour
-// directly, because BaseTx.Validate rejects an undecodable Account before any of the five
-// Validate methods reach this helper.
-func TestValidateConfidentialMPTBaseRejectsUndecodableAccount(t *testing.T) {
-	tx := &BaseTx{Account: "not-an-xrpl-address"}
-
-	accountID, err := validateConfidentialMPTBase(tx)
-
-	require.ErrorIs(t, err, ErrInvalidAccount)
-	require.Nil(t, accountID)
-}
-
-// TestConfidentialMPTRejectsDuplicateAccountTag pins that every confidential MPT
-// transaction rejects an Account pairing a tagged X-address with an explicit SourceTag.
-// BaseTx.Validate deliberately allows the pairing, because client autofill resolves it,
-// so each of these models has to reach validateConfidentialMPTBase for the rule to apply.
-func TestConfidentialMPTRejectsDuplicateAccountTag(t *testing.T) {
+// TestConfidentialMPTAccountValidation pins the Account rules of every confidential MPT
+// transaction, through Validate:
+//   - BaseTx.Validate rejects an undecodable Account. validateConfidentialMPTBase relies
+//     on that and ignores the decode error, so each model has to run BaseTx.Validate first.
+//   - validateConfidentialMPTBase rejects a tagged X-address paired with an explicit
+//     SourceTag. BaseTx.Validate deliberately allows the pairing, because client autofill
+//     resolves it, so each model has to reach the helper for the rule to apply.
+func TestConfidentialMPTAccountValidation(t *testing.T) {
 	taggedAccount, err := addresscodec.ClassicAddressToXAddress(testAddrAccount, 42, true, false)
 	require.NoError(t, err)
 
-	base := func(txType TxType) BaseTx {
-		return BaseTx{
-			Account:         types.Address(taggedAccount),
-			TransactionType: txType,
-			Fee:             types.XRPCurrencyAmount(10),
-			SourceTag:       7,
-		}
-	}
-
 	type validator interface{ Validate() (bool, error) }
 
-	testcases := []struct {
-		name string
-		tx   validator
+	accounts := []struct {
+		name      string
+		account   types.Address
+		sourceTag uint32
+		wantErr   error
 	}{
-		{name: "convert", tx: &ConfidentialMPTConvert{BaseTx: base(ConfidentialMPTConvertTx)}},
-		{name: "convert back", tx: &ConfidentialMPTConvertBack{BaseTx: base(ConfidentialMPTConvertBackTx)}},
-		{name: "send", tx: &ConfidentialMPTSend{BaseTx: base(ConfidentialMPTSendTx)}},
-		{name: "clawback", tx: &ConfidentialMPTClawback{BaseTx: base(ConfidentialMPTClawbackTx)}},
-		{name: "merge inbox", tx: &ConfidentialMPTMergeInbox{BaseTx: base(ConfidentialMPTMergeInboxTx)}},
+		{name: "undecodable Account", account: "invalid", wantErr: ErrInvalidAccount},
+		{name: "tagged X-address with SourceTag", account: types.Address(taggedAccount), sourceTag: 7, wantErr: ErrDuplicateXAddressTag},
 	}
 
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			valid, err := tc.tx.Validate()
-			require.False(t, valid)
-			// The pairing must surface before any transaction-specific field error,
-			// so the model never does proof or issuance work on a doubled tag.
-			require.ErrorIs(t, err, ErrDuplicateXAddressTag)
-		})
+	txs := []struct {
+		name   string
+		txType TxType
+		build  func(BaseTx) validator
+	}{
+		{name: "convert", txType: ConfidentialMPTConvertTx, build: func(b BaseTx) validator { return &ConfidentialMPTConvert{BaseTx: b} }},
+		{name: "convert back", txType: ConfidentialMPTConvertBackTx, build: func(b BaseTx) validator { return &ConfidentialMPTConvertBack{BaseTx: b} }},
+		{name: "send", txType: ConfidentialMPTSendTx, build: func(b BaseTx) validator { return &ConfidentialMPTSend{BaseTx: b} }},
+		{name: "clawback", txType: ConfidentialMPTClawbackTx, build: func(b BaseTx) validator { return &ConfidentialMPTClawback{BaseTx: b} }},
+		{name: "merge inbox", txType: ConfidentialMPTMergeInboxTx, build: func(b BaseTx) validator { return &ConfidentialMPTMergeInbox{BaseTx: b} }},
+	}
+
+	for _, account := range accounts {
+		for _, tx := range txs {
+			t.Run(account.name+"/"+tx.name, func(t *testing.T) {
+				valid, err := tx.build(BaseTx{
+					Account:         account.account,
+					TransactionType: tx.txType,
+					Fee:             types.XRPCurrencyAmount(10),
+					SourceTag:       account.sourceTag,
+				}).Validate()
+				require.False(t, valid)
+				// The Account error must surface before any transaction-specific field
+				// error, so the model never does proof or issuance work on a bad Account.
+				require.ErrorIs(t, err, account.wantErr)
+			})
+		}
 	}
 }

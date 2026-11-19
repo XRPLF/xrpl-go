@@ -66,11 +66,6 @@ func (m *MPTokenAuthorize) Validate() (bool, error) {
 		return false, ErrInvalidMPTokenIssuanceIDAuthorize
 	}
 
-	// check owner is a valid xrpl address
-	if m.Account != "" && !addresscodec.IsValidAddress(m.Account.String()) {
-		return false, ErrInvalidAccount
-	}
-
 	// If a Holder is specified, validate it as a proper XRPL address.
 	if m.Holder != nil && !addresscodec.IsValidAddress(m.Holder.String()) {
 		return false, ErrInvalidAccount

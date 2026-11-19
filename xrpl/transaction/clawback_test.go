@@ -258,6 +258,15 @@ func TestClawback_Validate(t *testing.T) {
 			wantErr: bctypes.ErrDuplicateXAddressTag,
 		},
 		{
+			name: "fail - invalid Account",
+			clawback: Clawback{
+				BaseTx: newClawbackBaseTx("invalid"),
+				Amount: validMPT,
+				Holder: clawbackHolder,
+			},
+			wantErr: ErrInvalidAccount,
+		},
+		{
 			name: "fail - MPT issuance issuer differs from Account",
 			clawback: Clawback{
 				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
@@ -289,6 +298,30 @@ func TestClawback_Validate(t *testing.T) {
 					Issuer:   clawbackHolder,
 					Currency: "USD",
 					Value:    "invalid",
+				},
+			},
+			wantErr: ErrClawbackInvalidAmount,
+		},
+		{
+			name: "fail - undecodable issued currency Issuer",
+			clawback: Clawback{
+				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   "invalid",
+					Currency: "USD",
+					Value:    "1",
+				},
+			},
+			wantErr: ErrClawbackInvalidAmount,
+		},
+		{
+			name: "fail - tagged X-address issued currency Issuer",
+			clawback: Clawback{
+				BaseTx: newClawbackBaseTx(clawbackIOUIssuer),
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   clawbackTaggedHolder,
+					Currency: "USD",
+					Value:    "1",
 				},
 			},
 			wantErr: ErrClawbackInvalidAmount,

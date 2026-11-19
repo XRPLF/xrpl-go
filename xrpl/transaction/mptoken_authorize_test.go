@@ -74,6 +74,19 @@ func TestMPTokenAuthorize_Validate(t *testing.T) {
 		errMessage error
 	}{
 		{
+			name: "fail - invalid Account",
+			tx: &MPTokenAuthorize{
+				BaseTx: BaseTx{
+					Account:         "invalid",
+					TransactionType: MPTokenAuthorizeTx,
+				},
+				MPTokenIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidAccount,
+		},
+		{
 			name: "fail - empty MPTokenIssuanceID",
 			tx: &MPTokenAuthorize{
 				BaseTx: BaseTx{

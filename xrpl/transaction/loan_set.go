@@ -226,7 +226,7 @@ func (tx *LoanSet) Validate() (bool, error) {
 
 	if tx.Counterparty != nil {
 		if !addresscodec.IsValidAddress(tx.Counterparty.String()) {
-			return false, ErrInvalidAccount
+			return false, ErrLoanSetCounterpartyInvalid
 		}
 	}
 

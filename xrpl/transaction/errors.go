@@ -526,6 +526,8 @@ var (
 	ErrLoanSetPrincipalRequestedInvalid = errors.New("loanSet: PrincipalRequested must be a valid XRPL number")
 	// ErrLoanSetDataInvalid is returned when Data is not a valid non-empty hex string up to 512 characters.
 	ErrLoanSetDataInvalid = errors.New("loanSet: Data must be a valid non-empty hex string up to 512 characters")
+	// ErrLoanSetCounterpartyInvalid is returned when Counterparty is not a valid XRPL address.
+	ErrLoanSetCounterpartyInvalid = errors.New("loanSet: Counterparty must be a valid XRPL address")
 	// ErrLoanSetOverpaymentFeeInvalid is returned when OverpaymentFee is outside the valid range (0 to 100000 inclusive).
 	ErrLoanSetOverpaymentFeeInvalid = errors.New("loanSet: OverpaymentFee must be between 0 and 100000 inclusive")
 	// ErrLoanSetInterestRateInvalid is returned when InterestRate is outside the valid range (0 to 100000 inclusive).
