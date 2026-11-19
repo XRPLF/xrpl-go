@@ -37,10 +37,12 @@ type TrustSet struct {
 	// A value of 0 is shorthand for treating balances at face value. For example, if you set the value to 10,000,000, 1% of incoming funds remain with the sender.
 	// If an account sends 100 currency, the sender retains 1 currency unit and the destination receives 99 units. This option is included for parity: in practice, you are much more likely to set a QualityOut value.
 	// Note that this fee is separate and independent from token transfer fees.
+	// A zero Go value omits this field rather than sending an explicit zero to clear the quality.
 	QualityIn uint32 `json:",omitempty"`
 	// (Optional) Value outgoing balances on this trust line at the ratio of this number per 1,000,000,000 units.
 	// A value of 0 is shorthand for treating balances at face value. For example, if you set the value to 10,000,000, 1% of outgoing funds would remain with the issuer.
 	// If the sender sends 100 currency units, the issuer retains 1 currency unit and the destination receives 99 units. Note that this fee is separate and independent from token transfer fees.
+	// A zero Go value omits this field rather than sending an explicit zero to clear the quality.
 	QualityOut uint32 `json:",omitempty"`
 }
 
@@ -104,6 +106,7 @@ func (t *TrustSet) SetClearDeepFreezeFlag() {
 }
 
 // Validate checks that the TrustSet transaction has valid fields and flags.
+// QualityIn and QualityOut accept the full uint32 range. A zero Go value is omitted rather than clearing a quality.
 func (t *TrustSet) Validate() (bool, error) {
 	// Validate the base transaction
 	_, err := t.BaseTx.Validate()

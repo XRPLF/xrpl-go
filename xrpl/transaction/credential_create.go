@@ -65,7 +65,8 @@ func (c *CredentialCreate) Flatten() FlatTransaction {
 	return flattened
 }
 
-// Validate implements the Validate method for the CredentialCreate struct.
+// Validate checks the credential fields. A zero Expiration is omitted.
+// The server compares a nonzero Expiration with the ledger close time.
 func (c *CredentialCreate) Validate() (bool, error) {
 	// validate the base transaction
 	_, err := c.BaseTx.Validate()

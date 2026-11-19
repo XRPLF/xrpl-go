@@ -236,6 +236,7 @@ func (m *MPTokenIssuanceCreate) SetMPTTransferFeeImmutableFlag() {
 }
 
 // Validate validates the MPTokenIssuanceCreate transaction ensuring all fields are correct.
+// AssetScale accepts the full uint8 range. A nil pointer omits it; a pointer to zero encodes zero.
 func (m *MPTokenIssuanceCreate) Validate() (bool, error) {
 	ok, err := m.BaseTx.Validate()
 	if err != nil || !ok {
