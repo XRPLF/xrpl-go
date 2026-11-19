@@ -58,7 +58,7 @@ func (tx *LoanBrokerCoverDeposit) Validate() (bool, error) {
 		return false, ErrLoanBrokerCoverDepositLoanBrokerIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.LoanBrokerID) {
+	if !isNonZeroHex256(tx.LoanBrokerID) {
 		return false, ErrLoanBrokerCoverDepositLoanBrokerIDInvalid
 	}
 
@@ -68,6 +68,9 @@ func (tx *LoanBrokerCoverDeposit) Validate() (bool, error) {
 
 	if ok, err := IsAmount(tx.Amount, "Amount", true); !ok {
 		return false, err
+	}
+	if tx.Amount.IsZero() {
+		return false, ErrInvalidTokenValue
 	}
 
 	return true, nil

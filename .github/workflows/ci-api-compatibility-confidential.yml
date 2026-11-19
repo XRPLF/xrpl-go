@@ -1,0 +1,37 @@
+name: Confidential API Compatibility
+
+# Breaking exported API changes are acknowledged with a "!" in the PR title, so this
+# workflow re-runs on every title or description edit. It is separate from confidential
+# CI so that an edit re-checks only this and leaves the test and lint checks on the
+# commit as the last code push left them.
+
+on:
+  pull_request:
+    branches: ['**']
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - 'confidential/**'
+      - '!confidential/**/*.md'
+      - 'confidential/**/testdata/**'
+      - 'pkg/mptsizes/**'
+      - '!pkg/mptsizes/**/*.md'
+      - 'pkg/mptsizes/**/testdata/**'
+      - 'Makefile'
+      - '.golangci.yml'
+      - '.ci-config/**'
+      - 'scripts/report-api-compatibility.sh'
+      - '.github/workflows/ci-api-compatibility.yml'
+      - '.github/workflows/ci-api-compatibility-confidential.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-compatibility:
+    uses: ./.github/workflows/ci-api-compatibility.yml
+    with:
+      module: confidential

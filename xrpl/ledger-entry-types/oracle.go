@@ -25,11 +25,14 @@ type PriceDataWrapper struct {
 
 // A PriceData object represents the price information for a token pair.
 type PriceData struct {
-	// The primary asset in a trading pair. Any valid identifier, such as a stock symbol,
-	// bond CUSIP, or currency code is allowed.
+	// The primary asset in a trading pair. It is a currency code: XRP, a three-character
+	// code, or 40 hexadecimal characters. Encode other identifiers, such as stock symbols
+	// or bond CUSIPs, in the 40-hexadecimal-character form.
 	BaseAsset string
-	// The quote asset in a trading pair. The quote asset denotes the
-	// price of one unit of the base asset.
+	// The quote asset in a trading pair. The quote asset denotes the price of one unit of
+	// the base asset. It is a currency code: XRP, a three-character code, or 40
+	// hexadecimal characters. Encode other identifiers, such as stock symbols or bond
+	// CUSIPs, in the 40-hexadecimal-character form.
 	QuoteAsset string
 	// The asset price after applying the Scale precision level. It's not included if
 	// the last update transaction didn't include the BaseAsset/QuoteAsset pair.

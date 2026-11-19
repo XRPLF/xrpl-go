@@ -73,12 +73,12 @@ func (tx *LoanManage) Validate() (bool, error) {
 		return false, ErrLoanManageLoanIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.LoanID) {
+	if !isNonZeroHex256(tx.LoanID) {
 		return false, ErrLoanManageLoanIDInvalid
 	}
 
-	// Check that TfLoanImpair and TfLoanUnimpair are not both set
-	if (tx.Flags&TfLoanImpair) != 0 && (tx.Flags&TfLoanUnimpair) != 0 {
+	loanFlags := tx.Flags & (TfLoanDefault | TfLoanImpair | TfLoanUnimpair)
+	if loanFlags&(loanFlags-1) != 0 {
 		return false, ErrLoanManageFlagsConflict
 	}
 

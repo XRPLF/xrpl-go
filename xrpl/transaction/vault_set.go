@@ -1,9 +1,6 @@
 package transaction
 
-import (
-	"github.com/Peersyst/xrpl-go/pkg/typecheck"
-	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
-)
+import "github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 
 const (
 	// VaultSetMaxDataLength is the maximum length in characters for the Data field (256 bytes = 512 hex chars).
@@ -17,7 +14,8 @@ const (
 //	{
 //	  "TransactionType": "VaultSet",
 //	  "Account": "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
-//	  "VaultID": "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"
+//	  "VaultID": "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+//	  "AssetsMaximum": "1000000"
 //	}
 //
 // ```
@@ -72,7 +70,7 @@ func (tx *VaultSet) Validate() (bool, error) {
 		return false, ErrVaultSetVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID.String()) {
+	if !isNonZeroHex256(tx.VaultID.String()) {
 		return false, ErrVaultSetVaultIDInvalid
 	}
 
@@ -82,7 +80,7 @@ func (tx *VaultSet) Validate() (bool, error) {
 		}
 	}
 
-	if tx.AssetsMaximum != nil && *tx.AssetsMaximum != "" && !typecheck.IsXRPLNumber(tx.AssetsMaximum.String()) {
+	if tx.AssetsMaximum != nil && *tx.AssetsMaximum != "" && !isNonNegativeCodecNumber(tx.AssetsMaximum.String()) {
 		return false, ErrVaultSetAssetsMaximumInvalid
 	}
 
@@ -90,6 +88,12 @@ func (tx *VaultSet) Validate() (bool, error) {
 		if !IsDomainID(*tx.DomainID) {
 			return false, ErrVaultSetDomainIDInvalid
 		}
+	}
+
+	if (tx.Data == nil || *tx.Data == "") &&
+		(tx.AssetsMaximum == nil || *tx.AssetsMaximum == "") &&
+		(tx.DomainID == nil || *tx.DomainID == "") {
+		return false, ErrVaultSetEmptyUpdate
 	}
 
 	return true, nil

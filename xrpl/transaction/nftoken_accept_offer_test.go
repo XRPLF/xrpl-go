@@ -131,6 +131,19 @@ func TestNFTokenAcceptOffer_Validate(t *testing.T) {
 			errMessage: ErrNFTokenBrokerFeeZero,
 		},
 		{
+			name: "fail - zero NFTokenBrokerFee as XRP pointer",
+			tx: &NFTokenAcceptOffer{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: NFTokenAcceptOfferTx,
+				},
+				NFTokenBrokerFee: new(types.XRPCurrencyAmount(0)),
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrNFTokenBrokerFeeZero,
+		},
+		{
 			name: "fail - invalid NFTokenBrokerFee as issued amount",
 			tx: &NFTokenAcceptOffer{
 				BaseTx: BaseTx{
@@ -163,6 +176,89 @@ func TestNFTokenAcceptOffer_Validate(t *testing.T) {
 			wantValid:  false,
 			wantErr:    true,
 			errMessage: ErrNFTokenBrokerFeeZero,
+		},
+		{
+			name: "fail - NFTokenBrokerFee issuer is ACCOUNT_ZERO",
+			tx: &NFTokenAcceptOffer{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: NFTokenAcceptOfferTx,
+				},
+				NFTokenSellOffer: "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBuyOffer:  "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBrokerFee: types.IssuedCurrencyAmount{
+					Issuer:   "rrrrrrrrrrrrrrrrrrrrrhoLvTp",
+					Currency: "USD",
+					Value:    "1",
+				},
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidIssuer,
+		},
+		{
+			name: "fail - NFTokenBrokerFee issued amount is NaN",
+			tx: &NFTokenAcceptOffer{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: NFTokenAcceptOfferTx,
+				},
+				NFTokenSellOffer: "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBuyOffer:  "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBrokerFee: types.IssuedCurrencyAmount{
+					Issuer:   "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					Currency: "USD",
+					Value:    "NaN",
+				},
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - NFTokenBrokerFee is an MPT amount",
+			tx: &NFTokenAcceptOffer{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: NFTokenAcceptOfferTx,
+				},
+				NFTokenSellOffer: "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBuyOffer:  "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBrokerFee: types.MPTCurrencyAmount{
+					MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
+					Value:         "1",
+				},
+			},
+			wantValid:  false,
+			wantErr:    true,
+			errMessage: ErrTransactionInvalidField{Type: "NFTokenAcceptOffer", Field: "NFTokenBrokerFee"},
+		},
+		{
+			name: "pass - NFTokenBrokerFee issued amount",
+			tx: &NFTokenAcceptOffer{
+				BaseTx: BaseTx{
+					Account:         "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					TransactionType: NFTokenAcceptOfferTx,
+				},
+				NFTokenSellOffer: "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBuyOffer:  "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBrokerFee: types.IssuedCurrencyAmount{
+					Issuer:   "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2",
+					Currency: "USD",
+					Value:    "1.5",
+				},
+			},
+			wantValid: true,
+		},
+		{
+			name: "pass - NFTokenBrokerFee issued amount pointer",
+			tx: &NFTokenAcceptOffer{
+				BaseTx:           BaseTx{Account: "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2", TransactionType: NFTokenAcceptOfferTx},
+				NFTokenSellOffer: "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBuyOffer:  "68CD1F6F906494EA08C9CB5CAFA64DFA90D4E834B7151899B73231DE5A0C3B77",
+				NFTokenBrokerFee: &types.IssuedCurrencyAmount{Issuer: "rNCFjv8Ek5oDrNiMJ3pw6eLLFtMjZLJnf2", Currency: "USD", Value: "1.5"},
+			},
+			wantValid: true,
 		},
 		{
 			name: "pass - Valid with Sell Offer",

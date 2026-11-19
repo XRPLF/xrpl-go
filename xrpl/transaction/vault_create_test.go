@@ -112,13 +112,13 @@ func TestVaultCreate_Flatten(t *testing.T) {
 					Account: "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
 				},
 				Asset: ledger.Asset{
-					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+					MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 				},
 			},
 			expected: FlatTransaction{
 				"TransactionType": VaultCreateTx.String(),
 				"Account":         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
-				"Asset":           map[string]any{"mpt_issuance_id": "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF"},
+				"Asset":           map[string]any{"mpt_issuance_id": "00002403C84A0A28E0190E208E982C352BBD5006600555CF"},
 			},
 		},
 	}
@@ -131,11 +131,36 @@ func TestVaultCreate_Flatten(t *testing.T) {
 }
 
 func TestVaultCreate_Validate(t *testing.T) {
+	maximum := func(asset ledger.Asset, value types.XRPLNumber) *VaultCreate {
+		return &VaultCreate{
+			BaseTx: BaseTx{Account: testAddrAccount, TransactionType: VaultCreateTx},
+			Asset:  asset, AssetsMaximum: &value,
+		}
+	}
+	xrp := ledger.Asset{Currency: "XRP"}
+	iou := ledger.Asset{Currency: "USD", Issuer: testAddrDelegate}
+	mpt := ledger.Asset{MPTIssuanceID: "00000001ABCDEF0123456789ABCDEF0123456789ABCDEF01"}
 	testcases := []struct {
 		name     string
 		tx       *VaultCreate
 		expected error
 	}{
+		{name: "fail - XRP maximum plus one", tx: maximum(xrp, "100000000000000001"), expected: ErrVaultCreateAssetsMaximumInvalid},
+		{name: "fail - XRP maximum far exceeded", tx: maximum(xrp, "1e30"), expected: ErrVaultCreateAssetsMaximumInvalid},
+		{name: "pass - XRP maximum", tx: maximum(xrp, "100000000000000000")},
+		{name: "pass - XRP rounds into range", tx: maximum(xrp, "100000000000000000.4")},
+		{name: "pass - XRP tie rounds to even maximum", tx: maximum(xrp, "100000000000000000.5")},
+		{name: "fail - XRP rounds above maximum", tx: maximum(xrp, "100000000000000000.6"), expected: ErrVaultCreateAssetsMaximumInvalid},
+		{name: "pass - fractional XRP", tx: maximum(xrp, "0.1")},
+		{name: "fail - MPT maximum exceeded", tx: maximum(mpt, "1e19"), expected: ErrVaultCreateAssetsMaximumInvalid},
+		{name: "pass - MPT maximum", tx: maximum(mpt, "9223372036854775807")},
+		{name: "pass - fractional MPT", tx: maximum(mpt, "0.5")},
+		{name: "fail - MPT tie rounds above odd maximum", tx: maximum(mpt, "9223372036854775807.5"), expected: ErrVaultCreateAssetsMaximumInvalid},
+		{name: "fail - IOU maximum exceeded", tx: maximum(iou, "1e97"), expected: ErrVaultCreateAssetsMaximumInvalid},
+		{name: "pass - IOU maximum", tx: maximum(iou, "9999999999999999e80")},
+		{name: "pass - IOU rounds into range", tx: maximum(iou, "99999999999999994e79")},
+		{name: "fail - IOU tie rounds above odd maximum", tx: maximum(iou, "99999999999999995e79"), expected: ErrVaultCreateAssetsMaximumInvalid},
+		{name: "pass - IOU underflow", tx: maximum(iou, "1e-100")},
 		{
 			name: "fail - base tx invalid",
 			tx: &VaultCreate{
@@ -163,7 +188,7 @@ func TestVaultCreate_Validate(t *testing.T) {
 					TransactionType: VaultCreateTx,
 				},
 				Asset: ledger.Asset{
-					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+					MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 				},
 			},
 			expected: nil,
@@ -183,6 +208,18 @@ func TestVaultCreate_Validate(t *testing.T) {
 			expected: nil,
 		},
 		{
+			name: "fail - unsupported WithdrawalPolicy",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:            ledger.Asset{Currency: "XRP"},
+				WithdrawalPolicy: func() *types.VaultWithdrawalPolicy { v := types.VaultWithdrawalPolicy(0); return &v }(),
+			},
+			expected: ErrVaultCreateWithdrawalPolicyInvalid,
+		},
+		{
 			name: "fail - AssetsMaximum invalid",
 			tx: &VaultCreate{
 				BaseTx: BaseTx{
@@ -193,6 +230,102 @@ func TestVaultCreate_Validate(t *testing.T) {
 				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("notanumber"); return &v }(),
 			},
 			expected: ErrVaultCreateAssetsMaximumInvalid,
+		},
+		{
+			name: "fail - AssetsMaximum exponent too large to encode",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:         ledger.Asset{Currency: "XRP"},
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("1e40000"); return &v }(),
+			},
+			expected: ErrVaultCreateAssetsMaximumInvalid,
+		},
+		{
+			name: "fail - AssetsMaximum exponent outside int32",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:         ledger.Asset{Currency: "XRP"},
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("1e4294967296"); return &v }(),
+			},
+			expected: ErrVaultCreateAssetsMaximumInvalid,
+		},
+		{
+			name: "fail - AssetsMaximum without integer digits",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:         ledger.Asset{Currency: "XRP"},
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber(".5"); return &v }(),
+			},
+			expected: ErrVaultCreateAssetsMaximumInvalid,
+		},
+		{
+			name: "fail - AssetsMaximum negative",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:         ledger.Asset{Currency: "XRP"},
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("-1"); return &v }(),
+			},
+			expected: ErrVaultCreateAssetsMaximumInvalid,
+		},
+		{
+			name: "fail - AssetsMaximum negative fraction",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:         ledger.Asset{Currency: "XRP"},
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("-0.5"); return &v }(),
+			},
+			expected: ErrVaultCreateAssetsMaximumInvalid,
+		},
+		{
+			name: "pass - AssetsMaximum zero",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:         ledger.Asset{Currency: "XRP"},
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("0"); return &v }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - AssetsMaximum negative zero",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:         ledger.Asset{Currency: "XRP"},
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("-0"); return &v }(),
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - AssetsMaximum positive",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:         ledger.Asset{Currency: "XRP"},
+				AssetsMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("1e10"); return &v }(),
+			},
+			expected: nil,
 		},
 		{
 			name: "fail - Data not hex",
@@ -322,7 +455,7 @@ func TestVaultCreate_Validate(t *testing.T) {
 					TransactionType: VaultCreateTx,
 				},
 				Asset: ledger.Asset{
-					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+					MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
 				},
 				Scale: func() *uint8 { v := uint8(5); return &v }(),
 			},

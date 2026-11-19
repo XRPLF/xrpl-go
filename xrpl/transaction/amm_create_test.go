@@ -59,6 +59,54 @@ func TestAMMCreateValidate(t *testing.T) {
 		errMsg  string
 	}{
 		{
+			name: "fail - zero XRP Amount",
+			amm: AMMCreate{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMCreateTx},
+				Amount: types.XRPCurrencyAmount(0), Amount2: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "1"},
+			},
+			wantErr: true, errMsg: ErrInvalidTokenValue.Error(),
+		},
+		{
+			name: "fail - zero IOU Amount",
+			amm: AMMCreate{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMCreateTx},
+				Amount: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "0"}, Amount2: types.XRPCurrencyAmount(1),
+			},
+			wantErr: true, errMsg: ErrInvalidTokenValue.Error(),
+		},
+		{
+			name: "fail - zero MPT Amount",
+			amm: AMMCreate{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMCreateTx},
+				Amount: types.MPTCurrencyAmount{MPTIssuanceID: "00000001ABCDEF0123456789ABCDEF0123456789ABCDEF01", Value: "0"}, Amount2: types.XRPCurrencyAmount(1),
+			},
+			wantErr: true, errMsg: ErrInvalidTokenValue.Error(),
+		},
+		{
+			name: "fail - zero XRP Amount2",
+			amm: AMMCreate{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMCreateTx},
+				Amount: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "1"}, Amount2: types.XRPCurrencyAmount(0),
+			},
+			wantErr: true, errMsg: ErrInvalidTokenValue.Error(),
+		},
+		{
+			name: "fail - zero IOU Amount2",
+			amm: AMMCreate{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMCreateTx},
+				Amount: types.XRPCurrencyAmount(1), Amount2: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "0"},
+			},
+			wantErr: true, errMsg: ErrInvalidTokenValue.Error(),
+		},
+		{
+			name: "fail - zero MPT Amount2",
+			amm: AMMCreate{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMCreateTx},
+				Amount: types.XRPCurrencyAmount(1), Amount2: types.MPTCurrencyAmount{MPTIssuanceID: "00000001ABCDEF0123456789ABCDEF0123456789ABCDEF01", Value: "0"},
+			},
+			wantErr: true, errMsg: ErrInvalidTokenValue.Error(),
+		},
+		{
 			name: "pass - valid AMMCreate",
 			amm: AMMCreate{
 				BaseTx: BaseTx{

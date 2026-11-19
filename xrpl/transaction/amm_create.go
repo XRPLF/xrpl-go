@@ -75,9 +75,20 @@ func (a *AMMCreate) Validate() (bool, error) {
 	if ok, err := IsAmount(a.Amount, "Amount", true); !ok {
 		return false, err
 	}
+	if a.Amount.IsZero() {
+		return false, ErrInvalidTokenValue
+	}
 
 	if ok, err := IsAmount(a.Amount2, "Amount2", true); !ok {
 		return false, err
+	}
+	if a.Amount2.IsZero() {
+		return false, ErrInvalidTokenValue
+	}
+
+	asset := amountAsset(a.Amount)
+	if sameIssue(a.Amount2, asset) {
+		return false, ErrAMMInvalidTokens
 	}
 
 	if a.TradingFee > AmmMaxTradingFee {

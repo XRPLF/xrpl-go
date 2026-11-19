@@ -103,6 +103,10 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 		return false, err
 	}
 
+	if n.Amount != nil && n.Amount.Kind() == types.MPT {
+		return false, ErrTransactionInvalidField{Type: n.TxType().String(), Field: "Amount"}
+	}
+
 	if ok, err := IsAmount(n.Amount, "Amount", true); !ok {
 		return false, err
 	}
@@ -146,5 +150,7 @@ func (n *NFTokenCreateOffer) Validate() (bool, error) {
 		return false, ErrOwnerNotPresentForBuyOffer
 	}
 
+	// Expiration is omitted when zero and any other value is a valid Ripple time.
+	// Expiry against the ledger close time needs ledger state.
 	return true, nil
 }

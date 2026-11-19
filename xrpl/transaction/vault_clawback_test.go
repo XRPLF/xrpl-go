@@ -101,6 +101,18 @@ func TestVaultClawback_Validate(t *testing.T) {
 			expected: ErrVaultClawbackVaultIDInvalid,
 		},
 		{
+			name: "fail - zero VaultID",
+			tx: &VaultClawback{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultClawbackTx,
+				},
+				VaultID: types.Hash256("0000000000000000000000000000000000000000000000000000000000000000"),
+				Holder:  "rwCNM7SeUHTajEBQDiNqxDG8p1Mreizw85",
+			},
+			expected: ErrVaultClawbackVaultIDInvalid,
+		},
+		{
 			name: "fail - Holder required",
 			tx: &VaultClawback{
 				BaseTx: BaseTx{
@@ -159,7 +171,7 @@ func TestVaultClawback_Validate(t *testing.T) {
 				VaultID: types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
 				Holder:  "rwCNM7SeUHTajEBQDiNqxDG8p1Mreizw85",
 				Amount: types.MPTCurrencyAmount{
-					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+					MPTIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 					Value:         "1000",
 				},
 			},
@@ -191,7 +203,7 @@ func TestVaultClawback_Validate(t *testing.T) {
 				VaultID: types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
 				Holder:  "rwCNM7SeUHTajEBQDiNqxDG8p1Mreizw85",
 				Amount: types.MPTCurrencyAmount{
-					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+					MPTIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 				},
 			},
 			expected: ErrInvalidMPTValue,
@@ -206,7 +218,7 @@ func TestVaultClawback_Validate(t *testing.T) {
 				VaultID: types.Hash256("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430"),
 				Holder:  "rwCNM7SeUHTajEBQDiNqxDG8p1Mreizw85",
 				Amount: types.MPTCurrencyAmount{
-					MPTIssuanceID: "983F536DBB46D5BBF43A0B5890576874EE1CF48CE31CA508A529EC17CD1A90EF",
+					MPTIssuanceID: "000004C463C52827307480341125DA0577DEFC38405B0E3E",
 					Value:         "-5",
 				},
 			},

@@ -36,12 +36,13 @@ type TrustSet struct {
 	// (Optional) Value incoming balances on this trust line at the ratio of this number per 1,000,000,000 units.
 	// A value of 0 is shorthand for treating balances at face value. For example, if you set the value to 10,000,000, 1% of incoming funds remain with the sender.
 	// If an account sends 100 currency, the sender retains 1 currency unit and the destination receives 99 units. This option is included for parity: in practice, you are much more likely to set a QualityOut value.
-	// Note that this fee is separate and independent from token transfer fees.
-	QualityIn uint32 `json:",omitempty"`
+	// Note that this fee is separate and independent from token transfer fees. Nil leaves the existing quality unchanged; a pointer to 0 clears it.
+	QualityIn *uint32 `json:",omitempty"`
 	// (Optional) Value outgoing balances on this trust line at the ratio of this number per 1,000,000,000 units.
 	// A value of 0 is shorthand for treating balances at face value. For example, if you set the value to 10,000,000, 1% of outgoing funds would remain with the issuer.
 	// If the sender sends 100 currency units, the issuer retains 1 currency unit and the destination receives 99 units. Note that this fee is separate and independent from token transfer fees.
-	QualityOut uint32 `json:",omitempty"`
+	// Nil leaves the existing quality unchanged; a pointer to 0 clears it.
+	QualityOut *uint32 `json:",omitempty"`
 }
 
 // TxType returns the type of the transaction (TrustSet).
@@ -58,11 +59,11 @@ func (t *TrustSet) Flatten() FlatTransaction {
 	if t.LimitAmount != nil {
 		flattened["LimitAmount"] = t.LimitAmount.Flatten()
 	}
-	if t.QualityIn != 0 {
-		flattened["QualityIn"] = t.QualityIn
+	if t.QualityIn != nil {
+		flattened["QualityIn"] = *t.QualityIn
 	}
-	if t.QualityOut != 0 {
-		flattened["QualityOut"] = t.QualityOut
+	if t.QualityOut != nil {
+		flattened["QualityOut"] = *t.QualityOut
 	}
 
 	return flattened

@@ -41,6 +41,17 @@ func TestIssuedCurrency_Flatten(t *testing.T) {
 				"issuer":   "",
 			},
 		},
+		{
+			name: "pass - X-address issuer flattens to classic address",
+			currency: IssuedCurrency{
+				Currency: "FOO",
+				Issuer:   "XVjHFoA9fDUh732JG1RsjLV9cLJosjfMoknkGELWhQ76Eyn",
+			},
+			want: map[string]any{
+				"currency": "FOO",
+				"issuer":   "rPdYxU9dNkbzC5Y2h4jLbVJ3rMRrk7WVRL",
+			},
+		},
 	}
 
 	for _, tt := range tests {

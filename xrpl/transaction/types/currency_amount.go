@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"math/big"
 	"strconv"
+
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 )
 
 // CurrencyKind indicates the type of a currency amount (XRP, ISSUED, MPT).
@@ -87,7 +89,7 @@ func (i IssuedCurrencyAmount) Flatten() any {
 	json := make(map[string]any)
 
 	if i.Issuer != "" {
-		json["issuer"] = i.Issuer.String()
+		json["issuer"] = i.Issuer.Flatten()
 	}
 
 	if i.Currency != "" {
@@ -136,6 +138,11 @@ func (XRPCurrencyAmount) Kind() CurrencyKind {
 // IsZero reports whether the XRP amount is zero drops.
 func (a XRPCurrencyAmount) IsZero() bool {
 	return a == 0
+}
+
+// IsValid reports whether the amount fits the native XRP range.
+func (a XRPCurrencyAmount) IsValid() bool {
+	return uint64(a) <= currency.MaxNativeDrops
 }
 
 // Flatten returns the XRP amount as a decimal string.

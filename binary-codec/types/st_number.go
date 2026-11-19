@@ -4,6 +4,7 @@ package types
 import (
 	"encoding/binary"
 	"errors"
+	"math"
 	"math/big"
 	"regexp"
 	"strings"
@@ -110,14 +111,8 @@ func parseAndNormalize(s string) (*big.Int, int32, error) {
 		intPart = "0"
 	}
 
-	mantissaStr := intPart
-	exponent := int32(0)
-
-	if fracPart != "" {
-		mantissaStr += fracPart
-		//nolint:gosec // G115: integer overflow conversion int -> int32 (gosec)
-		exponent -= int32(len(fracPart))
-	}
+	mantissaStr := intPart + fracPart
+	exponent := -int64(len(fracPart))
 
 	if expPart != "" {
 		var expVal int64
@@ -125,14 +120,29 @@ func parseAndNormalize(s string) (*big.Int, int32, error) {
 		if err != nil {
 			return nil, 0, err
 		}
-		//nolint:gosec // G115: integer overflow conversion int64 -> int32 (gosec)
-		exponent += int32(expVal)
+		// The fraction and trailing-zero adjustments move the exponent by at most len(s), so a
+		// value outside this window cannot end in int32 range. Rejecting it here keeps the sums
+		// below from overflowing int64.
+		if expVal > math.MaxInt32+int64(len(s)) {
+			return nil, 0, ErrInvalidExponent
+		}
+		if expVal < math.MinInt32-int64(len(s)) {
+			return nil, 0, ErrNumberUnderflow
+		}
+		exponent += expVal
 	}
 
 	// Remove trailing zeros from mantissa and adjust exponent
 	for len(mantissaStr) > 1 && mantissaStr[len(mantissaStr)-1] == '0' {
 		mantissaStr = mantissaStr[:len(mantissaStr)-1]
 		exponent++
+	}
+
+	if exponent > math.MaxInt32 {
+		return nil, 0, ErrInvalidExponent
+	}
+	if exponent < math.MinInt32 {
+		return nil, 0, ErrNumberUnderflow
 	}
 
 	mantissa := new(big.Int)
@@ -147,13 +157,8 @@ func parseAndNormalize(s string) (*big.Int, int32, error) {
 		return big.NewInt(0), defaultZeroExp, nil
 	}
 
-	// Normalize
-	mantissa, exponent, err := normalize(mantissa, exponent)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return mantissa, exponent, nil
+	//nolint:gosec // G115: exponent is within int32 range, checked above
+	return normalize(mantissa, int32(exponent))
 }
 
 // normalize adjusts mantissa and exponent to XRPL constraints.
@@ -308,6 +313,12 @@ func parseIntFromString(s string, result *int64) (bool, error) {
 	_, ok := n.SetString(s, 10)
 	if !ok {
 		return false, ErrInvalidNumber
+	}
+	if !n.IsInt64() {
+		if n.Sign() > 0 {
+			return false, ErrInvalidExponent
+		}
+		return false, ErrNumberUnderflow
 	}
 	*result = n.Int64()
 	return true, nil

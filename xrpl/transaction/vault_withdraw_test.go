@@ -74,6 +74,50 @@ func TestVaultWithdraw_Validate(t *testing.T) {
 		expected error
 	}{
 		{
+			name: "fail - zero XRP Amount",
+			tx: &VaultWithdraw{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: VaultWithdrawTx},
+				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430", Amount: types.XRPCurrencyAmount(0),
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - zero IOU Amount",
+			tx: &VaultWithdraw{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: VaultWithdrawTx},
+				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount:  types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "0"},
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - zero MPT Amount",
+			tx: &VaultWithdraw{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: VaultWithdrawTx},
+				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				Amount:  types.MPTCurrencyAmount{MPTIssuanceID: "00000001ABCDEF0123456789ABCDEF0123456789ABCDEF01", Value: "0"},
+			},
+			expected: ErrInvalidTokenValue,
+		},
+		{
+			name: "fail - ACCOUNT_ZERO Destination",
+			tx: &VaultWithdraw{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: VaultWithdrawTx},
+				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430", Amount: types.XRPCurrencyAmount(1),
+				Destination: func() *types.Address { v := types.Address(testAddrZero); return &v }(),
+			},
+			expected: ErrInvalidDestination,
+		},
+		{
+			name: "fail - ACCOUNT_ZERO X-address Destination",
+			tx: &VaultWithdraw{
+				BaseTx:  BaseTx{Account: testAddrAccount, TransactionType: VaultWithdrawTx},
+				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430", Amount: types.XRPCurrencyAmount(1),
+				Destination: func() *types.Address { v := xAddr(t, testAddrZero, 0, false); return &v }(),
+			},
+			expected: ErrInvalidDestination,
+		},
+		{
 			name: "fail - base tx invalid",
 			tx: &VaultWithdraw{
 				BaseTx: BaseTx{
@@ -102,6 +146,18 @@ func TestVaultWithdraw_Validate(t *testing.T) {
 					TransactionType: VaultWithdrawTx,
 				},
 				VaultID: types.Hash256("INVALIDID"),
+				Amount:  types.XRPCurrencyAmount(10000),
+			},
+			expected: ErrVaultWithdrawVaultIDInvalid,
+		},
+		{
+			name: "fail - zero VaultID",
+			tx: &VaultWithdraw{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultWithdrawTx,
+				},
+				VaultID: types.Hash256("0000000000000000000000000000000000000000000000000000000000000000"),
 				Amount:  types.XRPCurrencyAmount(10000),
 			},
 			expected: ErrVaultWithdrawVaultIDInvalid,
@@ -163,6 +219,7 @@ func TestVaultWithdraw_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
+				require.Error(t, err)
 				assert.Contains(t, err.Error(), testcase.expected.Error())
 			} else {
 				require.NoError(t, err)

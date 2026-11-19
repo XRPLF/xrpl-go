@@ -77,6 +77,7 @@ Do not use fixed sample entropy or passphrases for new funded wallets. The [v0.2
 ## Key and signature checks
 
 - Account public-key operations accept Ed25519 and compressed secp256k1 keys. `DeriveClassicAddress` returns `ErrInvalidPublicKeyFormat` for uncompressed secp256k1 keys and invalid compressed points. `Validate` returns it for uncompressed or malformed keys, and returns `false` with a nil error for a compressed key that is not on the curve.
+- `IsValidPublicKey` accepts the same public keys as `DeriveClassicAddress` without hashing or encoding an address. It does not verify a signature.
 - secp256k1 signing accepts raw and `00`-prefixed private keys. Zero or out-of-range scalars return `crypto.ErrInvalidPrivateKey` from `pkg/crypto`.
 - Invalid private-key formats return `ErrInvalidPrivateKeyFormat`. Both key-format errors also match `ErrInvalidCryptoImplementation` through `errors.Is`.
 - secp256k1 verification rejects high-S signatures that are not fully canonical for XRPL.

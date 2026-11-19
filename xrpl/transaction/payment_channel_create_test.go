@@ -3,8 +3,10 @@ package transaction
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/testutil"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +34,7 @@ func TestPaymentChannelCreate_Flatten(t *testing.T) {
 				Amount:         types.XRPCurrencyAmount(10000),
 				Destination:    types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				SettleDelay:    86400,
-				PublicKey:      "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
+				PublicKey:      testPublicKey,
 				CancelAfter:    533171558,
 				DestinationTag: types.DestinationTag(23480),
 			},
@@ -42,7 +44,7 @@ func TestPaymentChannelCreate_Flatten(t *testing.T) {
 				"Amount":        "10000",
 				"Destination":   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"SettleDelay":   86400,
-				"PublicKey":     "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
+				"PublicKey":     "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 				"CancelAfter":   533171558,
 				"DestinationTag": 23480
 			}`,
@@ -57,7 +59,7 @@ func TestPaymentChannelCreate_Flatten(t *testing.T) {
 				Amount:         types.XRPCurrencyAmount(10000),
 				Destination:    types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				SettleDelay:    86400,
-				PublicKey:      "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
+				PublicKey:      testPublicKey,
 				CancelAfter:    533171558,
 				DestinationTag: types.DestinationTag(0),
 			},
@@ -67,7 +69,7 @@ func TestPaymentChannelCreate_Flatten(t *testing.T) {
 				"Amount":        "10000",
 				"Destination":   "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"SettleDelay":   86400,
-				"PublicKey":     "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
+				"PublicKey":     "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A",
 				"CancelAfter":   533171558,
 				"DestinationTag": 0
 			}`,
@@ -82,7 +84,7 @@ func TestPaymentChannelCreate_Flatten(t *testing.T) {
 				Amount:      types.XRPCurrencyAmount(10000),
 				Destination: types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
 				SettleDelay: 86400,
-				PublicKey:   "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
+				PublicKey:   testPublicKey,
 			},
 			expected: `{
 				"Account":     "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
@@ -90,7 +92,7 @@ func TestPaymentChannelCreate_Flatten(t *testing.T) {
 				"Amount":      "10000",
 				"Destination": "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				"SettleDelay": 86400,
-				"PublicKey":   "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A"
+				"PublicKey":   "ED5F5AC8B98974A3CA843326D9B88CEBD0560177B973EE0B149F782CFAA06DC66A"
 			}`,
 		},
 	}
@@ -121,14 +123,45 @@ func TestPaymentChannelCreate_Validate(t *testing.T) {
 					TransactionType: PaymentChannelCreateTx,
 				},
 				Amount:         types.XRPCurrencyAmount(10000),
-				Destination:    types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
+				Destination:    types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
 				SettleDelay:    86400,
-				PublicKey:      "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
+				PublicKey:      testPublicKey,
 				CancelAfter:    533171558,
 				DestinationTag: types.DestinationTag(23480),
 			},
 			wantValid: true,
 			wantErr:   false,
+		},
+		{
+			name: "fail - Amount is zero",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
+				SettleDelay: 86400,
+				PublicKey:   testPublicKey,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelCreateAmountInvalid,
+		},
+		{
+			name: "fail - Amount exceeds native maximum",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(currency.MaxNativeDrops + 1),
+				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
+				SettleDelay: 86400,
+				PublicKey:   testPublicKey,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelCreateAmountInvalid,
 		},
 		{
 			name: "fail - Invalid BaseTx, missing TransactionType",
@@ -137,9 +170,9 @@ func TestPaymentChannelCreate_Validate(t *testing.T) {
 					Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
 				},
 				Amount:         types.XRPCurrencyAmount(10000),
-				Destination:    types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
+				Destination:    types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
 				SettleDelay:    86400,
-				PublicKey:      "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
+				PublicKey:      testPublicKey,
 				CancelAfter:    533171558,
 				DestinationTag: types.DestinationTag(23480),
 			},
@@ -157,7 +190,7 @@ func TestPaymentChannelCreate_Validate(t *testing.T) {
 				Amount:      types.XRPCurrencyAmount(10000),
 				Destination: "invalidAddress",
 				SettleDelay: 86400,
-				PublicKey:   "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
+				PublicKey:   testPublicKey,
 			},
 			wantValid:   false,
 			wantErr:     true,
@@ -173,11 +206,27 @@ func TestPaymentChannelCreate_Validate(t *testing.T) {
 				Amount:      types.XRPCurrencyAmount(10000),
 				Destination: "",
 				SettleDelay: 86400,
-				PublicKey:   "32D2471DB72B27E3310F355BB33E339BF26F8392D5A93D3BC0FC3B566612DA0F0A",
+				PublicKey:   testPublicKey,
 			},
 			wantValid:   false,
 			wantErr:     true,
 			expectedErr: ErrInvalidDestination,
+		},
+		{
+			name: "fail - Destination is Account",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
+				SettleDelay: 86400,
+				PublicKey:   testPublicKey,
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrDestinationAccountConflict,
 		},
 		{
 			name: "fail - Invalid public key",
@@ -187,9 +236,55 @@ func TestPaymentChannelCreate_Validate(t *testing.T) {
 					TransactionType: PaymentChannelCreateTx,
 				},
 				Amount:      types.XRPCurrencyAmount(10000),
-				Destination: types.Address("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"),
+				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
 				SettleDelay: 86400,
 				PublicKey:   "invalidPublicKey",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidHexPublicKey,
+		},
+		{
+			name: "pass - secp256k1 key that is not a curve point",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
+				SettleDelay: 86400,
+				PublicKey:   "02" + strings.Repeat("FF", 32),
+			},
+			wantValid: true,
+		},
+		{
+			name: "fail - public key with an unknown prefix",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
+				SettleDelay: 86400,
+				PublicKey:   "04" + strings.Repeat("FF", 32),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrInvalidHexPublicKey,
+		},
+		{
+			name: "fail - public key shorter than 33 bytes",
+			tx: &PaymentChannelCreate{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelCreateTx,
+				},
+				Amount:      types.XRPCurrencyAmount(10000),
+				Destination: types.Address("rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"),
+				SettleDelay: 86400,
+				PublicKey:   "ED" + strings.Repeat("FF", 31),
 			},
 			wantValid:   false,
 			wantErr:     true,

@@ -63,7 +63,7 @@ func (tx *VaultClawback) Validate() (bool, error) {
 		return false, ErrVaultClawbackVaultIDRequired
 	}
 
-	if !IsLedgerEntryID(tx.VaultID.String()) {
+	if !isNonZeroHex256(tx.VaultID.String()) {
 		return false, ErrVaultClawbackVaultIDInvalid
 	}
 

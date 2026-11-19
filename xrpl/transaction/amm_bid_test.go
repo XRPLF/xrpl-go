@@ -80,11 +80,155 @@ func TestAMMBidFlatten(t *testing.T) {
 }
 
 func TestAMMBid_Validate(t *testing.T) {
+	iou := ledger.Asset{Currency: "USD", Issuer: testAddrDelegate}
+	xrp := ledger.Asset{Currency: "XRP"}
 	tests := []struct {
 		name    string
 		ammBid  AMMBid
 		wantErr bool
 	}{
+		{
+			name: "fail - zero XRP BidMin",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, BidMin: types.XRPCurrencyAmount(0),
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail - zero IOU BidMin",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, BidMin: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "0"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail - zero MPT BidMin",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, BidMin: types.MPTCurrencyAmount{MPTIssuanceID: "00000001ABCDEF0123456789ABCDEF0123456789ABCDEF01", Value: "0"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail - zero XRP BidMax",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, BidMax: types.XRPCurrencyAmount(0),
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail - zero IOU BidMax",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "0"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail - zero MPT BidMax",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, BidMax: types.MPTCurrencyAmount{MPTIssuanceID: "00000001ABCDEF0123456789ABCDEF0123456789ABCDEF01", Value: "0"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "pass - omitted bid limits",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+			},
+		},
+		{
+			name: "fail - BidMin above BidMax with the same issue",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "9.5"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "pass - BidMin equal to BidMax",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "1e1"},
+			},
+		},
+		{
+			name: "pass - pointer bid limits",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: &types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "9"},
+				BidMax: &types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+			},
+		},
+		{
+			name: "fail - pointer BidMin above BidMax",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: &types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+				BidMax: &types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "9"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "pass - BidMin above BidMax with different issues",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp,
+				BidMin: types.IssuedCurrencyAmount{Currency: "USD", Issuer: testAddrDelegate, Value: "10"},
+				BidMax: types.IssuedCurrencyAmount{Currency: "EUR", Issuer: testAddrDelegate, Value: "5"},
+			},
+		},
+		{
+			name: "fail - sender AuthAccount",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, AuthAccounts: []ledger.AuthAccounts{{AuthAccount: ledger.AuthAccount{Account: testAddrAccount}}},
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail - duplicate AuthAccounts",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, AuthAccounts: []ledger.AuthAccounts{
+					{AuthAccount: ledger.AuthAccount{Account: testAddrDelegate}}, {AuthAccount: ledger.AuthAccount{Account: testAddrDelegate}},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "fail - duplicate classic and X-address AuthAccounts",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, AuthAccounts: []ledger.AuthAccounts{
+					{AuthAccount: ledger.AuthAccount{Account: testAddrDelegate}}, {AuthAccount: ledger.AuthAccount{Account: xAddr(t, testAddrDelegate, 0, false)}},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "pass - four distinct AuthAccounts",
+			ammBid: AMMBid{
+				BaseTx: BaseTx{Account: testAddrAccount, TransactionType: AMMBidTx},
+				Asset:  iou, Asset2: xrp, AuthAccounts: []ledger.AuthAccounts{
+					{AuthAccount: ledger.AuthAccount{Account: testAddrDelegate}},
+					{AuthAccount: ledger.AuthAccount{Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD"}},
+					{AuthAccount: ledger.AuthAccount{Account: "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds"}},
+					{AuthAccount: ledger.AuthAccount{Account: "rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd"}},
+				},
+			},
+		},
 		{
 			name: "pass - valid AMMBid",
 			ammBid: AMMBid{
@@ -108,7 +252,7 @@ func TestAMMBid_Validate(t *testing.T) {
 					},
 					{
 						AuthAccount: ledger.AuthAccount{
-							Account: "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+							Account: testAddrAccount,
 						},
 					},
 				},
@@ -398,4 +542,20 @@ func TestAMMBid_Validate(t *testing.T) {
 func TestAMMBid_TxType(t *testing.T) {
 	entry := &AMMBid{}
 	assert.Equal(t, AMMBidTx, entry.TxType())
+}
+
+func TestAMMBid_RejectsTwoNativeAssets(t *testing.T) {
+	const nativeHex = "0000000000000000000000000000000000000000"
+	for _, currencies := range [][2]string{{"XRP", "XRP"}, {nativeHex, nativeHex}, {"XRP", nativeHex}, {nativeHex, "XRP"}} {
+		t.Run(currencies[0]+"/"+currencies[1], func(t *testing.T) {
+			tx := AMMBid{
+				BaseTx: BaseTx{Account: "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1", TransactionType: AMMBidTx},
+				Asset:  ledger.Asset{Currency: currencies[0]},
+				Asset2: ledger.Asset{Currency: currencies[1]},
+			}
+			ok, err := tx.Validate()
+			assert.False(t, ok)
+			assert.ErrorIs(t, err, ErrAMMAtLeastOneAssetMustBeNonXRP)
+		})
+	}
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Peersyst/xrpl-go/keypairs/interfaces"
 	"github.com/Peersyst/xrpl-go/pkg/crypto"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 )
 
 type keyType uint8
@@ -56,6 +57,20 @@ func getCryptoImplementationFromKey(key string, keyType keyType) (interfaces.Key
 		}
 	}
 	return nil, nil, invalidKeyFormatError(keyType)
+}
+
+// parsePublicKey is the single source of the public key format and curve rule shared by IsValidPublicKey and DeriveClassicAddress.
+func parsePublicKey(pubKey string) ([]byte, error) {
+	alg, decoded, err := getCryptoImplementationFromKey(pubKey, publicKeyType)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := alg.(crypto.SECP256K1CryptoAlgorithm); ok {
+		if _, err := secp256k1.ParsePubKey(decoded); err != nil {
+			return nil, ErrInvalidPublicKeyFormat
+		}
+	}
+	return decoded, nil
 }
 
 func invalidKeyFormatError(keyType keyType) error {

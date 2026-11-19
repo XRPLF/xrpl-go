@@ -16,7 +16,7 @@ func (p *PathStep) Flatten() map[string]any {
 	flattened := make(map[string]any)
 
 	if p.Account != "" {
-		flattened["account"] = p.Account.String()
+		flattened["account"] = p.Account.Flatten()
 	}
 
 	if p.Currency != "" {
@@ -24,7 +24,7 @@ func (p *PathStep) Flatten() map[string]any {
 	}
 
 	if p.Issuer != "" {
-		flattened["issuer"] = p.Issuer.String()
+		flattened["issuer"] = p.Issuer.Flatten()
 	}
 
 	return flattened

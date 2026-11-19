@@ -108,7 +108,9 @@ make test-integration-confidential-devnet
 
 ## CI scope
 
-[Core CI](.github/workflows/ci-core.yml) and [Confidential CI](.github/workflows/ci-confidential.yml) use GitHub's native path filters. Each workflow runs its module's tests, lint, vulnerability scan, API check, and localnet suite. Confidential also runs its four-platform native test matrix.
+[Core CI](.github/workflows/ci-core.yml) and [Confidential CI](.github/workflows/ci-confidential.yml) use GitHub's native path filters. Each workflow runs its module's tests, lint, vulnerability scan, and localnet suite. Confidential also runs its four-platform native test matrix.
+
+The API check runs on pull requests in separate path-filtered workflows: [Core API Compatibility](.github/workflows/ci-api-compatibility-core.yml) and [Confidential API Compatibility](.github/workflows/ci-api-compatibility-confidential.yml). A breaking API change needs `!` immediately before the first colon of the PR title, for example `fix(transaction)!: ...`, and a checked `Breaking change` box under `Type of change` in the PR description. Because of this, the API check also runs again when you edit the title or description. An edit does not run the tests or lint again.
 
 - Core changes run core checks only, except for the shared inputs below.
 - Confidential changes run confidential checks only. Core is built as a dependency, but its tests do not run.
