@@ -195,6 +195,42 @@ func TestLoanSet_Validate(t *testing.T) {
 	}
 }
 
+func TestLoanSet_ValidateInterestRateBounds(t *testing.T) {
+	maxRate := types.InterestRate(100_000)
+	aboveMax := maxRate + 1
+	tests := []struct {
+		name                                   string
+		interest, late, closeRate, overpayment *types.InterestRate
+		wantErr                                error
+	}{
+		{name: "all rates at maximum", interest: &maxRate, late: &maxRate, closeRate: &maxRate, overpayment: &maxRate},
+		{name: "interest above maximum", interest: &aboveMax, wantErr: ErrLoanSetInterestRateInvalid},
+		{name: "late interest above maximum", late: &aboveMax, wantErr: ErrLoanSetLateInterestRateInvalid},
+		{name: "close interest above maximum", closeRate: &aboveMax, wantErr: ErrLoanSetCloseInterestRateInvalid},
+		{name: "overpayment interest above maximum", overpayment: &aboveMax, wantErr: ErrLoanSetOverpaymentInterestRateInvalid},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:            "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested:      "100000",
+				InterestRate:            tt.interest,
+				LateInterestRate:        tt.late,
+				CloseInterestRate:       tt.closeRate,
+				OverpaymentInterestRate: tt.overpayment,
+			}
+			ok, err := tx.Validate()
+			require.Equal(t, tt.wantErr == nil, ok)
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
 func TestLoanSet_Flags(t *testing.T) {
 	tests := []struct {
 		name     string
