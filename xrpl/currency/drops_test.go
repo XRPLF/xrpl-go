@@ -84,41 +84,6 @@ func TestDropsFromStringRejectsInvalidValues(t *testing.T) {
 	}
 }
 
-func TestNativeDropsFromString(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name        string
-		value       string
-		expected    string
-		expectedErr error
-	}{
-		{name: "zero", value: "0", expected: "0"},
-		{name: "native maximum", value: "100000000000000000", expected: "100000000000000000"},
-		{name: "above native maximum", value: "100000000000000001", expectedErr: ErrNativeAmountExceedsMax},
-		{name: "negative", value: "-1", expectedErr: ErrNegativeNativeAmount},
-		{name: "fractional drop", value: "1.5", expectedErr: ErrFractionalDrops},
-		{name: "invalid", value: "invalid", expectedErr: ErrInvalidNativeAmount},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-
-			drops, err := NativeDropsFromString(test.value)
-			if test.expectedErr != nil {
-				require.ErrorIs(t, err, test.expectedErr)
-				return
-			}
-			require.NoError(t, err)
-
-			actual, err := drops.WholeString()
-			require.NoError(t, err)
-			require.Equal(t, test.expected, actual)
-		})
-	}
-}
-
 func TestDropsFromXRP(t *testing.T) {
 	t.Parallel()
 
@@ -338,6 +303,33 @@ func TestDropsMinAndCmp(t *testing.T) {
 	require.Equal(t, 1, twenty.Cmp(ten))
 	require.Equal(t, 0, ten.Min(twenty).Cmp(ten))
 	require.Equal(t, 0, twenty.Min(ten).Cmp(ten))
+}
+
+func TestDropsIsValid(t *testing.T) {
+	t.Parallel()
+
+	maximum := DropsFromUint64(MaxNativeDrops)
+	fraction, err := maximum.MulRat(2, 3)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		drops    Drops
+		expected bool
+	}{
+		{name: "zero", drops: Drops{}, expected: true},
+		{name: "native maximum", drops: maximum, expected: true},
+		{name: "above native maximum", drops: maximum.Add(DropsFromUint64(1)), expected: false},
+		{name: "fractional drop below maximum", drops: fraction, expected: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, test.expected, test.drops.IsValid())
+		})
+	}
 }
 
 func TestDropsXRPString(t *testing.T) {

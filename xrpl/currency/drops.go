@@ -28,20 +28,6 @@ func DropsFromString(value string) (Drops, error) {
 	return dropsFromRat(drops), nil
 }
 
-// NativeDropsFromString creates Drops from a decimal drops string, like
-// DropsFromString, and also rejects a value above MaxNativeDrops. Use it for
-// a value that must be a valid native amount, such as a ledger balance.
-func NativeDropsFromString(value string) (Drops, error) {
-	drops, err := DropsFromString(value)
-	if err != nil {
-		return Drops{}, err
-	}
-	if drops.ratValue().Num().Cmp(maxDropsInt) > 0 {
-		return Drops{}, ErrNativeAmountExceedsMax
-	}
-	return drops, nil
-}
-
 // DropsFromUint64 creates Drops from a whole-number drops value.
 func DropsFromUint64(value uint64) Drops {
 	return dropsFromRat(new(big.Rat).SetUint64(value))
@@ -138,6 +124,12 @@ func (d Drops) RoundHalfUp() Drops {
 // IsWhole reports whether d contains a whole number of drops.
 func (d Drops) IsWhole() bool {
 	return d.rat == nil || d.rat.IsInt()
+}
+
+// IsValid reports whether d is a valid native amount for protocol use: a
+// whole number of drops that does not exceed MaxNativeDrops.
+func (d Drops) IsValid() bool {
+	return d.rat == nil || d.rat.IsInt() && d.rat.Num().Cmp(maxDropsInt) <= 0
 }
 
 // WholeString returns d as a whole-number drops string.

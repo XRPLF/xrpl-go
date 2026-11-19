@@ -281,8 +281,12 @@ func parseDropsBalance(balance any) (*big.Rat, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := currency.NativeDropsFromString(text); err != nil {
+	drops, err := currency.DropsFromString(text)
+	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errInvalidBalanceValue, err)
+	}
+	if !drops.IsValid() {
+		return nil, fmt.Errorf("%w: %w", errInvalidBalanceValue, currency.ErrDropsToXrpExceedsMax)
 	}
 	return parseBalance(balance)
 }

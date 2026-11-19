@@ -42,7 +42,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 #### xrpl/currency
 
 - Added `SignedDropsToXrp` to convert a signed drops value, such as a balance difference, into an XRP string.
-- Added `NativeDropsFromString`, which creates `Drops` like `DropsFromString` and also rejects a value above `MaxNativeDrops` with the new `ErrNativeAmountExceedsMax`.
+- Added `Drops.IsValid`, which reports whether a value is a whole number of drops no greater than `MaxNativeDrops`.
 
 #### xrpl/hash
 
