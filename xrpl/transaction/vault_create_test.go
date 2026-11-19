@@ -501,3 +501,32 @@ func TestVaultCreate_Validate(t *testing.T) {
 		})
 	}
 }
+
+func TestVaultCreate_ValidateWithdrawalPolicy(t *testing.T) {
+	tests := []struct {
+		name    string
+		policy  *types.VaultWithdrawalPolicy
+		wantErr error
+	}{
+		{name: "omitted"},
+		{name: "first come first serve", policy: new(types.VaultStrategyFirstComeFirstServe)},
+		{name: "explicit zero", policy: new(types.VaultWithdrawalPolicy(0)), wantErr: ErrVaultCreateWithdrawalPolicyInvalid},
+		{name: "unknown policy", policy: new(types.VaultWithdrawalPolicy(2)), wantErr: ErrVaultCreateWithdrawalPolicyInvalid},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:            ledger.Asset{Currency: "XRP"},
+				WithdrawalPolicy: tt.policy,
+			}
+			valid, err := tx.Validate()
+			require.ErrorIs(t, err, tt.wantErr)
+			require.Equal(t, tt.wantErr == nil, valid)
+		})
+	}
+}

@@ -48,6 +48,7 @@ type VaultCreate struct {
 	// may not be discoverable by ecosystem tools such as explorers and indexers.
 	MPTokenMetadata *string `json:",omitempty"`
 	// Indicates the withdrawal strategy used by the Vault.
+	// Omit this field to use the default. First come, first served is the only supported policy.
 	WithdrawalPolicy *types.VaultWithdrawalPolicy `json:",omitempty"`
 	// The PermissionedDomain object ID associated with the shares of this Vault.
 	DomainID *string `json:",omitempty"`
@@ -153,6 +154,10 @@ func (tx *VaultCreate) Validate() (bool, error) {
 		if !ValidateHexMetadata(*tx.MPTokenMetadata, VaultCreateMaxMPTokenMetadataLength) {
 			return false, ErrVaultCreateMPTokenMetadataInvalid
 		}
+	}
+
+	if tx.WithdrawalPolicy != nil && *tx.WithdrawalPolicy != types.VaultStrategyFirstComeFirstServe {
+		return false, ErrVaultCreateWithdrawalPolicyInvalid
 	}
 
 	if tx.Scale != nil {
