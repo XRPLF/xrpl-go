@@ -2,8 +2,10 @@ package transaction
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/internal/decimal"
 	"github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
 	"github.com/stretchr/testify/require"
 )
@@ -14,6 +16,43 @@ func TestGetBalanceChanges(t *testing.T) {
 		meta     *TxObjMeta
 		expected []AccountBalanceChanges
 	}{
+		{
+			name: "exact XRP delta",
+			meta: &TxObjMeta{AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
+				LedgerEntryType: ledger.AccountRootEntry,
+				FinalFields:     ledger.FlatLedgerObject{"Account": "rAccount", "Balance": "20000000009"},
+				PreviousFields:  map[string]any{"Balance": "10000000000"},
+			}}}},
+			expected: []AccountBalanceChanges{{Account: "rAccount", Balances: []Balance{{Currency: "XRP", Value: "10000.000009"}}}},
+		},
+		{
+			name: "exact issued decimal exponent",
+			meta: &TxObjMeta{AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
+				LedgerEntryType: ledger.RippleStateEntry,
+				FinalFields: ledger.FlatLedgerObject{
+					"Balance":   map[string]any{"currency": "USD", "value": "1.2E-7"},
+					"LowLimit":  map[string]any{"issuer": "rLow"},
+					"HighLimit": map[string]any{"issuer": "rHigh"},
+				},
+				PreviousFields: map[string]any{"Balance": map[string]any{"value": "1e-7"}},
+			}}}},
+			expected: []AccountBalanceChanges{
+				{Account: "rLow", Balances: []Balance{{Currency: "USD", Issuer: "rHigh", Value: "2e-8"}}},
+				{Account: "rHigh", Balances: []Balance{{Currency: "USD", Issuer: "rLow", Value: "-2e-8"}}},
+			},
+		},
+		{
+			name: "negative zero trustline is skipped",
+			meta: &TxObjMeta{AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
+				LedgerEntryType: ledger.RippleStateEntry,
+				NewFields: ledger.FlatLedgerObject{
+					"Balance":   map[string]any{"currency": "USD", "value": "-0"},
+					"LowLimit":  map[string]any{"issuer": "rLow"},
+					"HighLimit": map[string]any{"issuer": "rHigh"},
+				},
+			}}}},
+			expected: []AccountBalanceChanges{},
+		},
 		{
 			name: "pass - account delete",
 			meta: &TxObjMeta{
@@ -775,6 +814,37 @@ func TestGetBalanceChanges(t *testing.T) {
 	}
 }
 
+func TestGetBalanceChangesTrustlineValues(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		balance string
+		low     string
+		high    string
+	}{
+		{name: "plain", balance: "+5", low: "5", high: "-5"},
+		{name: "exponential", balance: "0.0000001", low: "1e-7", high: "-1e-7"},
+		{name: "negative exponential", balance: "-1e21", low: "-1e+21", high: "1e+21"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			meta := &TxObjMeta{AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
+				LedgerEntryType: ledger.RippleStateEntry,
+				NewFields: ledger.FlatLedgerObject{
+					"Balance":   map[string]any{"currency": "USD", "value": tc.balance},
+					"LowLimit":  map[string]any{"issuer": "rLow"},
+					"HighLimit": map[string]any{"issuer": "rHigh"},
+				},
+			}}}}
+			expected := []AccountBalanceChanges{
+				{Account: "rLow", Balances: []Balance{{Currency: "USD", Issuer: "rHigh", Value: tc.low}}},
+				{Account: "rHigh", Balances: []Balance{{Currency: "USD", Issuer: "rLow", Value: tc.high}}},
+			}
+			balanceChanges, err := GetBalanceChanges(meta)
+			require.NoError(t, err)
+			require.ElementsMatch(t, expected, balanceChanges)
+		})
+	}
+}
+
 func TestGetBalanceChangesPreservesDeletedNodePreviousFieldsFromJSON(t *testing.T) {
 	const accountDeleteMetaJSON = `{
 		"AffectedNodes": [
@@ -817,25 +887,95 @@ func TestGetBalanceChangesPreservesDeletedNodePreviousFieldsFromJSON(t *testing.
 	}, balanceChanges)
 }
 
-func TestGetBalanceChangesReturnsInvalidBalanceErrors(t *testing.T) {
-	meta := &TxObjMeta{
-		AffectedNodes: []AffectedNode{
-			{
-				ModifiedNode: &ModifiedNode{
-					FinalFields: ledger.FlatLedgerObject{
-						"Account": "rKmBGxocj9Abgy25J51Mk1iqFzW9aVF9Tc",
-						"Balance": "239567992",
-					},
-					LedgerEntryType: ledger.AccountRootEntry,
-					PreviousFields: map[string]any{
-						"Balance": "not-a-balance",
-					},
-				},
-			},
-		},
+// requireInvalidBalance checks that GetBalanceChanges rejects balance in each
+// field that can hold it, for a node of the given entry type.
+func requireInvalidBalance(t *testing.T, entry ledger.EntryType, balance any) {
+	t.Helper()
+
+	for field, meta := range map[string]*TxObjMeta{
+		"new": {AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{
+			LedgerEntryType: entry,
+			NewFields:       ledger.FlatLedgerObject{"Account": "rAccount", "Balance": balance},
+		}}}},
+		"previous": {AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
+			LedgerEntryType: entry,
+			FinalFields:     ledger.FlatLedgerObject{"Account": "rAccount", "Balance": "1"},
+			PreviousFields:  map[string]any{"Balance": balance},
+		}}}},
+		"final": {AffectedNodes: []AffectedNode{{ModifiedNode: &ModifiedNode{
+			LedgerEntryType: entry,
+			FinalFields:     ledger.FlatLedgerObject{"Account": "rAccount", "Balance": balance},
+			PreviousFields:  map[string]any{"Balance": "1"},
+		}}}},
+	} {
+		t.Run(field, func(t *testing.T) {
+			_, err := GetBalanceChanges(meta)
+			require.ErrorIs(t, err, errInvalidBalanceValue)
+		})
 	}
+}
 
-	_, err := GetBalanceChanges(meta)
+func TestGetBalanceChangesReturnsInvalidBalanceErrors(t *testing.T) {
+	for _, entry := range []ledger.EntryType{ledger.AccountRootEntry, ledger.RippleStateEntry} {
+		for _, tc := range []struct {
+			name    string
+			balance any
+		}{
+			{"text", "not-a-balance"},
+			{"number", 1},
+			{"null", nil},
+			{"missing value", map[string]any{}},
+			{"number value", map[string]any{"value": 1}},
+			{"null value", map[string]any{"value": nil}},
+			{"too long", strings.Repeat("1", decimal.MaxInputLen+1)},
+			{"infinity", "Inf"},
+			{"large exponent", "1e999999"},
+			{"exponent 257", "1e257"},
+			{"exponent -257", "1e-257"},
+			{"invalid value", map[string]any{"value": "1e257"}},
+		} {
+			t.Run(string(entry)+"/"+tc.name, func(t *testing.T) {
+				requireInvalidBalance(t, entry, tc.balance)
+			})
+		}
+	}
+}
 
-	require.ErrorIs(t, err, errInvalidBalanceValue)
+func TestGetBalanceChangesReturnsInvalidDropsBalanceErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		balance string
+	}{
+		{"fractional drops", "1.5"},
+		{"negative drops", "-1"},
+		{"above XRP supply", "100000000000000001"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			requireInvalidBalance(t, ledger.AccountRootEntry, tc.balance)
+		})
+	}
+}
+
+func TestGetBalanceChangesReturnsInvalidFieldErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		fields ledger.FlatLedgerObject
+		entry  ledger.EntryType
+		want   error
+	}{
+		{"missing account", ledger.FlatLedgerObject{"Balance": "1"}, ledger.AccountRootEntry, errAccountNotFoundForXRPQuantity},
+		{"null account", ledger.FlatLedgerObject{"Balance": "1", "Account": nil}, ledger.AccountRootEntry, errAccountNotFoundForXRPQuantity},
+		{"number account", ledger.FlatLedgerObject{"Balance": "1", "Account": 1}, ledger.AccountRootEntry, errAccountNotFoundForXRPQuantity},
+		{"missing low issuer", ledger.FlatLedgerObject{"Balance": map[string]any{"value": "1", "currency": "USD"}, "LowLimit": map[string]any{}}, ledger.RippleStateEntry, errLowLimitIssuerNotFound},
+		{"number low issuer", ledger.FlatLedgerObject{"Balance": map[string]any{"value": "1", "currency": "USD"}, "LowLimit": map[string]any{"issuer": 1}}, ledger.RippleStateEntry, errLowLimitIssuerNotFound},
+		{"null high issuer", ledger.FlatLedgerObject{"Balance": map[string]any{"value": "1", "currency": "USD"}, "LowLimit": map[string]any{"issuer": "rLow"}, "HighLimit": map[string]any{"issuer": nil}}, ledger.RippleStateEntry, errHighLimitIssuerNotFound},
+		{"missing currency", ledger.FlatLedgerObject{"Balance": map[string]any{"value": "1"}, "LowLimit": map[string]any{"issuer": "rLow"}, "HighLimit": map[string]any{"issuer": "rHigh"}}, ledger.RippleStateEntry, errBalanceCurrencyNotFound},
+		{"number currency", ledger.FlatLedgerObject{"Balance": map[string]any{"value": "1", "currency": 1}, "LowLimit": map[string]any{"issuer": "rLow"}, "HighLimit": map[string]any{"issuer": "rHigh"}}, ledger.RippleStateEntry, errBalanceCurrencyNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			meta := &TxObjMeta{AffectedNodes: []AffectedNode{{CreatedNode: &CreatedNode{LedgerEntryType: tc.entry, NewFields: tc.fields}}}}
+			_, err := GetBalanceChanges(meta)
+			require.ErrorIs(t, err, tc.want)
+		})
+	}
 }

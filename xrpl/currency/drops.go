@@ -126,6 +126,12 @@ func (d Drops) IsWhole() bool {
 	return d.rat == nil || d.rat.IsInt()
 }
 
+// IsValid reports whether d is a valid native amount for protocol use: a
+// whole number of drops that does not exceed MaxNativeDrops.
+func (d Drops) IsValid() bool {
+	return d.rat == nil || d.rat.IsInt() && d.rat.Num().Cmp(maxDropsInt) <= 0
+}
+
 // WholeString returns d as a whole-number drops string.
 func (d Drops) WholeString() (string, error) {
 	if !d.IsWhole() {
