@@ -9,6 +9,7 @@ import (
 	rippletime "github.com/Peersyst/xrpl-go/xrpl/time"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPaymentChannelFund_TxType(t *testing.T) {
@@ -142,6 +143,36 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 				return
 			}
 			assert.Equal(t, tt.wantErr, err != nil)
+		})
+	}
+}
+
+func TestPaymentChannelFund_ValidateAmount(t *testing.T) {
+	tests := []struct {
+		name    string
+		amount  types.XRPCurrencyAmount
+		wantErr error
+	}{
+		{name: "zero", wantErr: ErrPaymentChannelFundInvalidAmount},
+		{name: "one drop", amount: 1},
+		{name: "native XRP limit", amount: 100_000_000_000_000_000},
+		{name: "above native XRP limit", amount: 100_000_000_000_000_001, wantErr: ErrPaymentChannelFundInvalidAmount},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tx := PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: "C1AE6DDDEEC05CF2978C0BAD6FE302948E9533691DC749DCDD3B9E5992CA6198",
+				Amount:  tt.amount,
+			}
+
+			valid, err := tx.Validate()
+			require.ErrorIs(t, err, tt.wantErr)
+			require.Equal(t, tt.wantErr == nil, valid)
 		})
 	}
 }

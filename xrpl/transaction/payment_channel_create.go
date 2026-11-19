@@ -72,6 +72,8 @@ func (p *PaymentChannelCreate) Flatten() FlatTransaction {
 }
 
 // Validate validates the PaymentChannelCreate fields.
+// SettleDelay accepts the full uint32 range. A zero CancelAfter is omitted.
+// CancelAfter expiry is checked against the ledger close time when fixPayChanCancelAfter is enabled.
 func (p *PaymentChannelCreate) Validate() (bool, error) {
 	ok, err := p.BaseTx.Validate()
 	if (err != nil) || !ok {

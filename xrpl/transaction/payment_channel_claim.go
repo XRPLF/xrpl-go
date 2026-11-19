@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
+	"github.com/Peersyst/xrpl-go/xrpl/currency"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
 )
 
@@ -65,10 +66,11 @@ type PaymentChannelClaim struct {
 	// For details see https://xrpl.org/docs/references/protocol/transactions/types/payment#credential-ids
 	CredentialIDs types.CredentialIDs `json:",omitempty"`
 	// (Optional) Total amount of XRP, in drops, delivered by this channel after processing this claim. Required to deliver XRP.
-	// Must be more than the total amount delivered by the channel so far, but not greater than the Amount of the signed claim. Must be provided except when closing the channel.
+	// Required when Signature is present. It must exceed the balance already delivered and cannot exceed Amount when Amount is present.
 	Balance types.XRPCurrencyAmount `json:",omitempty"`
 	// (Optional) The amount of XRP, in drops, authorized by the Signature. This must match the amount in the signed message.
-	// This is the cumulative amount of XRP that can be dispensed by the channel, including XRP previously redeemed. Must be provided except when closing the channel.
+	// This is the cumulative amount of XRP that can be dispensed by the channel, including XRP previously redeemed.
+	// If Amount is omitted, the signature authorizes Balance.
 	Amount types.XRPCurrencyAmount `json:",omitempty"`
 	// (Optional) The signature of this claim, as hexadecimal. The signed message contains the channel ID and the amount of the claim.
 	// Required unless the sender of the transaction is the source address of the channel.
@@ -137,7 +139,7 @@ func (p *PaymentChannelClaim) SetCloseFlag() {
 	p.Flags |= TfClose
 }
 
-// Validate validates the PaymentChannelFund fields.
+// Validate validates the PaymentChannelClaim fields. Zero Balance and Amount are omitted.
 func (p *PaymentChannelClaim) Validate() (bool, error) {
 	ok, err := p.BaseTx.Validate()
 	if err != nil || !ok {
@@ -154,6 +156,19 @@ func (p *PaymentChannelClaim) Validate() (bool, error) {
 
 	if p.PublicKey != "" && !typecheck.IsHex(p.PublicKey) {
 		return false, ErrInvalidHexPublicKey
+	}
+
+	if p.Balance.Uint64() > currency.MaxNativeDrops {
+		return false, ErrPaymentChannelClaimInvalidBalance
+	}
+	if p.Amount.Uint64() > currency.MaxNativeDrops {
+		return false, ErrPaymentChannelClaimInvalidAmount
+	}
+	if p.Amount != 0 && p.Balance > p.Amount {
+		return false, ErrPaymentChannelClaimBalanceExceedsAmount
+	}
+	if p.Signature != "" && p.Balance == 0 {
+		return false, ErrPaymentChannelClaimSignatureRequiresBalance
 	}
 
 	if p.CredentialIDs != nil && !p.CredentialIDs.IsValid() {

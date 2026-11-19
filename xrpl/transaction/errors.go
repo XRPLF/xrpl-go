@@ -265,6 +265,16 @@ var (
 
 	// ErrInvalidChannel is returned when the Channel is not a valid 64-character hexadecimal string.
 	ErrInvalidChannel = errors.New("invalid Channel, must be a valid 64-character hexadecimal string")
+	// ErrPaymentChannelClaimInvalidBalance is returned when Balance exceeds the native XRP limit.
+	ErrPaymentChannelClaimInvalidBalance = errors.New("payment channel claim: Balance exceeds the native XRP limit")
+	// ErrPaymentChannelClaimInvalidAmount is returned when Amount exceeds the native XRP limit.
+	ErrPaymentChannelClaimInvalidAmount = errors.New("payment channel claim: Amount exceeds the native XRP limit")
+	// ErrPaymentChannelClaimBalanceExceedsAmount is returned when Balance exceeds the supplied Amount.
+	ErrPaymentChannelClaimBalanceExceedsAmount = errors.New("payment channel claim: Balance exceeds Amount")
+	// ErrPaymentChannelClaimSignatureRequiresBalance is returned when a signed claim omits Balance.
+	ErrPaymentChannelClaimSignatureRequiresBalance = errors.New("payment channel claim: Signature requires Balance")
+	// ErrPaymentChannelFundInvalidAmount is returned when Amount is zero or exceeds the native XRP limit.
+	ErrPaymentChannelFundInvalidAmount = errors.New("payment channel fund: Amount must be positive and within the native XRP limit")
 	// ErrInvalidSignature is returned when the Signature is not a valid hexadecimal string.
 	ErrInvalidSignature = errors.New("invalid Signature, must be a valid hexadecimal string")
 

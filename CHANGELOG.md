@@ -113,6 +113,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Fixed `GetBalanceChanges` to report exact balance deltas and return errors for malformed balance fields, values longer than 1024 characters, or values with an exponent beyond ±256. `AccountRoot` balances must also be whole, non-negative drops values no greater than `MaxNativeDrops`. Issued currency values use exponential notation below 1e-6 and from 1e21, matching xrpl.js.
 - Fixed `Payment.Validate()` and `CheckCreate.Validate()` to reject malformed non-empty `InvoiceID` values with `ErrInvalidInvoiceID`.
+- `PaymentChannelClaim.Validate()` rejects `Balance` or `Amount` above the native XRP limit, a `Balance` above the supplied `Amount`, and a signed claim without `Balance`. `PaymentChannelFund.Validate()` requires a positive `Amount` within the native XRP limit.
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
 
