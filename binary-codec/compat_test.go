@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -13,10 +14,11 @@ import (
 
 // CodecFixtures represents the structure of codec-fixtures.json
 type CodecFixtures struct {
-	AccountState []AccountStateTest `json:"accountState"`
+	AccountState []CodecFixtureTest `json:"accountState"`
+	Transactions []CodecFixtureTest `json:"transactions"`
 }
 
-type AccountStateTest struct {
+type CodecFixtureTest struct {
 	Binary string         `json:"binary"`
 	JSON   map[string]any `json:"json"`
 }
@@ -245,8 +247,8 @@ func TestCompat_DecodeTransaction(t *testing.T) {
 	}
 }
 
-// TestCompat_AccountState tests encoding/decoding ledger entries from codec-fixtures.json
-func TestCompat_AccountState(t *testing.T) {
+// TestCompat_CodecFixtures tests encoding/decoding ledger entries and transactions from codec-fixtures.json
+func TestCompat_CodecFixtures(t *testing.T) {
 	data, err := os.ReadFile("testdata/fixtures/codec-fixtures.json")
 	require.NoError(t, err, "Failed to read codec-fixtures.json")
 
@@ -254,38 +256,44 @@ func TestCompat_AccountState(t *testing.T) {
 	err = json.Unmarshal(data, &fixtures)
 	require.NoError(t, err, "Failed to parse codec-fixtures.json")
 
-	for i, tc := range fixtures.AccountState {
-		t.Run("AccountState_"+string(rune(i)), func(t *testing.T) {
-			// Test decoding
-			t.Run("Decode", func(t *testing.T) {
-				decoded, err := Decode(tc.Binary)
-				require.NoError(t, err, "Failed to decode account state")
+	sections := map[string][]CodecFixtureTest{
+		"AccountState": fixtures.AccountState,
+		"Transactions": fixtures.Transactions,
+	}
+	for section, cases := range sections {
+		for i, tc := range cases {
+			t.Run(section+"_"+strconv.Itoa(i), func(t *testing.T) {
+				// Test decoding
+				t.Run("Decode", func(t *testing.T) {
+					decoded, err := Decode(tc.Binary)
+					require.NoError(t, err, "Failed to decode %s", section)
 
-				// Compare key fields
-				for key, expectedVal := range tc.JSON {
-					actualVal, exists := decoded[key]
-					if !exists {
-						t.Errorf("Missing field %s in decoded result", key)
-						continue
+					// Compare key fields
+					for key, expectedVal := range tc.JSON {
+						actualVal, exists := decoded[key]
+						if !exists {
+							t.Errorf("Missing field %s in decoded result", key)
+							continue
+						}
+
+						if !deepEqual(expectedVal, actualVal) {
+							t.Errorf("Field %s mismatch:\n  expected: %v\n  actual:   %v", key, expectedVal, actualVal)
+						}
 					}
+				})
 
-					if !deepEqual(expectedVal, actualVal) {
-						t.Errorf("Field %s mismatch:\n  expected: %v\n  actual:   %v", key, expectedVal, actualVal)
-					}
-				}
+				// Test encoding
+				t.Run("Encode", func(t *testing.T) {
+					// Convert JSON types for encoding
+					convertedJSON := convertJSONTypes(tc.JSON)
+					encoded, err := Encode(convertedJSON)
+					require.NoError(t, err, "Failed to encode %s", section)
+
+					require.Equal(t, strings.ToUpper(tc.Binary), strings.ToUpper(encoded),
+						"Encoding mismatch for %s %d", section, i)
+				})
 			})
-
-			// Test encoding
-			t.Run("Encode", func(t *testing.T) {
-				// Convert JSON types for encoding
-				convertedJSON := convertJSONTypes(tc.JSON)
-				encoded, err := Encode(convertedJSON)
-				require.NoError(t, err, "Failed to encode account state")
-
-				require.Equal(t, strings.ToUpper(tc.Binary), strings.ToUpper(encoded),
-					"Encoding mismatch for account state %d", i)
-			})
-		})
+		}
 	}
 }
 

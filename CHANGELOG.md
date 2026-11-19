@@ -10,9 +10,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+XLS-38 cross-chain bridges are removed, as in xrpld 3.5.0 ([XRPLF/rippled#8255](https://github.com/XRPLF/rippled/pull/8255)). The `XChainBridge` amendment was never enabled on Mainnet.
+
+#### binary-codec
+
+- Removed the `XChainBridge` serialized type, its fields, the eight XChain transaction types, and the `Bridge`, `XChainOwnedClaimID`, and `XChainOwnedCreateAccountClaimID` ledger entry types from the definitions. `Encode` returns an error for the removed transaction and ledger entry types. The `tecXCHAIN_*` and `temXCHAIN_*` result codes remain.
+
 #### dependencies
 
 - Raised the minimum Go version from 1.25.13 to 1.26.11 to fix standard-library vulnerabilities in `net/http`, `net/textproto`, and `crypto/tls` (GO-2026-6603, GO-2026-6605, GO-2026-6607, GO-2026-6608, GO-2026-6610, GO-2026-6611, GO-2026-6612, GO-2026-6613, GO-2026-6617, GO-2026-6859). Go 1.25 no longer receives security fixes, and `golang.org/x/crypto` v0.56.0 requires Go 1.26. Modules that build with Go 1.25 must upgrade Go before they use this release.
+
+#### xrpl/ledger-entry-types
+
+- Removed `Bridge`, `XChainOwnedClaimID`, `XChainOwnedCreateAccountClaimID`, and their `EntryType` constants.
+
+#### xrpl/queries/ledger
+
+- Removed the `Bridge`, `BridgeAccount`, `XChainOwnedClaimID`, and `XChainOwnedCreateAccountClaimID` fields of `EntryRequest`, their selector types, and `ErrInvalidBridgeSelector`.
+
+#### xrpl/transaction
+
+- Removed `XChainAccountCreateCommit`, `XChainAddAccountCreateAttestation`, `XChainAddClaimAttestation`, `XChainClaim`, `XChainCommit`, `XChainCreateBridge`, `XChainCreateClaimID`, `XChainModifyBridge`, their `TxType` constants, and the XChain-only errors: `ErrMissingXChainClaimID`, `ErrInvalidXChainClaimID`, `ErrInvalidAttestationRewardAccount`, `ErrInvalidAttestationSignerAccount`, `ErrInvalidOtherChainSource`, `ErrInvalidPublicKey`, `ErrInvalidWasLockingChainSend`, and `ErrInvalidXChainAccountCreateCount`.
+- Removed `types.XChainBridge`, `types.FlatXChainBridge`, and the `types.ErrInvalid{Issuing,Locking}Chain{Door,Issue}Address` errors.
 
 #### xrpl/wallet
 
@@ -85,6 +104,10 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - `DefinitionFormatField.Validate` errors now start with `server_definitions: invalid format field: `.
 
+#### xrpl/transaction
+
+- `ErrInvalidDestinationAddress` text is now `invalid destination address` instead of `xchain claim: invalid destination address`.
+
 ### Fixed
 
 #### address-codec
@@ -108,7 +131,6 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Fixed `Payment.Validate()` and `CheckCreate.Validate()` to reject malformed non-empty `InvoiceID` values with `ErrInvalidInvoiceID`.
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
-- Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
 
 #### xrpl/websocket
 

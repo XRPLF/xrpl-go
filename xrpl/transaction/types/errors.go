@@ -8,17 +8,6 @@ import (
 )
 
 var (
-	// xchain bridge
-
-	// ErrInvalidIssuingChainDoorAddress is returned when the issuing chain door address is invalid.
-	ErrInvalidIssuingChainDoorAddress = errors.New("xchain bridge: invalid issuing chain door address")
-	// ErrInvalidIssuingChainIssueAddress is returned when the issuing chain issue address is invalid.
-	ErrInvalidIssuingChainIssueAddress = errors.New("xchain bridge: invalid issuing chain issue address")
-	// ErrInvalidLockingChainDoorAddress is returned when the locking chain door address is invalid.
-	ErrInvalidLockingChainDoorAddress = errors.New("xchain bridge: invalid locking chain door address")
-	// ErrInvalidLockingChainIssueAddress is returned when the locking chain issue address is invalid.
-	ErrInvalidLockingChainIssueAddress = errors.New("xchain bridge: invalid locking chain issue address")
-
 	// raw tx
 
 	// ErrBatchRawTransactionMissing is returned when the RawTransaction field is missing from an array element.

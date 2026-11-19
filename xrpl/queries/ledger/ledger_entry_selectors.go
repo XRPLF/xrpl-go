@@ -56,14 +56,6 @@ type AMMSelectorFields struct {
 // AMMSelector is the string-or-object selector accepted by the amm field.
 type AMMSelector = EntrySelector[AMMSelectorFields]
 
-// BridgeSelector identifies a cross-chain bridge by its door accounts and assets.
-type BridgeSelector struct {
-	IssuingChainDoor  types.Address     `json:"IssuingChainDoor"`
-	IssuingChainIssue ledgerentry.Asset `json:"IssuingChainIssue"`
-	LockingChainDoor  types.Address     `json:"LockingChainDoor"`
-	LockingChainIssue ledgerentry.Asset `json:"LockingChainIssue"`
-}
-
 // CredentialSelectorFields identifies a Credential ledger entry.
 type CredentialSelectorFields struct {
 	Subject        types.Address        `json:"subject"`
@@ -160,24 +152,3 @@ type TicketSelectorFields struct {
 
 // TicketSelector is the string-or-object selector accepted by the ticket field.
 type TicketSelector = EntrySelector[TicketSelectorFields]
-
-// XChainOwnedClaimIDSelectorFields identifies an XChainOwnedClaimID entry.
-type XChainOwnedClaimIDSelectorFields struct {
-	BridgeSelector
-	XChainOwnedClaimID uint32 `json:"xchain_owned_claim_id"`
-}
-
-// XChainOwnedClaimIDSelector is the string-or-object selector accepted by the
-// xchain_owned_claim_id field.
-type XChainOwnedClaimIDSelector = EntrySelector[XChainOwnedClaimIDSelectorFields]
-
-// XChainOwnedCreateAccountClaimIDSelectorFields identifies an
-// XChainOwnedCreateAccountClaimID entry.
-type XChainOwnedCreateAccountClaimIDSelectorFields struct {
-	BridgeSelector
-	XChainOwnedCreateAccountClaimID uint32 `json:"xchain_owned_create_account_claim_id"`
-}
-
-// XChainOwnedCreateAccountClaimIDSelector is the string-or-object selector
-// accepted by the xchain_owned_create_account_claim_id field.
-type XChainOwnedCreateAccountClaimIDSelector = EntrySelector[XChainOwnedCreateAccountClaimIDSelectorFields]

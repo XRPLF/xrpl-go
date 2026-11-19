@@ -27,13 +27,6 @@ func objectSelector[T any](object T) ledgerquery.EntrySelector[T] {
 
 func TestEntryRequestSelectors(t *testing.T) {
 	subIndex := uint64(0)
-	bridge := ledgerquery.BridgeSelector{
-		IssuingChainDoor:  accountA,
-		IssuingChainIssue: ledgerentry.Asset{Currency: "XRP"},
-		LockingChainDoor:  accountB,
-		LockingChainIssue: ledgerentry.Asset{Currency: "USD", Issuer: accountC},
-	}
-
 	tests := []struct {
 		name     string
 		request  ledgerquery.EntryRequest
@@ -65,14 +58,6 @@ func TestEntryRequestSelectors(t *testing.T) {
 			name:     "amm index",
 			request:  ledgerquery.EntryRequest{AMM: ledgerquery.AMMSelector{Index: entryIndex}},
 			expected: `{"amm":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
-		},
-		{
-			name: "bridge",
-			request: ledgerquery.EntryRequest{
-				BridgeAccount: accountB,
-				Bridge:        bridge,
-			},
-			expected: `{"bridge_account":"rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW","bridge":{"IssuingChainDoor":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","IssuingChainIssue":{"currency":"XRP"},"LockingChainDoor":"rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW","LockingChainIssue":{"currency":"USD","issuer":"rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd"}}}`,
 		},
 		{
 			name:     "check",
@@ -232,27 +217,6 @@ func TestEntryRequestSelectors(t *testing.T) {
 			expected: `{"ticket":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
 		},
 		{
-			name: "xchain owned claim id object",
-			request: ledgerquery.EntryRequest{XChainOwnedClaimID: objectSelector(ledgerquery.XChainOwnedClaimIDSelectorFields{
-				BridgeSelector:     bridge,
-				XChainOwnedClaimID: 1,
-			})},
-			expected: `{"xchain_owned_claim_id":{"IssuingChainDoor":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","IssuingChainIssue":{"currency":"XRP"},"LockingChainDoor":"rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW","LockingChainIssue":{"currency":"USD","issuer":"rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd"},"xchain_owned_claim_id":1}}`,
-		},
-		{
-			name:     "xchain owned claim id index",
-			request:  ledgerquery.EntryRequest{XChainOwnedClaimID: ledgerquery.XChainOwnedClaimIDSelector{Index: entryIndex}},
-			expected: `{"xchain_owned_claim_id":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
-		},
-		{
-			name: "xchain owned create account claim id object",
-			request: ledgerquery.EntryRequest{XChainOwnedCreateAccountClaimID: objectSelector(ledgerquery.XChainOwnedCreateAccountClaimIDSelectorFields{
-				BridgeSelector:                  bridge,
-				XChainOwnedCreateAccountClaimID: 1,
-			})},
-			expected: `{"xchain_owned_create_account_claim_id":{"IssuingChainDoor":"rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn","IssuingChainIssue":{"currency":"XRP"},"LockingChainDoor":"rsA2LpzuawewSBQXkiju3YQTMzW13pAAdW","LockingChainIssue":{"currency":"USD","issuer":"rP9jPyP5kyvFRb6ZiRghAGw5u8SGAmU4bd"},"xchain_owned_create_account_claim_id":1}}`,
-		},
-		{
 			name:     "sponsorship index",
 			request:  ledgerquery.EntryRequest{Sponsorship: ledgerquery.SponsorshipSelector{Index: entryIndex}},
 			expected: `{"sponsorship":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
@@ -272,11 +236,6 @@ func TestEntryRequestSelectors(t *testing.T) {
 			request:  ledgerquery.EntryRequest{Sponsorship: ledgerquery.SponsorshipSelector{Index: "invalid"}},
 			expected: `{"sponsorship":"invalid"}`,
 		},
-		{
-			name:     "xchain owned create account claim id index",
-			request:  ledgerquery.EntryRequest{XChainOwnedCreateAccountClaimID: ledgerquery.XChainOwnedCreateAccountClaimIDSelector{Index: entryIndex}},
-			expected: `{"xchain_owned_create_account_claim_id":"7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4"}`,
-		},
 	}
 
 	for _, tt := range tests {
@@ -294,13 +253,6 @@ func TestEntryRequestValidate(t *testing.T) {
 		Asset:  ledgerentry.Asset{Currency: "XRP"},
 		Asset2: ledgerentry.Asset{Currency: "USD", Issuer: accountC},
 	}
-	bridge := ledgerquery.BridgeSelector{
-		IssuingChainDoor:  accountA,
-		IssuingChainIssue: ledgerentry.Asset{Currency: "XRP"},
-		LockingChainDoor:  accountB,
-		LockingChainIssue: ledgerentry.Asset{Currency: "XRP"},
-	}
-
 	tests := []struct {
 		name     string
 		request  ledgerquery.EntryRequest
@@ -313,16 +265,6 @@ func TestEntryRequestValidate(t *testing.T) {
 			name:     "multiple selectors",
 			request:  ledgerquery.EntryRequest{Index: entryIndex, Check: entryIndex},
 			expected: ledgerquery.ErrInvalidEntryRequest,
-		},
-		{
-			name:     "bridge without bridge account",
-			request:  ledgerquery.EntryRequest{Bridge: bridge},
-			expected: ledgerquery.ErrInvalidBridgeSelector,
-		},
-		{
-			name:     "unpaired bridge account on another selector",
-			request:  ledgerquery.EntryRequest{Index: entryIndex, BridgeAccount: accountA},
-			expected: ledgerquery.ErrInvalidBridgeSelector,
 		},
 		{
 			name: "selector with index and object",

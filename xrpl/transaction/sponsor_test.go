@@ -875,14 +875,6 @@ func TestReserveSponsorshipRejectsUnsupportedTypes(t *testing.T) {
 		VaultDepositTx,
 		VaultSetTx,
 		VaultWithdrawTx,
-		XChainAccountCreateCommitTx,
-		XChainAddAccountCreateAttestationTx,
-		XChainAddClaimAttestationTx,
-		XChainClaimTx,
-		XChainCommitTx,
-		XChainCreateBridgeTx,
-		XChainCreateClaimIDTx,
-		XChainModifyBridgeTx,
 		"UnknownTransaction",
 	} {
 		t.Run(txType.String(), func(t *testing.T) {
