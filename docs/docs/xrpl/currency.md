@@ -56,7 +56,7 @@ fmt.Println(feeDrops) // 15
 
 Choose rounding deliberately. `Ceil` rounds upward, while `RoundHalfUp` rounds to the nearest whole drop with halves rounded up. `Drops` also supports addition, integer/decimal/rational multiplication, comparison, and minimum selection.
 
-`Drops` constructors do not enforce the protocol supply limit. Check final values against `currency.MaxNativeDrops` before protocol use. Do not confuse an intermediate calculation with an amount accepted by a transaction field.
+`Drops` constructors do not enforce the protocol supply limit. Check final values with `IsValid`, which reports whether a value is a whole number of drops no greater than `currency.MaxNativeDrops`, before protocol use. Do not confuse an intermediate calculation with an amount accepted by a transaction field.
 
 ## Other currencies
 

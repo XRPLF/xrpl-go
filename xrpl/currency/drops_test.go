@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Peersyst/xrpl-go/xrpl/internal/decimal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -242,7 +243,7 @@ func TestDropsMulDecimalRejectsInvalidValues(t *testing.T) {
 		{name: "empty", value: "", expectedErr: ErrInvalidDecimalMultiplier},
 		{name: "invalid", value: "invalid", expectedErr: ErrInvalidDecimalMultiplier},
 		{name: "exponent too large", value: "1e325", expectedErr: ErrInvalidDecimalMultiplier},
-		{name: "input too long", value: strings.Repeat("1", maxDecimalRatInputLen+1), expectedErr: ErrInvalidDecimalMultiplier},
+		{name: "input too long", value: strings.Repeat("1", decimal.MaxInputLen+1), expectedErr: ErrInvalidDecimalMultiplier},
 		{name: "negative", value: "-1", expectedErr: ErrInvalidDecimalMultiplier},
 	}
 
@@ -302,6 +303,33 @@ func TestDropsMinAndCmp(t *testing.T) {
 	require.Equal(t, 1, twenty.Cmp(ten))
 	require.Equal(t, 0, ten.Min(twenty).Cmp(ten))
 	require.Equal(t, 0, twenty.Min(ten).Cmp(ten))
+}
+
+func TestDropsIsValid(t *testing.T) {
+	t.Parallel()
+
+	maximum := DropsFromUint64(MaxNativeDrops)
+	fraction, err := maximum.MulRat(2, 3)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		drops    Drops
+		expected bool
+	}{
+		{name: "zero", drops: Drops{}, expected: true},
+		{name: "native maximum", drops: maximum, expected: true},
+		{name: "above native maximum", drops: maximum.Add(DropsFromUint64(1)), expected: false},
+		{name: "fractional drop below maximum", drops: fraction, expected: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, test.expected, test.drops.IsValid())
+		})
+	}
 }
 
 func TestDropsXRPString(t *testing.T) {
