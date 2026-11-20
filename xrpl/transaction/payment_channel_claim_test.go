@@ -249,6 +249,119 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			wantErr:     true,
 			expectedErr: ErrInvalidCredentialIDs,
 		},
+		{
+			name: "pass - Balance without Amount",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(10),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - Amount without Balance or Signature",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Amount:  types.XRPCurrencyAmount(10),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - Balance equal to Amount",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(10),
+				Amount:  types.XRPCurrencyAmount(10),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - Balance below Amount",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(10),
+				Amount:  types.XRPCurrencyAmount(20),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - Balance above Amount",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(20),
+				Amount:  types.XRPCurrencyAmount(10),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimBalanceExceedsAmount,
+		},
+		{
+			name: "fail - Balance above the native XRP limit",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(100_000_000_000_000_001),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimInvalidBalance,
+		},
+		{
+			name: "fail - Amount above the native XRP limit",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Amount:  types.XRPCurrencyAmount(100_000_000_000_000_001),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimInvalidAmount,
+		},
+		{
+			name: "fail - Signature without Balance",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Amount:    types.XRPCurrencyAmount(10),
+				Signature: "ABCDEF",
+				PublicKey: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimSignatureRequiresBalance,
+		},
 	}
 
 	for _, tt := range tests {
@@ -259,47 +372,6 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			if err != nil && !errors.Is(err, tt.expectedErr) {
 				t.Errorf("Validate() error = %v, expectedErr %v", err, tt.expectedErr)
 			}
-		})
-	}
-}
-
-func TestPaymentChannelClaim_ValidateAmounts(t *testing.T) {
-	tests := []struct {
-		name      string
-		balance   types.XRPCurrencyAmount
-		amount    types.XRPCurrencyAmount
-		signature string
-		wantErr   error
-	}{
-		{name: "omitted amounts"},
-		{name: "balance without amount", balance: 10},
-		{name: "amount without balance or signature", amount: 10},
-		{name: "equal amounts", balance: 10, amount: 10},
-		{name: "balance below amount", balance: 10, amount: 20},
-		{name: "balance above amount", balance: 20, amount: 10, wantErr: ErrPaymentChannelClaimBalanceExceedsAmount},
-		{name: "balance above native XRP limit", balance: 100_000_000_000_000_001, wantErr: ErrPaymentChannelClaimInvalidBalance},
-		{name: "amount above native XRP limit", amount: 100_000_000_000_000_001, wantErr: ErrPaymentChannelClaimInvalidAmount},
-		{name: "signature without balance", signature: "ABCDEF", amount: 10, wantErr: ErrPaymentChannelClaimSignatureRequiresBalance},
-		{name: "signature with balance and no amount", signature: "ABCDEF", balance: 10},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			claim := PaymentChannelClaim{
-				BaseTx: BaseTx{
-					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
-					TransactionType: PaymentChannelClaimTx,
-				},
-				Channel:   "C1AE6DDDEEC05CF2978C0BAD6FE302948E9533691DC749DCDD3B9E5992CA6198",
-				Balance:   tt.balance,
-				Amount:    tt.amount,
-				Signature: tt.signature,
-				PublicKey: "ED5F118EFBB22CA0FD94CB18DCD3C47CC5462AB83A633C7666E9C8612E7716D321",
-			}
-
-			valid, err := claim.Validate()
-			require.ErrorIs(t, err, tt.wantErr)
-			require.Equal(t, tt.wantErr == nil, valid)
 		})
 	}
 }
