@@ -253,6 +253,18 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 		// Balance and Amount
 
 		{
+			name: "pass - Balance and Amount omitted",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
 			name: "pass - Balance without Amount",
 			claim: PaymentChannelClaim{
 				BaseTx: BaseTx{
