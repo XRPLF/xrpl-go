@@ -487,6 +487,9 @@ func TestVaultCreate_Validate(t *testing.T) {
 			},
 			expected: ErrVaultCreateDomainIDInvalid,
 		},
+
+		// WithdrawalPolicy
+
 		{
 			name: "pass - WithdrawalPolicy first come first serve",
 			tx: &VaultCreate{
