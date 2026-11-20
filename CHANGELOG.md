@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Raised the minimum Go version from 1.25.13 to 1.26.11 to fix standard-library vulnerabilities in `net/http`, `net/textproto`, and `crypto/tls` (GO-2026-6603, GO-2026-6605, GO-2026-6607, GO-2026-6608, GO-2026-6610, GO-2026-6611, GO-2026-6612, GO-2026-6613, GO-2026-6617, GO-2026-6859). Go 1.25 no longer receives security fixes, and `golang.org/x/crypto` v0.56.0 requires Go 1.26. Modules that build with Go 1.25 must upgrade Go before they use this release.
 
+#### xrpl/transaction
+
+- Removed `ErrOracleProviderLength`. `OracleSet.Validate()` now returns `ErrOracleProviderInvalid` for a `Provider` that is too long.
+
 #### xrpl/wallet
 
 - `FromMnemonic` now normalizes input with NFKD before validation and derivation, matching xrpl.js. Compatibility spaces now derive the same address as the same words separated by single ASCII spaces, instead of the previous address; other noncanonical whitespace is rejected. See the [migration guide](docs/docs/upgrading-from-v0.3.x-to-v0.4.0.md#wallet-mnemonics) for recovery steps.
@@ -115,6 +119,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - Fixed `Payment.Validate()` and `CheckCreate.Validate()` to reject malformed non-empty `InvoiceID` values with `ErrInvalidInvoiceID`.
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
+- Fixed `OracleSet.Validate()` to reject a non-empty `Provider`, `URI`, or `AssetClass` that is not whole-byte hex of at most `OracleSetProviderMaxLength` (256), `OracleSetURIMaxLength` (256), or `OracleSetAssetClassMaxLength` (16) bytes, with `ErrOracleProviderInvalid`, `ErrOracleURIInvalid`, or `ErrOracleAssetClassInvalid`. `Provider` is now measured in decoded bytes, so a hex `Provider` of 129 to 256 bytes is valid. It also rejects a `LastUpdateTime` before the Ripple Epoch (946684800 Unix seconds), which xrpld always rejects with a fee-charging `tecINVALID_UPDATE_TIME`, with `ErrOracleLastUpdateTimeInvalid`.
 
 #### xrpl/websocket
 

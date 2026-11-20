@@ -514,6 +514,17 @@ var (
 	// rippled returns temINVALID in that case.
 	ErrAccountSetMutuallyExclusiveFlags = errors.New("account set: SetFlag and ClearFlag must not be equal")
 
+	// oracle
+
+	// ErrOracleProviderInvalid is returned when an OracleSet Provider is not whole-byte hex of 1 to 256 bytes.
+	ErrOracleProviderInvalid = errors.New("oracle set: Provider must be hex of 1 to 256 bytes")
+	// ErrOracleURIInvalid is returned when an OracleSet URI is not whole-byte hex of 1 to 256 bytes.
+	ErrOracleURIInvalid = errors.New("oracle set: URI must be hex of 1 to 256 bytes")
+	// ErrOracleAssetClassInvalid is returned when an OracleSet AssetClass is not whole-byte hex of 1 to 16 bytes.
+	ErrOracleAssetClassInvalid = errors.New("oracle set: AssetClass must be hex of 1 to 16 bytes")
+	// ErrOracleLastUpdateTimeInvalid is returned when an OracleSet LastUpdateTime, in Unix seconds, is before the Ripple Epoch.
+	ErrOracleLastUpdateTimeInvalid = errors.New("oracle set: LastUpdateTime must not be before the Ripple Epoch (946684800)")
+
 	// loan
 
 	// ErrLoanSetLoanBrokerIDRequired is returned when LoanBrokerID is not set on a LoanSet transaction.
@@ -759,17 +770,6 @@ type ErrAMMTradingFeeTooHigh struct {
 // Error implements the error interface for ErrAMMTradingFeeToHigh
 func (e ErrAMMTradingFeeTooHigh) Error() string {
 	return fmt.Sprintf("AMM trading fee exceeds maximum allowed: got %d, must be less or equal than %d", e.Value, e.Limit)
-}
-
-// ErrOracleProviderLength is returned when the Provider field exceeds OracleSetProviderMaxLength bytes.
-type ErrOracleProviderLength struct {
-	Length int
-	Limit  int
-}
-
-// Error implements the error interface for ErrOracleProviderLength
-func (e ErrOracleProviderLength) Error() string {
-	return fmt.Sprintf("provider length exceeds maximum: got %d bytes, max %d", e.Length, e.Limit)
 }
 
 // ErrOraclePriceDataSeriesItems is returned when the number of PriceDataSeries items exceeds the maximum allowed.
