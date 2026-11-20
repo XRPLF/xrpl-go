@@ -120,6 +120,7 @@ func (o *OfferCreate) Flatten() FlatTransaction {
 }
 
 // Validate validates the OfferCreate transaction.
+// A zero OfferSequence is omitted. The server checks nonzero values against the account's ledger sequence.
 func (o *OfferCreate) Validate() (bool, error) {
 	_, err := o.BaseTx.Validate()
 	if err != nil {

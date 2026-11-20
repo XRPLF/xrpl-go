@@ -164,6 +164,7 @@ const (
 )
 
 // Validate checks the validity of the NFTokenMint fields.
+// NFTokenTaxon is always serialized and accepts the full uint32 range.
 func (n *NFTokenMint) Validate() (bool, error) {
 	ok, err := n.BaseTx.Validate()
 	if err != nil || !ok {

@@ -97,6 +97,7 @@ func (n *NFTokenCreateOffer) Flatten() FlatTransaction {
 }
 
 // Validate checks the validity of the NFTokenCreateOffer fields.
+// A zero Expiration is omitted. The server compares a nonzero Expiration with the ledger close time.
 func (n *NFTokenCreateOffer) Validate() (bool, error) {
 	ok, err := n.BaseTx.Validate()
 	if err != nil || !ok {

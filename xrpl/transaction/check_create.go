@@ -67,7 +67,8 @@ func (c *CheckCreate) Flatten() FlatTransaction {
 	return flattened
 }
 
-// Validate checks all the fields of the transaction and returns an error if any of the fields are invalid.
+// Validate checks the Check fields. A zero Expiration is omitted.
+// The server compares a nonzero Expiration with the ledger close time.
 func (c *CheckCreate) Validate() (bool, error) {
 	ok, err := c.BaseTx.Validate()
 	if err != nil || !ok {
