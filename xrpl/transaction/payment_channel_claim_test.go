@@ -249,6 +249,9 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			wantErr:     true,
 			expectedErr: ErrInvalidCredentialIDs,
 		},
+
+		// Balance and Amount
+
 		{
 			name: "pass - Balance without Amount",
 			claim: PaymentChannelClaim{

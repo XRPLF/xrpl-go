@@ -127,6 +127,9 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 			wantErr:     true,
 			expectedErr: ErrInvalidExpiration,
 		},
+
+		// Amount
+
 		{
 			name: "fail - zero Amount",
 			tx: &PaymentChannelFund{
