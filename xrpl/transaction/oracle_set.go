@@ -1,7 +1,9 @@
 package transaction
 
 import (
+	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	ledger "github.com/Peersyst/xrpl-go/xrpl/ledger-entry-types"
+	rippletime "github.com/Peersyst/xrpl-go/xrpl/time"
 )
 
 const (
@@ -9,6 +11,10 @@ const (
 	OracleSetMaxPriceDataSeriesItems int = 10
 	// OracleSetProviderMaxLength is the maximum length in bytes for the Provider field.
 	OracleSetProviderMaxLength int = 256
+	// OracleSetURIMaxLength is the maximum length in bytes for the URI field.
+	OracleSetURIMaxLength int = 256
+	// OracleSetAssetClassMaxLength is the maximum length in bytes for the AssetClass field.
+	OracleSetAssetClassMaxLength int = 16
 )
 
 // OracleSet creates a new Oracle ledger entry or updates the fields of an existing one using the Oracle ID.
@@ -44,15 +50,19 @@ type OracleSet struct {
 	BaseTx
 	// A unique identifier of the price oracle for the Account. It is 0 by default.
 	OracleDocumentID uint32
-	// The time the data was last updated, in seconds since the UNIX Epoch.
-	// It is 0 by default.
+	// The time the data was last updated, in seconds since the UNIX Epoch. It is required and
+	// must not be before the Ripple Epoch (946684800). The server also requires it to be within
+	// 300 seconds of the ledger close time and later than the previous update.
 	LastUpdateTime uint32
-	// (Variable) An arbitrary value that identifies an oracle provider, such as Chainlink, Band, or DIA. This field is a string, up to 256 ASCII hex encoded characters (0x20-0x7E).
+	// (Variable) An arbitrary value that identifies an oracle provider, such as Chainlink, Band, or DIA, as hex
+	// of 1 to 256 bytes (up to 512 hex characters). An empty string omits it.
 	// This field is required when creating a new Oracle ledger entry, but is optional for updates.
 	Provider string `json:",omitempty"`
-	// (Optional) An optional Universal Resource Identifier to reference price data off-chain. This field is limited to 256 bytes.
+	// (Optional) A Universal Resource Identifier to reference price data off-chain, as hex of
+	// 1 to 256 bytes. An empty string omits it.
 	URI string `json:",omitempty"`
-	// (Variable) Describes the type of asset, such as "currency", "commodity", or "index". This field is a string, up to 16 ASCII hex encoded characters (0x20-0x7E).
+	// (Variable) Describes the type of asset, such as "currency", "commodity", or "index", as hex
+	// of 1 to 16 bytes (up to 32 hex characters). An empty string omits it.
 	// This field is required when creating a new Oracle ledger entry, but is optional for updates.
 	AssetClass string `json:",omitempty"`
 	// An array of up to 10 PriceData objects, each representing the price information for a token pair. More than five PriceData objects require two owner reserves.
@@ -106,11 +116,16 @@ func (tx *OracleSet) Validate() (bool, error) {
 		return false, err
 	}
 
-	if len([]byte(tx.Provider)) > OracleSetProviderMaxLength {
-		return false, ErrOracleProviderLength{
-			Length: len([]byte(tx.Provider)),
-			Limit:  OracleSetProviderMaxLength,
-		}
+	// xrpld OracleSet::preflight rejects a present Provider, URI, or AssetClass that is empty or
+	// too long. Flatten omits an empty one.
+	if tx.Provider != "" && !isHexBlobUpTo(tx.Provider, OracleSetProviderMaxLength) {
+		return false, ErrOracleProviderInvalid
+	}
+	if tx.URI != "" && !isHexBlobUpTo(tx.URI, OracleSetURIMaxLength) {
+		return false, ErrOracleURIInvalid
+	}
+	if tx.AssetClass != "" && !isHexBlobUpTo(tx.AssetClass, OracleSetAssetClassMaxLength) {
+		return false, ErrOracleAssetClassInvalid
 	}
 
 	if len(tx.PriceDataSeries) > OracleSetMaxPriceDataSeriesItems {
@@ -126,5 +141,17 @@ func (tx *OracleSet) Validate() (bool, error) {
 		}
 	}
 
+	// xrpld OracleSet::preclaim always rejects a LastUpdateTime before the Ripple Epoch with
+	// tecINVALID_UPDATE_TIME, which charges the fee. The check reads no ledger state. The
+	// window around the ledger close time and the increase over the previous update do.
+	if int64(tx.LastUpdateTime) < rippletime.RippleEpochDiff {
+		return false, ErrOracleLastUpdateTimeInvalid
+	}
+
 	return true, nil
+}
+
+// isHexBlobUpTo reports whether s is whole-byte hex of at most maxBytes bytes.
+func isHexBlobUpTo(s string, maxBytes int) bool {
+	return len(s) <= 2*maxBytes && typecheck.IsHexBlob(s)
 }

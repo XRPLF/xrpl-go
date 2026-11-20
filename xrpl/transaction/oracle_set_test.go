@@ -191,6 +191,9 @@ func TestOracleSet_Validate(t *testing.T) {
 			},
 			expected: ErrInvalidAccount,
 		},
+
+		// Provider
+
 		{
 			name: "fail - provider length",
 			tx: &OracleSet{
@@ -198,13 +201,35 @@ func TestOracleSet_Validate(t *testing.T) {
 					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
 					TransactionType: OracleSetTx,
 				},
-				Provider: strings.Repeat("a", 257),
+				Provider: strings.Repeat("ab", OracleSetProviderMaxLength+1),
 			},
-			expected: ErrOracleProviderLength{
-				Length: 257,
-				Limit:  OracleSetProviderMaxLength,
-			},
+			expected: ErrOracleProviderInvalid,
 		},
+		{
+			name: "fail - provider not hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				Provider: "Chainlink",
+			},
+			expected: ErrOracleProviderInvalid,
+		},
+		{
+			name: "fail - provider odd-length hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				Provider: "ABC",
+			},
+			expected: ErrOracleProviderInvalid,
+		},
+
+		// PriceDataSeries
+
 		{
 			name: "fail - price data series items",
 			tx: &OracleSet{
@@ -278,6 +303,9 @@ func TestOracleSet_Validate(t *testing.T) {
 			},
 			expected: ledger.ErrPriceDataAssetPriceAndScale,
 		},
+
+		// Complete transaction
+
 		{
 			name: "pass - complete",
 			tx: &OracleSet{
@@ -286,10 +314,10 @@ func TestOracleSet_Validate(t *testing.T) {
 					TransactionType: OracleSetTx,
 				},
 				OracleDocumentID: 1,
-				Provider:         "Chainlink",
-				URI:              "https://example.com",
+				Provider:         strings.Repeat("ab", OracleSetProviderMaxLength),
+				URI:              "68747470733A2F2F6578616D706C652E636F6D",
 				LastUpdateTime:   1715702400,
-				AssetClass:       "currency",
+				AssetClass:       "63757272656E6379",
 				PriceDataSeries: []ledger.PriceDataWrapper{
 					{
 						PriceData: ledger.PriceData{
@@ -302,6 +330,142 @@ func TestOracleSet_Validate(t *testing.T) {
 				},
 			},
 			expected: nil,
+		},
+
+		// URI, AssetClass, and LastUpdateTime
+
+		{
+			name: "pass - omitted Provider, URI, and AssetClass",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				LastUpdateTime: 1715702400,
+				PriceDataSeries: []ledger.PriceDataWrapper{
+					{PriceData: ledger.PriceData{BaseAsset: "XRP", QuoteAsset: "USD", AssetPrice: ledger.AssetPrice(740), Scale: 3}},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - one-byte URI and AssetClass at the Ripple Epoch",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				URI:            "00",
+				AssetClass:     "61",
+				LastUpdateTime: 946684800,
+				PriceDataSeries: []ledger.PriceDataWrapper{
+					{PriceData: ledger.PriceData{BaseAsset: "XRP", QuoteAsset: "USD", AssetPrice: ledger.AssetPrice(740), Scale: 3}},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - URI and AssetClass at maximum length in lowercase hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				URI:            strings.Repeat("ab", OracleSetURIMaxLength),
+				AssetClass:     strings.Repeat("ab", OracleSetAssetClassMaxLength),
+				LastUpdateTime: 1715702400,
+				PriceDataSeries: []ledger.PriceDataWrapper{
+					{PriceData: ledger.PriceData{BaseAsset: "XRP", QuoteAsset: "USD", AssetPrice: ledger.AssetPrice(740), Scale: 3}},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "fail - URI over 256 bytes",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				URI: strings.Repeat("ab", OracleSetURIMaxLength+1),
+			},
+			expected: ErrOracleURIInvalid,
+		},
+		{
+			name: "fail - URI odd-length hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				URI: "ABC",
+			},
+			expected: ErrOracleURIInvalid,
+		},
+		{
+			name: "fail - URI not hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				URI: "https://example.com",
+			},
+			expected: ErrOracleURIInvalid,
+		},
+		{
+			name: "fail - AssetClass over 16 bytes",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				AssetClass: strings.Repeat("ab", OracleSetAssetClassMaxLength+1),
+			},
+			expected: ErrOracleAssetClassInvalid,
+		},
+		{
+			name: "fail - AssetClass odd-length hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				AssetClass: "ABC",
+			},
+			expected: ErrOracleAssetClassInvalid,
+		},
+		{
+			name: "fail - AssetClass not hex",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				AssetClass: "currency",
+			},
+			expected: ErrOracleAssetClassInvalid,
+		},
+		{
+			name: "fail - LastUpdateTime before the Ripple Epoch",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+				LastUpdateTime: 946684799,
+			},
+			expected: ErrOracleLastUpdateTimeInvalid,
+		},
+		{
+			name: "fail - zero LastUpdateTime",
+			tx: &OracleSet{
+				BaseTx: BaseTx{
+					Account:         "rU6K7V3Po4snVhBBaU29sesqs2qTQJWDw1",
+					TransactionType: OracleSetTx,
+				},
+			},
+			expected: ErrOracleLastUpdateTimeInvalid,
 		},
 	}
 
