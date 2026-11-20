@@ -65,13 +65,6 @@ func TestVector256_ToJson(t *testing.T) {
 			err: ErrNoLengthPrefix,
 		},
 		{
-			name: "empty vector",
-			malleate: func(t *testing.T) (interfaces.BinaryParser, DecodeContext) {
-				return serdes.NewBinaryParser(nil, defs), DecodeContext{Length: new(0)}
-			},
-			output: []string(nil),
-		},
-		{
 			name: "fail - binary parser read bytes",
 			malleate: func(t *testing.T) (interfaces.BinaryParser, DecodeContext) {
 				parser := testutil.NewMockBinaryParser(gomock.NewController(t))
@@ -103,6 +96,18 @@ func TestVector256_ToJson(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A present zero-length prefix leaves the next field's bytes in the parser.
+func TestVector256_EmptyField(t *testing.T) {
+	parser := serdes.NewBinaryParser([]byte{0x11}, definitions.Get())
+	got, err := (&Vector256{}).ToJSON(parser, DecodeContext{Length: new(0)})
+	require.NoError(t, err)
+	require.IsType(t, []string{}, got)
+	require.Empty(t, got)
+	next, err := parser.ReadByte()
+	require.NoError(t, err)
+	require.Equal(t, byte(0x11), next)
 }
 
 func TestVector256_ToJson_InvalidLength(t *testing.T) {
