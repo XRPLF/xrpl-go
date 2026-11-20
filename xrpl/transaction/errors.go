@@ -516,6 +516,10 @@ var (
 
 	// loan
 
+	// ErrInvalidCounterpartySignature is returned when a LoanSet CounterpartySignature has a malformed field, an
+	// unsupported SigningPubKey, a TxnSignature without SigningPubKey, Signers together with a single signature field,
+	// or any signature field in an inner Batch transaction.
+	ErrInvalidCounterpartySignature = errors.New("loanSet: invalid CounterpartySignature")
 	// ErrLoanSetLoanBrokerIDRequired is returned when LoanBrokerID is not set on a LoanSet transaction.
 	ErrLoanSetLoanBrokerIDRequired = errors.New("loanSet: LoanBrokerID is required")
 	// ErrLoanSetLoanBrokerIDInvalid is returned when LoanBrokerID is not a valid 64-character hexadecimal string.
@@ -540,6 +544,8 @@ var (
 	ErrLoanSetPaymentIntervalInvalid = errors.New("loanSet: PaymentInterval must be greater than or equal to 60")
 	// ErrLoanSetGracePeriodInvalid is returned when GracePeriod is greater than PaymentInterval.
 	ErrLoanSetGracePeriodInvalid = errors.New("loanSet: GracePeriod must not be greater than PaymentInterval")
+	// ErrLoanSetPaymentTotalInvalid is returned when PaymentTotal is set to zero.
+	ErrLoanSetPaymentTotalInvalid = errors.New("loanSet: PaymentTotal must be greater than 0")
 	// ErrLoanSetLoanOriginationFeeInvalid is returned when LoanOriginationFee is not a valid XRPL number.
 	ErrLoanSetLoanOriginationFeeInvalid = errors.New("loanSet: LoanOriginationFee must be a valid XRPL number")
 	// ErrLoanSetLoanServiceFeeInvalid is returned when LoanServiceFee is not a valid XRPL number.

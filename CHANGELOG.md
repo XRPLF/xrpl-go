@@ -115,6 +115,8 @@ Errors that were created inline now have sentinels or error types, so callers ca
 - Fixed `Payment.Validate()` and `CheckCreate.Validate()` to reject malformed non-empty `InvoiceID` values with `ErrInvalidInvoiceID`.
 - Fixed `Payment.Flatten()` path serialization so payments with non-empty `Paths` can be encoded and signed without an `invalid path set` error.
 - Standardized concrete transaction `Flatten()` methods on `TxType().String()`, fixing `XChainClaim` to store `TransactionType` as a plain string.
+- Fixed `LoanSet.Validate()` to return `ErrInvalidCounterpartySignature` for a malformed `CounterpartySignature`: an unsupported `SigningPubKey`, a signature blob that is not whole-byte hex, a `TxnSignature` without `SigningPubKey`, `Signers` with either single-signature field, a `Signer` with an invalid, tagged, or ACCOUNT_ZERO `Account` or the same key and signature errors, or any signature field on an inner Batch transaction. Unsigned signature fields are still allowed. `CounterpartySignature.Flatten()` now writes `Account`, `SigningPubKey`, and `TxnSignature` for every `Signer`, including empty values.
+- Fixed `LoanSet.Validate()` to return `ErrLoanSetPaymentTotalInvalid` for an explicit zero `PaymentTotal`. `LoanSet.Flatten()` now includes any non-nil `PaymentTotal`, instead of dropping zero so that the ledger default applied.
 
 #### xrpl/websocket
 
