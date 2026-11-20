@@ -249,6 +249,134 @@ func TestPaymentChannelClaim_Validate(t *testing.T) {
 			wantErr:     true,
 			expectedErr: ErrInvalidCredentialIDs,
 		},
+
+		// Balance and Amount
+
+		{
+			name: "pass - Balance and Amount omitted",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - Balance without Amount",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(10),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - Amount without Balance or Signature",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Amount:  types.XRPCurrencyAmount(10),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - Balance equal to Amount",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(10),
+				Amount:  types.XRPCurrencyAmount(10),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - Balance below Amount",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(10),
+				Amount:  types.XRPCurrencyAmount(20),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - Balance above Amount",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(20),
+				Amount:  types.XRPCurrencyAmount(10),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimBalanceExceedsAmount,
+		},
+		{
+			name: "fail - Balance above the native XRP limit",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Balance: types.XRPCurrencyAmount(100_000_000_000_000_001),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimInvalidBalance,
+		},
+		{
+			name: "fail - Amount above the native XRP limit",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Amount:  types.XRPCurrencyAmount(100_000_000_000_000_001),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimInvalidAmount,
+		},
+		{
+			name: "fail - Signature without Balance",
+			claim: PaymentChannelClaim{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelClaimTx,
+				},
+				Channel:   "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+				Amount:    types.XRPCurrencyAmount(10),
+				Signature: "ABCDEF",
+				PublicKey: "ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC123ABC1",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelClaimSignatureRequiresBalance,
+		},
 	}
 
 	for _, tt := range tests {

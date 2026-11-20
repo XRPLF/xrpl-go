@@ -127,6 +127,62 @@ func TestPaymentChannelFund_Validate(t *testing.T) {
 			wantErr:     true,
 			expectedErr: ErrInvalidExpiration,
 		},
+
+		// Amount
+
+		{
+			name: "fail - zero Amount",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: "ABC123",
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelFundInvalidAmount,
+		},
+		{
+			name: "pass - Amount of one drop",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: "ABC123",
+				Amount:  types.XRPCurrencyAmount(1),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "pass - Amount at the native XRP limit",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: "ABC123",
+				Amount:  types.XRPCurrencyAmount(100_000_000_000_000_000),
+			},
+			wantValid: true,
+			wantErr:   false,
+		},
+		{
+			name: "fail - Amount above the native XRP limit",
+			tx: &PaymentChannelFund{
+				BaseTx: BaseTx{
+					Account:         "rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD",
+					TransactionType: PaymentChannelFundTx,
+				},
+				Channel: "ABC123",
+				Amount:  types.XRPCurrencyAmount(100_000_000_000_000_001),
+			},
+			wantValid:   false,
+			wantErr:     true,
+			expectedErr: ErrPaymentChannelFundInvalidAmount,
+		},
 	}
 
 	for _, tt := range tests {
