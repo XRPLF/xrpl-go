@@ -94,7 +94,6 @@ func TestIssue_ToJson(t *testing.T) {
 	tt := []struct {
 		name     string
 		expected any
-		opts     []int
 		err      error
 		setup    func(t *testing.T) (*Issue, *testutil.MockBinaryParser)
 	}{
@@ -104,8 +103,7 @@ func TestIssue_ToJson(t *testing.T) {
 				"currency": "USD",
 				"issuer":   "rG1QQv2nh2gr7RCZ1P8YYcBUKCCN633jCn",
 			},
-			opts: []int{20},
-			err:  nil,
+			err: nil,
 			setup: func(t *testing.T) (*Issue, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
 				mock := testutil.NewMockBinaryParser(ctrl)
@@ -125,8 +123,7 @@ func TestIssue_ToJson(t *testing.T) {
 			expected: map[string]any{
 				"currency": "XRP",
 			},
-			opts: []int{20},
-			err:  nil,
+			err: nil,
 			setup: func(t *testing.T) (*Issue, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
 				mock := testutil.NewMockBinaryParser(ctrl)
@@ -141,8 +138,7 @@ func TestIssue_ToJson(t *testing.T) {
 				// sequence BE = 0xBAADF00D, issuerAccount = BAADF00DBAADF00DBAADF00DBAADF00DBAADF00D
 				"mpt_issuance_id": "BAADF00DBAADF00DBAADF00DBAADF00DBAADF00DBAADF00D",
 			},
-			opts: []int{}, // opts no longer required - length is self-determined
-			err:  nil,
+			err: nil,
 			setup: func(t *testing.T) (*Issue, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
 				mock := testutil.NewMockBinaryParser(ctrl)
@@ -163,7 +159,6 @@ func TestIssue_ToJson(t *testing.T) {
 		{
 			name:     "fail - invalid Issue",
 			expected: nil,
-			opts:     []int{20},
 			err:      errors.New("errReadBytes"),
 			setup: func(t *testing.T) (*Issue, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -177,7 +172,7 @@ func TestIssue_ToJson(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			issue, parser := tc.setup(t)
-			actual, err := issue.ToJSON(parser, tc.opts...)
+			actual, err := issue.ToJSON(parser, DecodeContext{})
 
 			if tc.err != nil {
 				require.Error(t, err)

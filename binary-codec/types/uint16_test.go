@@ -143,7 +143,7 @@ func TestUint16_ToJson(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			class, mockParser := tc.setup(t)
-			actual, err := class.ToJSON(mockParser)
+			actual, err := class.ToJSON(mockParser, DecodeContext{})
 			if !reflect.DeepEqual(err, tc.expectedErr) {
 				t.Errorf("Expected error %v, got %v", tc.expectedErr, err)
 			}

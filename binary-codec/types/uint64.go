@@ -79,14 +79,13 @@ func (u *UInt64) fromJSON(value any, base int) ([]byte, error) {
 }
 
 // ToJSON reads an 8-byte UInt64 and returns its JSON string representation.
-// The optional base is used internally for field-aware decimal MPT amounts.
-// Direct calls retain the canonical hexadecimal representation.
-func (u *UInt64) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
+// MPT amount fields use decimal. An unnamed UInt64 uses hexadecimal.
+func (u *UInt64) ToJSON(p interfaces.BinaryParser, ctx DecodeContext) (any, error) {
 	b, err := p.ReadBytes(8)
 	if err != nil {
 		return nil, err
 	}
-	if len(opts) > 0 && opts[0] == uint64JSONBaseDecimal {
+	if uint64JSONBaseForField(ctx.FieldName) == uint64JSONBaseDecimal {
 		return strconv.FormatUint(binary.BigEndian.Uint64(b), uint64JSONBaseDecimal), nil
 	}
 	return hexutil.EncodeToUpperHex(b), nil

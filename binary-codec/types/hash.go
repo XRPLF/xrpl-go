@@ -79,7 +79,7 @@ func (h hash) FromJSON(json any) ([]byte, error) {
 
 // ToJSON method for hash reads a certain number of bytes from a BinaryParser and converts it into a hexadecimal string.
 // It returns an error if the read operation fails.
-func (h hash) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
+func (h hash) ToJSON(p interfaces.BinaryParser, _ DecodeContext) (any, error) {
 	b, err := p.ReadBytes(h.Length)
 	if err != nil {
 		return nil, err

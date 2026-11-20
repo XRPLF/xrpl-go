@@ -34,14 +34,14 @@ func (b *Blob) FromJSON(json any) ([]byte, error) {
 // ToJSON method for Blob reads a certain number of bytes from a BinaryParser
 // and converts it into a hexadecimal string.
 // It returns an error if no length prefix is specified or if the read operation fails.
-func (b *Blob) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
+func (b *Blob) ToJSON(p interfaces.BinaryParser, ctx DecodeContext) (any, error) {
 	// If no length prefix is specified, return an error.
-	if opts == nil {
+	if ctx.Length == nil {
 		return nil, ErrNoLengthPrefix
 	}
 	// Read the specified number of bytes.
 	// If the read operation fails, return an error.
-	val, err := p.ReadBytes(opts[0])
+	val, err := p.ReadBytes(*ctx.Length)
 	if err != nil {
 		return nil, err
 	}

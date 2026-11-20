@@ -174,7 +174,7 @@ func TestSTArrayToJson(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			st := STArray{}
 			parser := tc.malleate(t)
-			act, err := st.ToJSON(parser)
+			act, err := st.ToJSON(parser, DecodeContext{})
 			if tc.expectedErr != nil {
 				require.Error(t, err, tc.expectedErr.Error())
 				require.Nil(t, act)

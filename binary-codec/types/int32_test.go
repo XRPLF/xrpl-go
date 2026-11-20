@@ -373,7 +373,7 @@ func TestInt32_ToJSON(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			int32Type := &Int32{}
 			parser := tc.malleate(t)
-			actual, err := int32Type.ToJSON(parser)
+			actual, err := int32Type.ToJSON(parser, DecodeContext{})
 
 			if tc.expectedErr != nil {
 				require.EqualError(t, err, tc.expectedErr.Error())
@@ -417,7 +417,7 @@ func TestInt32_RoundTrip(t *testing.T) {
 
 			// Convert back to value
 			parser := serdes.NewBinaryParser(bytes, defs)
-			result, err := int32Type.ToJSON(parser)
+			result, err := int32Type.ToJSON(parser, DecodeContext{})
 			require.NoError(t, err)
 
 			// Verify the value matches

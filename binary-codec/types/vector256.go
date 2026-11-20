@@ -81,11 +81,14 @@ func vector256FromValue(value []string) ([]byte, error) {
 	return b, nil
 }
 
-// ToJSON takes a BinaryParser and optional parameters, and converts the serialized byte data
+// ToJSON reads from a BinaryParser and converts the serialized byte data
 // back into an array of JSON string values representing Hash256 values.
 // If the parsing fails, an error is returned.
-func (v *Vector256) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
-	b, err := p.ReadBytes(opts[0])
+func (v *Vector256) ToJSON(p interfaces.BinaryParser, ctx DecodeContext) (any, error) {
+	if ctx.Length == nil {
+		return nil, ErrNoLengthPrefix
+	}
+	b, err := p.ReadBytes(*ctx.Length)
 	if err != nil {
 		return nil, err
 	}

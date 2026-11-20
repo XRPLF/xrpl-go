@@ -155,7 +155,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 	tt := []struct {
 		name  string
 		input []byte
-		opts  []int
+		ctx   DecodeContext
 		want  map[string]string
 		err   error
 		setup func(t *testing.T) (*XChainBridge, interfaces.BinaryParser)
@@ -163,7 +163,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 		{
 			name:  "Valid xchain bridge",
 			input: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
-			opts:  []int{80},
+			ctx:   DecodeContext{Length: new(80)},
 			want: map[string]string{
 				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
 				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
@@ -181,7 +181,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 		{
 			name:  "Valid xchain bridge - real parser",
 			input: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
-			opts:  []int{80},
+			ctx:   DecodeContext{Length: new(80)},
 			want: map[string]string{
 				"LockingChainDoor":  "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
 				"LockingChainIssue": "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
@@ -197,9 +197,9 @@ func TestXChainBridge_ToJson(t *testing.T) {
 		{
 			name:  "No length prefix",
 			input: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
-			opts:  nil,
-			want:  nil,
-			err:   ErrNoLengthPrefix,
+
+			want: nil,
+			err:  ErrNoLengthPrefix,
 			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
 				return &XChainBridge{}, nil
 			},
@@ -207,7 +207,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 		{
 			name:  "ReadBytes error",
 			input: []byte{83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18, 83, 223, 129, 195, 127, 70, 21, 146, 66, 247, 202, 145, 99, 224, 159, 4, 64, 41, 204, 18},
-			opts:  []int{80},
+			ctx:   DecodeContext{Length: new(80)},
 			want:  nil,
 			err:   errReadBytes,
 			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
@@ -220,7 +220,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 		{
 			name:  "Short bytes",
 			input: nil,
-			opts:  []int{80},
+			ctx:   DecodeContext{Length: new(80)},
 			want:  nil,
 			err:   errNotValidXChainBridge,
 			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
@@ -233,7 +233,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 		{
 			name:  "Nil bytes",
 			input: nil,
-			opts:  []int{80},
+			ctx:   DecodeContext{Length: new(80)},
 			want:  nil,
 			err:   errNotValidXChainBridge,
 			setup: func(t *testing.T) (*XChainBridge, interfaces.BinaryParser) {
@@ -248,7 +248,7 @@ func TestXChainBridge_ToJson(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			xcb, parser := tc.setup(t)
-			got, err := xcb.ToJSON(parser, tc.opts...)
+			got, err := xcb.ToJSON(parser, tc.ctx)
 			if !errors.Is(err, tc.err) {
 				t.Errorf("ToJson() error = %v, want %v", err.Error(), tc.err.Error())
 			} else if tc.err == nil && !reflect.DeepEqual(got, tc.want) {

@@ -66,7 +66,7 @@ func TestBlob_ToJson(t *testing.T) {
 		name        string
 		input       []byte
 		expected    any
-		opts        []int
+		ctx         DecodeContext
 		expectedErr error
 		setup       func(t *testing.T) (*Blob, *testutil.MockBinaryParser)
 	}{
@@ -74,7 +74,7 @@ func TestBlob_ToJson(t *testing.T) {
 			name:        "Valid Blob",
 			input:       []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f},
 			expected:    "000102030405060708090A0B0C0D0E0F",
-			opts:        []int{16},
+			ctx:         DecodeContext{Length: new(16)},
 			expectedErr: nil,
 			setup: func(t *testing.T) (*Blob, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -87,7 +87,7 @@ func TestBlob_ToJson(t *testing.T) {
 			name:        "ReadBytes error",
 			input:       []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f},
 			expected:    nil,
-			opts:        []int{16},
+			ctx:         DecodeContext{Length: new(16)},
 			expectedErr: errors.New("errReadBytes"),
 			setup: func(t *testing.T) (*Blob, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -97,10 +97,10 @@ func TestBlob_ToJson(t *testing.T) {
 			},
 		},
 		{
-			name:        "No length prefix",
-			input:       []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f},
-			expected:    nil,
-			opts:        nil,
+			name:     "No length prefix",
+			input:    []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f},
+			expected: nil,
+
 			expectedErr: ErrNoLengthPrefix,
 			setup: func(t *testing.T) (*Blob, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -113,7 +113,7 @@ func TestBlob_ToJson(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			blob, parser := tc.setup(t)
-			actual, err := blob.ToJSON(parser, tc.opts...)
+			actual, err := blob.ToJSON(parser, tc.ctx)
 			if err != nil && err.Error() != tc.expectedErr.Error() {
 				t.Errorf("Expected error %v, got %v", tc.expectedErr, err)
 			}

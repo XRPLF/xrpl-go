@@ -47,10 +47,10 @@ func (p *PermissionValue) FromJSON(value any) ([]byte, error) {
 	return buf, nil
 }
 
-// ToJSON takes a BinaryParser and optional parameters, and converts the serialized byte data
+// ToJSON reads from a BinaryParser and converts the serialized byte data
 // back into a JSON value. If a permission name is found for the value, it returns the name;
 // otherwise, it returns the numeric value. If the parsing fails, an error is returned.
-func (p *PermissionValue) ToJSON(parser interfaces.BinaryParser, _ ...int) (any, error) {
+func (p *PermissionValue) ToJSON(parser interfaces.BinaryParser, _ DecodeContext) (any, error) {
 	b, err := parser.ReadBytes(4)
 	if err != nil {
 		return nil, err

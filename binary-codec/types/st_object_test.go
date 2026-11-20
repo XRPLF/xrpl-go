@@ -351,7 +351,7 @@ func TestStObject_ToJson(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			parser := tc.malleate(t)
 			stObject := NewSTObject(serdes.NewBinarySerializer(serdes.NewFieldIDCodec(definitions.Get())))
-			got, err := stObject.ToJSON(parser)
+			got, err := stObject.ToJSON(parser, DecodeContext{})
 			if tc.expectedErr != nil {
 				require.EqualError(t, err, tc.expectedErr.Error())
 			} else {

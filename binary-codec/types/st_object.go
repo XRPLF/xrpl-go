@@ -105,14 +105,8 @@ func encodeFieldValue(fi definitions.FieldInstance, value any, depth int) ([]byt
 	return st.FromJSON(value)
 }
 
-// ToJSON takes a BinaryParser and optional parameters, and converts the serialized byte data
-// back to a JSON value. It will continue parsing until it encounters an end marker for an object
-// or an array, or until the parser has no more data.
-func (t *STObject) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
-	return objectToJSON(p, 0)
-}
-
-func objectToJSON(p interfaces.BinaryParser, depth int) (any, error) {
+// ToJSON reads fields until an end marker or the end of the input.
+func (t *STObject) ToJSON(p interfaces.BinaryParser, ctx DecodeContext) (any, error) {
 	m := make(map[string]any)
 
 	for p.HasMore() {
@@ -125,7 +119,7 @@ func objectToJSON(p interfaces.BinaryParser, depth int) (any, error) {
 		if fi.FieldName == "ObjectEndMarker" || fi.FieldName == "ArrayEndMarker" {
 			break
 		}
-		if depth+1 > maxNestingDepth {
+		if ctx.depth >= maxNestingDepth {
 			return nil, ErrMaxNestingDepth
 		}
 
@@ -134,32 +128,22 @@ func objectToJSON(p interfaces.BinaryParser, depth int) (any, error) {
 			return nil, fmt.Errorf("%w: type %q, field %q", errUnknownFieldType, fi.Type, fi.FieldName)
 		}
 
-		var res any
+		field := DecodeContext{FieldName: fi.FieldName, depth: ctx.depth + 1}
 		if fi.IsVLEncoded {
-			vlen, err := p.ReadVariableLength()
+			length, err := p.ReadVariableLength()
 			if err != nil {
 				return nil, fmt.Errorf("ReadVariableLength error for field %q: %w", fi.FieldName, err)
 			}
-			res, err = st.ToJSON(p, vlen)
-			if err != nil {
-				return nil, fmt.Errorf("ToJSON error for VL field %q (type=%s, vlen=%d): %w", fi.FieldName, fi.Type, vlen, err)
-			}
-
-		} else {
-			switch st.(type) {
-			case *STObject:
-				res, err = objectToJSON(p, depth+1)
-			case *STArray:
-				res, err = arrayToJSON(p, depth+1)
-			case *UInt64:
-				res, err = st.ToJSON(p, uint64JSONBaseForField(fi.FieldName))
-			default:
-				res, err = st.ToJSON(p)
-			}
-			if err != nil {
-				return nil, fmt.Errorf("ToJSON error for field %q (type=%s): %w", fi.FieldName, fi.Type, err)
-			}
+			field.Length = &length
 		}
+		res, err := st.ToJSON(p, field)
+		if err != nil {
+			if field.Length != nil {
+				return nil, fmt.Errorf("ToJSON error for VL field %q (type=%s, vlen=%d): %w", fi.FieldName, fi.Type, *field.Length, err)
+			}
+			return nil, fmt.Errorf("ToJSON error for field %q (type=%s): %w", fi.FieldName, fi.Type, err)
+		}
+
 		res, err = enumToStr(fi.FieldName, res)
 		if err != nil {
 			return nil, err

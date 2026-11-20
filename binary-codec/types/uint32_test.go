@@ -191,7 +191,7 @@ func TestUint32_ToJson(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			class := &UInt32{}
 			parser := tc.malleate(t)
-			actual, err := class.ToJSON(parser)
+			actual, err := class.ToJSON(parser, DecodeContext{})
 			if tc.expectedErr != nil {
 				require.EqualError(t, err, tc.expectedErr.Error())
 			} else {

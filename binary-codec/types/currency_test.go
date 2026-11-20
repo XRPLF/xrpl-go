@@ -12,14 +12,12 @@ func TestCurrency_ToJSON(t *testing.T) {
 	tests := []struct {
 		name     string
 		expected any
-		opts     []int
 		err      error
 		setup    func(t *testing.T) (*Currency, *testutil.MockBinaryParser)
 	}{
 		{
 			name:     "pass - XRP currency",
 			expected: "XRP",
-			opts:     []int{20},
 			err:      nil,
 			setup: func(t *testing.T) (*Currency, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -31,7 +29,6 @@ func TestCurrency_ToJSON(t *testing.T) {
 		{
 			name:     "pass - 3 letter currency code",
 			expected: "USD",
-			opts:     []int{20},
 			err:      nil,
 			setup: func(t *testing.T) (*Currency, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -46,7 +43,6 @@ func TestCurrency_ToJSON(t *testing.T) {
 		{
 			name:     "pass - hex currency code",
 			expected: "0102030405060708090a0b0c0d0e0f1011121314",
-			opts:     []int{20},
 			err:      nil,
 			setup: func(t *testing.T) (*Currency, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -63,7 +59,7 @@ func TestCurrency_ToJSON(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			currency, parser := tc.setup(t)
-			actual, err := currency.ToJSON(parser, tc.opts...)
+			actual, err := currency.ToJSON(parser, DecodeContext{})
 
 			if tc.err != nil {
 				require.Error(t, err)

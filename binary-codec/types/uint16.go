@@ -74,10 +74,10 @@ func (u *UInt16) FromJSON(value any) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// ToJSON takes a BinaryParser and optional parameters, and converts the serialized byte data
+// ToJSON reads from a BinaryParser and converts the serialized byte data
 // back into a JSON integer value. This method assumes the parser contains data representing
 // a 16-bit unsigned integer. If the parsing fails, an error is returned.
-func (u *UInt16) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
+func (u *UInt16) ToJSON(p interfaces.BinaryParser, _ DecodeContext) (any, error) {
 	b, err := p.ReadBytes(2)
 	if err != nil {
 		return nil, err

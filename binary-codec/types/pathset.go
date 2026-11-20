@@ -159,7 +159,7 @@ func newPathStep(v map[string]any) ([]byte, error) {
 
 // ToJSON decodes a path set from a binary representation using a provided binary parser, then translates it to a JSON representation.
 // It returns a slice representing the JSON format of the path set, or an error if the path set could not be decoded or if an invalid step is encountered.
-func (p PathSet) ToJSON(parser interfaces.BinaryParser, _ ...int) (any, error) {
+func (p PathSet) ToJSON(parser interfaces.BinaryParser, _ DecodeContext) (any, error) {
 	var pathSet []any
 
 	for parser.HasMore() {

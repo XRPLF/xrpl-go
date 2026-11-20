@@ -147,7 +147,7 @@ func TestUInt64_DecimalJSON(t *testing.T) {
 	}
 
 	parser := serdes.NewBinaryParser([]byte{0, 0, 0, 0, 0, 0, 0x27, 0x10}, definitions.Get())
-	actual, err := (&UInt64{}).ToJSON(parser, uint64JSONBaseDecimal)
+	actual, err := (&UInt64{}).ToJSON(parser, DecodeContext{FieldName: "MPTAmount"})
 	require.NoError(t, err)
 	require.Equal(t, "10000", actual)
 }
@@ -215,7 +215,7 @@ func TestUint64_ToJson(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			class := &UInt64{}
 			parser := tc.malleate(t)
-			actual, err := class.ToJSON(parser)
+			actual, err := class.ToJSON(parser, DecodeContext{})
 			if tc.expectedErr != nil {
 				require.EqualError(t, err, tc.expectedErr.Error())
 			} else {
@@ -261,7 +261,7 @@ func TestUint64_RoundTrip(t *testing.T) {
 			encoded, err := class.FromJSON(tc.input)
 			require.NoError(t, err)
 
-			decoded, err := class.ToJSON(serdes.NewBinaryParser(encoded, defs))
+			decoded, err := class.ToJSON(serdes.NewBinaryParser(encoded, defs), DecodeContext{})
 			require.NoError(t, err)
 			require.Equal(t, tc.want, decoded)
 		})
