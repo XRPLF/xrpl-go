@@ -67,15 +67,9 @@ func IsSigner(signerData types.SignerData) (bool, error) {
 	return err == nil, err
 }
 
-// validateSignerData preserves the per-entry checks and returns the validated
-// AccountID so list validation can compare identities without decoding twice.
-func validateSignerData(signerData types.SignerData) ([]byte, error) {
-	size := len(maputils.GetKeys(signerData.Flatten()))
-	if size != SignerSize {
-		return nil, ErrSignerShouldHaveThreeFields
-	}
-
-	accountID, hasTag, err := decodeAddressAccountID(signerData.Account)
+// validateSignerAccount applies the Signer.Account rules and returns its AccountID.
+func validateSignerAccount(account types.Address) ([]byte, error) {
+	accountID, hasTag, err := decodeAddressAccountID(account)
 	if err != nil {
 		return nil, ErrSignerAccountShouldBeString
 	}
@@ -89,6 +83,21 @@ func validateSignerData(signerData types.SignerData) ([]byte, error) {
 	// the Signer object rather than rejected, which is why preflight has to reject it.
 	if hasTag {
 		return nil, ErrSignerAccountTagNotAllowed
+	}
+	return accountID, nil
+}
+
+// validateSignerData preserves the per-entry checks and returns the validated
+// AccountID so list validation can compare identities without decoding twice.
+func validateSignerData(signerData types.SignerData) ([]byte, error) {
+	size := len(maputils.GetKeys(signerData.Flatten()))
+	if size != SignerSize {
+		return nil, ErrSignerShouldHaveThreeFields
+	}
+
+	accountID, err := validateSignerAccount(signerData.Account)
+	if err != nil {
+		return nil, err
 	}
 
 	if strings.TrimSpace(signerData.TxnSignature) == "" {

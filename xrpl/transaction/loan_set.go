@@ -1,6 +1,9 @@
 package transaction
 
 import (
+	"fmt"
+	"strings"
+
 	addresscodec "github.com/Peersyst/xrpl-go/address-codec"
 	"github.com/Peersyst/xrpl-go/pkg/typecheck"
 	"github.com/Peersyst/xrpl-go/xrpl/transaction/types"
@@ -40,6 +43,8 @@ type CounterpartySignature struct {
 }
 
 // Flatten returns a map representation of the CounterpartySignature for JSON-RPC submission.
+// Each Signer keeps Account, SigningPubKey, and TxnSignature, which xrpld requires, even
+// when a simulated signer leaves its blobs empty.
 func (cs *CounterpartySignature) Flatten() map[string]any {
 	flattened := make(map[string]any)
 	if cs.SigningPubKey != "" {
@@ -51,7 +56,11 @@ func (cs *CounterpartySignature) Flatten() map[string]any {
 	if len(cs.Signers) > 0 {
 		flattenedSigners := make([]map[string]any, len(cs.Signers))
 		for i, signer := range cs.Signers {
-			flattenedSigners[i] = signer.Flatten()
+			flattenedSigners[i] = map[string]any{"Signer": map[string]any{
+				"Account":       signer.SignerData.Account.String(),
+				"SigningPubKey": signer.SignerData.SigningPubKey,
+				"TxnSignature":  signer.SignerData.TxnSignature,
+			}}
 		}
 		flattened["Signers"] = flattenedSigners
 	}
@@ -181,7 +190,7 @@ func (tx *LoanSet) Flatten() FlatTransaction {
 		flattened["OverpaymentInterestRate"] = uint32(*tx.OverpaymentInterestRate)
 	}
 
-	if tx.PaymentTotal != nil && *tx.PaymentTotal != 0 {
+	if tx.PaymentTotal != nil {
 		flattened["PaymentTotal"] = uint32(*tx.PaymentTotal)
 	}
 
@@ -230,6 +239,16 @@ func (tx *LoanSet) Validate() (bool, error) {
 		}
 	}
 
+	// CounterpartySignature is optional: the first party builds and signs a LoanSet before
+	// the counterparty signs it, xrpld stores a proposed LoanSet unsigned, and simulation
+	// accepts it without signatures.
+	if tx.CounterpartySignature != nil {
+		inner := types.IsFlagEnabled(tx.Flags, types.TfInnerBatchTxn)
+		if err := validateCounterpartySignature(tx.CounterpartySignature, inner); err != nil {
+			return false, err
+		}
+	}
+
 	if tx.OverpaymentFee != nil && *tx.OverpaymentFee > LoanSetMaxOverPaymentFeeRate {
 		return false, ErrLoanSetOverpaymentFeeInvalid
 	}
@@ -254,6 +273,10 @@ func (tx *LoanSet) Validate() (bool, error) {
 		return false, ErrLoanSetPaymentIntervalInvalid
 	}
 
+	if tx.PaymentTotal != nil && *tx.PaymentTotal == 0 {
+		return false, ErrLoanSetPaymentTotalInvalid
+	}
+
 	if tx.PaymentInterval != nil && tx.GracePeriod != nil && *tx.PaymentInterval != 0 && *tx.GracePeriod != 0 && tx.GracePeriod.Value() > tx.PaymentInterval.Value() {
 		return false, ErrLoanSetGracePeriodInvalid
 	}
@@ -276,4 +299,71 @@ func (tx *LoanSet) Validate() (bool, error) {
 	}
 
 	return true, nil
+}
+
+// validateCounterpartySignature applies the CounterpartySignature checks that xrpld makes
+// in every mode, including simulation. Batch::preflight allows an inner transaction only an
+// empty object. Otherwise LoanSet::preflight rejects a SigningPubKey that is not a 33-byte
+// Ed25519 or compressed secp256k1 key. A TxnSignature without a SigningPubKey, or Signers
+// with a SigningPubKey, is neither a single signature nor a multisignature (STTx::checkSign),
+// and simulation rejects any TxnSignature (preflightCheckSimulateKeys). Blob fields must be
+// whole-byte hex. It does not require or verify signatures.
+func validateCounterpartySignature(signature *CounterpartySignature, inner bool) error {
+	if inner {
+		if signature.SigningPubKey != "" || signature.TxnSignature != "" || len(signature.Signers) > 0 {
+			return fmt.Errorf("%w: an inner Batch transaction allows only an empty object", ErrInvalidCounterpartySignature)
+		}
+		return nil
+	}
+	if signature.SigningPubKey != "" && !isSigningPublicKey(signature.SigningPubKey) {
+		return fmt.Errorf("%w: unsupported SigningPubKey", ErrInvalidCounterpartySignature)
+	}
+	if !isOptionalHexBlob(signature.TxnSignature) {
+		return fmt.Errorf("%w: TxnSignature must be hex", ErrInvalidCounterpartySignature)
+	}
+	if signature.TxnSignature != "" && signature.SigningPubKey == "" {
+		return fmt.Errorf("%w: TxnSignature needs a SigningPubKey", ErrInvalidCounterpartySignature)
+	}
+	if len(signature.Signers) > 0 && signature.SigningPubKey != "" {
+		return fmt.Errorf("%w: Signers cannot be combined with a SigningPubKey", ErrInvalidCounterpartySignature)
+	}
+	for _, signer := range signature.Signers {
+		if err := validateCounterpartySigner(signer.SignerData); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateCounterpartySigner checks one nested Signer the way validateCounterpartySignature
+// checks the single-signature fields, with the package's Signer.Account rules.
+func validateCounterpartySigner(signer types.SignerData) error {
+	if _, err := validateSignerAccount(signer.Account); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidCounterpartySignature, err)
+	}
+	if signer.SigningPubKey != "" && !isSigningPublicKey(signer.SigningPubKey) {
+		return fmt.Errorf("%w: unsupported Signer SigningPubKey", ErrInvalidCounterpartySignature)
+	}
+	if !isOptionalHexBlob(signer.TxnSignature) {
+		return fmt.Errorf("%w: Signer TxnSignature must be hex", ErrInvalidCounterpartySignature)
+	}
+	if signer.TxnSignature != "" && signer.SigningPubKey == "" {
+		return fmt.Errorf("%w: Signer TxnSignature needs a SigningPubKey", ErrInvalidCounterpartySignature)
+	}
+	return nil
+}
+
+// isOptionalHexBlob reports whether s is empty or whole-byte hex.
+func isOptionalHexBlob(s string) bool {
+	return s == "" || typecheck.IsHexBlob(s)
+}
+
+// isSigningPublicKey follows xrpld publicKeyType: 33 bytes, the length of a compressed
+// secp256k1 point, that start with 0x02 or 0x03, or with 0xED for Ed25519.
+func isSigningPublicKey(key string) bool {
+	if !isValidFixedHexBlob(key, CompressedPointLen) {
+		return false
+	}
+	prefix := key[:2]
+	return prefix == "02" || prefix == "03" || strings.EqualFold(prefix, "ED")
 }
