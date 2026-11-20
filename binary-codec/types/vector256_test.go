@@ -53,23 +53,30 @@ func TestVector256_ToJson(t *testing.T) {
 
 	testcases := []struct {
 		name     string
-		malleate func(t *testing.T) (interfaces.BinaryParser, []int)
+		malleate func(t *testing.T) (interfaces.BinaryParser, DecodeContext)
 		output   any
 		err      error
 	}{
 		{
+			name: "missing length prefix",
+			malleate: func(t *testing.T) (interfaces.BinaryParser, DecodeContext) {
+				return testutil.NewMockBinaryParser(gomock.NewController(t)), DecodeContext{}
+			},
+			err: ErrNoLengthPrefix,
+		},
+		{
 			name: "fail - binary parser read bytes",
-			malleate: func(t *testing.T) (interfaces.BinaryParser, []int) {
+			malleate: func(t *testing.T) (interfaces.BinaryParser, DecodeContext) {
 				parser := testutil.NewMockBinaryParser(gomock.NewController(t))
 				parser.EXPECT().ReadBytes(100).AnyTimes().Return(nil, errors.New("read bytes error"))
-				return parser, []int{100}
+				return parser, DecodeContext{Length: new(100)}
 			},
 			err: errors.New("read bytes error"),
 		},
 		{
 			name: "pass - valid vector256",
-			malleate: func(t *testing.T) (interfaces.BinaryParser, []int) {
-				return serdes.NewBinaryParser([]byte{0x73, 0x73, 0x4B, 0x61, 0x1D, 0xDA, 0x23, 0xD3, 0xF5, 0xF6, 0x2E, 0x20, 0xA1, 0x73, 0xB7, 0x8A, 0xB8, 0x40, 0x6A, 0xC5, 0x01, 0x50, 0x94, 0xDA, 0x53, 0xF5, 0x3D, 0x39, 0xB9, 0xED, 0xB0, 0x6C, 0x73, 0x73, 0x4B}, defs), []int{32}
+			malleate: func(t *testing.T) (interfaces.BinaryParser, DecodeContext) {
+				return serdes.NewBinaryParser([]byte{0x73, 0x73, 0x4B, 0x61, 0x1D, 0xDA, 0x23, 0xD3, 0xF5, 0xF6, 0x2E, 0x20, 0xA1, 0x73, 0xB7, 0x8A, 0xB8, 0x40, 0x6A, 0xC5, 0x01, 0x50, 0x94, 0xDA, 0x53, 0xF5, 0x3D, 0x39, 0xB9, 0xED, 0xB0, 0x6C, 0x73, 0x73, 0x4B}, defs), DecodeContext{Length: new(32)}
 			},
 			output: []string{"73734B611DDA23D3F5F62E20A173B78AB8406AC5015094DA53F53D39B9EDB06C"},
 			err:    nil,
@@ -78,8 +85,8 @@ func TestVector256_ToJson(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			parser, opts := tc.malleate(t)
-			got, err := (&Vector256{}).ToJSON(parser, opts...)
+			parser, ctx := tc.malleate(t)
+			got, err := (&Vector256{}).ToJSON(parser, ctx)
 			if tc.err != nil {
 				require.Error(t, err)
 				require.Equal(t, tc.err, err)
@@ -91,8 +98,20 @@ func TestVector256_ToJson(t *testing.T) {
 	}
 }
 
+// A present zero-length prefix leaves the next field's bytes in the parser.
+func TestVector256_EmptyField(t *testing.T) {
+	parser := serdes.NewBinaryParser([]byte{0x11}, definitions.Get())
+	got, err := (&Vector256{}).ToJSON(parser, DecodeContext{Length: new(0)})
+	require.NoError(t, err)
+	require.IsType(t, []string{}, got)
+	require.Empty(t, got)
+	next, err := parser.ReadByte()
+	require.NoError(t, err)
+	require.Equal(t, byte(0x11), next)
+}
+
 func TestVector256_ToJson_InvalidLength(t *testing.T) {
-	_, err := (&Vector256{}).ToJSON(serdes.NewBinaryParser([]byte{0x00}, definitions.Get()), 1)
+	_, err := (&Vector256{}).ToJSON(serdes.NewBinaryParser([]byte{0x00}, definitions.Get()), DecodeContext{Length: new(1)})
 
 	var lengthErr *ErrInvalidVector256Length
 	require.ErrorAs(t, err, &lengthErr)

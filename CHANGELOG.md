@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### BREAKING CHANGES
 
+#### binary-codec
+
+- `types.SerializedType.ToJSON` now takes a `types.DecodeContext`. Pass `types.DecodeContext{}` for a root object or a fixed-width value, `types.DecodeContext{Length: &n}` for a length-prefixed value, or set `FieldName` for a field-specific UInt64 representation. Implementations of `SerializedType` must update their method signature.
+
 #### dependencies
 
 - Raised the minimum Go version from 1.25.13 to 1.26.11 to fix standard-library vulnerabilities in `net/http`, `net/textproto`, and `crypto/tls` (GO-2026-6603, GO-2026-6605, GO-2026-6607, GO-2026-6608, GO-2026-6610, GO-2026-6611, GO-2026-6612, GO-2026-6613, GO-2026-6617, GO-2026-6859). Go 1.25 no longer receives security fixes, and `golang.org/x/crypto` v0.56.0 requires Go 1.26. Modules that build with Go 1.25 must upgrade Go before they use this release.

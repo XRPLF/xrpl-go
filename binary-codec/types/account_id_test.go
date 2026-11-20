@@ -86,7 +86,7 @@ func TestAccountID_ToJson(t *testing.T) {
 		name     string
 		input    []byte
 		expected string
-		opts     []int
+		ctx      DecodeContext
 		err      error
 		setup    func(t *testing.T) (*AccountID, *testutil.MockBinaryParser)
 	}{
@@ -99,7 +99,7 @@ func TestAccountID_ToJson(t *testing.T) {
 				204, 18,
 			},
 			expected: "r3e7qTG44Mg8pHXgxPtyRx286Re5Urtx2p",
-			opts:     []int{20},
+			ctx:      DecodeContext{Length: new(20)},
 			err:      nil,
 			setup: func(t *testing.T) (*AccountID, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -114,10 +114,17 @@ func TestAccountID_ToJson(t *testing.T) {
 			},
 		},
 		{
+			name:     "Empty AccountID",
+			ctx:      DecodeContext{Length: new(0)},
+			expected: "",
+			setup: func(t *testing.T) (*AccountID, *testutil.MockBinaryParser) {
+				return &AccountID{}, testutil.NewMockBinaryParser(gomock.NewController(t))
+			},
+		},
+		{
 			name:     "No length prefix",
 			input:    []byte{},
 			expected: "",
-			opts:     nil,
 			err:      ErrNoLengthPrefix,
 			setup: func(t *testing.T) (*AccountID, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -134,7 +141,7 @@ func TestAccountID_ToJson(t *testing.T) {
 				204, 18,
 			},
 			expected: "",
-			opts:     []int{20},
+			ctx:      DecodeContext{Length: new(20)},
 			err:      errors.New("errReadBytes"),
 			setup: func(t *testing.T) (*AccountID, *testutil.MockBinaryParser) {
 				ctrl := gomock.NewController(t)
@@ -148,7 +155,7 @@ func TestAccountID_ToJson(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			accountID, parser := tc.setup(t)
-			actual, err := accountID.ToJSON(parser, tc.opts...)
+			actual, err := accountID.ToJSON(parser, tc.ctx)
 
 			if tc.err != nil {
 				require.Error(t, err)

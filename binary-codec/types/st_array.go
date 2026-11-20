@@ -58,11 +58,7 @@ func arrayFromJSON(json any, depth int) ([]byte, error) {
 
 // ToJSON reads serialized STObjects from the BinaryParser until the array end marker
 // or the end of the data, and returns them as a slice of JSON objects.
-func (t *STArray) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
-	return arrayToJSON(p, 0)
-}
-
-func arrayToJSON(p interfaces.BinaryParser, depth int) (any, error) {
+func (t *STArray) ToJSON(p interfaces.BinaryParser, ctx DecodeContext) (any, error) {
 	// Initialize as empty slice (not nil) so empty arrays marshal to [] not null
 	value := make([]any, 0)
 
@@ -81,11 +77,11 @@ func arrayToJSON(p interfaces.BinaryParser, depth int) (any, error) {
 		if fi.Type != "STObject" {
 			return nil, ErrNotSTObjectInSTArray
 		}
-		if depth+1 > maxNestingDepth {
+		if ctx.depth >= maxNestingDepth {
 			return nil, ErrMaxNestingDepth
 		}
 
-		res, err := objectToJSON(p, depth+1)
+		res, err := (&STObject{}).ToJSON(p, DecodeContext{FieldName: fi.FieldName, depth: ctx.depth + 1})
 		if err != nil {
 			return nil, err
 		}

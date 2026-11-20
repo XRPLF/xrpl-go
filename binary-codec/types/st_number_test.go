@@ -136,7 +136,7 @@ func TestNumber_FromJSON_ToJSON_Roundtrip(t *testing.T) {
 
 			// ToJSON
 			parser := serdes.NewBinaryParser(encoded, defs)
-			result, err := n.ToJSON(parser)
+			result, err := n.ToJSON(parser, DecodeContext{})
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, result)
 		})
@@ -205,7 +205,7 @@ func TestNumber_HexRoundtrip(t *testing.T) {
 
 	// Parse the decoded bytes
 	parser := serdes.NewBinaryParser(decoded, defs)
-	result, err := n.ToJSON(parser)
+	result, err := n.ToJSON(parser, DecodeContext{})
 	require.NoError(t, err)
 	require.Equal(t, "42.7", result)
 }
@@ -220,7 +220,7 @@ func TestNumber_ToJSON_Zero(t *testing.T) {
 	writeInt32BE(buf, defaultZeroExp, 8)
 
 	parser := serdes.NewBinaryParser(buf, defs)
-	result, err := n.ToJSON(parser)
+	result, err := n.ToJSON(parser, DecodeContext{})
 	require.NoError(t, err)
 	require.Equal(t, "0", result)
 }
@@ -231,7 +231,7 @@ func TestNumber_ToJSON_ParserError(t *testing.T) {
 
 	// Parser with insufficient data (only 4 bytes, needs 12)
 	parser := serdes.NewBinaryParser([]byte{0, 0, 0, 0}, defs)
-	_, err := n.ToJSON(parser)
+	_, err := n.ToJSON(parser, DecodeContext{})
 	require.Error(t, err)
 }
 
@@ -265,7 +265,7 @@ func TestNumber_RoundTrip_Values(t *testing.T) {
 			require.Len(t, encoded, 12)
 
 			parser := serdes.NewBinaryParser(encoded, defs)
-			result, err := n.ToJSON(parser)
+			result, err := n.ToJSON(parser, DecodeContext{})
 			require.NoError(t, err)
 			require.NotEmpty(t, result)
 		})

@@ -209,7 +209,7 @@ func TestPathSet_ToJson(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			pathset := PathSet{}
-			act, err := pathset.ToJSON(tc.malleate(t))
+			act, err := pathset.ToJSON(tc.malleate(t), DecodeContext{})
 			if tc.err != nil {
 				require.Error(t, err)
 				require.Equal(t, tc.err, err)
@@ -245,7 +245,7 @@ func TestPathSet_FromJsonToJsonRoundTrip(t *testing.T) {
 	encoded, err := pathset.FromJSON(input)
 	require.NoError(t, err)
 
-	decoded, err := pathset.ToJSON(serdes.NewBinaryParser(encoded, definitions.Get()))
+	decoded, err := pathset.ToJSON(serdes.NewBinaryParser(encoded, definitions.Get()), DecodeContext{})
 	require.NoError(t, err)
 
 	expected := []any{

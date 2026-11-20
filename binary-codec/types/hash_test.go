@@ -120,7 +120,7 @@ func TestHash_ToJson(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			hash, parser := tc.setup(t)
-			actual, err := hash.ToJSON(parser)
+			actual, err := hash.ToJSON(parser, DecodeContext{})
 			require.Equal(t, tc.expected, actual)
 			require.Equal(t, tc.expectedErr, err)
 		})

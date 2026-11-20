@@ -277,7 +277,7 @@ func Decode(hexEncoded string) (map[string]any, error) {
 	}
 	p := serdes.NewBinaryParser(b, definitions.Get())
 	st := types.NewSTObject(serdes.NewBinarySerializer(serdes.NewFieldIDCodec(definitions.Get())))
-	m, err := st.ToJSON(p)
+	m, err := st.ToJSON(p, types.DecodeContext{})
 	if err != nil {
 		return nil, err
 	}

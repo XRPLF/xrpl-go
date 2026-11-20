@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	// ErrMissingCurrencyLengthOption is returned when no length option is
-	// provided to Currency.ToJSON.
+	// ErrMissingCurrencyLengthOption is retained for compatibility.
+	//
+	// Deprecated: Currency.ToJSON reads the fixed-width currency code.
 	ErrMissingCurrencyLengthOption = errors.New("missing length option for Currency.ToJSON")
 	// ErrInvalidCurrency is returned when the currency field is missing or invalid.
 	ErrInvalidCurrency = errors.New("invalid currency")
@@ -29,16 +30,9 @@ func (c *Currency) FromJSON(json any) ([]byte, error) {
 	return nil, ErrInvalidCurrency
 }
 
-// ToJSON serializes a binary currency value into a JSON-compatible format.
-// It requires a length option specifying the byte length to read.
-func (c *Currency) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
-	// default to 20 bytes, https://xrpl.org/docs/references/protocol/ledger-data/ledger-entry-types/oracle#currency-internal-format
-	length := 20
-	if len(opts) > 0 && opts[0] > 0 {
-		length = opts[0]
-	}
-
-	currencyBytes, err := p.ReadBytes(length)
+// ToJSON reads the 20-byte XRPL currency code and returns its JSON representation.
+func (c *Currency) ToJSON(p interfaces.BinaryParser, _ DecodeContext) (any, error) {
+	currencyBytes, err := p.ReadBytes(20)
 	if err != nil {
 		return nil, err
 	}

@@ -194,7 +194,7 @@ func (a *Amount) fromJSONForField(value any, fieldName string) ([]byte, error) {
 // 1. If bit 0x80 is set → IOU (48 bytes)
 // 2. If bit 0x20 is set → MPT (33 bytes)
 // 3. Otherwise → XRP (8 bytes)
-func (a *Amount) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
+func (a *Amount) ToJSON(p interfaces.BinaryParser, _ DecodeContext) (any, error) {
 	b, err := p.Peek()
 	if err != nil {
 		return nil, err

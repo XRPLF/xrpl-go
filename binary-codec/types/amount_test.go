@@ -1403,7 +1403,7 @@ func TestAmount_ToJson(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			amount := &Amount{}
 			mock := tc.malleate(t)
-			actual, err := amount.ToJSON(mock)
+			actual, err := amount.ToJSON(mock, DecodeContext{})
 			require.Equal(t, tc.expected, actual)
 			if tc.expPass {
 				require.NoError(t, err)
@@ -1470,7 +1470,7 @@ func TestAmount_ToJSONEnforcesCanonicalIOUValue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := serdes.NewBinaryParser(issuedCurrencyAmountBytes(tt.exponent, tt.mantissa), defs)
 
-			actual, err := (&Amount{}).ToJSON(parser)
+			actual, err := (&Amount{}).ToJSON(parser, DecodeContext{})
 
 			if tt.expectedErr != nil {
 				require.Nil(t, actual)

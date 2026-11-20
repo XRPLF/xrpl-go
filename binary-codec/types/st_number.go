@@ -54,7 +54,7 @@ func (n *Number) FromJSON(value any) ([]byte, error) {
 }
 
 // ToJSON takes a BinaryParser and converts the serialized byte data back to a JSON string.
-func (n *Number) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
+func (n *Number) ToJSON(p interfaces.BinaryParser, _ DecodeContext) (any, error) {
 	b, err := p.ReadBytes(12)
 	if err != nil {
 		return nil, err

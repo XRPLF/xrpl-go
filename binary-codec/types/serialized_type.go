@@ -7,14 +7,24 @@ import (
 	"github.com/Peersyst/xrpl-go/binary-codec/types/interfaces"
 )
 
-// SerializedType is an interface representing any type that can be serialized
-// and deserialized to and from JSON.
-// The FromJson method takes a JSON value and converts it to a byte slice.
-// The ToJson method takes a BinaryParser and optional parameters, and converts
-// the serialized byte data back to a JSON value.
+// DecodeContext describes the field being read. Its zero value decodes a root
+// object or a standalone fixed-width value.
+type DecodeContext struct {
+	// FieldName selects field-specific JSON representations, such as UInt64 amounts.
+	FieldName string
+	// Length is the byte length from the variable-length prefix. A pointer to
+	// zero represents an empty field. A nil pointer means no prefix was read.
+	Length *int
+	depth  int
+}
+
+// Depth is the nesting level of this field, starting at zero for the root.
+func (c DecodeContext) Depth() int { return c.depth }
+
+// SerializedType converts between a JSON value and its binary representation.
 type SerializedType interface {
 	FromJSON(json any) ([]byte, error)
-	ToJSON(parser interfaces.BinaryParser, opts ...int) (any, error)
+	ToJSON(parser interfaces.BinaryParser, ctx DecodeContext) (any, error)
 }
 
 // GetSerializedType is a function that returns the correct SerializedType instance

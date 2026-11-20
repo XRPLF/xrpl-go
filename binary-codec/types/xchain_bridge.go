@@ -78,12 +78,12 @@ func (x *XChainBridge) FromJSON(json any) ([]byte, error) {
 
 // ToJSON converts a byte slice representation of an XChainBridge object to its json representation.
 // It returns an error if the bytes are not valid or if the classic addresses are not valid.
-func (x *XChainBridge) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) {
-	if len(opts) == 0 {
+func (x *XChainBridge) ToJSON(p interfaces.BinaryParser, ctx DecodeContext) (any, error) {
+	if ctx.Length == nil {
 		return nil, ErrNoLengthPrefix
 	}
 
-	bytes, err := p.ReadBytes(opts[0])
+	bytes, err := p.ReadBytes(*ctx.Length)
 	if err != nil {
 		return nil, errReadBytes
 	}

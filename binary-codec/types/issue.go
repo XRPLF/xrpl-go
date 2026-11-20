@@ -109,8 +109,7 @@ func (i *Issue) FromJSON(json any) ([]byte, error) {
 // - XRP: 20 bytes (currency only, all zeros)
 // - IOU: 40 bytes (currency + issuer)
 // - MPT: 44 bytes (issuer account + NO_ACCOUNT marker + sequence)
-// The opts parameter is ignored as length is determined automatically.
-func (i *Issue) ToJSON(p interfaces.BinaryParser, _ ...int) (any, error) {
+func (i *Issue) ToJSON(p interfaces.BinaryParser, _ DecodeContext) (any, error) {
 	// Step 1: Read first 20 bytes (currency for XRP/IOU, or issuer account for MPT)
 	currencyOrAccount, err := p.ReadBytes(20)
 	if err != nil {
