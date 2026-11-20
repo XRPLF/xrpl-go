@@ -138,6 +138,81 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 			expected: ErrLoanBrokerSetCoverRateMinimumInvalid,
 		},
 		{
+			name: "fail - LoanBrokerID invalid",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID: "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				LoanBrokerID: func() *types.LoanBrokerID {
+					v := types.LoanBrokerID("B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F43")
+					return &v
+				}(),
+			},
+			expected: ErrLoanBrokerSetLoanBrokerIDInvalid,
+		},
+		{
+			name: "fail - DebtMaximum invalid",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("invalid"); return &v }(),
+			},
+			expected: ErrLoanBrokerSetDebtMaximumInvalid,
+		},
+		{
+			name: "fail - DebtMaximum negative",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:     "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				DebtMaximum: func() *types.XRPLNumber { v := types.XRPLNumber("-1"); return &v }(),
+			},
+			expected: ErrLoanBrokerSetDebtMaximumNegative,
+		},
+		{
+			name: "fail - CoverRateLiquidation too high",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:              "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				CoverRateLiquidation: func() *types.InterestRate { v := types.InterestRate(100001); return &v }(),
+			},
+			expected: ErrLoanBrokerSetCoverRateLiquidationInvalid,
+		},
+		{
+			name: "fail - CoverRateMinimum without CoverRateLiquidation",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:          "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				CoverRateMinimum: func() *types.InterestRate { v := types.InterestRate(5000); return &v }(),
+			},
+			expected: ErrLoanBrokerSetCoverRatesMismatch,
+		},
+		{
+			name: "fail - CoverRateLiquidation without CoverRateMinimum",
+			tx: &LoanBrokerSet{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerSetTx,
+				},
+				VaultID:              "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				CoverRateLiquidation: func() *types.InterestRate { v := types.InterestRate(1); return &v }(),
+			},
+			expected: ErrLoanBrokerSetCoverRatesMismatch,
+		},
+		{
 			name: "pass - complete",
 			tx: &LoanBrokerSet{
 				BaseTx: BaseTx{
@@ -158,7 +233,7 @@ func TestLoanBrokerSet_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
-				assert.Contains(t, err.Error(), testcase.expected.Error())
+				require.ErrorIs(t, err, testcase.expected)
 			} else {
 				require.NoError(t, err)
 			}

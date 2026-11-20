@@ -114,6 +114,46 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 			expected: ErrLoanBrokerCoverClawbackLoanBrokerIDOrAmountRequired,
 		},
 		{
+			name: "fail - Amount is XRP",
+			tx: &LoanBrokerCoverClawback{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerCoverClawbackTx,
+				},
+				Amount: types.XRPCurrencyAmount(10000),
+			},
+			expected: ErrLoanBrokerCoverClawbackAmountInvalidType,
+		},
+		{
+			name: "fail - issued currency Amount negative",
+			tx: &LoanBrokerCoverClawback{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerCoverClawbackTx,
+				},
+				Amount: types.IssuedCurrencyAmount{
+					Issuer:   types.Address("rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds"),
+					Currency: "FOO",
+					Value:    "-1",
+				},
+			},
+			expected: ErrLoanBrokerCoverClawbackAmountNegative,
+		},
+		{
+			name: "fail - MPT Amount negative",
+			tx: &LoanBrokerCoverClawback{
+				BaseTx: BaseTx{
+					Account:         "rNZ9m6AP9K7z3EVg6GhPMx36V4QmZKeWds",
+					TransactionType: LoanBrokerCoverClawbackTx,
+				},
+				Amount: types.MPTCurrencyAmount{
+					MPTIssuanceID: "00002403C84A0A28E0190E208E982C352BBD5006600555CF",
+					Value:         "-1",
+				},
+			},
+			expected: ErrLoanBrokerCoverClawbackAmountNegative,
+		},
+		{
 			name: "pass - complete",
 			tx: &LoanBrokerCoverClawback{
 				BaseTx: BaseTx{
@@ -155,7 +195,7 @@ func TestLoanBrokerCoverClawback_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
-				assert.Contains(t, err.Error(), testcase.expected.Error())
+				require.ErrorIs(t, err, testcase.expected)
 			} else {
 				require.NoError(t, err)
 			}

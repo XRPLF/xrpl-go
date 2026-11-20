@@ -135,10 +135,7 @@ func (tx *SponsorshipSet) Validate() (bool, error) {
 // validateSponsorshipCounterparty checks the shared counterparty rules for
 // SponsorshipSet and SponsorshipTransfer after their BaseTx validation.
 func validateSponsorshipCounterparty(account, counterparty types.Address) error {
-	accountID, _, err := decodeAddressAccountID(account)
-	if err != nil {
-		return ErrInvalidAccount
-	}
+	accountID, _, _ := decodeAddressAccountID(account)
 	_, same, hasTag, err := decodeCounterparty(accountID, counterparty)
 	if err != nil {
 		return err

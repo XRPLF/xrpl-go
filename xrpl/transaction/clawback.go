@@ -79,10 +79,7 @@ func (c *Clawback) Validate() (bool, error) {
 		return false, ErrClawbackMissingAmount
 	}
 
-	accountID, accountHasTag, err := decodeAddressAccountID(c.Account)
-	if err != nil {
-		return false, ErrInvalidAccount
-	}
+	accountID, accountHasTag, _ := decodeAddressAccountID(c.Account)
 	if accountHasTag && c.SourceTag != 0 {
 		return false, ErrDuplicateXAddressTag
 	}
@@ -96,8 +93,9 @@ func (c *Clawback) Validate() (bool, error) {
 			return false, ErrClawbackHolderNotAllowed
 		}
 
-		issuerID, hasTag, err := decodeAddressAccountID(amount.Issuer)
-		if err != nil || hasTag {
+		// Issuer has no companion tag field, so a tagged X-address cannot be used.
+		issuerID, hasTag, _ := decodeAddressAccountID(amount.Issuer)
+		if hasTag {
 			return false, ErrClawbackInvalidAmount
 		}
 		if bytes.Equal(accountID, issuerID) {

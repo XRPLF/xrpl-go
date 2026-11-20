@@ -11,16 +11,13 @@ import (
 // validateConfidentialMPTBase validates the fields every confidential MPT transaction
 // shares and returns the decoded submitting AccountID for the caller to reuse. XLS-96
 // defines no transaction-specific flags for these transaction types, so only the
-// protocol-wide flags are accepted.
+// protocol-wide flags are accepted. Callers must run BaseTx.Validate first.
 func validateConfidentialMPTBase(tx *BaseTx) ([]byte, error) {
 	if !flag.ContainsOnly(tx.Flags, types.TfUniversal) {
 		return nil, ErrConfidentialMPTInvalidFlags
 	}
 
-	accountID, accountHasTag, err := decodeAddressAccountID(tx.Account)
-	if err != nil {
-		return nil, ErrInvalidAccount
-	}
+	accountID, accountHasTag, _ := decodeAddressAccountID(tx.Account)
 
 	// An Account given as a tagged X-address already carries a source tag, so pairing it
 	// with an explicit SourceTag names the tag twice. The binary codec rejects that on

@@ -198,6 +198,21 @@ func (tx *BaseTx) Flatten() FlatTransaction {
 }
 
 // Validate checks BaseTx fields for correctness, returning false and an error if invalid.
+//
+// BaseTx owns the rules for the fields it carries, so a transaction type calls this first
+// and then checks only its own fields:
+//   - Account decodes as a classic address or an X-address, and is not ACCOUNT_ZERO unless
+//     the transaction is a pseudo-transaction.
+//   - TransactionType is set.
+//   - Sequence, AccountTxnID, LastLedgerSequence, SourceTag, SigningPubKey, TicketSequence,
+//     TxnSignature, and NetworkID have the correct type when set.
+//   - Delegate, when set, is a valid untagged address, is not ACCOUNT_ZERO, and is not the
+//     same account as Account.
+//   - The sponsor fields, Memos, and Signers are well formed.
+//
+// A transaction type keeps the rules that relate Account to its own fields, such as an
+// Account that must differ from another account, or a tagged X-address Account paired with
+// an explicit SourceTag.
 func (tx *BaseTx) Validate() (bool, error) {
 	flattenTx := tx.Flatten()
 

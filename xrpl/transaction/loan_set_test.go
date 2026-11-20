@@ -154,6 +154,19 @@ func TestLoanSet_Validate(t *testing.T) {
 			expected: ErrLoanSetOverpaymentFeeInvalid,
 		},
 		{
+			name: "fail - Counterparty invalid",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				Counterparty:       func() *types.Address { v := types.Address("invalid"); return &v }(),
+			},
+			expected: ErrLoanSetCounterpartyInvalid,
+		},
+		{
 			name: "fail - PaymentInterval too low",
 			tx: &LoanSet{
 				BaseTx: BaseTx{
@@ -165,6 +178,140 @@ func TestLoanSet_Validate(t *testing.T) {
 				PaymentInterval:    func() *types.PaymentInterval { v := types.PaymentInterval(59); return &v }(),
 			},
 			expected: ErrLoanSetPaymentIntervalInvalid,
+		},
+		{
+			name: "fail - InterestRate too high",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				InterestRate:       func() *types.InterestRate { v := types.InterestRate(100001); return &v }(),
+			},
+			expected: ErrLoanSetInterestRateInvalid,
+		},
+		{
+			name: "fail - LateInterestRate too high",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				LateInterestRate:   func() *types.InterestRate { v := types.InterestRate(100001); return &v }(),
+			},
+			expected: ErrLoanSetLateInterestRateInvalid,
+		},
+		{
+			name: "fail - CloseInterestRate too high",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				CloseInterestRate:  func() *types.InterestRate { v := types.InterestRate(100001); return &v }(),
+			},
+			expected: ErrLoanSetCloseInterestRateInvalid,
+		},
+		{
+			name: "fail - OverpaymentInterestRate too high",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:            "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested:      types.XRPLNumber("100000"),
+				OverpaymentInterestRate: func() *types.InterestRate { v := types.InterestRate(100001); return &v }(),
+			},
+			expected: ErrLoanSetOverpaymentInterestRateInvalid,
+		},
+		{
+			name: "fail - GracePeriod longer than PaymentInterval",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				PaymentInterval:    func() *types.PaymentInterval { v := types.PaymentInterval(60); return &v }(),
+				GracePeriod:        func() *types.GracePeriod { v := types.GracePeriod(61); return &v }(),
+			},
+			expected: ErrLoanSetGracePeriodInvalid,
+		},
+		{
+			name: "fail - LoanOriginationFee invalid",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				LoanOriginationFee: func() *types.XRPLNumber { v := types.XRPLNumber("invalid"); return &v }(),
+			},
+			expected: ErrLoanSetLoanOriginationFeeInvalid,
+		},
+		{
+			name: "fail - LoanServiceFee invalid",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				LoanServiceFee:     func() *types.XRPLNumber { v := types.XRPLNumber("invalid"); return &v }(),
+			},
+			expected: ErrLoanSetLoanServiceFeeInvalid,
+		},
+		{
+			name: "fail - LatePaymentFee invalid",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				LatePaymentFee:     func() *types.XRPLNumber { v := types.XRPLNumber("invalid"); return &v }(),
+			},
+			expected: ErrLoanSetLatePaymentFeeInvalid,
+		},
+		{
+			name: "fail - ClosePaymentFee invalid",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:       "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested: types.XRPLNumber("100000"),
+				ClosePaymentFee:    func() *types.XRPLNumber { v := types.XRPLNumber("invalid"); return &v }(),
+			},
+			expected: ErrLoanSetClosePaymentFeeInvalid,
+		},
+		{
+			name: "pass - interest rates at maximum",
+			tx: &LoanSet{
+				BaseTx: BaseTx{
+					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
+					TransactionType: LoanSetTx,
+				},
+				LoanBrokerID:            "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
+				PrincipalRequested:      types.XRPLNumber("100000"),
+				InterestRate:            func() *types.InterestRate { v := types.InterestRate(100000); return &v }(),
+				LateInterestRate:        func() *types.InterestRate { v := types.InterestRate(100000); return &v }(),
+				CloseInterestRate:       func() *types.InterestRate { v := types.InterestRate(100000); return &v }(),
+				OverpaymentInterestRate: func() *types.InterestRate { v := types.InterestRate(100000); return &v }(),
+			},
+			expected: nil,
 		},
 		{
 			name: "pass - complete",
@@ -187,46 +334,10 @@ func TestLoanSet_Validate(t *testing.T) {
 			ok, err := testcase.tx.Validate()
 			assert.Equal(t, ok, testcase.expected == nil)
 			if testcase.expected != nil {
-				assert.Contains(t, err.Error(), testcase.expected.Error())
+				require.ErrorIs(t, err, testcase.expected)
 			} else {
 				require.NoError(t, err)
 			}
-		})
-	}
-}
-
-func TestLoanSet_ValidateInterestRateBounds(t *testing.T) {
-	maxRate := types.InterestRate(100_000)
-	aboveMax := maxRate + 1
-	tests := []struct {
-		name                                   string
-		interest, late, closeRate, overpayment *types.InterestRate
-		wantErr                                error
-	}{
-		{name: "all rates at maximum", interest: &maxRate, late: &maxRate, closeRate: &maxRate, overpayment: &maxRate},
-		{name: "interest above maximum", interest: &aboveMax, wantErr: ErrLoanSetInterestRateInvalid},
-		{name: "late interest above maximum", late: &aboveMax, wantErr: ErrLoanSetLateInterestRateInvalid},
-		{name: "close interest above maximum", closeRate: &aboveMax, wantErr: ErrLoanSetCloseInterestRateInvalid},
-		{name: "overpayment interest above maximum", overpayment: &aboveMax, wantErr: ErrLoanSetOverpaymentInterestRateInvalid},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tx := LoanSet{
-				BaseTx: BaseTx{
-					Account:         "rHLLL3Z7uBLK49yZcMaj8FAP7DU12Nw5A5",
-					TransactionType: LoanSetTx,
-				},
-				LoanBrokerID:            "B91CD2033E73E0DD17AF043FBD458CE7D996850A83DCED23FB122A3BFAA7F430",
-				PrincipalRequested:      "100000",
-				InterestRate:            tt.interest,
-				LateInterestRate:        tt.late,
-				CloseInterestRate:       tt.closeRate,
-				OverpaymentInterestRate: tt.overpayment,
-			}
-			ok, err := tx.Validate()
-			require.Equal(t, tt.wantErr == nil, ok)
-			require.ErrorIs(t, err, tt.wantErr)
 		})
 	}
 }
