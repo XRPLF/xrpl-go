@@ -487,6 +487,56 @@ func TestVaultCreate_Validate(t *testing.T) {
 			},
 			expected: ErrVaultCreateDomainIDInvalid,
 		},
+
+		// WithdrawalPolicy
+
+		{
+			name: "pass - WithdrawalPolicy omitted",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset: ledger.Asset{Currency: "XRP"},
+			},
+			expected: nil,
+		},
+		{
+			name: "pass - WithdrawalPolicy first come first serve",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:            ledger.Asset{Currency: "XRP"},
+				WithdrawalPolicy: new(types.VaultStrategyFirstComeFirstServe),
+			},
+			expected: nil,
+		},
+		{
+			name: "fail - WithdrawalPolicy explicit zero",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:            ledger.Asset{Currency: "XRP"},
+				WithdrawalPolicy: new(types.VaultWithdrawalPolicy(0)),
+			},
+			expected: ErrVaultCreateWithdrawalPolicyInvalid,
+		},
+		{
+			name: "fail - WithdrawalPolicy unknown",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset:            ledger.Asset{Currency: "XRP"},
+				WithdrawalPolicy: new(types.VaultWithdrawalPolicy(2)),
+			},
+			expected: ErrVaultCreateWithdrawalPolicyInvalid,
+		},
 	}
 
 	for _, testcase := range testcases {

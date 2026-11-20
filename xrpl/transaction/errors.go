@@ -633,6 +633,8 @@ var (
 	ErrVaultCreateAssetRequired = errors.New("vaultCreate: Asset is required")
 	// ErrVaultCreateAssetsMaximumInvalid is returned when AssetsMaximum is not a valid XRPL number.
 	ErrVaultCreateAssetsMaximumInvalid = errors.New("vaultCreate: AssetsMaximum must be a valid XRPL number")
+	// ErrVaultCreateWithdrawalPolicyInvalid is returned when WithdrawalPolicy is set to an unsupported value.
+	ErrVaultCreateWithdrawalPolicyInvalid = errors.New("vaultCreate: WithdrawalPolicy must be 1 (first come, first served)")
 	// ErrVaultCreateDataInvalid is returned when Data is not a valid hex string or exceeds 512 characters (256 bytes).
 	ErrVaultCreateDataInvalid = errors.New("vaultCreate: Data must be a valid hex string and at most 512 characters (256 bytes)")
 	// ErrVaultCreateMPTokenMetadataInvalid is returned when MPTokenMetadata is not a valid hex string or exceeds 2048 characters (1024 bytes).
