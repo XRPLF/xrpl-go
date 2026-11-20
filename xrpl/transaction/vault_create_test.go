@@ -491,6 +491,17 @@ func TestVaultCreate_Validate(t *testing.T) {
 		// WithdrawalPolicy
 
 		{
+			name: "pass - WithdrawalPolicy omitted",
+			tx: &VaultCreate{
+				BaseTx: BaseTx{
+					Account:         "rNGHoQwNG753zyfDrib4qDvvswbrtmV8Es",
+					TransactionType: VaultCreateTx,
+				},
+				Asset: ledger.Asset{Currency: "XRP"},
+			},
+			expected: nil,
+		},
+		{
 			name: "pass - WithdrawalPolicy first come first serve",
 			tx: &VaultCreate{
 				BaseTx: BaseTx{
