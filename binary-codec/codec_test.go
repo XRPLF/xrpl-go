@@ -723,6 +723,22 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+func TestEmptyVector256JSONRoundTrip(t *testing.T) {
+	const wire = "021300"
+	decoded, err := Decode(wire)
+	require.NoError(t, err)
+
+	data, err := json.Marshal(decoded)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"Hashes":[]}`, string(data))
+
+	var fields map[string]any
+	require.NoError(t, json.Unmarshal(data, &fields))
+	encoded, err := Encode(fields)
+	require.NoError(t, err)
+	require.Equal(t, wire, encoded)
+}
+
 func TestEncodeDecodeInt32_LoanScale(t *testing.T) {
 	tt := []struct {
 		description string
