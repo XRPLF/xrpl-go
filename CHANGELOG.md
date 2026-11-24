@@ -100,6 +100,7 @@ Errors that were created inline now have sentinels or error types, so callers ca
 
 - Encode and Decode return an error for fields nested deeper than xrpld's limit of 10.
 - Blob fields return an error for non-string JSON values.
+- Empty Vector256 fields decode to JSON arrays and can be encoded again after a JSON round trip.
 
 #### dependencies
 

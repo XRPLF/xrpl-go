@@ -92,7 +92,7 @@ func (v *Vector256) ToJSON(p interfaces.BinaryParser, opts ...int) (any, error) 
 	if len(b)%HashLengthBytes != 0 {
 		return nil, &ErrInvalidVector256Length{Got: len(b)}
 	}
-	var value []string
+	value := make([]string, 0, len(b)/HashLengthBytes)
 
 	for i := 0; i < len(b); i += HashLengthBytes {
 		value = append(value, hexutil.EncodeToUpperHex(b[i:i+HashLengthBytes]))
