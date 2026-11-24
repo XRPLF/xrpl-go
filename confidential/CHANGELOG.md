@@ -18,6 +18,7 @@ and this module follows [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 #### dependencies
 
+- Updated `github.com/gorilla/websocket` to the fixed revision for [GO-2026-6278](https://pkg.go.dev/vuln/GO-2026-6278).
 - Upgraded `golang.org/x/crypto` from v0.54.0 to v0.56.0 to include upstream security fixes (GO-2026-6303, GO-2026-6354, GO-2026-6355).
 
 ## [v0.1.0]

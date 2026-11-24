@@ -7,13 +7,16 @@ require (
 	github.com/decred/dcrd/crypto/ripemd160 v1.0.2
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1
 	github.com/go-viper/mapstructure/v2 v2.5.0
-	github.com/gorilla/websocket v1.5.3
+	github.com/gorilla/websocket v1.5.4-0.20240701034025-d67f41855da4
 	github.com/stretchr/testify v1.10.0
 	github.com/ugorji/go/codec v1.2.11
 	golang.org/x/text v0.41.0
 )
 
-require github.com/pkg/errors v0.9.1 // indirect
+require (
+	github.com/pkg/errors v0.9.1 // indirect
+	golang.org/x/net v0.57.0 // indirect
+)
 
 require (
 	github.com/golang/mock v1.6.0 // direct
