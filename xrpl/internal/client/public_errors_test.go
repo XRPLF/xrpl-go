@@ -18,6 +18,17 @@ func TestPublicClientErrorIdentity(t *testing.T) {
 	require.ErrorIs(t, rpc.ErrAccountCannotBeDeleted, websocket.ErrAccountCannotBeDeleted)
 	require.ErrorIs(t, rpc.ErrAccountHasSponsorshipObligations, websocket.ErrAccountHasSponsorshipObligations)
 	require.ErrorIs(t, rpc.ErrAccountDeleteSponsorMismatch, websocket.ErrAccountDeleteSponsorMismatch)
+	require.ErrorIs(t, rpc.ErrMissingTxSignatureOrSigningPubKey, websocket.ErrMissingTxSignatureOrSigningPubKey)
+	require.ErrorIs(t, rpc.ErrNilTransaction, websocket.ErrNilTransaction)
+	require.ErrorIs(t, rpc.ErrMissingLastLedgerSequenceInTransaction, websocket.ErrMissingLastLedgerSequenceInTransaction)
+	require.ErrorIs(t, rpc.ErrMissingWallet, websocket.ErrMissingWallet)
+	require.ErrorIs(t, rpc.ErrMissingAccountInTransaction, websocket.ErrMissingAccountInTransaction)
+	require.ErrorIs(t, rpc.ErrInvalidFulfillmentLength, websocket.ErrInvalidFulfillmentLength)
+	require.ErrorIs(t, rpc.ErrFeeFieldMissing, websocket.ErrFeeFieldMissing)
+	require.ErrorIs(t, rpc.ErrCannotFundWalletWithoutClassicAddress, websocket.ErrCannotFundWalletWithoutClassicAddress)
+	require.ErrorIs(t, rpc.ErrFundWalletBalanceNotUpdated, websocket.ErrFundWalletBalanceNotUpdated)
+	require.ErrorIs(t, rpc.ErrCouldNotFetchLoanBroker, websocket.ErrCouldNotFetchLoanBroker)
+	require.ErrorIs(t, rpc.ErrCounterpartyRequired, websocket.ErrCounterpartyRequired)
 }
 
 func TestAccountDeleteErrorCompatibility(t *testing.T) {
@@ -37,4 +48,9 @@ func TestAccountDeleteErrorCompatibility(t *testing.T) {
 			require.NotErrorIs(t, tt.mismatch, tt.objects)
 		})
 	}
+}
+
+func TestAutofillNilTransactionAcrossTransports(t *testing.T) {
+	require.ErrorIs(t, new(rpc.Client).Autofill(nil), websocket.ErrNilTransaction)
+	require.ErrorIs(t, new(websocket.Client).Autofill(nil), rpc.ErrNilTransaction)
 }

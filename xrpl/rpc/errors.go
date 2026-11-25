@@ -21,11 +21,11 @@ var (
 	// transaction
 
 	// ErrMissingTxSignatureOrSigningPubKey is returned when a transaction has no complete signing form.
-	ErrMissingTxSignatureOrSigningPubKey = errors.New("transaction must include a complete TxnSignature/SigningPubKey or Signers form")
+	ErrMissingTxSignatureOrSigningPubKey = clientinternal.ErrMissingTxSignatureOrSigningPubKey
 	// ErrInvalidSignedTransaction is returned when signing fields are malformed, incomplete, empty, or mixed.
 	ErrInvalidSignedTransaction = clientinternal.ErrInvalidSignedTransaction
 	// ErrNilTransaction is returned when a nil transaction is submitted or autofilled.
-	ErrNilTransaction = errors.New("transaction must not be nil")
+	ErrNilTransaction = clientinternal.ErrNilTransaction
 	// ErrTransactionNotMultisigned is returned when SubmitMultisigned receives a transaction in another signing form.
 	ErrTransactionNotMultisigned = clientinternal.ErrTransactionNotMultisigned
 	// ErrSignerDataIsEmpty is a compatibility alias for ErrTransactionNotMultisigned.
@@ -33,11 +33,11 @@ var (
 	// Deprecated: Use ErrTransactionNotMultisigned.
 	ErrSignerDataIsEmpty = ErrTransactionNotMultisigned
 	// ErrMissingLastLedgerSequenceInTransaction is returned when a reliable-submission transaction does not contain LastLedgerSequence.
-	ErrMissingLastLedgerSequenceInTransaction = errors.New("missing LastLedgerSequence in transaction")
+	ErrMissingLastLedgerSequenceInTransaction = clientinternal.ErrMissingLastLedgerSequenceInTransaction
 	// ErrMissingWallet is returned when a wallet is required but not provided for an unsigned transaction.
-	ErrMissingWallet = errors.New("wallet must be provided when submitting an unsigned transaction")
+	ErrMissingWallet = clientinternal.ErrMissingWallet
 	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
-	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
+	ErrMissingAccountInTransaction = clientinternal.ErrMissingAccountInTransaction
 	// ErrPreliminaryResult indicates a malformed preliminary submit result.
 	ErrPreliminaryResult = clientinternal.ErrPreliminaryResult
 	// ErrTransactionExpired indicates ledger-driven expiry after LastLedgerSequence.
@@ -51,7 +51,7 @@ var (
 	// ErrInvalidLastLedgerSequence indicates a zero reliable-submission ledger boundary.
 	ErrInvalidLastLedgerSequence = clientinternal.ErrInvalidLastLedgerSequence
 	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
-	ErrInvalidFulfillmentLength = errors.New("invalid fulfillment length")
+	ErrInvalidFulfillmentLength = clientinternal.ErrInvalidFulfillmentLength
 
 	// ErrTransactionNotSponsored is returned when a sponsorship preflight receives a transaction
 	// without Sponsor and SponsorFlags.
@@ -141,14 +141,14 @@ var (
 	// ErrFeeFieldMissing was returned when the fee field was missing after calculation.
 	//
 	// Deprecated: fee calculation no longer returns this error. It will be removed in a future version.
-	ErrFeeFieldMissing = errors.New("fee field missing after calculation")
+	ErrFeeFieldMissing = clientinternal.ErrFeeFieldMissing
 
 	// wallet
 
 	// ErrCannotFundWalletWithoutClassicAddress is returned when attempting to fund a wallet without a classic address.
-	ErrCannotFundWalletWithoutClassicAddress = errors.New("cannot fund wallet without a classic address")
+	ErrCannotFundWalletWithoutClassicAddress = clientinternal.ErrCannotFundWalletWithoutClassicAddress
 	// ErrFundWalletBalanceNotUpdated is returned when the wallet balance does not update on the validated ledger after polling.
-	ErrFundWalletBalanceNotUpdated = errors.New("fund wallet: balance did not update on validated ledger after polling")
+	ErrFundWalletBalanceNotUpdated = clientinternal.ErrFundWalletBalanceNotUpdated
 
 	// fees
 
@@ -163,13 +163,13 @@ var (
 	// ErrLoanBrokerIDRequired is returned when LoanBrokerID is required but not provided.
 	ErrLoanBrokerIDRequired = clientinternal.ErrLoanBrokerIDRequired
 	// ErrCouldNotFetchLoanBroker is returned when the LoanBroker cannot be fetched.
-	ErrCouldNotFetchLoanBroker = errors.New("could not fetch LoanBroker")
+	ErrCouldNotFetchLoanBroker = clientinternal.ErrCouldNotFetchLoanBroker
 	// ErrCouldNotFetchLoanBrokerOwner is returned when the Owner field cannot be extracted from LoanBroker.
 	ErrCouldNotFetchLoanBrokerOwner = clientinternal.ErrCouldNotFetchLoanBrokerOwner
 	// ErrCounterpartyRequired was returned when Counterparty was required but not provided.
 	//
 	// Deprecated: fee calculation no longer returns this error. It will be removed in a future version.
-	ErrCounterpartyRequired = errors.New("field Counterparty is required")
+	ErrCounterpartyRequired = clientinternal.ErrCounterpartyRequired
 
 	// account
 

@@ -31,6 +31,10 @@ var (
 
 	// account
 
+	// ErrCannotFundWalletWithoutClassicAddress is returned when attempting to fund a wallet without a classic address.
+	ErrCannotFundWalletWithoutClassicAddress = errors.New("cannot fund wallet without a classic address")
+	// ErrFundWalletBalanceNotUpdated is returned when the wallet balance does not update on the validated ledger after polling.
+	ErrFundWalletBalanceNotUpdated = errors.New("fund wallet: balance did not update on validated ledger after polling")
 	// ErrAccountCannotBeDeleted is returned when associated objects prevent account deletion.
 	ErrAccountCannotBeDeleted = errors.New("account cannot be deleted; there are Escrows, PayChannels, RippleStates, or Checks associated with the account")
 	// ErrAccountHasSponsorshipObligations is returned when SponsoringOwnerCount or SponsoringAccountCount is present.
@@ -86,6 +90,20 @@ var (
 
 	// transaction
 
+	// ErrMissingTxSignatureOrSigningPubKey is returned when a transaction has no complete signing form.
+	ErrMissingTxSignatureOrSigningPubKey = errors.New("transaction must include a complete TxnSignature/SigningPubKey or Signers form")
+	// ErrNilTransaction is returned when a nil transaction is submitted or autofilled.
+	ErrNilTransaction = errors.New("transaction must not be nil")
+	// ErrMissingLastLedgerSequenceInTransaction is returned when a reliable-submission transaction does not contain LastLedgerSequence.
+	ErrMissingLastLedgerSequenceInTransaction = errors.New("missing LastLedgerSequence in transaction")
+	// ErrMissingWallet is returned when a wallet is required but not provided for an unsigned transaction.
+	ErrMissingWallet = errors.New("wallet must be provided when submitting an unsigned transaction")
+	// ErrMissingAccountInTransaction is returned when the Account field is missing from a transaction.
+	ErrMissingAccountInTransaction = errors.New("missing Account in transaction")
+	// ErrInvalidFulfillmentLength is returned when the fulfillment length is invalid.
+	ErrInvalidFulfillmentLength = errors.New("invalid fulfillment length")
+	// ErrCouldNotFetchLoanBroker is returned when the LoanBroker cannot be fetched.
+	ErrCouldNotFetchLoanBroker = errors.New("could not fetch LoanBroker")
 	// ErrInvalidSignedTransaction indicates that transaction signing fields do not
 	// form a complete single-sign, multisign, or permitted inner-Batch structure.
 	ErrInvalidSignedTransaction = errors.New("transaction has an invalid signed form")
@@ -134,6 +152,11 @@ var (
 	ErrSponsorshipMaxFeeExceeded = errors.New("transaction fee exceeds the sponsorship MaxFee")
 
 	// fee
+
+	// ErrFeeFieldMissing is retained for the deprecated fee calculation error.
+	ErrFeeFieldMissing = errors.New("fee field missing after calculation")
+	// ErrCounterpartyRequired is retained for the deprecated counterparty error.
+	ErrCounterpartyRequired = errors.New("field Counterparty is required")
 
 	// ErrInvalidFeeValue is returned when a fee input is not a finite,
 	// non-negative decimal value.
